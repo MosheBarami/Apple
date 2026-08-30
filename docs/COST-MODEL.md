@@ -25,7 +25,7 @@ Workers AI in *neurons* at **$0.011 per 1,000 neurons**.
 | Stone, targeted edit + read-back verify in Studio | 111 | $0.00122 |
 | Stone, inspect + playtest verify in Studio | 241 | $0.00265 |
 | **Stone, full build + edit + verify in Studio** | **511** | **$0.00562** |
-| Rune, design + author | 75 | $0.00082 |
+| **Rune, build + read-back verify + playtest in Studio** | **297** | **$0.00327** |
 | Memory distillation (after a run) | ~21 | $0.00023 |
 | Docs search (embedding, cached 24h) | 1 | $0.00001 |
 
