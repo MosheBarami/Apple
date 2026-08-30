@@ -1,0 +1,22 @@
+{
+  "name": "@golem/site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check || true"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/sitemap": "^3.2.0",
+    "astro": "^5.7.0",
+    "three": "^0.175.0",
+    "typescript": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.175.0"
+  }
+}

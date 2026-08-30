@@ -1,0 +1,110 @@
+---
+// Accessible FAQ accordion built on native <details>/<summary>.
+interface Props {
+  items: { q: string; a: string }[];
+}
+const { items } = Astro.props;
+---
+
+<div class="faq">
+  {
+    items.map((item) => (
+      <details class="faq-item">
+        <summary>
+          <span class="faq-q">{item.q}</span>
+          <span class="faq-icon" aria-hidden="true" />
+        </summary>
+        <div class="faq-a" set:html={item.a} />
+      </details>
+    ))
+  }
+</div>
+
+<style>
+  .faq {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .faq-item {
+    background: linear-gradient(180deg, rgba(26, 34, 51, 0.55), rgba(18, 24, 38, 0.85));
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    overflow: hidden;
+    transition: border-color 180ms ease;
+  }
+
+  .faq-item[open] {
+    border-color: rgba(255, 180, 84, 0.4);
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    padding: 1.1rem 1.4rem;
+    list-style: none;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.02rem;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary:hover .faq-q {
+    color: var(--amber);
+  }
+
+  .faq-icon {
+    position: relative;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .faq-icon::before,
+  .faq-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    background: var(--amber);
+    transition: transform 220ms ease;
+  }
+
+  .faq-icon::before {
+    width: 14px;
+    height: 2px;
+  }
+
+  .faq-icon::after {
+    width: 2px;
+    height: 14px;
+  }
+
+  .faq-item[open] .faq-icon::after {
+    transform: rotate(90deg);
+  }
+
+  .faq-a {
+    padding: 0 1.4rem 1.25rem;
+    color: var(--muted);
+    font-size: 0.96rem;
+  }
+
+  .faq-a :global(a) {
+    color: var(--amber);
+  }
+
+  .faq-a :global(p) {
+    margin: 0 0 0.6em;
+  }
+
+  .faq-a :global(p:last-child) {
+    margin-bottom: 0;
+  }
+</style>

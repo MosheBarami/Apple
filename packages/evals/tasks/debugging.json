@@ -1,0 +1,89 @@
+[
+  {
+    "id": "db-01-busy-loop",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This server Script freezes Roblox Studio the moment the game runs. Find and fix the bug:\n\n```luau\nlocal part = workspace.Beacon\nwhile true do\n\tpart.Transparency = 1 - part.Transparency\nend\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "task\\.wait\\s*\\(", "target": "code" },
+      { "type": "contains", "value": "while true do", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-02-missing-humanoid-check",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This kill brick script sometimes throws \"attempt to index nil with 'Health'\" when non-character parts touch it. Fix it:\n\n```luau\nlocal brick = script.Parent\nbrick.Touched:Connect(function(hit)\n\thit.Parent.Humanoid.Health = 0\nend)\n```",
+    "weight": 2,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "FindFirstChild(OfClass)?\\s*\\(\\s*[\"']Humanoid[\"']", "target": "code" },
+      { "type": "regex", "pattern": "if\\s+", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-03-assignment-in-condition",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This snippet does not even run — Studio shows a syntax error. Fix it:\n\n```luau\nlocal score = 10\nif score = 10 then\n\tprint(\"perfect score\")\nend\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "if\\s+score\\s*==\\s*10", "target": "code" },
+      { "type": "not_contains", "pattern": "if\\s+score\\s*=\\s*10", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-04-string-concat-plus",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This errors with \"attempt to perform arithmetic (add) on string and number\". Fix it using Luau's string concatenation (keep it a single print):\n\n```luau\nlocal score = 42\nprint(\"Score: \" + score)\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "\\.\\.|`[^`]*\\{\\s*score\\s*\\}", "target": "code" },
+      { "type": "not_contains", "pattern": "\"\\s*\\+\\s*score", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-05-loop-step",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This countdown never prints anything. Fix it:\n\n```luau\nfor i = 10, 1 do\n\tprint(i)\n\ttask.wait(1)\nend\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "for\\s+i\\s*=\\s*10\\s*,\\s*1\\s*,\\s*-\\s*1", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-06-unparented-part",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This script runs without errors but no part ever appears in the world. Fix it:\n\n```luau\nlocal part = Instance.new(\"Part\")\npart.Name = \"DropPlatform\"\npart.Size = Vector3.new(8, 1, 8)\npart.Position = Vector3.new(0, 20, 0)\npart.Anchored = true\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "part\\.Parent\\s*=\\s*(game\\.Workspace|workspace)", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-07-missing-waitforchild",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This LocalScript in StarterPlayerScripts intermittently errors on join with \"CoinsLabel is not a valid member of ScreenGui\" because the GUI has not replicated yet. Fix it:\n\n```luau\nlocal player = game:GetService(\"Players\").LocalPlayer\nlocal label = player.PlayerGui.HudGui.CoinsLabel\nlabel.Text = \"Coins: 0\"\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "WaitForChild\\s*\\(\\s*[\"']CoinsLabel[\"']", "target": "code" },
+      { "type": "regex", "pattern": "WaitForChild\\s*\\(\\s*[\"']HudGui[\"']", "target": "code" }
+    ]
+  },
+  {
+    "id": "db-08-connect-call",
+    "category": "debugging",
+    "system": "You are Golem, an expert Roblox Luau debugger. Explain the bug in one sentence, then reply with the corrected code in a fenced ```luau code block.",
+    "prompt": "This shop button handler runs once immediately when the script loads and then never again when the button is clicked. Fix it:\n\n```luau\nlocal button = script.Parent\nlocal function onClick()\n\tprint(\"opening shop\")\nend\nbutton.MouseButton1Click:Connect(onClick())\n```",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "Connect\\s*\\(\\s*onClick\\s*\\)", "target": "code" },
+      { "type": "not_contains", "value": "Connect(onClick())", "target": "code" }
+    ]
+  }
+]

@@ -1,0 +1,83 @@
+---
+import Base from './Base.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  heading: string;
+  updated: string;
+}
+const { title, description, heading, updated } = Astro.props;
+---
+
+<Base title={title} description={description}>
+  <section class="section">
+    <div class="wrap legal-wrap">
+      <p class="eyebrow">Legal</p>
+      <h1>{heading}</h1>
+      <p class="legal-updated">Last updated: {updated}</p>
+      <div class="legal-prose">
+        <slot />
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .legal-wrap {
+    max-width: 760px;
+  }
+
+  .legal-updated {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 2.5rem;
+  }
+
+  .legal-prose :global(h2) {
+    font-size: 1.35rem;
+    margin-top: 2.6rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .legal-prose :global(h3) {
+    font-size: 1.05rem;
+    margin-top: 1.6rem;
+  }
+
+  .legal-prose :global(p),
+  .legal-prose :global(li) {
+    color: var(--muted);
+    font-size: 0.97rem;
+  }
+
+  .legal-prose :global(strong) {
+    color: var(--text);
+  }
+
+  .legal-prose :global(ul) {
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.45rem;
+    margin: 0.6rem 0 1.2rem;
+  }
+
+  .legal-prose :global(li::marker) {
+    color: var(--amber);
+  }
+
+  .legal-prose :global(.callout) {
+    background: rgba(26, 34, 51, 0.6);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--r-ctl);
+    padding: 1rem 1.25rem;
+    margin: 1.4rem 0;
+  }
+
+  .legal-prose :global(.callout p) {
+    margin: 0;
+  }
+</style>

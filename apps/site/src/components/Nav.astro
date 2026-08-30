@@ -1,0 +1,215 @@
+---
+import GolemGlyph from './GolemGlyph.astro';
+
+const links = [
+  { href: '/#how', label: 'How it works' },
+  { href: '/#modes', label: 'Modes' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/docs', label: 'Docs' },
+  { href: '/changelog', label: 'Changelog' },
+];
+const path = Astro.url.pathname;
+---
+
+<header class="site-nav" id="site-nav">
+  <div class="wrap nav-inner">
+    <a href="/" class="brand" aria-label="Golem — home">
+      <GolemGlyph size={30} />
+      <span class="wordmark">Golem</span>
+    </a>
+
+    <nav aria-label="Primary" class="primary-nav" id="primary-nav">
+      <ul>
+        {
+          links.map((l) => (
+            <li>
+              <a
+                href={l.href}
+                aria-current={path.startsWith(l.href.replace(/\/?#.*$/, '') || '/') && l.href.indexOf('#') === -1 ? 'page' : undefined}
+              >
+                {l.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <a href="/app" class="btn btn-primary nav-cta">Open Golem</a>
+    </nav>
+
+    <button
+      class="menu-toggle"
+      id="menu-toggle"
+      aria-expanded="false"
+      aria-controls="primary-nav"
+      aria-label="Toggle navigation menu"
+    >
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </button>
+  </div>
+</header>
+
+<style>
+  .site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(11, 14, 20, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(35, 45, 63, 0.7);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    height: 66px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--text);
+  }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: -0.01em;
+  }
+
+  .primary-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+  }
+
+  .primary-nav ul {
+    display: flex;
+    align-items: center;
+    gap: 1.6rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .primary-nav ul a {
+    color: var(--muted);
+    font-size: 0.94rem;
+    font-weight: 500;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid transparent;
+  }
+
+  .primary-nav ul a:hover,
+  .primary-nav ul a[aria-current='page'] {
+    color: var(--text);
+    border-bottom-color: var(--amber);
+  }
+
+  .nav-cta {
+    padding: 0.55rem 1.15rem;
+    font-size: 0.9rem;
+  }
+
+  .menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: var(--r-ctl);
+    cursor: pointer;
+    padding: 0 10px;
+  }
+
+  .menu-toggle .bar {
+    display: block;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: transform 200ms ease, opacity 200ms ease;
+  }
+
+  .menu-toggle[aria-expanded='true'] .bar:first-child {
+    transform: translateY(4px) rotate(45deg);
+  }
+
+  .menu-toggle[aria-expanded='true'] .bar:last-child {
+    transform: translateY(-4px) rotate(-45deg);
+  }
+
+  @media (max-width: 800px) {
+    .menu-toggle {
+      display: flex;
+    }
+
+    .primary-nav {
+      position: absolute;
+      top: 66px;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      background: rgba(11, 14, 20, 0.97);
+      border-bottom: 1px solid var(--line);
+      padding: 1rem 1.25rem 1.4rem;
+      display: none;
+    }
+
+    .primary-nav.open {
+      display: flex;
+    }
+
+    .primary-nav ul {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .primary-nav ul a {
+      display: block;
+      padding: 0.8rem 0.25rem;
+      font-size: 1.05rem;
+      border-bottom: 1px solid rgba(35, 45, 63, 0.5);
+    }
+
+    .nav-cta {
+      margin-top: 1rem;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  const toggle = document.getElementById('menu-toggle');
+  const nav = document.getElementById('primary-nav');
+  if (toggle && nav) {
+    toggle.addEventListener('click', () => {
+      const open = nav.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    // close menu when a link is chosen
+    nav.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('a')) {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && nav.classList.contains('open')) {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.focus();
+      }
+    });
+  }
+</script>

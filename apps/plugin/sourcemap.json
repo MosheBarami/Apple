@@ -1,0 +1,1 @@
+{"name":"GolemPlugin","className":"Script","filePaths":["src/init.server.luau","default.project.json"],"children":[{"name":"Ops","className":"ModuleScript","filePaths":["src/Ops.luau"]},{"name":"Paths","className":"ModuleScript","filePaths":["src/Paths.luau"]},{"name":"Serializer","className":"ModuleScript","filePaths":["src/Serializer.luau"]}]}

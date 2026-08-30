@@ -1,0 +1,4 @@
+{
+  "name": "GolemPlugin",
+  "tree": { "$path": "src" }
+}

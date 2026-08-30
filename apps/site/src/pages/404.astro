@@ -1,0 +1,89 @@
+---
+import Base from '../layouts/Base.astro';
+import GolemFigure from '../components/GolemFigure.astro';
+---
+
+<Base
+  title="404 — Lost golem"
+  description="This page does not exist. The golem wandered off the map."
+>
+  <section class="section lost" aria-labelledby="lost-title">
+    <div class="wrap lost-inner">
+      <div class="lost-figure" aria-hidden="true">
+        <GolemFigure variant="clay" size={220} />
+        <p class="lost-question">?</p>
+      </div>
+      <p class="eyebrow">Error 404</p>
+      <h1 id="lost-title">A golem wandered off the map</h1>
+      <p class="lede">
+        It followed a path that was never carved. Whatever used to be here — a page, a doc, a typo —
+        it is not here now.
+      </p>
+      <div class="lost-ctas">
+        <a href="/" class="btn btn-primary">Back to solid ground</a>
+        <a href="/docs" class="btn btn-ghost">Browse the docs</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .lost {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    text-align: center;
+  }
+
+  .lost-inner {
+    max-width: 620px;
+  }
+
+  .lost .lede {
+    margin-inline: auto;
+  }
+
+  .lost-figure {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1rem;
+    transform: rotate(-4deg);
+  }
+
+  .lost-question {
+    position: absolute;
+    top: -6px;
+    right: -18px;
+    font-family: var(--font-display);
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: var(--amber);
+    text-shadow: 0 0 18px rgba(255, 180, 84, 0.6);
+    margin: 0;
+    animation: lost-bob 3s ease-in-out infinite;
+  }
+
+  @keyframes lost-bob {
+    0%,
+    100% {
+      transform: translateY(0) rotate(8deg);
+    }
+    50% {
+      transform: translateY(-8px) rotate(12deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lost-question {
+      animation: none;
+    }
+  }
+
+  .lost-ctas {
+    display: flex;
+    gap: 0.9rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1.8rem;
+  }
+</style>

@@ -1,0 +1,43 @@
+[
+  {
+    "id": "fr-01-bad-path",
+    "category": "failure-recovery",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio using tools (get_project_tree, list_scripts, read_script, edit_script, search_scripts, create_instances, set_properties, delete_instances, run_luau, run_and_check, get_output_logs, search_docs, create_checkpoint). A tool call just failed. Propose the correct next action in one or two sentences, naming the tool you would call next.",
+    "prompt": "You called edit_script with path game.ServerScriptService.RoundManger and got this tool result:\n\n{\"error\": \"script not found: game.ServerScriptService.RoundManger\"}\n\nThe user asked you to fix a bug in their round system. What is the correct next action?",
+    "checks": [
+      { "type": "regex", "pattern": "list_scripts|get_project_tree|search_scripts", "target": "text" },
+      { "type": "regex", "pattern": "typo|misspell|wrong path|correct (path|name)|RoundManager", "flags": "i", "target": "text" }
+    ]
+  },
+  {
+    "id": "fr-02-runtime-error",
+    "category": "failure-recovery",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio using tools (get_project_tree, list_scripts, read_script, edit_script, search_scripts, create_instances, set_properties, delete_instances, run_luau, run_and_check, get_output_logs, search_docs, create_checkpoint). A tool call just failed. Propose the correct next action in one or two sentences, naming the tool you would call next.",
+    "prompt": "You called run_and_check and the collected logs contain this error:\n\nServerScriptService.ShopServer:12: attempt to index nil with 'Value'\n\nWhat is the correct next action?",
+    "checks": [
+      { "type": "contains", "value": "read_script", "target": "text" },
+      { "type": "contains", "value": "ShopServer", "target": "text" }
+    ]
+  },
+  {
+    "id": "fr-03-studio-disconnected",
+    "category": "failure-recovery",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio using tools (get_project_tree, list_scripts, read_script, edit_script, search_scripts, create_instances, set_properties, delete_instances, run_luau, run_and_check, get_output_logs, search_docs, create_checkpoint). A tool call just failed. Propose the correct next action in one or two sentences.",
+    "prompt": "You called create_instances and got this tool result:\n\n{\"error\": \"Studio is not connected. Ask the user to connect Studio, or continue without Studio tools.\"}\n\nThe user asked you to build a lobby. What is the correct next action?",
+    "checks": [
+      { "type": "contains", "value": "Studio", "target": "text" },
+      { "type": "regex", "pattern": "connect|pair|plugin", "flags": "i", "target": "text" },
+      { "type": "not_contains", "pattern": "retry(ing)? (the )?create_instances", "flags": "i", "target": "text" }
+    ]
+  },
+  {
+    "id": "fr-04-timeout-chunking",
+    "category": "failure-recovery",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio using tools (get_project_tree, list_scripts, read_script, edit_script, search_scripts, create_instances, set_properties, delete_instances, run_luau, run_and_check, get_output_logs, search_docs, create_checkpoint). A tool call just failed. Propose the correct next action in one or two sentences.",
+    "prompt": "You called run_luau with a single script that generates 40,000 terrain voxels in one loop, and got this tool result:\n\n{\"error\": \"timeout after 10000ms\"}\n\nWhat is the correct next action? (Re-running the exact same code will hit the same 10 second limit.)",
+    "checks": [
+      { "type": "regex", "pattern": "chunk|batch|smaller|split|portion|piece|incremental", "flags": "i", "target": "text" },
+      { "type": "contains", "value": "run_luau", "target": "text" }
+    ]
+  }
+]

@@ -1,0 +1,310 @@
+---
+// Hand-authored, looping mock of the Golem workspace. Pure DOM + CSS — no
+// video. A chat message types itself, tool chips land one by one, then the
+// build completes. Under reduced motion the finished state renders at once.
+---
+
+<div class="demo" id="demo-mock" role="img" aria-label="Animated preview: a chat message asks Golem to make a lobby with a spinning obby door, tool activity chips appear, then the build completes.">
+  <div class="demo-chrome" aria-hidden="true">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <span class="demo-title">Golem — Lobby Project</span>
+    <span class="demo-badge"><span class="pulse"></span> Studio connected</span>
+  </div>
+
+  <div class="demo-body" aria-hidden="true">
+    <div class="demo-msg demo-user">
+      <span class="demo-avatar demo-avatar-user">M</span>
+      <p class="demo-text"><span id="demo-typed"></span><span class="caret" id="demo-caret"></span></p>
+    </div>
+
+    <div class="demo-msg demo-golem" id="demo-reply">
+      <span class="demo-avatar demo-avatar-golem">G</span>
+      <div class="demo-reply-body">
+        <p class="demo-mode-tag">Stone mode · 4 sparks</p>
+        <div class="demo-chips">
+          <span class="chip" data-step="0"><span class="chip-check">✓</span> get_project_tree</span>
+          <span class="chip" data-step="1"><span class="chip-check">✓</span> edit_script <code>DoorSpinner</code></span>
+          <span class="chip" data-step="2"><span class="chip-check">✓</span> run_and_check</span>
+        </div>
+        <p class="demo-done" id="demo-done">
+          <span class="done-glyph">◆</span> Done — a lobby with a spinning obby door is live. Try it in Studio.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .demo {
+    background: linear-gradient(180deg, rgba(26, 34, 51, 0.7), rgba(14, 18, 28, 0.95));
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), var(--glow-violet);
+    font-size: 0.95rem;
+  }
+
+  .demo-chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(11, 14, 20, 0.6);
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+
+  .dot:first-child {
+    background: rgba(248, 113, 113, 0.7);
+  }
+
+  .demo-title {
+    margin-left: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+
+  .demo-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--success);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+  }
+
+  .pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: demo-pulse 2s ease-in-out infinite;
+  }
+
+  .demo-body {
+    padding: 1.4rem 1.3rem 1.6rem;
+    display: grid;
+    gap: 1.2rem;
+    min-height: 240px;
+  }
+
+  .demo-msg {
+    display: flex;
+    gap: 0.8rem;
+    align-items: flex-start;
+  }
+
+  .demo-avatar {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  .demo-avatar-user {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+
+  .demo-avatar-golem {
+    background: linear-gradient(160deg, #33270f, #1a1408);
+    border: 1px solid rgba(255, 180, 84, 0.5);
+    color: var(--amber);
+    box-shadow: 0 0 12px rgba(255, 180, 84, 0.25);
+  }
+
+  .demo-text {
+    margin: 0.25rem 0 0;
+    color: var(--text);
+  }
+
+  .caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.05em;
+    background: var(--amber);
+    vertical-align: text-bottom;
+    margin-left: 2px;
+    animation: demo-caret 0.9s steps(2) infinite;
+  }
+
+  .caret.off {
+    display: none;
+  }
+
+  .demo-golem {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 400ms ease, transform 400ms ease;
+  }
+
+  .demo-golem.on {
+    opacity: 1;
+    transform: none;
+  }
+
+  .demo-mode-tag {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--stone);
+    margin: 0.35rem 0 0.7rem;
+  }
+
+  .demo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.32rem 0.85rem;
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+    transition: opacity 350ms ease, transform 350ms cubic-bezier(0.2, 0.9, 0.3, 1.3), border-color 350ms ease;
+  }
+
+  .chip code {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--amber);
+  }
+
+  .chip.on {
+    opacity: 1;
+    transform: none;
+    border-color: rgba(52, 211, 153, 0.45);
+  }
+
+  .chip-check {
+    color: var(--success);
+    font-weight: 700;
+  }
+
+  .demo-done {
+    margin: 1rem 0 0;
+    color: var(--success);
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 450ms ease, transform 450ms ease;
+  }
+
+  .demo-done.on {
+    opacity: 1;
+    transform: none;
+  }
+
+  .done-glyph {
+    color: var(--amber);
+    margin-right: 0.35rem;
+  }
+
+  @keyframes demo-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(52, 211, 153, 0);
+    }
+  }
+
+  @keyframes demo-caret {
+    to {
+      visibility: hidden;
+    }
+  }
+</style>
+
+<script>
+  const typedEl = document.getElementById('demo-typed');
+  const caret = document.getElementById('demo-caret');
+  const reply = document.getElementById('demo-reply');
+  const done = document.getElementById('demo-done');
+  const chips = Array.from(document.querySelectorAll<HTMLElement>('#demo-mock .chip'));
+  const message = 'make a lobby with a spinning obby door';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (typedEl && caret && reply && done) {
+    if (reduced) {
+      // no animation: render the completed exchange
+      typedEl.textContent = message;
+      caret.classList.add('off');
+      reply.classList.add('on');
+      chips.forEach((c) => c.classList.add('on'));
+      done.classList.add('on');
+    } else {
+      let timers: number[] = [];
+      const later = (fn: () => void, ms: number) => {
+        timers.push(window.setTimeout(fn, ms));
+      };
+
+      const run = () => {
+        timers.forEach(clearTimeout);
+        timers = [];
+        typedEl.textContent = '';
+        caret.classList.remove('off');
+        reply.classList.remove('on');
+        done.classList.remove('on');
+        chips.forEach((c) => c.classList.remove('on'));
+
+        // type the request
+        for (let i = 0; i < message.length; i++) {
+          later(() => {
+            typedEl.textContent = message.slice(0, i + 1);
+          }, 600 + i * 42);
+        }
+        const typedDone = 600 + message.length * 42;
+
+        later(() => caret.classList.add('off'), typedDone + 350);
+        later(() => reply.classList.add('on'), typedDone + 650);
+        chips.forEach((chip, i) => {
+          later(() => chip.classList.add('on'), typedDone + 1250 + i * 850);
+        });
+        later(() => done.classList.add('on'), typedDone + 1250 + chips.length * 850 + 500);
+        // loop
+        later(run, typedDone + 1250 + chips.length * 850 + 5200);
+      };
+
+      // start only when scrolled into view
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            io.disconnect();
+            run();
+          }
+        },
+        { threshold: 0.3 }
+      );
+      const demoRoot = document.getElementById('demo-mock');
+      if (demoRoot) io.observe(demoRoot);
+    }
+  }
+</script>

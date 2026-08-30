@@ -1,0 +1,70 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Sparks & limits — Golem Docs"
+  description="How Golem's Sparks quota works: 80 per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out."
+  heading="Sparks &amp; limits"
+>
+  <p>
+    Sparks are Golem's unit of daily energy. Every AI request burns some; your balance refills to
+    full once a day. The system exists for one reason: real inference costs real compute, and a
+    hard, transparent quota is what lets the free tier be genuinely free — no card, no trial
+    clock, no surprise bill.
+  </p>
+
+  <h2>The numbers</h2>
+  <ul>
+    <li><strong>Free plan:</strong> 80 Sparks per day.</li>
+    <li><strong>Pro plan (waitlist):</strong> 400 Sparks per day, plus a priority queue.</li>
+    <li><strong>Clay:</strong> 1 spark per request.</li>
+    <li><strong>Stone:</strong> 4 sparks per request.</li>
+    <li><strong>Rune:</strong> 10 sparks per request, <strong>+1 per extra agent step</strong> beyond the included ones.</li>
+  </ul>
+  <p>
+    In practice, 80 Sparks is a solid daily session: dozens of Clay questions, a bunch of Stone
+    features, or a few serious Rune runs — usually a mix.
+  </p>
+
+  <h2>How metering works</h2>
+  <p>
+    Your balance is always visible in the workspace header, and it updates live. A request is
+    charged when it starts; Rune's per-step surcharge accrues visibly during the run. If Golem
+    estimates a Rune run will be unusually long, it says so before starting instead of silently
+    draining your day.
+  </p>
+  <p>
+    If a request fails on our side — an infrastructure error, not a build that turned out wrong —
+    the Sparks come back automatically.
+  </p>
+
+  <h2>The daily reset</h2>
+  <p>
+    Quotas reset every 24 hours per account, on a rolling clock. The workspace shows your exact
+    reset time. Unused Sparks do not roll over — every day starts at your full allowance.
+  </p>
+
+  <h2>Running out</h2>
+  <p>When your balance hits zero:</p>
+  <ul>
+    <li>New AI requests are declined with a clear message and your reset time — never a silent failure.</li>
+    <li>Everything that does not burn inference keeps working: reading chat history, browsing your project, creating and restoring checkpoints, pairing Studio.</li>
+    <li>Nothing is deleted, downgraded or lost. You are just out of energy until the reset.</li>
+  </ul>
+
+  <h2>Other limits worth knowing</h2>
+  <ul>
+    <li><strong>Rate limiting:</strong> requests are queued per account. Under heavy load, free-tier requests may briefly wait; Pro (when it ships) queues ahead.</li>
+    <li><strong>Checkpoints:</strong> stored per project with a rolling cap — the oldest automatic checkpoints are pruned first. Manual checkpoints outlive automatic ones.</li>
+    <li><strong>One account per person:</strong> multiplying free accounts to farm quota is against the <a href="/terms">terms</a> and gets caught.</li>
+  </ul>
+
+  <div class="callout">
+    <p>
+      <strong>Making Sparks go further:</strong> plan with Clay before building with Rune; give
+      specific requests (“the door in Workspace.Lobby”) rather than vague ones; and let Stone do
+      the ordinary building — Rune shines when verification matters, not on every task.
+    </p>
+  </div>
+</DocsLayout>

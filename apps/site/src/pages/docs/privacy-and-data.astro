@@ -1,0 +1,78 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Privacy & data — Golem Docs"
+  description="A plain-language map of what Golem stores, where it lives, who can see it, and the never-trained-on promise — the practical companion to the Privacy Policy."
+  heading="Privacy &amp; data"
+>
+  <p>
+    This page is the practical map of your data in Golem — what exists, where it lives, and who
+    can touch it. The legally binding version is the <a href="/privacy">Privacy Policy</a>; this
+    page just says the same things the way an engineer would over coffee.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>The core promise: your projects stay yours, and are never used to train models.</strong>
+      Not your scripts, not your chats, not your checkpoints. There is no fine-print exception.
+    </p>
+  </div>
+
+  <h2>What Golem stores, and why</h2>
+  <ul>
+    <li><strong>Your email + password hash</strong> — so you can sign in. This is the only personal information signup asks for.</li>
+    <li><strong>Projects</strong> — names, descriptions, and the connected place's name and id, so the workspace can show what belongs where.</li>
+    <li><strong>Chat history</strong> — your conversations with Golem plus the tool trace of what it did. This is your project's memory; deleting a project deletes it.</li>
+    <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place Golem works on, kept so rollback works across sessions.</li>
+    <li><strong>Usage ledger</strong> — when you spent Sparks and on which mode, so quotas reset fairly.</li>
+  </ul>
+
+  <h2>Where it lives</h2>
+  <ul>
+    <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project.</li>
+    <li><strong>Supabase</strong> runs authentication and the account registry (your email, your project list). Every row is protected so that only requests carrying <em>your</em> verified credentials can read it — our own servers hold no master key that bypasses this.</li>
+  </ul>
+
+  <h2>What the Studio plugin sees</h2>
+  <p>
+    The plugin only ever acts on the place you explicitly paired, and only sends what a request
+    needs: relevant scripts, tree structure, properties, output logs. It cannot read files on
+    your computer, other places, or anything about your Roblox account beyond the open place. The
+    plugin is a readable <code>.rbxm</code> — open it and check.
+  </p>
+
+  <h2>What inference sees</h2>
+  <p>
+    When you send a request, the model receives your message and the project context needed to
+    answer it. That context serves the request and is not retained by the inference layer
+    afterwards. Model routing happens on our infrastructure — your code is not shipped to
+    third-party AI companies' training pipelines.
+  </p>
+
+  <h2>Who can read your data</h2>
+  <ul>
+    <li><strong>You.</strong></li>
+    <li><strong>Golem's systems</strong>, mechanically, to serve your requests.</li>
+    <li><strong>Nobody else.</strong> No data sales, no ad networks, no cross-site tracking. Operators can access production systems for debugging under access controls, and treat content as radioactive.</li>
+  </ul>
+
+  <h2>Deleting things</h2>
+  <ul>
+    <li><strong>A checkpoint:</strong> delete it in the workspace sidebar.</li>
+    <li><strong>A project:</strong> deleting a project deletes its chat history and checkpoints.</li>
+    <li><strong>Your account:</strong> settings → delete account. Everything above goes with it; backup copies expire within 30 days.</li>
+  </ul>
+  <p>
+    Anything the UI cannot delete for you, a human will:
+    <a href="mailto:golem.labs.app@gmail.com">golem.labs.app@gmail.com</a>.
+  </p>
+
+  <h2>Beta honesty</h2>
+  <p>
+    Golem is a beta run by a small team on a deliberately simple architecture — simple enough to
+    audit, simple enough to explain on one page. If you find a hole in any of the above, please
+    tell us before you tell the internet; we fix fast.
+  </p>
+</DocsLayout>

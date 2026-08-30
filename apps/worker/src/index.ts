@@ -5,6 +5,7 @@ import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
 import { chat as llmChat, embed, getModels } from './gateway';
 import { searchDocs } from './rag';
+import { serveStatic, ensureStaticTables } from './static';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -291,19 +292,47 @@ app.get('/api/admin/session-info/:id', async (c) => {
   return c.json(await res.json());
 });
 
-// ---------------------------------------------------------------- static: SPA fallback under /app
-app.get('/app', (c) => appShell(c.env, c.req.raw));
-app.get('/app/*', async (c) => {
-  const asset = await c.env.ASSETS.fetch(c.req.raw);
-  if (asset.status !== 404) return asset;
-  return appShell(c.env, c.req.raw);
+// ---------------------------------------------------------------- static serving (D1-backed)
+app.post('/api/admin/static-upload', async (c) => {
+  const { path, contentType, b64, immutable, append } = await c.req.json<{
+    path: string;
+    contentType?: string;
+    b64: string;
+    immutable?: boolean;
+    append?: boolean;
+  }>();
+  if (!path?.startsWith('/')) return c.json({ error: 'path must start with /' }, 400);
+  await ensureStaticTables(c.env);
+  const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+  let idx = 0;
+  if (append) {
+    const row = await c.env.CORPUS.prepare(`select n_chunks from static_assets where path = ?`).bind(path).first<{ n_chunks: number }>();
+    idx = row?.n_chunks ?? 0;
+  } else {
+    await c.env.CORPUS.prepare(`delete from static_chunks where path = ?`).bind(path).run();
+  }
+  await c.env.CORPUS.prepare(`insert into static_chunks(path, idx, data) values(?,?,?)`).bind(path, idx, bytes).run();
+  await c.env.CORPUS.prepare(
+    `insert into static_assets(path, n_chunks, content_type, immutable, updated_at) values(?,?,?,?,?)
+     on conflict(path) do update set n_chunks=excluded.n_chunks, content_type=excluded.content_type, immutable=excluded.immutable, updated_at=excluded.updated_at`
+  )
+    .bind(path, idx + 1, contentType ?? null, immutable ? 1 : 0, Date.now())
+    .run();
+  // bust edge cache for this path
+  await caches.default.delete(new Request(`https://static-cache${path}`)).catch(() => {});
+  return c.json({ ok: true, path, chunks: idx + 1, bytes: bytes.length });
 });
-async function appShell(env: Env, req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  url.pathname = '/app/index.html';
-  return env.ASSETS.fetch(new Request(url.toString(), { headers: req.headers }));
-}
 
-app.notFound((c) => c.json({ error: 'not found' }, 404));
+app.get('/api/admin/static-list', async (c) => {
+  await ensureStaticTables(c.env);
+  const rows = await c.env.CORPUS.prepare(`select path, n_chunks, content_type, immutable, updated_at from static_assets order by path`).all();
+  return c.json(rows.results);
+});
+
+app.notFound(async (c) => {
+  const path = new URL(c.req.url).pathname;
+  if (path.startsWith('/api/')) return c.json({ error: 'not found' }, 404);
+  return serveStatic(c.env, c.req.raw);
+});
 
 export default app;

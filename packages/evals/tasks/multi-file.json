@@ -1,0 +1,67 @@
+[
+  {
+    "id": "mf-01-heal-remote",
+    "category": "multi-file",
+    "system": "You are Golem, an expert Roblox Luau engineer. Output every updated file in full, each as its own fenced ```luau code block preceded by a comment line with its path. No prose outside the blocks.",
+    "prompt": "Add a healing feature across these two files. A RemoteEvent named Heal already exists in ReplicatedStorage. The server must listen for it and set the firing player's Humanoid Health to 100 (validate the character and Humanoid exist). The client must fire it when HealButton is clicked.\n\n-- FILE game.ServerScriptService.HealthServer (Script)\n```luau\nlocal Players = game:GetService(\"Players\")\n-- TODO: healing listener goes here\n```\n\n-- FILE game.StarterGui.HudGui.HealClient (LocalScript)\n```luau\nlocal button = script.Parent:WaitForChild(\"HealButton\")\n-- TODO: fire the heal request on click\n```\n\nReturn both files, updated.",
+    "weight": 2,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "OnServerEvent", "target": "code" },
+      { "type": "contains", "value": "FireServer", "target": "code" },
+      { "type": "contains", "value": "Heal", "target": "code" },
+      { "type": "contains", "value": "MouseButton1Click", "target": "code" },
+      { "type": "regex", "pattern": "Health\\s*=\\s*100|humanoid\\.Health\\s*=\\s*humanoid\\.MaxHealth|Health\\s*=\\s*.*MaxHealth", "target": "code" }
+    ]
+  },
+  {
+    "id": "mf-02-rename-function",
+    "category": "multi-file",
+    "system": "You are Golem, an expert Roblox Luau engineer. Output every updated file in full, each as its own fenced ```luau code block preceded by a comment line with its path. No prose outside the blocks.",
+    "prompt": "Rename the module function GetPlayerData to FetchPlayerData everywhere across these three files (definition and every call site). Keep behavior identical.\n\n-- FILE game.ReplicatedStorage.GameUtils (ModuleScript)\n```luau\nlocal GameUtils = {}\nfunction GameUtils.GetPlayerData(player)\n\treturn { coins = player:GetAttribute(\"Coins\") or 0 }\nend\nreturn GameUtils\n```\n\n-- FILE game.ServerScriptService.CoinService (Script)\n```luau\nlocal GameUtils = require(game.ReplicatedStorage.GameUtils)\ngame:GetService(\"Players\").PlayerAdded:Connect(function(player)\n\tlocal data = GameUtils.GetPlayerData(player)\n\tprint(player.Name, data.coins)\nend)\n```\n\n-- FILE game.ServerScriptService.ShopServer (Script)\n```luau\nlocal GameUtils = require(game.ReplicatedStorage.GameUtils)\nlocal function canAfford(player, price)\n\treturn GameUtils.GetPlayerData(player).coins >= price\nend\n```\n\nReturn all three files, updated.",
+    "checks": [
+      { "type": "regex", "pattern": "function\\s+GameUtils\\.FetchPlayerData", "target": "code" },
+      { "type": "regex", "pattern": "(GameUtils\\.FetchPlayerData[\\s\\S]*){3}", "target": "code" },
+      { "type": "not_contains", "value": "GetPlayerData", "target": "code" }
+    ]
+  },
+  {
+    "id": "mf-03-extract-config",
+    "category": "multi-file",
+    "system": "You are Golem, an expert Roblox Luau engineer. Output every updated file in full, each as its own fenced ```luau code block preceded by a comment line with its path. No prose outside the blocks.",
+    "prompt": "Both scripts below hard-code the sprint speed 32. Extract it into a new ModuleScript game.ReplicatedStorage.Config exposing WALK_SPEED = 32, and make both scripts require the module and use Config.WALK_SPEED instead of the literal.\n\n-- FILE game.ServerScriptService.SprintServer (Script)\n```luau\ngame:GetService(\"Players\").PlayerAdded:Connect(function(player)\n\tplayer.CharacterAdded:Connect(function(character)\n\t\tcharacter:WaitForChild(\"Humanoid\").WalkSpeed = 32\n\tend)\nend)\n```\n\n-- FILE game.StarterPlayer.StarterPlayerScripts.SprintClient (LocalScript)\n```luau\nlocal humanoid = script.Parent -- placeholder wiring\nlocal function onSprint()\n\thumanoid.WalkSpeed = 32\nend\n```\n\nReturn the new Config ModuleScript plus both updated scripts.",
+    "checks": [
+      { "type": "regex", "pattern": "WALK_SPEED\\s*=\\s*32", "target": "code" },
+      { "type": "regex", "pattern": "require\\s*\\([^)]*Config", "target": "code" },
+      { "type": "regex", "pattern": "(WalkSpeed\\s*=\\s*[A-Za-z_][\\w.]*WALK_SPEED[\\s\\S]*){2}", "target": "code" },
+      { "type": "not_contains", "pattern": "WalkSpeed\\s*=\\s*32", "target": "code" }
+    ]
+  },
+  {
+    "id": "mf-04-timeleft-broadcast",
+    "category": "multi-file",
+    "system": "You are Golem, an expert Roblox Luau engineer. Output every updated file in full, each as its own fenced ```luau code block preceded by a comment line with its path. No prose outside the blocks.",
+    "prompt": "Add a round countdown broadcast across these two files. A RemoteEvent named TimeLeft already exists in ReplicatedStorage. The server must fire it to all clients once per second during the round with the remaining seconds. The client must listen and write the value into TimerLabel.Text.\n\n-- FILE game.ServerScriptService.RoundTimer (Script)\n```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal ROUND_SECONDS = 60\n-- TODO: broadcast the countdown each second\n```\n\n-- FILE game.StarterGui.HudGui.TimerClient (LocalScript)\n```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal label = script.Parent:WaitForChild(\"TimerLabel\")\n-- TODO: update the label from the broadcast\n```\n\nReturn both files, updated.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "FireAllClients", "target": "code" },
+      { "type": "contains", "value": "OnClientEvent", "target": "code" },
+      { "type": "contains", "value": "TimeLeft", "target": "code" },
+      { "type": "regex", "pattern": "task\\.wait\\s*\\(\\s*1\\s*\\)", "target": "code" }
+    ]
+  },
+  {
+    "id": "mf-05-server-authority",
+    "category": "multi-file",
+    "system": "You are Golem, an expert Roblox Luau engineer. Output every updated file in full, each as its own fenced ```luau code block preceded by a comment line with its path. No prose outside the blocks.",
+    "prompt": "This shop is exploitable: the client sets its own Coins value. Move the coin mutation to the server. A RemoteEvent named BuyItem already exists in ReplicatedStorage. After your change: the client only fires BuyItem with the item id; the server listens, validates the price against the player's leaderstats Coins value, and performs the deduction server-side.\n\n-- FILE game.StarterGui.ShopGui.ShopClient (LocalScript)\n```luau\nlocal player = game:GetService(\"Players\").LocalPlayer\nlocal PRICE = 50\nscript.Parent.BuyButton.MouseButton1Click:Connect(function()\n\tplayer.leaderstats.Coins.Value -= PRICE -- exploitable client-side mutation\n\tprint(\"bought sword\")\nend)\n```\n\n-- FILE game.ServerScriptService.ShopServer (Script)\n```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal PRICES = { sword = 50 }\n-- TODO: purchase handling goes here\n```\n\nReturn both files, updated.",
+    "weight": 2,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "OnServerEvent", "target": "code" },
+      { "type": "regex", "pattern": "FireServer\\s*\\(", "target": "code" },
+      { "type": "regex", "pattern": "leaderstats", "target": "code" },
+      { "type": "not_contains", "pattern": "MouseButton1Click:Connect\\(function\\(\\)[\\s\\S]{0,200}leaderstats\\.Coins\\.Value\\s*(-=|=)", "target": "code" }
+    ]
+  }
+]

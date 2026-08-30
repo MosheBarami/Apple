@@ -3,12 +3,6 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS",
-    "not_found_handling": "404-page",
-    "run_worker_first": ["/api/*", "/app", "/app/*"]
-  },
   "durable_objects": {
     "bindings": [
       { "name": "SESSION_DO", "class_name": "SessionDO" },

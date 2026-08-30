@@ -1,0 +1,545 @@
+---
+import Base from '../layouts/Base.astro';
+import HeroCanvas from '../components/HeroCanvas.astro';
+import HeroVisual from '../components/HeroVisual.astro';
+import DemoMock from '../components/DemoMock.astro';
+import GolemFigure from '../components/GolemFigure.astro';
+import FAQ from '../components/FAQ.astro';
+
+const faqItems = [
+  {
+    q: 'What does Golem cost?',
+    a: `<p>Golem is free. Every account gets 80 Sparks per day — enough for a real building session across all three modes. A Pro plan (400 Sparks/day, priority queue) is coming; you can <a href="/pricing">join the waitlist</a>. There is nothing to buy at v1, so there are no refunds to worry about — no payment is ever collected.</p>`,
+  },
+  {
+    q: 'Is my project safe?',
+    a: `<p>Yes, in two senses. Golem wraps every batch of changes in a native Studio undo waypoint, so <kbd>Ctrl+Z</kbd> works exactly as you expect, and it takes a checkpoint before every agent run so you can roll back a whole session. And your project data — scripts, chat, checkpoints — is never used to train models. See <a href="/docs/privacy-and-data">privacy &amp; data</a>.</p>`,
+  },
+  {
+    q: 'What can Golem actually build?',
+    a: `<p>Anything that lives in a Roblox place: obby sections, lobbies, shops, round systems, leaderboards, NPC logic, UI, terrain touches. It reads your project tree, writes and edits Luau scripts, creates and configures instances, then verifies its work by running your game in Studio. It is strongest at gameplay scripting and scene assembly; it will tell you honestly when a request is out of reach.</p>`,
+  },
+  {
+    q: 'Does it work with my existing project?',
+    a: `<p>Yes — that is the whole point. Golem does not generate a throwaway starter place. It connects to whatever place you have open in Studio, learns its structure, and makes surgical changes inside it. Ten thousand lines of existing Luau is a normal Tuesday.</p>`,
+  },
+  {
+    q: 'Do I need to install anything?',
+    a: `<p>One thing: the <a href="/docs/plugin">Golem for Studio plugin</a> (a standard <code>.rbxm</code> local plugin). It pairs with your web session using a short-lived code and talks to Golem over HTTPS. No executable, no system access, nothing outside Studio.</p>`,
+  },
+  {
+    q: 'What are the three modes for?',
+    a: `<p><strong>Clay</strong> (1 spark) answers questions and makes small edits fast. <strong>Stone</strong> (4 sparks) builds features across multiple scripts and instances. <strong>Rune</strong> (10 sparks) plans, builds, playtests and fixes autonomously until the thing works. Pick the smallest golem that can carry the job — <a href="/docs/modes">mode guide</a>.</p>`,
+  },
+];
+---
+
+<Base
+  title="Golem — Describe it. Golem builds it."
+  description="Golem is the AI builder for Roblox. Describe what you want in plain language and Golem builds it inside Roblox Studio — real scripts, real instances, native undo, verified by running your game."
+>
+  <!-- ============================================================ hero -->
+  <section class="hero" aria-labelledby="hero-title">
+    <HeroCanvas />
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">AI builder for Roblox</p>
+        <h1 id="hero-title">
+          Describe it.<br />
+          <span class="hero-accent">Golem builds it.</span>
+        </h1>
+        <p class="lede">
+          Go from an idea in your head to a working experience in Roblox Studio. Golem reads your
+          project, writes the Luau, wires the instances — then presses Play to prove it works.
+        </p>
+        <div class="hero-ctas">
+          <a href="/app" class="btn btn-primary btn-lg">Start building — free</a>
+          <a href="/docs/plugin" class="btn btn-ghost btn-lg">Install the Studio plugin</a>
+        </div>
+        <p class="hero-fine">80 free Sparks a day · no card · works in your existing project</p>
+      </div>
+      <div class="hero-art">
+        <HeroVisual />
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ how -->
+  <section class="section" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="eyebrow" data-reveal>How it works</p>
+      <h2 id="how-title" data-reveal>Three steps. One golem.</h2>
+      <p class="lede" data-reveal>
+        You stay in the creative seat. Golem does the stonework.
+      </p>
+
+      <ol class="steps">
+        <li class="step card card--seam" data-reveal>
+          <span class="step-num" aria-hidden="true">01</span>
+          <h3>Describe</h3>
+          <p>
+            Tell Golem what you want in plain language — “a lava obby with checkpoints”, “a shop
+            that sells trails”, “fix the door that won’t open”. Attach screenshots if it helps.
+          </p>
+        </li>
+        <li class="step card card--seam" data-reveal data-reveal-delay="120" style="--seam: var(--violet)">
+          <span class="step-num" aria-hidden="true">02</span>
+          <h3>Golem builds in Studio</h3>
+          <p>
+            Through the Studio plugin, Golem edits scripts, creates instances and sets properties
+            directly in your open place — every change visible, every batch undoable.
+          </p>
+        </li>
+        <li class="step card card--seam" data-reveal data-reveal-delay="240">
+          <span class="step-num" aria-hidden="true">03</span>
+          <h3>Playtest &amp; iterate</h3>
+          <p>
+            Golem runs your game, reads the output, and fixes what breaks. You playtest, react,
+            and ask for the next thing. Checkpoints let you rewind any session.
+          </p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================================================ demo -->
+  <section class="section section-demo" aria-labelledby="demo-title">
+    <div class="wrap">
+      <p class="eyebrow" data-reveal>Live from the workspace</p>
+      <h2 id="demo-title" data-reveal>Watch a request become a build</h2>
+      <p class="lede" data-reveal>
+        This is the actual shape of a Golem session: one sentence in, verified changes out.
+      </p>
+      <div class="demo-wrap" data-reveal data-reveal-delay="150">
+        <DemoMock />
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ modes -->
+  <section class="section" id="modes" aria-labelledby="modes-title">
+    <div class="wrap">
+      <p class="eyebrow" data-reveal>Modes</p>
+      <h2 id="modes-title" data-reveal>Three golems, one chisel each</h2>
+      <p class="lede" data-reveal>
+        Every request wakes a golem sized for the job. Sparks are your daily energy — you get 80,
+        free, every day.
+      </p>
+
+      <div class="modes-grid">
+        <article class="mode-card card mode-clay" data-reveal>
+          <div class="mode-figure"><GolemFigure variant="clay" size={150} /></div>
+          <h3>Clay</h3>
+          <p class="mode-cost"><strong>1 spark</strong> per request</p>
+          <p class="mode-blurb">Fast answers and small edits.</p>
+          <ul>
+            <li>Explains your code and the Roblox API</li>
+            <li>Single-script fixes and tweaks</li>
+            <li>Instant property and naming changes</li>
+          </ul>
+        </article>
+
+        <article class="mode-card card mode-stone" data-reveal data-reveal-delay="120">
+          <div class="mode-figure"><GolemFigure variant="stone" size={150} /></div>
+          <h3>Stone</h3>
+          <p class="mode-cost"><strong>4 sparks</strong> per request</p>
+          <p class="mode-blurb">Builds features across your project.</p>
+          <ul>
+            <li>Multi-script features with wiring</li>
+            <li>Creates and configures instances</li>
+            <li>Understands your whole project tree</li>
+          </ul>
+        </article>
+
+        <article class="mode-card card mode-rune" data-reveal data-reveal-delay="240">
+          <div class="mode-figure"><GolemFigure variant="rune" size={150} /></div>
+          <h3>Rune</h3>
+          <p class="mode-cost"><strong>10 sparks</strong> per request <span class="mode-extra">+1 per extra step</span></p>
+          <p class="mode-blurb">Plans, builds, tests and fixes autonomously.</p>
+          <ul>
+            <li>Breaks big asks into a plan</li>
+            <li>Runs your game to verify each step</li>
+            <li>Reads errors and repairs its own work</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ real studio -->
+  <section class="section section-real" aria-labelledby="real-title">
+    <div class="wrap real-grid">
+      <div>
+        <p class="eyebrow" data-reveal>No sandbox, no toy</p>
+        <h2 id="real-title" data-reveal>Real Studio, not a toy</h2>
+        <p class="lede" data-reveal>
+          Golem is not a code snippet generator or a walled-garden editor. It works inside the
+          Roblox Studio you already use, on the place you already have.
+        </p>
+      </div>
+      <ul class="real-list" data-reveal data-reveal-delay="150">
+        <li>
+          <span class="real-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Works in your existing project.</strong> Golem reads your tree and your
+            scripts before it touches anything.
+          </div>
+        </li>
+        <li>
+          <span class="real-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Native undo.</strong> Every batch of changes is a ChangeHistory waypoint —
+            <kbd>Ctrl+Z</kbd> behaves exactly like it always has.
+          </div>
+        </li>
+        <li>
+          <span class="real-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Checkpoints &amp; rollback.</strong> Automatic checkpoints before every agent
+            run, manual ones whenever you like, restore across sessions.
+          </div>
+        </li>
+        <li>
+          <span class="real-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Verifies by running your game.</strong> Rune mode starts a Studio run, reads
+            the logs, and doesn’t call it done until it actually works.
+          </div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================ privacy strip -->
+  <section class="privacy-strip" aria-label="Privacy commitment">
+    <div class="wrap privacy-inner" data-reveal>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 2 L20 6 V11 C20 16.5 16.6 20.4 12 22 C7.4 20.4 4 16.5 4 11 V6 Z"
+          stroke="#34D399"
+          stroke-width="1.8"
+          fill="rgba(52,211,153,0.08)"></path>
+        <path d="M8.5 12 L11 14.5 L15.5 9.5" stroke="#34D399" stroke-width="1.8" fill="none"></path>
+      </svg>
+      <p>
+        <strong>Your projects stay yours. Never trained on.</strong>
+        <span>Private project data is private — full stop. <a href="/docs/privacy-and-data">Read the details</a>.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ faq -->
+  <section class="section" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-wrap">
+      <p class="eyebrow" data-reveal>Questions</p>
+      <h2 id="faq-title" data-reveal>Asked before you asked</h2>
+      <div data-reveal data-reveal-delay="120">
+        <FAQ items={faqItems} />
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ final CTA -->
+  <section class="section cta-band" aria-labelledby="cta-title">
+    <div class="wrap cta-inner" data-reveal>
+      <h2 id="cta-title">The golem is waiting for its words.</h2>
+      <p class="lede">Describe your first build. It costs nothing to find out what happens next.</p>
+      <div class="hero-ctas cta-center">
+        <a href="/app" class="btn btn-primary btn-lg">Start building — free</a>
+        <a href="/docs/getting-started" class="btn btn-ghost btn-lg">Read the guide</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* ---- hero ---- */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding-block: clamp(4rem, 9vw, 7rem) clamp(3rem, 7vw, 5.5rem);
+    border-bottom: 1px solid rgba(35, 45, 63, 0.6);
+  }
+
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    align-items: center;
+    gap: 3rem;
+  }
+
+  .hero-accent {
+    background: linear-gradient(100deg, var(--amber), #ffd9a0 55%, var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin-top: 2.2rem;
+  }
+
+  .hero-fine {
+    margin-top: 1.2rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  @media (max-width: 900px) {
+    .hero-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-art {
+      order: -1;
+    }
+  }
+
+  /* ---- steps ---- */
+  .steps {
+    list-style: none;
+    margin: 3rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    position: relative;
+  }
+
+  /* connecting rune-line */
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 4%;
+    right: 4%;
+    height: 1px;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255, 180, 84, 0.4) 0 6px,
+      transparent 6px 16px
+    );
+    z-index: 0;
+  }
+
+  .step {
+    z-index: 1;
+  }
+
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--amber);
+    letter-spacing: 0.2em;
+    display: block;
+    margin-bottom: 0.9rem;
+  }
+
+  .step p {
+    color: var(--muted);
+    font-size: 0.96rem;
+    margin: 0;
+  }
+
+  @media (max-width: 860px) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+
+    .steps::before {
+      left: 50%;
+      right: auto;
+      top: 4%;
+      bottom: 4%;
+      height: auto;
+      width: 1px;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(255, 180, 84, 0.4) 0 6px,
+        transparent 6px 16px
+      );
+    }
+  }
+
+  /* ---- demo ---- */
+  .section-demo {
+    background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(124, 92, 255, 0.08), transparent);
+  }
+
+  .demo-wrap {
+    max-width: 760px;
+    margin-top: 2.6rem;
+  }
+
+  /* ---- modes ---- */
+  .modes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
+
+  .mode-card {
+    border-top: 2px solid var(--mode);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mode-figure {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .mode-card h3 {
+    color: var(--mode);
+    font-size: 1.35rem;
+  }
+
+  .mode-cost {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+
+  .mode-extra {
+    color: var(--muted);
+    font-size: 0.74rem;
+  }
+
+  .mode-blurb {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .mode-card ul {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    color: var(--text);
+  }
+
+  .mode-card li {
+    padding-left: 1.2rem;
+    position: relative;
+  }
+
+  .mode-card li::before {
+    content: '◆';
+    position: absolute;
+    left: 0;
+    color: var(--mode);
+    font-size: 0.6rem;
+    top: 0.35em;
+  }
+
+  @media (max-width: 900px) {
+    .modes-grid {
+      grid-template-columns: 1fr;
+      max-width: 460px;
+    }
+  }
+
+  /* ---- real studio ---- */
+  .section-real {
+    background: linear-gradient(180deg, transparent, rgba(18, 24, 38, 0.6) 30%, transparent);
+  }
+
+  .real-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  .real-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.4rem;
+  }
+
+  .real-list li {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    color: var(--muted);
+  }
+
+  .real-list strong {
+    color: var(--text);
+  }
+
+  .real-mark {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    margin-top: 0.45rem;
+    background: linear-gradient(135deg, var(--amber), var(--violet));
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    box-shadow: 0 0 10px rgba(255, 180, 84, 0.5);
+  }
+
+  @media (max-width: 860px) {
+    .real-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+
+  /* ---- privacy strip ---- */
+  .privacy-strip {
+    border-block: 1px solid var(--line);
+    background: linear-gradient(90deg, rgba(52, 211, 153, 0.06), transparent 40%, transparent 60%, rgba(52, 211, 153, 0.06));
+    padding-block: 1.6rem;
+  }
+
+  .privacy-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .privacy-inner p {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    align-items: baseline;
+  }
+
+  .privacy-inner span {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  /* ---- faq ---- */
+  .faq-wrap {
+    max-width: 780px;
+  }
+
+  /* ---- CTA band ---- */
+  .cta-band {
+    text-align: center;
+    background: radial-gradient(ellipse 60% 70% at 50% 100%, rgba(255, 180, 84, 0.12), transparent);
+  }
+
+  .cta-inner .lede {
+    margin-inline: auto;
+  }
+
+  .cta-center {
+    justify-content: center;
+  }
+</style>

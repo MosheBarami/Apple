@@ -1,0 +1,122 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Studio plugin — Golem Docs"
+  description="Install the Golem for Studio plugin on Windows or macOS, pair it with your web session using a short-lived code, and fix the common problems."
+  heading="Golem for Studio — the plugin"
+>
+  <p>
+    The plugin is how Golem's hands reach into your place. It is a standard Roblox local plugin —
+    a single <code>.rbxm</code> file — that talks to Golem over HTTPS and executes typed,
+    validated operations: reading and editing scripts, creating instances, setting properties,
+    running your game and capturing logs. Every batch of operations is wrapped in a
+    ChangeHistory waypoint, so Studio's native undo always works.
+  </p>
+
+  <p>
+    <a href="/plugin.rbxm" class="download-link"><strong>Download Golem.rbxm</strong></a> — current
+    version, a few kilobytes of Luau you can open and read.
+  </p>
+
+  <h2>Install on Windows</h2>
+  <ol>
+    <li>Download <code>Golem.rbxm</code> (link above).</li>
+    <li>
+      Open your local plugins folder: press <kbd>Win</kbd>+<kbd>R</kbd>, paste
+      <code>%LOCALAPPDATA%\Roblox\Plugins</code>, and press Enter. (In Studio you can also click
+      <strong>Plugins → Plugins Folder</strong> to open the same place.)
+    </li>
+    <li>Move <code>Golem.rbxm</code> into that folder.</li>
+    <li>Restart Roblox Studio. “Golem” appears in the Plugins tab.</li>
+  </ol>
+
+  <h2>Install on macOS</h2>
+  <ol>
+    <li>Download <code>Golem.rbxm</code> (link above).</li>
+    <li>
+      In Finder, choose <strong>Go → Go to Folder…</strong> (<kbd>⇧⌘G</kbd>) and enter
+      <code>~/Documents/Roblox/Plugins</code>. If the folder does not exist yet, open Studio once
+      and click <strong>Plugins → Plugins Folder</strong>, or create it yourself.
+    </li>
+    <li>Move <code>Golem.rbxm</code> into that folder.</li>
+    <li>Restart Roblox Studio. “Golem” appears in the Plugins tab.</li>
+  </ol>
+
+  <div class="callout">
+    <p>
+      <strong>Allow HTTP requests:</strong> the plugin needs Studio's permission to talk to Golem.
+      The first time it runs, Studio asks you to allow HTTP requests for the plugin — accept it.
+      If you declined by accident, enable it under
+      <strong>Game Settings → Security → Allow HTTP Requests</strong> and in the plugin permission
+      prompt (Plugins → Manage Plugins).
+    </p>
+  </div>
+
+  <h2>Pairing with your project</h2>
+  <p>
+    Pairing links the plugin in <em>this</em> Studio window to <em>one</em> Golem project. It uses
+    a short-lived code so you never handle tokens.
+  </p>
+  <ol>
+    <li>Open your place in Studio and click the <strong>Golem</strong> button in the Plugins tab. The Golem panel docks.</li>
+    <li>In the Golem web workspace, open your project and click <strong>Connect Studio</strong>. A code like <code>GLM-7F3K2Q</code> appears.</li>
+    <li>Type the code into the plugin panel and press <strong>Pair</strong>.</li>
+  </ol>
+  <p>
+    The panel shows <strong>Connected</strong>, and the web workspace shows your place name. From
+    here Golem can act on this place whenever this project's chat asks it to. Pairing survives
+    Studio restarts; you can unpair any time from the plugin panel or the web workspace.
+  </p>
+
+  <h2>Troubleshooting</h2>
+
+  <h3>“Invalid or expired code”</h3>
+  <p>
+    <strong>Pairing codes expire after 10 minutes</strong> and are single-use. Generate a fresh
+    code in the web workspace and try again. Codes are case-insensitive; the dash is optional.
+  </p>
+
+  <h3>The plugin doesn't appear in Studio</h3>
+  <ul>
+    <li>Check the file landed in the right folder: <code>%LOCALAPPDATA%\Roblox\Plugins</code> on Windows, <code>~/Documents/Roblox/Plugins</code> on macOS.</li>
+    <li>Make sure the file kept its <code>.rbxm</code> extension (browsers sometimes add <code>.txt</code>).</li>
+    <li>Restart Studio fully — the plugins folder is scanned at launch.</li>
+  </ul>
+
+  <h3>Paired, but Golem says “Studio not connected”</h3>
+  <ul>
+    <li>The connection belongs to one Studio window. If you opened a different place or window, pair that one.</li>
+    <li>Studio blocks network calls while the plugin's HTTP permission is off — see the callout above.</li>
+    <li>Corporate or school networks sometimes block outbound HTTPS from Studio. Try another network to confirm.</li>
+  </ul>
+
+  <h3>Actions time out mid-build</h3>
+  <ul>
+    <li>Very large places make tree reads slower — give the first request in a session a little longer.</li>
+    <li>If Studio was left idle for hours, poke the plugin panel (or restart Studio) to refresh the session, then retry.</li>
+  </ul>
+
+  <h3>I want it gone</h3>
+  <p>
+    Delete <code>Golem.rbxm</code> from the plugins folder and restart Studio. Unpairing in the web
+    workspace also immediately stops Golem from acting on the place, plugin installed or not.
+  </p>
+
+  <h2>What the plugin can and cannot do</h2>
+  <ul>
+    <li><strong>Can:</strong> read and edit scripts, create/move/delete instances, set properties, take tree snapshots, start and stop run mode, read output logs, focus the camera — always inside the place you paired.</li>
+    <li><strong>Cannot:</strong> touch files on your computer, act on places you did not pair, run when Studio is closed, or publish your game. Publishing stays a human decision.</li>
+  </ul>
+</DocsLayout>
+
+<style>
+  .download-link {
+    display: inline-block;
+    border: 1px solid rgba(255, 180, 84, 0.5);
+    border-radius: var(--r-ctl);
+    padding: 0.6rem 1.1rem;
+    background: rgba(255, 180, 84, 0.08);
+  }
+</style>

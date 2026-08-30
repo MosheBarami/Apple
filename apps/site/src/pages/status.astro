@@ -1,0 +1,316 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Status — Golem"
+  description="Live operational status of the Golem service, checked directly against the API from your browser and refreshed every 30 seconds."
+>
+  <section class="section" aria-labelledby="status-title">
+    <div class="wrap status-wrap">
+      <p class="eyebrow">Status</p>
+      <h1 id="status-title">Is the golem awake?</h1>
+      <p class="lede">
+        This page checks the live API from your own browser — the same endpoint the app uses — and
+        refreshes every 30 seconds.
+      </p>
+
+      <div class="status-card card card--seam" id="status-card" data-state="checking" aria-live="polite">
+        <div class="status-row">
+          <span class="status-orb" id="status-orb" aria-hidden="true"></span>
+          <div>
+            <p class="status-headline" id="status-headline">Checking…</p>
+            <p class="status-sub" id="status-sub">Reaching the Golem API.</p>
+          </div>
+        </div>
+
+        <dl class="status-meta">
+          <div>
+            <dt>Endpoint</dt>
+            <dd><code>/api/health</code></dd>
+          </div>
+          <div>
+            <dt>API version</dt>
+            <dd id="status-version">—</dd>
+          </div>
+          <div>
+            <dt>Last checked</dt>
+            <dd id="status-checked">never</dd>
+          </div>
+          <div>
+            <dt>Next check</dt>
+            <dd id="status-next">—</dd>
+          </div>
+        </dl>
+
+        <button class="btn btn-ghost status-refresh" id="status-refresh" type="button">
+          Check now
+        </button>
+      </div>
+
+      <div class="status-legend" data-reveal>
+        <h2>How to read this</h2>
+        <ul>
+          <li><span class="legend-orb legend-ok" aria-hidden="true"></span> <strong>Operational</strong> — the API answered and reported healthy.</li>
+          <li><span class="legend-orb legend-degraded" aria-hidden="true"></span> <strong>Degraded</strong> — the API answered, but slowly or with an unexpected response. Builds may be slower than usual.</li>
+          <li><span class="legend-orb legend-down" aria-hidden="true"></span> <strong>Unreachable</strong> — the API did not answer from your browser. That can mean an outage on our side or a network problem on yours.</li>
+        </ul>
+        <p>
+          Something look wrong for more than a few minutes?
+          <a href="mailto:golem.labs.app@gmail.com">Tell us</a> — a human reads that inbox.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .status-wrap {
+    max-width: 720px;
+  }
+
+  .status-card {
+    margin-top: 2.6rem;
+    padding: 2rem;
+    transition: border-color 300ms ease;
+  }
+
+  .status-card[data-state='ok'] {
+    border-color: rgba(52, 211, 153, 0.5);
+    --seam: var(--success);
+  }
+
+  .status-card[data-state='degraded'] {
+    border-color: rgba(255, 180, 84, 0.55);
+    --seam: var(--amber);
+  }
+
+  .status-card[data-state='down'] {
+    border-color: rgba(248, 113, 113, 0.55);
+    --seam: var(--danger);
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+  }
+
+  .status-orb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 300ms ease, box-shadow 300ms ease;
+  }
+
+  [data-state='checking'] .status-orb {
+    animation: orb-checking 1.2s ease-in-out infinite;
+  }
+
+  [data-state='ok'] .status-orb {
+    background: var(--success);
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.7);
+  }
+
+  [data-state='degraded'] .status-orb {
+    background: var(--amber);
+    box-shadow: 0 0 16px rgba(255, 180, 84, 0.7);
+  }
+
+  [data-state='down'] .status-orb {
+    background: var(--danger);
+    box-shadow: 0 0 16px rgba(248, 113, 113, 0.7);
+  }
+
+  @keyframes orb-checking {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-state='checking'] .status-orb {
+      animation: none;
+    }
+  }
+
+  .status-headline {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin: 0;
+  }
+
+  [data-state='ok'] .status-headline {
+    color: var(--success);
+  }
+
+  [data-state='degraded'] .status-headline {
+    color: var(--amber);
+  }
+
+  [data-state='down'] .status-headline {
+    color: var(--danger);
+  }
+
+  .status-sub {
+    margin: 0.15rem 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .status-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin: 1.8rem 0 0;
+    border-top: 1px solid var(--line);
+    padding-top: 1.4rem;
+  }
+
+  .status-meta dt {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
+  .status-meta dd {
+    margin: 0.25rem 0 0;
+    font-size: 0.92rem;
+  }
+
+  .status-refresh {
+    margin-top: 1.6rem;
+  }
+
+  .status-legend {
+    margin-top: 3rem;
+    color: var(--muted);
+    font-size: 0.94rem;
+  }
+
+  .status-legend h2 {
+    font-size: 1.05rem;
+    color: var(--text);
+  }
+
+  .status-legend ul {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+    margin: 1rem 0 1.2rem;
+  }
+
+  .status-legend strong {
+    color: var(--text);
+  }
+
+  .legend-orb {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+  }
+
+  .legend-ok {
+    background: var(--success);
+  }
+
+  .legend-degraded {
+    background: var(--amber);
+  }
+
+  .legend-down {
+    background: var(--danger);
+  }
+</style>
+
+<script>
+  const card = document.getElementById('status-card');
+  const headline = document.getElementById('status-headline');
+  const sub = document.getElementById('status-sub');
+  const versionEl = document.getElementById('status-version');
+  const checkedEl = document.getElementById('status-checked');
+  const nextEl = document.getElementById('status-next');
+  const refreshBtn = document.getElementById('status-refresh') as HTMLButtonElement | null;
+
+  const INTERVAL = 30_000;
+  const SLOW_MS = 2_500;
+  let countdownTimer = 0;
+  let pollTimer = 0;
+
+  function setState(state: 'checking' | 'ok' | 'degraded' | 'down', head: string, detail: string) {
+    card?.setAttribute('data-state', state);
+    if (headline) headline.textContent = head;
+    if (sub) sub.textContent = detail;
+  }
+
+  function startCountdown() {
+    clearInterval(countdownTimer);
+    let remaining = INTERVAL / 1000;
+    if (nextEl) nextEl.textContent = `in ${remaining}s`;
+    countdownTimer = window.setInterval(() => {
+      remaining -= 1;
+      if (nextEl) nextEl.textContent = remaining > 0 ? `in ${remaining}s` : 'now';
+    }, 1000);
+  }
+
+  async function check() {
+    clearTimeout(pollTimer);
+    setState('checking', 'Checking…', 'Reaching the Golem API.');
+    const started = performance.now();
+    try {
+      const controller = new AbortController();
+      const kill = setTimeout(() => controller.abort(), 10_000);
+      const res = await fetch('/api/health', { cache: 'no-store', signal: controller.signal });
+      clearTimeout(kill);
+      const elapsed = Math.round(performance.now() - started);
+
+      let body: { ok?: boolean; version?: string; time?: string } | null = null;
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
+
+      if (res.ok && body?.ok === true) {
+        if (versionEl) versionEl.textContent = body.version ? String(body.version) : 'unknown';
+        if (elapsed > SLOW_MS) {
+          setState('degraded', 'Degraded', `The API answered in ${(elapsed / 1000).toFixed(1)}s — slower than usual. Builds may lag.`);
+        } else {
+          setState('ok', 'All systems operational', `The API answered in ${elapsed}ms. Build away.`);
+        }
+      } else {
+        setState('degraded', 'Degraded', `The API responded with an unexpected status (${res.status}). Some features may not work.`);
+      }
+    } catch {
+      if (!navigator.onLine) {
+        setState('down', 'You appear to be offline', 'Your browser reports no network connection. This check will retry automatically.');
+      } else {
+        setState('down', 'API unreachable', 'The Golem API did not answer from your browser. It may be a service outage — we are probably already staring at it.');
+      }
+    }
+
+    if (checkedEl) checkedEl.textContent = new Date().toLocaleTimeString();
+    startCountdown();
+    pollTimer = window.setTimeout(check, INTERVAL);
+  }
+
+  refreshBtn?.addEventListener('click', () => void check());
+  window.addEventListener('online', () => void check());
+  window.addEventListener('offline', () => {
+    setState('down', 'You appear to be offline', 'Your browser reports no network connection. This check will retry when you reconnect.');
+  });
+
+  void check();
+</script>

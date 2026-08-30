@@ -1,5 +1,4 @@
 export interface Env {
-  ASSETS: Fetcher;
   AI: Ai;
   CORPUS: D1Database;
   KV: KVNamespace;

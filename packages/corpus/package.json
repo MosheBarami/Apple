@@ -1,0 +1,17 @@
+{
+  "name": "@golem/corpus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Builds Golem's RAG corpus from license-compatible Roblox/Luau sources.",
+  "scripts": {
+    "fetch": "node src/fetch.mjs",
+    "chunk": "node src/chunk.mjs",
+    "upload": "node src/upload.mjs",
+    "all": "node src/fetch.mjs && node src/chunk.mjs && node src/upload.mjs",
+    "typecheck": "node --check src/fetch.mjs && node --check src/chunk.mjs && node --check src/upload.mjs"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  }
+}

@@ -1,0 +1,61 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import FAQ from '../../components/FAQ.astro';
+
+const general = [
+  {
+    q: 'Do I need to know how to script?',
+    a: `<p>No, but it helps. Golem writes the Luau for you and explains anything it wrote in plain language (ask in Clay mode — 1 spark). Creators who can read a little code iterate faster, and plenty of people have learned scripting <em>from</em> Golem's explanations of its own work.</p>`,
+  },
+  {
+    q: 'Which Roblox Studio versions are supported?',
+    a: `<p>Current production Roblox Studio on Windows and macOS. The plugin uses only stable, documented Studio APIs, so ordinary Studio updates don't break it. If Roblox ships a breaking change, the <a href="/changelog">changelog</a> and the plugin panel will both say so.</p>`,
+  },
+  {
+    q: 'Can Golem publish my game?',
+    a: `<p>No, by design. Golem builds inside your open place; publishing to Roblox stays a human decision made by you, in Studio, with your own account. Golem never holds your Roblox credentials.</p>`,
+  },
+  {
+    q: 'Does Golem work with team projects / Team Create?',
+    a: `<p>Golem works on the place open in the paired Studio window. In Team Create sessions its edits appear to teammates like any collaborator's edits. One pairing belongs to one Studio window; teammates who want their own Golem chats should use their own accounts and projects.</p>`,
+  },
+  {
+    q: 'What happens if I close Studio mid-build?',
+    a: `<p>The agent notices it lost its hands and pauses the run with a clear message; Sparks for unexecuted work on our side are refunded per the <a href="/docs/sparks-and-limits">limits policy</a>. Reopen the place, reconnect, and ask Golem to continue — the plan and history are still in the project.</p>`,
+  },
+  {
+    q: 'Golem made a change I hate. Now what?',
+    a: `<p>Three exits, in order of size: press <kbd>Ctrl+Z</kbd> in Studio (each Golem batch is one native undo step); restore the automatic checkpoint taken before the run; or just tell Golem what you hate — it can usually fix a wrong turn faster than a rollback.</p>`,
+  },
+  {
+    q: 'Is there an API or a way to script Golem itself?',
+    a: `<p>Not yet. The web workspace and Studio plugin are the two supported surfaces at v0.1. If you have an automation use case, email us — real use cases move the roadmap.</p>`,
+  },
+  {
+    q: 'How do I report a bug or ask for a feature?',
+    a: `<p>Email <a href="mailto:golem.labs.app@gmail.com">golem.labs.app@gmail.com</a>. Include the project name and roughly when it happened; screenshots welcome. Feedback lands directly with the people who build the product — there is no ticket abyss.</p>`,
+  },
+];
+---
+
+<DocsLayout
+  title="FAQ — Golem Docs"
+  description="Quick answers about scripting knowledge, Studio versions, publishing, Team Create, interrupted builds, undo and rollback, and reporting bugs."
+  heading="Frequently asked questions"
+>
+  <p>
+    Answers to the questions that reach our inbox most. Pricing and quota questions live on the
+    <a href="/pricing">pricing page</a>; data questions on
+    <a href="/docs/privacy-and-data">privacy &amp; data</a>.
+  </p>
+
+  <div class="faq-block">
+    <FAQ items={general} />
+  </div>
+</DocsLayout>
+
+<style>
+  .faq-block {
+    margin-top: 2rem;
+  }
+</style>

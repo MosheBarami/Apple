@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ts-01-explore-project",
+    "category": "tool-selection",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio. Given the available tools and a user request, reply with ONLY the name of the single best tool to call first. No other text.",
+    "prompt": "AVAILABLE TOOLS\n- get_project_tree: snapshot of the game instance tree (names, classes, child counts); the starting point for understanding a project\n- list_scripts: list all scripts with paths, class and line counts\n- read_script: read full source of a script by path\n- edit_script: create or edit a script (full source or find/replace)\n- search_scripts: search all script sources for a string\n- create_instances: create parts, models, UI, folders with typed properties\n- set_properties: set properties/attributes on an existing instance\n- delete_instances: delete instances by path\n- run_luau: run a Luau snippet in Studio (edit-time) for inspection, terrain, bulk edits\n- run_and_check: playtest verification: start Run mode, collect console output/errors, stop\n- get_output_logs: read recent Studio output/console logs\n- take_screenshot: capture the Studio viewport\n- insert_asset: insert a Creator Store asset by numeric id\n- search_docs: search official Roblox documentation\n- remember: save a durable fact to project memory\n- create_checkpoint: save a restorable checkpoint before large changes\n\nUSER REQUEST: \"I just connected my project for the first time. Can you take a look at what's in my game?\"\n\nWhich tool do you call first?",
+    "checks": [
+      { "type": "contains", "value": "get_project_tree", "target": "text" },
+      { "type": "not_contains", "value": "read_script", "target": "text" }
+    ]
+  },
+  {
+    "id": "ts-02-playtest-errors",
+    "category": "tool-selection",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio. Given the available tools and a user request, reply with ONLY the name of the single best tool to call first. No other text.",
+    "prompt": "AVAILABLE TOOLS\n- get_project_tree: snapshot of the game instance tree (names, classes, child counts); the starting point for understanding a project\n- list_scripts: list all scripts with paths, class and line counts\n- read_script: read full source of a script by path\n- edit_script: create or edit a script (full source or find/replace)\n- search_scripts: search all script sources for a string\n- create_instances: create parts, models, UI, folders with typed properties\n- set_properties: set properties/attributes on an existing instance\n- delete_instances: delete instances by path\n- run_luau: run a Luau snippet in Studio (edit-time) for inspection, terrain, bulk edits\n- run_and_check: playtest verification: start Run mode, collect console output/errors, stop\n- get_output_logs: read recent Studio output/console logs\n- take_screenshot: capture the Studio viewport\n- insert_asset: insert a Creator Store asset by numeric id\n- search_docs: search official Roblox documentation\n- remember: save a durable fact to project memory\n- create_checkpoint: save a restorable checkpoint before large changes\n\nUSER REQUEST: \"Playtest my game and tell me if anything errors while it runs.\"\n\nWhich tool do you call first?",
+    "checks": [
+      { "type": "contains", "value": "run_and_check", "target": "text" },
+      { "type": "not_contains", "value": "take_screenshot", "target": "text" }
+    ]
+  },
+  {
+    "id": "ts-03-find-died-handler",
+    "category": "tool-selection",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio. Given the available tools and a user request, reply with ONLY the name of the single best tool to call first. No other text.",
+    "prompt": "AVAILABLE TOOLS\n- get_project_tree: snapshot of the game instance tree (names, classes, child counts); the starting point for understanding a project\n- list_scripts: list all scripts with paths, class and line counts\n- read_script: read full source of a script by path\n- edit_script: create or edit a script (full source or find/replace)\n- search_scripts: search all script sources for a string\n- create_instances: create parts, models, UI, folders with typed properties\n- set_properties: set properties/attributes on an existing instance\n- delete_instances: delete instances by path\n- run_luau: run a Luau snippet in Studio (edit-time) for inspection, terrain, bulk edits\n- run_and_check: playtest verification: start Run mode, collect console output/errors, stop\n- get_output_logs: read recent Studio output/console logs\n- take_screenshot: capture the Studio viewport\n- insert_asset: insert a Creator Store asset by numeric id\n- search_docs: search official Roblox documentation\n- remember: save a durable fact to project memory\n- create_checkpoint: save a restorable checkpoint before large changes\n\nUSER REQUEST: \"Somewhere in my code I handle player deaths with the Died event, but I can't remember which script. Find it.\"\n\nWhich tool do you call first?",
+    "checks": [
+      { "type": "contains", "value": "search_scripts", "target": "text" },
+      { "type": "not_contains", "value": "search_docs", "target": "text" }
+    ]
+  },
+  {
+    "id": "ts-04-apply-edit",
+    "category": "tool-selection",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio. Given the available tools and a user request, reply with ONLY the name of the single best tool to call first. No other text.",
+    "prompt": "AVAILABLE TOOLS\n- get_project_tree: snapshot of the game instance tree (names, classes, child counts); the starting point for understanding a project\n- list_scripts: list all scripts with paths, class and line counts\n- read_script: read full source of a script by path\n- edit_script: create or edit a script (full source or find/replace)\n- search_scripts: search all script sources for a string\n- create_instances: create parts, models, UI, folders with typed properties\n- set_properties: set properties/attributes on an existing instance\n- delete_instances: delete instances by path\n- run_luau: run a Luau snippet in Studio (edit-time) for inspection, terrain, bulk edits\n- run_and_check: playtest verification: start Run mode, collect console output/errors, stop\n- get_output_logs: read recent Studio output/console logs\n- take_screenshot: capture the Studio viewport\n- insert_asset: insert a Creator Store asset by numeric id\n- search_docs: search official Roblox documentation\n- remember: save a durable fact to project memory\n- create_checkpoint: save a restorable checkpoint before large changes\n\nCONTEXT: Earlier this session you already read game.ServerScriptService.WelcomeScript and know its exact source.\n\nUSER REQUEST: \"In WelcomeScript, change the greeting text from 'Hi' to 'Welcome'.\"\n\nWhich tool do you call first?",
+    "checks": [
+      { "type": "contains", "value": "edit_script", "target": "text" },
+      { "type": "not_contains", "value": "create_instances", "target": "text" }
+    ]
+  },
+  {
+    "id": "ts-05-checkpoint-first",
+    "category": "tool-selection",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio. Given the available tools and a user request, reply with ONLY the name of the single best tool to call first. No other text.",
+    "prompt": "AVAILABLE TOOLS\n- get_project_tree: snapshot of the game instance tree (names, classes, child counts); the starting point for understanding a project\n- list_scripts: list all scripts with paths, class and line counts\n- read_script: read full source of a script by path\n- edit_script: create or edit a script (full source or find/replace)\n- search_scripts: search all script sources for a string\n- create_instances: create parts, models, UI, folders with typed properties\n- set_properties: set properties/attributes on an existing instance\n- delete_instances: delete instances by path\n- run_luau: run a Luau snippet in Studio (edit-time) for inspection, terrain, bulk edits\n- run_and_check: playtest verification: start Run mode, collect console output/errors, stop\n- get_output_logs: read recent Studio output/console logs\n- take_screenshot: capture the Studio viewport\n- insert_asset: insert a Creator Store asset by numeric id\n- search_docs: search official Roblox documentation\n- remember: save a durable fact to project memory\n- create_checkpoint: save a restorable checkpoint before large changes\n\nUSER REQUEST: \"Go ahead and completely rebuild my lobby — but make sure I can undo everything if I hate it.\"\n\nWhich tool do you call first?",
+    "checks": [
+      { "type": "contains", "value": "create_checkpoint", "target": "text" },
+      { "type": "not_contains", "value": "remember", "target": "text" }
+    ]
+  },
+  {
+    "id": "ts-06-docs-lookup",
+    "category": "tool-selection",
+    "system": "You are Golem, an AI agent that builds Roblox games in Studio. Given the available tools and a user request, reply with ONLY the name of the single best tool to call first. No other text.",
+    "prompt": "AVAILABLE TOOLS\n- get_project_tree: snapshot of the game instance tree (names, classes, child counts); the starting point for understanding a project\n- list_scripts: list all scripts with paths, class and line counts\n- read_script: read full source of a script by path\n- edit_script: create or edit a script (full source or find/replace)\n- search_scripts: search all script sources for a string\n- create_instances: create parts, models, UI, folders with typed properties\n- set_properties: set properties/attributes on an existing instance\n- delete_instances: delete instances by path\n- run_luau: run a Luau snippet in Studio (edit-time) for inspection, terrain, bulk edits\n- run_and_check: playtest verification: start Run mode, collect console output/errors, stop\n- get_output_logs: read recent Studio output/console logs\n- take_screenshot: capture the Studio viewport\n- insert_asset: insert a Creator Store asset by numeric id\n- search_docs: search official Roblox documentation\n- remember: save a durable fact to project memory\n- create_checkpoint: save a restorable checkpoint before large changes\n\nUSER REQUEST: \"Before you touch my save system, double-check exactly how UpdateAsync's transform callback behaves in the official Roblox docs.\"\n\nWhich tool do you call first?",
+    "checks": [
+      { "type": "contains", "value": "search_docs", "target": "text" },
+      { "type": "not_contains", "value": "search_scripts", "target": "text" }
+    ]
+  }
+]

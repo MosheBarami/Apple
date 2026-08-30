@@ -1,0 +1,288 @@
+---
+import Base from './Base.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  heading: string;
+}
+
+const { title, description, heading } = Astro.props;
+
+const sections = [
+  {
+    label: 'Start here',
+    links: [
+      { href: '/docs', label: 'Overview' },
+      { href: '/docs/getting-started', label: 'Getting started' },
+      { href: '/docs/plugin', label: 'Studio plugin' },
+    ],
+  },
+  {
+    label: 'Using Golem',
+    links: [
+      { href: '/docs/modes', label: 'Modes: Clay, Stone, Rune' },
+      { href: '/docs/sparks-and-limits', label: 'Sparks & limits' },
+    ],
+  },
+  {
+    label: 'Trust',
+    links: [
+      { href: '/docs/privacy-and-data', label: 'Privacy & data' },
+      { href: '/docs/faq', label: 'FAQ' },
+    ],
+  },
+];
+
+const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
+---
+
+<Base title={title} description={description}>
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar">
+      <details class="docs-nav-toggle" id="docs-nav-details">
+        <summary>Docs navigation</summary>
+        <nav aria-label="Documentation">
+          {
+            sections.map((section) => (
+              <div class="docs-section">
+                <p class="docs-section-label">{section.label}</p>
+                <ul>
+                  {section.links.map((link) => (
+                    <li>
+                      <a href={link.href} aria-current={current === link.href ? 'page' : undefined}>
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </nav>
+      </details>
+    </aside>
+
+    <article class="docs-content">
+      <p class="eyebrow">Docs</p>
+      <h1>{heading}</h1>
+      <div class="docs-prose">
+        <slot />
+      </div>
+
+      <footer class="docs-foot">
+        <p>
+          Stuck? Ask in the app — Clay mode answers doc questions for 1 spark — or email
+          <a href="mailto:golem.labs.app@gmail.com">golem.labs.app@gmail.com</a>.
+        </p>
+      </footer>
+    </article>
+  </div>
+</Base>
+
+<style>
+  .docs-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 3.5rem;
+    padding-block: 3rem 5rem;
+    align-items: start;
+  }
+
+  .docs-sidebar {
+    position: sticky;
+    top: 90px;
+  }
+
+  .docs-nav-toggle {
+    border: 0;
+  }
+
+  .docs-nav-toggle > summary {
+    display: none;
+  }
+
+  .docs-nav-toggle[open] > summary {
+    display: none;
+  }
+
+  .docs-section {
+    margin-bottom: 1.6rem;
+  }
+
+  .docs-section-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.6rem;
+  }
+
+  .docs-section ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.15rem;
+    border-left: 1px solid var(--line);
+  }
+
+  .docs-section a {
+    display: block;
+    color: var(--muted);
+    font-size: 0.92rem;
+    padding: 0.35rem 0.9rem;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+  }
+
+  .docs-section a:hover {
+    color: var(--text);
+  }
+
+  .docs-section a[aria-current='page'] {
+    color: var(--amber);
+    border-left-color: var(--amber);
+  }
+
+  .docs-content {
+    max-width: 720px;
+    min-width: 0;
+  }
+
+  .docs-prose :global(h2) {
+    font-size: 1.4rem;
+    margin-top: 2.6rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .docs-prose :global(h2:first-child) {
+    border-top: 0;
+    padding-top: 0;
+    margin-top: 1.6rem;
+  }
+
+  .docs-prose :global(h3) {
+    font-size: 1.08rem;
+    margin-top: 1.8rem;
+  }
+
+  .docs-prose :global(p),
+  .docs-prose :global(li) {
+    color: var(--muted);
+    font-size: 0.97rem;
+  }
+
+  .docs-prose :global(strong) {
+    color: var(--text);
+  }
+
+  .docs-prose :global(ul),
+  .docs-prose :global(ol) {
+    padding-left: 1.3rem;
+    display: grid;
+    gap: 0.45rem;
+    margin: 0.6rem 0 1.2rem;
+  }
+
+  .docs-prose :global(li::marker) {
+    color: var(--amber);
+  }
+
+  .docs-prose :global(.callout) {
+    background: rgba(26, 34, 51, 0.6);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--r-ctl);
+    padding: 1rem 1.25rem;
+    margin: 1.4rem 0;
+  }
+
+  .docs-prose :global(.callout p) {
+    margin: 0;
+  }
+
+  .docs-prose :global(.callout--violet) {
+    border-left-color: var(--violet);
+  }
+
+  .docs-prose :global(kbd) {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    padding: 0.1em 0.45em;
+    font-size: 0.85em;
+  }
+
+  .docs-foot {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 860px) {
+    .docs-shell {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .docs-sidebar {
+      position: static;
+    }
+
+    .docs-nav-toggle {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-card);
+      padding: 0;
+    }
+
+    .docs-nav-toggle > summary,
+    .docs-nav-toggle[open] > summary {
+      display: block;
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.9rem 1.2rem;
+      list-style: none;
+    }
+
+    .docs-nav-toggle > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .docs-nav-toggle > summary::after {
+      content: '▾';
+      float: right;
+      color: var(--amber);
+      transition: transform 200ms ease;
+    }
+
+    .docs-nav-toggle[open] > summary::after {
+      transform: rotate(180deg);
+    }
+
+    .docs-nav-toggle nav {
+      padding: 0 1.2rem 1rem;
+    }
+  }
+</style>
+
+<script>
+  // keep the details nav open on desktop widths
+  const details = document.getElementById('docs-nav-details') as HTMLDetailsElement | null;
+  const mq = window.matchMedia('(min-width: 861px)');
+  const sync = () => {
+    if (details) details.open = mq.matches ? true : details.open;
+  };
+  if (details) {
+    if (mq.matches) details.open = true;
+    mq.addEventListener('change', sync);
+  }
+</script>

@@ -1,0 +1,128 @@
+[
+  {
+    "id": "lc-01-countdown",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a Luau function countdown(seconds) that prints each whole number from seconds down to 1, waiting one second between prints. Use the modern task library, not deprecated globals.",
+    "weight": 2,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "task\\.wait\\s*\\(", "target": "code" },
+      { "type": "not_contains", "pattern": "(?<!task\\.)\\bwait\\s*\\(", "target": "code" },
+      { "type": "regex", "pattern": "for\\s+", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-02-leaderstats",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a server Script that, when each player joins, creates a Folder named leaderstats inside the player and an IntValue named Coins (starting at 0) inside that folder, so it shows on the Roblox leaderboard.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "PlayerAdded", "target": "code" },
+      { "type": "contains", "value": "leaderstats", "target": "code" },
+      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']IntValue[\"']", "target": "code" },
+      { "type": "regex", "pattern": "GetService\\s*\\(\\s*[\"']Players[\"']|game\\.Players", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-03-touch-debounce",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a Luau snippet for a Part (assume a variable `part` already references it) that prints \"touched\" at most once every 2 seconds when the part is touched, using a debounce flag.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "Touched", "target": "code" },
+      { "type": "regex", "pattern": ":Connect\\s*\\(", "target": "code" },
+      { "type": "not_contains", "value": ":connect(", "target": "code" },
+      { "type": "regex", "pattern": "task\\.wait\\s*\\(\\s*2\\s*\\)", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-04-module",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a ModuleScript that defines a local table with a function add(a, b) returning a + b, and returns the table at the end (standard Roblox module pattern).",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "function\\s+[\\w.]*[.:]?add\\s*\\(|add\\s*=\\s*function", "target": "code" },
+      { "type": "regex", "pattern": "return\\s+a\\s*\\+\\s*b", "target": "code" },
+      { "type": "regex", "pattern": "return\\s+[A-Za-z_][\\w]*\\s*$", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-05-tween",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write Luau code that fades a part's Transparency to 1 over 2 seconds using TweenService (assume a variable `part` already references the part). Create the tween and play it.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "TweenService", "target": "code" },
+      { "type": "contains", "value": "TweenInfo.new", "target": "code" },
+      { "type": "regex", "pattern": ":Create\\s*\\(", "target": "code" },
+      { "type": "regex", "pattern": ":Play\\s*\\(", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-06-linear-velocity",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write Luau code that launches an unanchored part upward at 50 studs/second using the modern LinearVelocity constraint (with its required Attachment). Do not use deprecated body movers.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "LinearVelocity", "target": "code" },
+      { "type": "contains", "value": "Attachment", "target": "code" },
+      { "type": "not_contains", "value": "BodyVelocity", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-07-remote-event",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write the server-side code that listens to a RemoteEvent named Ping stored in ReplicatedStorage and prints the firing player's Name each time it fires.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "ReplicatedStorage", "target": "code" },
+      { "type": "contains", "value": "OnServerEvent", "target": "code" },
+      { "type": "contains", "value": "Ping", "target": "code" },
+      { "type": "not_contains", "value": "OnClientEvent", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-08-datastore-pcall",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a function savePlayerCoins(player, coins) that saves the value into a data store named PlayerCoins keyed by the player's UserId, using DataStoreService and SetAsync wrapped in pcall with the error logged via warn.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "DataStoreService", "target": "code" },
+      { "type": "contains", "value": "SetAsync", "target": "code" },
+      { "type": "contains", "value": "pcall", "target": "code" },
+      { "type": "contains", "value": "UserId", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-09-typed-sum",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a Luau function with type annotations: sum(numbers: {number}): number that returns the sum of the array using a for loop.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": ":\\s*\\{\\s*number\\s*\\}", "target": "code" },
+      { "type": "regex", "pattern": "\\)\\s*:\\s*number", "target": "code" },
+      { "type": "regex", "pattern": "for\\s+", "target": "code" }
+    ]
+  },
+  {
+    "id": "lc-10-string-interpolation",
+    "category": "luau-correctness",
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Assume a variable `name` holds a player's name. Write a single Luau print statement that outputs Hello, NAME! using Luau's native string interpolation syntax (backticks), not concatenation or string.format.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "`[^`]*\\{\\s*name\\s*\\}[^`]*`", "target": "code" },
+      { "type": "not_contains", "value": "..", "target": "code" },
+      { "type": "not_contains", "value": "string.format", "target": "code" }
+    ]
+  }
+]

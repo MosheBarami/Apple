@@ -1,0 +1,139 @@
+---
+// Ambient "molten rune seam" background: cheap 2D-canvas gradient ribbons that
+// drift like cooling lava seams. Static single frame under reduced motion.
+---
+
+<canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas>
+
+<style>
+  .hero-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+</style>
+
+<script>
+  const canvas = document.getElementById('hero-canvas') as HTMLCanvasElement | null;
+
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    interface Seam {
+      y: number; // vertical anchor 0..1
+      amp: number; // wave amplitude px
+      speed: number;
+      phase: number;
+      hue: 'amber' | 'violet';
+      width: number;
+    }
+
+    const seams: Seam[] = [
+      { y: 0.3, amp: 46, speed: 0.00016, phase: 0, hue: 'violet', width: 90 },
+      { y: 0.55, amp: 60, speed: 0.00011, phase: 2.1, hue: 'amber', width: 120 },
+      { y: 0.78, amp: 38, speed: 0.00021, phase: 4.4, hue: 'amber', width: 70 },
+      { y: 0.12, amp: 30, speed: 0.00013, phase: 1.2, hue: 'violet', width: 60 },
+    ];
+
+    let w = 0;
+    let h = 0;
+    let raf = 0;
+    let last = 0;
+
+    function resize() {
+      if (!canvas) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // keep it cheap
+      const rect = canvas.getBoundingClientRect();
+      w = Math.max(1, Math.round(rect.width));
+      h = Math.max(1, Math.round(rect.height));
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function seamColor(hue: Seam['hue'], alpha: number) {
+      return hue === 'amber' ? `rgba(255, 180, 84, ${alpha})` : `rgba(124, 92, 255, ${alpha})`;
+    }
+
+    function draw(t: number) {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (const s of seams) {
+        const baseY = s.y * h;
+        const grad = ctx.createLinearGradient(0, baseY - s.width, 0, baseY + s.width);
+        grad.addColorStop(0, seamColor(s.hue, 0));
+        grad.addColorStop(0.5, seamColor(s.hue, 0.1));
+        grad.addColorStop(1, seamColor(s.hue, 0));
+        ctx.fillStyle = grad;
+
+        ctx.beginPath();
+        ctx.moveTo(0, baseY - s.width);
+        const step = Math.max(24, w / 40);
+        for (let x = 0; x <= w + step; x += step) {
+          const yTop = baseY - s.width + Math.sin(x * 0.004 + t * s.speed + s.phase) * s.amp;
+          ctx.lineTo(x, yTop);
+        }
+        for (let x = w + step; x >= -step; x -= step) {
+          const yBot = baseY + s.width + Math.sin(x * 0.0032 + t * s.speed * 1.3 + s.phase + 1.5) * s.amp * 0.7;
+          ctx.lineTo(x, yBot);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // hot core line of the seam
+        ctx.strokeStyle = seamColor(s.hue, 0.16);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let x = 0; x <= w + step; x += step) {
+          const y = baseY + Math.sin(x * 0.0036 + t * s.speed * 1.15 + s.phase + 0.7) * s.amp * 0.85;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function frame(t: number) {
+      // ~30fps is plenty for slow drift
+      if (t - last >= 33) {
+        last = t;
+        draw(t);
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    function start() {
+      cancelAnimationFrame(raf);
+      resize();
+      if (reduced.matches) {
+        draw(4000); // one pleasant static frame
+      } else {
+        raf = requestAnimationFrame(frame);
+      }
+    }
+
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(start, 150);
+    });
+    reduced.addEventListener?.('change', start);
+
+    // pause when the tab is hidden
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) cancelAnimationFrame(raf);
+      else start();
+    });
+
+    start();
+  }
+</script>

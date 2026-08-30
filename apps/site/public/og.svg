@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0E14"/>
+      <stop offset="1" stop-color="#121826"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.78" cy="0.45" r="0.5">
+      <stop offset="0" stop-color="#7C5CFF" stop-opacity="0.35"/>
+      <stop offset="0.6" stop-color="#FFB454" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFB454" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="slab" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3550"/>
+      <stop offset="1" stop-color="#141b2b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFB454"/>
+      <stop offset="1" stop-color="#7C5CFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#halo)"/>
+
+  <!-- molten seam across the bottom -->
+  <path d="M0 560 Q 200 540 400 556 T 800 552 T 1200 558" stroke="#FFB454" stroke-width="2.5" fill="none" opacity="0.65"/>
+  <path d="M0 575 Q 240 592 480 578 T 900 582 T 1200 574" stroke="#7C5CFF" stroke-width="1.8" fill="none" opacity="0.4"/>
+
+  <!-- golem head, right side -->
+  <g transform="translate(790, 130) scale(5.4)" stroke="#3c4c66" stroke-width="1.2">
+    <path d="M10 8 L38 8 Q42 8 42 12 L42 32 Q42 36 38 38 L28 44 Q24 46 20 44 L10 38 Q6 36 6 32 L6 12 Q6 8 10 8 Z" fill="url(#slab)"/>
+    <path d="M6 20 L20 20 L24 24 L28 20 L42 20" stroke="#0B0E14" stroke-width="1.6" fill="none"/>
+    <rect x="13" y="25" width="7" height="4" rx="1" fill="#FFB454"/>
+    <rect x="28" y="25" width="7" height="4" rx="1" fill="#FFB454"/>
+    <path d="M24 11 L27 15 L24 17 L21 15 Z" fill="none" stroke="#7C5CFF" stroke-width="1.6"/>
+  </g>
+
+  <!-- wordmark + tagline -->
+  <text x="90" y="270" font-family="Sora, Verdana, sans-serif" font-size="64" font-weight="700" fill="#E6EAF2">Golem</text>
+  <rect x="92" y="296" width="120" height="4" rx="2" fill="url(#accent)"/>
+  <text x="90" y="370" font-family="Sora, Verdana, sans-serif" font-size="52" font-weight="800" fill="#E6EAF2">Describe it.</text>
+  <text x="90" y="436" font-family="Sora, Verdana, sans-serif" font-size="52" font-weight="800" fill="#FFB454">Golem builds it.</text>
+  <text x="90" y="500" font-family="Verdana, sans-serif" font-size="24" fill="#8A94A6">The AI builder for Roblox — real Studio, native undo, verified builds.</text>
+</svg>

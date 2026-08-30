@@ -1,0 +1,83 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Getting started — Golem Docs"
+  description="From signup to your first AI-built feature in Roblox Studio: create an account, make a project, install the plugin, pair, and chat your first build."
+  heading="Getting started"
+>
+  <p>
+    This guide takes you from nothing to your first Golem-built feature. Budget five minutes, plus
+    however long Studio takes to open on your machine.
+  </p>
+
+  <h2>1. Create an account</h2>
+  <p>
+    Go to <a href="/app">the app</a> and sign up with an email address and a password. That is the
+    whole form — no card, no phone number. You start with your full daily allowance of
+    <strong>80 Sparks</strong> immediately.
+  </p>
+
+  <h2>2. Create a project</h2>
+  <p>
+    A <strong>project</strong> is Golem's workspace for one Roblox place: its chat history, its
+    checkpoints, and its memory of what you have built together. Click
+    <strong>New project</strong>, give it a name (naming it after the place helps), and you land in
+    the chat workspace.
+  </p>
+  <p>
+    Projects are unlimited on the free tier, so make one per place rather than reusing a single
+    project — the per-project memory works much better that way.
+  </p>
+
+  <h2>3. Connect Roblox Studio</h2>
+  <p>
+    Golem changes your place through the <strong>Golem for Studio</strong> plugin. If you have not
+    installed it yet, follow the <a href="/docs/plugin">plugin guide</a> — it is a one-file install.
+  </p>
+  <ol>
+    <li>Open your place in Roblox Studio.</li>
+    <li>In the Golem web workspace, click <strong>Connect Studio</strong>. You get a short pairing code like <code>GLM-7F3K2Q</code>.</li>
+    <li>In Studio, open the Golem plugin panel and enter the code.</li>
+  </ol>
+  <p>
+    The workspace header flips to <strong>Studio connected</strong> and shows your place name.
+    Pairing codes expire after 10 minutes; if yours does, just generate a new one.
+  </p>
+
+  <h2>4. Ask for your first build</h2>
+  <p>Pick a mode (start with <strong>Stone</strong> for a real build) and describe what you want:</p>
+  <ul>
+    <li>“make a lobby with a spinning obby door”</li>
+    <li>“add a coin leaderboard that saves between sessions”</li>
+    <li>“the kill brick in Workspace.Stage2 doesn't kill — fix it”</li>
+  </ul>
+  <p>
+    Watch the chat: Golem shows every tool action as a chip — reading your tree, editing scripts,
+    running your game. When it finishes, the changes are already in your open place. Press Play and
+    try them.
+  </p>
+
+  <h2>5. Iterate like you mean it</h2>
+  <p>
+    The first result is a first draft. React to it the way you would with a collaborator: “make
+    the door slower”, “the door should only open for players with the key”. Golem keeps the
+    context of everything it has done in this project.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>Safety net:</strong> every batch of changes is one native undo step
+      (<kbd>Ctrl+Z</kbd> / <kbd>⌘Z</kbd> in Studio), and Golem checkpoints your place before every
+      agent run. You can restore any checkpoint from the workspace sidebar — even days later.
+    </p>
+  </div>
+
+  <h2>Where next</h2>
+  <ul>
+    <li><a href="/docs/modes">Modes</a> — when to use Clay, Stone or Rune.</li>
+    <li><a href="/docs/sparks-and-limits">Sparks &amp; limits</a> — how far 80 Sparks goes.</li>
+    <li><a href="/docs/plugin">Plugin guide</a> — install paths and troubleshooting.</li>
+  </ul>
+</DocsLayout>

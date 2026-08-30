@@ -1,0 +1,135 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Changelog — Golem"
+  description="What shipped in Golem, release by release. v0.1: first public release — three modes, the Studio plugin, checkpoints, native undo and the Sparks free tier."
+>
+  <section class="section" aria-labelledby="cl-title">
+    <div class="wrap changelog-wrap">
+      <p class="eyebrow">Changelog</p>
+      <h1 id="cl-title">Carved in order</h1>
+      <p class="lede">Every release, what it actually does, no adjectives doing heavy lifting.</p>
+
+      <article class="release card card--seam" data-reveal aria-labelledby="rel-0-1">
+        <header class="release-head">
+          <h2 id="rel-0-1"><span class="release-tag">v0.1</span> First public release</h2>
+          <p class="release-date">2026</p>
+        </header>
+
+        <p>
+          Golem opens its doors. This release is the full describe-to-build loop: a web workspace,
+          a real Studio plugin, and an agent that changes your actual place — carefully.
+        </p>
+
+        <h3>The workspace</h3>
+        <ul>
+          <li>Chat-driven building with live streaming responses and a visible tool trace — you see every <code>get_project_tree</code>, <code>edit_script</code> and <code>run_and_check</code> as it happens.</li>
+          <li>Three modes: <strong>Clay</strong> (1 spark — fast answers and small edits), <strong>Stone</strong> (4 sparks — features across your project), <strong>Rune</strong> (10 sparks — plans, builds, tests and fixes autonomously).</li>
+          <li>Unlimited projects per account, each with its own chat history and memory of what you built.</li>
+          <li>Image attachments — paste a screenshot of the bug, not a description of it.</li>
+          <li>A stop button that actually stops the agent mid-run.</li>
+        </ul>
+
+        <h3>Golem for Studio (plugin)</h3>
+        <ul>
+          <li>Pairing by short-lived code (<code>GLM-XXXXXX</code>, 10-minute expiry) — no tokens to copy around.</li>
+          <li>Reads and searches your scripts, edits them through Studio's own script editor APIs.</li>
+          <li>Creates, moves, configures and deletes instances with typed, validated operations.</li>
+          <li>Wraps every operation batch in a ChangeHistory waypoint — native <kbd>Ctrl+Z</kbd> undo.</li>
+          <li>Starts and stops run mode, captures logs, and reports results back for verification.</li>
+        </ul>
+
+        <h3>Safety net</h3>
+        <ul>
+          <li>Automatic checkpoint before every agent run; manual checkpoints on demand.</li>
+          <li>One-click restore of any checkpoint — scripts and instances — even across sessions.</li>
+        </ul>
+
+        <h3>The deal</h3>
+        <ul>
+          <li>Free tier: 80 Sparks per day, hard quota, resets daily, no card ever collected.</li>
+          <li>Pro (400 Sparks/day, priority queue, extended checkpoints) opens as a waitlist.</li>
+          <li>Private projects are never used to train models.</li>
+        </ul>
+      </article>
+
+      <p class="changelog-foot" data-reveal>
+        Watching this page? Golem is in active development — expect the next entry sooner than you
+        think.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .changelog-wrap {
+    max-width: 800px;
+  }
+
+  .release {
+    margin-top: 3rem;
+    padding: 2.2rem;
+  }
+
+  .release-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .release-head h2 {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+
+  .release-tag {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--amber);
+    border: 1px solid rgba(255, 180, 84, 0.45);
+    border-radius: 8px;
+    padding: 0.15rem 0.6rem;
+    margin-right: 0.6rem;
+    vertical-align: middle;
+  }
+
+  .release-date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .release h3 {
+    margin-top: 1.8rem;
+    font-size: 1.05rem;
+    color: var(--amber);
+  }
+
+  .release ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+    color: var(--muted);
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .release li::marker {
+    color: var(--amber);
+  }
+
+  .release strong {
+    color: var(--text);
+  }
+
+  .changelog-foot {
+    margin-top: 2.5rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+</style>
