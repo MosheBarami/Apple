@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/error-boundary';
 import { ToastProvider } from './components/toast';
+import { Cursor, Grain } from './components/atmosphere';
 import { ThemeProvider } from './lib/theme';
 import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
@@ -12,6 +13,7 @@ import { WorkspacePage } from './routes/workspace';
 import { UsagePage } from './routes/usage';
 import { SettingsPage } from './routes/settings';
 import { AdminPage } from './routes/admin';
+import { UiLabPage } from './routes/ui-lab';
 import { NotFoundPage } from './routes/not-found';
 
 const queryClient = new QueryClient({
@@ -61,11 +63,14 @@ export function App() {
                     <Route path="/usage" element={<UsagePage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/ui-lab" element={<UiLabPage />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>
               </AuthProvider>
             </BrowserRouter>
+            <Grain />
+            <Cursor />
           </ToastProvider>
         </QueryClientProvider>
       </ThemeProvider>

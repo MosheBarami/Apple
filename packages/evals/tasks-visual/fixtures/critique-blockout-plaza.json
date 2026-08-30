@@ -1,0 +1,38 @@
+{
+  "_comment": "A realistic critique of Golem's current output for vis-03-plaza. Every requested object exists (prompt_fidelity 2) and the scene is still a block-out.",
+  "taskId": "vis-03-plaza",
+  "dimensions": {
+    "composition": { "score": 0, "justification": "Top view shows benches, lamps and planters on an even 20-stud grid with no grouping or rhythm." },
+    "focal_point": { "score": 1, "justification": "The fountain is present in hero but is the same 14-stud height as the lamp posts, so nothing dominates." },
+    "proportion_scale": { "score": 2, "justification": "Bench seats sit around 2 studs and lamps around 14; walkable, but every part uses the same default thickness." },
+    "silhouette": { "score": 0, "justification": "In the front view every object is an unbroken rectangle or cylinder; nothing is identifiable by outline." },
+    "material_coherence": { "score": 0, "justification": "Every surface in all four views is Plastic, so stone, wood and metal are indistinguishable." },
+    "material_variety": { "score": 0, "justification": "The materials histogram reports one material across all 41 parts." },
+    "palette_discipline": { "score": 1, "justification": "Six BrickColors with no relationship: bright green planters beside a medium stone grey slab." },
+    "value_structure": { "score": 0, "justification": "Hero view is a single mid-grey value; in greyscale nothing separates from the ground." },
+    "lighting_setup": { "score": 0, "justification": "Lighting service untouched and no PointLights; the lamp heads are unlit yellow spheres." },
+    "atmosphere_mood": { "score": 0, "justification": "Default sky, no atmosphere or fog, flat noon exposure in every view." },
+    "edge_trim_finish": { "score": 0, "justification": "Every junction is a raw seam; no skirting, no border course, no caps on the lamp posts." },
+    "surface_detail_density": { "score": 0, "justification": "The plaza floor is one 118-stud part; nothing in the scene is smaller than 2 studs." },
+    "prop_layering": { "score": 1, "justification": "Architecture and a few major props only; no dressing layer anywhere in the eye view." },
+    "negative_space": { "score": 1, "justification": "Props are spread evenly, leaving accidental gaps rather than shaped open space." },
+    "vertical_variation": { "score": 1, "justification": "Ground plus one 14-stud tier; the front view is essentially two flat lines." },
+    "spatial_flow": { "score": 1, "justification": "Walkable but unguided; no path, threshold or sightline suggests a direction in the top view." },
+    "ground_treatment": { "score": 0, "justification": "Still the stock Studio baseplate, visible unmodified at the edges of the top view." },
+    "scene_cohesion": { "score": 1, "justification": "Town-square theme stated only by the fountain; everything else is generic grey boxes." },
+    "prompt_fidelity": { "score": 2, "justification": "Everything asked for exists and is recognisable: a square, a centrepiece, seating and planting." },
+    "technical_hygiene": { "score": 3, "justification": "All 41 parts anchored and grouped, no visible z-fighting or intersections in any view." }
+  },
+  "defects": [
+    { "id": "bare-baseplate", "where": "top", "detail": "stock baseplate visible past the edge of the plaza slab" },
+    { "id": "single-material", "where": "hero", "detail": "all 41 parts are Plastic" },
+    { "id": "default-lighting", "where": "eye", "detail": "flat noon exposure, no local lights" },
+    { "id": "no-small-props", "where": "hero", "detail": "smallest part is roughly 4 studs" },
+    { "id": "grid-placement", "where": "top", "detail": "props on a regular 20-stud grid" },
+    { "id": "primitive-only-silhouette", "where": "front", "detail": "boxes and cylinders only" },
+    { "id": "untrimmed-junctions", "where": "hero", "detail": "no border course where slab meets baseplate" },
+    { "id": "neon-without-light", "where": "eye", "detail": "lamp heads emissive but no PointLight" }
+  ],
+  "observedLandmark": null,
+  "summary": "A flat grey slab with a grid of grey boxes on it, containing everything the user asked for. The single biggest problem is that nothing has been given a material, a colour relationship or a light."
+}

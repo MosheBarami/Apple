@@ -28,9 +28,88 @@ Workers AI in *neurons* at **$0.011 per 1,000 neurons**.
 | **Rune, build + read-back verify + playtest in Studio** | **297** | **$0.00327** |
 | Memory distillation (after a run) | ~21 | $0.00023 |
 | Docs search (embedding, cached 24h) | 1 | $0.00001 |
+| **Visual critique (`inspect_visually`, 3 frames)** | **63–72** | **$0.00069–0.00079** |
 
-A full Stone build now costs **$0.0056 versus $0.0139 before the migration — 2.5× cheaper for the
+A full Stone build costs **$0.0056 versus $0.0139 before the GLM migration — 2.5× cheaper for the
 same work**, on a model that scores higher.
+
+### What the visual loop adds
+
+Building blind was cheap. Looking at the result is not free, and this is the honest arithmetic:
+
+| | before the visual loop | with it |
+|---|---|---|
+| Stone full build | 511 neurons | ~526 neurons (adaptive reasoning, +3%) |
+| Visual critique passes | 0 | 2–3 × ~67 = 134–201 |
+| **Total per build** | **511** | **~660–727** |
+| Cost per build | $0.0056 | **$0.0073–0.0080** |
+| Builds/day at the cap | 49 | **34–38** |
+
+So a build costs about **40% more and the service does roughly a quarter fewer builds per day at
+the same ceiling**. That is the price of the agent seeing its own work, and it is worth paying: the
+alternative is the cheaper build that got rejected.
+
+**The ceiling itself does not move.** The daily and monthly neuron caps in `pricing.ts` are
+unchanged, so the maximum bill is exactly what it was. What changed is how much work fits inside it.
+
+### Measured again after the visual loop shipped (2026-08-31)
+
+The earlier figures were taken before step limits and output budgets were raised to make the visual
+loop closable. Re-measured from the live ledger across 70 real agent steps:
+
+| purpose | calls | neurons | per call |
+|---|---|---|---|
+| `stone:step:high` | 53 | 7,426 | **140** |
+| `stone:step:low` | 17 | 2,638 | **155** |
+| `visual:critique` | 29 | 1,904 | **66** |
+
+Two things stand out.
+
+**`low` is no cheaper than `high` per step (155 vs 140).** Reasoning effort is no longer the driver;
+input size is. Every step carries a 13,894-character system prompt plus 6,050 characters of tool
+definitions — 5,226 input tokens, **72 neurons of input tax before the model writes anything**.
+
+**Prompt caching is NOT engaging.** Probed three identical calls in a row:
+`prompt_tokens: 5226, prompt_tokens_details: {cached_tokens: 0}` every time. GLM bills cached input
+at $0.03/M against $0.15/M, so a working cache would cut the dominant cost by 5×. It is not
+happening, and the neuron figures above are what we actually pay.
+
+**Cost per quality-gated build:** ~16 steps at ~145 neurons plus 1–2 critiques ≈ **2,300 neurons
+($0.025)**, against 511 ($0.0056) for the old build-blind path. At the unchanged daily ceiling that
+is roughly **10 full quality-gated builds per day service-wide**, down from ~49 build-blind ones.
+
+**The ceiling has not moved — the hard maximum is still $10.06/month.** What changed is how much fits
+inside it. This is the honest trade: far fewer builds, each of which the agent actually looked at.
+
+The identified, quantified saving not yet taken: the art-direction brief is 7,406 of those 13,894
+characters and is re-sent on every step of a run. Moving it behind a tool the agent calls once while
+planning would convert ~2,100 tokens/step into ~2,100 tokens/run — about **430 neurons (19%) off
+every build**. Deliberately not applied mid-measurement.
+
+### Reasoning effort: a measured surprise
+
+Escalating reasoning turned out to be nearly free, and the *middle* setting turned out to be a trap.
+Measured against the live service on 2026-08-30, GLM-5.3-flash, two samples per cell:
+
+| task | effort | neurons | latency | answer | finish |
+|---|---|---|---|---|---|
+| trivial | low | 2.2 | 17.6s | 176 chars | stop |
+| trivial | medium | 6.7 | 2.8s | 125 chars | stop |
+| trivial | high | **2.7** | 1.3s | 104 chars | stop |
+| design | low | 39.7 | 15.4s | 2283 chars | stop |
+| design | medium | 109.8 | 41.2s | **0 chars** | **length** |
+| design | high | **40.8** | 14.9s | 2361 chars | stop |
+| debug | low | 18.4 | 7.8s | 1549 chars | stop |
+| debug | medium | 109.9 | 45.4s | **0 chars** | **length** |
+| debug | high | **23.8** | 10.9s | 2157 chars | stop |
+
+`medium` sends the model into long deliberation — 7,488 characters of reasoning on the design task,
+10,669 on debugging — that consumes the whole output budget before it writes a word. It costs 3–6×
+`low` and returns **nothing at all** on two of three task types.
+
+`high` reasons briefly and decisively and costs 3–29% more than `low` while returning better
+answers. So Stone and Rune now default to `high`, Clay stays `low`, and **`medium` is never
+selected**. See `apps/worker/src/reasoning.ts`.
 
 ## The bill
 
@@ -43,9 +122,11 @@ after that. Workers Paid is **$5.00/month** flat.
 | **Medium** — ~30 builds + 200 questions/day | ~17,000 | 7,000 | $2.34 | **$7.34** |
 | **Heavy** — demand at or above the ceiling | 25,000 (capped) | 15,000 | $5.02 | **$10.02** |
 
-The neuron ceilings are **unchanged by the migration** — the maximum bill did not move. Because
-GLM is 2.5× cheaper per build, the same ceiling now buys roughly 2.5× more real work: about
-**49 full Stone builds per day** service-wide at the cap, against ~19 before.
+The neuron ceilings are **unchanged** by either the GLM migration or the visual loop — the maximum
+bill has not moved at any point. What the ceiling buys has changed twice: GLM made builds 2.5×
+cheaper (from ~19 to ~49 per day at the cap), and the visual loop then spent some of that back on
+quality (down to **~34–38 full Stone builds per day**, still roughly double the pre-migration
+capacity, and now with the agent actually checking its work).
 
 Beyond "heavy" the caps refuse further generation rather than spending more — users get a
 capacity message, the bill does not move.

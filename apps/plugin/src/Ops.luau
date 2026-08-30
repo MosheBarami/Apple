@@ -6,9 +6,10 @@ local ScriptEditorService = game:GetService("ScriptEditorService")
 local LogService = game:GetService("LogService")
 local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
-local InsertService = game:GetService("InsertService")
 
+local Generation = require(script.Parent.Generation)
 local Paths = require(script.Parent.Paths)
+local Render = require(script.Parent.Render)
 local Serializer = require(script.Parent.Serializer)
 
 local Ops = {}
@@ -16,6 +17,7 @@ local Ops = {}
 local MUTATING = {
 	edit_script = true, create_instances = true, set_props = true, delete_instances = true,
 	move_instances = true, restore = true, insert_asset = true, run_code = true,
+	generate_model = true,
 }
 
 local SCRIPT_CONTAINERS = {
@@ -392,10 +394,14 @@ handlers.viewport_info = function(_)
 	return info
 end
 
-handlers.screenshot = function(_)
-	return {
-		error = "Viewport capture is not available to Studio plugins. Use viewport_info / run_luau for spatial checks, or ask the user to describe or share a screenshot.",
-	}
+-- Studio exposes no viewport readback to plugins, so these rasterise the scene themselves and
+-- hand back real pixels. See Render.luau for why that is the only option.
+handlers.render_view = function(op)
+	return Render.capture(op.target, op.view or "hero", op.width or 288, op.height or 180)
+end
+
+handlers.screenshot = function(op)
+	return Render.capture(op.target, "hero", 288, 180)
 end
 
 handlers.snapshot = function(op)
@@ -406,17 +412,45 @@ handlers.restore = function(op)
 	return Serializer.restore(op.snapshot)
 end
 
+-- The GetObjects adapter lives in Generation.luau so the plugin has exactly ONE call site for it;
+-- see the comment there for why InsertService:LoadAsset cannot be used from plugin context.
 handlers.insert_asset = function(op)
-	local model = InsertService:LoadAsset(op.assetId)
 	local parent = Paths.resolve(op.parent or "game.Workspace")
-	local children = model:GetChildren()
+	local res = Generation.insertAsset(op.assetId, parent)
+	if not res.ok then return { error = res.error } end
 	local placed = {}
-	for _, child in children do
-		child.Parent = parent
-		table.insert(placed, Paths.fullPath(child))
+	for _, obj in res.instances do
+		table.insert(placed, Paths.fullPath(obj))
 	end
-	model:Destroy()
 	return { inserted = placed }
+end
+
+handlers.generate_model = function(op)
+	local parent = Paths.resolve(op.parent or "game.Workspace")
+	local out = Generation.generateAndInspect({
+		prompt = op.prompt,
+		maxTriangles = op.maxTriangles,
+		predefinedSchema = op.predefinedSchema,
+		parent = parent,
+	}, { intent = op.intent })
+	if not out.generation.ok then
+		return { error = out.generation.error, rateLimit = out.generation.rateLimit }
+	end
+	local model = out.generation.model :: Model
+	return {
+		path = Paths.fullPath(model),
+		elapsedSeconds = math.floor(out.generation.elapsedSeconds),
+		sessionScoped = true,
+		rateLimit = out.generation.rateLimit,
+		qc = out.qc,
+		qcText = if out.qc then Generation.verdictToText(out.qc) else nil,
+	}
+end
+
+handlers.inspect_model = function(op)
+	local inst = Paths.resolve(op.path)
+	local verdict = Generation.inspect(inst, { intent = op.intent })
+	return { qc = verdict, qcText = Generation.verdictToText(verdict) }
 end
 
 handlers.undo_waypoint = function(op)

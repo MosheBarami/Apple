@@ -1,0 +1,370 @@
+{
+  "version": "1.0.0",
+  "scale": { "min": 0, "max": 4 },
+  "intent": [
+    "This rubric measures whether a BUILT SCENE looks good, not whether the requested objects exist.",
+    "Object existence is measured by exactly one dimension (prompt_fidelity, weight 6 of 100). A scene in which every requested object is present but nothing else is done well tops out around 6-20% and FAILS.",
+    "Weights are deliberately concentrated in the dimensions that separate a professional build from a first-pass block-out: focal point, composition, ground treatment, surface detail, lighting, material and colour discipline.",
+    "Hard-fail conditions cap the total regardless of every other score. They encode the failure modes Golem currently exhibits: bare baseplate, one material, default lighting, no small props, no landmark.",
+    "Anchor 0 is written as the CURRENT observed Golem failure mode for that dimension, so a run that changes nothing scores 0s, not 2s.",
+    "Anchor 4 is 'a competent professional Roblox environment artist shipped this', not 'perfect'."
+  ],
+  "gate": {
+    "passThreshold": 2.6,
+    "passThresholdPct": 65,
+    "rationale": "2 is 'acceptable amateur'. 3 is 'good'. A passing scene must sit clearly above amateur on the weighted mean, so the bar is 2.6/4 (65%). Below that the scene is not something a creator would ship without reworking it.",
+    "hardFailCap": 1.4,
+    "hardFailCapStep": 0.25,
+    "hardFailCapFloor": 0.4,
+    "criticalDimensionFloor": {
+      "minWeight": 6,
+      "minScore": 1,
+      "rationale": "A dimension carrying 6 or more of the 100 weight points scoring 0 is a structural defect, not a rounding error. Any such 0 fails the run even if the weighted total clears the threshold."
+    }
+  },
+  "hardFails": [
+    {
+      "id": "bare-baseplate",
+      "name": "Ground is still an unmodified baseplate",
+      "why": "The single loudest signal that nothing was designed. If the floor of the scene is Studio's default baseplate, the scene is a block-out no matter what stands on it.",
+      "source": "metrics.ground",
+      "trigger": "metrics.ground.isDefaultBaseplate === true, or the ground part count is <= 1 with a Plastic material and no added ground parts.",
+      "corroboratingDefect": "bare-baseplate"
+    },
+    {
+      "id": "single-material",
+      "name": "Fewer than two materials used",
+      "why": "Material variety is the cheapest possible quality signal. A scene built entirely from one material has had no material pass at all.",
+      "source": "metrics.materials",
+      "trigger": "Number of distinct materials with at least `minPartsPerMaterial` parts is < 2.",
+      "minPartsPerMaterial": 2
+    },
+    {
+      "id": "default-lighting",
+      "name": "No lighting property changed from Studio default",
+      "why": "Default Lighting is flat noon. Every mood in the task set (cozy, dark, peaceful, welcoming) requires touching it. An untouched Lighting service means no atmosphere pass ran.",
+      "source": "metrics.lighting",
+      "trigger": "metrics.lighting.changedProperties is empty AND no light instances (PointLight/SpotLight/SurfaceLight) were added."
+    },
+    {
+      "id": "no-detail-props",
+      "name": "Zero props under 2 studs",
+      "why": "Detail density is what separates a model from a block-out. If nothing in the scene is smaller than 2 studs, no trim, no fittings and no dressing were built.",
+      "source": "metrics.parts",
+      "trigger": "metrics.parts.smallPropCount === 0 (parts whose largest dimension is < 2 studs).",
+      "smallPropMaxStuds": 2
+    },
+    {
+      "id": "no-landmark",
+      "name": "Landmark / focal element absent",
+      "why": "A scene with no hierarchy has nowhere for the eye to go. Applies only to tasks with landmarkExpected true.",
+      "source": "critique.focal_point + metrics.parts",
+      "trigger": "task.landmarkExpected === true AND (critique dimension focal_point <= 1 OR metrics.parts.tallestStuds < 1.5 * metrics.parts.medianHeightStuds)."
+    },
+    {
+      "id": "nothing-rendered",
+      "name": "No geometry visible in any view",
+      "why": "Either the build failed or the framing is broken. Either way there is nothing to grade.",
+      "source": "metrics.views",
+      "trigger": "Every view reports partsVisible === 0, or every view reports subjectCoverage < 0.02."
+    },
+    {
+      "id": "flat-slab",
+      "name": "Scene is a flat slab",
+      "why": "A wide footprint with almost no vertical extent is the classic 'flat platforms' failure. Nothing above ankle height means no built environment.",
+      "source": "metrics.boundsSize",
+      "trigger": "boundsSize Y < 3 studs while max(X, Z) > 40 studs.",
+      "minHeightStuds": 3,
+      "footprintTriggerStuds": 40
+    }
+  ],
+  "dimensions": [
+    {
+      "id": "composition",
+      "name": "Composition",
+      "measures": "Whether elements are arranged with intent — balance, grouping, rhythm, a considered relationship between masses — rather than distributed arbitrarily or on a grid.",
+      "weight": 7,
+      "anchors": {
+        "0": "Objects sit on an even grid or are scattered with no relationship to each other. Moving any object anywhere would change nothing. Rotating the camera reveals no better or worse angle because there is no arrangement.",
+        "1": "A vague clustering exists but reads as accidental. Large masses collide or leave awkward gaps. No angle of the scene is composed.",
+        "2": "Recognisable grouping: related objects sit together, the scene has a front. Balance is roughly symmetrical or roughly even but not deliberate. The hero view is acceptable, other angles fall apart.",
+        "3": "Deliberate arrangement with grouping, rhythm and asymmetric balance. Masses relate to each other and lead the eye. Most angles hold up.",
+        "4": "Composed from multiple angles. Clear primary/secondary/tertiary masses, repeated rhythms broken purposefully, sightlines that frame the subject. A screenshot from almost anywhere is usable."
+      }
+    },
+    {
+      "id": "focal_point",
+      "name": "Focal point / landmark presence",
+      "measures": "Whether the scene has a dominant element the eye lands on first, and whether the rest of the scene supports it.",
+      "weight": 8,
+      "anchors": {
+        "0": "No hierarchy. Everything is the same height, size and visual weight. Asked what the scene is 'of', you could not answer from the image.",
+        "1": "Something is nominally the subject but is not visually dominant — same height as its surroundings, or hidden behind other geometry.",
+        "2": "A focal element exists and is bigger or taller than its surroundings, but nothing else in the scene reinforces it — no framing, no contrast, no lighting emphasis.",
+        "3": "Clear focal element supported by at least one reinforcement: it is framed, lit, contrasted in colour, or approached by a path. Secondary interest exists elsewhere.",
+        "4": "Unmistakable landmark with a full supporting cast — scale, lighting, colour contrast, negative space and circulation all point at it, and there is a deliberate secondary and tertiary read."
+      }
+    },
+    {
+      "id": "proportion_scale",
+      "name": "Proportion & human scale",
+      "measures": "Whether dimensions are believable relative to a Roblox character (about 5 studs tall) and relative to each other.",
+      "weight": 5,
+      "anchors": {
+        "0": "Arbitrary dimensions. Doors a character cannot fit through, chairs at 10 studs, a 40-stud lamp post. No evidence a character was considered.",
+        "1": "Some elements are roughly right, others are wildly off by 2x or more. Furniture and architecture disagree about what size a person is.",
+        "2": "Everything is walkable and usable. Sizes are plausible but generic — the same default thicknesses everywhere, nothing tuned.",
+        "3": "Consistent human scale across the scene. Thresholds, seat heights, counter heights and clearances read correctly. Deliberate variation in part thickness.",
+        "4": "Scale is used expressively — a soaring element to feel grand, a tight one to feel intimate — while every functional dimension stays correct for a character."
+      }
+    },
+    {
+      "id": "silhouette",
+      "name": "Silhouette readability",
+      "measures": "Whether objects are identifiable from their outline alone, without colour or texture.",
+      "weight": 4,
+      "anchors": {
+        "0": "Everything is a box or a cylinder. In outline the scene is a field of rectangles; you could not name a single object.",
+        "1": "One or two objects have a suggestive outline; the rest are primitives. Silhouettes are dominated by unbroken straight edges.",
+        "2": "Main objects are identifiable in outline but built from few, large, blocky masses. Outlines are correct but coarse.",
+        "3": "Objects read clearly in silhouette with varied, characterful outlines — tapers, overhangs, negative shapes cut into masses.",
+        "4": "Distinctive, memorable silhouettes with deliberate positive/negative shape play. The scene would be readable as a black-and-white outline."
+      }
+    },
+    {
+      "id": "material_coherence",
+      "name": "Material coherence",
+      "measures": "Whether materials are assigned to communicate what things are made of, consistently across the scene.",
+      "weight": 5,
+      "anchors": {
+        "0": "Everything is Plastic, or materials are assigned at random so a wooden table and a stone wall share a material.",
+        "1": "A couple of materials used, but applied inconsistently — the same object type has different materials for no reason.",
+        "2": "Materials are broadly sensible: wood on wooden things, stone on stone things. Applied uniformly with no variation within a category.",
+        "3": "Sensible and consistent, with meaningful variation inside categories (rough vs finished stone, planks vs beams) and correct material at junctions.",
+        "4": "Materials do storytelling work — wear where feet fall, finished surfaces where hands touch, structural vs decorative distinguished. Nothing reads as an arbitrary choice."
+      }
+    },
+    {
+      "id": "material_variety",
+      "name": "Material variety",
+      "measures": "How many genuinely different materials carry meaningful surface area, and whether that range suits the subject.",
+      "weight": 5,
+      "anchors": {
+        "0": "One material across the entire scene (usually Plastic or SmoothPlastic).",
+        "1": "Two materials, one of them covering almost everything.",
+        "2": "Three to four materials with reasonable distribution. Surfaces begin to differentiate.",
+        "3": "Five or more materials, distributed so every major mass and most props have an appropriate one, including at least one emissive or transparent material where it earns its place.",
+        "4": "A curated material set — enough range to describe every element, restrained enough to stay coherent, with texture scale and roughness contrast doing visible work."
+      }
+    },
+    {
+      "id": "palette_discipline",
+      "name": "Colour palette discipline",
+      "measures": "Whether colours form a deliberate limited palette rather than arbitrary per-part choices.",
+      "weight": 5,
+      "anchors": {
+        "0": "Default BrickColors picked per part with no relationship. Bright primary red next to bright primary blue next to Medium stone grey.",
+        "1": "Some colours repeat but the set is too wide and contains clashing hues. No dominant colour.",
+        "2": "A recognisable palette of four to six colours. Mostly harmonious, one or two off-key parts. Accent colour used too much or not at all.",
+        "3": "Disciplined palette: one dominant, two supporting, one accent used sparingly on a small number of elements. Hues are related.",
+        "4": "A palette that is clearly authored — deliberate temperature strategy, accents placed to direct the eye, neutrals doing the heavy lifting, and the whole thing readable as one design."
+      }
+    },
+    {
+      "id": "value_structure",
+      "name": "Colour value structure",
+      "measures": "Whether light and dark are organised so the image has depth and readability in greyscale.",
+      "weight": 5,
+      "anchors": {
+        "0": "Everything at the same mid value. In greyscale the image is flat porridge; nothing separates from anything.",
+        "1": "Slight value variation but no structure — light and dark are randomly distributed.",
+        "2": "Basic separation: ground darker than objects, or objects darker than sky. Two value groups, no third.",
+        "3": "Three clear value groups (dark / mid / light) organised so the focal element sits at the highest contrast point.",
+        "4": "Deliberate value composition — the eye is led by contrast, depth reads through atmospheric value shift, and the greyscale image is a good image on its own."
+      }
+    },
+    {
+      "id": "lighting_setup",
+      "name": "Lighting setup",
+      "measures": "Whether Lighting service properties and placed light instances were configured for this scene.",
+      "weight": 6,
+      "anchors": {
+        "0": "Studio defaults untouched. No PointLight, SpotLight or SurfaceLight anywhere. Emissive parts, if any, are Neon with no light behind them.",
+        "1": "One property changed (usually ClockTime) or one light dropped in, with no relationship to the scene's needs.",
+        "2": "Basic setup: time of day chosen, Brightness or Ambient adjusted, and lights placed where light sources visibly are (lamps, torches).",
+        "3": "Considered setup: ambient and outdoor ambient tuned to the mood, light colours and ranges matched to their fixtures, and at least one light placed to emphasise the focal element.",
+        "4": "Authored lighting — a key/fill relationship, colour temperature contrast between light sources, ranges and brightness tuned so pools of light and shadow shape the space, and shadows read as intentional."
+      }
+    },
+    {
+      "id": "atmosphere_mood",
+      "name": "Atmosphere & mood",
+      "measures": "Whether the scene evokes the mood the prompt asked for, via fog, atmosphere, sky, colour temperature and effects.",
+      "weight": 4,
+      "anchors": {
+        "0": "No mood. Default sky, no Atmosphere, no fog, no post effects. The scene could be any genre.",
+        "1": "A gesture at mood — a tinted part or a dark colour — with no environmental support.",
+        "2": "Mood is legible: time of day and general colour temperature suit the prompt. No atmospheric depth cueing.",
+        "3": "Atmosphere or fog configured for depth, sky suits the setting, colour temperature reinforces the requested mood.",
+        "4": "The image has a feeling before you read its contents — atmosphere, sky, colour temperature, and effect intensity all pulling the same direction, with depth falloff that makes the space feel large or close as intended."
+      }
+    },
+    {
+      "id": "edge_trim_finish",
+      "name": "Edge & trim finishing",
+      "measures": "Whether junctions between surfaces are finished with trim, reveals, chamfers or transition pieces rather than left as raw seams.",
+      "weight": 5,
+      "anchors": {
+        "0": "Every junction is a raw 90-degree seam between two boxes. No skirting, no cornice, no frames, no caps, no fascia. Parts intersect and are left intersecting.",
+        "1": "One or two trim pieces exist somewhere but the treatment is not systematic.",
+        "2": "Major junctions get trim — floors meet walls with a skirting, openings get frames — but smaller junctions and edges are untreated.",
+        "3": "Trim is systematic: skirtings, cornices, frames, sills, caps and corner treatments applied consistently with a coherent profile language.",
+        "4": "Trim is designed, not just present — a consistent profile vocabulary, correct hierarchy (heavier at the base, lighter above), mitred corners and reveal gaps that read as craft."
+      }
+    },
+    {
+      "id": "surface_detail_density",
+      "name": "Surface detail density",
+      "measures": "Whether large surfaces are broken up with detail at multiple scales, or left as bare expanses.",
+      "weight": 6,
+      "anchors": {
+        "0": "Large flat untouched faces everywhere. A 40-stud wall is one part. Nothing in the scene is smaller than about 2 studs.",
+        "1": "One or two surfaces have a detail element; most remain bare. Detail exists at only one scale.",
+        "2": "Major surfaces are subdivided into panels or courses. Some small props exist. Detail at two scales, thinly distributed.",
+        "3": "Detail at three scales (mass, panel, fitting) distributed across the scene, with density concentrated where the eye goes and relief where it needs to rest.",
+        "4": "Detail hierarchy is authored — silhouette-scale, mid-scale and micro-scale detail all present, densest at the focal element, deliberately sparse elsewhere, and none of it noise."
+      }
+    },
+    {
+      "id": "prop_layering",
+      "name": "Prop layering",
+      "measures": "Whether the scene has distinct layers of content — architecture, furniture/major props, and small dressing — rather than a single layer of boxes.",
+      "weight": 4,
+      "anchors": {
+        "0": "One layer only. The scene is its major masses and nothing else — no dressing, no clutter, no secondary props.",
+        "1": "Two layers barely: architecture plus a couple of major props, no dressing at all.",
+        "2": "Architecture, major props and a handful of dressing items exist, but dressing is sparse and placed symmetrically or evenly.",
+        "3": "Three well-populated layers with dressing placed as though used — grouped, offset, on surfaces where it makes sense.",
+        "4": "Layers tell a story of occupation. Dressing implies who uses the space and what just happened there, and clusters read naturally rather than as placement."
+      }
+    },
+    {
+      "id": "negative_space",
+      "name": "Negative space",
+      "measures": "Whether empty space is used deliberately to give elements room and to shape circulation.",
+      "weight": 3,
+      "anchors": {
+        "0": "No consideration. Either uniformly empty (a few objects marooned on a huge plane) or uniformly packed with no gaps.",
+        "1": "Density is uneven but accidentally so — random voids and random clumps.",
+        "2": "Objects have room around them and the space does not feel cramped, but the emptiness is not shaped.",
+        "3": "Voids are shaped: open space around the focal element, denser edges, gaps sized to read as routes or courtyards.",
+        "4": "Negative space is a composed element in its own right — it frames the subject, controls the eye's rest points, and its rhythm against the solids is deliberate."
+      }
+    },
+    {
+      "id": "vertical_variation",
+      "name": "Vertical variation",
+      "measures": "Whether the scene uses height — multiple levels, varied element heights, overheads — instead of living on one plane.",
+      "weight": 5,
+      "anchors": {
+        "0": "Everything on one plane at one height. The side view is a straight line. This is the 'flat platforms' failure.",
+        "1": "Two heights exist (ground plus one taller thing) with nothing between them.",
+        "2": "Three or more heights present, distributed reasonably, but no overhead elements and no level change underfoot.",
+        "3": "A designed height profile: stepped levels or terrain change underfoot, mid-height masses, and at least one overhead element (canopy, arch, branch, banner).",
+        "4": "Height is used compositionally — a clear vertical hierarchy, layered overheads that frame views, and level changes that shape both the silhouette and the way the space is traversed."
+      }
+    },
+    {
+      "id": "spatial_flow",
+      "name": "Spatial flow & navigability",
+      "measures": "Whether a player can read where to go and physically move through the space.",
+      "weight": 4,
+      "anchors": {
+        "0": "No circulation logic. Objects block movement, or the space is an undifferentiated plane with no implied route.",
+        "1": "Movement is possible but unguided — nothing suggests a direction, and some routes dead-end or clip.",
+        "2": "Routes exist and are walkable. Entrances and exits are findable if you look for them.",
+        "3": "Circulation is designed: obvious entry, a legible primary route, and secondary paths. Widths are comfortable and thresholds are marked.",
+        "4": "Flow is authored — the layout leads the player without signage, sightlines reveal the next destination at the right moment, and pinch points and openings control pace."
+      }
+    },
+    {
+      "id": "ground_treatment",
+      "name": "Ground treatment",
+      "measures": "Whether the floor of the scene has been designed, or is still the default baseplate / a single untouched plane.",
+      "weight": 6,
+      "anchors": {
+        "0": "Studio's default baseplate, untouched. Or a single flat part in one default colour and material spanning the whole scene.",
+        "1": "The baseplate was recoloured or its material changed, but it is still one uniform plane.",
+        "2": "Ground is purpose-built: a distinct floor with a chosen material and colour, and at least one edge or border defining its extent.",
+        "3": "Ground is composed — material and colour zones, a border course, an inlay or path, and height variation or a threshold where zones meet.",
+        "4": "The ground is a designed surface: pattern with a reason, wear and transition zones, edge details where materials meet, and paths that reinforce circulation and composition."
+      }
+    },
+    {
+      "id": "scene_cohesion",
+      "name": "Scene cohesion & theme fidelity",
+      "measures": "Whether every element belongs to the same world and the same stated theme.",
+      "weight": 4,
+      "anchors": {
+        "0": "Elements come from unrelated visual worlds, or nothing carries the requested theme at all — the build could be relabelled anything.",
+        "1": "The theme is stated by one or two literal objects while everything else is generic.",
+        "2": "Most elements suit the theme. A few generic or off-theme pieces survive. Style is consistent but shallow.",
+        "3": "Consistent theme across materials, palette, shape language and props. Nothing reads as imported from another scene.",
+        "4": "A specific, committed visual identity — shape language, palette, materials and detail vocabulary all reinforce one authored style with no drift."
+      }
+    },
+    {
+      "id": "prompt_fidelity",
+      "name": "Prompt fidelity",
+      "measures": "Whether the things the user explicitly asked for are actually present and recognisable. THIS IS THE ONLY DIMENSION THAT SCORES OBJECT EXISTENCE, and it carries 6 of 100 weight points on purpose.",
+      "weight": 6,
+      "anchors": {
+        "0": "Named elements are missing, or what was built is not the thing that was asked for.",
+        "1": "Some named elements present, others missing; explicit constraints ignored.",
+        "2": "All explicitly named elements exist and are recognisable as what they are meant to be.",
+        "3": "All named elements present, recognisable, and the implied intent is served (a 'cozy' room is actually arranged to feel cozy, not just to contain the listed furniture).",
+        "4": "Everything asked for, serving the intent behind the request, plus the obvious unstated needs a creator would have wanted — without scope creep beyond the ask."
+      },
+      "cap": "Scoring 4 here contributes at most 6 of 100 points. A scene that is complete but ugly cannot approach the 65% pass threshold on this dimension."
+    },
+    {
+      "id": "technical_hygiene",
+      "name": "Technical hygiene",
+      "measures": "Part count sanity, anchoring, collision sanity, naming, and hierarchy — the things that make a scene usable rather than just photogenic.",
+      "weight": 3,
+      "anchors": {
+        "0": "Unanchored parts that fall on play, parts intersecting the ground or each other visibly, everything named 'Part', flat in Workspace, or a part count wildly disproportionate to what is on screen.",
+        "1": "Mostly anchored but with obvious intersections or z-fighting, no grouping, generic naming.",
+        "2": "Anchored, grouped into models, named adequately. Minor intersections or collision oddities remain.",
+        "3": "Clean: anchored, sensibly grouped and named, no visible z-fighting, CanCollide set deliberately on decorative geometry, part count proportionate.",
+        "4": "Production-ready: models with PrimaryPart set, purposeful hierarchy and naming, decorative geometry non-colliding, part count efficient for the visual result achieved."
+      }
+    }
+  ],
+  "defectVocabulary": [
+    "bare-baseplate",
+    "single-material",
+    "default-lighting",
+    "no-small-props",
+    "no-landmark",
+    "flat-slab",
+    "grid-placement",
+    "primitive-only-silhouette",
+    "untrimmed-junctions",
+    "clashing-palette",
+    "value-flatness",
+    "floating-geometry",
+    "intersecting-geometry",
+    "z-fighting",
+    "scale-error",
+    "empty-surface",
+    "uniform-height",
+    "no-circulation",
+    "off-theme-element",
+    "unanchored-parts",
+    "missing-requested-element",
+    "neon-without-light",
+    "symmetric-dressing",
+    "texture-scale-mismatch"
+  ]
+}

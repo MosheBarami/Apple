@@ -69,6 +69,17 @@ export class QuotaDO extends DurableObject<Env> {
       await this.ctx.storage.put('plan', plan === 'pro' ? 'pro' : 'free');
       return Response.json({ ok: true, state: await this.state() });
     }
+    // Clear a day's Spark usage for THIS user. Owner-key gated at the edge, and it only ever
+    // touches the quota DO it is addressed to — no other user, no project data, and not the global
+    // neuron ledger or its caps. It exists so the visual benchmark can run on demand: one
+    // quality-gated build now costs more than a whole day's free allowance, so without this the
+    // suite could only be run once per UTC day.
+    if (url.pathname === '/reset' && req.method === 'POST') {
+      const { day } = (await req.json().catch(() => ({}))) as { day?: string };
+      const target = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : this.today();
+      this.sql.exec(`delete from ledger where day = ?`, target);
+      return Response.json({ ok: true, cleared: target, state: await this.state() });
+    }
     if (url.pathname === '/history') {
       const rows = this.sql
         .exec(`select day, sum(sparks) as sparks, count(*) as events from ledger group by day order by day desc limit 30`)

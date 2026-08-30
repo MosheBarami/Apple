@@ -1,0 +1,125 @@
+{
+ "subject": "game.Workspace",
+ "boundsSize": [
+  12,
+  1,
+  12
+ ],
+ "lighting": {
+  "clockTime": 14.5,
+  "fogEnd": 100000,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect"
+  ],
+  "geographicLatitude": 0,
+  "ambient": [
+   70,
+   70,
+   70
+  ],
+  "outdoorAmbient": [
+   70,
+   70,
+   70
+  ],
+  "brightness": 3,
+  "lightInstances": 0,
+  "exposureCompensation": 0
+ },
+ "views": [
+  {
+   "name": "hero",
+   "meta": {
+    "partsConsidered": 3,
+    "distinctColours": 1,
+    "materials": [
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.35,
+    "partsVisible": 1,
+    "width": 288
+   }
+  },
+  {
+   "name": "front",
+   "meta": {
+    "partsConsidered": 3,
+    "distinctColours": 1,
+    "materials": [
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.4,
+    "partsVisible": 1,
+    "width": 288
+   }
+  },
+  {
+   "name": "side",
+   "meta": {
+    "partsConsidered": 3,
+    "distinctColours": 1,
+    "materials": [
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.4,
+    "partsVisible": 1,
+    "width": 288
+   }
+  },
+  {
+   "name": "top",
+   "meta": {
+    "partsConsidered": 3,
+    "distinctColours": 2,
+    "materials": [
+     {
+      "parts": 2,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 1,
+    "height": 180,
+    "subjectCoverage": 1,
+    "partsVisible": 2,
+    "width": 288
+   }
+  },
+  {
+   "name": "eye",
+   "meta": {
+    "partsConsidered": 3,
+    "distinctColours": 1,
+    "materials": [
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.24,
+    "partsVisible": 1,
+    "width": 288
+   }
+  }
+ ]
+}

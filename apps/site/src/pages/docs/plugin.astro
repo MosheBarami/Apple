@@ -15,9 +15,9 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     ChangeHistory waypoint, so Studio's native undo always works.
   </p>
 
-  <p>
-    <a href="/plugin.rbxm" class="download-link"><strong>Download Golem.rbxm</strong></a> — current
-    version, a few kilobytes of Luau you can open and read.
+  <p class="download-row">
+    <a href="/plugin.rbxm" class="btn btn-primary">Download Golem.rbxm</a>
+    <span>Current version — a few kilobytes of Luau you can open and read.</span>
   </p>
 
   <h2>Install on Windows</h2>
@@ -112,6 +112,19 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 </DocsLayout>
 
 <style>
+  .download-row {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    margin: 1.5rem 0 1.75rem;
+  }
+
+  .download-row span {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
   .download-link {
     display: inline-block;
     border: 1px solid rgba(255, 180, 84, 0.5);

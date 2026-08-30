@@ -1,32 +1,33 @@
 ---
-import GolemGlyph from './GolemGlyph.astro';
+import GolemMark from './GolemMark.astro';
 const year = new Date().getFullYear();
 ---
 
-<footer class="site-footer">
+<footer class="foot">
   <div class="wrap">
-    <div class="footer-grid">
-      <div class="footer-brand">
+    <div class="foot__grid">
+      <div class="foot__brand">
         <a href="/" class="brand" aria-label="Golem — home">
-          <GolemGlyph size={26} />
-          <span class="wordmark">Golem</span>
+          <GolemMark size={26} alive={false} />
+          <span class="brand__word">Golem</span>
         </a>
-        <p class="tagline">Describe it. Golem builds it.</p>
-        <p class="built-by">Built by Golem Labs</p>
+        <p class="foot__tag">Describe it. Golem builds it.</p>
+        <p class="mono">Golem Labs</p>
       </div>
 
-      <nav aria-label="Product" class="footer-col">
+      <nav aria-label="Product" class="foot__col">
         <h2>Product</h2>
         <ul>
           <li><a href="/#how">How it works</a></li>
           <li><a href="/#modes">Modes</a></li>
+          <li><a href="/#proof">Proof</a></li>
           <li><a href="/pricing">Pricing</a></li>
           <li><a href="/changelog">Changelog</a></li>
           <li><a href="/status">Status</a></li>
         </ul>
       </nav>
 
-      <nav aria-label="Documentation" class="footer-col">
+      <nav aria-label="Documentation" class="foot__col">
         <h2>Docs</h2>
         <ul>
           <li><a href="/docs/getting-started">Getting started</a></li>
@@ -37,7 +38,7 @@ const year = new Date().getFullYear();
         </ul>
       </nav>
 
-      <nav aria-label="Legal and contact" class="footer-col">
+      <nav aria-label="Legal and contact" class="foot__col">
         <h2>Legal</h2>
         <ul>
           <li><a href="/privacy">Privacy</a></li>
@@ -48,120 +49,116 @@ const year = new Date().getFullYear();
       </nav>
     </div>
 
-    <div class="footer-base">
+    <div class="foot__base">
       <p>&copy; {year} Golem Labs. Golem is a beta service, provided as-is.</p>
-      <p class="not-affiliated">Not affiliated with or endorsed by Roblox Corporation.</p>
+      <p class="foot__disclaimer">
+        Not affiliated with or endorsed by Roblox Corporation.
+      </p>
     </div>
   </div>
 </footer>
 
 <style>
-  .site-footer {
+  .foot {
     border-top: 1px solid var(--line);
-    background: linear-gradient(180deg, var(--bg), #080a0f);
-    padding: 4rem 0 2.25rem;
-    margin-top: 4rem;
+    background: var(--paper-2);
+    padding: clamp(3rem, 6vw, 4.5rem) 0 2.25rem;
     position: relative;
   }
 
-  .site-footer::before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: 30%;
-    right: 30%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--amber), transparent);
-    opacity: 0.55;
-  }
-
-  .footer-grid {
+  .foot__grid {
     display: grid;
-    grid-template-columns: 1.6fr 1fr 1fr 1fr;
+    grid-template-columns: 1.5fr repeat(3, minmax(0, 1fr));
     gap: 2.5rem;
   }
 
   .brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    color: var(--text);
+    gap: 0.55rem;
+    color: var(--ink);
+    text-decoration: none;
   }
 
-  .wordmark {
+  .brand:hover {
+    text-decoration: none;
+  }
+
+  .brand__word {
     font-family: var(--font-display);
-    font-weight: 700;
+    font-variation-settings: var(--display-vf);
+    font-weight: 600;
     font-size: 1.15rem;
+    letter-spacing: -0.02em;
   }
 
-  .tagline {
+  .foot__tag {
     color: var(--muted);
-    margin: 1rem 0 0.35rem;
+    margin: 0.9rem 0 0.4rem;
     font-size: 0.95rem;
   }
 
-  .built-by {
+  .foot__col h2 {
     font-family: var(--font-mono);
-    font-size: 0.78rem;
-    color: var(--muted);
-    opacity: 0.75;
-  }
-
-  .footer-col h2 {
-    font-size: 0.8rem;
-    letter-spacing: 0.14em;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 1rem;
-    font-weight: 600;
+    color: var(--faint);
+    margin: 0 0 0.95rem;
   }
 
-  .footer-col ul {
+  .foot__col ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.55rem;
+    gap: 0.4rem;
   }
 
-  .footer-col a {
-    color: var(--text);
-    opacity: 0.82;
-    font-size: 0.93rem;
+  .foot__col a {
+    display: inline-block;
+    padding-block: 0.15rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+    text-decoration: none;
   }
 
-  .footer-col a:hover {
-    color: var(--amber);
-    opacity: 1;
+  .foot__col a:hover {
+    color: var(--accent);
+    text-decoration: none;
   }
 
-  .footer-base {
+  .foot__base {
     margin-top: 3rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(35, 45, 63, 0.6);
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--hairline);
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
-    gap: 0.75rem;
-    color: var(--muted);
-    font-size: 0.85rem;
+    gap: 0.6rem 1.5rem;
+    color: var(--faint);
+    font-size: 0.82rem;
   }
 
-  .footer-base p {
+  .foot__base p {
     margin: 0;
   }
 
-  .not-affiliated {
-    opacity: 0.7;
-  }
-
-  @media (max-width: 800px) {
-    .footer-grid {
-      grid-template-columns: 1fr 1fr;
+  @media (max-width: 820px) {
+    .foot__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 2rem;
     }
 
-    .footer-brand {
+    .foot__brand {
       grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 460px) {
+    .foot__grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>

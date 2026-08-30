@@ -1,38 +1,255 @@
 /* ==========================================================================
-   Golem — global styles. Carved stone, glowing runes, molten seams.
+   GOLEM — design system.
+
+   Visual concept: "The Workshop".
+   Golem is a thing that MAKES things, so the site is built out of the same
+   materials it works in: quarried stone, fired clay, a lit workbench and a
+   technical drawing sheet. Everything reads as CARVED — hairline seams,
+   engraved rules, letterpress edges, dimension ticks in the margins — rather
+   than as glass floating on a gradient. The accent is molten: it is the only
+   thing in the palette that emits light, and it moves with the mode you pick.
+
+   Two full themes (quarry daylight / night quarry). Warm neutrals throughout;
+   no cool "SaaS blue" anywhere. Colour is spent, never sprayed.
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
+
 :root {
-  --bg: #0b0e14;
-  --surface: #121826;
-  --raised: #1a2233;
-  --line: #232d3f;
-  --text: #e6eaf2;
-  --muted: #8a94a6;
+  /* --- type ------------------------------------------------------------- */
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular,
+    'Cascadia Code', Menlo, Consolas, monospace;
 
-  --amber: #ffb454;
-  --violet: #7c5cff;
-  --success: #34d399;
-  --danger: #f87171;
+  /* carved display: sharp Scotch-Roman cut, no wonk, high optical size */
+  --display-vf: 'SOFT' 0, 'WONK' 0, 'opsz' 120;
 
-  --clay: #e2a16f;
-  --stone: #9aa7b8;
-  --rune: #7c5cff;
+  /* --- geometry --------------------------------------------------------- */
+  --content: 1200px;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --r-pill: 999px;
 
-  --r-card: 14px;
-  --r-ctl: 8px;
+  /* --- motion ----------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur: 260ms;
+  --dur-slow: 620ms;
 
-  --font-display: 'Sora', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
-  --font-body: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', monospace;
-
-  --glow-amber: 0 0 24px rgba(255, 180, 84, 0.28), 0 0 64px rgba(255, 180, 84, 0.08);
-  --glow-violet: 0 0 24px rgba(124, 92, 255, 0.3), 0 0 64px rgba(124, 92, 255, 0.1);
-
-  --content: 1120px;
-
-  color-scheme: dark;
+  /* --- semantic accents (mode-driven; overridden per theme below) -------- */
+  --accent: var(--acc-ember);
+  --accent-soft: var(--acc-ember-soft);
+  --accent-ink: var(--acc-ember-ink);
 }
+
+/* ---- LIGHT: "quarry daylight" — bone paper, warm shadow, fired accents --- */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --paper: #f2efe8; /* page ground: unbleached limestone */
+  --paper-2: #e9e4da; /* recessed */
+  --surface: #fbf9f5; /* raised card face */
+  --surface-2: #f6f2ea;
+  --ink: #171512; /* body + headline */
+  --ink-2: #56504533; /* (unused alpha guard) */
+  --muted: #6b6357; /* secondary text */
+  --faint: #8d8578; /* tertiary text */
+  --line: rgba(23, 21, 18, 0.14);
+  --line-strong: rgba(23, 21, 18, 0.26);
+  --hairline: rgba(23, 21, 18, 0.08);
+
+  /* material shading — light comes from upper left */
+  --lift-1: 0 1px 2px rgba(60, 46, 28, 0.06), 0 2px 8px rgba(60, 46, 28, 0.05);
+  --lift-2: 0 2px 4px rgba(60, 46, 28, 0.07), 0 10px 28px rgba(60, 46, 28, 0.09);
+  --lift-3: 0 4px 10px rgba(60, 46, 28, 0.09), 0 26px 60px rgba(60, 46, 28, 0.13);
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(23, 21, 18, 0.06);
+
+  --acc-ember: #ad4a18; /* molten iron, readable on paper */
+  --acc-ember-soft: rgba(173, 74, 24, 0.1);
+  --acc-ember-ink: #fdf6ef; /* text on top of ember */
+
+  --acc-clay: #a95331;
+  --acc-clay-soft: rgba(169, 83, 49, 0.1);
+  --acc-clay-ink: #fdf6ef;
+
+  --acc-stone: #2f5c72;
+  --acc-stone-soft: rgba(47, 92, 114, 0.1);
+  --acc-stone-ink: #f2f8fb;
+
+  --acc-rune: #5b3fb8;
+  --acc-rune-soft: rgba(91, 63, 184, 0.1);
+  --acc-rune-ink: #f7f4ff;
+
+  --good: #2f6f4f;
+  --warn: #96631a;
+  --bad: #a33326;
+
+  --grain-opacity: 0.045;
+  --grain-blend: multiply;
+  --vignette: rgba(78, 60, 38, 0.06);
+
+  /* WebGL scene reads these */
+  --gl-key: #fff3e2;
+  --gl-fill: #cdd6de;
+  --gl-body: #b9ae9c;
+  --gl-ground: #ddd6c9;
+  --gl-plinth: #ded7ca;
+}
+
+/* ---- DARK: "night quarry" — basalt, ember lamp, cold moon fill ---------- */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper: #100e0c;
+  --paper-2: #17150f;
+  --surface: #1c1915;
+  --surface-2: #232019;
+  --ink: #f3efe6;
+  --muted: #a89f90;
+  --faint: #7f7869;
+  --line: rgba(243, 239, 230, 0.13);
+  --line-strong: rgba(243, 239, 230, 0.26);
+  --hairline: rgba(243, 239, 230, 0.07);
+
+  --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
+  --lift-2: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.42);
+  --lift-3: 0 6px 14px rgba(0, 0, 0, 0.5), 0 32px 72px rgba(0, 0, 0, 0.55);
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+
+  --acc-ember: #ff9a4d;
+  --acc-ember-soft: rgba(255, 154, 77, 0.14);
+  --acc-ember-ink: #211203;
+
+  --acc-clay: #e08a5a;
+  --acc-clay-soft: rgba(224, 138, 90, 0.14);
+  --acc-clay-ink: #201007;
+
+  --acc-stone: #74b8dd;
+  --acc-stone-soft: rgba(116, 184, 221, 0.14);
+  --acc-stone-ink: #08151d;
+
+  --acc-rune: #a98bff;
+  --acc-rune-soft: rgba(169, 139, 255, 0.14);
+  --acc-rune-ink: #150c2b;
+
+  --good: #6ed3a4;
+  --warn: #e2b45c;
+  --bad: #f08a7c;
+
+  --grain-opacity: 0.05;
+  --grain-blend: overlay;
+  --vignette: rgba(0, 0, 0, 0.5);
+
+  --gl-key: #ffdcae;
+  --gl-fill: #34506b;
+  --gl-body: #5a564f;
+  --gl-ground: #100e0c;
+  --gl-plinth: #2c2721;
+}
+
+/* system preference when the visitor has not chosen */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --paper: #100e0c;
+    --paper-2: #17150f;
+    --surface: #1c1915;
+    --surface-2: #232019;
+    --ink: #f3efe6;
+    --muted: #a89f90;
+    --faint: #7f7869;
+    --line: rgba(243, 239, 230, 0.13);
+    --line-strong: rgba(243, 239, 230, 0.26);
+    --hairline: rgba(243, 239, 230, 0.07);
+
+    --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
+    --lift-2: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.42);
+    --lift-3: 0 6px 14px rgba(0, 0, 0, 0.5), 0 32px 72px rgba(0, 0, 0, 0.55);
+    --inset: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+
+    --acc-ember: #ff9a4d;
+    --acc-ember-soft: rgba(255, 154, 77, 0.14);
+    --acc-ember-ink: #211203;
+    --acc-clay: #e08a5a;
+    --acc-clay-soft: rgba(224, 138, 90, 0.14);
+    --acc-clay-ink: #201007;
+    --acc-stone: #74b8dd;
+    --acc-stone-soft: rgba(116, 184, 221, 0.14);
+    --acc-stone-ink: #08151d;
+    --acc-rune: #a98bff;
+    --acc-rune-soft: rgba(169, 139, 255, 0.14);
+    --acc-rune-ink: #150c2b;
+
+    --good: #6ed3a4;
+    --warn: #e2b45c;
+    --bad: #f08a7c;
+
+    --grain-opacity: 0.05;
+    --grain-blend: overlay;
+    --vignette: rgba(0, 0, 0, 0.5);
+
+    --gl-key: #ffdcae;
+    --gl-fill: #34506b;
+    --gl-body: #5a564f;
+    --gl-ground: #100e0c;
+    --gl-plinth: #2c2721;
+  }
+}
+
+/* mode scopes — set the dynamic accent for a subtree */
+.is-clay {
+  --accent: var(--acc-clay);
+  --accent-soft: var(--acc-clay-soft);
+  --accent-ink: var(--acc-clay-ink);
+}
+.is-stone {
+  --accent: var(--acc-stone);
+  --accent-soft: var(--acc-stone-soft);
+  --accent-ink: var(--acc-stone-ink);
+}
+.is-rune {
+  --accent: var(--acc-rune);
+  --accent-soft: var(--acc-rune-soft);
+  --accent-ink: var(--acc-rune-ink);
+}
+.is-ember {
+  --accent: var(--acc-ember);
+  --accent-soft: var(--acc-ember-soft);
+  --accent-ink: var(--acc-ember-ink);
+}
+
+/* legacy aliases so any page not yet migrated keeps rendering */
+:root {
+  --bg: var(--paper);
+  --raised: var(--surface-2);
+  --text: var(--ink);
+  --amber: var(--accent);
+  --violet: var(--acc-rune);
+  --clay: var(--acc-clay);
+  --stone: var(--acc-stone);
+  --rune: var(--acc-rune);
+  --success: var(--good);
+  --danger: var(--bad);
+  --r-card: var(--r-lg);
+  --r-ctl: var(--r-sm);
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset & base
+   -------------------------------------------------------------------------- */
 
 *,
 *::before,
@@ -41,25 +258,26 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+  background: var(--paper);
 }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-body);
   font-size: 1rem;
-  line-height: 1.65;
+  line-height: 1.62;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+  transition: background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out);
 }
 
 img,
@@ -67,71 +285,130 @@ svg,
 video,
 canvas {
   max-width: 100%;
+  display: block;
+}
+
+img,
+video {
   height: auto;
 }
+
+/* --------------------------------------------------------------------------
+   3. Typography — carved
+   -------------------------------------------------------------------------- */
 
 h1,
 h2,
 h3,
-h4 {
+h4,
+.display {
   font-family: var(--font-display);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  margin: 0 0 0.5em;
+  font-variation-settings: var(--display-vf);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.022em;
+  color: var(--ink);
+  margin: 0 0 0.45em;
   text-wrap: balance;
+  /* Fraunces defaults to old-style figures at some optical sizes; big numbers
+     must sit on the baseline like lining figures or they read as a mistake. */
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: 'onum' 0, 'lnum' 1, 'tnum' 1;
 }
 
 h1 {
-  font-size: clamp(2.4rem, 6vw, 4.2rem);
-  font-weight: 800;
+  font-size: clamp(2.7rem, 7.2vw, 5.4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 h2 {
-  font-size: clamp(1.7rem, 3.6vw, 2.5rem);
+  font-size: clamp(2rem, 4.6vw, 3.25rem);
 }
 
 h3 {
-  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  letter-spacing: -0.014em;
+  line-height: 1.2;
+}
+
+h4 {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+/* the signature: a headline that looks cut into the surface */
+.carved {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55), 0 -1px 0 rgba(23, 21, 18, 0.1);
+}
+
+:root[data-theme='dark'] .carved {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 -1px 0 rgba(255, 255, 255, 0.07);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .carved {
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 -1px 0 rgba(255, 255, 255, 0.07);
+  }
 }
 
 p {
-  margin: 0 0 1em;
+  margin: 0 0 1.05em;
 }
 
 a {
-  color: var(--amber);
+  color: var(--accent);
   text-decoration: none;
-  transition: color 140ms ease;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: from-font;
+  transition: color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
 }
 
 a:hover {
-  color: #ffcd8a;
+  text-decoration: underline;
+}
+
+strong,
+b {
+  font-weight: 650;
+  color: var(--ink);
 }
 
 code,
 pre,
-kbd {
+kbd,
+samp {
   font-family: var(--font-mono);
-  font-size: 0.88em;
+  font-size: 0.86em;
+  font-variant-ligatures: none;
 }
 
 code {
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
   padding: 0.12em 0.4em;
-  white-space: nowrap;
+}
+
+kbd {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 0.12em 0.42em;
+  font-size: 0.82em;
+  color: var(--ink);
 }
 
 pre {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  padding: 1rem 1.25rem;
+  border-radius: var(--r-md);
+  padding: 1rem 1.15rem;
   overflow-x: auto;
-  line-height: 1.6;
+  line-height: 1.62;
+  box-shadow: var(--inset);
 }
 
 pre code {
@@ -142,173 +419,504 @@ pre code {
 }
 
 ::selection {
-  background: rgba(255, 180, 84, 0.28);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 :focus-visible {
-  outline: 2px solid var(--amber);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 4px;
 }
 
-/* ---- layout helpers ---------------------------------------------------- */
+/* Display numerals.
+   Fraunces has no lining-figure feature, so its digits descend below the
+   baseline — correct for running prose, wrong for a big readout. Numbers that
+   are the point of a component are set in the body face instead. */
+.numeral {
+  font-family: var(--font-body);
+  font-weight: 620;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-variation-settings: normal;
+}
+
+/* --------------------------------------------------------------------------
+   4. Layout primitives
+   -------------------------------------------------------------------------- */
 
 .wrap {
-  width: min(var(--content), calc(100% - 2.5rem));
+  width: min(var(--content), calc(100% - var(--gutter) * 2));
+  margin-inline: auto;
+}
+
+.wrap-narrow {
+  width: min(760px, calc(100% - var(--gutter) * 2));
   margin-inline: auto;
 }
 
 .section {
-  padding-block: clamp(4rem, 9vw, 7.5rem);
+  padding-block: clamp(4.5rem, 10vw, 9rem);
   position: relative;
 }
 
+.section--tight {
+  padding-block: clamp(3rem, 6vw, 5rem);
+}
+
+/* The first section on a page already has the nav above it — a full section's
+   worth of top padding there just reads as an empty screen. */
+main > .section:first-child {
+  padding-top: clamp(2rem, 4vw, 3.25rem);
+}
+
+/* engraved rule between sections */
+.rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--line) 12%,
+    var(--line) 88%,
+    transparent
+  );
+}
+
+/* section header block */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--amber);
+  color: var(--accent);
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1.1rem;
+  gap: 0.7rem;
+  margin: 0 0 1.15rem;
 }
 
 .eyebrow::before {
   content: '';
-  width: 22px;
+  width: 26px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--amber));
+  background: currentColor;
+  opacity: 0.5;
+  flex: none;
 }
 
 .lede {
   color: var(--muted);
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
-  max-width: 40rem;
+  font-size: clamp(1.05rem, 1.5vw, 1.22rem);
+  line-height: 1.6;
+  max-width: 46ch;
+  text-wrap: pretty;
 }
 
-/* ---- buttons ----------------------------------------------------------- */
+.lede-wide {
+  max-width: 62ch;
+}
+
+/* technical-drawing side rails — desktop only, purely decorative */
+.sheet-rails {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0;
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  .sheet-rails {
+    display: block;
+  }
+
+  .sheet-rails::before,
+  .sheet-rails::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--hairline) 0 10px,
+      transparent 10px 22px
+    );
+  }
+
+  .sheet-rails::before {
+    left: max(1.5rem, calc(50% - var(--content) / 2 - 3.5rem));
+  }
+
+  .sheet-rails::after {
+    right: max(1.5rem, calc(50% - var(--content) / 2 - 3.5rem));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Surfaces — quarried slabs, not glass
+   -------------------------------------------------------------------------- */
+
+.slab {
+  background: linear-gradient(
+    170deg,
+    var(--surface) 0%,
+    var(--surface-2) 100%
+  );
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-1), var(--inset);
+  position: relative;
+}
+
+.slab--lift {
+  box-shadow: var(--lift-2), var(--inset);
+}
+
+.slab--pad {
+  padding: clamp(1.35rem, 2.5vw, 1.9rem);
+}
+
+/* a hairline "chisel seam" across the top edge, in the live accent */
+.slab--seam::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.85;
+  border-radius: 1px;
+}
+
+/* legacy alias */
+.card {
+  background: linear-gradient(170deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-1), var(--inset);
+  padding: clamp(1.35rem, 2.5vw, 1.9rem);
+  position: relative;
+}
+
+.card--seam::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 14%;
+  right: 14%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--seam, var(--accent)),
+    transparent
+  );
+  opacity: 0.85;
+}
+
+/* --------------------------------------------------------------------------
+   6. Controls
+   -------------------------------------------------------------------------- */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  font-family: var(--font-display);
-  font-weight: 600;
+  gap: 0.55rem;
+  font-family: var(--font-body);
+  font-weight: 570;
   font-size: 0.95rem;
-  border-radius: var(--r-ctl);
-  padding: 0.72rem 1.4rem;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  border-radius: var(--r-sm);
+  padding: 0.78rem 1.35rem;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease,
-    border-color 160ms ease, color 160ms ease;
   text-decoration: none;
   white-space: nowrap;
+  position: relative;
+  isolation: isolate;
+  transition: transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+}
+
+.btn:hover {
+  text-decoration: none;
 }
 
 .btn:active {
   transform: translateY(1px);
 }
 
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  cursor: progress;
+  opacity: 0.62;
+  transform: none;
+}
+
+.btn:disabled::after {
+  opacity: 0 !important;
+}
+
 .btn-primary {
-  background: linear-gradient(180deg, #ffc476, var(--amber) 55%, #eb9a33);
-  color: #201305;
-  box-shadow: var(--glow-amber), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--lift-1), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.btn-primary::after {
+  /* molten edge that lights up on hover */
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  background: var(--accent);
+  filter: blur(11px);
+  transition: opacity var(--dur) var(--ease-out);
 }
 
 .btn-primary:hover {
-  color: #201305;
-  box-shadow: 0 0 34px rgba(255, 180, 84, 0.45), 0 0 90px rgba(255, 180, 84, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: var(--accent-ink);
   transform: translateY(-1px);
 }
 
+.btn-primary:hover::after {
+  opacity: 0.5;
+}
+
 .btn-ghost {
-  background: rgba(26, 34, 51, 0.6);
-  border-color: var(--line);
-  color: var(--text);
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+  box-shadow: var(--lift-1);
 }
 
 .btn-ghost:hover {
-  border-color: var(--amber);
-  color: var(--amber);
-  background: rgba(26, 34, 51, 0.9);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  padding-inline: 0.6rem;
+}
+
+.btn-quiet:hover {
+  color: var(--ink);
+  background: var(--surface-2);
 }
 
 .btn-lg {
-  font-size: 1.05rem;
-  padding: 0.9rem 1.8rem;
+  font-size: 1.02rem;
+  padding: 0.95rem 1.7rem;
 }
 
-/* ---- cards ------------------------------------------------------------- */
+.btn-sm {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.9rem;
+}
 
-.card {
-  background: linear-gradient(180deg, rgba(26, 34, 51, 0.65), rgba(18, 24, 38, 0.9));
+/* segmented control — used by mode pickers and tabs */
+.segmented {
+  display: inline-flex;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 2px;
+  padding: 3px;
+  background: var(--paper-2);
   border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  padding: 1.75rem;
-  position: relative;
+  border-radius: var(--r-sm);
+  box-shadow: var(--inset);
 }
 
-/* carved top seam on cards */
-.card--seam::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 18%;
-  right: 18%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--seam, var(--amber)), transparent);
-  opacity: 0.8;
+.segmented button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 550;
+  padding: 0.44rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
 }
 
-/* ---- grain overlay ------------------------------------------------------ */
+.segmented button:hover {
+  color: var(--ink);
+}
+
+.segmented button[aria-selected='true'],
+.segmented button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--lift-1);
+}
+
+/* mono chip / tag */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  padding: 0.24rem 0.62rem;
+  white-space: nowrap;
+}
+
+.chip--accent {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   7. Tables
+   -------------------------------------------------------------------------- */
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--lift-1);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.94rem;
+  min-width: 460px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.82rem 1.1rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+th {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: var(--surface-2);
+  font-weight: 500;
+}
+
+tr:last-child td {
+  border-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   8. Atmosphere — grain + vignette. Cheap, fixed, non-interactive.
+   -------------------------------------------------------------------------- */
 
 .grain {
   position: fixed;
   inset: 0;
-  z-index: 2147483000;
+  z-index: 9998;
   pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
 }
 
-/* ---- scroll reveals ----------------------------------------------------- */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 120% 90% at 50% 45%,
+    transparent 45%,
+    var(--vignette) 100%
+  );
+}
+
+/* --------------------------------------------------------------------------
+   9. Reveals — scroll as a direction tool
+   -------------------------------------------------------------------------- */
 
 [data-reveal] {
   opacity: 0;
-  transform: translateY(26px);
-  transition: opacity 700ms cubic-bezier(0.2, 0.65, 0.25, 1), transform 700ms cubic-bezier(0.2, 0.65, 0.25, 1);
+  transform: translate3d(0, 22px, 0);
+  transition: opacity 760ms var(--ease-out), transform 760ms var(--ease-out);
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
 }
 
-[data-reveal].is-visible {
+[data-reveal='left'] {
+  transform: translate3d(-24px, 0, 0);
+}
+
+[data-reveal='scale'] {
+  transform: scale(0.965);
+}
+
+[data-reveal].is-in {
   opacity: 1;
   transform: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  [data-reveal] {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
-/* no-JS safety: never hide content when scripts are off */
 html.no-js [data-reveal] {
   opacity: 1;
   transform: none;
 }
 
-/* ---- utility ------------------------------------------------------------ */
+/* kinetic headline: words rise out of the stone, one after another */
+.kinetic > span {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.06em;
+  margin-bottom: -0.06em;
+}
+
+.kinetic > span > span {
+  display: inline-block;
+  transform: translateY(105%);
+  transition: transform 900ms var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 65ms);
+}
+
+.kinetic.is-in > span > span {
+  transform: none;
+}
+
+html.no-js .kinetic > span > span {
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   10. Utility
+   -------------------------------------------------------------------------- */
 
 .visually-hidden {
   position: absolute;
@@ -317,68 +925,212 @@ html.no-js [data-reveal] {
   margin: -1px;
   padding: 0;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
 
 .skip-link {
-  position: absolute;
+  position: fixed;
   left: 1rem;
-  top: -4rem;
-  z-index: 2147483001;
-  background: var(--amber);
-  color: #201305;
+  top: -5rem;
+  z-index: 10001;
+  background: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
-  padding: 0.6rem 1rem;
-  border-radius: var(--r-ctl);
-  transition: top 160ms ease;
+  padding: 0.65rem 1.1rem;
+  border-radius: var(--r-sm);
+  transition: top var(--dur) var(--ease-out);
 }
 
 .skip-link:focus-visible {
   top: 1rem;
+  text-decoration: none;
 }
 
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.stack > * + * {
+  margin-top: var(--stack-gap, 1rem);
+}
+
+/* legacy mode helpers */
 .mode-clay {
-  --mode: var(--clay);
+  --mode: var(--acc-clay);
 }
 .mode-stone {
-  --mode: var(--stone);
+  --mode: var(--acc-stone);
 }
 .mode-rune {
-  --mode: var(--rune);
+  --mode: var(--acc-rune);
 }
 
-/* table base (docs, pricing) */
-.table-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
+/* --------------------------------------------------------------------------
+   11. Custom cursor (desktop, fine pointer only)
+   -------------------------------------------------------------------------- */
+
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  pointer-events: none;
+  display: none;
+  will-change: transform;
+  /* stays invisible until the first real pointer move, otherwise the ring
+     parks at the origin and shows as an arc in the page's top-left corner */
+  opacity: 0;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-  min-width: 480px;
+.cursor.is-awake {
+  opacity: 1;
 }
 
-th,
-td {
-  text-align: left;
-  padding: 0.8rem 1.1rem;
-  border-bottom: 1px solid var(--line);
+.cursor__ring {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  opacity: 0.85;
+  transition: width var(--dur) var(--ease-out),
+    height var(--dur) var(--ease-out), margin var(--dur) var(--ease-out),
+    border-radius var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out);
 }
 
-th {
-  font-family: var(--font-display);
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
+.cursor__dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.cursor__label {
+  position: absolute;
+  left: 22px;
+  top: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
-  background: rgba(26, 34, 51, 0.5);
+  color: var(--accent-ink);
+  background: var(--accent);
+  padding: 0.18rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-tr:last-child td {
-  border-bottom: 0;
+/* contextual states */
+.cursor[data-state='link'] .cursor__ring {
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  background: var(--accent-soft);
+}
+
+.cursor[data-state='drag'] .cursor__ring {
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 8px;
+  transform: rotate(45deg);
+}
+
+.cursor[data-state='text'] .cursor__ring {
+  width: 2px;
+  height: 26px;
+  margin: -13px 0 0 -1px;
+  border-radius: 0;
+  background: var(--accent);
+}
+
+.cursor[data-state='text'] .cursor__dot {
+  opacity: 0;
+}
+
+.cursor[data-label] .cursor__label {
+  opacity: 1;
+  transform: none;
+}
+
+html.has-cursor,
+html.has-cursor a,
+html.has-cursor button,
+html.has-cursor summary,
+html.has-cursor [role='button'],
+html.has-cursor input[type='range'],
+html.has-cursor label {
+  cursor: none;
+}
+
+html.has-cursor .cursor {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   12. Reduced motion — non-negotiable
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal],
+  .kinetic > span > span {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .cursor {
+    display: none !important;
+  }
+
+  html.has-cursor,
+  html.has-cursor a,
+  html.has-cursor button,
+  html.has-cursor summary,
+  html.has-cursor [role='button'],
+  html.has-cursor label {
+    cursor: auto;
+  }
+}
+
+/* coarse pointers never get the custom cursor */
+@media (pointer: coarse), (hover: none) {
+  .cursor {
+    display: none !important;
+  }
+
+  html.has-cursor,
+  html.has-cursor a,
+  html.has-cursor button {
+    cursor: auto;
+  }
 }

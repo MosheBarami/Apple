@@ -1,0 +1,29 @@
+{
+  "_comment": "Verbatim vision-judge output. Every one of the 20 rubric dimension ids must appear with an integer 0-4 score and a justification of at least 25 characters naming what was observed and in which view. Keep it unedited even when the judge is wrong — a hallucinating judge is itself a finding, visible only by diffing critiques across runs.",
+  "taskId": "TASK-ID",
+  "dimensions": {
+    "composition": { "score": 0, "justification": "" },
+    "focal_point": { "score": 0, "justification": "" },
+    "proportion_scale": { "score": 0, "justification": "" },
+    "silhouette": { "score": 0, "justification": "" },
+    "material_coherence": { "score": 0, "justification": "" },
+    "material_variety": { "score": 0, "justification": "" },
+    "palette_discipline": { "score": 0, "justification": "" },
+    "value_structure": { "score": 0, "justification": "" },
+    "lighting_setup": { "score": 0, "justification": "" },
+    "atmosphere_mood": { "score": 0, "justification": "" },
+    "edge_trim_finish": { "score": 0, "justification": "" },
+    "surface_detail_density": { "score": 0, "justification": "" },
+    "prop_layering": { "score": 0, "justification": "" },
+    "negative_space": { "score": 0, "justification": "" },
+    "vertical_variation": { "score": 0, "justification": "" },
+    "spatial_flow": { "score": 0, "justification": "" },
+    "ground_treatment": { "score": 0, "justification": "" },
+    "scene_cohesion": { "score": 0, "justification": "" },
+    "prompt_fidelity": { "score": 0, "justification": "" },
+    "technical_hygiene": { "score": 0, "justification": "" }
+  },
+  "defects": [{ "id": "", "where": "", "detail": "" }],
+  "observedLandmark": null,
+  "summary": ""
+}

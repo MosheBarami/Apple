@@ -1,5 +1,6 @@
 ---
-// Accessible FAQ accordion built on native <details>/<summary>.
+// Accessible FAQ, built on native <details>/<summary> so it works with no JS
+// and is keyboard-operable for free.
 interface Props {
   items: { q: string; a: string }[];
 }
@@ -8,13 +9,13 @@ const { items } = Astro.props;
 
 <div class="faq">
   {
-    items.map((item) => (
-      <details class="faq-item">
+    items.map((item, i) => (
+      <details class="faq__item" style={`--i:${i}`}>
         <summary>
-          <span class="faq-q">{item.q}</span>
-          <span class="faq-icon" aria-hidden="true" />
+          <span class="faq__q">{item.q}</span>
+          <span class="faq__mark" aria-hidden="true" />
         </summary>
-        <div class="faq-a" set:html={item.a} />
+        <div class="faq__a" set:html={item.a} />
       </details>
     ))
   }
@@ -23,19 +24,26 @@ const { items } = Astro.props;
 <style>
   .faq {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
 
-  .faq-item {
-    background: linear-gradient(180deg, rgba(26, 34, 51, 0.55), rgba(18, 24, 38, 0.85));
+  .faq__item {
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--r-card);
+    border-radius: var(--r-md);
     overflow: hidden;
-    transition: border-color 180ms ease;
+    box-shadow: var(--lift-1);
+    transition: border-color var(--dur) var(--ease-out),
+      box-shadow var(--dur) var(--ease-out);
   }
 
-  .faq-item[open] {
-    border-color: rgba(255, 180, 84, 0.4);
+  .faq__item:hover {
+    border-color: var(--line-strong);
+  }
+
+  .faq__item[open] {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: var(--lift-2);
   }
 
   summary {
@@ -44,67 +52,74 @@ const { items } = Astro.props;
     justify-content: space-between;
     gap: 1rem;
     cursor: pointer;
-    padding: 1.1rem 1.4rem;
+    padding: 1.05rem 1.25rem;
     list-style: none;
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 1.02rem;
+    font-family: var(--font-body);
+    font-weight: 570;
+    font-size: 1rem;
+    color: var(--ink);
   }
 
   summary::-webkit-details-marker {
     display: none;
   }
 
-  summary:hover .faq-q {
-    color: var(--amber);
+  summary:hover .faq__q {
+    color: var(--accent);
   }
 
-  .faq-icon {
+  .faq__q {
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+
+  .faq__mark {
     position: relative;
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    flex: none;
   }
 
-  .faq-icon::before,
-  .faq-icon::after {
+  .faq__mark::before,
+  .faq__mark::after {
     content: '';
     position: absolute;
     inset: 0;
     margin: auto;
-    background: var(--amber);
-    transition: transform 220ms ease;
+    background: var(--accent);
+    border-radius: 1px;
+    transition: transform var(--dur) var(--ease-out);
   }
 
-  .faq-icon::before {
-    width: 14px;
-    height: 2px;
+  .faq__mark::before {
+    width: 13px;
+    height: 1.5px;
   }
 
-  .faq-icon::after {
-    width: 2px;
-    height: 14px;
+  .faq__mark::after {
+    width: 1.5px;
+    height: 13px;
   }
 
-  .faq-item[open] .faq-icon::after {
+  .faq__item[open] .faq__mark::after {
     transform: rotate(90deg);
   }
 
-  .faq-a {
-    padding: 0 1.4rem 1.25rem;
+  .faq__a {
+    padding: 0 1.25rem 1.2rem;
     color: var(--muted);
-    font-size: 0.96rem;
+    font-size: 0.95rem;
+    max-width: 68ch;
   }
 
-  .faq-a :global(a) {
-    color: var(--amber);
+  .faq__a :global(p) {
+    margin: 0 0 0.65em;
   }
 
-  .faq-a :global(p) {
-    margin: 0 0 0.6em;
-  }
-
-  .faq-a :global(p:last-child) {
+  .faq__a :global(p:last-child) {
     margin-bottom: 0;
+  }
+
+  .faq__a :global(strong) {
+    color: var(--ink);
   }
 </style>

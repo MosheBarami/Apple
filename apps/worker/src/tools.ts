@@ -1,8 +1,12 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult } from '@golem/shared';
+import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocs } from './rag';
+import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
+import { chooseAssetSource, verifyCreatorStoreAsset, findVerifiedAssets, type AssetNeed, type AssetKind } from './assets';
+import { searchAssetLibrary } from './asset-library';
 
 export interface AgentCtx {
   env: Env;
@@ -10,6 +14,14 @@ export interface AgentCtx {
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
   addMemoryFact(fact: string): Promise<void>;
+  /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
+  lastRender?: RenderViewResult;
+  lastCritique?: VisualCritique;
+  /**
+   * Asset ids that came out of a verified search in THIS session. The only ids insert_asset will
+   * accept: an id that only ever appeared in model output is never inserted.
+   */
+  discoveredAssetIds?: Set<number>;
 }
 
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
@@ -30,6 +42,22 @@ async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promis
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) return { error: res.error ?? 'operation failed' };
   return res.data ?? { ok: true };
+}
+
+/**
+ * Ask the plugin to rasterise the scene. Rendering five views of a busy place is real CPU work
+ * inside Studio, so this gets a longer timeout than an ordinary op.
+ */
+async function renderViews(ctx: AgentCtx, target: string | undefined, view: string): Promise<RenderViewResult | { error: string }> {
+  const res = await ctx.execStudioOp(
+    { op: 'render_view', target, view: view as RenderViewResult['views'][number]['name'] | 'all' },
+    view === 'all' ? 90_000 : 45_000,
+  );
+  if (!res.ok) return { error: res.error ?? 'render failed' };
+  const data = res.data as RenderViewResult & { error?: string };
+  if (data?.error) return { error: data.error };
+  if (!data?.views?.length) return { error: 'the renderer returned no views' };
+  return data;
 }
 
 export const TOOLS: Record<string, ToolImpl> = {
@@ -149,20 +177,171 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     run: (ctx) => op(ctx, { op: 'get_logs', maxEntries: 120 }),
   },
-  take_screenshot: {
-    def: { name: 'take_screenshot', description: 'Capture the Studio viewport for visual review (if supported by the Studio version).', parameters: S({}) },
+  render_view: {
+    def: {
+      name: 'render_view',
+      description:
+        'Render the scene to real images from one or more camera angles and report what is actually visible. Use this to SEE your work — object properties cannot tell you whether a scene looks good.',
+      parameters: S({
+        target: { type: 'string', description: 'instance path to frame, e.g. game.Workspace.Plaza. Omit for the whole workspace.' },
+        view: { type: 'string', enum: [...RENDER_VIEWS, 'all'], description: 'camera preset; "all" renders every angle' },
+      }),
+    },
     studio: true,
-    run: (ctx) => op(ctx, { op: 'screenshot' }, 30_000),
+    run: async (ctx, a) => {
+      const res = await renderViews(ctx, a.target ? String(a.target) : undefined, String(a.view ?? 'hero'));
+      if ('error' in res) return res;
+      // The images themselves never enter the transcript — they are ~60KB each and tool results
+      // are re-sent on every later step. inspect_visually is what actually shows them to a model.
+      ctx.lastRender = res;
+      return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })) };
+    },
+  },
+  inspect_visually: {
+    def: {
+      name: 'inspect_visually',
+      description:
+        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes.',
+      parameters: S(
+        {
+          target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },
+          intent: { type: 'string', description: 'what the user asked for, in one line — the critique is judged against this' },
+        },
+        ['intent'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all');
+      if ('error' in res) return res;
+      ctx.lastRender = res;
+      const critique = await critiqueViews(ctx.env, res, String(a.intent ?? 'a well-built Roblox scene'));
+      ctx.lastCritique = critique;
+      return { text: critiqueToText(critique), score: critique.score, passed: critique.passed };
+    },
+  },
+  choose_asset_source: {
+    def: {
+      name: 'choose_asset_source',
+      description:
+        'Where should this piece of the scene come from? Returns an ordered list of sources with rationale and the verification gate each requires. Call this BEFORE building anything you might be tempted to search for. Procedural wins almost everywhere; foliage and characters are the exceptions.',
+      parameters: S(
+        { need: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'lighting'] } },
+        ['need'],
+      ),
+    },
+    studio: false,
+    run: async (_ctx, a) => chooseAssetSource(String(a.need ?? 'prop') as AssetNeed),
+  },
+  search_asset_library: {
+    def: {
+      name: 'search_asset_library',
+      description:
+        "Search Golem's curated CC0 asset library. Every hit is licence-cleared and safe to insert. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+      parameters: S(
+        {
+          query: { type: 'string' },
+          kind: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle'] },
+          maxTriangles: { type: 'number' },
+        },
+        ['query'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
+        kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
+        maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
+        insertableOnly: true,
+        k: 8,
+      });
+      for (const h of hits) if (h.robloxAssetId !== null) (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
+      return hits.map((h) => ({ assetId: h.robloxAssetId, name: h.name, kind: h.kind, triangles: h.triangles, boundsStuds: h.boundsStuds, tags: h.tags }));
+    },
+  },
+  find_verified_asset: {
+    def: {
+      name: 'find_verified_asset',
+      description:
+        'Last resort when the library has nothing: search the Creator Store and return only ids that passed full verification (free, publicly visible, ZERO scripts, Mesh/Image only — never a Model, trusted creator, inside the triangle budget). Never invent an assetId; only ids returned here or by search_asset_library can be inserted.',
+      parameters: S({ query: { type: 'string' }, maxTriangles: { type: 'number' }, robloxOnly: { type: 'boolean' } }, ['query']),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const res = await findVerifiedAssets(ctx.env, String(a.query ?? ''), {
+        category: 'mesh',
+        robloxOnly: a.robloxOnly === true,
+        maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
+        want: 3,
+      });
+      for (const v of res.passed) (ctx.discoveredAssetIds ??= new Set()).add(v.assetId);
+      return {
+        note: res.search.note,
+        passed: res.passed.map((v) => ({ assetId: v.assetId, name: v.name, type: v.assetType, triangles: v.triangles })),
+        rejected: res.rejected.map((v) => ({ assetId: v.assetId, verdict: v.verdict, reasons: v.reasons })),
+      };
+    },
   },
   insert_asset: {
     def: {
       name: 'insert_asset',
       description:
-        'Insert a Creator Store asset by numeric assetId. ONLY use an assetId the user explicitly gave you — there is no asset search and guessed ids fail or insert something random. To create objects, build them from Parts with create_instances instead.',
+        'Insert an asset by numeric assetId. The id MUST have come from search_asset_library or find_verified_asset in this conversation — an id from anywhere else is refused, because guessed ids fail or insert something random, and unverified models can carry backdoor scripts. To create objects, build them from Parts with create_instances instead.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
-    run: (ctx, a) => op(ctx, { op: 'insert_asset', assetId: Number(a.assetId), parent: String(a.parent ?? 'game.Workspace') }, 45_000),
+    run: async (ctx, a) => {
+      const assetId = Number(a.assetId);
+      if (!ctx.discoveredAssetIds?.has(assetId)) {
+        const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance: 'user_supplied' });
+        if (!verdict.ok) {
+          return { error: `asset ${assetId} was not verified: ${verdict.verdict}. ${verdict.reasons.join(' ')}` };
+        }
+        ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      }
+      return op(ctx, { op: 'insert_asset', assetId, parent: String(a.parent ?? 'game.Workspace') }, 45_000);
+    },
+  },
+  generate_model: {
+    def: {
+      name: 'generate_model',
+      description:
+        "Generate a 3D model from text with Roblox's own GenerationService, then QC it automatically. Free, ~20s, 10/min. Use ONLY for what procedural geometry cannot do: organic silhouettes, curved vehicle bodywork, one bespoke hero prop. The result is session-scoped and does not survive save/publish. The returned QC verdict is authoritative — if it fails, fix or discard; success does not mean good.",
+      parameters: S(
+        {
+          prompt: { type: 'string' },
+          intent: { type: 'string', description: 'what it is meant to be, e.g. "tree" or "lamp post" — drives the scale check' },
+          maxTriangles: { type: 'number', description: 'default 6000' },
+          predefinedSchema: { type: 'string', enum: ['Body1', 'Car5'] },
+          parent: { type: 'string' },
+        },
+        ['prompt'],
+      ),
+    },
+    studio: true,
+    run: (ctx, a) =>
+      op(
+        ctx,
+        {
+          op: 'generate_model',
+          prompt: String(a.prompt ?? ''),
+          intent: a.intent ? String(a.intent) : undefined,
+          maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
+          predefinedSchema: a.predefinedSchema ? String(a.predefinedSchema) : undefined,
+          parent: String(a.parent ?? 'game.Workspace'),
+        },
+        120_000,
+      ),
+  },
+  inspect_model: {
+    def: {
+      name: 'inspect_model',
+      description:
+        'Measure an inserted or generated model against the QC gate: triangle count, bounding box, scale plausibility for its intent, pivot offset from its base, orientation, texturing, collision, anchoring, and whether it contains scripts. Returns per-check pass/fail plus concrete fixes.',
+      parameters: S({ path: { type: 'string' }, intent: { type: 'string' } }, ['path']),
+    },
+    studio: true,
+    run: (ctx, a) => op(ctx, { op: 'inspect_model', path: String(a.path ?? ''), intent: a.intent ? String(a.intent) : undefined }, 45_000),
   },
   search_docs: {
     def: {

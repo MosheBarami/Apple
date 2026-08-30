@@ -1,7 +1,8 @@
-// / — project dashboard: cards, create modal, delete flow with type-to-confirm.
+// / — the project shelf: create, open, delete.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { purgeProject } from '../lib/api';
@@ -11,6 +12,7 @@ import { SummonIllustration } from '../components/glyphs';
 import { useToast } from '../components/toast';
 
 async function fetchProjects(): Promise<ProjectRow[]> {
+  if (MOCK_MODE) return mockProjects;
   const { data, error } = await supabase
     .from('projects')
     .select('id, owner_id, name, description, place_name, place_id, memory_summary, created_at, updated_at, last_activity_at')
@@ -53,7 +55,11 @@ function ProjectMenu({ onDelete }: { onDelete: () => void }) {
           setOpen((v) => !v);
         }}
       >
-        ⋯
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="3" cy="8" r="1.4" />
+          <circle cx="8" cy="8" r="1.4" />
+          <circle cx="13" cy="8" r="1.4" />
+        </svg>
       </button>
       {open && (
         <div className="menu-pop" role="menu">
@@ -98,6 +104,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
     },
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['projects-nav'] });
       toast('Project summoned', 'success');
       navigate(`/projects/${row.id}`);
     },
@@ -120,6 +127,8 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             onChange={(e) => setName(e.target.value)}
             maxLength={80}
             required
+            name="projectName"
+            id="project-name"
             placeholder="Obby of the Ancients"
             autoFocus
           />
@@ -133,6 +142,8 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             maxLength={500}
+            name="projectDescription"
+            id="project-description"
             placeholder="A lava-parkour obby with checkpoints, coins and a shop."
           />
         </label>
@@ -164,6 +175,7 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['projects-nav'] });
       toast(`"${project.name}" deleted`, 'success');
       onClose();
     },
@@ -182,18 +194,13 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
         <span className="field-label">
           Type <strong className="mono">{project.name}</strong> to confirm
         </span>
-        <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={project.name} autoFocus />
+        <input value={typed} onChange={(e) => setTyped(e.target.value)} name="confirmProjectName" id="confirm-project-name" placeholder={project.name} autoFocus />
       </label>
       <div className="modal-actions">
         <button type="button" className="btn" onClick={onClose} disabled={del.isPending}>
           Cancel
         </button>
-        <button
-          type="button"
-          className="btn btn-danger"
-          disabled={!match || del.isPending}
-          onClick={() => del.mutate()}
-        >
+        <button type="button" className="btn btn-danger" disabled={!match || del.isPending} onClick={() => del.mutate()}>
           {del.isPending ? 'Deleting…' : 'Delete forever'}
         </button>
       </div>
@@ -214,7 +221,7 @@ export function DashboardPage() {
           <p className="page-sub">Each project is one Roblox experience Golem builds with you.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          + New project
+          <span aria-hidden="true">+</span> New project
         </button>
       </div>
 
@@ -232,8 +239,8 @@ export function DashboardPage() {
 
       {projects.isError && (
         <div className="empty-state" role="alert">
-          <h2>Couldn't load your projects</h2>
-          <p className="muted">{(projects.error as Error).message}</p>
+          <h2>Couldn&rsquo;t load your projects</h2>
+          <p>{(projects.error as Error).message}</p>
           <button type="button" className="btn" onClick={() => void projects.refetch()}>
             Try again
           </button>
@@ -244,9 +251,7 @@ export function DashboardPage() {
         <div className="empty-state">
           <SummonIllustration />
           <h2>Summon your first project</h2>
-          <p className="muted">
-            Describe the game you want — an obby, a tycoon, a story world — and Golem starts carving.
-          </p>
+          <p>Describe the game you want — an obby, a tycoon, a story world — and Golem starts carving.</p>
           <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
             Summon a project
           </button>
@@ -263,18 +268,40 @@ export function DashboardPage() {
               </div>
               <p className="project-card-desc">
                 {p.memory_summary
-                  ? truncate(p.memory_summary, 140)
+                  ? truncate(p.memory_summary, 150)
                   : p.description
-                    ? truncate(p.description, 140)
+                    ? truncate(p.description, 150)
                     : 'Nothing built yet — open it and start describing.'}
               </p>
               <div className="project-card-meta">
-                {p.place_name && <span className="pill pill-quiet">{p.place_name}</span>}
-                <span className="muted">updated {relativeTime(p.updated_at)}</span>
+                {p.place_name ? (
+                  <span className="pill pill-quiet">{p.place_name}</span>
+                ) : (
+                  <span className="pill pill-quiet">Not linked</span>
+                )}
+                <span style={{ marginLeft: 'auto' }}>updated {relativeTime(p.updated_at)}</span>
               </div>
             </Link>
           ))}
         </div>
+      )}
+
+      {projects.isSuccess && projects.data.length > 0 && (
+        <footer className="page-foot">
+          <span className="eyebrow">Getting Golem into Studio</span>
+          <p>
+            Golem builds through a Studio plugin. Install it once, open a project, and use{' '}
+            <strong>Connect</strong> to pair the two.
+          </p>
+          <div className="page-foot-links">
+            <a href="/plugin.rbxm" download>
+              Download the plugin (.rbxm)
+            </a>
+            <a href="/docs" target="_blank" rel="noopener noreferrer">
+              Read the docs <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </footer>
       )}
 
       {showCreate && <CreateProjectModal onClose={() => setShowCreate(false)} />}

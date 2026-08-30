@@ -49,8 +49,8 @@ export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames
       ),
     );
   }
-  if (mode === 'stone') {
-    return new Set(allNames.filter((n) => n !== 'take_screenshot'));
-  }
+  // Stone is the default builder, so it gets everything including the visual inspection tools:
+  // this is the mode that produces scenes, and therefore the mode that must look at them.
+  if (mode === 'stone') return new Set(allNames);
   return new Set(allNames);
 }

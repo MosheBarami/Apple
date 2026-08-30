@@ -1,0 +1,482 @@
+[
+  {
+    "id": "vis-01-lamppost",
+    "title": "Single decorative street lamp",
+    "category": "decorative-prop",
+    "difficulty": "small",
+    "timeBudgetSeconds": 90,
+    "prompt": "Make me a nice old-fashioned street lamp I can copy around my town.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "side", "eye"],
+    "heroObject": "the lantern head",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "silhouette": 1.8,
+      "edge_trim_finish": 1.6,
+      "material_coherence": 1.4,
+      "proportion_scale": 1.4,
+      "composition": 0.6,
+      "spatial_flow": 0.5,
+      "negative_space": 0.5
+    },
+    "expectations": {
+      "good": [
+        "Readable silhouette at a glance: base plinth, tapered post, arm or crossbar, lantern head with a cap — at least four distinguishable segments, not one stretched cylinder.",
+        "Lantern housing is built from more than a single part: a glass/neon panel inset inside a darker frame, with a finial or cap on top.",
+        "Post reads roughly 2.5x-3.5x a Roblox character in height (about 12-18 studs) so it is believable at human scale.",
+        "Metal parts use a metal-family material (Metal, DiamondPlate, CorrodedMetal, Slate) while the light element is Neon or Glass — material tells you what the thing is made of.",
+        "A PointLight or SpotLight is actually parented under the lantern, and its colour agrees with the Neon part's colour.",
+        "Small trim details under 2 studs exist: bolts, a collar where the arm meets the post, a base ring."
+      ],
+      "bad": [
+        "One grey cylinder with a yellow ball on top — the current Golem failure mode.",
+        "Lantern is a bare Neon sphere with no housing or frame.",
+        "Post is 40 studs tall or 3 studs tall — no human scale reference.",
+        "Everything is Plastic with SmoothPlastic-default colours.",
+        "No light source instance at all, so at night it is a dark pole.",
+        "Zero parts smaller than 2 studs — no trim, no bolts, no collar."
+      ]
+    },
+    "notes": "The whole scene IS the prop, so composition and spatial-flow weights are dialled down and silhouette/trim are dialled up."
+  },
+  {
+    "id": "vis-02-bedroom",
+    "title": "Single furnished room interior",
+    "category": "interior",
+    "difficulty": "medium",
+    "timeBudgetSeconds": 240,
+    "prompt": "Build a cozy bedroom for my roleplay game — bed, desk, wardrobe, a window, that kind of thing.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "top", "eye"],
+    "heroObject": "the bed",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "prop_layering": 1.8,
+      "surface_detail_density": 1.6,
+      "proportion_scale": 1.6,
+      "atmosphere_mood": 1.5,
+      "spatial_flow": 1.3,
+      "vertical_variation": 0.7
+    },
+    "expectations": {
+      "good": [
+        "Room has a floor, four walls and a ceiling with a real doorway and a real window opening — not a floating rug with furniture on it.",
+        "Walls carry a skirting board and either a cornice or a picture rail; the window has a frame and sill, the door has a jamb.",
+        "Bed is a stack of parts (frame, mattress, duvet, two pillows, headboard) with the mattress inset from the frame, not one brown block.",
+        "Furniture is at plausible human scale: bed about 6x10 studs, desk surface at about 3 studs off the floor, wardrobe about 9 studs tall.",
+        "Three layers of stuff: architecture (walls/floor), furniture (bed/desk/wardrobe), and clutter (a lamp, books, a mug, a rug, a poster).",
+        "Warm interior lighting: a PointLight in the room, Lighting.Ambient/OutdoorAmbient nudged warm, and window light justified by a bright exterior.",
+        "Wood-family materials on furniture, fabric-family on bed and rug, and a distinct wall material — at least four materials in the room."
+      ],
+      "bad": [
+        "Four flat walls of the same grey Plastic, one brown box for a bed, one brown box for a desk.",
+        "Window is a blue-tinted part flush with the wall with no frame, or there is no window at all despite the prompt.",
+        "No skirting or trim anywhere — every wall/floor junction is a raw 90-degree seam.",
+        "Furniture floats above the floor or clips through walls.",
+        "Zero clutter props: the room is architecture plus three boxes and reads empty.",
+        "Default lighting untouched, so the interior is lit exactly like the outdoors."
+      ]
+    },
+    "notes": "The bed is the focal point; graders should be able to name it from the hero shot."
+  },
+  {
+    "id": "vis-03-plaza",
+    "title": "Outdoor town plaza hub",
+    "category": "outdoor-hub",
+    "difficulty": "large",
+    "timeBudgetSeconds": 420,
+    "prompt": "I need a town square for the middle of my game where players hang out — make it look welcoming.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "top", "eye"],
+    "heroObject": "the centrepiece (fountain, clock tower or statue)",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "composition": 1.8,
+      "focal_point": 1.6,
+      "ground_treatment": 1.6,
+      "negative_space": 1.5,
+      "spatial_flow": 1.5,
+      "prop_layering": 1.3
+    },
+    "expectations": {
+      "good": [
+        "A single unmistakable centrepiece (fountain, clock tower, statue) that is taller than everything around it and sits at a deliberate point — centre or a third — not lost in the middle of a grid.",
+        "Ground is a paved surface with a pattern: an inlaid ring or radial banding around the centrepiece, a border course, and a different material for planting beds.",
+        "Perimeter is defined — benches, planters, low walls, lamp posts, or building facades — so the plaza reads as a room outdoors rather than a slab in a void.",
+        "Clear circulation: readable paths in and out, and open floor kept clear near the centrepiece so it has breathing room.",
+        "Height stepping: ground plane, bench/planter height (about 2-4 studs), lamp/tree height (about 12-18 studs), centrepiece tallest.",
+        "Trees or planting with more than one part per tree (trunk plus at least two canopy volumes at different heights)."
+      ],
+      "bad": [
+        "A flat square baseplate-coloured slab with objects scattered evenly across it in a grid.",
+        "Centrepiece is the same height as the benches, or there is no centrepiece at all.",
+        "Ground is one unmodified material and one colour edge to edge.",
+        "Props hug the outer edge with a dead empty middle, or the middle is so cluttered you cannot walk through.",
+        "Trees are a brown cylinder with a green sphere.",
+        "Everything at exactly the same height so the top-down and eye views look identical in information."
+      ]
+    },
+    "notes": "Highest-signal task for composition and negative space. If a scene fails here it will fail in front of a real player."
+  },
+  {
+    "id": "vis-04-obby-section",
+    "title": "Obby course section",
+    "category": "gameplay-course",
+    "difficulty": "medium",
+    "timeBudgetSeconds": 300,
+    "prompt": "Add the next section of my obby — about 8 jumps, medium difficulty, make it look like a lava level.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "side", "top", "eye"],
+    "heroObject": "the route itself (start pad to end pad)",
+    "landmarkExpected": false,
+    "dimensionEmphasis": {
+      "spatial_flow": 1.9,
+      "scene_cohesion": 1.7,
+      "vertical_variation": 1.6,
+      "palette_discipline": 1.4,
+      "technical_hygiene": 1.5,
+      "negative_space": 0.7
+    },
+    "expectations": {
+      "good": [
+        "Reads as a route: you can trace start to end in the top view, and gaps are jumpable (roughly 6-14 studs at the same height, shorter when climbing).",
+        "Vertical progression — the course climbs or descends, so the side view is a legible profile rather than a flat line of identical pads.",
+        "Lava theme carried through: hot emissive material (Neon/Glowing orange) for hazard surfaces, darkened charred rock (Basalt/Slate/CorrodedMetal) for safe platforms, so hazard vs safe is readable by colour alone.",
+        "Platform shapes vary — different sizes, a moving/rotating one, a narrow beam, a wider rest pad — instead of eight identical cubes.",
+        "Hazard surfaces are visually hot: emissive colour plus a light or particle, not just a red-tinted Plastic block.",
+        "Every platform anchored, checkpoints or a visible safe landing at the end."
+      ],
+      "bad": [
+        "Eight identical grey blocks in a straight line at one height.",
+        "Gaps that are not jumpable (over about 20 studs) or so small they are not jumps.",
+        "Lava is a flat red Plastic part with no glow and no light.",
+        "Safe and hazard surfaces are the same colour family so a player cannot read danger.",
+        "Platforms unanchored so the course collapses on play.",
+        "No sense of direction — platforms scattered with no traceable route."
+      ]
+    },
+    "notes": "Landmark is not required; the route itself is the subject. Focal point is scored on whether the route start/end reads, not on a statue."
+  },
+  {
+    "id": "vis-05-shop-stall",
+    "title": "Market vendor stall",
+    "category": "vendor-structure",
+    "difficulty": "medium",
+    "timeBudgetSeconds": 240,
+    "prompt": "Make a little market stall where an NPC sells potions.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "side", "eye"],
+    "heroObject": "the stall counter with its potion display",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "surface_detail_density": 1.8,
+      "prop_layering": 1.7,
+      "material_coherence": 1.5,
+      "edge_trim_finish": 1.5,
+      "silhouette": 1.3,
+      "negative_space": 0.6
+    },
+    "expectations": {
+      "good": [
+        "Stall structure has corner posts, a counter, a back shelf and a canopy or awning — a real three-dimensional structure with a front and a back.",
+        "Awning is striped or panelled (alternating colour parts), sagging or angled rather than a flat rectangle floating on top.",
+        "The counter is dressed: potion bottles of varying heights, a crate, a sign, a till, a lantern. At least eight small props under 2 studs.",
+        "Potions read as potions: small Glass/Neon bodies with a darker cork, and more than one colour so they read as different items.",
+        "Wood posts and counter, fabric canopy, glass bottles, stone or dirt ground under the stall — materials tell the story.",
+        "Human scale: counter about 3.5 studs high, canopy clearing a character's head at about 8-10 studs."
+      ],
+      "bad": [
+        "A table-shaped block with a flat rectangle floating above it as the roof.",
+        "Awning is one solid colour with no stripe, panel or fold.",
+        "Bottles are identical cylinders in one colour, or absent entirely despite 'sells potions'.",
+        "Whole stall is one wood colour with no trim, no counter lip, no post caps.",
+        "Fewer than three small props — the counter is bare.",
+        "Canopy at 4 studs so a character could not stand under it."
+      ]
+    },
+    "notes": "Highest-signal task for surface-detail density and prop layering: the shape is easy, the dressing is where scenes fail."
+  },
+  {
+    "id": "vis-06-spawn-lobby",
+    "title": "Spawn / lobby area",
+    "category": "spawn-lobby",
+    "difficulty": "medium",
+    "timeBudgetSeconds": 300,
+    "prompt": "Build the spawn area for my game — somewhere players land when they join and can see where to go.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "top", "eye"],
+    "heroObject": "the spawn dais and the exit it points to",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "spatial_flow": 1.8,
+      "composition": 1.5,
+      "ground_treatment": 1.5,
+      "focal_point": 1.4,
+      "lighting_setup": 1.3,
+      "atmosphere_mood": 1.2
+    },
+    "expectations": {
+      "good": [
+        "SpawnLocation(s) are visually integrated — a raised dais, a pad with a border ring, or a marked circle — not a naked blue-and-white default part sitting on the floor.",
+        "The exit is legible from the spawn point: an arch, a gate, a lit path, or a sightline that tells you where to walk.",
+        "Framed space: walls, pillars, or a canopy give the area edges, so a player who just joined understands the room.",
+        "Ground reads as designed floor: an inlay, a border, a change of material at the threshold.",
+        "Deliberate lighting — the exit or the dais is brighter than the surrounds so the eye is led.",
+        "Some welcome dressing: banners, planters, a sign, seating — at least three prop types beyond the architecture."
+      ],
+      "bad": [
+        "Default SpawnLocation dropped on a bare baseplate with nothing around it.",
+        "No indication of where to go — a symmetric empty box with no exit emphasis.",
+        "Ground is the unmodified baseplate, still showing its default studs/colour.",
+        "All-uniform lighting so nothing draws the eye.",
+        "Walls with no openings, or openings with no frames.",
+        "Zero dressing props."
+      ]
+    },
+    "notes": "The 'ground is still an unmodified baseplate' hard fail is most likely to fire here; that is intentional."
+  },
+  {
+    "id": "vis-07-forest-clearing",
+    "title": "Natural landscape vignette",
+    "category": "natural-landscape",
+    "difficulty": "large",
+    "timeBudgetSeconds": 420,
+    "prompt": "Make a peaceful forest clearing with a little stream running through it.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "top", "eye"],
+    "heroObject": "the stream through the clearing",
+    "landmarkExpected": false,
+    "dimensionEmphasis": {
+      "material_variety": 1.7,
+      "palette_discipline": 1.6,
+      "atmosphere_mood": 1.7,
+      "vertical_variation": 1.5,
+      "negative_space": 1.4,
+      "value_structure": 1.4,
+      "edge_trim_finish": 0.7
+    },
+    "expectations": {
+      "good": [
+        "Ground is irregular: sculpted terrain or varied parts with grass, dirt patches, rock outcrops and a bank down to the stream — never a flat green rectangle.",
+        "Stream has banks, a bed under the water, stones in or beside it, and a water-family material (Water/Glass/Ice) with transparency, not a flat blue Plastic ribbon.",
+        "Trees are built: trunk, at least two branches or a tapered trunk, and three or more canopy volumes at different heights and slightly different greens.",
+        "Green palette is disciplined — three to five related greens plus browns, not six unrelated saturated hues.",
+        "Value structure reads: dark trunks and shadowed undergrowth against lighter canopy and open clearing floor.",
+        "Atmosphere set: Lighting ClockTime/Brightness tuned, Atmosphere or FogEnd used, and light colour warmed so the clearing feels like a time of day.",
+        "The clearing itself is kept open — negative space in the middle is doing work, with density around the edges."
+      ],
+      "bad": [
+        "Flat green rectangle for the ground with a flat blue rectangle laid on top as the stream.",
+        "Trees are one cylinder plus one sphere, all identical, evenly spaced.",
+        "Grass green is the default bright Roblox green, unrelated to the canopy green.",
+        "No terrain height variation whatsoever — the side view is a straight line.",
+        "Default Lighting: noon-white, no fog, no atmosphere, so it looks like a diagram.",
+        "Trees fill the clearing evenly so there is no clearing."
+      ]
+    },
+    "notes": "Nature scenes fail on palette and value first; a hero tree or rock is welcome but not required."
+  },
+  {
+    "id": "vis-08-dungeon-corridor",
+    "title": "Dungeon corridor",
+    "category": "dungeon-interior",
+    "difficulty": "medium",
+    "timeBudgetSeconds": 300,
+    "prompt": "Give me a dark stone dungeon hallway with torches, leading to a locked door.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "side", "eye"],
+    "heroObject": "the locked door at the end of the corridor",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "lighting_setup": 1.9,
+      "atmosphere_mood": 1.8,
+      "value_structure": 1.7,
+      "material_coherence": 1.4,
+      "focal_point": 1.3,
+      "negative_space": 0.6
+    },
+    "expectations": {
+      "good": [
+        "Corridor has floor, two walls, and a ceiling or arch, with the door as the terminating focal element at the end of the sightline.",
+        "Stone is articulated: separate block courses, a differently-sized base course, pilasters or ribs at intervals — not two flat wall slabs.",
+        "Torches are real light sources: a bracket, a Neon flame, a PointLight with warm colour and a sensible range, spaced so pools of light and dark alternate along the corridor.",
+        "Lighting is actually dark — Ambient/OutdoorAmbient lowered, Brightness reduced, so torchlight reads. The eye view should be dim.",
+        "Value structure: bright torch pools, mid-tone lit walls, near-black recesses. Not one flat exposure.",
+        "The locked door is distinct from the walls — heavier material, metal banding, a lock/handle prop, and it is the brightest or most contrasted thing at the end."
+      ],
+      "bad": [
+        "Two flat grey walls and a flat floor, evenly lit at default brightness — a 'dungeon' at noon.",
+        "Torches are orange blocks with no PointLight, so nothing is actually lit.",
+        "Lighting properties untouched, so the corridor is as bright as the outdoors.",
+        "Door is the same grey block as the wall with no banding, lock or trim.",
+        "No ceiling, so the corridor reads as an outdoor trench.",
+        "Uniform texture across every surface with no course lines, ribs or wear."
+      ]
+    },
+    "notes": "Best task for the default-lighting hard fail. A corridor that is bright is wrong no matter how many parts exist."
+  },
+  {
+    "id": "vis-09-arena",
+    "title": "Battle arena / stadium",
+    "category": "arena",
+    "difficulty": "large",
+    "timeBudgetSeconds": 480,
+    "prompt": "Build a battle arena for PvP — fighting floor in the middle with seating around it.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "top", "eye"],
+    "heroObject": "the fighting floor at the centre of the bowl",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "composition": 1.7,
+      "vertical_variation": 1.6,
+      "proportion_scale": 1.5,
+      "silhouette": 1.4,
+      "scene_cohesion": 1.4,
+      "ground_treatment": 1.3
+    },
+    "expectations": {
+      "good": [
+        "Clear three-zone read: fighting floor, a barrier/moat separating it from the stands, and tiered seating that steps upward.",
+        "Seating is genuinely tiered — at least four rows at increasing height and depth, with an aisle or two cutting through them.",
+        "Fighting floor is marked: a centre circle, boundary line, or material change so the combat area is legible from the eye view.",
+        "Scale is stadium-scale relative to a character: barrier about 5-8 studs, top of the stands 25+ studs, floor wide enough to fight in (40+ studs).",
+        "Structural language repeats — pillars, arches or buttresses at a consistent rhythm around the bowl, giving a readable silhouette from outside.",
+        "Something above the rim: banners, floodlights, a scoreboard, or a partial roof, so the top view is not just a flat ring."
+      ],
+      "bad": [
+        "A flat circle with a ring of blocks around it at one height.",
+        "Seating is a single sloped ramp with no individual rows.",
+        "No barrier between fighters and spectators.",
+        "Arena floor the same material and colour as the seating and the surrounding ground.",
+        "Pillars placed at irregular arbitrary intervals with no rhythm.",
+        "Everything under 8 studs tall so the top view and side view carry the same information."
+      ]
+    },
+    "notes": "Tests whether the builder can hold a large composition together; scale errors show up brutally in the eye view."
+  },
+  {
+    "id": "vis-10-hero-vehicle",
+    "title": "Large hero prop — pirate ship",
+    "category": "hero-prop",
+    "difficulty": "large",
+    "timeBudgetSeconds": 480,
+    "prompt": "Build a pirate ship for my island map — it doesn't have to drive, it's a set piece.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "side", "top"],
+    "heroObject": "the ship's hull and mast silhouette",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "silhouette": 1.9,
+      "proportion_scale": 1.7,
+      "surface_detail_density": 1.6,
+      "material_coherence": 1.5,
+      "edge_trim_finish": 1.4,
+      "spatial_flow": 0.6,
+      "negative_space": 0.6
+    },
+    "expectations": {
+      "good": [
+        "Silhouette is unmistakably a ship from the side view: a hull that tapers at bow and stern, a raised stern castle, masts of differing heights, a bowsprit.",
+        "Hull is planked or ribbed — repeated horizontal strakes and vertical ribs — not one scaled box or wedge.",
+        "Rigging present: at least masts, a crossyard per mast, and sails as thin angled parts, plus some line/rope parts.",
+        "Deck is dressed: railings with individual balusters, hatches, barrels, crates, a wheel, a lantern. Ten or more small props.",
+        "Scale believable against a character: deck railing about 3.5 studs, main mast 30-50 studs, hull long enough to walk (50+ studs).",
+        "Materials tell material: Wood/WoodPlanks hull and deck, Fabric sails, Metal fittings, rope in a distinct brown."
+      ],
+      "bad": [
+        "A brown wedge with two grey cylinders sticking out of it.",
+        "Hull is a single stretched part with no planking, ribs or curvature suggestion.",
+        "Sails are opaque flat rectangles in default white, or absent.",
+        "Deck is empty — no railings, no barrels, no wheel.",
+        "Masts identical in height and thickness, spaced evenly.",
+        "Whole ship one flat brown colour in one material."
+      ]
+    },
+    "notes": "Silhouette-dominant. If the top and side views do not read as a ship, no amount of part count rescues it."
+  },
+  {
+    "id": "vis-11-world-signage",
+    "title": "In-world signage and wayfinding",
+    "category": "world-signage",
+    "difficulty": "small",
+    "timeBudgetSeconds": 180,
+    "prompt": "Put up a big sign at the entrance to my shop area that says SHOPS, plus arrows pointing to the different stores.",
+    "subjectPath": "game.Workspace",
+    "views": ["hero", "front", "side", "eye"],
+    "heroObject": "the main SHOPS sign board",
+    "landmarkExpected": true,
+    "dimensionEmphasis": {
+      "silhouette": 1.6,
+      "edge_trim_finish": 1.7,
+      "material_coherence": 1.4,
+      "palette_discipline": 1.5,
+      "lighting_setup": 1.3,
+      "spatial_flow": 0.7
+    },
+    "expectations": {
+      "good": [
+        "Sign has a structure: posts or an arch frame, a backing board with a border/bezel, and the lettering surface inset into it.",
+        "Text is legible in the eye view at player distance — large enough, high contrast against its backing, and facing the approach.",
+        "Arrow signs are shaped like arrows (a pointed plate or a distinct arrow head), not rectangles with the word 'left' on them.",
+        "Signage is lit or emissive so it reads at any time of day — a SurfaceLight, Neon backing, or a spotlight aimed at the board.",
+        "Consistent visual language: the main sign and the arrow signs share materials, border treatment and palette so they read as one system.",
+        "Mounted at a sensible height — board centre roughly 8-14 studs, arms clear of a character's head."
+      ],
+      "bad": [
+        "A floating flat part with a SurfaceGui and nothing else — no frame, no post, no bezel.",
+        "Text tiny or low-contrast so it is unreadable in the eye view.",
+        "Arrows are plain rectangles or are missing entirely despite the prompt asking for them.",
+        "Sign and arrows use unrelated colours and materials, so they do not read as a set.",
+        "Sign sunk into the ground or floating 30 studs in the air.",
+        "No emissive or lit treatment, so at dusk the signage disappears."
+      ]
+    },
+    "notes": "Prompt fidelity is genuinely load-bearing here (the word SHOPS, the arrows) — but it is still capped at its global weight so a legible-but-ugly sign cannot pass."
+  },
+  {
+    "id": "vis-12-polish-ugly-scene",
+    "title": "Polish an existing ugly scene",
+    "category": "polish-pass",
+    "difficulty": "large",
+    "timeBudgetSeconds": 420,
+    "prompt": "This looks really bad. Can you make my cafe look good? Don't move stuff around, just make it look nicer.",
+    "subjectPath": "game.Workspace.Cafe",
+    "views": ["hero", "front", "top", "eye"],
+    "heroObject": "the cafe counter",
+    "landmarkExpected": false,
+    "seedScene": "fixtures/seed-ugly-cafe.md",
+    "forbidGeometryMove": true,
+    "dimensionEmphasis": {
+      "ground_treatment": 1.8,
+      "material_variety": 1.8,
+      "palette_discipline": 1.7,
+      "lighting_setup": 1.7,
+      "edge_trim_finish": 1.6,
+      "surface_detail_density": 1.5,
+      "composition": 0.6,
+      "spatial_flow": 0.6,
+      "prompt_fidelity": 0.5
+    },
+    "expectations": {
+      "good": [
+        "Same footprint and same object positions as the seed scene — the improvement is finish, not a rebuild.",
+        "Every flat grey Plastic surface has been reassigned a purposeful material: WoodPlanks floor, Brick or Concrete walls, Metal fittings, Glass windows.",
+        "A coherent palette has been imposed: one dominant neutral, one wood/warm mid tone, one accent colour used sparingly on three or four elements.",
+        "Trim added at junctions: skirting where walls meet floor, a counter lip, window frames, a cornice or fascia — the single biggest cheap win.",
+        "Lighting reworked: warm interior PointLights, Ambient/OutdoorAmbient adjusted, ClockTime moved off harsh noon.",
+        "Small props added on existing surfaces: cups, a menu board, plants, napkin holders — dressing that does not move the furniture.",
+        "Existing box furniture broken up with at least one added part each (a table gets a rim, chairs get a back-rail, the counter gets a front panel)."
+      ],
+      "bad": [
+        "Objects rearranged or replaced instead of finished — violates the explicit 'don't move stuff around'.",
+        "Colours changed but every part still Plastic — recolouring is not polishing.",
+        "One material swapped globally so the whole cafe is now uniformly Brick.",
+        "Saturation cranked: six unrelated bright hues, worse than the grey it replaced.",
+        "Lighting untouched, so the same flat noon exposure survives the pass.",
+        "No trim added anywhere; every junction is still a raw seam.",
+        "Nothing added under 2 studs, so surfaces are still bare."
+      ]
+    },
+    "notes": "The purest test of the thesis: object existence is unchanged between before and after, so any score delta is entirely visual quality. Prompt fidelity is de-emphasised because it is trivially satisfied by the seed scene."
+  }
+]

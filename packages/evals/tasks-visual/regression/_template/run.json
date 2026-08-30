@@ -1,0 +1,10 @@
+{
+  "runId": "YYYY-MM-DD-label",
+  "startedAt": "1970-01-01T00:00:00.000Z",
+  "model": "clay",
+  "gitCommit": "0000000",
+  "judgeModel": "iris",
+  "rubricVersion": "1.0.0",
+  "gate": { "passThreshold": 2.6, "hardFailCap": 1.4 },
+  "notes": "What change is under test in this run. Name the change, not the date."
+}

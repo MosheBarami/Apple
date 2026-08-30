@@ -1,0 +1,299 @@
+{
+ "boundsSize": [
+  123,
+  48.5,
+  123
+ ],
+ "lighting": {
+  "clockTime": 14.5,
+  "fogEnd": 100000,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ],
+  "geographicLatitude": 0,
+  "ambient": [
+   70,
+   70,
+   70
+  ],
+  "outdoorAmbient": [
+   70,
+   70,
+   70
+  ],
+  "brightness": 3,
+  "lightInstances": 5,
+  "exposureCompensation": 0
+ },
+ "views": [
+  {
+   "name": "hero",
+   "partsConsidered": 727,
+   "distinctColours": 15,
+   "materials": [
+    {
+     "parts": 407,
+     "material": "Granite"
+    },
+    {
+     "parts": 155,
+     "material": "Metal"
+    },
+    {
+     "parts": 102,
+     "material": "Sandstone"
+    },
+    {
+     "parts": 22,
+     "material": "Wood"
+    },
+    {
+     "parts": 17,
+     "material": "Neon"
+    },
+    {
+     "parts": 12,
+     "material": "Grass"
+    },
+    {
+     "parts": 4,
+     "material": "Concrete"
+    },
+    {
+     "parts": 4,
+     "material": "Ground"
+    },
+    {
+     "parts": 1,
+     "material": "Cobblestone"
+    },
+    {
+     "parts": 1,
+     "material": "SmoothPlastic"
+    }
+   ],
+   "partsOffCamera": 2,
+   "height": 180,
+   "subjectCoverage": 0.26,
+   "partsVisible": 725,
+   "width": 288
+  },
+  {
+   "name": "front",
+   "partsConsidered": 727,
+   "distinctColours": 15,
+   "materials": [
+    {
+     "parts": 407,
+     "material": "Granite"
+    },
+    {
+     "parts": 155,
+     "material": "Metal"
+    },
+    {
+     "parts": 102,
+     "material": "Sandstone"
+    },
+    {
+     "parts": 22,
+     "material": "Wood"
+    },
+    {
+     "parts": 17,
+     "material": "Neon"
+    },
+    {
+     "parts": 12,
+     "material": "Grass"
+    },
+    {
+     "parts": 4,
+     "material": "Concrete"
+    },
+    {
+     "parts": 4,
+     "material": "Ground"
+    },
+    {
+     "parts": 1,
+     "material": "Cobblestone"
+    },
+    {
+     "parts": 1,
+     "material": "SmoothPlastic"
+    }
+   ],
+   "partsOffCamera": 2,
+   "height": 180,
+   "subjectCoverage": 0.33,
+   "partsVisible": 725,
+   "width": 288
+  },
+  {
+   "name": "side",
+   "partsConsidered": 727,
+   "distinctColours": 15,
+   "materials": [
+    {
+     "parts": 407,
+     "material": "Granite"
+    },
+    {
+     "parts": 155,
+     "material": "Metal"
+    },
+    {
+     "parts": 102,
+     "material": "Sandstone"
+    },
+    {
+     "parts": 22,
+     "material": "Wood"
+    },
+    {
+     "parts": 17,
+     "material": "Neon"
+    },
+    {
+     "parts": 12,
+     "material": "Grass"
+    },
+    {
+     "parts": 4,
+     "material": "Concrete"
+    },
+    {
+     "parts": 4,
+     "material": "Ground"
+    },
+    {
+     "parts": 1,
+     "material": "Cobblestone"
+    },
+    {
+     "parts": 1,
+     "material": "SmoothPlastic"
+    }
+   ],
+   "partsOffCamera": 2,
+   "height": 180,
+   "subjectCoverage": 0.33,
+   "partsVisible": 725,
+   "width": 288
+  },
+  {
+   "name": "top",
+   "partsConsidered": 727,
+   "distinctColours": 17,
+   "materials": [
+    {
+     "parts": 407,
+     "material": "Granite"
+    },
+    {
+     "parts": 155,
+     "material": "Metal"
+    },
+    {
+     "parts": 102,
+     "material": "Sandstone"
+    },
+    {
+     "parts": 22,
+     "material": "Wood"
+    },
+    {
+     "parts": 17,
+     "material": "Neon"
+    },
+    {
+     "parts": 12,
+     "material": "Grass"
+    },
+    {
+     "parts": 4,
+     "material": "Ground"
+    },
+    {
+     "parts": 4,
+     "material": "Concrete"
+    },
+    {
+     "parts": 2,
+     "material": "Plastic"
+    },
+    {
+     "parts": 1,
+     "material": "SmoothPlastic"
+    },
+    {
+     "parts": 1,
+     "material": "Cobblestone"
+    }
+   ],
+   "partsOffCamera": 0,
+   "height": 180,
+   "subjectCoverage": 1,
+   "partsVisible": 727,
+   "width": 288
+  },
+  {
+   "name": "eye",
+   "partsConsidered": 727,
+   "distinctColours": 15,
+   "materials": [
+    {
+     "parts": 407,
+     "material": "Granite"
+    },
+    {
+     "parts": 155,
+     "material": "Metal"
+    },
+    {
+     "parts": 102,
+     "material": "Sandstone"
+    },
+    {
+     "parts": 22,
+     "material": "Wood"
+    },
+    {
+     "parts": 17,
+     "material": "Neon"
+    },
+    {
+     "parts": 12,
+     "material": "Grass"
+    },
+    {
+     "parts": 4,
+     "material": "Concrete"
+    },
+    {
+     "parts": 4,
+     "material": "Ground"
+    },
+    {
+     "parts": 1,
+     "material": "Cobblestone"
+    },
+    {
+     "parts": 1,
+     "material": "SmoothPlastic"
+    }
+   ],
+   "partsOffCamera": 2,
+   "height": 180,
+   "subjectCoverage": 0.05,
+   "partsVisible": 725,
+   "width": 288
+  }
+ ]
+}

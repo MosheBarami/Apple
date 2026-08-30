@@ -1,0 +1,24 @@
+{
+  "name": "GolemPlaza (baseline — the scene the owner rejected)",
+  "capturedFrom": "live Roblox Studio edit session, placeId 123864611037141",
+  "lighting": { "brightness": 3.0, "clockTime": 14.5, "ambient": [70, 70, 70], "hasAtmosphere": true },
+  "parts": [
+    { "name": "BasePlatform",   "material": "Slate",   "size": [40, 1, 40],   "pos": [0, 0.5, 0],     "color": [163, 162, 165], "transparency": 0 },
+    { "name": "LampPost1",      "material": "Plastic", "size": [1, 10, 1],    "pos": [20, 5.5, 20],   "color": [99, 95, 98],    "transparency": 0 },
+    { "name": "LampPost2",      "material": "Plastic", "size": [1, 10, 1],    "pos": [-20, 5.5, 20],  "color": [99, 95, 98],    "transparency": 0 },
+    { "name": "LampPost3",      "material": "Plastic", "size": [1, 10, 1],    "pos": [20, 5.5, -20],  "color": [99, 95, 98],    "transparency": 0 },
+    { "name": "LampPost4",      "material": "Plastic", "size": [1, 10, 1],    "pos": [-20, 5.5, -20], "color": [99, 95, 98],    "transparency": 0 },
+    { "name": "LampTop1",       "material": "Neon",    "size": [1, 1, 1],     "pos": [20, 11, 20],    "color": [255, 170, 0],   "transparency": 0 },
+    { "name": "LampTop2",       "material": "Neon",    "size": [1, 1, 1],     "pos": [-20, 11, 20],   "color": [255, 170, 0],   "transparency": 0 },
+    { "name": "LampTop3",       "material": "Neon",    "size": [1, 1, 1],     "pos": [20, 11, -20],   "color": [255, 170, 0],   "transparency": 0 },
+    { "name": "LampTop4",       "material": "Neon",    "size": [1, 1, 1],     "pos": [-20, 11, -20],  "color": [255, 170, 0],   "transparency": 0 },
+    { "name": "SignBoard",      "material": "Plastic", "size": [10, 5, 0.2],  "pos": [0, 5, -19.9],   "color": [105, 64, 40],   "transparency": 0 },
+    { "name": "Pedestal",       "material": "Slate",   "size": [4, 2, 4],     "pos": [0, 2, 0],       "color": [60, 60, 60],    "transparency": 0 },
+    { "name": "TrophyBase",     "material": "Metal",   "size": [2, 0.5, 2],   "pos": [0, 3.25, 0],    "color": [255, 214, 0],   "transparency": 0 },
+    { "name": "TrophyColumn",   "material": "Metal",   "size": [1, 2, 1],     "pos": [0, 4.5, 0],     "color": [255, 214, 0],   "transparency": 0 },
+    { "name": "TrophyTop",      "material": "Metal",   "size": [1, 1, 1],     "pos": [0, 5.5, 0],     "color": [255, 214, 0],   "transparency": 0 },
+    { "name": "GlmMarker",      "material": "Neon",    "size": [2, 2, 2],     "pos": [0, 9.5, 0],     "color": [0, 127, 255],   "transparency": 0 },
+    { "name": "SpawnLocation",  "material": "Plastic", "size": [12, 1, 12],   "pos": [0, 0.5, 0],     "color": [163, 162, 165], "transparency": 0 },
+    { "name": "Baseplate",      "material": "Plastic", "size": [2048, 16, 2048], "pos": [0, -8, 0],   "color": [91, 91, 91],    "transparency": 0 }
+  ]
+}

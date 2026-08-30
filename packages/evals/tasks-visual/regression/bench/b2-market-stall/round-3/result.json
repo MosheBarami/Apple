@@ -1,0 +1,66 @@
+{
+ "task": "b2-market-stall",
+ "round": 3,
+ "runMs": 3180,
+ "metrics": {
+  "parts": 1,
+  "small": 0,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Plastic",
+    "parts": 1
+   }
+  ],
+  "colours": 1,
+  "lights": 0,
+  "heightSpan": 1,
+  "brightness": 3,
+  "clockTime": 14.5,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect"
+  ]
+ },
+ "boundsSize": [
+  12,
+  1,
+  12
+ ],
+ "score": 1,
+ "passed": false,
+ "unavailable": false,
+ "summary": "The renders show a flat grey Plastic slab and nothing else. The medieval market stall — canopy, counter, crates, goods — is entirely off-camera in all three views, so there is no object to evaluate for silhouette, proportion or ornament. What is visible is programmer-art: one part, one material, one colour, no detail. This is a 1, not a 7.",
+ "hardFails": [
+  "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+  "over 90% of parts are default Plastic — no material pass was done"
+ ],
+ "defects": [
+  {
+   "dimension": "composition",
+   "fix": "Move the stall assembly to the centre of the 12x12 base (around coordinate 6,0,6) so it sits within the hero camera frustum; currently 2 of 3 parts are off-camera in every view.",
+   "observed": "In all three views (hero, front, side) the only visible object is a flat grey slab — a single Plastic part covering 35-40% of the frame. The stall itself, the canopy, counter, crates and goods are all in the 2 parts flagged off-camera. Thes",
+   "severity": "blocking",
+   "view": "hero, front, side"
+  },
+  {
+   "dimension": "materials",
+   "fix": "Assign WoodPlanks to the stall frame and counter, Fabric to the canopy stripes, and Wood to the crates — three distinct materials minimum.",
+   "observed": "One material (Plastic), one colour, across the whole submission. There is no material language at all — no wood grain on the stall frame, no fabric on the canopy, no variation between counter and crates.",
+   "severity": "blocking",
+   "view": "hero, front, side"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Build the actual stall: 4 corner posts ~6 studs tall, an A-frame or flat canopy with red/white striped Fabric panels overhanging the counter by ~1.5 studs, a counter top at ~3 studs height, and 2-3 crates with produce (small coloured Mesh/S",
+   "observed": "Zero detail density. The visible part is a featureless wedge/slab with no trim, no edge treatment, no ornament. Nothing in the images corresponds to a striped canopy, counter, crates or goods — the entire requested object list is invisible.",
+   "severity": "blocking",
+   "view": "front, side"
+  }
+ ],
+ "neurons": 41
+}

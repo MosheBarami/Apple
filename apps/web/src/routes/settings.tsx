@@ -1,13 +1,15 @@
-// /settings — profile, appearance, privacy (training opt-in), danger-zone note.
+// /settings — profile, appearance, privacy, danger-zone signpost.
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { supabase, type ProfileRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { useTheme } from '../lib/theme';
 
 async function fetchProfile(userId: string): Promise<ProfileRow | null> {
+  if (MOCK_MODE) return mockProfile;
   const { data, error } = await supabase
     .from('profiles')
     .select('id, display_name, plan, is_admin, training_opt_in')
@@ -59,7 +61,7 @@ export function SettingsPage() {
     },
     onSuccess: (optIn) => {
       void qc.invalidateQueries({ queryKey: ['profile', userId] });
-      toast(optIn ? 'Thanks for contributing!' : 'Opted out — your work stays fully private.', 'success');
+      toast(optIn ? 'Thanks for contributing.' : 'Opted out — your work stays fully private.', 'success');
     },
     onError: (e: Error) => toast(`Couldn't update: ${e.message}`, 'error'),
   });
@@ -80,7 +82,7 @@ export function SettingsPage() {
 
       {profile.isError && (
         <div className="card" role="alert">
-          <p className="form-error">Couldn't load your profile: {(profile.error as Error).message}</p>
+          <p className="form-error">Couldn&rsquo;t load your profile: {(profile.error as Error).message}</p>
           <button type="button" className="btn btn-sm" onClick={() => void profile.refetch()}>
             Retry
           </button>
@@ -88,7 +90,7 @@ export function SettingsPage() {
       )}
 
       <section className="card settings-card">
-        <h3>Profile</h3>
+        <h2>Profile</h2>
         <form onSubmit={submitName} className="settings-inline">
           <label className="field settings-grow">
             <span className="field-label">Display name</span>
@@ -96,6 +98,8 @@ export function SettingsPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={60}
+              name="displayName"
+              id="display-name"
               placeholder="How Golem should address you"
               disabled={profile.isPending}
             />
@@ -107,7 +111,7 @@ export function SettingsPage() {
       </section>
 
       <section className="card settings-card">
-        <h3>Appearance</h3>
+        <h2>Appearance</h2>
         <div className="theme-toggle" role="radiogroup" aria-label="Theme">
           <button
             type="button"
@@ -116,7 +120,7 @@ export function SettingsPage() {
             className={`theme-btn${theme === 'dark' ? ' theme-btn-active' : ''}`}
             onClick={() => setTheme('dark')}
           >
-            🌑 Dark
+            Night quarry
           </button>
           <button
             type="button"
@@ -125,36 +129,39 @@ export function SettingsPage() {
             className={`theme-btn${theme === 'light' ? ' theme-btn-active' : ''}`}
             onClick={() => setTheme('light')}
           >
-            ☀️ Light
+            Quarry daylight
           </button>
         </div>
-        <p className="muted">Dark is the golem's natural habitat, but light works too.</p>
+        <p className="muted">Dark is the golem&rsquo;s natural habitat, but daylight works too.</p>
       </section>
 
       <section className="card settings-card">
-        <h3>Privacy</h3>
+        <h2>Privacy</h2>
         <p>
           <strong>Your projects are private. Golem never trains on your work.</strong>
         </p>
         <label className="switch-row">
           <input
             type="checkbox"
+            name="trainingOptIn"
+            id="training-opt-in"
             checked={profile.data?.training_opt_in ?? false}
             onChange={(e) => setOptIn.mutate(e.target.checked)}
             disabled={profile.isPending || setOptIn.isPending}
           />
           <span>
-            Contribute anonymized snippets to improve Golem
+            Contribute anonymised snippets to improve Golem
             <span className="field-hint"> — optional, off by default, revocable any time.</span>
           </span>
         </label>
       </section>
 
       <section className="card settings-card danger-card">
-        <h3>Danger zone</h3>
+        <h2>Danger zone</h2>
         <p className="muted">
-          Deleting a project removes its chat history, checkpoints and Studio pairing forever. You'll find the delete
-          action in the <Link to="/">project card's ⋯ menu</Link> — it asks you to type the project's name to confirm.
+          Deleting a project removes its chat history, checkpoints and Studio pairing forever. The delete action lives
+          in each <Link to="/">project card&rsquo;s menu</Link> — it asks you to type the project&rsquo;s name to
+          confirm.
         </p>
       </section>
     </div>

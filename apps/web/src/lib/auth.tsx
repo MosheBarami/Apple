@@ -2,6 +2,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
+import { Forge } from '../components/loading';
+import { MOCK_MODE } from './mock';
 import { supabase } from './supabase';
 
 interface AuthState {
@@ -17,6 +19,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (MOCK_MODE) {
+      // Design-review mode: pretend a session exists so the signed-in surfaces
+      // can be reviewed. Never reachable in a production build.
+      setSession({ user: { id: 'mock-user', email: 'builder@example.com' } } as unknown as Session);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     supabase.auth
       .getSession()
@@ -53,9 +62,8 @@ export function useAuth(): AuthState {
 /** Full-screen splash while the initial session loads. */
 function AuthSplash() {
   return (
-    <div className="auth-splash" role="status" aria-live="polite">
-      <div className="rune-spinner" aria-hidden="true" />
-      <p>Waking the golem…</p>
+    <div className="auth-splash">
+      <Forge kind="recalling" label="Waking the golem" compact />
     </div>
   );
 }

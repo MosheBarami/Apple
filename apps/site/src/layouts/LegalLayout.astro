@@ -11,12 +11,12 @@ const { title, description, heading, updated } = Astro.props;
 ---
 
 <Base title={title} description={description}>
-  <section class="section">
-    <div class="wrap legal-wrap">
+  <section class="section legal">
+    <div class="wrap legal__wrap">
       <p class="eyebrow">Legal</p>
-      <h1>{heading}</h1>
-      <p class="legal-updated">Last updated: {updated}</p>
-      <div class="legal-prose">
+      <h1 class="carved">{heading}</h1>
+      <p class="legal__updated mono">Last updated: {updated}</p>
+      <div class="prose">
         <slot />
       </div>
     </div>
@@ -24,60 +24,75 @@ const { title, description, heading, updated } = Astro.props;
 </Base>
 
 <style>
-  .legal-wrap {
-    max-width: 760px;
+  .legal__wrap {
+    width: min(760px, calc(100% - var(--gutter) * 2));
+    margin-inline: auto;
   }
 
-  .legal-updated {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    color: var(--muted);
+  .legal h1 {
+    font-size: clamp(2.1rem, 5vw, 3.2rem);
+  }
+
+  .legal__updated {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     margin-bottom: 2.5rem;
   }
 
-  .legal-prose :global(h2) {
-    font-size: 1.35rem;
-    margin-top: 2.6rem;
+  .prose :global(h2) {
+    font-size: clamp(1.3rem, 2.4vw, 1.6rem);
+    margin-top: 2.75rem;
     padding-top: 1.6rem;
     border-top: 1px solid var(--line);
   }
 
-  .legal-prose :global(h3) {
-    font-size: 1.05rem;
-    margin-top: 1.6rem;
+  .prose :global(h3) {
+    font-size: 1.06rem;
+    margin-top: 1.7rem;
   }
 
-  .legal-prose :global(p),
-  .legal-prose :global(li) {
+  .prose :global(p),
+  .prose :global(li) {
     color: var(--muted);
     font-size: 0.97rem;
+    line-height: 1.68;
   }
 
-  .legal-prose :global(strong) {
-    color: var(--text);
+  .prose :global(strong) {
+    color: var(--ink);
   }
 
-  .legal-prose :global(ul) {
+  .prose :global(a) {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
     padding-left: 1.25rem;
     display: grid;
     gap: 0.45rem;
-    margin: 0.6rem 0 1.2rem;
+    margin: 0.7rem 0 1.3rem;
   }
 
-  .legal-prose :global(li::marker) {
-    color: var(--amber);
+  .prose :global(li::marker) {
+    color: var(--accent);
   }
 
-  .legal-prose :global(.callout) {
-    background: rgba(26, 34, 51, 0.6);
+  .prose :global(.callout) {
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--amber);
-    border-radius: var(--r-ctl);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
     padding: 1rem 1.25rem;
-    margin: 1.4rem 0;
+    margin: 1.5rem 0;
+    box-shadow: var(--lift-1);
   }
 
-  .legal-prose :global(.callout p) {
+  .prose :global(.callout p) {
     margin: 0;
+    color: var(--ink);
+    font-size: 0.94rem;
   }
 </style>

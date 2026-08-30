@@ -1,0 +1,13 @@
+Rendered viewpoints for this task go here, named after the viewpoint:
+
+    hero.png  front.png  side.png  top.png  eye.png
+
+They come from the Studio plugin's software renderer (apps/plugin/src/Render.luau,
+Render.capture), which returns real pixels per viewpoint. `metrics.json` references them by
+path, relative to the directory holding metrics.json.
+
+Supported by the grader: .png, .jpg, .jpeg, .webp.
+
+If the screenshots for this run live elsewhere (object storage, a local scratch dir), replace
+this file with a note naming exactly where — a score with no recoverable pixels behind it is
+an assertion, not evidence.

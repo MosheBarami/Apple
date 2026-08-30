@@ -1,0 +1,481 @@
+---
+// ---------------------------------------------------------------------------
+// HowScroller — the three steps, told with scroll as the direction tool.
+// The copy scrolls; the panel is sticky and swaps as each step takes the
+// stage. Under reduced motion the panel simply shows step one and the copy
+// reads as an ordinary numbered list.
+// ---------------------------------------------------------------------------
+
+const steps = [
+  {
+    n: '01',
+    title: 'Describe it',
+    body: 'Plain language, the way you would tell a friend. “A lava obby with checkpoints.” “A shop that sells trails.” “Fix the door that will not open.” Attach a screenshot if that is faster than typing.',
+    note: 'No prompt engineering. No node graph. A sentence.',
+  },
+  {
+    n: '02',
+    title: 'Golem builds it in Studio',
+    body: 'Through the Studio plugin it reads your project tree, writes and edits Luau, creates instances and sets properties — inside the place you already have open. You watch it happen, instance by instance.',
+    note: 'Every batch is one native undo waypoint.',
+  },
+  {
+    n: '03',
+    title: 'It proves the thing works',
+    body: 'Rune mode presses Play, reads the output, finds what broke and repairs it — then runs again. “Done” means verified running, not code written. A checkpoint is taken before every run, so a whole session can be rewound.',
+    note: 'Verification is the product, not a nice-to-have.',
+  },
+];
+---
+
+<div class="how" id="how-scroller">
+  <ol class="how__copy">
+    {
+      steps.map((s, i) => (
+        <li class="how__step" data-step={i} data-reveal>
+          <p class="how__n mono">{s.n}</p>
+          <h3>{s.title}</h3>
+          <p class="how__body">{s.body}</p>
+          <p class="how__note">{s.note}</p>
+        </li>
+      ))
+    }
+  </ol>
+
+  <div class="how__sticky">
+    <div class="how__panel slab slab--lift" data-active="0">
+      <!-- ------------------------------------------------ step 1 -->
+      <figure class="scene scene--say is-on" data-scene="0">
+        <figcaption class="scene__cap mono">You, in the workspace</figcaption>
+        <div class="plaque">
+          <span class="plaque__quote" aria-hidden="true">“</span>
+          <p class="plaque__text">
+            Add a lava obby with eight checkpoints, and make the last one drop
+            you at the lobby.
+          </p>
+        </div>
+        <div class="scene__foot mono">
+          <span class="dotpip"></span> Stone mode · 4 sparks
+        </div>
+      </figure>
+
+      <!-- ------------------------------------------------ step 2 -->
+      <figure class="scene scene--build" data-scene="1">
+        <figcaption class="scene__cap mono">Roblox Studio · Explorer</figcaption>
+        <ul class="mini-tree">
+          <li style="--d:0"><span class="mini-tree__i"></span>Workspace</li>
+          <li style="--d:1"><span class="mini-tree__i"></span>ObbyCourse</li>
+          <li style="--d:1" class="is-new"><span class="mini-tree__i"></span>Checkpoints <em>created</em></li>
+          <li style="--d:2" class="is-new"><span class="mini-tree__i"></span>Checkpoint1</li>
+          <li style="--d:2" class="is-new"><span class="mini-tree__i"></span>Checkpoint2</li>
+          <li style="--d:2" class="is-new"><span class="mini-tree__i"></span>… Checkpoint8</li>
+          <li style="--d:0"><span class="mini-tree__i"></span>ServerScriptService</li>
+          <li style="--d:1" class="is-new"><span class="mini-tree__i"></span>CheckpointService <em>+38 lines</em></li>
+        </ul>
+        <div class="scene__foot mono">
+          <span class="dotpip dotpip--warn"></span> 1 undo waypoint · Ctrl+Z reverses all of it
+        </div>
+      </figure>
+
+      <!-- ------------------------------------------------ step 3 -->
+      <figure class="scene scene--verify" data-scene="2">
+        <figcaption class="scene__cap mono">Studio · Output</figcaption>
+        <ol class="mini-log">
+          <li><span class="mini-log__t">02.004</span> ▶ Play — server started</li>
+          <li><span class="mini-log__t">04.117</span> Checkpoint 3 claimed by Player1</li>
+          <li><span class="mini-log__t">05.640</span> Player1 died at Platform_17</li>
+          <li class="is-good"><span class="mini-log__t">06.402</span> Respawn → returned to Checkpoint 3</li>
+          <li class="is-good"><span class="mini-log__t">07.010</span> ■ Stopped — 0 errors, 0 warnings</li>
+        </ol>
+        <div class="scene__foot mono">
+          <span class="dotpip dotpip--good"></span> Verified by running your game
+        </div>
+      </figure>
+    </div>
+
+    <ol class="how__rail" aria-hidden="true">
+      {steps.map((_, i) => <li data-rail={i} class={i === 0 ? 'is-on' : ''} />)}
+    </ol>
+  </div>
+</div>
+
+<style>
+  .how {
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: clamp(1.5rem, 5vw, 4.5rem);
+    align-items: start;
+  }
+
+  /* ---- copy column ---- */
+  .how__copy {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .how__step {
+    padding-block: clamp(2.5rem, 12vh, 7rem);
+    max-width: 44ch;
+  }
+
+  .how__step:first-child {
+    padding-top: 0;
+  }
+
+  .how__n {
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    color: var(--accent);
+    margin: 0 0 0.8rem;
+  }
+
+  .how__step h3 {
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    margin-bottom: 0.6rem;
+  }
+
+  .how__body {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .how__note {
+    margin: 0;
+    padding-left: 0.8rem;
+    border-left: 2px solid var(--accent);
+    font-size: 0.88rem;
+    color: var(--ink);
+  }
+
+  /* ---- sticky panel ---- */
+  .how__sticky {
+    position: sticky;
+    top: 7rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .how__panel {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    aspect-ratio: 5 / 4;
+    padding: clamp(1rem, 2.5vw, 1.6rem);
+    overflow: hidden;
+  }
+
+  .scene {
+    position: absolute;
+    inset: clamp(1rem, 2.5vw, 1.6rem);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out);
+    pointer-events: none;
+  }
+
+  .scene.is-on {
+    opacity: 1;
+    transform: none;
+  }
+
+  .scene__cap {
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin: 0;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .scene__foot {
+    margin-top: auto;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .dotpip {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+
+  .dotpip--good {
+    background: var(--good);
+  }
+
+  .dotpip--warn {
+    background: var(--warn);
+  }
+
+  /* --- scene 1: the plaque --- */
+  .plaque {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: clamp(1rem, 3vw, 2rem);
+    box-shadow: var(--inset);
+    position: relative;
+  }
+
+  .plaque__quote {
+    font-family: var(--font-display);
+    font-size: 4rem;
+    line-height: 0.6;
+    color: var(--accent);
+    opacity: 0.35;
+    align-self: flex-start;
+  }
+
+  .plaque__text {
+    margin: 0;
+    font-family: var(--font-display);
+    font-variation-settings: var(--display-vf);
+    font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+    line-height: 1.28;
+    letter-spacing: -0.018em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  /* --- scene 2: the tree --- */
+  .mini-tree {
+    flex: 1;
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    display: grid;
+    align-content: start;
+    gap: 0.12rem;
+    overflow: hidden;
+  }
+
+  .mini-tree li {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.2rem 0.5rem 0.2rem calc(0.5rem + var(--d) * 1rem);
+    color: var(--muted);
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mini-tree__i {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 2px;
+    border: 1px solid currentColor;
+    opacity: 0.6;
+  }
+
+  .mini-tree li.is-new {
+    color: var(--good);
+    background: color-mix(in srgb, var(--good) 12%, transparent);
+  }
+
+  .mini-tree li em {
+    font-style: normal;
+    margin-left: auto;
+    font-size: 0.9em;
+    opacity: 0.8;
+  }
+
+  .scene--build.is-on .mini-tree li {
+    animation: row-in 420ms var(--ease-out) backwards;
+    animation-delay: calc(var(--d, 0) * 40ms + 60ms);
+  }
+
+  @keyframes row-in {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+  }
+
+  /* --- scene 3: the log --- */
+  .mini-log {
+    flex: 1;
+    list-style: none;
+    margin: 0;
+    padding: 0.6rem;
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    overflow: hidden;
+  }
+
+  .mini-log li {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.22rem 0.45rem;
+    border-radius: 4px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mini-log li.is-good {
+    color: var(--good);
+    background: color-mix(in srgb, var(--good) 11%, transparent);
+  }
+
+  .mini-log__t {
+    color: var(--faint);
+    flex: none;
+  }
+
+  /* ---- rail ---- */
+  .how__rail {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem 0;
+    display: grid;
+    gap: 0.6rem;
+    align-content: center;
+  }
+
+  .how__rail li {
+    width: 6px;
+    height: 22px;
+    border-radius: 3px;
+    background: var(--line);
+    transition: background-color var(--dur) var(--ease-out),
+      height var(--dur) var(--ease-out);
+  }
+
+  .how__rail li.is-on {
+    background: var(--accent);
+    height: 34px;
+  }
+
+  @media (max-width: 900px) {
+    .how {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .how__sticky {
+      position: static;
+      order: -1;
+    }
+
+    .how__rail {
+      display: none;
+    }
+
+    .how__step {
+      padding-block: 1.5rem;
+      max-width: none;
+    }
+
+    .how__step:first-child {
+      padding-top: 0;
+    }
+
+    .how__panel {
+      aspect-ratio: 4 / 3;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .how__panel {
+      aspect-ratio: auto;
+      min-height: 22rem;
+    }
+  }
+</style>
+
+<script>
+  const how = document.getElementById('how-scroller');
+
+  if (how) {
+    const panel = how.querySelector<HTMLElement>('.how__panel')!;
+    const scenes = Array.from(how.querySelectorAll<HTMLElement>('.scene'));
+    const rails = Array.from(how.querySelectorAll<HTMLElement>('[data-rail]'));
+    const stepEls = Array.from(how.querySelectorAll<HTMLElement>('[data-step]'));
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    function show(i: number) {
+      if (panel.dataset.active === String(i)) return;
+      panel.dataset.active = String(i);
+      scenes.forEach((s, si) => s.classList.toggle('is-on', si === i));
+      rails.forEach((r, ri) => r.classList.toggle('is-on', ri === i));
+      (window as any).golemTick?.(430 + i * 70);
+    }
+
+    if (!reduced.matches && 'IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          // the step closest to the middle of the viewport wins
+          let best: { i: number; d: number } | null = null;
+          for (const el of stepEls) {
+            const r = el.getBoundingClientRect();
+            const mid = r.top + r.height / 2;
+            const d = Math.abs(mid - window.innerHeight / 2);
+            const i = Number(el.dataset.step);
+            if (!best || d < best.d) best = { i, d };
+          }
+          if (best) show(best.i);
+        },
+        { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '-15% 0px -15% 0px' }
+      );
+      stepEls.forEach((el) => io.observe(el));
+
+      // scroll is the driver, so keep it responsive without thrashing
+      let queued = false;
+      window.addEventListener(
+        'scroll',
+        () => {
+          if (queued) return;
+          queued = true;
+          requestAnimationFrame(() => {
+            queued = false;
+            let best: { i: number; d: number } | null = null;
+            for (const el of stepEls) {
+              const r = el.getBoundingClientRect();
+              if (r.bottom < 0 || r.top > window.innerHeight) continue;
+              const mid = r.top + r.height / 2;
+              const d = Math.abs(mid - window.innerHeight * 0.45);
+              const i = Number(el.dataset.step);
+              if (!best || d < best.d) best = { i, d };
+            }
+            if (best) show(best.i);
+          });
+        },
+        { passive: true }
+      );
+    }
+  }
+</script>

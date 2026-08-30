@@ -1,36 +1,54 @@
-// /login and /signup — branded split layout with email/password auth.
+// /login and /signup — a carved split layout with email/password auth.
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { MODE_INFO, type GolemMode } from '@golem/shared';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../lib/theme';
 import { GolemGlyph } from '../components/glyphs';
+
+const MODES: GolemMode[] = ['clay', 'stone', 'rune'];
+
+function ThemeCorner() {
+  const { theme, setTheme } = useTheme();
+  const next = theme === 'dark' ? 'light' : 'dark';
+  return (
+    <div className="auth-theme-toggle">
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        onClick={() => setTheme(next)}
+        aria-label={`Switch to ${next} theme`}
+      >
+        {theme === 'dark' ? 'Daylight' : 'Night'}
+      </button>
+    </div>
+  );
+}
 
 function AuthHero() {
   return (
-    <div className="auth-hero" aria-hidden="true">
+    <div className="auth-hero">
       <div className="auth-hero-inner">
         <div className="auth-hero-brand">
-          <GolemGlyph size={44} />
+          <GolemGlyph size={38} />
           <span className="wordmark wordmark-lg">Golem</span>
         </div>
-        <h1 className="auth-hero-title">
+        <h1 className="auth-hero-title carved">
           Describe it.
           <br />
           Golem builds it.
         </h1>
         <p className="auth-hero-sub">
-          Tell Golem what your Roblox game should do — it writes the scripts, places the parts, and wires it all up,
-          live in Studio.
+          Tell Golem what your Roblox game should do. It writes the scripts, places the parts and wires it all up —
+          live in Studio, while you watch.
         </p>
         <ul className="auth-hero-points">
-          <li>
-            <span className="mode-dot mode-dot-clay" /> Clay — fast answers and small edits
-          </li>
-          <li>
-            <span className="mode-dot mode-dot-stone" /> Stone — builds features across your project
-          </li>
-          <li>
-            <span className="mode-dot mode-dot-rune" /> Rune — plans, builds, tests and fixes autonomously
-          </li>
+          {MODES.map((m) => (
+            <li key={m}>
+              <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
+              <strong>{MODE_INFO[m].name}</strong> — {MODE_INFO[m].blurb}
+            </li>
+          ))}
         </ul>
       </div>
     </div>
@@ -72,8 +90,15 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
+      <ThemeCorner />
       <AuthHero />
       <div className="auth-form-col">
+        {/* The hero is hidden below 900px; without this the signed-out mobile
+            page would carry no brand at all. */}
+        <div className="auth-mobile-brand" aria-hidden="true">
+          <GolemGlyph size={26} />
+          <span className="wordmark">Golem</span>
+        </div>
         <form className="auth-card" onSubmit={onSubmit} noValidate>
           <h2 className="auth-card-title">Welcome back</h2>
           <p className="auth-card-sub">Sign in to keep building.</p>
@@ -86,6 +111,7 @@ export function LoginPage() {
             <span className="field-label">Email</span>
             <input
               type="email"
+              name="email"
               autoComplete="email"
               required
               value={email}
@@ -97,6 +123,7 @@ export function LoginPage() {
             <span className="field-label">Password</span>
             <input
               type="password"
+              name="password"
               autoComplete="current-password"
               required
               value={password}
@@ -149,12 +176,19 @@ export function SignupPage() {
 
   return (
     <div className="auth-page">
+      <ThemeCorner />
       <AuthHero />
       <div className="auth-form-col">
+        {/* The hero is hidden below 900px; without this the signed-out mobile
+            page would carry no brand at all. */}
+        <div className="auth-mobile-brand" aria-hidden="true">
+          <GolemGlyph size={26} />
+          <span className="wordmark">Golem</span>
+        </div>
         {sentTo ? (
           <div className="auth-card" role="status">
             <div className="auth-mail-icon" aria-hidden="true">
-              ✉️
+              ✉
             </div>
             <h2 className="auth-card-title">Check your email</h2>
             <p className="auth-card-sub">
@@ -168,7 +202,7 @@ export function SignupPage() {
         ) : (
           <form className="auth-card" onSubmit={onSubmit} noValidate>
             <h2 className="auth-card-title">Summon your golem</h2>
-            <p className="auth-card-sub">Free to start — 80 Sparks a day.</p>
+            <p className="auth-card-sub">Free to start. No card, no Studio setup beyond one plugin.</p>
             {error && (
               <p className="form-error" role="alert">
                 {error}
@@ -178,7 +212,8 @@ export function SignupPage() {
               <span className="field-label">Email</span>
               <input
                 type="email"
-                autoComplete="email"
+                name="email"
+              autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -189,6 +224,7 @@ export function SignupPage() {
               <span className="field-label">Password</span>
               <input
                 type="password"
+                name="password"
                 autoComplete="new-password"
                 required
                 minLength={8}

@@ -8,7 +8,7 @@ export function NotFoundPage() {
       <div className="empty-state">
         <LostGolemIllustration />
         <h2>This golem is lost</h2>
-        <p className="muted">The page you're looking for doesn't exist — or wandered off the map.</p>
+        <p>The page you&rsquo;re looking for doesn&rsquo;t exist — or wandered off the map.</p>
         <Link to="/" className="btn btn-primary">
           Back to your projects
         </Link>

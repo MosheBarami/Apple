@@ -1,0 +1,44 @@
+{
+ "task": "b3-plaza",
+ "round": 3,
+ "runMs": 3202,
+ "metrics": {
+  "parts": 1,
+  "small": 0,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Plastic",
+    "parts": 1
+   }
+  ],
+  "colours": 1,
+  "lights": 0,
+  "heightSpan": 1,
+  "brightness": 3,
+  "clockTime": 14.5,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect"
+  ]
+ },
+ "boundsSize": [
+  12,
+  1,
+  12
+ ],
+ "score": 1,
+ "passed": false,
+ "unavailable": false,
+ "summary": "This is not a town plaza; it is one grey Plastic slab. The brief asked for a monument, lamp posts, benches, planters and a sign, and none of them appear in any of the three views. There is no focal point, no material language, no detail of any kind. A player would have no reason to stand here because there is nothing here. Start over from the object list and build each piece with real proportions,",
+ "hardFails": [
+  "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+  "over 90% of parts are default Plastic — no material pass was done"
+ ],
+ "defects": [],
+ "neurons": 58
+}

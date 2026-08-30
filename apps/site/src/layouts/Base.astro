@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import Cursor from '../components/Cursor.astro';
 
 interface Props {
   title: string;
@@ -37,23 +38,33 @@ const ogImage = new URL('/og.svg', site);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="theme-color" content="#0B0E14" />
+    <meta name="theme-color" content="#f2efe8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#100e0c" media="(prefers-color-scheme: dark)" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
     />
 
     <script is:inline>
-      // signal JS availability before first paint so reveals can hide safely
-      document.documentElement.classList.remove('no-js');
+      // Runs before first paint: no flash of the wrong theme, and reveals can
+      // safely start hidden because we know scripting is alive.
+      (function () {
+        var d = document.documentElement;
+        d.classList.remove('no-js');
+        try {
+          var t = localStorage.getItem('golem-theme');
+          if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+        } catch (e) {
+          /* private mode — fall back to prefers-color-scheme */
+        }
+      })();
     </script>
   </head>
   <body>
     <a href="#main" class="skip-link">Skip to content</a>
-    <div class="grain" aria-hidden="true"></div>
 
     {!bare && <Nav />}
 
@@ -63,31 +74,147 @@ const ogImage = new URL('/og.svg', site);
 
     {!bare && <Footer />}
 
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+    <Cursor />
+
     <script>
-      // Scroll-driven reveals. Honors prefers-reduced-motion (CSS disables the
-      // transition; we still add the class so nothing stays hidden).
-      const els = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
-      if (els.length) {
+      // ---------------------------------------------------------------
+      // Scroll reveals. Under prefers-reduced-motion the CSS neutralises
+      // the transform, so adding the class is harmless and nothing can
+      // ever stay invisible.
+      // ---------------------------------------------------------------
+      const reveals = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-reveal], .kinetic')
+      );
+
+      if (reveals.length) {
         if ('IntersectionObserver' in window) {
           const io = new IntersectionObserver(
             (entries) => {
               for (const entry of entries) {
-                if (entry.isIntersecting) {
-                  const el = entry.target as HTMLElement;
-                  const delay = el.dataset.revealDelay;
-                  if (delay) el.style.setProperty('--reveal-delay', `${delay}ms`);
-                  el.classList.add('is-visible');
-                  io.unobserve(el);
-                }
+                if (!entry.isIntersecting) continue;
+                const el = entry.target as HTMLElement;
+                const delay = el.dataset.revealDelay;
+                if (delay) el.style.setProperty('--reveal-delay', `${delay}ms`);
+                el.classList.add('is-in');
+                io.unobserve(el);
               }
             },
-            { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
+            { rootMargin: '0px 0px -6% 0px', threshold: 0.06 }
           );
-          els.forEach((el) => io.observe(el));
+          reveals.forEach((el) => io.observe(el));
         } else {
-          els.forEach((el) => el.classList.add('is-visible'));
+          reveals.forEach((el) => el.classList.add('is-in'));
         }
       }
+
+      // ---------------------------------------------------------------
+      // Theme. Explicit choice wins and persists; otherwise the OS decides.
+      // ---------------------------------------------------------------
+      const root = document.documentElement;
+      const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+      function currentTheme(): 'light' | 'dark' {
+        const set = root.getAttribute('data-theme');
+        if (set === 'light' || set === 'dark') return set;
+        return mqDark.matches ? 'dark' : 'light';
+      }
+
+      function paintToggles() {
+        const theme = currentTheme();
+        document
+          .querySelectorAll<HTMLElement>('[data-theme-toggle]')
+          .forEach((btn) => {
+            btn.setAttribute('aria-pressed', String(theme === 'dark'));
+            btn.setAttribute(
+              'aria-label',
+              theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+            );
+          });
+      }
+
+      document.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement)?.closest('[data-theme-toggle]');
+        if (!btn) return;
+        const next = currentTheme() === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try {
+          localStorage.setItem('golem-theme', next);
+        } catch (err) {
+          /* ignore */
+        }
+        paintToggles();
+        window.dispatchEvent(
+          new CustomEvent('golem:theme', { detail: { theme: next } })
+        );
+      });
+
+      mqDark.addEventListener('change', () => {
+        if (!root.hasAttribute('data-theme')) {
+          paintToggles();
+          window.dispatchEvent(
+            new CustomEvent('golem:theme', { detail: { theme: currentTheme() } })
+          );
+        }
+      });
+
+      paintToggles();
+
+      // ---------------------------------------------------------------
+      // Sound. OFF by default and never armed until the visitor presses the
+      // toggle — that press is the required user gesture, and it is also
+      // what creates the AudioContext. Nothing autoplays, ever.
+      // ---------------------------------------------------------------
+      let audio: AudioContext | null = null;
+      let soundOn = false;
+
+      function paintSoundToggles() {
+        document
+          .querySelectorAll<HTMLElement>('[data-sound-toggle]')
+          .forEach((btn) => {
+            btn.setAttribute('aria-pressed', String(soundOn));
+            btn.setAttribute(
+              'aria-label',
+              soundOn ? 'Turn interface sound off' : 'Turn interface sound on'
+            );
+          });
+      }
+
+      /** short synthesised chisel tick — no audio files, no autoplay */
+      function tick(freq = 320, dur = 0.07, gain = 0.05) {
+        if (!soundOn || !audio) return;
+        const t = audio.currentTime;
+        const osc = audio.createOscillator();
+        const env = audio.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.55, t + dur);
+        env.gain.setValueAtTime(0.0001, t);
+        env.gain.exponentialRampToValueAtTime(gain, t + 0.006);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(env).connect(audio.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.02);
+      }
+
+      (window as any).golemTick = tick;
+
+      document.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement)?.closest('[data-sound-toggle]');
+        if (!btn) return;
+        soundOn = !soundOn;
+        if (soundOn && !audio) {
+          const Ctx =
+            (window as any).AudioContext || (window as any).webkitAudioContext;
+          if (Ctx) audio = new Ctx();
+        }
+        if (soundOn) audio?.resume?.();
+        paintSoundToggles();
+        if (soundOn) tick(420, 0.09, 0.05);
+      });
+
+      paintSoundToggles();
     </script>
   </body>
 </html>

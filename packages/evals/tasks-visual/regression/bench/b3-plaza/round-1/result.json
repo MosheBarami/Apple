@@ -1,0 +1,74 @@
+{
+ "task": "b3-plaza",
+ "round": 1,
+ "runMs": 355269,
+ "metrics": {
+  "parts": 725,
+  "small": 682,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Wood",
+    "parts": 22
+   },
+   {
+    "material": "Neon",
+    "parts": 17
+   },
+   {
+    "material": "Granite",
+    "parts": 407
+   },
+   {
+    "material": "SmoothPlastic",
+    "parts": 1
+   },
+   {
+    "material": "Sandstone",
+    "parts": 102
+   },
+   {
+    "material": "Cobblestone",
+    "parts": 1
+   },
+   {
+    "material": "Concrete",
+    "parts": 4
+   },
+   {
+    "material": "Grass",
+    "parts": 12
+   },
+   {
+    "material": "Ground",
+    "parts": 4
+   },
+   {
+    "material": "Metal",
+    "parts": 155
+   }
+  ],
+  "colours": 15,
+  "lights": 5,
+  "heightSpan": 48.6,
+  "brightness": 3,
+  "clockTime": 14.5,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ]
+ },
+ "boundsSize": [
+  123,
+  48.5,
+  123
+ ],
+ "unavailable": false,
+ "hardFails": [],
+ "defects": []
+}

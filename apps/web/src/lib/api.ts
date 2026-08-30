@@ -1,6 +1,7 @@
 // Typed fetch helpers for the Golem worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
+import { MOCK_MODE, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -55,8 +56,11 @@ export interface UsageDay {
   events: number;
 }
 
-export const fetchMe = () => request<MeResponse>('/api/me');
-export const fetchUsage = () => request<{ days: UsageDay[] }>('/api/me/usage');
+export const fetchMe = (): Promise<MeResponse> =>
+  MOCK_MODE ? Promise.resolve(mockMe) : request<MeResponse>('/api/me');
+
+export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
+  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<{ days: UsageDay[] }>('/api/me/usage');
 
 // ---------------------------------------------------------------- project session
 
@@ -66,8 +70,10 @@ export const fetchMessages = (projectId: string, limit = 100) =>
 export const fetchCheckpoints = (projectId: string) =>
   request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
 
-export const createPairingCode = (projectId: string) =>
-  request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
+export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
+  MOCK_MODE
+    ? Promise.resolve({ code: 'GLM-7F3K2Q', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
+    : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
 
 export const purgeProject = (projectId: string) =>
   request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/purge`, { method: 'POST' });
@@ -80,8 +86,10 @@ export interface AdminCounterRow {
   value: number;
 }
 
-export const adminStats = (adminKey: string) =>
-  request<{ counters: AdminCounterRow[] }>('/api/admin/stats', {}, { 'X-Admin-Key': adminKey });
+export const adminStats = (adminKey: string): Promise<{ counters: AdminCounterRow[] }> =>
+  MOCK_MODE
+    ? Promise.resolve({ counters: mockCounters() })
+    : request<{ counters: AdminCounterRow[] }>('/api/admin/stats', {}, { 'X-Admin-Key': adminKey });
 
 export interface SpendReport {
   state: {
@@ -107,8 +115,10 @@ export interface SpendReport {
   breakdown: { day: string; model: string; kind: string; neurons: number; calls: number; usd: number }[];
 }
 
-export const adminSpend = (adminKey: string) =>
-  request<SpendReport>('/api/admin/spend', {}, { 'X-Admin-Key': adminKey });
+export const adminSpend = (adminKey: string): Promise<SpendReport> =>
+  MOCK_MODE
+    ? Promise.resolve(mockSpend() as SpendReport)
+    : request<SpendReport>('/api/admin/spend', {}, { 'X-Admin-Key': adminKey });
 
 export const adminKillSwitch = (adminKey: string, killed: boolean, reason?: string) =>
   request<{ ok: boolean; killed: boolean }>(

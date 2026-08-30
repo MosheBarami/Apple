@@ -5,6 +5,7 @@ import type { PairingCodeDto } from '@golem/shared';
 import { createPairingCode } from '../lib/api';
 import { countdownTo } from '../lib/format';
 import { Modal } from './modal';
+import { Forge } from './loading';
 
 interface PairingDialogProps {
   projectId: string;
@@ -66,8 +67,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
           <div className="pairing-code-col">
             {state === 'loading' && (
               <div className="pairing-code-box" aria-busy="true">
-                <span className="rune-spinner" aria-hidden="true" />
-                <p className="muted">Carving a code…</p>
+                <Forge kind="connecting" label="Carving a code" compact />
               </div>
             )}
             {state === 'error' && (

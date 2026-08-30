@@ -1,0 +1,585 @@
+---
+// ---------------------------------------------------------------------------
+// ModeLab — the three golems, side by side and live.
+//
+// Every number here is from the docs: spark costs 1 / 4 / 10 and step budgets
+// 3 / 8 / 14 (docs/COST-MODEL.md), behaviour per mode from docs/DECISIONS.md
+// ADR-001 and /docs/modes. The "per free day" figures are 60 ÷ cost.
+// ---------------------------------------------------------------------------
+
+const modes = [
+  {
+    id: 'clay',
+    name: 'Clay',
+    sparks: 1,
+    steps: 3,
+    perDay: '60',
+    tag: 'Fast answers and small edits',
+    blurb:
+      'Conversational and quick. Clay reads the parts of your project that matter to the question and answers in seconds — and it is the cheapest way to plan a big build before you pay for one.',
+    does: [
+      'Explains your code and the Roblox API',
+      'Single-script fixes, renames, value tweaks',
+      'Reads your project for context first',
+    ],
+    example: 'Why does my leaderboard reset when a player dies?',
+    ladder: ['read', 'answer'],
+    loop: false,
+  },
+  {
+    id: 'stone',
+    name: 'Stone',
+    sparks: 4,
+    steps: 8,
+    perDay: '15',
+    tag: 'Builds features across your project',
+    blurb:
+      'The everyday builder. Stone reads your project tree, edits several scripts, creates and wires instances, then reports exactly what it did — in one pass, then it stops and hands the keyboard back.',
+    does: [
+      'Multi-script features with the wiring done',
+      'Creates and configures instances',
+      'Understands your whole project tree',
+    ],
+    example: 'Add a shop that sells speed boosts for coins.',
+    ladder: ['tree', 'search', 'create', 'edit', 'read back'],
+    loop: false,
+  },
+  {
+    id: 'rune',
+    name: 'Rune',
+    sparks: 10,
+    steps: 14,
+    perDay: '6',
+    tag: 'Plans, builds, tests and fixes on its own',
+    blurb:
+      'The deep agent. Give Rune an outcome and it writes a plan, executes it, runs your game in Studio, reads the output and repairs what breaks — repeating until the outcome holds or it needs you.',
+    does: [
+      'Breaks a big ask into a plan',
+      'Runs your game to verify each step',
+      'Reads errors and repairs its own work',
+    ],
+    example:
+      'Build a round system: intermission, map vote, teleport, win detection — and prove it runs.',
+    ladder: ['plan', 'build', 'playtest', 'read output', 'fix'],
+    loop: true,
+  },
+] as const;
+---
+
+<div class="lab is-stone" id="mode-lab">
+  <div class="lab__picker" role="tablist" aria-label="Golem modes">
+    {
+      modes.map((m, i) => (
+        <button
+          role="tab"
+          type="button"
+          class={`lab__tab is-${m.id}`}
+          id={`mtab-${m.id}`}
+          aria-controls={`mpanel-${m.id}`}
+          aria-selected={i === 1 ? 'true' : 'false'}
+          data-mode={m.id}
+        >
+          <span class="lab__tabname">{m.name}</span>
+          <span class="lab__tabcost mono">
+            {m.sparks} spark{m.sparks === 1 ? '' : 's'}
+          </span>
+        </button>
+      ))
+    }
+  </div>
+
+  {
+    modes.map((m, i) => (
+      <div
+        class={`lab__panel is-${m.id} ${i === 1 ? '' : 'is-hidden'}`}
+        role="tabpanel"
+        id={`mpanel-${m.id}`}
+        aria-labelledby={`mtab-${m.id}`}
+        tabindex="0"
+      >
+        <div class="lab__copy">
+          <p class="lab__tag">{m.tag}</p>
+          <h3 class="lab__name">{m.name}</h3>
+          <p class="lab__blurb">{m.blurb}</p>
+
+          <ul class="lab__does">
+            {m.does.map((d) => (
+              <li>
+                <span class="lab__diamond" aria-hidden="true" />
+                {d}
+              </li>
+            ))}
+          </ul>
+
+          <figure class="lab__example">
+            <figcaption class="mono">Sounds like</figcaption>
+            <blockquote>“{m.example}”</blockquote>
+          </figure>
+        </div>
+
+        <div class="lab__viz">
+          <div class="lab__stats">
+            <div class="stat">
+              <span class="stat__n">{m.sparks}</span>
+              <span class="stat__l mono">sparks / request</span>
+            </div>
+            <div class="stat">
+              <span class="stat__n">{m.steps}</span>
+              <span class="stat__l mono">step budget</span>
+            </div>
+            <div class="stat">
+              <span class="stat__n">{m.perDay}</span>
+              <span class="stat__l mono">per free day</span>
+            </div>
+          </div>
+
+          <div class="ladder">
+            <p class="ladder__title mono">What one request does</p>
+            <ol class="ladder__list">
+              {m.ladder.map((step, si) => (
+                <li class="ladder__step" style={`--i:${si}`}>
+                  <span class="ladder__dot" aria-hidden="true" />
+                  <span class="ladder__label">{step}</span>
+                </li>
+              ))}
+            </ol>
+            {m.loop && (
+              <p class="ladder__loop">
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                  <path
+                    d="M20 11.5a8 8 0 1 1-2.6-5.9"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                  <path d="M20 3.4v4.4h-4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                repeats until it actually works
+              </p>
+            )}
+          </div>
+
+          <div class="burn">
+            <p class="burn__title mono">60 free sparks a day buys</p>
+            <div class="burn__bar" aria-hidden="true">
+              {Array.from({ length: Math.min(20, Number(m.perDay)) }).map(
+                (_, bi) => (
+                  <span class="burn__tick" style={`--i:${bi}`} />
+                )
+              )}
+              {Number(m.perDay) > 20 && <span class="burn__more mono">+40</span>}
+            </div>
+            <p class="burn__note">
+              {m.perDay} {m.name} request{m.perDay === '1' ? '' : 's'} — or any
+              mix across all three modes.
+            </p>
+          </div>
+        </div>
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .lab {
+    display: grid;
+    gap: 1.4rem;
+  }
+
+  /* ---- picker ---- */
+  .lab__picker {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .lab__tab {
+    appearance: none;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--line);
+    border-radius: var(--r-md);
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    display: grid;
+    gap: 0.1rem;
+    color: var(--muted);
+    transition: border-color var(--dur) var(--ease-out),
+      background-color var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out);
+  }
+
+  .lab__tab:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong);
+  }
+
+  .lab__tab[aria-selected='true'] {
+    border-top-color: var(--accent);
+    background: linear-gradient(180deg, var(--accent-soft), transparent 70%),
+      var(--surface);
+    color: var(--ink);
+    box-shadow: var(--lift-1);
+  }
+
+  .lab__tabname {
+    font-family: var(--font-display);
+    font-variation-settings: var(--display-vf);
+    font-weight: 600;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .lab__tab[aria-selected='true'] .lab__tabname {
+    color: var(--accent);
+  }
+
+  .lab__tabcost {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ---- panel ---- */
+  .lab__panel {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+    align-items: start;
+    background: linear-gradient(170deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--lift-2), var(--inset);
+    padding: clamp(1.35rem, 3vw, 2.25rem);
+    position: relative;
+  }
+
+  .lab__panel::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .lab__panel.is-hidden {
+    display: none;
+  }
+
+  .lab__tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.6rem;
+  }
+
+  .lab__name {
+    font-size: clamp(2rem, 3.6vw, 2.8rem);
+    margin: 0 0 0.5rem;
+  }
+
+  .lab__blurb {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 46ch;
+  }
+
+  .lab__does {
+    list-style: none;
+    margin: 1.2rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.55rem;
+    font-size: 0.93rem;
+  }
+
+  .lab__does li {
+    display: flex;
+    gap: 0.65rem;
+    align-items: baseline;
+    color: var(--ink);
+  }
+
+  .lab__diamond {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    background: var(--accent);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    transform: translateY(-1px);
+  }
+
+  .lab__example {
+    margin: 1.5rem 0 0;
+    padding: 0.9rem 1.05rem;
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  }
+
+  .lab__example figcaption {
+    font-size: 0.64rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .lab__example blockquote {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  /* ---- viz ---- */
+  .lab__viz {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .lab__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .stat {
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: 0.8rem 0.7rem;
+    text-align: center;
+  }
+
+  .stat__n {
+    display: block;
+    font-family: var(--font-body);
+    font-variation-settings: normal;
+    font-variant-numeric: tabular-nums;
+    font-weight: 620;
+    font-size: 1.95rem;
+    line-height: 1;
+    color: var(--accent);
+    letter-spacing: -0.04em;
+  }
+
+  .stat__l {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    line-height: 1.35;
+  }
+
+  .ladder {
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: 1rem 1.1rem;
+  }
+
+  .ladder__title,
+  .burn__title {
+    font-size: 0.63rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin: 0 0 0.75rem;
+  }
+
+  .ladder__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.05rem;
+  }
+
+  .ladder__step {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+    padding: 0.22rem 0;
+    position: relative;
+  }
+
+  .ladder__step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1.2rem;
+    bottom: -0.3rem;
+    width: 1px;
+    background: var(--line);
+  }
+
+  .ladder__dot {
+    width: 9px;
+    height: 9px;
+    flex: none;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+    animation: rung 2.6s var(--ease-in-out) infinite;
+    animation-delay: calc(var(--i) * 220ms);
+  }
+
+  @keyframes rung {
+    0%,
+    70%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    22% {
+      opacity: 1;
+      transform: scale(1.25);
+    }
+  }
+
+  .ladder__loop {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.7rem 0 0;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--line);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+
+  .burn {
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: 1rem 1.1rem;
+  }
+
+  .burn__bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .burn__tick {
+    width: 9px;
+    height: 20px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: 0.75;
+    transform-origin: bottom;
+    animation: tick 3.2s var(--ease-out) infinite;
+    animation-delay: calc(var(--i) * 45ms);
+  }
+
+  @keyframes tick {
+    0%,
+    60%,
+    100% {
+      transform: scaleY(1);
+      opacity: 0.7;
+    }
+    30% {
+      transform: scaleY(1.18);
+      opacity: 1;
+    }
+  }
+
+  .burn__more {
+    font-size: 0.68rem;
+    color: var(--accent);
+    margin-left: 0.2rem;
+  }
+
+  .burn__note {
+    margin: 0.7rem 0 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ladder__dot,
+    .burn__tick {
+      animation: none;
+      opacity: 0.85;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .lab__panel {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .lab__picker {
+      grid-template-columns: 1fr;
+    }
+
+    .lab__tab {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 0.7rem 0.9rem;
+    }
+
+    .lab__stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .stat__n {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+<script>
+  const lab = document.getElementById('mode-lab');
+  if (lab) {
+    const tabs = Array.from(lab.querySelectorAll<HTMLElement>('[role="tab"]'));
+
+    function select(tab: HTMLElement, focus = false) {
+      const mode = tab.dataset.mode!;
+      tabs.forEach((t) => {
+        const on = t === tab;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        document
+          .getElementById(t.getAttribute('aria-controls')!)
+          ?.classList.toggle('is-hidden', !on);
+      });
+      lab!.classList.remove('is-clay', 'is-stone', 'is-rune');
+      lab!.classList.add(`is-${mode}`);
+      if (focus) tab.focus();
+      (window as any).golemTick?.(mode === 'clay' ? 660 : mode === 'stone' ? 520 : 400);
+    }
+
+    tabs.forEach((t, i) => {
+      t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1;
+      t.addEventListener('click', () => select(t));
+      t.addEventListener('keydown', (e) => {
+        const k = (e as KeyboardEvent).key;
+        if (k !== 'ArrowRight' && k !== 'ArrowLeft') return;
+        e.preventDefault();
+        select(
+          tabs[(i + (k === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length],
+          true
+        );
+      });
+    });
+  }
+</script>

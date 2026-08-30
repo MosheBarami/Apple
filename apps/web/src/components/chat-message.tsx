@@ -1,52 +1,38 @@
-// One chat message: user bubble or golem answer with markdown + tool timeline.
-import { useState } from 'react';
+// One turn in the conversation lane.
+//
+// An assistant turn is: the timeline of what it did, then what it says. Any
+// ```golem-ui fence in the answer is lifted out, validated, and rendered as a
+// real panel instead of printed as code — the fence text never reaches the
+// markdown renderer.
+import { useMemo } from 'react';
 import { MODE_INFO } from '@golem/shared';
 import { Markdown } from '../lib/markdown';
-import { formatDuration } from '../lib/format';
+import { extractUIFence, parseDocument } from '../lib/generative-ui';
+import { GenerativeUI, GenerativeUIFallback } from '../lib/generative-ui/render';
 import type { ChatItem, ToolEvent } from '../lib/use-project-socket';
+import { ToolTimeline } from './tool-timeline';
 import { RunePulse } from './glyphs';
 
-function ToolChip({ tool }: { tool: ToolEvent }) {
-  const [open, setOpen] = useState(false);
-  const status = !tool.done ? 'running' : tool.ok ? 'ok' : 'fail';
-  return (
-    <div className={`tool-chip tool-${status}`}>
-      <button
-        type="button"
-        className="tool-chip-head"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span className="tool-chip-status" aria-hidden="true">
-          {status === 'running' ? <span className="tool-spinner" /> : status === 'ok' ? '✓' : '✗'}
-        </span>
-        <span className="tool-chip-name">{tool.tool}</span>
-        {tool.durationMs !== undefined && <span className="tool-chip-time">{formatDuration(tool.durationMs)}</span>}
-        <span className="tool-chip-caret" aria-hidden="true">
-          {open ? '▾' : '▸'}
-        </span>
-      </button>
-      {open && (
-        <div className="tool-chip-detail">
-          <span className={`tool-detail-status tool-detail-${status}`}>
-            {status === 'running' ? 'running…' : status === 'ok' ? 'succeeded' : 'failed'}
-          </span>
-          <p>{tool.summary || 'No summary reported.'}</p>
-        </div>
-      )}
-    </div>
-  );
+interface ChatMessageProps {
+  item: ChatItem;
+  agentPhase?: string | null;
+  onOpenTool?: (tool: ToolEvent) => void;
 }
 
-export function ChatMessage({ item }: { item: ChatItem }) {
+export function ChatMessage({ item, agentPhase = null, onOpenTool }: ChatMessageProps) {
+  const parsed = useMemo(() => {
+    if (item.role !== 'assistant' || !item.content) return { json: null as string | null, rest: item.content };
+    return extractUIFence(item.content);
+  }, [item.role, item.content]);
+
+  const panel = useMemo(() => (parsed.json ? parseDocument(parsed.json) : null), [parsed.json]);
+
   if (item.role === 'user') {
     return (
       <div className="msg msg-user">
-        <div className="msg-bubble msg-bubble-user">
+        <div className="msg-bubble-user">
           <p className="msg-user-text">{item.content}</p>
-          {item.mode && (
-            <span className={`msg-mode-tag mode-text-${item.mode}`}>{MODE_INFO[item.mode].name}</span>
-          )}
+          {item.mode && <span className="msg-mode-tag">{MODE_INFO[item.mode].name}</span>}
         </div>
       </div>
     );
@@ -62,27 +48,33 @@ export function ChatMessage({ item }: { item: ChatItem }) {
 
   return (
     <div className="msg msg-golem">
-      <div className="msg-avatar" aria-hidden="true">
-        <RunePulse size={18} />
-      </div>
-      <div className="msg-bubble msg-bubble-golem">
+      <span className="msg-avatar" aria-hidden="true">
+        <RunePulse size={15} />
+      </span>
+      <div className="msg-bubble-golem">
         {item.tools.length > 0 && (
-          <div className="tool-timeline" aria-label="Tool activity">
-            {item.tools.map((t) => (
-              <ToolChip key={t.toolId} tool={t} />
-            ))}
-          </div>
+          <ToolTimeline
+            tools={item.tools}
+            agentPhase={agentPhase}
+            running={item.streaming}
+            onOpen={onOpenTool}
+            defaultOpen={item.streaming}
+          />
         )}
-        {item.content ? (
-          <Markdown source={item.content} />
-        ) : item.streaming ? (
-          <p className="msg-thinking">
+
+        {parsed.rest ? (
+          <Markdown source={parsed.rest} />
+        ) : item.streaming && !panel ? (
+          <p className="msg-thinking" aria-label="Golem is composing an answer">
             <span className="thinking-dot" />
             <span className="thinking-dot" />
             <span className="thinking-dot" />
           </p>
         ) : null}
-        {item.streaming && item.content && <span className="stream-caret" aria-hidden="true" />}
+
+        {panel && (panel.ok ? <GenerativeUI doc={panel.doc} /> : <GenerativeUIFallback errors={panel.errors} />)}
+
+        {item.streaming && parsed.rest && <span className="stream-caret" aria-hidden="true" />}
         {item.stopReason === 'stopped' && <p className="msg-note">Stopped by you.</p>}
         {item.stopReason === 'quota' && <p className="msg-note msg-note-warn">Ran out of Sparks mid-task.</p>}
         {item.stopReason === 'error' && (

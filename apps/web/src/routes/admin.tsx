@@ -13,6 +13,7 @@ import {
   type ModelTestResponse,
   type RagHit,
 } from '../lib/api';
+import { MOCK_MODE } from '../lib/mock';
 
 const ADMIN_KEY_STORAGE = 'golem-admin-key';
 
@@ -32,7 +33,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
   const spend = useQuery({
     queryKey: ['admin-spend', adminKey],
     queryFn: () => adminSpend(adminKey),
-    enabled: adminKey.length > 0,
+    enabled: (MOCK_MODE || adminKey.length > 0),
     retry: false,
     refetchInterval: 30_000,
   });
@@ -69,12 +70,12 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
   return (
     <section className="card admin-panel">
       <div className="rail-head">
-        <h3>AI spend <span className="muted model-tag">glm-5.3-flash</span></h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => void spend.refetch()} disabled={!adminKey}>
+        <h2>AI spend <span className="muted model-tag">glm-5.3-flash</span></h2>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => void spend.refetch()} disabled={!MOCK_MODE && !adminKey}>
           Refresh
         </button>
       </div>
-      {!adminKey && <p className="muted">Enter the admin key above.</p>}
+      {!MOCK_MODE && !adminKey && <p className="muted">Enter the admin key above.</p>}
       {spend.isError && <p className="error-text">Could not load spend — check the admin key.</p>}
       {d && (
         <>
@@ -176,19 +177,19 @@ function StatsPanel({ adminKey }: { adminKey: string }) {
   const stats = useQuery({
     queryKey: ['admin-stats', adminKey],
     queryFn: () => adminStats(adminKey),
-    enabled: adminKey.length > 0,
+    enabled: (MOCK_MODE || adminKey.length > 0),
     retry: false,
   });
 
   return (
     <section className="card admin-panel">
       <div className="rail-head">
-        <h3>Operational counters (14d)</h3>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => void stats.refetch()} disabled={!adminKey}>
+        <h2>Operational counters (14d)</h2>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => void stats.refetch()} disabled={!MOCK_MODE && !adminKey}>
           Refresh
         </button>
       </div>
-      {!adminKey && <p className="muted">Enter the admin key above.</p>}
+      {!MOCK_MODE && !adminKey && <p className="muted">Enter the admin key above.</p>}
       {stats.isFetching && <p className="muted">Loading…</p>}
       {stats.isError && <p className="form-error">{(stats.error as Error).message}</p>}
       {stats.isSuccess && (
@@ -238,30 +239,30 @@ function ModelTester({ adminKey }: { adminKey: string }) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!model.trim() || !prompt.trim() || run.isPending || !adminKey) return;
+    if (!model.trim() || !prompt.trim() || run.isPending || (!MOCK_MODE && !adminKey)) return;
     setResult(null);
     run.mutate();
   };
 
   return (
     <section className="card admin-panel">
-      <h3>Model tester</h3>
+      <h2>Model tester</h2>
       <form onSubmit={submit}>
         <div className="admin-form-row">
           <label className="field settings-grow">
             <span className="field-label">Model key</span>
-            <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="e.g. coder-large" />
+            <input value={model} onChange={(e) => setModel(e.target.value)} name="modelKey" id="admin-model" placeholder="e.g. coder-large" />
           </label>
           <label className="switch-row admin-tools-check">
-            <input type="checkbox" checked={tools} onChange={(e) => setTools(e.target.checked)} />
+            <input type="checkbox" name="offerEchoTool" id="admin-tools" checked={tools} onChange={(e) => setTools(e.target.checked)} />
             <span>Offer echo tool</span>
           </label>
         </div>
         <label className="field">
           <span className="field-label">Prompt</span>
-          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} placeholder="Say hi in Luau" />
+          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} name="modelPrompt" id="admin-prompt" placeholder="Say hi in Luau" />
         </label>
-        <button type="submit" className="btn btn-primary" disabled={run.isPending || !adminKey || !model.trim() || !prompt.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={run.isPending || (!MOCK_MODE && !adminKey) || !model.trim() || !prompt.trim()}>
           {run.isPending ? 'Running…' : 'Run'}
         </button>
       </form>
@@ -303,19 +304,19 @@ function RagTester({ adminKey }: { adminKey: string }) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || run.isPending || !adminKey) return;
+    if (!query.trim() || run.isPending || (!MOCK_MODE && !adminKey)) return;
     run.mutate();
   };
 
   return (
     <section className="card admin-panel">
-      <h3>RAG tester</h3>
+      <h2>RAG tester</h2>
       <form onSubmit={submit} className="settings-inline">
         <label className="field settings-grow">
           <span className="field-label">Query</span>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="How do I use ProximityPrompt?" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} name="ragQuery" id="admin-rag" placeholder="How do I use ProximityPrompt?" />
         </label>
-        <button type="submit" className="btn btn-primary" disabled={run.isPending || !adminKey || !query.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={run.isPending || (!MOCK_MODE && !adminKey) || !query.trim()}>
           {run.isPending ? 'Searching…' : 'Search'}
         </button>
       </form>
@@ -385,6 +386,8 @@ export function AdminPage() {
                 /* private mode */
               }
             }}
+            name="adminKey"
+            id="admin-key"
             placeholder="X-Admin-Key"
             autoComplete="off"
           />

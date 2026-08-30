@@ -1,0 +1,102 @@
+{
+ "task": "b2-market-stall",
+ "round": 1,
+ "runMs": 266943,
+ "metrics": {
+  "parts": 121,
+  "small": 118,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Wood",
+    "parts": 20
+   },
+   {
+    "material": "Neon",
+    "parts": 1
+   },
+   {
+    "material": "Cobblestone",
+    "parts": 2
+   },
+   {
+    "material": "SmoothPlastic",
+    "parts": 1
+   },
+   {
+    "material": "WoodPlanks",
+    "parts": 63
+   },
+   {
+    "material": "Fabric",
+    "parts": 30
+   },
+   {
+    "material": "Metal",
+    "parts": 4
+   }
+  ],
+  "colours": 11,
+  "lights": 1,
+  "heightSpan": 12.3,
+  "brightness": 3,
+  "clockTime": 14.5,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ]
+ },
+ "boundsSize": [
+  13,
+  13.5,
+  11
+ ],
+ "score": 4,
+ "passed": false,
+ "unavailable": false,
+ "summary": "The right object categories are all present (posts, striped valance, counter, crates, goods) and the palette is coherent, but the build reads as crude. The canopy is the worst offender: instead of a striped fabric roof it is a scatter of loose brown planks with two poles crossing in an X above it, which looks broken rather than built. Goods density on the counter is far too low for a market stall,",
+ "hardFails": [],
+ "defects": [
+  {
+   "dimension": "colour",
+   "fix": "Rebuild the canopy as a single sloped Fabric roof (one or two large wedges, ~0.5 stud thick) with the red/white stripes running across it, and keep the striped band as a hanging valance only. Delete the loose brown planks currently floating",
+   "observed": "The canopy is a jumble of dark brown planks scattered at random angles, not a taut striped fabric roof. The red/white stripes exist only as a thin vertical valance band around the frame; the actual roof reads as broken decking. In the hero ",
+   "severity": "major",
+   "view": "hero and front"
+  },
+  {
+   "dimension": "proportion",
+   "fix": "Remove the crossed poles entirely, or if they are meant as ridge bracing, tuck them under the roof plane and shorten them so they do not extend past the canopy silhouette",
+   "observed": "Two long poles cross in an X above the roof and stick out past the canopy on both sides. They look like construction debris or a broken frame, not intentional structure. The side view shows one pole jutting diagonally with no visible anchor",
+   "severity": "major",
+   "view": "hero and side"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Add 2-3 stacked crates (2x2x2 and 1.5x1.5x1.5), a barrel, and 6-8 small goods (loaves, sacks, pottery) at varied heights on the counter and a back shelf. Aim for goods covering roughly 40-50% of the counter surface",
+   "observed": "The counter carries only two or three small items (a couple of pale loaves and one dark object). The side view is nearly empty: one crate, one hanging item, and a large void under the canopy. For a 'goods on display' stall this is far too",
+   "severity": "major",
+   "view": "front and side"
+  },
+  {
+   "dimension": "composition",
+   "fix": "Replace the 2-part cobble pad with a 13x13 Cobblestone slab 0.3-0.5 studs thick, or extend a wooden deck floor under the stall so the posts meet a surface that reads as part of the build",
+   "observed": "The stall sits on a thin dark grey slab (only 2 Cobblestone parts) that reads as a flat placeholder pad. The posts land on it with no footings, and the pad edge is a hard untextured rectangle",
+   "severity": "minor",
+   "view": "hero"
+  },
+  {
+   "dimension": "proportion",
+   "fix": "Either thicken the posts to 1x1 studs with a horizontal top plate connecting them, or add diagonal corner braces (0.4x0.4 studs) from post to beam so the frame reads as joinery rather than sticks",
+   "observed": "The support posts are very thin relative to the 13-stud canopy span, and the front view shows them splayed at slight angles with nothing bracing them. The structure looks like it would topple",
+   "severity": "minor",
+   "view": "front"
+  }
+ ],
+ "neurons": 67
+}

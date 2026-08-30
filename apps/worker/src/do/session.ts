@@ -23,7 +23,9 @@ import { sparksForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
+import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
+import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -43,10 +45,44 @@ interface AgentState {
   startedAt: number;
   lastStepAt: number;
   userId: string;
+  // ---- adaptive reasoning signals. All optional: a run persisted by an older deployment
+  // deserialises unchanged and simply starts from the baseline effort. ----
+  /** how many steps this run has already spent at high effort */
+  highEffortUsed?: number;
+  /** the previous step errored or a tool reported failure */
+  priorStepFailed?: boolean;
+  /** the last visual critique failed its quality gate */
+  visualDefectsFound?: boolean;
+  /** what the user's request looks like, classified once when the run starts */
+  traits?: Pick<ReasoningSignals, 'visualDesignTask' | 'multiSystemTask' | 'ambiguousRequest'>;
+  /** pins the reasoning tier for the whole run; set only by the A/B harness, never in production */
+  forcedEffort?: Effort;
+  /** a mutating tool has succeeded this run, so there is something to show for it */
+  mutated?: boolean;
+  /** how many times this run has been steered back to work after replying without acting */
+  nudges?: number;
+  /** the user's request, kept so the automatic visual gate can judge against the actual intent */
+  request?: string;
+  /** the visual gate has already run once this run — it is charged once, never in a loop */
+  autoCritiqued?: boolean;
 }
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
-const STEP_LIMITS: Record<GolemMode, number> = { clay: 3, stone: 8, rune: 14 };
+// Step limits are a direct cost multiplier: every step is a full priced inference call. They were
+// 3/8/14, which was sized for build-only runs. The visual loop costs steps by construction —
+// build (2-3) + render + critique + fix (2) + re-render is eight on its own — and a Stone lamp-post
+// build was measured hitting the ceiling mid-work, leaving scaffolding behind and never finishing
+// the detail pass. These are sized so the loop can actually close.
+const STEP_LIMITS: Record<GolemMode, number> = { clay: 3, stone: 16, rune: 24 };
+
+/** Tools that change the project. A run that ends without one of these has not done its job. */
+const MUTATING_TOOLS = new Set([
+  'edit_script', 'create_instances', 'set_properties', 'delete_instances', 'run_luau', 'insert_asset',
+]);
+/** How many times one run may be steered back to work after replying without acting. */
+const MAX_NUDGES = 2;
+/** Output token budget per step before the effort multiplier — matches the gateway model config. */
+const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 1600, stone: 4400, rune: 5200 };
 const PLUGIN_TIMEOUT_MS = 9000;
 const STEP_STALE_MS = 180_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
@@ -233,6 +269,31 @@ export class SessionDO extends DurableObject<Env> {
       return json({ ok: true });
     }
 
+    // Start a real agent run without a WebSocket client. This is how the visual benchmark suite
+    // drives builds end-to-end: a human typing chat messages cannot be part of an automated
+    // regression run. It takes exactly the path a chat message takes — same startRun, same tools,
+    // same quota, same budget — so what it measures is the real agent, not a test harness.
+    if (path === '/agent-run' && req.method === 'POST') {
+      const { text, mode, effort } = (await req.json()) as { text: string; mode?: GolemMode; effort?: Effort };
+      if (!text?.trim()) return json({ ok: false, error: 'text required' }, 400);
+      const agent = await this.ctx.storage.get<AgentState>('agent');
+      if (agent?.status === 'running') return json({ ok: false, error: 'a run is already in progress' }, 409);
+      // `effort` pins the reasoning tier for the whole run, overriding the adaptive policy. It
+      // exists so the policy itself can be A/B tested against real builds rather than against
+      // text-only probes — the measurement that missed the tool-calling regression.
+      await this.startRun(bind, text.slice(0, 8000), mode ?? 'stone', effort);
+      return json({ ok: true, started: true, mode: mode ?? 'stone', effort: effort ?? 'adaptive' });
+    }
+
+    // Run one Studio op directly, with no agent loop and no inference. The visual eval harness
+    // uses this to capture renders as evidence: paying a model to ask for a screenshot would make
+    // every eval run cost money and would confound what is being measured.
+    if (path === '/studio-op' && req.method === 'POST') {
+      const { op, timeoutMs } = (await req.json()) as { op: StudioOp; timeoutMs?: number };
+      if (!(await this.pluginConnected())) return json({ ok: false, error: 'Studio is not connected' }, 409);
+      return json(await this.execStudioOp(op, Math.min(timeoutMs ?? 45_000, 120_000)));
+    }
+
     if (path === '/info') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
       const msgs = this.sql.exec(`select count(*) as c from messages`).one() as { c: number };
@@ -297,7 +358,12 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ agent run
-  private async startRun(bind: { projectId: string; projectName: string; ownerId: string }, text: string, mode: GolemMode) {
+  private async startRun(
+    bind: { projectId: string; projectName: string; ownerId: string },
+    text: string,
+    mode: GolemMode,
+    forcedEffort?: Effort,
+  ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
       this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
@@ -319,6 +385,7 @@ export class SessionDO extends DurableObject<Env> {
     const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
     const studioConnected = await this.pluginConnected();
     const pluginState = await this.ctx.storage.get<StudioEventState>('pluginState');
+    const traits = classifyRequest(text);
     const sys = systemPrompt({
       mode,
       studioConnected,
@@ -326,6 +393,9 @@ export class SessionDO extends DurableObject<Env> {
       projectName: bind.projectName,
       memorySummary: memory.summary,
       memoryFacts: memory.facts,
+      // The art-direction brief is ~1,800 tokens on every step, so only visual requests pay for
+      // it. The request text doubles as the scene-kind hint — resolveKind matches on substrings.
+      sceneKind: traits.visualDesignTask && mode !== 'clay' ? text : undefined,
     });
 
     const history = (
@@ -349,6 +419,12 @@ export class SessionDO extends DurableObject<Env> {
       startedAt: Date.now(),
       lastStepAt: Date.now(),
       userId: bind.ownerId,
+      highEffortUsed: 0,
+      // Classified once from the user's own words, so every step of the run knows whether it is
+      // design work, systems work, or an under-specified request that needs interpreting.
+      traits,
+      forcedEffort,
+      request: text,
     };
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
@@ -457,12 +533,36 @@ export class SessionDO extends DurableObject<Env> {
 
     const studioConnected = await this.pluginConnected();
     const allowed = toolsForMode(agent.mode, studioConnected, toolNames());
+
+    // Decide how hard to think about THIS step. Cheap by default, expensive where it changes the
+    // outcome — visual design, recovery from failure, anything irreversible.
+    const choice = chooseEffort({
+      mode: agent.mode,
+      step: agent.step,
+      highEffortUsed: agent.highEffortUsed ?? 0,
+      priorStepFailed: agent.priorStepFailed,
+      visualDefectsFound: agent.visualDefectsFound,
+      ...(agent.traits ?? {}),
+    });
+    if (agent.forcedEffort) choice.effort = agent.forcedEffort;
+    if (choice.effort === 'high') agent.highEffortUsed = (agent.highEffortUsed ?? 0) + 1;
+
     const res = await llmChat(
       this.env,
-      { model: agent.mode, messages: agent.llm, tools: toolDefs(studioConnected, allowed) },
-      { kind: `${agent.mode}:step` },
+      {
+        model: agent.mode,
+        messages: agent.llm,
+        tools: toolDefs(studioConnected, allowed),
+        reasoningEffort: choice.effort,
+        maxTokens: tokensForEffort(MODE_BASE_TOKENS[agent.mode], choice.effort),
+      },
+      { kind: `${agent.mode}:step:${choice.effort}` },
     );
     agent.lastCalls = res.toolCalls;
+    // Signals are recomputed from what actually happens each step, so an escalation lapses once
+    // the problem it was bought for is resolved.
+    agent.priorStepFailed = false;
+    agent.visualDefectsFound = false;
 
     // Sparks track real spend: charge the difference between what this call actually cost
     // and the 1 Spark already taken for the step. Users are never billed for our estimate.
@@ -493,6 +593,57 @@ export class SessionDO extends DurableObject<Env> {
 
     if (!res.toolCalls.length) {
       agent.llm.push({ role: 'assistant', content: res.text });
+      // A build request that ends with prose and no change has failed, whatever the prose says.
+      // Measured: the model replied "One part is still Plastic - finding and fixing it, then a
+      // visual inspection:" and stopped, announcing work it never did. Steer it back rather than
+      // reporting success. Bounded by MAX_NUDGES so this can never loop.
+      // VISUAL SELF-CORRECTION, as a production behaviour rather than a benchmark feature.
+      // If the run changed the world for a visual request and never looked at the result, look
+      // now. A failing gate is handed back as work to do, exactly as a user would hand it back.
+      // Charged once per run, and only with steps left, so it can neither loop nor surprise the
+      // budget.
+      if (
+        agent.mode !== 'clay' &&
+        agent.mutated &&
+        studioConnected &&
+        agent.traits?.visualDesignTask &&
+        !agent.autoCritiqued &&
+        agent.step < agent.maxSteps - 1
+      ) {
+        agent.autoCritiqued = true;
+        this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
+        const ctx2 = this.agentCtx();
+        const out = await runTool(ctx2, 'inspect_visually', JSON.stringify({ intent: agent.request ?? 'the requested build' }));
+        agent.trace.push({ tool: 'inspect_visually', summary: out.summary, ok: out.ok, durationMs: 0 });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId: `auto_${agent.step}`, ok: out.ok, summary: out.summary });
+        const critique = ctx2.lastCritique;
+        if (critique && !critique.passed && !critique.unavailable) {
+          agent.visualDefectsFound = true;
+          agent.llm.push({
+            role: 'user',
+            content:
+              `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
+              'Fix the blocking and major defects in what you already built. Do not start over.',
+          });
+          await this.ctx.storage.put('agent', agent);
+          await this.ctx.storage.setAlarm(Date.now() + 10);
+          return;
+        }
+      }
+
+      const owesWork = agent.mode !== 'clay' && !agent.mutated && studioConnected;
+      if (owesWork && (agent.nudges ?? 0) < MAX_NUDGES && agent.step < agent.maxSteps) {
+        agent.nudges = (agent.nudges ?? 0) + 1;
+        agent.llm.push({
+          role: 'user',
+          content:
+            'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
+            'with a tool call, in this turn. If you were mid-sentence, carry out that action.',
+        });
+        await this.ctx.storage.put('agent', agent);
+        await this.ctx.storage.setAlarm(Date.now() + 10);
+        return;
+      }
       await this.finishRun(agent, 'done');
       return;
     }
@@ -524,6 +675,11 @@ export class SessionDO extends DurableObject<Env> {
       const out = await runTool(ctx, call.name, call.arguments);
       const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
       agent.trace.push(entry);
+      // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
+      // means the next step should think harder rather than repeat the same cheap attempt.
+      if (!out.ok) agent.priorStepFailed = true;
+      if (out.ok && MUTATING_TOOLS.has(call.name)) agent.mutated = true;
+      if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary });
       // fence tool output as untrusted data — it can contain attacker-authored text
       agent.llm.push({

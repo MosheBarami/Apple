@@ -51,13 +51,28 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // Higher effort makes the model think past its own token budget and return nothing, so 'low'
   // is both the cheap option and the correct one.
   // ---------------------------------------------------------------------------
-  clay: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 1400, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
-  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2400, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2800, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
+  // maxTokens here is the absolute per-call CEILING. The adaptive reasoning policy sets the
+  // actual budget per step (see reasoning.ts); these are 1.25x the base budgets so a high-effort
+  // step is not silently clamped back down. The bill is bounded by the daily/monthly neuron caps,
+  // not by this number, so raising it does not move the maximum monthly cost.
+  // Budgets are sized for what a BUILD actually costs to express, not for prose. Measured: asked
+  // for a market stall under the art-direction brief, the model emits a 5,326-character run_luau
+  // build script — and at 2,400 output tokens that was guillotined mid-JSON (finish_reason
+  // "length"), so the tool call was unparseable and the agent silently built nothing. Raising the
+  // ceiling is what makes the quality bar expressible. The bill is bounded by the daily/monthly
+  // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
+  // costs a short step.
+  clay: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2000, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
+  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 5600, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
+  rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
   // Housekeeping and vision run on the same model: it is multimodal, so a separate vision
   // model is no longer needed, and one model means one behaviour to reason about.
   memory: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 800, ctx: 1048576, temperature: 0.2, reasoningEffort: 'low' },
-  vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 1000, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
+  // Vision runs the critique loops, which return structured JSON and need room for it. The eval
+  // harness asks for 20 scored dimensions each with a justification, which is the largest response
+  // in the product; at 2,000 tokens it arrived truncated. 4,000 output tokens is ~182 neurons,
+  // still far inside the 1,200-neuron per-request ceiling.
+  vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
@@ -199,6 +214,17 @@ function extractToolCalls(r: any): GatewayToolCall[] {
   return out;
 }
 
+/**
+ * Character weight of a message for the pre-flight reservation. Image parts are costed by their
+ * base64 length, which over-states what a vision model actually charges for a small frame — the
+ * safe direction, since under-reserving is the only way a bill escapes. The ledger settles on the
+ * provider's reported usage afterwards, so the real bill is unaffected.
+ */
+function contentChars(content: string | { type: string; text?: string; image_url?: { url: string } }[]): number {
+  if (typeof content === 'string') return content.length;
+  return content.reduce((n, p) => n + (p.text?.length ?? 0) + (p.image_url?.url.length ?? 0), 0);
+}
+
 interface Usage {
   inputTokens: number;
   outputTokens: number;
@@ -260,17 +286,22 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
       : {}),
   }));
   if (usePrompted) {
+    // Prompted-tool mode is text-only by construction; images only ever ride on tool-less
+    // vision calls, so flattening to a string here cannot lose an attachment.
+    const asText = (c: (typeof messages)[number]['content']) =>
+      typeof c === 'string' ? c : c.map((p) => ('text' in p ? p.text : '[image]')).join('\n');
     if (messages[0]?.role === 'system') {
-      messages = [{ ...messages[0], content: messages[0].content + promptedToolPreamble(req.tools!) }, ...messages.slice(1)];
+      messages = [{ ...messages[0], content: asText(messages[0].content) + promptedToolPreamble(req.tools!) }, ...messages.slice(1)];
     }
     messages = messages.map((m) => {
-      if (m.role === 'tool') return { ...m, role: 'user' as const, content: `Tool result:\n${m.content}` };
+      if (m.role === 'tool') return { ...m, role: 'user' as const, content: `Tool result:\n${asText(m.content)}` };
       const withCalls = m as typeof m & { tool_calls?: { function: { name: string; arguments: string } }[] };
       if (m.role === 'assistant' && withCalls.tool_calls?.length) {
         const rendered = withCalls.tool_calls
           .map((c) => '```tool_call\n' + JSON.stringify({ name: c.function.name, arguments: JSON.parse(c.function.arguments || '{}') }) + '\n```')
           .join('\n');
-        return { role: 'assistant' as const, content: (m.content ? m.content + '\n' : '') + rendered };
+        const prefix = asText(m.content);
+        return { role: 'assistant' as const, content: (prefix ? prefix + '\n' : '') + rendered };
       }
       return m;
     });
@@ -285,11 +316,14 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   if (req.tools?.length && cfg.nativeTools) {
     payload.tools = req.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }));
   }
-  if (cfg.reasoningEffort) payload.reasoning = { effort: cfg.reasoningEffort };
+  // Per-call effort wins over the model default: the adaptive policy decides how hard to think
+  // based on what the step is, and pays for it out of the same budget.
+  const effort = req.reasoningEffort ?? cfg.reasoningEffort;
+  if (effort) payload.reasoning = { effort };
   if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
 
   // ---- spend gate: nothing below this line runs without a reservation ----
-  const inputChars = messages.reduce((n, m) => n + m.content.length, 0) + JSON.stringify(payload.tools ?? '').length;
+  const inputChars = messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;
   const estimate = estimateNeurons(cfg.id, inputChars, maxTokens);
   if (estimate > MAX_NEURONS_PER_REQUEST) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);

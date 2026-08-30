@@ -1,0 +1,29 @@
+{
+  "_comment": "The adversarial critique: a maximally generous judge that gave every dimension a 4, including prompt_fidelity. Paired with metrics-blockout-plaza.json this proves the hard-fail machinery, not the judge, is what stops an existence-only pass. If this combination ever returns pass:true the suite is broken.",
+  "taskId": "vis-03-plaza",
+  "dimensions": {
+    "composition": { "score": 4, "justification": "Judge asserted the arrangement is fully composed from every angle." },
+    "focal_point": { "score": 4, "justification": "Judge asserted an unmistakable landmark with full supporting cast." },
+    "proportion_scale": { "score": 4, "justification": "Judge asserted expressive scale with correct functional dimensions." },
+    "silhouette": { "score": 4, "justification": "Judge asserted distinctive memorable silhouettes throughout the scene." },
+    "material_coherence": { "score": 4, "justification": "Judge asserted materials do storytelling work across the build." },
+    "material_variety": { "score": 4, "justification": "Judge asserted a curated material set with roughness contrast." },
+    "palette_discipline": { "score": 4, "justification": "Judge asserted an authored palette with deliberate temperature strategy." },
+    "value_structure": { "score": 4, "justification": "Judge asserted deliberate value composition leading the eye." },
+    "lighting_setup": { "score": 4, "justification": "Judge asserted a key and fill relationship with tuned ranges." },
+    "atmosphere_mood": { "score": 4, "justification": "Judge asserted atmosphere and sky pulling one direction." },
+    "edge_trim_finish": { "score": 4, "justification": "Judge asserted a designed trim profile vocabulary with mitred corners." },
+    "surface_detail_density": { "score": 4, "justification": "Judge asserted an authored three-scale detail hierarchy." },
+    "prop_layering": { "score": 4, "justification": "Judge asserted layers telling a story of occupation." },
+    "negative_space": { "score": 4, "justification": "Judge asserted negative space composed as an element in its own right." },
+    "vertical_variation": { "score": 4, "justification": "Judge asserted height used compositionally with layered overheads." },
+    "spatial_flow": { "score": 4, "justification": "Judge asserted authored flow with sightlines controlling pace." },
+    "ground_treatment": { "score": 4, "justification": "Judge asserted a designed ground surface with wear and transitions." },
+    "scene_cohesion": { "score": 4, "justification": "Judge asserted a specific committed visual identity with no drift." },
+    "prompt_fidelity": { "score": 4, "justification": "Every element the user named is present: centrepiece, benches, lamps, planting, paths." },
+    "technical_hygiene": { "score": 4, "justification": "Judge asserted production-ready hierarchy, anchoring and part budget." }
+  },
+  "defects": [],
+  "observedLandmark": "a fountain in the middle of the square",
+  "summary": "A generous judge signed off on everything. The structural metrics say otherwise."
+}

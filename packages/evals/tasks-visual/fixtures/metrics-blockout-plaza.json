@@ -1,0 +1,34 @@
+{
+  "_comment": "Golem's CURRENT output shape for vis-03-plaza: every requested object exists, and the scene is a block-out. Bare baseplate, one material, untouched Lighting, nothing smaller than 2 studs. Used by grade-visual.test.mjs to prove object existence cannot buy a pass.",
+  "taskId": "vis-03-plaza",
+  "subject": "game.Workspace",
+  "boundsSize": [118.0, 14.5, 116.0],
+  "views": [
+    { "name": "hero", "image": "screenshots/hero.png", "meta": { "width": 320, "height": 240, "partsConsidered": 41, "partsVisible": 38, "partsOffCamera": 3, "subjectCoverage": 0.44, "distinctColours": 6, "materials": [{ "material": "Plastic", "parts": 38 }] } },
+    { "name": "front", "image": "screenshots/front.png", "meta": { "width": 320, "height": 240, "partsConsidered": 41, "partsVisible": 31, "partsOffCamera": 10, "subjectCoverage": 0.29, "distinctColours": 5, "materials": [{ "material": "Plastic", "parts": 31 }] } },
+    { "name": "top", "image": "screenshots/top.png", "meta": { "width": 320, "height": 240, "partsConsidered": 41, "partsVisible": 41, "partsOffCamera": 0, "subjectCoverage": 0.61, "distinctColours": 6, "materials": [{ "material": "Plastic", "parts": 41 }] } },
+    { "name": "eye", "image": "screenshots/eye.png", "meta": { "width": 320, "height": 240, "partsConsidered": 41, "partsVisible": 22, "partsOffCamera": 19, "subjectCoverage": 0.33, "distinctColours": 5, "materials": [{ "material": "Plastic", "parts": 22 }] } }
+  ],
+  "materials": [{ "material": "Plastic", "parts": 41 }],
+  "distinctColours": 6,
+  "ground": {
+    "isDefaultBaseplate": true,
+    "parts": 1,
+    "materials": ["Plastic"],
+    "recoloured": false,
+    "note": "Studio's stock Baseplate, never touched"
+  },
+  "lighting": {
+    "changedProperties": [],
+    "lightInstances": 0,
+    "effects": []
+  },
+  "parts": {
+    "total": 41,
+    "unanchored": 0,
+    "anchoredPct": 1.0,
+    "smallPropCount": 0,
+    "tallestStuds": 14.5,
+    "medianHeightStuds": 3.0
+  }
+}

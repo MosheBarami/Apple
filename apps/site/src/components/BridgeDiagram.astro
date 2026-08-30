@@ -1,0 +1,377 @@
+---
+// ---------------------------------------------------------------------------
+// BridgeDiagram — the path from your sentence to a change in your place.
+// Every node's copy is traceable to README.md and docs/DECISIONS.md
+// (ADR-002 platform, ADR-004 plugin/op protocol, ADR-009 data plane) and
+// docs/COST-MODEL.md (the model). Hover or focus a node to read it.
+// ---------------------------------------------------------------------------
+
+const nodes = [
+  {
+    id: 'web',
+    label: 'Your workspace',
+    sub: 'browser',
+    lane: 'a',
+    detail:
+      'Chat, project list and checkpoints. It holds a WebSocket open to your project session, so you watch the build happen instead of waiting for a result.',
+    icon: 'M3.5 5.5h17v13h-17zM3.5 9.5h17',
+  },
+  {
+    id: 'session',
+    label: 'Project session',
+    sub: 'Durable Object',
+    lane: 'a',
+    detail:
+      'One Durable Object per active project. It runs the agent loop in alarm-driven steps and keeps your messages, op log and gzipped checkpoints in its own SQLite — single-threaded, so nothing races.',
+    icon: 'M12 3.2l8 4.4v8.8l-8 4.4-8-4.4V7.6zM12 12.1l8-4.5M12 12.1v8.7M12 12.1L4 7.6',
+  },
+  {
+    id: 'plugin',
+    label: 'Golem for Studio',
+    sub: 'Luau plugin',
+    lane: 'a',
+    detail:
+      'A standard .rbxm plugin, built with Rojo. Studio’s HttpService has no WebSocket, so the plugin long-polls the session for typed ops and executes them — every batch wrapped in ChangeHistoryService, which is why Ctrl+Z just works.',
+    icon: 'M6 3.5h9l4 4v13H6zM15 3.5v4h4M9 12.5h6M9 16h4',
+  },
+  {
+    id: 'model',
+    label: 'GLM-5.3-flash',
+    sub: 'Workers AI',
+    lane: 'b',
+    detail:
+      'One model behind every mode — 1M context, native tool calling, multimodal. It scored 98.9 on the Roblox eval suite against 96.8 for the model it replaced, and costs less per token.',
+    icon: 'M12 4.2a3 3 0 0 1 3 3v1.2a3 3 0 0 1 0 6V16a3 3 0 1 1-6 0v-1.6a3 3 0 0 1 0-6V7.2a3 3 0 0 1 3-3zM12 8.4v6',
+  },
+  {
+    id: 'docs',
+    label: 'Creator-docs corpus',
+    sub: 'Vectorize + D1',
+    lane: 'b',
+    detail:
+      'Hybrid retrieval (vector + full-text) over 8,326 chunks of the official Roblox creator docs. The agent calls it as a tool rather than having it stuffed into every prompt — measurement showed forced injection made answers worse.',
+    icon: 'M4.5 5.2c2.6-1 5-1 7.5.6 2.5-1.6 4.9-1.6 7.5-.6v12.6c-2.6-1-5-1-7.5.6-2.5-1.6-4.9-1.6-7.5-.6zM12 5.8v12.6',
+  },
+] as const;
+---
+
+<div class="bridge" id="bridge-map">
+  <div class="bridge__map">
+    <div class="bridge__lane bridge__lane--a">
+      {
+        nodes
+          .filter((n) => n.lane === 'a')
+          .map((n, i) => (
+            <>
+              {i > 0 && (
+                <span class="wire" aria-hidden="true">
+                  <span class="wire__flow" />
+                </span>
+              )}
+              <button
+                type="button"
+                class="node"
+                data-node={n.id}
+                aria-pressed={n.id === 'session' ? 'true' : 'false'}
+                aria-describedby="bridge-detail"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path
+                    d={n.icon}
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span class="node__label">{n.label}</span>
+                <span class="node__sub mono">{n.sub}</span>
+              </button>
+            </>
+          ))
+      }
+    </div>
+
+    <div class="bridge__drop" aria-hidden="true">
+      <span class="wire wire--v"><span class="wire__flow" /></span>
+    </div>
+
+    <div class="bridge__lane bridge__lane--b">
+      {
+        nodes
+          .filter((n) => n.lane === 'b')
+          .map((n) => (
+            <button
+              type="button"
+              class="node node--engine"
+              data-node={n.id}
+              aria-pressed="false"
+              aria-describedby="bridge-detail"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                <path
+                  d={n.icon}
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span class="node__label">{n.label}</span>
+              <span class="node__sub mono">{n.sub}</span>
+            </button>
+          ))
+      }
+    </div>
+  </div>
+
+  <p class="bridge__detail" id="bridge-detail" aria-live="polite">
+    {nodes.find((n) => n.id === 'session')!.detail}
+  </p>
+
+  <div class="bridge__data" hidden>
+    {nodes.map((n) => <span data-for={n.id}>{n.detail}</span>)}
+  </div>
+</div>
+
+<style>
+  .bridge {
+    display: grid;
+    gap: 1.35rem;
+  }
+
+  .bridge__map {
+    display: grid;
+    gap: 0;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: clamp(1.1rem, 3vw, 2rem);
+    box-shadow: var(--inset);
+  }
+
+  .bridge__lane {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .bridge__lane--b {
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 0.15rem;
+  }
+
+  .bridge__drop {
+    display: flex;
+    justify-content: center;
+    height: 2.4rem;
+  }
+
+  /* ---- node ---- */
+  .node {
+    flex: 1;
+    min-width: 0;
+    appearance: none;
+    cursor: pointer;
+    display: grid;
+    justify-items: center;
+    gap: 0.28rem;
+    text-align: center;
+    padding: 1rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: var(--muted);
+    box-shadow: var(--lift-1);
+    transition: border-color var(--dur) var(--ease-out),
+      color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out),
+      background-color var(--dur) var(--ease-out);
+  }
+
+  .node:hover {
+    transform: translateY(-3px);
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .node[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--accent-soft), transparent 75%),
+      var(--surface);
+  }
+
+  .node[aria-pressed='true'] svg {
+    color: var(--accent);
+  }
+
+  .node__label {
+    font-weight: 570;
+    font-size: 0.92rem;
+    color: var(--ink);
+    line-height: 1.25;
+  }
+
+  .node__sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .node--engine {
+    flex: 0 1 15rem;
+  }
+
+  /* ---- wires ---- */
+  .wire {
+    flex: 0 0 clamp(1.5rem, 4vw, 3.5rem);
+    align-self: center;
+    height: 1px;
+    background: var(--line-strong);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wire--v {
+    flex: none;
+    width: 1px;
+    height: 100%;
+    background: var(--line-strong);
+  }
+
+  .wire__flow {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--accent) 45%,
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: flow 2.6s var(--ease-in-out) infinite;
+  }
+
+  .wire--v .wire__flow {
+    background: linear-gradient(
+      180deg,
+      transparent,
+      var(--accent) 45%,
+      transparent
+    );
+    transform: translateY(-100%);
+    animation-name: flow-v;
+  }
+
+  @keyframes flow {
+    0% {
+      transform: translateX(-100%);
+    }
+    60%,
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes flow-v {
+    0% {
+      transform: translateY(-100%);
+    }
+    60%,
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wire__flow {
+      animation: none;
+      transform: none;
+      opacity: 0.5;
+    }
+  }
+
+  /* ---- detail ---- */
+  .bridge__detail {
+    margin: 0;
+    min-height: 4.2rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 68ch;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--accent);
+  }
+
+  @media (max-width: 760px) {
+    .bridge__lane {
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .bridge__lane--b {
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .node--engine {
+      flex: 1;
+    }
+
+    .wire {
+      flex: none;
+      width: 1px;
+      height: 1.6rem;
+      align-self: center;
+      background: var(--line-strong);
+    }
+
+    .wire .wire__flow {
+      background: linear-gradient(
+        180deg,
+        transparent,
+        var(--accent) 45%,
+        transparent
+      );
+      transform: translateY(-100%);
+      animation-name: flow-v;
+    }
+
+    .bridge__drop {
+      height: 1.6rem;
+    }
+  }
+</style>
+
+<script>
+  const bridge = document.getElementById('bridge-map');
+  const detail = document.getElementById('bridge-detail');
+
+  if (bridge && detail) {
+    const store = new Map<string, string>();
+    bridge
+      .querySelectorAll<HTMLElement>('.bridge__data [data-for]')
+      .forEach((s) => store.set(s.dataset.for!, s.textContent || ''));
+
+    const nodes = Array.from(bridge.querySelectorAll<HTMLElement>('.node'));
+
+    function pick(node: HTMLElement) {
+      nodes.forEach((n) =>
+        n.setAttribute('aria-pressed', String(n === node))
+      );
+      detail!.textContent = store.get(node.dataset.node!) || '';
+    }
+
+    nodes.forEach((n) => {
+      n.addEventListener('click', () => {
+        pick(n);
+        (window as any).golemTick?.(480);
+      });
+      n.addEventListener('focus', () => pick(n));
+      n.addEventListener('mouseenter', () => pick(n));
+    });
+  }
+</script>

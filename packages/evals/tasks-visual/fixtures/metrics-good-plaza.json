@@ -1,0 +1,41 @@
+{
+  "_comment": "What a plaza that clears the gate looks like structurally: designed ground, six materials, tuned Lighting with real light instances, ~300 trim/dressing parts under 2 studs, a centrepiece well above the median height.",
+  "taskId": "vis-03-plaza",
+  "subject": "game.Workspace",
+  "boundsSize": [124.0, 31.5, 121.0],
+  "views": [
+    { "name": "hero", "image": "screenshots/hero.png", "meta": { "width": 320, "height": 240, "partsConsidered": 946, "partsVisible": 612, "partsOffCamera": 41, "subjectCoverage": 0.52, "distinctColours": 34, "materials": [{ "material": "Slate", "parts": 188 }, { "material": "Grass", "parts": 96 }, { "material": "WoodPlanks", "parts": 74 }, { "material": "Metal", "parts": 61 }, { "material": "Water", "parts": 12 }, { "material": "Neon", "parts": 9 }] } },
+    { "name": "front", "image": "screenshots/front.png", "meta": { "width": 320, "height": 240, "partsConsidered": 946, "partsVisible": 508, "partsOffCamera": 96, "subjectCoverage": 0.41, "distinctColours": 31, "materials": [{ "material": "Slate", "parts": 152 }, { "material": "Grass", "parts": 71 }, { "material": "Metal", "parts": 48 }] } },
+    { "name": "top", "image": "screenshots/top.png", "meta": { "width": 320, "height": 240, "partsConsidered": 946, "partsVisible": 903, "partsOffCamera": 12, "subjectCoverage": 0.68, "distinctColours": 36, "materials": [{ "material": "Slate", "parts": 210 }, { "material": "Grass", "parts": 104 }] } },
+    { "name": "eye", "image": "screenshots/eye.png", "meta": { "width": 320, "height": 240, "partsConsidered": 946, "partsVisible": 341, "partsOffCamera": 302, "subjectCoverage": 0.47, "distinctColours": 28, "materials": [{ "material": "Slate", "parts": 96 }, { "material": "WoodPlanks", "parts": 44 }] } }
+  ],
+  "materials": [
+    { "material": "Slate", "parts": 210 },
+    { "material": "Grass", "parts": 104 },
+    { "material": "WoodPlanks", "parts": 74 },
+    { "material": "Metal", "parts": 61 },
+    { "material": "Water", "parts": 12 },
+    { "material": "Neon", "parts": 9 }
+  ],
+  "distinctColours": 36,
+  "ground": {
+    "isDefaultBaseplate": false,
+    "parts": 84,
+    "materials": ["Slate", "Grass", "Cobblestone"],
+    "recoloured": true,
+    "note": "paved surface with a radial inlay ring, border course and planting beds"
+  },
+  "lighting": {
+    "changedProperties": ["ClockTime", "Brightness", "Ambient", "OutdoorAmbient", "ExposureCompensation"],
+    "lightInstances": 14,
+    "effects": ["Atmosphere", "SunRays"]
+  },
+  "parts": {
+    "total": 946,
+    "unanchored": 0,
+    "anchoredPct": 1.0,
+    "smallPropCount": 311,
+    "tallestStuds": 31.5,
+    "medianHeightStuds": 2.4
+  }
+}

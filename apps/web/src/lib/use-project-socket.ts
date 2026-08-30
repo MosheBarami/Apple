@@ -12,6 +12,7 @@ import type {
   StudioEventState,
 } from '@golem/shared';
 import { fetchCheckpoints, fetchMessages } from './api';
+import { MOCK_MODE, mockCheckpoints, mockLiveTools, mockLogs, mockMessages, mockQuota, mockStudioState } from './mock';
 import { getAccessToken, supabase } from './supabase';
 
 export interface ToolEvent {
@@ -22,6 +23,11 @@ export interface ToolEvent {
   startedAt: number;
   durationMs?: number;
   done: boolean;
+  /**
+   * Structured result payload from `tool_end`. Untrusted: it is only ever fed to
+   * the generative-UI validator, never rendered directly.
+   */
+  detail?: unknown;
 }
 
 export interface ChatItem {
@@ -68,6 +74,47 @@ const MAX_LOGS = 300;
 let localIdCounter = 0;
 const localId = () => `local-${Date.now()}-${localIdCounter++}`;
 
+/** Fixture conversation for mock mode — never reachable in a production build. */
+function mockHistory(): ChatItem[] {
+  const base: ChatItem[] = mockMessages.map((m) => ({
+    id: m.id,
+    role: m.role,
+    mode: m.mode,
+    content: m.content,
+    tools: (m.toolTrace ?? []).map((t, i) => ({
+      toolId: `${m.id}-t${i}`,
+      tool: t.tool,
+      summary: t.summary,
+      ok: t.ok,
+      startedAt: 0,
+      durationMs: t.durationMs,
+      done: true,
+    })),
+    streaming: false,
+    createdAt: new Date(m.createdAt).getTime(),
+  }));
+  base.push({
+    id: 'm4',
+    role: 'assistant',
+    mode: 'stone',
+    content:
+      "I rendered all five angles and ran the visual gate. It scored **6.5/10** — the portal and lighting read well, but the floor is one flat plate and the top-down view shows a lot of empty ground.\n\nI've already retextured the floor into alternating Concrete tiles. The composition fix (seating and planters) is bigger — say the word and I'll lay it out.",
+    tools: mockLiveTools().map((t, i) => ({
+      toolId: `m4-t${i}`,
+      tool: t.tool,
+      summary: t.summary,
+      ok: t.ok,
+      startedAt: 0,
+      durationMs: t.durationMs,
+      done: true,
+      detail: t.detail,
+    })),
+    streaming: false,
+    createdAt: Date.now() - 60_000,
+  });
+  return base;
+}
+
 export function useProjectSocket(projectId: string, onServerError: (code: string, message: string) => void): ProjectSocket {
   const [conn, setConn] = useState<ConnState>('connecting');
   const [messages, setMessages] = useState<ChatItem[]>([]);
@@ -93,6 +140,15 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
 
   // ---------------------------------------------------------------- history
   const loadHistory = useCallback(() => {
+    if (MOCK_MODE) {
+      setMessages(mockHistory());
+      setHistoryState('ready');
+      setConn('open');
+      setStudio({ connected: true, state: mockStudioState });
+      setQuota(mockQuota);
+      setLogs(mockLogs);
+      return;
+    }
     setHistoryState('loading');
     fetchMessages(projectId)
       .then((res) => {
@@ -124,6 +180,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   }, [projectId]);
 
   const loadCheckpoints = useCallback(() => {
+    if (MOCK_MODE) {
+      setCheckpoints(mockCheckpoints);
+      setCheckpointsState('ready');
+      return;
+    }
     setCheckpointsState('loading');
     fetchCheckpoints(projectId)
       .then((res) => {
@@ -226,7 +287,14 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             ...item,
             tools: item.tools.map((t) =>
               t.toolId === msg.toolId
-                ? { ...t, ok: msg.ok, summary: msg.summary || t.summary, durationMs: Date.now() - t.startedAt, done: true }
+                ? {
+                    ...t,
+                    ok: msg.ok,
+                    summary: msg.summary || t.summary,
+                    durationMs: Date.now() - t.startedAt,
+                    done: true,
+                    detail: msg.detail,
+                  }
                 : t,
             ),
           };
@@ -275,7 +343,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   }, []);
 
   const connect = useCallback(async () => {
-    if (closedRef.current) return;
+    if (MOCK_MODE || closedRef.current) return;
     // Refresh the Supabase session before (re)connecting; getSession auto-refreshes
     // an expired token, and an explicit refresh keeps long-lived tabs healthy.
     let token = await getAccessToken();
@@ -353,6 +421,10 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   }, [connect]);
 
   useEffect(() => {
+    if (MOCK_MODE) {
+      setConn('open');
+      return;
+    }
     closedRef.current = false;
     attemptsRef.current = 0;
     setConn('connecting');

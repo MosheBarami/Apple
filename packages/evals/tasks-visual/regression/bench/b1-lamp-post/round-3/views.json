@@ -1,0 +1,165 @@
+{
+ "subject": "game.Workspace",
+ "boundsSize": [
+  12,
+  20.6,
+  28.8
+ ],
+ "lighting": {
+  "clockTime": 14.5,
+  "fogEnd": 100000,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect"
+  ],
+  "geographicLatitude": 0,
+  "ambient": [
+   70,
+   70,
+   70
+  ],
+  "outdoorAmbient": [
+   70,
+   70,
+   70
+  ],
+  "brightness": 3,
+  "lightInstances": 1,
+  "exposureCompensation": 0
+ },
+ "views": [
+  {
+   "name": "hero",
+   "meta": {
+    "partsConsidered": 44,
+    "distinctColours": 5,
+    "materials": [
+     {
+      "parts": 36,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.1,
+    "partsVisible": 42,
+    "width": 288
+   }
+  },
+  {
+   "name": "front",
+   "meta": {
+    "partsConsidered": 44,
+    "distinctColours": 5,
+    "materials": [
+     {
+      "parts": 36,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.07,
+    "partsVisible": 42,
+    "width": 288
+   }
+  },
+  {
+   "name": "side",
+   "meta": {
+    "partsConsidered": 44,
+    "distinctColours": 5,
+    "materials": [
+     {
+      "parts": 36,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.12,
+    "partsVisible": 42,
+    "width": 288
+   }
+  },
+  {
+   "name": "top",
+   "meta": {
+    "partsConsidered": 44,
+    "distinctColours": 6,
+    "materials": [
+     {
+      "parts": 36,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 2,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 1,
+    "height": 180,
+    "subjectCoverage": 1,
+    "partsVisible": 43,
+    "width": 288
+   }
+  },
+  {
+   "name": "eye",
+   "meta": {
+    "partsConsidered": 44,
+    "distinctColours": 5,
+    "materials": [
+     {
+      "parts": 36,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.07,
+    "partsVisible": 42,
+    "width": 288
+   }
+  }
+ ]
+}

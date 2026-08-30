@@ -6,6 +6,8 @@ import { getOwnedProject, getProfile } from './supa';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, BudgetError } from './gateway';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
+import { critiqueViews } from './vision';
+import type { RenderViewResult } from '@golem/shared';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -277,17 +279,29 @@ app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
 
 /** Raw provider response, for adapting the normalizer to a new model's shape. */
 app.post('/api/admin/raw-probe', async (c) => {
-  const { model, prompt, maxTokens, reasoning } = await c.req.json<{ model: string; prompt: string; maxTokens?: number; reasoning?: string }>();
+  const { model, prompt, system, tools, maxTokens, reasoning } = await c.req.json<{
+    model: string;
+    prompt: string;
+    /** optional system message, so the real production prompt can be reproduced exactly */
+    system?: string;
+    /** optional tool definitions, so tool-calling behaviour can be probed, not just prose */
+    tools?: { name: string; description: string; parameters: unknown }[];
+    maxTokens?: number;
+    reasoning?: string;
+  }>();
   const payload: Record<string, unknown> = {
-    messages: [{ role: 'user', content: prompt }],
+    messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }],
     max_tokens: maxTokens ?? 200,
   };
+  if (tools?.length) {
+    payload.tools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }));
+  }
   if (reasoning) payload.reasoning = { effort: reasoning };
   const raw = await c.env.AI.run(model as never, payload as never, { gateway: { id: c.env.AI_GATEWAY_ID ?? 'golem', cacheTtl: 0 } } as never);
   const shape = (o: unknown, d = 0): unknown => {
     if (o === null || typeof o !== 'object') return typeof o === 'string' ? `str(${o.length}):${o.slice(0, 120)}` : o;
     if (Array.isArray(o)) return o.slice(0, 3).map((x) => shape(x, d + 1));
-    if (d > 4) return '…';
+    if (d > 7) return '…';
     return Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, shape(v, d + 1)]));
   };
   return c.json({ keys: Object.keys(raw as object), shape: shape(raw) });
@@ -376,6 +390,16 @@ app.post('/api/admin/rag-test', async (c) => {
   return c.json({ hits: hits.map((h) => ({ title: h.title, url: h.url, score: h.score, preview: h.text.slice(0, 200) })) });
 });
 
+/** Clear a user's Spark usage for a day, so the visual benchmark can be run more than once daily. */
+app.post('/api/admin/quota-reset', async (c) => {
+  const { userId, day } = await c.req.json<{ userId: string; day?: string }>();
+  const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId)).fetch('https://do/reset', {
+    method: 'POST',
+    body: JSON.stringify({ day }),
+  });
+  return c.json(await res.json());
+});
+
 app.post('/api/admin/set-plan', async (c) => {
   const { userId, plan } = await c.req.json<{ userId: string; plan: 'free' | 'pro' }>();
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId)).fetch('https://do/set-plan', {
@@ -388,6 +412,103 @@ app.post('/api/admin/set-plan', async (c) => {
 app.get('/api/admin/session-info/:id', async (c) => {
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/info');
   return c.json(await res.json());
+});
+
+/**
+ * Raw vision access for the eval harness: it brings its own 20-dimension rubric prompt and its own
+ * PNGs, and only needs a model to look at them. Kept separate from /api/admin/critique, which is
+ * the product's own opinionated 8-dimension critique — the eval must be free to disagree with the
+ * product's judgement rather than inherit it.
+ */
+app.post('/api/admin/vision-critique', async (c) => {
+  const { prompt, images, responseFormat } = await c.req.json<{
+    prompt: string;
+    images: { mediaType: string; base64: string }[];
+    responseFormat?: string;
+  }>();
+  if (!prompt || !Array.isArray(images) || !images.length) return c.json({ ok: false, error: 'prompt and images required' }, 400);
+  const content = [
+    { type: 'text' as const, text: prompt },
+    ...images.map((i) => ({ type: 'image_url' as const, image_url: { url: `data:${i.mediaType};base64,${i.base64}` } })),
+  ];
+  try {
+    const res = await llmChat(
+      c.env,
+      {
+        model: 'vision',
+        messages: [{ role: 'user', content }],
+        // `high`, never `medium`: measured, medium spends the whole budget on reasoning and
+        // returns an empty string. See docs/COST-MODEL.md.
+        reasoningEffort: 'high',
+        maxTokens: 4000,
+        ...(responseFormat === 'json' ? {} : {}),
+      },
+      { kind: 'eval:vision-critique', cacheTtl: 0 },
+    );
+    return c.json({ ok: true, text: res.text, neurons: res.neurons });
+  } catch (e) {
+    if (e instanceof BudgetError) return c.json({ ok: false, error: e.message, reason: e.reason }, 429);
+    throw e;
+  }
+});
+
+/**
+ * Critique rendered views. This is how the visual eval harness reaches a vision model: the
+ * grader has no Workers AI binding of its own, and routing it through here means eval spend is
+ * counted by the same budget ledger as everything else rather than escaping it.
+ */
+app.post('/api/admin/critique', async (c) => {
+  const { subject, boundsSize, views, lighting, intent, passThreshold, subjectKind } = await c.req.json<{
+    subject?: string;
+    boundsSize?: [number, number, number];
+    views: RenderViewResult['views'];
+    lighting?: RenderViewResult['lighting'];
+    intent: string;
+    passThreshold?: number;
+    /** 'prop' judges one object; 'scene' judges a place. Inferred from bounds when omitted. */
+    subjectKind?: 'prop' | 'scene';
+  }>();
+  if (!Array.isArray(views) || !views.length) return c.json({ error: 'views required' }, 400);
+  const result: RenderViewResult = { subject: subject ?? 'scene', boundsSize: boundsSize ?? [0, 0, 0], views, lighting };
+  try {
+    return c.json(await critiqueViews(c.env, result, intent ?? 'a well-built Roblox scene', { passThreshold, subject: subjectKind }));
+  } catch (e) {
+    if (e instanceof BudgetError) return c.json({ error: e.message, reason: e.reason }, 429);
+    throw e;
+  }
+});
+
+/**
+ * Run a single Studio op against a paired project, with no agent loop and no inference.
+ * The visual eval harness captures renders through this: driving a model to ask for a screenshot
+ * would make every eval run cost money and would confound what the eval is measuring.
+ */
+/**
+ * Start a real agent run on a project, owner-key gated. The visual benchmark suite drives builds
+ * through this — an automated regression run cannot have a human typing chat messages — and it
+ * takes exactly the path a chat message takes, so it measures the real agent.
+ */
+app.post('/api/admin/agent-run/:id', async (c) => {
+  const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/agent-run', {
+    method: 'POST',
+    body: JSON.stringify(await c.req.json()),
+  });
+  return c.json(await res.json(), res.status as 200);
+});
+
+/** Read a project's transcript, owner-key gated — the benchmark suite records what the agent said. */
+app.get('/api/admin/session-messages/:id', async (c) => {
+  const url = new URL(c.req.url);
+  const res = await sessionStub(c.env, c.req.param('id')).fetch(`https://do/messages?${url.searchParams}`);
+  return c.json(await res.json());
+});
+
+app.post('/api/admin/studio-op/:id', async (c) => {
+  const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/studio-op', {
+    method: 'POST',
+    body: JSON.stringify(await c.req.json()),
+  });
+  return c.json(await res.json(), res.status as 200);
 });
 
 // ---------------------------------------------------------------- static serving (D1-backed)

@@ -1,27 +1,26 @@
 ---
 import Base from '../layouts/Base.astro';
-import GolemFigure from '../components/GolemFigure.astro';
+import GolemMark from '../components/GolemMark.astro';
 ---
 
 <Base
   title="404 — Lost golem"
   description="This page does not exist. The golem wandered off the map."
 >
-  <section class="section lost" aria-labelledby="lost-title">
-    <div class="wrap lost-inner">
-      <div class="lost-figure" aria-hidden="true">
-        <GolemFigure variant="clay" size={220} />
-        <p class="lost-question">?</p>
-      </div>
-      <p class="eyebrow">Error 404</p>
-      <h1 id="lost-title">A golem wandered off the map</h1>
-      <p class="lede">
-        It followed a path that was never carved. Whatever used to be here — a page, a doc, a typo —
-        it is not here now.
+  <section class="lost is-ember" aria-labelledby="lost-title">
+    <div class="wrap lost__inner">
+      <p class="lost__code carved" aria-hidden="true">
+        4<span class="lost__mark"><GolemMark size={118} /></span>4
       </p>
-      <div class="lost-ctas">
-        <a href="/" class="btn btn-primary">Back to solid ground</a>
-        <a href="/docs" class="btn btn-ghost">Browse the docs</a>
+      <p class="eyebrow">Error 404</p>
+      <h1 id="lost-title" class="carved">A golem wandered off the map</h1>
+      <p class="lede">
+        It followed a path that was never carved. Whatever used to be here — a
+        page, a doc, a typo — it is not here now.
+      </p>
+      <div class="lost__ctas">
+        <a href="/" class="btn btn-primary btn-lg">Back to solid ground</a>
+        <a href="/docs" class="btn btn-ghost btn-lg">Browse the docs</a>
       </div>
     </div>
   </section>
@@ -29,61 +28,73 @@ import GolemFigure from '../components/GolemFigure.astro';
 
 <style>
   .lost {
-    min-height: 60vh;
+    min-height: 68vh;
     display: flex;
     align-items: center;
     text-align: center;
+    padding-block: clamp(3rem, 8vw, 6rem);
+    position: relative;
+    background: radial-gradient(
+        ellipse 55% 60% at 50% 30%,
+        var(--accent-soft),
+        transparent 70%
+      ),
+      var(--paper);
   }
 
-  .lost-inner {
-    max-width: 620px;
+  .lost__inner {
+    max-width: 640px;
+  }
+
+  .lost__code {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15em;
+    font-family: var(--font-body);
+    font-variation-settings: normal;
+    font-weight: 620;
+    font-size: clamp(5rem, 16vw, 9rem);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    color: var(--ink);
+    opacity: 0.9;
+    margin: 0 0 1.5rem;
+  }
+
+  .lost__mark {
+    display: inline-flex;
+    align-self: center;
+    margin-inline: -0.02em;
+    transform: translateY(6%) rotate(-5deg);
+    animation: lost-bob 4.5s var(--ease-in-out) infinite;
+  }
+
+  @keyframes lost-bob {
+    0%,
+    100% {
+      transform: translateY(6%) rotate(-5deg);
+    }
+    50% {
+      transform: translateY(-2%) rotate(4deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lost__mark {
+      animation: none;
+    }
   }
 
   .lost .lede {
     margin-inline: auto;
   }
 
-  .lost-figure {
-    position: relative;
-    display: inline-block;
-    margin-bottom: 1rem;
-    transform: rotate(-4deg);
-  }
-
-  .lost-question {
-    position: absolute;
-    top: -6px;
-    right: -18px;
-    font-family: var(--font-display);
-    font-size: 2.6rem;
-    font-weight: 800;
-    color: var(--amber);
-    text-shadow: 0 0 18px rgba(255, 180, 84, 0.6);
-    margin: 0;
-    animation: lost-bob 3s ease-in-out infinite;
-  }
-
-  @keyframes lost-bob {
-    0%,
-    100% {
-      transform: translateY(0) rotate(8deg);
-    }
-    50% {
-      transform: translateY(-8px) rotate(12deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .lost-question {
-      animation: none;
-    }
-  }
-
-  .lost-ctas {
+  .lost__ctas {
     display: flex;
-    gap: 0.9rem;
+    gap: 0.8rem;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 1.8rem;
+    margin-top: 2rem;
   }
 </style>

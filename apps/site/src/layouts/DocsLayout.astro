@@ -38,15 +38,18 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 ---
 
 <Base title={title} description={description}>
-  <div class="wrap docs-shell">
-    <aside class="docs-sidebar">
-      <details class="docs-nav-toggle" id="docs-nav-details">
-        <summary>Docs navigation</summary>
+  <div class="wrap docs">
+    <aside class="docs__side">
+      <details class="docs__nav" id="docs-nav-details">
+        <summary>
+          <span>Docs navigation</span>
+          <span class="docs__chev" aria-hidden="true"></span>
+        </summary>
         <nav aria-label="Documentation">
           {
             sections.map((section) => (
-              <div class="docs-section">
-                <p class="docs-section-label">{section.label}</p>
+              <div class="docs__group">
+                <p class="docs__grouplabel mono">{section.label}</p>
                 <ul>
                   {section.links.map((link) => (
                     <li>
@@ -63,16 +66,17 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
       </details>
     </aside>
 
-    <article class="docs-content">
+    <article class="docs__main">
       <p class="eyebrow">Docs</p>
-      <h1>{heading}</h1>
-      <div class="docs-prose">
+      <h1 class="carved">{heading}</h1>
+      <div class="prose">
         <slot />
       </div>
 
-      <footer class="docs-foot">
+      <footer class="docs__foot">
         <p>
-          Stuck? Ask in the app — Clay mode answers doc questions for 1 spark — or email
+          Stuck? Ask in the app — Clay mode answers doc questions for 1 spark —
+          or email
           <a href="mailto:golem.labs.app@gmail.com">golem.labs.app@gmail.com</a>.
         </p>
       </footer>
@@ -81,208 +85,229 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 </Base>
 
 <style>
-  .docs-shell {
+  .docs {
     display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 3.5rem;
-    padding-block: 3rem 5rem;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: clamp(1.5rem, 5vw, 4rem);
+    padding-block: clamp(2.25rem, 5vw, 3.5rem) clamp(3.5rem, 8vw, 6rem);
     align-items: start;
   }
 
-  .docs-sidebar {
+  .docs__side {
     position: sticky;
-    top: 90px;
+    top: 6rem;
   }
 
-  .docs-nav-toggle {
+  .docs__nav {
     border: 0;
   }
 
-  .docs-nav-toggle > summary {
+  .docs__nav > summary {
     display: none;
   }
 
-  .docs-nav-toggle[open] > summary {
-    display: none;
-  }
-
-  .docs-section {
+  .docs__group {
     margin-bottom: 1.6rem;
   }
 
-  .docs-section-label {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
+  .docs__grouplabel {
+    font-size: 0.63rem;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--muted);
-    margin: 0 0 0.6rem;
+    margin: 0 0 0.55rem;
   }
 
-  .docs-section ul {
+  .docs__group ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.15rem;
+    gap: 0.1rem;
     border-left: 1px solid var(--line);
   }
 
-  .docs-section a {
+  .docs__group a {
     display: block;
     color: var(--muted);
-    font-size: 0.92rem;
-    padding: 0.35rem 0.9rem;
+    font-size: 0.9rem;
+    padding: 0.35rem 0.85rem;
     border-left: 2px solid transparent;
     margin-left: -1px;
+    text-decoration: none;
+    transition: color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out);
   }
 
-  .docs-section a:hover {
-    color: var(--text);
+  .docs__group a:hover {
+    color: var(--ink);
+    text-decoration: none;
   }
 
-  .docs-section a[aria-current='page'] {
-    color: var(--amber);
-    border-left-color: var(--amber);
+  .docs__group a[aria-current='page'] {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 550;
   }
 
-  .docs-content {
-    max-width: 720px;
+  .docs__main {
+    max-width: 72ch;
     min-width: 0;
   }
 
-  .docs-prose :global(h2) {
-    font-size: 1.4rem;
-    margin-top: 2.6rem;
+  .docs__main h1 {
+    font-size: clamp(2.1rem, 5vw, 3.2rem);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ---- prose ---- */
+  .prose :global(h2) {
+    font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+    margin-top: 2.75rem;
     padding-top: 1.6rem;
     border-top: 1px solid var(--line);
   }
 
-  .docs-prose :global(h2:first-child) {
+  .prose :global(h2:first-child) {
     border-top: 0;
     padding-top: 0;
-    margin-top: 1.6rem;
+    margin-top: 0;
   }
 
-  .docs-prose :global(h3) {
-    font-size: 1.08rem;
-    margin-top: 1.8rem;
+  .prose :global(h3) {
+    font-size: 1.1rem;
+    margin-top: 1.9rem;
   }
 
-  .docs-prose :global(p),
-  .docs-prose :global(li) {
+  .prose :global(p),
+  .prose :global(li) {
     color: var(--muted);
-    font-size: 0.97rem;
+    font-size: 0.98rem;
+    line-height: 1.68;
   }
 
-  .docs-prose :global(strong) {
-    color: var(--text);
+  .prose :global(strong) {
+    color: var(--ink);
   }
 
-  .docs-prose :global(ul),
-  .docs-prose :global(ol) {
+  .prose :global(em) {
+    color: var(--ink);
+    font-style: italic;
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
     padding-left: 1.3rem;
     display: grid;
     gap: 0.45rem;
-    margin: 0.6rem 0 1.2rem;
+    margin: 0.7rem 0 1.3rem;
   }
 
-  .docs-prose :global(li::marker) {
-    color: var(--amber);
+  .prose :global(li::marker) {
+    color: var(--accent);
   }
 
-  .docs-prose :global(.callout) {
-    background: rgba(26, 34, 51, 0.6);
+  .prose :global(a) {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .prose :global(.callout) {
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--amber);
-    border-radius: var(--r-ctl);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
     padding: 1rem 1.25rem;
-    margin: 1.4rem 0;
+    margin: 1.5rem 0;
+    box-shadow: var(--lift-1);
   }
 
-  .docs-prose :global(.callout p) {
+  .prose :global(.callout p) {
     margin: 0;
+    color: var(--ink);
+    font-size: 0.94rem;
   }
 
-  .docs-prose :global(.callout--violet) {
-    border-left-color: var(--violet);
+  .prose :global(.callout--violet) {
+    border-left-color: var(--acc-rune);
   }
 
-  .docs-prose :global(kbd) {
-    background: var(--raised);
-    border: 1px solid var(--line);
-    border-bottom-width: 2px;
-    border-radius: 6px;
-    padding: 0.1em 0.45em;
-    font-size: 0.85em;
-  }
-
-  .docs-foot {
+  .docs__foot {
     margin-top: 4rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 0.9rem;
+    color: var(--faint);
+    font-size: 0.88rem;
   }
 
-  @media (max-width: 860px) {
-    .docs-shell {
+  /* ---- mobile nav ---- */
+  @media (max-width: 900px) {
+    .docs {
       grid-template-columns: 1fr;
       gap: 1.5rem;
     }
 
-    .docs-sidebar {
+    .docs__side {
       position: static;
     }
 
-    .docs-nav-toggle {
+    .docs__nav {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: var(--r-card);
-      padding: 0;
+      border-radius: var(--r-md);
+      box-shadow: var(--lift-1);
+      overflow: hidden;
     }
 
-    .docs-nav-toggle > summary,
-    .docs-nav-toggle[open] > summary {
-      display: block;
+    .docs__nav > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
       cursor: pointer;
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 0.95rem;
-      padding: 0.9rem 1.2rem;
+      font-weight: 570;
+      font-size: 0.94rem;
+      padding: 0.85rem 1.1rem;
       list-style: none;
+      color: var(--ink);
     }
 
-    .docs-nav-toggle > summary::-webkit-details-marker {
+    .docs__nav > summary::-webkit-details-marker {
       display: none;
     }
 
-    .docs-nav-toggle > summary::after {
-      content: '▾';
-      float: right;
-      color: var(--amber);
-      transition: transform 200ms ease;
+    .docs__chev {
+      width: 9px;
+      height: 9px;
+      border-right: 1.5px solid var(--accent);
+      border-bottom: 1.5px solid var(--accent);
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform var(--dur) var(--ease-out);
+      flex: none;
     }
 
-    .docs-nav-toggle[open] > summary::after {
-      transform: rotate(180deg);
+    .docs__nav[open] .docs__chev {
+      transform: rotate(225deg) translateY(-2px);
     }
 
-    .docs-nav-toggle nav {
-      padding: 0 1.2rem 1rem;
+    .docs__nav nav {
+      padding: 0 1.1rem 1rem;
+    }
+
+    .docs__main {
+      max-width: none;
     }
   }
 </style>
 
 <script>
-  // keep the details nav open on desktop widths
+  // Desktop keeps the nav permanently expanded; mobile treats it as a disclosure.
   const details = document.getElementById('docs-nav-details') as HTMLDetailsElement | null;
-  const mq = window.matchMedia('(min-width: 861px)');
-  const sync = () => {
-    if (details) details.open = mq.matches ? true : details.open;
-  };
   if (details) {
-    if (mq.matches) details.open = true;
+    const mq = window.matchMedia('(min-width: 901px)');
+    const sync = () => {
+      if (mq.matches) details.open = true;
+    };
+    sync();
     mq.addEventListener('change', sync);
   }
 </script>

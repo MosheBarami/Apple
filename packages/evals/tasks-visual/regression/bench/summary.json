@@ -1,0 +1,1337 @@
+[
+ {
+  "results": [
+   {
+    "task": "b1-lamp-post",
+    "difficulty": 1,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 191446,
+      "metrics": {
+       "parts": 44,
+       "small": 43,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Concrete",
+         "parts": 2
+        },
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Neon",
+         "parts": 4
+        },
+        {
+         "material": "Metal",
+         "parts": 37
+        }
+       ],
+       "colours": 5,
+       "lights": 1,
+       "heightSpan": 17.1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       19.7,
+       17.1,
+       12
+      ],
+      "score": 5,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The lamp itself is a competent mid-tier build: correct part inventory (base, column, collars, glazed lantern, finial), a coherent dark-iron-plus-gold palette, and a readable silhouette. What holds it at 5 is everything around and on the model: a large stray concrete slab squatting next to it in every view, the lamp cropped at the frame edge in the hero shot, a completely smooth unfluted column, a ",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Recenter the lamp at the world origin and delete the stray slab so the hero read is the lamp itself, not a grey rectangle with a lamp cropped at the edge.",
+        "observed": "In hero the lamp is shoved to the right edge of frame with its base half-cropped; the visual centre of the shot is a large empty grey slab. In side the lamp is again pushed to the right third while the slab dominates the left two-thirds. A ",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Delete both Concrete parts, or if a plinth is wanted, replace with a 6x6x0.5 dark cast-iron pad with a 0.3-stud chamfered edge directly under the base so it reads as part of the lamp.",
+        "observed": "There is a large flat grey Concrete slab (roughly 10x8 studs) sitting on the baseplate next to the lamp. It is not part of a lamp post, has no edge treatment, no bevel, no material break-up, and reads as leftover programmer ground. It is in",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the smooth column with 4-6 stacked slightly-tapered segments (e.g. 1.2 studs dia at bottom to 0.9 at top) each with 8 thin vertical ribs 0.08 studs proud of the surface, or use a fluted mesh; keep the gold collar rings between segm",
+        "observed": "The brief asked for a fluted column. The column renders as a smooth dark cylinder with zero vertical articulation from base collar to lantern collar — the single longest element on the model is the least detailed.",
+        "severity": "major",
+        "view": "hero, front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add 0.15-stud dark iron mullions dividing each face into a 2x2 pane grid, drop the glass colour toward a cool off-white, and inset the glass 0.1 studs behind the frame so the housing reads as a cage, not a sticker.",
+        "observed": "The lantern glazing is a single flat tan/beige plane per face with no mullions, no division, and a colour closer to cardboard than glass. It reads as a paper lampshade, not glazing.",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Widen the base tiers to ~4.5 and 3.5 studs, add a third intermediate tier, and shorten the exposed column by ~1 stud so the base:column:lantern ratio is roughly 2:7:3.",
+        "observed": "The base is a thin two-step pedestal barely wider than the column. Real Victorian lamp bases flare to roughly 1.5-2x the column diameter with a moulded plinth; here the lamp looks like it is balanced on a coaster.",
+        "severity": "minor",
+        "view": "front, side"
+       }
+      ],
+      "neurons": 71
+     },
+     {
+      "round": 2,
+      "runMs": 48609,
+      "metrics": {
+       "parts": 44,
+       "small": 43,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Concrete",
+         "parts": 2
+        },
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Neon",
+         "parts": 4
+        },
+        {
+         "material": "Metal",
+         "parts": 37
+        }
+       ],
+       "colours": 5,
+       "lights": 1,
+       "heightSpan": 17.1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       19.7,
+       17.1,
+       12
+      ],
+      "score": 5,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The lamp itself is a competent mid-tier build: correct part inventory (base, column, collars, glazed lantern, finial), a coherent dark-iron-plus-gold palette, and a readable silhouette. What holds it at 5 is everything around and on the model: a large stray concrete slab squatting next to it in every view, the lamp cropped at the frame edge in the hero shot, a completely smooth unfluted column, a ",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Recenter the lamp at the world origin and delete the stray slab so the hero read is the lamp itself, not a grey rectangle with a lamp cropped at the edge.",
+        "observed": "In hero the lamp is shoved to the right edge of frame with its base half-cropped; the visual centre of the shot is a large empty grey slab. In side the lamp is again pushed to the right third while the slab dominates the left two-thirds. A ",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Delete both Concrete parts, or if a plinth is wanted, replace with a 6x6x0.5 dark cast-iron pad with a 0.3-stud chamfered edge directly under the base so it reads as part of the lamp.",
+        "observed": "There is a large flat grey Concrete slab (roughly 10x8 studs) sitting on the baseplate next to the lamp. It is not part of a lamp post, has no edge treatment, no bevel, no material break-up, and reads as leftover programmer ground. It is in",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the smooth column with 4-6 stacked slightly-tapered segments (e.g. 1.2 studs dia at bottom to 0.9 at top) each with 8 thin vertical ribs 0.08 studs proud of the surface, or use a fluted mesh; keep the gold collar rings between segm",
+        "observed": "The brief asked for a fluted column. The column renders as a smooth dark cylinder with zero vertical articulation from base collar to lantern collar — the single longest element on the model is the least detailed.",
+        "severity": "major",
+        "view": "hero, front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add 0.15-stud dark iron mullions dividing each face into a 2x2 pane grid, drop the glass colour toward a cool off-white, and inset the glass 0.1 studs behind the frame so the housing reads as a cage, not a sticker.",
+        "observed": "The lantern glazing is a single flat tan/beige plane per face with no mullions, no division, and a colour closer to cardboard than glass. It reads as a paper lampshade, not glazing.",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Widen the base tiers to ~4.5 and 3.5 studs, add a third intermediate tier, and shorten the exposed column by ~1 stud so the base:column:lantern ratio is roughly 2:7:3.",
+        "observed": "The base is a thin two-step pedestal barely wider than the column. Real Victorian lamp bases flare to roughly 1.5-2x the column diameter with a moulded plinth; here the lamp looks like it is balanced on a coaster.",
+        "severity": "minor",
+        "view": "front, side"
+       }
+      ],
+      "neurons": 71
+     }
+    ],
+    "best": 5,
+    "passed": false
+   }
+  ]
+ },
+ {
+  "results": [
+   {
+    "task": "b1-lamp-post",
+    "difficulty": 1,
+    "rounds": [
+     {
+      "round": 1,
+      "error": "a run is already in progress"
+     }
+    ],
+    "best": null,
+    "passed": false
+   },
+   {
+    "task": "b2-market-stall",
+    "difficulty": 2,
+    "rounds": [
+     {
+      "round": 1,
+      "error": "a run is already in progress"
+     }
+    ],
+    "best": null,
+    "passed": false
+   },
+   {
+    "task": "b3-plaza",
+    "difficulty": 3,
+    "rounds": [
+     {
+      "round": 1,
+      "error": "a run is already in progress"
+     }
+    ],
+    "best": null,
+    "passed": false
+   },
+   {
+    "task": "b4-interior",
+    "difficulty": 4,
+    "rounds": [
+     {
+      "round": 1,
+      "error": "a run is already in progress"
+     }
+    ],
+    "best": null,
+    "passed": false
+   }
+  ]
+ },
+ {
+  "results": [
+   {
+    "task": "b1-lamp-post",
+    "difficulty": 1,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 298615,
+      "metrics": {
+       "parts": 86,
+       "small": 82,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Glass",
+         "parts": 16
+        },
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Neon",
+         "parts": 1
+        },
+        {
+         "material": "Metal",
+         "parts": 68
+        }
+       ],
+       "colours": 6,
+       "lights": 1,
+       "heightSpan": 20.8,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       20.8,
+       12
+      ],
+      "score": 5,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The right parts exist in the right order — plinth, column, gold collars, glazed lantern, warm neon pane — and the silhouette is unmistakably a lamp post, which puts this well above programmer art. But it is assembled, not designed: the base is a flat coaster instead of a stepped Victorian plinth, the requested fluting is completely absent (smooth cylinder in every view), the head-to-column ratio读s",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "proportion",
+        "fix": "Rebuild the base as a 3-tier cast-iron plinth: 4x4x0.8 stud slab, then 3.2x3.2x0.6, then a 2.4-diameter x 0.8 cylinder with a chamfered top edge, all in the same near-black metal. Total base height ~2.2 studs so the column visibly roots in.",
+        "observed": "The lamp meets the ground with a thin flat plate barely taller than one stud (clear in hero and front). A Victorian lamp has a stepped, flared plinth; here the column looks like it was stabbed into a coaster.",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Delete the scattered parts. If a ground bracket was intended, build one coherent object: a 2-stud scroll arm in the same dark metal, symmetric, welded to the plinth — not eight loose fragments.",
+        "observed": "There is a cluster of small dark fragments scattered on the baseplate next to the base (hero and side views especially). It reads as debris or a failed scroll bracket — pure noise on the ground plane.",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add 6-8 vertical ribs: 0.15x0.15 studs in cross-section, full column height, evenly spaced around the cylinder at 45-degree increments, same dark metal so they read as flutes via silhouette.",
+        "observed": "The brief asked for a fluted column. What I see in all three views is a smooth dark cylinder with gold rings stacked on it. Zero fluting is visible from any angle.",
+        "severity": "major",
+        "view": "front, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Scale the lantern housing up ~40% (to roughly 2.4 studs wide) and shorten the column by 2-3 studs so the head is ~25% of total height. Add a 0.6-stud sphere finial plus a 0.8-stud spike above the roof cap.",
+        "observed": "The column is long and skinny while the lantern head is comparatively small — the ratio reads as a parking-lot pole with a box on top, not a Victorian lamp. The finial above the roof is barely a nub; in hero it is nearly invisible against a",
+        "severity": "major",
+        "view": "hero, front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add 4 corner posts (0.2x0.2 studs) from collar to roof plus a 0.15-stud horizontal mid-rail, and a small decorative collar under the lantern (a 1.4-diameter x 0.4 cylinder with a 1.0-diameter x 0.3 cap).",
+        "observed": "The lantern is a glazed box with a dark cap. No ladder-bar cage over the glass, no decorative bracket where head meets column — the transition is an abrupt cylinder-to-box joint (front view shows it plainly).",
+        "severity": "minor",
+        "view": "front, side"
+       }
+      ],
+      "neurons": 77
+     },
+     {
+      "round": 2,
+      "runMs": 188518,
+      "metrics": {
+       "parts": 83,
+       "small": 77,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Glass",
+         "parts": 8
+        },
+        {
+         "material": "Neon",
+         "parts": 1
+        },
+        {
+         "material": "Granite",
+         "parts": 1
+        },
+        {
+         "material": "Concrete",
+         "parts": 3
+        },
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Metal",
+         "parts": 69
+        }
+       ],
+       "colours": 8,
+       "lights": 1,
+       "heightSpan": 24.5,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       24.5,
+       12
+      ],
+      "score": 5,
+      "passed": false,
+      "unavailable": false,
+      "summary": "This is a recognisable lamp with a coherent black-and-brass palette and a real lantern with glass and an interior light source — clearly above programmer art. But it fails the 'ornate Victorian' brief: the fluted column is a smooth tube, the decorative collar is two thin rings, the finial is a nub, and the whole thing is planted on a tilted grey placeholder slab that dominates the hero shot. The 8",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Replace the 12x12 slab with a stepped cast-iron base: a 4x4x0.5 plinth, a 3x3x1.2 mid-block with a 0.3 chamfer, and a 2.2x2.2x0.8 cap under the column. Delete the grey platform entirely — a single lamp needs no plaza.",
+        "observed": "The lamp sits on a large flat grey slab that reads as a placeholder platform, not a lamp base. Worse, the slab is visibly tilted off-axis — in the hero view its near corner dips below the ground plane and in the front view the right edge is",
+        "severity": "major",
+        "view": "hero / front / side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Build the fluting as 8 vertical 0.15x0.15 studs half-round strips arranged around the lower 4 studs of the column, plus a 1.6-stud-diameter decorative collar (torus or stacked cylinders) at the top and bottom of the shaft.",
+        "observed": "The brief asked for a fluted column. What is rendered is a smooth black cylinder with two thin gold rings. Over roughly 14 studs of shaft height there are only 2-3 detail breaks, leaving a long featureless tube that dominates the silhouette",
+        "severity": "major",
+        "view": "front / side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Scale the lantern housing up to ~3.5 studs wide and 3 studs tall, and shorten the shaft so total height sits around 18-19 studs. Add a visible bracket/pedestal joint where column meets lantern.",
+        "observed": "The lantern head is undersized relative to the column — roughly 2 studs wide on a ~20-stud post. The result is a lollipop silhouette: tiny head, endless stick. A real Victorian lamp head is typically 1/4 to 1/3 of the post height",
+        "severity": "major",
+        "view": "hero / front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add a proper finial: a 0.8-stud sphere on a 0.4-stud neck above a small 1.2-stud dome cap, all in the same dark metal. Add corner posts or a crown ring at the lantern roof edge to give the top a finished silhouette.",
+        "observed": "The finial is a barely-visible nub on the lantern roof, and the lantern cap is a plain dark box with no crown, ridge, or roof pitch. The top of the lamp has no memorable silhouette",
+        "severity": "minor",
+        "view": "front / side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Vary the metals: near-black for the housing, a slightly lighter graphite for the shaft, aged brass for the collars and rings. Give the glass a faint tint (e.g. rgb(230,225,200)) so it reads as pane glass, not clear plastic.",
+        "observed": "69 of 83 parts are one flat Metal material in near-identical black. The gold rings are the only material contrast. The glass panes read as flat light-grey quads with no tint or frame depth",
+        "severity": "minor",
+        "view": "front / side"
+       }
+      ],
+      "neurons": 69
+     },
+     {
+      "round": 3,
+      "runMs": 188001,
+      "metrics": {
+       "parts": 94,
+       "small": 80,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Glass",
+         "parts": 8
+        },
+        {
+         "material": "Neon",
+         "parts": 1
+        },
+        {
+         "material": "Concrete",
+         "parts": 4
+        },
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Metal",
+         "parts": 80
+        }
+       ],
+       "colours": 10,
+       "lights": 1,
+       "heightSpan": 31.2,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       13.8,
+       31.1,
+       12.4
+      ],
+      "score": 5,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The lamp has a correct overall silhouette — stepped plinth, tapered dark column, collared lantern with glass panes, gold-trimmed roof and finial — and the palette (black iron, gold trim, cream glass, grey stone) is coherent and appropriately Victorian. However, execution falls short of 'ornate': the base plinth is oversized and reads as plain stacked slabs, the mid-column ornament is a stack of th",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "proportion",
+        "fix": "Cut the plinth footprint to roughly 6x6 studs at the bottom step, 5x5 middle, 4x4 top, and keep total base height under 3 studs. The column should visually dominate, not the pad it stands on.",
+        "observed": "The concrete plinth is massively oversized for the lamp. In the hero and side views the stepped base is roughly half the lamp's total width and reads as three plain stacked grey slabs — a generic podium, not a lamp base. A Victorian lamp's基",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Delete the gold corner blocks. If anchoring detail is wanted, add 4 small dark-iron bolt heads (0.3-stud cylinders) at the corners of the top step, matching the column material.",
+        "observed": "Four small bright gold/yellow blocks sit at the corners of the base steps. They are untextured primitives with no relationship to cast-iron lamp design and read as leftover placeholders or arbitrary colour accents.",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the spike stack with 2-3 smooth torus or cylinder collars (e.g. 1.6-stud diameter rings at 1/3 and 2/3 height) and consider a subtle taper on the column itself. If fluting is wanted, use a fluted/ribbed mesh or texture rather than l",
+        "observed": "The mid-column ornament is a stack of spiky protrusions that read as repeated cone/star lumps rather than fluting or a decorative collar. In the side view it looks like a column wrapped in thorns; in the front view the column is nearly bare",
+        "severity": "major",
+        "view": "side, front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the blob with a simple neon cylinder or capsule roughly 0.8 studs wide and 2 studs tall, centred in the housing, so it reads as a lamp burner through all four glass faces.",
+        "observed": "Inside the lantern, the light source is an irregular white blob with a pointed protrusion — it reads as an arbitrary shape, not a flame or burner. Through the glass it looks like a torn paper cut-out.",
+        "severity": "minor",
+        "view": "front, side"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Add a 0.4-stud dark-iron trim ring around the top of each concrete step and a 0.3-stud chamfer on the top step edge, so the plinth reads as a finished casting rather than stacked slabs.",
+        "observed": "The stepped base has completely flat, unedged slabs — no trim, chamfer, or lip on any step. Combined with the flat grey concrete this makes the bottom third of the lamp look like unfinished level geometry.",
+        "severity": "minor",
+        "view": "hero"
+       }
+      ],
+      "neurons": 76
+     }
+    ],
+    "best": 5,
+    "passed": false
+   }
+  ]
+ },
+ {
+  "results": [
+   {
+    "task": "b1-lamp-post",
+    "difficulty": 1,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 138096,
+      "metrics": {
+       "parts": 42,
+       "small": 39,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Neon",
+         "parts": 5
+        },
+        {
+         "material": "Metal",
+         "parts": 36
+        }
+       ],
+       "colours": 5,
+       "lights": 1,
+       "heightSpan": 20.6,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       20.6,
+       28.8
+      ],
+      "score": 4,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The right silhouette is there — stepped base, column, collar, glazed lantern, finial — so it clears programmer art, but the lantern is a chunky undetailed box, the column is a bare cylinder with no visible fluting, and a stray grey slab sits in the foreground of every view like an abandoned placeholder. It is a recognisable lamp, not a good one.",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Delete the slab, or if a plinth is wanted, make it deliberate: a 10x0.5x10 dark stone pad with a 0.4-stud chamfered edge directly under the base, and re-frame the hero camera so the lamp fills ~40% of frame height, centered.",
+        "observed": "A large flat grey slab sits on the ground in the lower-left of the hero and side views, completely unrelated to the lamp. It reads as a leftover placeholder part and dominates the foreground of every shot.",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Move the camera to 8-10 studs from the base, pitch up ~15 degrees so the finial nearly touches the top of frame, and center the lamp horizontally.",
+        "observed": "The lamp occupies roughly 10% of the frame and sits off to the right with huge empty sky and ground around it. There is no focal hierarchy — the eye lands on the grey slab first.",
+        "severity": "major",
+        "view": "hero"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add a cast-iron ladder bar (0.2-stud rod) up the back of the column, a 0.3-stud-diameter crossbar under the lantern, and a decorative scroll bracket — even 3-4 small black parts sell 'Victorian'.",
+        "observed": "The lantern is a plain box: four flat cream rectangles for glass with no glazing bars, no top crown moulding beyond a flat cap, and the finial is a single thin spike. The column is a bare cylinder with one bulge for a collar.",
+        "severity": "major",
+        "view": "front, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Scale the lantern housing down ~20% (to roughly 3.5 studs wide) and lengthen the exposed column by 2-3 studs so the lantern reads as a cap, not a box on a stick.",
+        "observed": "The lantern housing is nearly as wide as the visible column is long, making it top-heavy and chunky. Real Victorian lamps have a lantern roughly 1/4 to 1/3 the height of the post above the collar; here it reads closer to half.",
+        "severity": "major",
+        "view": "front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the cylinder with a 12-sided fluted column (alternating 0.15-stud radial ribs) and make the collar a two-tier ring: 1.4-stud torus over a 1.1-stud ring, 0.3 studs tall each.",
+        "observed": "The 'fluted column' reads as a smooth cylinder — no fluting is visible at any angle. The decorative collar is a single small bulge rather than a layered ring assembly.",
+        "severity": "minor",
+        "view": "side, front"
+       }
+      ],
+      "neurons": 69
+     },
+     {
+      "round": 2,
+      "runMs": 4669,
+      "metrics": {
+       "parts": 42,
+       "small": 39,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Neon",
+         "parts": 5
+        },
+        {
+         "material": "Metal",
+         "parts": 36
+        }
+       ],
+       "colours": 5,
+       "lights": 1,
+       "heightSpan": 20.6,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       20.6,
+       28.8
+      ],
+      "score": 4,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The right silhouette is there — stepped base, column, collar, glazed lantern, finial — so it clears programmer art, but the lantern is a chunky undetailed box, the column is a bare cylinder with no visible fluting, and a stray grey slab sits in the foreground of every view like an abandoned placeholder. It is a recognisable lamp, not a good one.",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Delete the slab, or if a plinth is wanted, make it deliberate: a 10x0.5x10 dark stone pad with a 0.4-stud chamfered edge directly under the base, and re-frame the hero camera so the lamp fills ~40% of frame height, centered.",
+        "observed": "A large flat grey slab sits on the ground in the lower-left of the hero and side views, completely unrelated to the lamp. It reads as a leftover placeholder part and dominates the foreground of every shot.",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Move the camera to 8-10 studs from the base, pitch up ~15 degrees so the finial nearly touches the top of frame, and center the lamp horizontally.",
+        "observed": "The lamp occupies roughly 10% of the frame and sits off to the right with huge empty sky and ground around it. There is no focal hierarchy — the eye lands on the grey slab first.",
+        "severity": "major",
+        "view": "hero"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add a cast-iron ladder bar (0.2-stud rod) up the back of the column, a 0.3-stud-diameter crossbar under the lantern, and a decorative scroll bracket — even 3-4 small black parts sell 'Victorian'.",
+        "observed": "The lantern is a plain box: four flat cream rectangles for glass with no glazing bars, no top crown moulding beyond a flat cap, and the finial is a single thin spike. The column is a bare cylinder with one bulge for a collar.",
+        "severity": "major",
+        "view": "front, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Scale the lantern housing down ~20% (to roughly 3.5 studs wide) and lengthen the exposed column by 2-3 studs so the lantern reads as a cap, not a box on a stick.",
+        "observed": "The lantern housing is nearly as wide as the visible column is long, making it top-heavy and chunky. Real Victorian lamps have a lantern roughly 1/4 to 1/3 the height of the post above the collar; here it reads closer to half.",
+        "severity": "major",
+        "view": "front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the cylinder with a 12-sided fluted column (alternating 0.15-stud radial ribs) and make the collar a two-tier ring: 1.4-stud torus over a 1.1-stud ring, 0.3 studs tall each.",
+        "observed": "The 'fluted column' reads as a smooth cylinder — no fluting is visible at any angle. The decorative collar is a single small bulge rather than a layered ring assembly.",
+        "severity": "minor",
+        "view": "side, front"
+       }
+      ],
+      "neurons": 69
+     },
+     {
+      "round": 3,
+      "runMs": 3297,
+      "metrics": {
+       "parts": 42,
+       "small": 39,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        },
+        {
+         "material": "Neon",
+         "parts": 5
+        },
+        {
+         "material": "Metal",
+         "parts": 36
+        }
+       ],
+       "colours": 5,
+       "lights": 1,
+       "heightSpan": 20.6,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       20.6,
+       28.8
+      ],
+      "score": 4,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The right silhouette is there — stepped base, column, collar, glazed lantern, finial — so it clears programmer art, but the lantern is a chunky undetailed box, the column is a bare cylinder with no visible fluting, and a stray grey slab sits in the foreground of every view like an abandoned placeholder. It is a recognisable lamp, not a good one.",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Delete the slab, or if a plinth is wanted, make it deliberate: a 10x0.5x10 dark stone pad with a 0.4-stud chamfered edge directly under the base, and re-frame the hero camera so the lamp fills ~40% of frame height, centered.",
+        "observed": "A large flat grey slab sits on the ground in the lower-left of the hero and side views, completely unrelated to the lamp. It reads as a leftover placeholder part and dominates the foreground of every shot.",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Move the camera to 8-10 studs from the base, pitch up ~15 degrees so the finial nearly touches the top of frame, and center the lamp horizontally.",
+        "observed": "The lamp occupies roughly 10% of the frame and sits off to the right with huge empty sky and ground around it. There is no focal hierarchy — the eye lands on the grey slab first.",
+        "severity": "major",
+        "view": "hero"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Add a cast-iron ladder bar (0.2-stud rod) up the back of the column, a 0.3-stud-diameter crossbar under the lantern, and a decorative scroll bracket — even 3-4 small black parts sell 'Victorian'.",
+        "observed": "The lantern is a plain box: four flat cream rectangles for glass with no glazing bars, no top crown moulding beyond a flat cap, and the finial is a single thin spike. The column is a bare cylinder with one bulge for a collar.",
+        "severity": "major",
+        "view": "front, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Scale the lantern housing down ~20% (to roughly 3.5 studs wide) and lengthen the exposed column by 2-3 studs so the lantern reads as a cap, not a box on a stick.",
+        "observed": "The lantern housing is nearly as wide as the visible column is long, making it top-heavy and chunky. Real Victorian lamps have a lantern roughly 1/4 to 1/3 the height of the post above the collar; here it reads closer to half.",
+        "severity": "major",
+        "view": "front"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Replace the cylinder with a 12-sided fluted column (alternating 0.15-stud radial ribs) and make the collar a two-tier ring: 1.4-stud torus over a 1.1-stud ring, 0.3 studs tall each.",
+        "observed": "The 'fluted column' reads as a smooth cylinder — no fluting is visible at any angle. The decorative collar is a single small bulge rather than a layered ring assembly.",
+        "severity": "minor",
+        "view": "side, front"
+       }
+      ],
+      "neurons": 69
+     }
+    ],
+    "best": 4,
+    "passed": false
+   },
+   {
+    "task": "b2-market-stall",
+    "difficulty": 2,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 3224,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The renders show a flat grey Plastic slab and nothing else. The medieval market stall — canopy, counter, crates, goods — is entirely off-camera in all three views, so there is no object to evaluate for silhouette, proportion or ornament. What is visible is programmer-art: one part, one material, one colour, no detail. This is a 1, not a 7.",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Move the stall assembly to the centre of the 12x12 base (around coordinate 6,0,6) so it sits within the hero camera frustum; currently 2 of 3 parts are off-camera in every view.",
+        "observed": "In all three views (hero, front, side) the only visible object is a flat grey slab — a single Plastic part covering 35-40% of the frame. The stall itself, the canopy, counter, crates and goods are all in the 2 parts flagged off-camera. Thes",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Assign WoodPlanks to the stall frame and counter, Fabric to the canopy stripes, and Wood to the crates — three distinct materials minimum.",
+        "observed": "One material (Plastic), one colour, across the whole submission. There is no material language at all — no wood grain on the stall frame, no fabric on the canopy, no variation between counter and crates.",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Build the actual stall: 4 corner posts ~6 studs tall, an A-frame or flat canopy with red/white striped Fabric panels overhanging the counter by ~1.5 studs, a counter top at ~3 studs height, and 2-3 crates with produce (small coloured Mesh/S",
+        "observed": "Zero detail density. The visible part is a featureless wedge/slab with no trim, no edge treatment, no ornament. Nothing in the images corresponds to a striped canopy, counter, crates or goods — the entire requested object list is invisible.",
+        "severity": "blocking",
+        "view": "front, side"
+       }
+      ],
+      "neurons": 41
+     },
+     {
+      "round": 2,
+      "runMs": 3314,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The renders show a flat grey Plastic slab and nothing else. The medieval market stall — canopy, counter, crates, goods — is entirely off-camera in all three views, so there is no object to evaluate for silhouette, proportion or ornament. What is visible is programmer-art: one part, one material, one colour, no detail. This is a 1, not a 7.",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Move the stall assembly to the centre of the 12x12 base (around coordinate 6,0,6) so it sits within the hero camera frustum; currently 2 of 3 parts are off-camera in every view.",
+        "observed": "In all three views (hero, front, side) the only visible object is a flat grey slab — a single Plastic part covering 35-40% of the frame. The stall itself, the canopy, counter, crates and goods are all in the 2 parts flagged off-camera. Thes",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Assign WoodPlanks to the stall frame and counter, Fabric to the canopy stripes, and Wood to the crates — three distinct materials minimum.",
+        "observed": "One material (Plastic), one colour, across the whole submission. There is no material language at all — no wood grain on the stall frame, no fabric on the canopy, no variation between counter and crates.",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Build the actual stall: 4 corner posts ~6 studs tall, an A-frame or flat canopy with red/white striped Fabric panels overhanging the counter by ~1.5 studs, a counter top at ~3 studs height, and 2-3 crates with produce (small coloured Mesh/S",
+        "observed": "Zero detail density. The visible part is a featureless wedge/slab with no trim, no edge treatment, no ornament. Nothing in the images corresponds to a striped canopy, counter, crates or goods — the entire requested object list is invisible.",
+        "severity": "blocking",
+        "view": "front, side"
+       }
+      ],
+      "neurons": 41
+     },
+     {
+      "round": 3,
+      "runMs": 3180,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The renders show a flat grey Plastic slab and nothing else. The medieval market stall — canopy, counter, crates, goods — is entirely off-camera in all three views, so there is no object to evaluate for silhouette, proportion or ornament. What is visible is programmer-art: one part, one material, one colour, no detail. This is a 1, not a 7.",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Move the stall assembly to the centre of the 12x12 base (around coordinate 6,0,6) so it sits within the hero camera frustum; currently 2 of 3 parts are off-camera in every view.",
+        "observed": "In all three views (hero, front, side) the only visible object is a flat grey slab — a single Plastic part covering 35-40% of the frame. The stall itself, the canopy, counter, crates and goods are all in the 2 parts flagged off-camera. Thes",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Assign WoodPlanks to the stall frame and counter, Fabric to the canopy stripes, and Wood to the crates — three distinct materials minimum.",
+        "observed": "One material (Plastic), one colour, across the whole submission. There is no material language at all — no wood grain on the stall frame, no fabric on the canopy, no variation between counter and crates.",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Build the actual stall: 4 corner posts ~6 studs tall, an A-frame or flat canopy with red/white striped Fabric panels overhanging the counter by ~1.5 studs, a counter top at ~3 studs height, and 2-3 crates with produce (small coloured Mesh/S",
+        "observed": "Zero detail density. The visible part is a featureless wedge/slab with no trim, no edge treatment, no ornament. Nothing in the images corresponds to a striped canopy, counter, crates or goods — the entire requested object list is invisible.",
+        "severity": "blocking",
+        "view": "front, side"
+       }
+      ],
+      "neurons": 41
+     }
+    ],
+    "best": 1,
+    "passed": false
+   },
+   {
+    "task": "b3-plaza",
+    "difficulty": 3,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 3181,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "This is not a town plaza; it is one grey Plastic slab. The brief asked for a monument, lamp posts, benches, planters and a sign, and none of them appear in any of the three views. There is no focal point, no material language, no detail of any kind. A player would have no reason to stand here because there is nothing here. Start over from the object list and build each piece with real proportions,",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [],
+      "neurons": 58
+     },
+     {
+      "round": 2,
+      "runMs": 3178,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "This is not a town plaza; it is one grey Plastic slab. The brief asked for a monument, lamp posts, benches, planters and a sign, and none of them appear in any of the three views. There is no focal point, no material language, no detail of any kind. A player would have no reason to stand here because there is nothing here. Start over from the object list and build each piece with real proportions,",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [],
+      "neurons": 58
+     },
+     {
+      "round": 3,
+      "runMs": 3202,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 1,
+      "passed": false,
+      "unavailable": false,
+      "summary": "This is not a town plaza; it is one grey Plastic slab. The brief asked for a monument, lamp posts, benches, planters and a sign, and none of them appear in any of the three views. There is no focal point, no material language, no detail of any kind. A player would have no reason to stand here because there is nothing here. Start over from the object list and build each piece with real proportions,",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [],
+      "neurons": 58
+     }
+    ],
+    "best": 1,
+    "passed": false
+   },
+   {
+    "task": "b4-interior",
+    "difficulty": 4,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 3177,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 0,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The scene is a single grey Plastic slab. None of the requested objects — walls, doorway, windows, bar, stools, tables, chairs, fireplace — exist in the renders. This is not a rough tavern; it is an empty baseplate.",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Build the actual tavern: 12x12 stud floor, four walls at least 8 studs tall with a doorway opening and window cutouts, then place the bar counter, stools, tables, chairs and fireplace inside that shell.",
+        "observed": "All three views (hero, front, side) show a single flat grey slab — a 12x12 stud plate with beveled edges and nothing on it. No walls, no doorway, no windows, no floor material, no bar, no stools, no tables, no chairs, no fireplace. The 'tav",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Assign WoodPlanks to the floor, Wood to the bar/tables/chairs, Brick or Stone to the fireplace, and a plaster/concrete material to the walls instead of leaving everything default Plastic.",
+        "observed": "One material (Plastic), one colour (grey). A tavern interior needs wood plank flooring, timber walls, stone fireplace — none of this exists.",
+        "severity": "blocking",
+        "view": "hero"
+       },
+       {
+        "dimension": "lighting",
+        "fix": "Add at least one warm PointLight (e.g. rgb(255,180,100), Brightness ~1.2, Range 20) over the fireplace and one over the bar area; the current config has zero light instances, which contradicts the 'warm interior lighting' requirement.",
+        "observed": "Zero light instances in the scene. The brief explicitly asked for warm interior lighting; nothing was placed.",
+        "severity": "blocking",
+        "view": "n/a (from lighting config)"
+       }
+      ],
+      "neurons": 37
+     },
+     {
+      "round": 2,
+      "runMs": 3180,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 0,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The scene is a single grey Plastic slab. None of the requested objects — walls, doorway, windows, bar, stools, tables, chairs, fireplace — exist in the renders. This is not a rough tavern; it is an empty baseplate.",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Build the actual tavern: 12x12 stud floor, four walls at least 8 studs tall with a doorway opening and window cutouts, then place the bar counter, stools, tables, chairs and fireplace inside that shell.",
+        "observed": "All three views (hero, front, side) show a single flat grey slab — a 12x12 stud plate with beveled edges and nothing on it. No walls, no doorway, no windows, no floor material, no bar, no stools, no tables, no chairs, no fireplace. The 'tav",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Assign WoodPlanks to the floor, Wood to the bar/tables/chairs, Brick or Stone to the fireplace, and a plaster/concrete material to the walls instead of leaving everything default Plastic.",
+        "observed": "One material (Plastic), one colour (grey). A tavern interior needs wood plank flooring, timber walls, stone fireplace — none of this exists.",
+        "severity": "blocking",
+        "view": "hero"
+       },
+       {
+        "dimension": "lighting",
+        "fix": "Add at least one warm PointLight (e.g. rgb(255,180,100), Brightness ~1.2, Range 20) over the fireplace and one over the bar area; the current config has zero light instances, which contradicts the 'warm interior lighting' requirement.",
+        "observed": "Zero light instances in the scene. The brief explicitly asked for warm interior lighting; nothing was placed.",
+        "severity": "blocking",
+        "view": "n/a (from lighting config)"
+       }
+      ],
+      "neurons": 37
+     },
+     {
+      "round": 3,
+      "runMs": 3175,
+      "metrics": {
+       "parts": 1,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Plastic",
+         "parts": 1
+        }
+       ],
+       "colours": 1,
+       "lights": 0,
+       "heightSpan": 1,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect"
+       ]
+      },
+      "boundsSize": [
+       12,
+       1,
+       12
+      ],
+      "score": 0,
+      "passed": false,
+      "unavailable": false,
+      "summary": "The scene is a single grey Plastic slab. None of the requested objects — walls, doorway, windows, bar, stools, tables, chairs, fireplace — exist in the renders. This is not a rough tavern; it is an empty baseplate.",
+      "hardFails": [
+       "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+       "over 90% of parts are default Plastic — no material pass was done"
+      ],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "Build the actual tavern: 12x12 stud floor, four walls at least 8 studs tall with a doorway opening and window cutouts, then place the bar counter, stools, tables, chairs and fireplace inside that shell.",
+        "observed": "All three views (hero, front, side) show a single flat grey slab — a 12x12 stud plate with beveled edges and nothing on it. No walls, no doorway, no windows, no floor material, no bar, no stools, no tables, no chairs, no fireplace. The 'tav",
+        "severity": "blocking",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "materials",
+        "fix": "Assign WoodPlanks to the floor, Wood to the bar/tables/chairs, Brick or Stone to the fireplace, and a plaster/concrete material to the walls instead of leaving everything default Plastic.",
+        "observed": "One material (Plastic), one colour (grey). A tavern interior needs wood plank flooring, timber walls, stone fireplace — none of this exists.",
+        "severity": "blocking",
+        "view": "hero"
+       },
+       {
+        "dimension": "lighting",
+        "fix": "Add at least one warm PointLight (e.g. rgb(255,180,100), Brightness ~1.2, Range 20) over the fireplace and one over the bar area; the current config has zero light instances, which contradicts the 'warm interior lighting' requirement.",
+        "observed": "Zero light instances in the scene. The brief explicitly asked for warm interior lighting; nothing was placed.",
+        "severity": "blocking",
+        "view": "n/a (from lighting config)"
+       }
+      ],
+      "neurons": 37
+     }
+    ],
+    "best": 0,
+    "passed": false
+   }
+  ]
+ }
+]

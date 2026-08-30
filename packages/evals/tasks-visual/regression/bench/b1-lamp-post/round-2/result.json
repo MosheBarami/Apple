@@ -1,0 +1,79 @@
+{
+ "task": "b1-lamp-post",
+ "round": 2,
+ "runMs": 220103,
+ "metrics": {
+  "parts": 119,
+  "small": 117,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Slate",
+    "parts": 5
+   },
+   {
+    "material": "Neon",
+    "parts": 5
+   },
+   {
+    "material": "Metal",
+    "parts": 109
+   }
+  ],
+  "colours": 7,
+  "lights": 2,
+  "heightSpan": 22.4,
+  "brightness": 2.4,
+  "clockTime": 17.4,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ]
+ },
+ "boundsSize": [
+  10.8,
+  22.4,
+  10.8
+ ],
+ "score": 6,
+ "passed": false,
+ "unavailable": false,
+ "summary": "A coherent, correctly-assembled Victorian lamp with a good silhouette (stepped finial, cross-mullioned lantern, brass collar accents, believable dark-iron-plus-brass palette) — clearly above programmer art. But it sits at 'competent', not 'good': the column is a smooth spindly pole with no visible fluting, the base is a flat placeholder-style slab instead of a moulded plinth, and the lantern glaz",
+ "hardFails": [],
+ "defects": [
+  {
+   "dimension": "proportion",
+   "fix": "Thicken the column from its current ~0.6-stud pole profile to ~1.2 studs at the base tapering to ~0.9 under the collar, and shorten it by ~2-3 studs so the lantern sits closer to the classic 1:1 ratio with the shaft. Right now it reads as a",
+   "observed": "The column is a long thin smooth pole carrying an oversized lantern. In all three views the shaft reads as spindly relative to the lantern head and the wide base plate — real Victorian lamp columns are chunkier, roughly a third of the head",
+   "severity": "major",
+   "view": "hero / front / side"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Replace the flat plate with a 3-tier moulded plinth: a 6.5-stud square step ~0.4 studs tall, a 5-stud step ~0.6 studs tall, then a chamfered 3.5-stud cap block ~1.2 studs tall before the column starts. Add a 0.3-stud torus-style ring where列",
+   "observed": "The base is a single wide flat slab — a beveled square plate sitting directly on the ground with a small gold fitting at its centre. It reads as a placeholder pad, not a cast-iron plinth. A Victorian base needs stepped/moulded tiers",
+   "severity": "major",
+   "view": "hero / front"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Add 6-8 shallow vertical fluting strips (0.15-stud half-round cylinders) around the lower two-thirds of the shaft, and give the existing collar a second, wider ring 0.5 studs below it so the transition has a moulded profile instead of one",
+   "observed": "The brief asked for a fluted column. At this camera distance the shaft reads as a smooth untextured cylinder — no flutes, no taper steps, no ring detail along its length. The single gold collar band is the only ornament on ~12 studs of",
+   "severity": "major",
+   "view": "front / side"
+  },
+  {
+   "dimension": "materials",
+   "fix": "Inset the glass panes 0.2 studs behind the mullion frame and add a 0.15-stud inner sill at the bottom of each face so the glazing has visible depth from oblique angles",
+   "observed": "The lantern glass is a flat glowing plane flush with the mullion frame — there is no visible recess or pane depth, so the housing reads as a decal on a box rather than a glazed lantern",
+   "severity": "minor",
+   "view": "hero"
+  }
+ ],
+ "neurons": 75
+}

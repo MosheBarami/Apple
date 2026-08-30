@@ -1,0 +1,66 @@
+{
+ "task": "b4-interior",
+ "round": 1,
+ "runMs": 3177,
+ "metrics": {
+  "parts": 1,
+  "small": 0,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Plastic",
+    "parts": 1
+   }
+  ],
+  "colours": 1,
+  "lights": 0,
+  "heightSpan": 1,
+  "brightness": 3,
+  "clockTime": 14.5,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect"
+  ]
+ },
+ "boundsSize": [
+  12,
+  1,
+  12
+ ],
+ "score": 0,
+ "passed": false,
+ "unavailable": false,
+ "summary": "The scene is a single grey Plastic slab. None of the requested objects — walls, doorway, windows, bar, stools, tables, chairs, fireplace — exist in the renders. This is not a rough tavern; it is an empty baseplate.",
+ "hardFails": [
+  "only one material used (Plastic) — a scene needs a material language, not one surface everywhere",
+  "over 90% of parts are default Plastic — no material pass was done"
+ ],
+ "defects": [
+  {
+   "dimension": "composition",
+   "fix": "Build the actual tavern: 12x12 stud floor, four walls at least 8 studs tall with a doorway opening and window cutouts, then place the bar counter, stools, tables, chairs and fireplace inside that shell.",
+   "observed": "All three views (hero, front, side) show a single flat grey slab — a 12x12 stud plate with beveled edges and nothing on it. No walls, no doorway, no windows, no floor material, no bar, no stools, no tables, no chairs, no fireplace. The 'tav",
+   "severity": "blocking",
+   "view": "hero, front, side"
+  },
+  {
+   "dimension": "materials",
+   "fix": "Assign WoodPlanks to the floor, Wood to the bar/tables/chairs, Brick or Stone to the fireplace, and a plaster/concrete material to the walls instead of leaving everything default Plastic.",
+   "observed": "One material (Plastic), one colour (grey). A tavern interior needs wood plank flooring, timber walls, stone fireplace — none of this exists.",
+   "severity": "blocking",
+   "view": "hero"
+  },
+  {
+   "dimension": "lighting",
+   "fix": "Add at least one warm PointLight (e.g. rgb(255,180,100), Brightness ~1.2, Range 20) over the fireplace and one over the bar area; the current config has zero light instances, which contradicts the 'warm interior lighting' requirement.",
+   "observed": "Zero light instances in the scene. The brief explicitly asked for warm interior lighting; nothing was placed.",
+   "severity": "blocking",
+   "view": "n/a (from lighting config)"
+  }
+ ],
+ "neurons": 37
+}

@@ -1,5 +1,6 @@
-// Chat composer: textarea (Enter sends), mode segmented control, Stop button,
-// sparks cost hints, and a quota-exhausted state with reset countdown.
+// Chat composer: mode picker, autosizing textarea, Stop, and the honest cost
+// hint. Sparks numbers come from @golem/shared and the live quota — nothing is
+// hard-coded here, because a run is billed from the compute it actually uses.
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { MODE_INFO, type GolemMode, type QuotaState } from '@golem/shared';
 import { countdownTo } from '../lib/format';
@@ -12,6 +13,9 @@ interface ComposerProps {
   quota: QuotaState | null;
   onSend: (text: string, mode: GolemMode) => void;
   onStop: () => void;
+  onModeChange?: (mode: GolemMode) => void;
+  /** Text injected from a suggestion chip. */
+  seed?: string;
 }
 
 function useCountdown(iso: string | null): string | null {
@@ -28,18 +32,36 @@ function useCountdown(iso: string | null): string | null {
   return text;
 }
 
-export function Composer({ disabledReason, running, quota, onSend, onStop }: ComposerProps) {
+export function Composer({ disabledReason, running, quota, onSend, onStop, onModeChange, seed }: ComposerProps) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<GolemMode>('stone');
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
-  // typical, not fixed: a run is billed from the compute it actually uses
-  const cost = MODE_INFO[mode].sparksPerRequest;
+  const autoGrow = () => {
+    const el = areaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(192, el.scrollHeight)}px`;
+  };
+
+  useEffect(() => {
+    if (!seed) return;
+    setText(seed);
+    const el = areaRef.current;
+    if (el) {
+      el.focus();
+      requestAnimationFrame(autoGrow);
+    }
+  }, [seed]);
+
+  const info = MODE_INFO[mode];
+  const cost = info.sparksPerRequest;
   const quotaExhausted = quota !== null && quota.sparksRemaining < cost;
   const resetIn = useCountdown(quotaExhausted && quota ? quota.resetsAtIso : null);
 
   const blocked = disabledReason !== null || running || quotaExhausted;
-  const reason = disabledReason ?? (quotaExhausted ? `Out of Sparks for this mode — resets in ${resetIn ?? 'a moment'}` : null);
+  const reason =
+    disabledReason ?? (quotaExhausted ? `Out of Sparks for this mode — resets in ${resetIn ?? 'a moment'}` : null);
 
   const send = () => {
     const trimmed = text.trim();
@@ -56,82 +78,79 @@ export function Composer({ disabledReason, running, quota, onSend, onStop }: Com
     }
   };
 
-  const autoGrow = () => {
-    const el = areaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(200, el.scrollHeight)}px`;
+  const pickMode = (m: GolemMode) => {
+    setMode(m);
+    onModeChange?.(m);
   };
 
   return (
-    <div className="composer">
-      <div className="composer-toolbar">
-        <div className="mode-select" role="radiogroup" aria-label="Golem mode">
-          {MODES.map((m) => {
-            const info = MODE_INFO[m];
-            return (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={mode === m}
-                className={`mode-btn mode-btn-${m}${mode === m ? ' mode-btn-active' : ''}`}
-                onClick={() => setMode(m)}
-                title={`${info.name} — ${info.blurb} (typically ${info.typicalSparks} sparks)`}
-              >
-                <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
-                {info.name}
-              </button>
-            );
-          })}
+    <div className={`composer is-${mode}`}>
+      <div className="composer-inner">
+        <div className="composer-toolbar">
+          <div className="mode-select" role="radiogroup" aria-label="Golem mode">
+            {MODES.map((m) => {
+              const meta = MODE_INFO[m];
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === m}
+                  className={`mode-btn${mode === m ? ' mode-btn-active' : ''}`}
+                  onClick={() => pickMode(m)}
+                  title={`${meta.name} — ${meta.blurb} (typically ${meta.typicalSparks} Sparks)`}
+                >
+                  <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
+                  {meta.name}
+                </button>
+              );
+            })}
+          </div>
+          <span className="sparks-hint" title={info.blurb}>
+            typically {info.typicalSparks} Sparks
+            {quota && <span className="sparks-remaining"> · {quota.sparksRemaining} left today</span>}
+          </span>
         </div>
-        <span className="sparks-hint" title={`${MODE_INFO[mode].blurb}`}>
-          <span aria-hidden="true">⚡</span> ~{MODE_INFO[mode].typicalSparks} sparks
-          {quota && (
-            <span className="sparks-remaining"> · {quota.sparksRemaining} left today</span>
-          )}
-        </span>
-      </div>
-      {reason && !running && (
-        <p className="composer-reason" role="status">
-          {reason}
-        </p>
-      )}
-      <div className="composer-row">
-        <textarea
-          ref={areaRef}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            autoGrow();
-          }}
-          onKeyDown={onKeyDown}
-          rows={1}
-          placeholder={
-            running
-              ? 'Golem is working — you can stop it below'
-              : `Describe what to build… (${MODE_INFO[mode].name} mode)`
-          }
-          aria-label="Message to Golem"
-          disabled={disabledReason !== null}
-        />
-        {running ? (
-          <button type="button" className="btn btn-danger composer-send" onClick={onStop}>
-            ■ Stop
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-primary composer-send"
-            onClick={send}
-            disabled={blocked || !text.trim()}
-            aria-label="Send message"
-          >
-            Send
-          </button>
+
+        {reason && !running && (
+          <p className="composer-reason" role="status">
+            {reason}
+          </p>
         )}
+
+        <div className="composer-row">
+          <textarea
+            ref={areaRef}
+            id="golem-composer"
+            name="message"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              autoGrow();
+            }}
+            onKeyDown={onKeyDown}
+            rows={1}
+            placeholder={running ? 'Golem is working — you can stop it' : `Describe what to build… (${info.name})`}
+            aria-label="Message to Golem"
+            disabled={disabledReason !== null}
+          />
+          {running ? (
+            <button type="button" className="btn btn-danger btn-sm composer-send" onClick={onStop}>
+              <span aria-hidden="true">■</span> Stop
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm composer-send"
+              onClick={send}
+              disabled={blocked || !text.trim()}
+            >
+              Send
+            </button>
+          )}
+        </div>
+        <p className="composer-hint">Enter to send · Shift + Enter for a new line</p>
       </div>
-      <p className="composer-hint muted">Enter to send · Shift+Enter for a new line</p>
     </div>
   );
 }

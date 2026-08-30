@@ -1,0 +1,2171 @@
+{
+  "runMeta": {
+    "tag": "prompt-fix-check",
+    "startedAt": "2026-08-30T21:06:46.972Z",
+    "apiBase": "https://golem.moshe-barami111.workers.dev",
+    "models": [
+      "stone"
+    ],
+    "categories": "all",
+    "limit": null,
+    "taskCount": 56,
+    "jobCount": 56,
+    "concurrency": 2,
+    "luauChecker": "luau-lsp (PATH)",
+    "transport": "POST /api/admin/model-test"
+  },
+  "perTask": [
+    {
+      "taskId": "ak-01-task-wait",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 1103,
+      "usage": {
+        "inputTokens": 78,
+        "outputTokens": 9
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"task.wait\""
+        }
+      ],
+      "responsePreview": "`task.wait(N)`",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "ak-02-task-spawn",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 1007,
+      "usage": {
+        "inputTokens": 78,
+        "outputTokens": 8
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"task.spawn\""
+        }
+      ],
+      "responsePreview": "`task.spawn`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-03-linear-velocity",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 600,
+      "usage": {
+        "inputTokens": 75,
+        "outputTokens": 8
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"LinearVelocity\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"BodyForce\""
+        }
+      ],
+      "responsePreview": "`LinearVelocity`",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "ak-04-align-orientation",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 27471,
+      "usage": {
+        "inputTokens": 75,
+        "outputTokens": 6
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"AlignOrientation\""
+        }
+      ],
+      "responsePreview": "`AlignOrientation`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-05-animator",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 572,
+      "usage": {
+        "inputTokens": 82,
+        "outputTokens": 6
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Animator\""
+        }
+      ],
+      "responsePreview": "`Animator`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-06-increment-async",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 938,
+      "usage": {
+        "inputTokens": 69,
+        "outputTokens": 8
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"IncrementAsync\""
+        }
+      ],
+      "responsePreview": "`IncrementAsync`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-07-update-async",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 635,
+      "usage": {
+        "inputTokens": 90,
+        "outputTokens": 8
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"UpdateAsync\""
+        }
+      ],
+      "responsePreview": "`UpdateAsync`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-08-player-added",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 676,
+      "usage": {
+        "inputTokens": 66,
+        "outputTokens": 10
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Players\\s*\\.\\s*PlayerAdded/"
+        }
+      ],
+      "responsePreview": "`Players.PlayerAdded`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-09-gamepass-prompt",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 754,
+      "usage": {
+        "inputTokens": 64,
+        "outputTokens": 12
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"PromptGamePassPurchase\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"PromptProductPurchase\""
+        }
+      ],
+      "responsePreview": "`PromptGamePassPurchase`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-10-property-changed-signal",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 968,
+      "usage": {
+        "inputTokens": 76,
+        "outputTokens": 10
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"GetPropertyChangedSignal\""
+        }
+      ],
+      "responsePreview": "`GetPropertyChangedSignal`",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-11-findfirstchild-signature",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 1154,
+      "usage": {
+        "inputTokens": 64,
+        "outputTokens": 46
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"FindFirstChild\""
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /recursive/i"
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /bool/i"
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /string/i"
+        }
+      ],
+      "responsePreview": "```lua\nInstance:FindFirstChild(name: string, recursive: boolean?): Instance?\n```\n\nReturns the first child with the given name, or `nil` if none exists. `recursive` defaults to `false`.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ak-12-user-input-service",
+      "category": "api-knowledge",
+      "model": "stone",
+      "ok": true,
+      "ms": 700,
+      "usage": {
+        "inputTokens": 67,
+        "outputTokens": 10
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"UserInputService\""
+        }
+      ],
+      "responsePreview": "**UserInputService**",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-01-busy-loop",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 2323,
+      "usage": {
+        "inputTokens": 107,
+        "outputTokens": 76
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /task\\.wait\\s*\\(/"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"while true do\""
+        }
+      ],
+      "responsePreview": "The bug: the `while true do` loop never yields (no `task.wait()`), so it blocks the server thread and freezes Studio.\n\n```luau\nlocal part = workspace.Beacon\nwhile true do\n\tpart.Transparency = 1 - part.Transparency\n\ttask.wait(0.5)\nend\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-02-missing-humanoid-check",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 1921,
+      "usage": {
+        "inputTokens": 114,
+        "outputTokens": 87
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /FindFirstChild(OfClass)?\\s*\\(\\s*[\"']Humanoid[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /if\\s+/"
+        }
+      ],
+      "responsePreview": "The bug is that `hit.Parent` may be nil (or lack a Humanoid) when non-character parts touch the brick, causing an attempt to index nil.\n\n```luau\nlocal brick = script.Parent\nbrick.Touched:Connect(function(hit)\n\tlocal humanoid = hit.Parent and hit.Parent:FindFirstChildOfClass(\"Humanoid\")\n\tif humanoid then\n\t\thumanoid.Health = 0\n\tend\nend)\n```",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "db-03-assignment-in-condition",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 1498,
+      "usage": {
+        "inputTokens": 99,
+        "outputTokens": 49
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /if\\s+score\\s*==\\s*10/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "pattern absent: /if\\s+score\\s*=\\s*10/"
+        }
+      ],
+      "responsePreview": "The bug: `=` is the assignment operator; Luau requires `==` for equality comparison in conditions.\n\n```luau\nlocal score = 10\nif score == 10 then\n\tprint(\"perfect score\")\nend\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-04-string-concat-plus",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 1305,
+      "usage": {
+        "inputTokens": 109,
+        "outputTokens": 50
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /\\.\\.|`[^`]*\\{\\s*score\\s*\\}/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "pattern absent: /\"\\s*\\+\\s*score/"
+        }
+      ],
+      "responsePreview": "The bug is using `+` (arithmetic addition) instead of `..` (concatenation) to join the string and number.\n\n```luau\nlocal score = 42\nprint(\"Score: \" .. score)\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-05-loop-step",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 1633,
+      "usage": {
+        "inputTokens": 92,
+        "outputTokens": 65
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /for\\s+i\\s*=\\s*10\\s*,\\s*1\\s*,\\s*-\\s*1/"
+        }
+      ],
+      "responsePreview": "The loop never runs because the default step is +1, so starting at 10 and ending at 1 never satisfies the condition — you need a step of -1.\n\n```luau\nfor i = 10, 1, -1 do\n\tprint(i)\n\ttask.wait(1)\nend\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-06-unparented-part",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 1740,
+      "usage": {
+        "inputTokens": 132,
+        "outputTokens": 87
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /part\\.Parent\\s*=\\s*(game\\.Workspace|workspace)/"
+        }
+      ],
+      "responsePreview": "The part is never parented to the workspace, so it exists only in memory and never renders in the world.\n\n```luau\nlocal part = Instance.new(\"Part\")\npart.Name = \"DropPlatform\"\npart.Size = Vector3.new(8, 1, 8)\npart.Position = Vector3.new(0, 20, 0)\npart.Anchored = true\npart.Parent = workspace\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-07-missing-waitforchild",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 2119,
+      "usage": {
+        "inputTokens": 133,
+        "outputTokens": 100
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /WaitForChild\\s*\\(\\s*[\"']CoinsLabel[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /WaitForChild\\s*\\(\\s*[\"']HudGui[\"']/"
+        }
+      ],
+      "responsePreview": "The script indexes PlayerGui immediately on join, before the ScreenGui has replicated to the client, causing the \"not a valid member\" error.\n\n```luau\nlocal Players = game:GetService(\"Players\")\nlocal player = Players.LocalPlayer\nlocal playerGui = player:WaitForChild(\"PlayerGui\")\nlocal gui = playerGui:WaitForChild(\"HudGui\")\nlocal label = gui:WaitForChild(\"CoinsLabel\")\nlabel.Text = \"Coins: 0\"\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "db-08-connect-call",
+      "category": "debugging",
+      "model": "stone",
+      "ok": true,
+      "ms": 6449,
+      "usage": {
+        "inputTokens": 114,
+        "outputTokens": 61
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Connect\\s*\\(\\s*onClick\\s*\\)/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"Connect(onClick())\""
+        }
+      ],
+      "responsePreview": "The bug is that `onClick()` calls the function immediately and connects its return value (nil) instead of passing the function reference itself.\n\n```luau\nlocal button = script.Parent\nlocal function onClick()\n\tprint(\"opening shop\")\nend\nbutton.MouseButton1Click:Connect(onClick)\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "fr-01-bad-path",
+      "category": "failure-recovery",
+      "model": "stone",
+      "ok": true,
+      "ms": 9895,
+      "usage": {
+        "inputTokens": 166,
+        "outputTokens": 44
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /list_scripts|get_project_tree|search_scripts/"
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /typo|misspell|wrong path|correct (path|name)|RoundManager/i"
+        }
+      ],
+      "responsePreview": "The path likely has a typo (\"RoundManger\" vs \"RoundManager\"). I'd call list_scripts on game.ServerScriptService to find the exact script name, then retry edit_script with the correct path.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "fr-02-runtime-error",
+      "category": "failure-recovery",
+      "model": "stone",
+      "ok": true,
+      "ms": 19506,
+      "usage": {
+        "inputTokens": 148,
+        "outputTokens": 51
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"read_script\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        }
+      ],
+      "responsePreview": "Call read_script on ServerScriptService.ShopServer to inspect line 12 and find which object reference is nil (likely a failed FindFirstChild or missing child), then fix it with edit_script—optionally adding a nil check or WaitForChild.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "fr-03-studio-disconnected",
+      "category": "failure-recovery",
+      "model": "stone",
+      "ok": true,
+      "ms": 12170,
+      "usage": {
+        "inputTokens": 152,
+        "outputTokens": 35
+      },
+      "score": 0.6666666666666666,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Studio\""
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /connect|pair|plugin/i"
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": false,
+          "weight": 1,
+          "detail": "forbidden pattern matched: /retry(ing)? (the )?create_instances/"
+        }
+      ],
+      "responsePreview": "Ask the user to connect Studio (e.g., open the Golem plugin and click Connect), then retry create_instances to build the lobby once the connection is established.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "fr-04-timeout-chunking",
+      "category": "failure-recovery",
+      "model": "stone",
+      "ok": true,
+      "ms": 1640,
+      "usage": {
+        "inputTokens": 166,
+        "outputTokens": 61
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /chunk|batch|smaller|split|portion|piece|incremental/i"
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"run_luau\""
+        }
+      ],
+      "responsePreview": "Split the work into smaller chunks: modify the script to generate terrain in batches (e.g., 2,000–5,000 voxels per call) using a state variable or task.wait() between batches, then call run_luau repeatedly per chunk instead of one monolithic loop.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-01-countdown",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 1327,
+      "usage": {
+        "inputTokens": 86,
+        "outputTokens": 49
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /task\\.wait\\s*\\(/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "pattern absent: /(?<!task\\.)\\bwait\\s*\\(/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /for\\s+/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal function countdown(seconds)\n\tfor i = seconds, 1, -1 do\n\t\tprint(i)\n\t\tif i > 1 then\n\t\t\ttask.wait(1)\n\t\tend\n\tend\nend\n```",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "lc-02-leaderstats",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 3391,
+      "usage": {
+        "inputTokens": 95,
+        "outputTokens": 89
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"PlayerAdded\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"leaderstats\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']IntValue[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /GetService\\s*\\(\\s*[\"']Players[\"']|game\\.Players/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal Players = game:GetService(\"Players\")\n\nlocal function onPlayerAdded(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-03-touch-debounce",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 1661,
+      "usage": {
+        "inputTokens": 93,
+        "outputTokens": 58
+      },
+      "score": 0.8,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Touched\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /:Connect\\s*\\(/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \":connect(\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": false,
+          "weight": 1,
+          "detail": "no match: /task\\.wait\\s*\\(\\s*2\\s*\\)/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal debounce = false\n\npart.Touched:Connect(function(hit)\n\tif debounce then\n\t\treturn\n\tend\n\tdebounce = true\n\tprint(\"touched\")\n\ttask.delay(2, function()\n\t\tdebounce = false\n\tend)\nend)\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-04-module",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 904,
+      "usage": {
+        "inputTokens": 86,
+        "outputTokens": 31
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /function\\s+[\\w.]*[.:]?add\\s*\\(|add\\s*=\\s*function/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /return\\s+a\\s*\\+\\s*b/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /return\\s+[A-Za-z_][\\w]*\\s*$/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal Golem = {}\n\nfunction Golem.add(a, b)\n\treturn a + b\nend\n\nreturn Golem\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-05-tween",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 2201,
+      "usage": {
+        "inputTokens": 89,
+        "outputTokens": 57
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"TweenService\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"TweenInfo.new\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /:Create\\s*\\(/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /:Play\\s*\\(/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal TweenService = game:GetService(\"TweenService\")\n\nlocal tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear)\nlocal tween = TweenService:Create(part, tweenInfo, { Transparency = 1 })\ntween:Play()\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-06-linear-velocity",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 3160,
+      "usage": {
+        "inputTokens": 87,
+        "outputTokens": 170
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"LinearVelocity\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Attachment\""
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"BodyVelocity\""
+        }
+      ],
+      "responsePreview": "```luau\n-- LaunchPart.luau\n-- Launches an unanchored part upward at 50 studs/second using LinearVelocity.\n\nlocal part = Instance.new(\"Part\")\npart.Size = Vector3.new(2, 2, 2)\npart.Anchored = false\npart.Position = Vector3.new(0, 5, 0)\npart.Parent = workspace\n\nlocal attachment = Instance.new(\"Attachment\")\nattachment.Parent = part\n\nlocal linearVelocity = Instance.new(\"LinearVelocity\")\nlinearVelocity.Attachment0 = attachment\nlinearVelocity.MaxForce = math.huge\nlinearVelocity.RelativeTo = Enum.ActuatorRelativeTo.World\nlinearVelocity.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector\nlinearV",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-07-remote-event",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 1272,
+      "usage": {
+        "inputTokens": 80,
+        "outputTokens": 50
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ReplicatedStorage\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"OnServerEvent\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Ping\""
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"OnClientEvent\""
+        }
+      ],
+      "responsePreview": "```luau\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal pingEvent = ReplicatedStorage:WaitForChild(\"Ping\")\n\npingEvent.OnServerEvent:Connect(function(player)\n\tprint(player.Name)\nend)\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-08-datastore-pcall",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 1934,
+      "usage": {
+        "inputTokens": 96,
+        "outputTokens": 100
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"DataStoreService\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"SetAsync\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"pcall\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"UserId\""
+        }
+      ],
+      "responsePreview": "```luau\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal coinStore = DataStoreService:GetDataStore(\"PlayerCoins\")\n\nlocal function savePlayerCoins(player, coins)\n\tlocal key = tostring(player.UserId)\n\tlocal success, err = pcall(function()\n\t\tcoinStore:SetAsync(key, coins)\n\tend)\n\tif not success then\n\t\twarn(\"Failed to save coins for player \" .. key .. \": \" .. tostring(err))\n\tend\nend\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-09-typed-sum",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 1170,
+      "usage": {
+        "inputTokens": 78,
+        "outputTokens": 48
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /:\\s*\\{\\s*number\\s*\\}/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /\\)\\s*:\\s*number/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /for\\s+/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal function sum(numbers: {number}): number\n\tlocal total: number = 0\n\tfor i = 1, #numbers do\n\t\ttotal += numbers[i]\n\tend\n\treturn total\nend\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-10-string-interpolation",
+      "category": "luau-correctness",
+      "model": "stone",
+      "ok": true,
+      "ms": 3848,
+      "usage": {
+        "inputTokens": 95,
+        "outputTokens": 16
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /`[^`]*\\{\\s*name\\s*\\}[^`]*`/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"..\""
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"string.format\""
+        }
+      ],
+      "responsePreview": "```luau\nprint(`Hello, {name}!`)\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "mf-01-heal-remote",
+      "category": "multi-file",
+      "model": "stone",
+      "ok": true,
+      "ms": 3393,
+      "usage": {
+        "inputTokens": 213,
+        "outputTokens": 187
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"OnServerEvent\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"FireServer\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Heal\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"MouseButton1Click\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Health\\s*=\\s*100|humanoid\\.Health\\s*=\\s*humanoid\\.MaxHealth|Health\\s*=\\s*.*MaxHealth/"
+        }
+      ],
+      "responsePreview": "```luau\n-- game.ServerScriptService.HealthServer\nlocal Players = game:GetService(\"Players\")\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal healEvent = ReplicatedStorage:WaitForChild(\"Heal\")\n\nhealEvent.OnServerEvent:Connect(function(player)\n\tlocal character = player.Character\n\tif not character then\n\t\treturn\n\tend\n\tlocal humanoid = character:FindFirstChildOfClass(\"Humanoid\")\n\tif humanoid then\n\t\thumanoid.Health = 100\n\tend\nend)\n```\n\n```luau\n-- game.StarterGui.HudGui.HealClient\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal button = script.Parent:WaitFor",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "mf-02-rename-function",
+      "category": "multi-file",
+      "model": "stone",
+      "ok": true,
+      "ms": 3612,
+      "usage": {
+        "inputTokens": 272,
+        "outputTokens": 161
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /function\\s+GameUtils\\.FetchPlayerData/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /(GameUtils\\.FetchPlayerData[\\s\\S]*){3}/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"GetPlayerData\""
+        }
+      ],
+      "responsePreview": "```luau\n-- game.ReplicatedStorage.GameUtils\nlocal GameUtils = {}\nfunction GameUtils.FetchPlayerData(player)\n\treturn { coins = player:GetAttribute(\"Coins\") or 0 }\nend\nreturn GameUtils\n```\n\n```luau\n-- game.ServerScriptService.CoinService\nlocal GameUtils = require(game.ReplicatedStorage.GameUtils)\ngame:GetService(\"Players\").PlayerAdded:Connect(function(player)\n\tlocal data = GameUtils.FetchPlayerData(player)\n\tprint(player.Name, data.coins)\nend)\n```\n\n```luau\n-- game.ServerScriptService.ShopServer\nlocal GameUtils = require(game.ReplicatedStorage.GameUtils)\nlocal function canAfford(player, price)\n\tre",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "mf-03-extract-config",
+      "category": "multi-file",
+      "model": "stone",
+      "ok": true,
+      "ms": 27656,
+      "usage": {
+        "inputTokens": 239,
+        "outputTokens": 184
+      },
+      "score": 0.75,
+      "checks": [
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /WALK_SPEED\\s*=\\s*32/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": false,
+          "weight": 1,
+          "detail": "no match: /require\\s*\\([^)]*Config/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /(WalkSpeed\\s*=\\s*[A-Za-z_][\\w.]*WALK_SPEED[\\s\\S]*){2}/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "pattern absent: /WalkSpeed\\s*=\\s*32/"
+        }
+      ],
+      "responsePreview": "```luau\n-- FILE game.ReplicatedStorage.Config (ModuleScript)\nlocal Config = {}\n\nConfig.WALK_SPEED = 32\n\nreturn Config\n```\n\n```luau\n-- FILE game.ServerScriptService.SprintServer (Script)\nlocal Config = require(game:GetService(\"ReplicatedStorage\"):WaitForChild(\"Config\"))\n\ngame:GetService(\"Players\").PlayerAdded:Connect(function(player)\n\tplayer.CharacterAdded:Connect(function(character)\n\t\tcharacter:WaitForChild(\"Humanoid\").WalkSpeed = Config.WALK_SPEED\n\tend)\nend)\n```\n\n```luau\n-- FILE game.StarterPlayer.StarterPlayerScripts.SprintClient (LocalScript)\nlocal Config = require(game:GetService(\"Replicat",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "mf-04-timeleft-broadcast",
+      "category": "multi-file",
+      "model": "stone",
+      "ok": true,
+      "ms": 10203,
+      "usage": {
+        "inputTokens": 232,
+        "outputTokens": 176
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"FireAllClients\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"OnClientEvent\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"TimeLeft\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /task\\.wait\\s*\\(\\s*1\\s*\\)/"
+        }
+      ],
+      "responsePreview": "```luau\n-- game.ServerScriptService.RoundTimer\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal TimeLeft = ReplicatedStorage:WaitForChild(\"TimeLeft\")\nlocal ROUND_SECONDS = 60\n\nwhile true do\n\tfor remaining = ROUND_SECONDS, 1, -1 do\n\t\tTimeLeft:FireAllClients(remaining)\n\t\ttask.wait(1)\n\tend\n\ttask.wait(5) -- intermission between rounds\nend\n```\n\n```luau\n-- game.StarterGui.HudGui.TimerClient\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\n\nlocal TimeLeft = ReplicatedStorage:WaitForChild(\"TimeLeft\")\nlocal label = script.Parent:WaitForChild(\"TimerLabel\")\n\nTimeLeft.On",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "mf-05-server-authority",
+      "category": "multi-file",
+      "model": "stone",
+      "ok": true,
+      "ms": 13019,
+      "usage": {
+        "inputTokens": 273,
+        "outputTokens": 236
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"OnServerEvent\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /FireServer\\s*\\(/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /leaderstats/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "pattern absent: /MouseButton1Click:Connect\\(function\\(\\)[\\s\\S]{0,200}leaderstats\\.Coins\\.Value\\s*(-=|=)/"
+        }
+      ],
+      "responsePreview": "```luau\n-- game.StarterGui.ShopGui.ShopClient (LocalScript)\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal buyItem = ReplicatedStorage:WaitForChild(\"BuyItem\")\n\nscript.Parent.BuyButton.MouseButton1Click:Connect(function()\n\tbuyItem:FireServer(\"sword\")\n\tprint(\"requested sword purchase\")\nend)\n```\n\n```luau\n-- game.ServerScriptService.ShopServer (Script)\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal Players = game:GetService(\"Players\")\n\nlocal PRICES = { sword = 50 }\nlocal buyItem = ReplicatedStorage:WaitForChild(\"BuyItem\")\n\nbuyItem.OnServerEvent:Connect(f",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "pc-01-purchase-handler",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 859,
+      "usage": {
+        "inputTokens": 570,
+        "outputTokens": 4
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"RoundManager\""
+        }
+      ],
+      "responsePreview": "ShopServer",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-02-killbrick",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 870,
+      "usage": {
+        "inputTokens": 577,
+        "outputTokens": 20
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"CheckpointHandler\""
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /checkpoint/i"
+        }
+      ],
+      "responsePreview": "CheckpointHandler reacts: it teleports the player's character back to their last recorded checkpoint.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-03-module-blast-radius",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 3270,
+      "usage": {
+        "inputTokens": 576,
+        "outputTokens": 178
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopClient\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"RoundManager\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"CheckpointHandler\""
+        }
+      ],
+      "responsePreview": "**Affected scripts:**\n\n1. **ServerScriptService.ShopServer** — calls `require(game.ReplicatedStorage.ItemConfig)` at the top level; an error there stops the script, so `BuyItem` never gets connected.\n2. **StarterGui.ShopGui.ShopClient** — also requires ItemConfig at the top level; the error halts the LocalScript, so the `RoundState` listener and `BuyButton` handler never connect.\n\n**Not affected:**\n\n- **RoundManager** — doesn't require ItemConfig; round loop and `RoundState` firing continue working.\n- **CheckpointHandler** — doesn't require ItemConfig; checkpoints and KillBrick logic keep work",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "pc-04-round-remote",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 1552,
+      "usage": {
+        "inputTokens": 578,
+        "outputTokens": 29
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"RoundState\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"StageLabel\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"BuyItem\""
+        }
+      ],
+      "responsePreview": "RoundState (RemoteEvent in ReplicatedStorage.Remotes) carries the updates; StageLabel (TextLabel in ShopGui) displays them.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-05-stage-attribute",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 1003,
+      "usage": {
+        "inputTokens": 578,
+        "outputTokens": 36
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"RoundStage\""
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /[Ww]orkspace/"
+        }
+      ],
+      "responsePreview": "The attribute is `RoundStage`, set on `workspace` (the Workspace instance) — e.g. `workspace:SetAttribute(\"RoundStage\", \"Intermission\")`.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-06-rename-blast-radius",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 5226,
+      "usage": {
+        "inputTokens": 584,
+        "outputTokens": 214
+      },
+      "score": 0.75,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"RoundManager\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopClient\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": false,
+          "weight": 1,
+          "detail": "forbidden text found: \"CheckpointHandler\""
+        }
+      ],
+      "responsePreview": "All four scripts reference `Remotes` via `WaitForChild(\"Remotes\")`:\n\n1. **ServerScriptService.RoundManager** — hangs at `WaitForChild(\"Remotes\")` on line 1, so the round loop never starts.\n2. **ServerScriptService.CheckpointHandler** — wait, it doesn't reference Remotes in the excerpt; it only touches workspace.Course. **Not affected.**\n3. **ServerScriptService.ShopServer** — hangs at `WaitForChild(\"Remotes\")`; purchase handling never connects.\n4. **StarterGui.ShopGui.ShopClient** — hangs at `WaitForChild(\"Remotes\")`; StageLabel never updates and BuyButton does nothing.\n\n**Affected: RoundManag",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "ts-01-explore-project",
+      "category": "tool-selection",
+      "model": "stone",
+      "ok": true,
+      "ms": 672,
+      "usage": {
+        "inputTokens": 339,
+        "outputTokens": 5
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"get_project_tree\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"read_script\""
+        }
+      ],
+      "responsePreview": "get_project_tree",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ts-02-playtest-errors",
+      "category": "tool-selection",
+      "model": "stone",
+      "ok": true,
+      "ms": 600,
+      "usage": {
+        "inputTokens": 331,
+        "outputTokens": 5
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"run_and_check\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"take_screenshot\""
+        }
+      ],
+      "responsePreview": "run_and_check",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ts-03-find-died-handler",
+      "category": "tool-selection",
+      "model": "stone",
+      "ok": true,
+      "ms": 540,
+      "usage": {
+        "inputTokens": 342,
+        "outputTokens": 4
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"search_scripts\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"search_docs\""
+        }
+      ],
+      "responsePreview": "search_scripts",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ts-04-apply-edit",
+      "category": "tool-selection",
+      "model": "stone",
+      "ok": true,
+      "ms": 763,
+      "usage": {
+        "inputTokens": 355,
+        "outputTokens": 4
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"edit_script\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"create_instances\""
+        }
+      ],
+      "responsePreview": "edit_script",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ts-05-checkpoint-first",
+      "category": "tool-selection",
+      "model": "stone",
+      "ok": true,
+      "ms": 544,
+      "usage": {
+        "inputTokens": 337,
+        "outputTokens": 4
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"create_checkpoint\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"remember\""
+        }
+      ],
+      "responsePreview": "create_checkpoint",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ts-06-docs-lookup",
+      "category": "tool-selection",
+      "model": "stone",
+      "ok": true,
+      "ms": 507,
+      "usage": {
+        "inputTokens": 341,
+        "outputTokens": 4
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"search_docs\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"search_scripts\""
+        }
+      ],
+      "responsePreview": "search_docs",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ui-01-centered-frame",
+      "category": "ui-implementation",
+      "model": "stone",
+      "ok": true,
+      "ms": 4212,
+      "usage": {
+        "inputTokens": 136,
+        "outputTokens": 168
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']ScreenGui[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']Frame[\"']/"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"PlayerGui\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /AnchorPoint\\s*=\\s*Vector2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /UDim2\\.fromScale\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)|UDim2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\s*,\\s*0\\.5\\s*,\\s*0\\s*\\)/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal Players = game:GetService(\"Players\")\n\nlocal player = Players.LocalPlayer\nlocal playerGui = player:WaitForChild(\"PlayerGui\")\n\nlocal screenGui = Instance.new(\"ScreenGui\")\nscreenGui.Name = \"GolemGui\"\nscreenGui.ResetOnSpawn = false\nscreenGui.Parent = playerGui\n\nlocal frame = Instance.new(\"Frame\")\nframe.Name = \"CenterFrame\"\nframe.AnchorPoint = Vector2.new(0.5, 0.5)\nframe.Position = UDim2.fromScale(0.5, 0.5)\nframe.Size = UDim2.fromScale(0.5, 0.5)\nframe.BackgroundColor3 = Color3.fromRGB(30, 30, 30)\nframe.BorderSizePixel = 0\nframe.Parent = screenGui\n```",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "ui-02-list-layout",
+      "category": "ui-implementation",
+      "model": "stone",
+      "ok": true,
+      "ms": 7118,
+      "usage": {
+        "inputTokens": 124,
+        "outputTokens": 302
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']UIListLayout[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']TextButton[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Padding\\s*=\\s*UDim\\.new\\s*\\(\\s*0\\s*,\\s*8\\s*\\)/"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Settings\""
+        }
+      ],
+      "responsePreview": "```luau\nlocal frame = Instance.new(\"Frame\")\nframe.Name = \"MenuFrame\"\nframe.Size = UDim2.fromScale(0.3, 0.5)\nframe.Position = UDim2.fromScale(0.35, 0.25)\nframe.BackgroundColor3 = Color3.fromRGB(30, 30, 30)\nframe.Parent = parentGui\n\nlocal corner = Instance.new(\"UICorner\")\ncorner.CornerRadius = UDim.new(0, 8)\ncorner.Parent = frame\n\nlocal layout = Instance.new(\"UIListLayout\")\nlayout.FillDirection = Enum.FillDirection.Vertical\nlayout.Padding = UDim.new(0, 8)\nlayout.HorizontalAlignment = Enum.HorizontalAlignment.Center\nlayout.SortOrder = Enum.SortOrder.LayoutOrder\nlayout.Parent = frame\n\nlocal labels",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ui-03-health-bar",
+      "category": "ui-implementation",
+      "model": "stone",
+      "ok": true,
+      "ms": 5431,
+      "usage": {
+        "inputTokens": 139,
+        "outputTokens": 285
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /function\\s+setHealth\\s*\\(|setHealth\\s*=\\s*function/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /UDim2\\.(fromScale|new)\\s*\\(\\s*fraction/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']Frame[\"']/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal background = Instance.new(\"Frame\")\nbackground.Name = \"HealthBarBackground\"\nbackground.AnchorPoint = Vector2.new(0.5, 1)\nbackground.Position = UDim2.fromScale(0.5, 0.95)\nbackground.Size = UDim2.fromScale(0.4, 0.05)\nbackground.BackgroundColor3 = Color3.fromRGB(40, 40, 40)\nbackground.BorderSizePixel = 0\nbackground.Parent = parentGui\n\nlocal corner = Instance.new(\"UICorner\")\ncorner.CornerRadius = UDim.new(0.5, 0)\ncorner.Parent = background\n\nlocal fill = Instance.new(\"Frame\")\nfill.Name = \"HealthBarFill\"\nfill.Size = UDim2.fromScale(1, 1)\nfill.Position = UDim2.fromScale(0, 0)\nfill.Backgr",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ui-04-rounded-button",
+      "category": "ui-implementation",
+      "model": "stone",
+      "ok": true,
+      "ms": 3452,
+      "usage": {
+        "inputTokens": 134,
+        "outputTokens": 161
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']UICorner[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /CornerRadius\\s*=\\s*UDim\\.new\\s*\\(\\s*0\\s*,\\s*8\\s*\\)/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']TextButton[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Text\\s*=\\s*[\"']Play[\"']/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal button = Instance.new(\"TextButton\")\nbutton.Name = \"PlayButton\"\nbutton.Text = \"Play\"\nbutton.Size = UDim2.new(0.2, 0, 0.08, 0)\nbutton.Position = UDim2.new(0.4, 0, 0.46, 0)\nbutton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)\nbutton.TextColor3 = Color3.fromRGB(255, 255, 255)\nbutton.Font = Enum.Font.GothamBold\nbutton.TextScaled = true\n\nlocal corner = Instance.new(\"UICorner\")\ncorner.CornerRadius = UDim.new(0, 8)\ncorner.Parent = button\n\nbutton.Parent = parentGui\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ui-05-responsive-title",
+      "category": "ui-implementation",
+      "model": "stone",
+      "ok": true,
+      "ms": 2584,
+      "usage": {
+        "inputTokens": 131,
+        "outputTokens": 137
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']TextLabel[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /TextScaled\\s*=\\s*true/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /BackgroundTransparency\\s*=\\s*1/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /UDim2\\.fromScale\\s*\\(|UDim2\\.new\\s*\\(\\s*0?\\.\\d+\\s*,\\s*0\\s*,/"
+        }
+      ],
+      "responsePreview": "```luau\nlocal title = Instance.new(\"TextLabel\")\ntitle.Name = \"Title\"\ntitle.AnchorPoint = Vector2.new(0.5, 0)\ntitle.Position = UDim2.new(0.5, 0, 0.05, 0)\ntitle.Size = UDim2.new(0.6, 0, 0.12, 0)\ntitle.BackgroundTransparency = 1\ntitle.Text = \"My Game Title\"\ntitle.TextScaled = true\ntitle.TextColor3 = Color3.new(1, 1, 1)\ntitle.Font = Enum.Font.GothamBold\ntitle.Parent = parentGui\n```",
+      "taskWeight": 1
+    }
+  ],
+  "perCategory": [
+    {
+      "model": "stone",
+      "category": "api-knowledge",
+      "score": 1,
+      "tasks": 12,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "debugging",
+      "score": 1,
+      "tasks": 8,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "failure-recovery",
+      "score": 0.9166666666666666,
+      "tasks": 4,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "luau-correctness",
+      "score": 0.9818181818181819,
+      "tasks": 10,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "multi-file",
+      "score": 0.9642857142857143,
+      "tasks": 5,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "project-comprehension",
+      "score": 0.9375,
+      "tasks": 6,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "tool-selection",
+      "score": 1,
+      "tasks": 6,
+      "transportErrors": 0
+    },
+    {
+      "model": "stone",
+      "category": "ui-implementation",
+      "score": 1,
+      "tasks": 5,
+      "transportErrors": 0
+    }
+  ],
+  "overall": [
+    {
+      "model": "stone",
+      "score": 0.9802564102564103,
+      "tasks": 56,
+      "transportErrors": 0
+    }
+  ]
+}

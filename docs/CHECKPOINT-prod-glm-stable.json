@@ -1,0 +1,94 @@
+{
+  "capturedAt": "2026-08-30T20:09:54.552Z",
+  "gitTag": "prod-glm-stable",
+  "worker": {
+    "url": "https://golem.moshe-barami111.workers.dev",
+    "health": {
+      "ok": true,
+      "version": "0.1.0",
+      "time": "2026-08-30T20:09:55.446Z"
+    }
+  },
+  "models": {
+    "clay": {
+      "id": "@cf/zai-org/glm-5.3-flash",
+      "nativeTools": true,
+      "maxTokens": 1400,
+      "ctx": 1048576,
+      "temperature": 0.3,
+      "reasoningEffort": "low"
+    },
+    "stone": {
+      "id": "@cf/zai-org/glm-5.3-flash",
+      "nativeTools": true,
+      "maxTokens": 2400,
+      "ctx": 1048576,
+      "temperature": 0.25,
+      "reasoningEffort": "low"
+    },
+    "rune": {
+      "id": "@cf/zai-org/glm-5.3-flash",
+      "nativeTools": true,
+      "maxTokens": 2800,
+      "ctx": 1048576,
+      "temperature": 0.25,
+      "reasoningEffort": "low"
+    },
+    "memory": {
+      "id": "@cf/zai-org/glm-5.3-flash",
+      "nativeTools": false,
+      "maxTokens": 800,
+      "ctx": 1048576,
+      "temperature": 0.2,
+      "reasoningEffort": "low"
+    },
+    "vision": {
+      "id": "@cf/zai-org/glm-5.3-flash",
+      "nativeTools": false,
+      "maxTokens": 1000,
+      "ctx": 1048576,
+      "temperature": 0.3,
+      "reasoningEffort": "low"
+    }
+  },
+  "spend": {
+    "state": {
+      "day": "2026-08-30",
+      "month": "2026-08",
+      "dayNeurons": 1,
+      "dayPending": 0,
+      "monthBillableNeurons": 0,
+      "killed": false,
+      "killedReason": null,
+      "dayRemainingFraction": 0.99996,
+      "estimatedMonthUsd": 0,
+      "freeRemainingToday": 9999
+    },
+    "limits": {
+      "freeNeuronsPerDay": 10000,
+      "billableNeuronsPerDay": 15000,
+      "billableNeuronsPerMonth": 460000,
+      "maxNeuronsPerRequest": 1200
+    },
+    "maxMonthlyUsd": 5.06,
+    "days": [
+      {
+        "day": "2026-08-30",
+        "neurons": 1,
+        "calls": 1,
+        "billableNeurons": 0,
+        "billableUsd": 0
+      }
+    ],
+    "breakdown": [
+      {
+        "day": "2026-08-30",
+        "model": "@cf/zai-org/glm-5.3-flash",
+        "kind": "clay",
+        "neurons": 1,
+        "calls": 1,
+        "usd": 0.00001
+      }
+    ]
+  }
+}

@@ -14,6 +14,14 @@ export interface Env {
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
+  /**
+   * Open Cloud key, scope `creator-store-product:read`, free from
+   * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to
+   * the unauthenticated toolbox-service/v1 endpoint — it is never required.
+   */
+  ROBLOX_API_KEY?: string;
+  /** Optional dedicated Vectorize index for the asset library; falls back to VEC. */
+  VEC_ASSETS?: VectorizeIndex;
 }
 
 export interface AuthedUser {

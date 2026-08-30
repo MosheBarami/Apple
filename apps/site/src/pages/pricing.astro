@@ -1,6 +1,38 @@
 ---
 import Base from '../layouts/Base.astro';
+import SparkMeter from '../components/SparkMeter.astro';
 import FAQ from '../components/FAQ.astro';
+
+// Figures are fixed by docs/COST-MODEL.md and are not changed here:
+// Free 60 sparks/day (900/month) · Pro (designed, waitlist) 400/day (6,000/month)
+// Clay 1 · Stone 4 · Rune 10 (+1 per extra agent step)
+// "≈ requests / free day" is simply 60 ÷ cost.
+const modeRows = [
+  {
+    mode: 'Clay',
+    cls: 'is-clay',
+    cost: '1 spark',
+    extra: '',
+    does: 'Fast answers and small edits',
+    perDay: '60',
+  },
+  {
+    mode: 'Stone',
+    cls: 'is-stone',
+    cost: '4 sparks',
+    extra: '',
+    does: 'Builds features across your project',
+    perDay: '15',
+  },
+  {
+    mode: 'Rune',
+    cls: 'is-rune',
+    cost: '10 sparks',
+    extra: '+1 per extra step',
+    does: 'Plans, builds, tests and fixes autonomously',
+    perDay: 'up to 6',
+  },
+];
 
 const limitFaq = [
   {
@@ -20,69 +52,114 @@ const limitFaq = [
     a: `<p>Yes, and it is metered transparently. Rune requests start at 10 Sparks and add 1 Spark per extra agent step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Golem warns before starting work it estimates will be expensive.</p>`,
   },
   {
+    q: 'What is a Spark, underneath?',
+    a: `<p>A unit of real compute. One Spark is 30 neurons of Cloudflare Workers AI, and Golem bills from the provider's own reported figure for each call rather than from an estimate. A full Stone build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
+  },
+  {
     q: 'When does Pro launch, and what will it cost?',
-    a: `<p>Pro is in waitlist. We have not fixed the price yet, and we will not charge anyone before the plan, the price and the terms are published. Joining the waitlist costs nothing and commits you to nothing — it just gets you first access and a say in what Pro should include.</p>`,
+    a: `<p>Pro is on the waitlist. We have not fixed the price yet, and we will not charge anyone before the plan, the price and the terms are published. Joining the waitlist costs nothing and commits you to nothing — it just gets you first access and a say in what Pro should include.</p>`,
   },
 ];
 ---
 
 <Base
   title="Pricing — Golem"
-  description="Golem is free: 60 Sparks a day, all three modes, unlimited projects, checkpoints included. Pro is coming — 400 Sparks/day and a priority queue. No card required, ever."
+  description="Golem is free: 60 Sparks a day, all three modes, unlimited projects, checkpoints included. Pro is designed — 400 Sparks/day and a priority queue — and is on the waitlist. No card required, ever."
 >
-  <section class="section" aria-labelledby="pricing-title">
+  <!-- ==================================================== head -->
+  <section class="section phead is-ember" aria-labelledby="pricing-title">
+    <div class="sheet-rails" aria-hidden="true"></div>
     <div class="wrap">
       <p class="eyebrow">Pricing</p>
-      <h1 id="pricing-title">Free to build. Honestly.</h1>
-      <p class="lede">
-        No card. No trial countdown. A hard daily quota keeps the free tier sustainable — and keeps
-        us honest about what it costs to run.
+      <h1 id="pricing-title" class="carved">Free to build. Honestly.</h1>
+      <p class="lede lede-wide">
+        No card. No trial countdown. A hard daily quota is what keeps the free
+        tier sustainable — and it is the same number we show you burning down in
+        the workspace.
       </p>
 
       <div class="plans">
-        <article class="plan card card--seam" data-reveal aria-labelledby="plan-free">
-          <h2 id="plan-free">Free</h2>
-          <p class="plan-price"><span class="plan-amount">$0</span> / forever</p>
-          <ul class="plan-list">
-            <li><strong>60 Sparks</strong> per day</li>
+        <article class="plan slab slab--seam" aria-labelledby="plan-free" data-reveal>
+          <header class="plan__head">
+            <h2 id="plan-free">Free</h2>
+            <p class="plan__price"><span>$0</span> forever</p>
+          </header>
+          <ul class="plan__list">
+            <li><strong>60 Sparks</strong> per day · 900 a month</li>
             <li>All three modes — Clay, Stone, Rune</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
             <li>Studio plugin included</li>
           </ul>
-          <a href="/app" class="btn btn-primary plan-cta">Start building — free</a>
+          <a href="/app" class="btn btn-primary plan__cta">Start building — free</a>
+          <p class="plan__note">
+            Nothing to cancel, because there is nothing to start.
+          </p>
         </article>
 
-        <article class="plan card card--seam plan-pro" data-reveal data-reveal-delay="120" aria-labelledby="plan-pro" style="--seam: var(--violet)">
-          <p class="plan-flag">Coming soon</p>
-          <h2 id="plan-pro">Pro</h2>
-          <p class="plan-price"><span class="plan-amount">Waitlist</span> · price not final</p>
-          <ul class="plan-list">
-            <li><strong>400 Sparks</strong> per day</li>
+        <article
+          class="plan slab slab--seam is-rune"
+          aria-labelledby="plan-pro"
+          data-reveal
+          data-reveal-delay="110"
+        >
+          <span class="plan__flag mono">Not launched</span>
+          <header class="plan__head">
+            <h2 id="plan-pro">Pro</h2>
+            <p class="plan__price plan__price--soft">
+              <span>Waitlist</span> price not final
+            </p>
+          </header>
+          <ul class="plan__list">
+            <li><strong>400 Sparks</strong> per day · 6,000 a month</li>
             <li>Priority queue — your golem goes first</li>
             <li>Extended checkpoint history</li>
             <li>Everything in Free</li>
           </ul>
-          <a href="/app/usage" class="btn btn-ghost plan-cta">Join the waitlist</a>
-          <p class="plan-note">
-            No payment is collected at v1. You will never be charged without seeing a published
-            price first.
+          <a href="/app/usage" class="btn btn-ghost plan__cta">Join the waitlist</a>
+          <p class="plan__note">
+            No payment is collected at v1. You will never be charged without
+            seeing a published price first.
           </p>
         </article>
       </div>
     </div>
   </section>
 
-  <section class="section sparks-section" aria-labelledby="sparks-title">
+  <!-- ==================================================== calculator -->
+  <section class="section calcsec" id="calculator" aria-labelledby="calc-title">
     <div class="wrap">
-      <p class="eyebrow" data-reveal>Sparks</p>
-      <h2 id="sparks-title" data-reveal>What a Spark buys</h2>
-      <p class="lede" data-reveal>
-        Sparks are Golem's daily energy. Bigger golems burn more of it — because they do more work
-        per request.
-      </p>
+      <header class="sechead">
+        <p class="eyebrow" data-reveal>Usage explorer</p>
+        <h2 id="calc-title" data-reveal class="carved">
+          Work out your own day
+        </h2>
+        <p class="lede lede-wide" data-reveal>
+          Rather than guessing whether "60 Sparks" is a lot, set the sliders to
+          how you actually build. Whichever limit binds first is the one that
+          applies.
+        </p>
+      </header>
 
-      <div class="table-scroll" data-reveal data-reveal-delay="120">
+      <div data-reveal data-reveal-delay="100">
+        <SparkMeter />
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== per-mode -->
+  <section class="section" aria-labelledby="sparks-title">
+    <div class="wrap">
+      <header class="sechead">
+        <p class="eyebrow" data-reveal>Per request</p>
+        <h2 id="sparks-title" data-reveal class="carved">What a Spark buys</h2>
+        <p class="lede lede-wide" data-reveal>
+          Bigger golems burn more, because they do more work per request. The
+          craft is picking the smallest one that can carry the job.
+        </p>
+      </header>
+
+      <div class="table-scroll" data-reveal>
         <table>
           <caption class="visually-hidden">Spark cost per request by mode</caption>
           <thead>
@@ -94,39 +171,41 @@ const limitFaq = [
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><span class="mode-dot" style="--mode: var(--clay)"></span> Clay</td>
-              <td><code>1 spark</code></td>
-              <td>Fast answers and small edits</td>
-              <td>80</td>
-            </tr>
-            <tr>
-              <td><span class="mode-dot" style="--mode: var(--stone)"></span> Stone</td>
-              <td><code>4 sparks</code></td>
-              <td>Builds features across your project</td>
-              <td>20</td>
-            </tr>
-            <tr>
-              <td><span class="mode-dot" style="--mode: var(--rune)"></span> Rune</td>
-              <td><code>10 sparks</code> <span class="table-extra">+1 per extra step</span></td>
-              <td>Plans, builds, tests and fixes autonomously</td>
-              <td>up to 8</td>
-            </tr>
+            {
+              modeRows.map((r) => (
+                <tr class={r.cls}>
+                  <td>
+                    <span class="dot" aria-hidden="true" /> {r.mode}
+                  </td>
+                  <td>
+                    <code>{r.cost}</code>
+                    {r.extra && <span class="tx">{r.extra}</span>}
+                  </td>
+                  <td>{r.does}</td>
+                  <td class="num">{r.perDay}</td>
+                </tr>
+              ))
+            }
           </tbody>
         </table>
       </div>
-      <p class="table-footnote" data-reveal>
-        A Rune request includes its base steps; each additional agent step beyond them costs 1
-        extra Spark, metered live so you always see where you stand.
+
+      <p class="tfoot" data-reveal>
+        A Rune request includes its base steps; each additional agent step beyond
+        them costs 1 extra Spark, metered live so you always see where you
+        stand. Golem's own housekeeping does not count against your quota.
       </p>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="limits-title">
-    <div class="wrap limits-wrap">
-      <p class="eyebrow" data-reveal>The honest part</p>
-      <h2 id="limits-title" data-reveal>Limits, plainly stated</h2>
-      <div data-reveal data-reveal-delay="120">
+  <!-- ==================================================== limits -->
+  <section class="section limitsec" aria-labelledby="limits-title">
+    <div class="wrap wrap-narrow-ish">
+      <header class="sechead">
+        <p class="eyebrow" data-reveal>The honest part</p>
+        <h2 id="limits-title" data-reveal class="carved">Limits, plainly stated</h2>
+      </header>
+      <div data-reveal data-reveal-delay="90">
         <FAQ items={limitFaq} />
       </div>
     </div>
@@ -134,134 +213,189 @@ const limitFaq = [
 </Base>
 
 <style>
+  .phead {
+    position: relative;
+    padding-top: clamp(2rem, 4vw, 3.25rem);
+    padding-bottom: clamp(3rem, 7vw, 5rem);
+  }
+
+  .phead::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    left: -8%;
+    width: min(60vw, 700px);
+    aspect-ratio: 1;
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--accent-soft),
+      transparent 65%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .phead > .wrap {
+    position: relative;
+    z-index: 1;
+  }
+
   .plans {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.75rem;
-    margin-top: 3rem;
-    max-width: 860px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin-top: clamp(2.25rem, 5vw, 3.5rem);
+    max-width: 900px;
   }
 
   .plan {
     display: flex;
     flex-direction: column;
-    padding: 2.2rem;
+    padding: clamp(1.5rem, 3vw, 2.1rem);
   }
 
-  .plan h2 {
-    font-size: 1.6rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .plan-flag {
+  .plan__flag {
     position: absolute;
-    top: 1.2rem;
-    right: 1.4rem;
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.14em;
+    top: 1.1rem;
+    right: 1.2rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--violet);
-    border: 1px solid rgba(124, 92, 255, 0.45);
-    border-radius: 999px;
-    padding: 0.25rem 0.7rem;
-    margin: 0;
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: var(--r-pill);
+    padding: 0.22rem 0.6rem;
   }
 
-  .plan-price {
-    color: var(--muted);
-    font-size: 0.9rem;
+  .plan__head {
     margin-bottom: 1.4rem;
   }
 
-  .plan-amount {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.6rem;
-    color: var(--text);
-    margin-right: 0.3rem;
+  .plan h2 {
+    font-size: 1.7rem;
+    margin: 0 0 0.3rem;
   }
 
-  .plan-list {
+  .plan__price {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .plan__price span {
+    font-family: var(--font-body);
+    font-variation-settings: normal;
+    font-variant-numeric: tabular-nums;
+    font-weight: 620;
+    font-size: 1.65rem;
+    color: var(--ink);
+    margin-right: 0.4rem;
+    letter-spacing: -0.04em;
+  }
+
+  /* "Waitlist" is a state, not a price — it should not shout like one */
+  .plan__price--soft span {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0;
+    color: var(--accent);
+  }
+
+  .plan__list {
     list-style: none;
-    margin: 0 0 2rem;
+    margin: 0 0 1.75rem;
     padding: 0;
     display: grid;
-    gap: 0.7rem;
+    gap: 0.65rem;
     color: var(--muted);
+    font-size: 0.94rem;
   }
 
-  .plan-list strong {
-    color: var(--amber);
+  .plan__list strong {
+    color: var(--accent);
   }
 
-  .plan-list li {
-    padding-left: 1.4rem;
+  .plan__list li {
+    padding-left: 1.5rem;
     position: relative;
   }
 
-  .plan-list li::before {
-    content: '✓';
+  .plan__list li::before {
+    content: '';
     position: absolute;
     left: 0;
-    color: var(--success);
-    font-weight: 700;
+    top: 0.55em;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   }
 
-  .plan-pro .plan-list strong {
-    color: var(--violet);
-  }
-
-  .plan-cta {
+  .plan__cta {
     margin-top: auto;
     justify-content: center;
   }
 
-  .plan-note {
-    margin: 1rem 0 0;
-    font-size: 0.8rem;
+  .plan__note {
+    margin: 0.9rem 0 0;
+    font-size: 0.78rem;
+    color: var(--faint);
+    line-height: 1.5;
+  }
+
+  .calcsec {
+    background: var(--paper-2);
+    border-block: 1px solid var(--line);
+  }
+
+  .sechead {
+    max-width: 60ch;
+    margin-bottom: clamp(1.75rem, 4vw, 2.75rem);
+  }
+
+  .sechead h2 {
+    margin-bottom: 0.5rem;
+  }
+
+  /* table extras */
+  .dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--accent);
+    margin-right: 0.5rem;
+  }
+
+  .tx {
+    color: var(--faint);
+    font-size: 0.78rem;
+    margin-left: 0.45rem;
+    white-space: nowrap;
+  }
+
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .tfoot {
+    margin-top: 1.1rem;
     color: var(--muted);
+    font-size: 0.87rem;
+    max-width: 62ch;
+  }
+
+  .limitsec .wrap-narrow-ish {
+    width: min(820px, calc(100% - var(--gutter) * 2));
+    margin-inline: auto;
   }
 
   @media (max-width: 760px) {
     .plans {
       grid-template-columns: 1fr;
     }
-  }
-
-  .sparks-section {
-    background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255, 180, 84, 0.06), transparent);
-  }
-
-  .sparks-section .table-scroll {
-    margin-top: 2.4rem;
-  }
-
-  .mode-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    background: var(--mode);
-    margin-right: 0.5rem;
-    box-shadow: 0 0 8px var(--mode);
-    vertical-align: baseline;
-  }
-
-  .table-extra {
-    color: var(--muted);
-    font-size: 0.8rem;
-    margin-left: 0.4rem;
-  }
-
-  .table-footnote {
-    margin-top: 1rem;
-    color: var(--muted);
-    font-size: 0.88rem;
-    max-width: 44rem;
-  }
-
-  .limits-wrap {
-    max-width: 780px;
   }
 </style>

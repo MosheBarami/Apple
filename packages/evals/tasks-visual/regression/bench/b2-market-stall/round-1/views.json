@@ -1,0 +1,250 @@
+{
+ "subject": "game.Workspace",
+ "boundsSize": [
+  13,
+  13.5,
+  11
+ ],
+ "lighting": {
+  "clockTime": 14.5,
+  "fogEnd": 100000,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ],
+  "geographicLatitude": 0,
+  "ambient": [
+   70,
+   70,
+   70
+  ],
+  "outdoorAmbient": [
+   70,
+   70,
+   70
+  ],
+  "brightness": 3,
+  "lightInstances": 1,
+  "exposureCompensation": 0
+ },
+ "views": [
+  {
+   "name": "hero",
+   "meta": {
+    "partsConsidered": 123,
+    "distinctColours": 11,
+    "materials": [
+     {
+      "parts": 63,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 30,
+      "material": "Fabric"
+     },
+     {
+      "parts": 20,
+      "material": "Wood"
+     },
+     {
+      "parts": 4,
+      "material": "Metal"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     },
+     {
+      "parts": 1,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "SmoothPlastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.32,
+    "partsVisible": 121,
+    "width": 288
+   }
+  },
+  {
+   "name": "front",
+   "meta": {
+    "partsConsidered": 123,
+    "distinctColours": 11,
+    "materials": [
+     {
+      "parts": 63,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 30,
+      "material": "Fabric"
+     },
+     {
+      "parts": 20,
+      "material": "Wood"
+     },
+     {
+      "parts": 4,
+      "material": "Metal"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     },
+     {
+      "parts": 1,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "SmoothPlastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.36,
+    "partsVisible": 121,
+    "width": 288
+   }
+  },
+  {
+   "name": "side",
+   "meta": {
+    "partsConsidered": 123,
+    "distinctColours": 11,
+    "materials": [
+     {
+      "parts": 63,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 30,
+      "material": "Fabric"
+     },
+     {
+      "parts": 20,
+      "material": "Wood"
+     },
+     {
+      "parts": 4,
+      "material": "Metal"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     },
+     {
+      "parts": 1,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "SmoothPlastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.3,
+    "partsVisible": 121,
+    "width": 288
+   }
+  },
+  {
+   "name": "top",
+   "meta": {
+    "partsConsidered": 123,
+    "distinctColours": 12,
+    "materials": [
+     {
+      "parts": 63,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 30,
+      "material": "Fabric"
+     },
+     {
+      "parts": 20,
+      "material": "Wood"
+     },
+     {
+      "parts": 4,
+      "material": "Metal"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     },
+     {
+      "parts": 1,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     },
+     {
+      "parts": 1,
+      "material": "SmoothPlastic"
+     }
+    ],
+    "partsOffCamera": 1,
+    "height": 180,
+    "subjectCoverage": 1,
+    "partsVisible": 122,
+    "width": 288
+   }
+  },
+  {
+   "name": "eye",
+   "meta": {
+    "partsConsidered": 123,
+    "distinctColours": 11,
+    "materials": [
+     {
+      "parts": 63,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 30,
+      "material": "Fabric"
+     },
+     {
+      "parts": 20,
+      "material": "Wood"
+     },
+     {
+      "parts": 4,
+      "material": "Metal"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     },
+     {
+      "parts": 1,
+      "material": "Neon"
+     },
+     {
+      "parts": 1,
+      "material": "SmoothPlastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.3,
+    "partsVisible": 121,
+    "width": 288
+   }
+  }
+ ]
+}

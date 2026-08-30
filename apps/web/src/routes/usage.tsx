@@ -1,43 +1,57 @@
-// /usage — sparks ring, 30-day usage bars (hand-rolled SVG), plan card + waitlist.
+// /usage — Sparks today, 30 days of history, and the plan.
+//
+// Every number on this page comes from the live quota or from @golem/shared.
+// Sparks are billed from the compute a run actually consumes, so the per-mode
+// figures are the measured typical range, not a price list.
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { MODE_INFO, type GolemMode } from '@golem/shared';
 import { fetchMe, fetchUsage, type UsageDay } from '../lib/api';
+import { MOCK_MODE } from '../lib/mock';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { countdownTo } from '../lib/format';
+
+const MODES: GolemMode[] = ['clay', 'stone', 'rune'];
 
 function SparksRing({ remaining, daily }: { remaining: number; daily: number }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const frac = daily > 0 ? Math.max(0, Math.min(1, remaining / daily)) : 0;
   return (
-    <svg width="140" height="140" viewBox="0 0 140 140" role="img" aria-label={`${remaining} of ${daily} sparks remaining today`}>
-      <circle cx="70" cy="70" r={r} fill="none" stroke="var(--line)" strokeWidth="10" />
+    <svg
+      width="140"
+      height="140"
+      viewBox="0 0 140 140"
+      role="img"
+      aria-label={`${remaining} of ${daily} Sparks remaining today`}
+    >
+      <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="9" />
       <circle
         cx="70"
         cy="70"
         r={r}
         fill="none"
-        stroke="var(--amber)"
-        strokeWidth="10"
+        stroke="var(--accent)"
+        strokeWidth="9"
         strokeLinecap="round"
         strokeDasharray={`${c * frac} ${c}`}
         transform="rotate(-90 70 70)"
         className="ring-arc"
       />
-      <text x="70" y="66" textAnchor="middle" className="ring-number">
+      <text x="70" y="68" textAnchor="middle" className="ring-number">
         {remaining}
       </text>
-      <text x="70" y="88" textAnchor="middle" className="ring-caption">
-        of {daily} ⚡
+      <text x="70" y="90" textAnchor="middle" className="ring-caption">
+        of {daily}
       </text>
     </svg>
   );
 }
 
 function UsageBars({ days }: { days: UsageDay[] }) {
-  // Build a dense series for the last 30 days (API returns sparse desc rows).
+  // The API returns sparse rows; build a dense 30-day series so gaps read as zero.
   const byDay = new Map(days.map((d) => [d.day, d.sparks]));
   const series: { day: string; sparks: number }[] = [];
   for (let i = 29; i >= 0; i--) {
@@ -46,22 +60,26 @@ function UsageBars({ days }: { days: UsageDay[] }) {
   }
   const max = Math.max(10, ...series.map((s) => s.sparks));
   const W = 600;
-  const H = 160;
+  const H = 150;
   const pad = 4;
   const bw = (W - pad * 2) / 30;
 
   return (
     <div className="bars-wrap">
       <svg
-        viewBox={`0 0 ${W} ${H + 22}`}
+        viewBox={`0 0 ${W} ${H + 24}`}
         className="usage-bars"
         role="img"
         aria-label="Sparks spent per day over the last 30 days"
       >
+        <line x1={pad} x2={W - pad} y1={H} y2={H} className="bar-base" />
         {series.map((s, i) => {
           const h = Math.max(s.sparks > 0 ? 3 : 1.5, (s.sparks / max) * H);
           const x = pad + i * bw;
-          const label = new Date(`${s.day}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          const label = new Date(`${s.day}T00:00:00Z`).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          });
           return (
             <g key={s.day}>
               <rect
@@ -69,13 +87,19 @@ function UsageBars({ days }: { days: UsageDay[] }) {
                 y={H - h}
                 width={bw - 4}
                 height={h}
-                rx={2.5}
+                rx={2}
                 className={s.sparks > 0 ? 'bar bar-active' : 'bar'}
               >
-                <title>{`${label}: ${s.sparks} sparks`}</title>
+                <title>{`${label}: ${s.sparks} Sparks`}</title>
               </rect>
+              {/* Anchor the end labels inward so they are not clipped by the viewBox. */}
               {(i === 0 || i === 29 || i === 15) && (
-                <text x={x + bw / 2} y={H + 16} textAnchor="middle" className="bar-label">
+                <text
+                  x={i === 0 ? pad : i === 29 ? W - pad : x + bw / 2}
+                  y={H + 17}
+                  textAnchor={i === 0 ? 'start' : i === 29 ? 'end' : 'middle'}
+                  className="bar-label"
+                >
                   {label}
                 </text>
               )}
@@ -89,7 +113,7 @@ function UsageBars({ days }: { days: UsageDay[] }) {
 
 const WAITLIST_KEY = 'golem-waitlist-joined';
 
-function PlanCard({ plan }: { plan: string }) {
+function PlanCard({ plan, dailyLimit, monthlyLimit }: { plan: string; dailyLimit: number; monthlyLimit: number }) {
   const { session } = useAuth();
   const { toast } = useToast();
   const [joined, setJoined] = useState<boolean>(() => {
@@ -102,6 +126,7 @@ function PlanCard({ plan }: { plan: string }) {
 
   const join = useMutation({
     mutationFn: async () => {
+      if (MOCK_MODE) return;
       const email = session?.user.email;
       if (!email) throw new Error('No email on file');
       const { error } = await supabase.from('waitlist').insert({ email, owner_id: session.user.id });
@@ -124,14 +149,12 @@ function PlanCard({ plan }: { plan: string }) {
     <div className="card plan-card">
       <div className="plan-row">
         <div>
-          <h3 className="plan-name">
+          <h2 className="plan-name">
             {plan === 'pro' ? 'Pro' : 'Free'} plan
             {plan === 'pro' && <span className="pill pill-live plan-pill">active</span>}
-          </h3>
+          </h2>
           <p className="muted">
-            {plan === 'pro'
-              ? '400 Sparks a day, priority queue, more checkpoints.'
-              : '80 Sparks a day — enough for steady daily building.'}
+            {dailyLimit} Sparks a day, {monthlyLimit.toLocaleString()} a month. Whichever limit binds first applies.
           </p>
         </div>
       </div>
@@ -139,10 +162,12 @@ function PlanCard({ plan }: { plan: string }) {
         <div className="plan-upsell">
           <div>
             <strong>Golem Pro</strong>
-            <p className="muted">Bigger daily quota, priority queue, more checkpoints. Launching soon.</p>
+            <p className="muted">A much larger daily quota, priority queue, more checkpoints. Launching soon.</p>
           </div>
           {joined ? (
-            <span className="pill pill-live">On the waitlist ✓</span>
+            <span className="pill pill-live">
+              <span className="pill-dot" aria-hidden="true" /> On the waitlist
+            </span>
           ) : (
             <button type="button" className="btn btn-primary" onClick={() => join.mutate()} disabled={join.isPending}>
               {join.isPending ? 'Joining…' : 'Join the waitlist'}
@@ -163,14 +188,22 @@ export function UsagePage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Usage</h1>
-          <p className="page-sub">Sparks are Golem's daily energy. Every request spends a few.</p>
+          <p className="page-sub">
+            Sparks are Golem&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
+            measured typical costs, not fixed prices.
+          </p>
         </div>
       </div>
 
-      {me.isPending && <p className="muted" aria-busy="true">Loading your Sparks…</p>}
+      {me.isPending && (
+        <p className="muted" aria-busy="true">
+          Loading your Sparks…
+        </p>
+      )}
+
       {me.isError && (
         <div className="card" role="alert">
-          <p className="form-error">Couldn't load usage: {(me.error as Error).message}</p>
+          <p className="form-error">Couldn&rsquo;t load usage: {(me.error as Error).message}</p>
           <button type="button" className="btn btn-sm" onClick={() => void me.refetch()}>
             Retry
           </button>
@@ -180,19 +213,31 @@ export function UsagePage() {
       {me.isSuccess && (
         <div className="usage-grid">
           <div className="card sparks-card">
-            <h3>Today's Sparks</h3>
+            <h2>Today&rsquo;s Sparks</h2>
             <SparksRing remaining={me.data.quota.sparksRemaining} daily={me.data.quota.sparksDaily} />
-            <p className="muted">
-              Resets in {countdownTo(me.data.quota.resetsAtIso) ?? 'a moment'} · Clay 1⚡ · Stone 4⚡ · Rune 10⚡
-            </p>
+            <p className="muted">Resets in {countdownTo(me.data.quota.resetsAtIso) ?? 'a moment'}</p>
+            <ul className="mode-cost-list">
+              {MODES.map((m) => (
+                <li key={m} className="mode-cost">
+                  <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
+                  <span className="mode-cost-name">{MODE_INFO[m].name}</span>
+                  <span className="mode-cost-blurb">{MODE_INFO[m].blurb}</span>
+                  <span className="mode-cost-value">{MODE_INFO[m].typicalSparks}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="card bars-card">
-            <h3>Last 30 days</h3>
-            {usage.isPending && <p className="muted" aria-busy="true">Loading history…</p>}
+            <h2>Last 30 days</h2>
+            {usage.isPending && (
+              <p className="muted" aria-busy="true">
+                Loading history…
+              </p>
+            )}
             {usage.isError && (
               <p className="form-error" role="alert">
-                Couldn't load history.{' '}
+                Couldn&rsquo;t load history.{' '}
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => void usage.refetch()}>
                   Retry
                 </button>
@@ -206,7 +251,11 @@ export function UsagePage() {
               ))}
           </div>
 
-          <PlanCard plan={me.data.quota.plan} />
+          <PlanCard
+            plan={me.data.quota.plan}
+            dailyLimit={me.data.quota.sparksDaily}
+            monthlyLimit={me.data.quota.sparksMonthly}
+          />
         </div>
       )}
     </div>

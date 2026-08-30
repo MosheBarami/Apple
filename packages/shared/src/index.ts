@@ -60,11 +60,73 @@ export type StudioOp =
   | { op: 'select'; paths: string[] }
   | { op: 'camera_focus'; path: string }
   | { op: 'viewport_info' } // camera cframe, viewport size, spatial summary
-  | { op: 'screenshot'; target?: string } // best-effort; plugin reports capability
+  // Studio gives plugins no viewport readback, so the plugin rasterises the scene itself and
+  // returns real pixels. `view` picks a camera preset; `target` frames one instance's subtree.
+  | { op: 'render_view'; target?: string; view?: RenderViewName | 'all'; width?: number; height?: number }
+  | { op: 'screenshot'; target?: string } // hero view at default size; kept for compatibility
   | { op: 'snapshot'; root: string; includeScripts?: boolean } // serialize subtree
   | { op: 'restore'; root: string; snapshot: unknown } // apply a snapshot payload
   | { op: 'insert_asset'; assetId: number; parent: string }
+  // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
+  // survive save/publish. The result always carries a QC verdict — generation succeeding is not
+  // evidence the model is good.
+  | { op: 'generate_model'; prompt: string; intent?: string; maxTriangles?: number; predefinedSchema?: string; parent: string }
+  | { op: 'inspect_model'; path: string; intent?: string } // QC gate over an existing model
   | { op: 'undo_waypoint'; name: string }; // explicit ChangeHistoryService waypoint
+
+/**
+ * Camera presets the plugin's software renderer can produce. Multi-view exists because a single
+ * angle hides most composition problems: `top` reads layout and negative space, `eye` reads what a
+ * player standing in the scene actually sees, `hero` is the establishing three-quarter shot.
+ */
+export const RENDER_VIEWS = ['hero', 'front', 'side', 'top', 'eye'] as const;
+export type RenderViewName = (typeof RENDER_VIEWS)[number];
+
+/** One rasterised viewpoint: base64 packed RGB rows plus what was measurably in frame. */
+export interface RenderedView {
+  name: RenderViewName;
+  rgbBase64: string;
+  meta: {
+    width: number;
+    height: number;
+    partsConsidered: number;
+    partsVisible: number;
+    partsOffCamera: number;
+    /** fraction of the frame covered by geometry — a direct signal for bad framing */
+    subjectCoverage: number;
+    distinctColours: number;
+    materials: { material: string; parts: number }[];
+  };
+}
+
+/**
+ * The scene's lighting configuration, reported alongside the render.
+ *
+ * This exists because the rasteriser CANNOT draw lighting — it has one fixed sun direction and no
+ * shadows, PointLights or post-effects. A critic asked to judge lighting from those pixels marks
+ * every scene down identically no matter what the builder did, which is a systematic bias, not a
+ * finding. So lighting is judged from this configuration instead of from the image.
+ */
+export interface SceneLighting {
+  brightness: number;
+  clockTime: number;
+  ambient: [number, number, number];
+  outdoorAmbient?: [number, number, number];
+  exposureCompensation?: number;
+  geographicLatitude?: number;
+  fogEnd?: number;
+  /** how many Light instances (PointLight/SpotLight/SurfaceLight) exist in the scene */
+  lightInstances: number;
+  /** Atmosphere / Sky / PostEffect class names present under Lighting */
+  effects: string[];
+}
+
+export interface RenderViewResult {
+  subject: string;
+  boundsSize: [number, number, number];
+  views: RenderedView[];
+  lighting?: SceneLighting;
+}
 
 export interface PendingOp {
   id: string; // opaque, unique per op
@@ -205,21 +267,37 @@ export interface PairingCodeDto {
 }
 
 // Model gateway internals (worker-side only, exported for evals)
+/**
+ * Multimodal message content. A plain string stays a plain string on the wire; the array form is
+ * only used where an image is actually attached, so ordinary text calls are unaffected.
+ */
+export type GatewayContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }; // data: URL, base64 PNG
+
+export interface GatewayMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | GatewayContentPart[];
+  toolCallId?: string;
+  name?: string;
+  /** structured tool calls made by the assistant on this turn (never serialised as text) */
+  toolCalls?: GatewayToolCall[];
+}
+
 export interface GatewayRequest {
   model: string; // internal model key, not provider id
-  messages: {
-    role: 'system' | 'user' | 'assistant' | 'tool';
-    content: string;
-    toolCallId?: string;
-    name?: string;
-    /** structured tool calls made by the assistant on this turn (never serialised as text) */
-    toolCalls?: GatewayToolCall[];
-  }[];
+  messages: GatewayMessage[];
   tools?: GatewayToolDef[];
   maxTokens?: number;
   temperature?: number;
   jsonSchema?: unknown;
   stream?: boolean;
+  /**
+   * Per-call override of the model's configured reasoning effort. The adaptive reasoning policy
+   * uses this to spend thinking where it changes the outcome (visual design, recovery from a
+   * failure) and stay cheap everywhere else.
+   */
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 export interface GatewayToolDef {
   name: string;

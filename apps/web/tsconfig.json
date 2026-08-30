@@ -4,7 +4,11 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "types": ["vite/client"],
-    "noEmit": true
+    "noEmit": true,
+    // The generative-UI validator is imported with an explicit .ts extension so
+    // `node --test` can load it directly (native type stripping) without a build
+    // step. Legal because this project never emits from tsc.
+    "allowImportingTsExtensions": true
   },
   "include": ["src"]
 }

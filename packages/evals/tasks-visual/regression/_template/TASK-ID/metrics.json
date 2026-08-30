@@ -1,0 +1,43 @@
+{
+  "_comment": "Structural capture for one task. ground, lighting and parts are REQUIRED — the hard-fail rules read them, and a capture missing them grades as invalid rather than passing.",
+  "taskId": "TASK-ID",
+  "subject": "game.Workspace",
+  "boundsSize": [0, 0, 0],
+  "views": [
+    {
+      "name": "hero",
+      "image": "screenshots/hero.png",
+      "meta": {
+        "width": 320,
+        "height": 240,
+        "partsConsidered": 0,
+        "partsVisible": 0,
+        "partsOffCamera": 0,
+        "subjectCoverage": 0.0,
+        "distinctColours": 0,
+        "materials": [{ "material": "Plastic", "parts": 0 }]
+      }
+    }
+  ],
+  "materials": [{ "material": "Plastic", "parts": 0 }],
+  "distinctColours": 0,
+  "ground": {
+    "isDefaultBaseplate": false,
+    "parts": 0,
+    "materials": [],
+    "recoloured": false
+  },
+  "lighting": {
+    "changedProperties": [],
+    "lightInstances": 0,
+    "effects": []
+  },
+  "parts": {
+    "total": 0,
+    "unanchored": 0,
+    "anchoredPct": 1.0,
+    "smallPropCount": 0,
+    "tallestStuds": 0,
+    "medianHeightStuds": 0
+  }
+}

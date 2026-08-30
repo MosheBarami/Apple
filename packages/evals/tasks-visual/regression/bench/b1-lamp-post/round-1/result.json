@@ -1,0 +1,90 @@
+{
+ "task": "b1-lamp-post",
+ "round": 1,
+ "runMs": 336233,
+ "metrics": {
+  "parts": 69,
+  "small": 66,
+  "unanchored": 0,
+  "scripts": 0,
+  "materials": [
+   {
+    "material": "Slate",
+    "parts": 5
+   },
+   {
+    "material": "Plastic",
+    "parts": 1
+   },
+   {
+    "material": "Neon",
+    "parts": 5
+   },
+   {
+    "material": "Metal",
+    "parts": 58
+   }
+  ],
+  "colours": 7,
+  "lights": 1,
+  "heightSpan": 20.9,
+  "brightness": 2.4,
+  "clockTime": 17.4,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ]
+ },
+ "boundsSize": [
+  12,
+  20.9,
+  12
+ ],
+ "score": 5,
+ "passed": false,
+ "unavailable": false,
+ "summary": "All the requested components are present and the palette (dark iron, cream glass, warm neon) is coherent, so it is unmistakably a street lamp rather than a box on a stick. But the fluting is absent, the base has no cast-iron massing, the lantern is proportionally too wide for the spindly column, and the finial is an afterthought. It is a competent assembly of the right parts, not an ornate fixture",
+ "hardFails": [],
+ "defects": [
+  {
+   "dimension": "proportion",
+   "fix": "Re-mass the column: make it 1.6 studs diameter at the base tapering to 0.9 studs under the collar, and shrink the lantern housing to 3.5 x 3.5 x 4.5 studs so the post reads as one continuous tapering form.",
+   "observed": "The lantern housing is a wide, nearly square box sitting on a visibly thinner column, giving a lollipop silhouette. In the hero and front views the lantern reads wider than the column is at any point, whereas a real Victorian lamp has a hea",
+   "severity": "major",
+   "view": "hero, front"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Add 6-8 thin vertical rib parts (0.15 x 0.15 x column-height wedges) spaced evenly around the lower two-thirds of the column, and add two torus-style collar rings (2.0 and 1.4 studs diameter) at the base and under the lantern.",
+   "observed": "The brief explicitly asked for a fluted column. At all three views the column reads as a smooth dark cylinder with no visible flutes, rings, or moulding along its length. There is at most a slight bulge under the lantern.",
+   "severity": "major",
+   "view": "hero, front, side"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Replace with a 3-tier cast base: a 3-stud square plinth 0.8 tall, a 2.2-stud chamfered mid-block 1.0 tall, and a 1.6-stud neck with a bead ring, all in the same dark iron colour.",
+   "observed": "The lamp's own foot is a small dark lump that disappears into the grey pad. In the front view there is no readable stepped plinth, no bolt-detail ring, nothing that says 'cast iron base'.",
+   "severity": "major",
+   "view": "front, side"
+  },
+  {
+   "dimension": "detail",
+   "fix": "Build a 3-part finial: a 0.8-stud cap plate, a 1.2-stud acorn (ball + tapered tip), total ~2 studs tall, slightly wider than the lantern roof plate so it silhouettes clearly.",
+   "observed": "The finial is a tiny nub on a flat cap plate. In the hero view it reads as a small dark blob and does not terminate the silhouette; the lantern roof is a flat slab with no pitch or overhang.",
+   "severity": "minor",
+   "view": "hero"
+  },
+  {
+   "dimension": "materials",
+   "fix": "Give the lantern roof a 4-sided pyramidal cap in a slightly lighter iron tone, and add a thin bright trim bar (0.1 stud) around the top and bottom of the glass so the panes read as glazed units rather than stickers.",
+   "observed": "The glass panes are flat uniform cream rectangles with no frame depth, no sill, no transom bar. The whole lantern reads as one flat colour block from any angle.",
+   "severity": "minor",
+   "view": "front, side"
+  }
+ ],
+ "neurons": 81
+}

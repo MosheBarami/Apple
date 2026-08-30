@@ -1,0 +1,186 @@
+{
+ "subject": "game.Workspace",
+ "boundsSize": [
+  12,
+  20.9,
+  12
+ ],
+ "lighting": {
+  "clockTime": 17.4,
+  "fogEnd": 100000,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ],
+  "geographicLatitude": 0,
+  "ambient": [
+   70,
+   70,
+   80
+  ],
+  "outdoorAmbient": [
+   128,
+   124,
+   118
+  ],
+  "brightness": 2.4,
+  "lightInstances": 1,
+  "exposureCompensation": 0
+ },
+ "views": [
+  {
+   "name": "hero",
+   "meta": {
+    "partsConsidered": 71,
+    "distinctColours": 7,
+    "materials": [
+     {
+      "parts": 58,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 5,
+      "material": "Slate"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.16,
+    "partsVisible": 69,
+    "width": 288
+   }
+  },
+  {
+   "name": "front",
+   "meta": {
+    "partsConsidered": 71,
+    "distinctColours": 7,
+    "materials": [
+     {
+      "parts": 58,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 5,
+      "material": "Slate"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.14,
+    "partsVisible": 69,
+    "width": 288
+   }
+  },
+  {
+   "name": "side",
+   "meta": {
+    "partsConsidered": 71,
+    "distinctColours": 7,
+    "materials": [
+     {
+      "parts": 58,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 5,
+      "material": "Slate"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.14,
+    "partsVisible": 69,
+    "width": 288
+   }
+  },
+  {
+   "name": "top",
+   "meta": {
+    "partsConsidered": 71,
+    "distinctColours": 8,
+    "materials": [
+     {
+      "parts": 58,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 5,
+      "material": "Slate"
+     },
+     {
+      "parts": 2,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 1,
+    "height": 180,
+    "subjectCoverage": 1,
+    "partsVisible": 70,
+    "width": 288
+   }
+  },
+  {
+   "name": "eye",
+   "meta": {
+    "partsConsidered": 71,
+    "distinctColours": 7,
+    "materials": [
+     {
+      "parts": 58,
+      "material": "Metal"
+     },
+     {
+      "parts": 5,
+      "material": "Neon"
+     },
+     {
+      "parts": 5,
+      "material": "Slate"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.11,
+    "partsVisible": 69,
+    "width": 288
+   }
+  }
+ ]
+}

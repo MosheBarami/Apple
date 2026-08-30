@@ -1,0 +1,31 @@
+{
+  "_comment": "A critique of a plaza that genuinely clears the gate. Pair with metrics-good-plaza.json. Not a perfect scene — several 2s and 3s — but no hard fails and a weighted mean above 2.6/4.",
+  "taskId": "vis-03-plaza",
+  "dimensions": {
+    "composition": { "score": 3, "justification": "Top view shows the fountain off-centre on a third, with benches grouped in threes and planters breaking the perimeter rhythm." },
+    "focal_point": { "score": 4, "justification": "The fountain dominates hero at roughly twice the lamp height, framed by the arch and lit brighter than its surroundings." },
+    "proportion_scale": { "score": 3, "justification": "Eye view reads correctly against a character: bench seats near 2.5 studs, arch clearance around 12 studs." },
+    "silhouette": { "score": 3, "justification": "Front view outlines are varied — tapered lamp posts, a stepped fountain basin, trees with irregular canopies." },
+    "material_coherence": { "score": 3, "justification": "Slate paving, WoodPlanks benches, Metal lamp fittings and Water in the basin all read as the right substance in hero." },
+    "material_variety": { "score": 3, "justification": "Histogram shows six materials with meaningful area, including Water and Neon used sparingly." },
+    "palette_discipline": { "score": 3, "justification": "Warm grey paving dominates with two greens and a single copper accent repeated on the lamps and fountain rim." },
+    "value_structure": { "score": 3, "justification": "Dark planting beds, mid-tone paving and the pale fountain stone give three clear value groups in hero." },
+    "lighting_setup": { "score": 3, "justification": "ClockTime, Ambient and Brightness all tuned; 14 lights placed at the lamp heads plus one uplighting the fountain." },
+    "atmosphere_mood": { "score": 3, "justification": "Atmosphere and SunRays configured, late-afternoon colour temperature; the eye view feels like a time of day." },
+    "edge_trim_finish": { "score": 2, "justification": "Border course around the paving and caps on the lamp posts, but bench-to-ground junctions are still raw seams." },
+    "surface_detail_density": { "score": 3, "justification": "311 parts under 2 studs: paving joints, bench slats, lamp bolts, densest around the fountain." },
+    "prop_layering": { "score": 3, "justification": "Architecture, furniture and dressing all present; litter bins and planters clustered rather than evenly spread." },
+    "negative_space": { "score": 3, "justification": "Open floor held clear for about 20 studs around the fountain with density pushed to the perimeter." },
+    "vertical_variation": { "score": 3, "justification": "Four height tiers visible in front: paving, bench, lamp, fountain spire, plus a spanning arch overhead." },
+    "spatial_flow": { "score": 3, "justification": "Top view shows four radial paths into the square with marked thresholds and comfortable widths." },
+    "ground_treatment": { "score": 3, "justification": "Paved surface with a radial inlay ring, a border course and separate Grass planting beds — no baseplate visible." },
+    "scene_cohesion": { "score": 3, "justification": "Consistent stone-and-copper town language across paving, lamps, benches and fountain in all four views." },
+    "prompt_fidelity": { "score": 3, "justification": "A town square with a centrepiece, seating, planting and lighting, arranged to actually feel welcoming." },
+    "technical_hygiene": { "score": 3, "justification": "946 parts, all anchored, grouped into named models, no z-fighting visible at any viewpoint." }
+  },
+  "defects": [
+    { "id": "untrimmed-junctions", "where": "eye", "detail": "bench legs meet paving with no base plate or shadow-catching trim" }
+  ],
+  "observedLandmark": "the tiered stone fountain at the centre-right of the square",
+  "summary": "A stone-and-copper town square with a tiered fountain as its centrepiece, paved with a radial inlay and framed by planting and lamp posts. The weakest area is trim: several furniture-to-ground junctions are still raw seams."
+}
