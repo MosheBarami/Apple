@@ -76,3 +76,25 @@ Vectorize golem-docs (1024d cosine; may recreate at 384d pending free-tier store
 CF account e9b8acf2e89a1de289a1ee4abb0f3f8d, workers.dev subdomain moshe-barami111 (rename = user
 decision, breaks 2 existing worker URLs). Corpus embedding runs through an admin-gated worker
 endpoint (AI binding) so no raw CF API token is ever needed locally.
+
+## ADR-010 — What shipped, and what the evidence was
+Deployed: worker `golem` (API + D1-backed static hosting of both frontends), Astro marketing site,
+React SPA at /app, Luau plugin at /plugin.rbxm, 8,326-chunk RAG corpus, 30-user load validation,
+adversarial security audit with 12 fixes verified live.
+
+Model choice is evidence-backed (`docs/evals/FINDINGS.md`): gpt-oss-120b scored 97.6 overall on 56
+Roblox tasks vs 94.3 (qwen2.5-coder-32b) and 88.2 (qwen3-30b), and is also the cheapest of the
+three. Forced RAG injection measured *worse* (−2.4 clay, −0.7 stone), so retrieval stayed an
+agent-invoked tool rather than automatic prompt stuffing — a decision made by measurement, not taste.
+
+Two behavioural failures were found by running the real product against real Studio and fixed:
+the agent guessed Creator Store asset ids, and it looped on `search_docs` instead of building.
+Fixes: build-from-primitives guidance, an explicit ban on guessed asset ids, duplicate-tool-call
+refusal in the agent loop, and a steer injected when several steps pass with nothing built.
+
+## ADR-011 — The one paid decision, deliberately not taken unilaterally
+Workers AI's free allocation is 10,000 neurons/day (~100k input + 100k output tokens) shared across
+ALL users of the service. Golem exhausted it during testing on day one. The product now handles this
+gracefully (a plain-language "at capacity, resets at midnight UTC" message; project state untouched),
+but the free tier cannot support real users. Workers Paid is $5/month and is exactly the stated
+budget. It is presented to the owner for approval rather than purchased.

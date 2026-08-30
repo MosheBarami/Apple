@@ -99,7 +99,8 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private async pluginConnected(): Promise<boolean> {
-    const last = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
+    const stored = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
+    const last = Math.max(stored, this.lastSeenWrittenAt);
     return Date.now() - last < 8000;
   }
 
@@ -154,7 +155,12 @@ export class SessionDO extends DurableObject<Env> {
     if (path === '/plugin/poll' && req.method === 'POST') {
       const token = req.headers.get('X-Golem-Token') ?? '';
       const expect = await this.ctx.storage.get<string>('pluginTokenHash');
-      const issuedAt = (await this.ctx.storage.get<number>('pluginTokenIssuedAt')) ?? 0;
+      let issuedAt = await this.ctx.storage.get<number>('pluginTokenIssuedAt');
+      if (issuedAt === undefined) {
+        // pairing predates token expiry — grandfather it in from now rather than locking it out
+        issuedAt = Date.now();
+        await this.ctx.storage.put('pluginTokenIssuedAt', issuedAt);
+      }
       if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS) return json({ error: 'token expired' }, 401);
       if (!(await timingSafeEqual(await sha256hex(token), expect))) return json({ error: 'invalid token' }, 401);
       const body = (await req.json()) as PluginPollRequest;
@@ -228,7 +234,8 @@ export class SessionDO extends DurableObject<Env> {
         .exec(`select op_id, kind, ok, summary, created_at from oplog order by id desc limit 25`)
         .toArray();
       return json({
-        bind,
+        // deliberately no owner id here — this endpoint is operational, not a user lookup
+        project: { id: bind.projectId, name: bind.projectName },
         agentStatus: agent?.status ?? 'idle',
         messages: msgs.c,
         pluginConnected: await this.pluginConnected(),
@@ -456,7 +463,13 @@ export class SessionDO extends DurableObject<Env> {
       const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
       agent.trace.push(entry);
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary });
-      agent.llm.push({ role: 'tool', content: `[${call.name}] ${out.resultForLlm}`, toolCallId: call.id, name: call.name });
+      // fence tool output as untrusted data — it can contain attacker-authored text
+      agent.llm.push({
+        role: 'tool',
+        content: `[${call.name}]\n<untrusted-tool-output tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
+        toolCallId: call.id,
+        name: call.name,
+      });
       const current = await this.ctx.storage.get<AgentState>('agent');
       if (current?.status === 'stopping') {
         agent.status = 'stopping';
@@ -601,10 +614,18 @@ export class SessionDO extends DurableObject<Env> {
     return result;
   }
 
+  private lastSeenWrittenAt = 0;
+
   private async handlePluginPoll(body: PluginPollRequest): Promise<Response> {
     const wasConnected = await this.pluginConnected();
-    await this.ctx.storage.put('pluginLastSeen', Date.now());
+    // the plugin polls every ~0.4-2.5s; persisting the heartbeat every time is pure write
+    // amplification. Keep it in memory and only checkpoint it to storage every few seconds.
+    const now = Date.now();
     this.pluginSeenRecently = true;
+    if (now - this.lastSeenWrittenAt > 4000) {
+      this.lastSeenWrittenAt = now;
+      await this.ctx.storage.put('pluginLastSeen', now);
+    }
 
     if (body.state) {
       await this.ctx.storage.put('pluginState', body.state);
@@ -637,7 +658,7 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     const ops = this.opQueue.splice(0, 10);
-    await this.ctx.storage.put('opQueue', this.opQueue);
+    if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
     const running = agent?.status === 'running';
     const res: PluginPollResponse = { ops, waitMs: running ? 400 : 2500 };
     return json(res);
