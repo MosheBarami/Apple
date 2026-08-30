@@ -306,9 +306,10 @@
     if (!exists) return; // keep the SVG colossus
 
     try {
-      const [THREE, { GLTFLoader }] = await Promise.all([
+      const [THREE, { GLTFLoader }, { MeshoptDecoder }] = await Promise.all([
         import('three'),
         import('three/examples/jsm/loaders/GLTFLoader.js'),
+        import('three/examples/jsm/libs/meshopt_decoder.module.js'),
       ]);
 
       const scene = new THREE.Scene();
@@ -329,7 +330,9 @@
       rim.position.set(-3, 1.5, -2);
       scene.add(rim);
 
-      const gltf = await new GLTFLoader().loadAsync('/assets/hero/golem.glb');
+      const loader = new GLTFLoader();
+      loader.setMeshoptDecoder(MeshoptDecoder);
+      const gltf = await loader.loadAsync('/assets/hero/golem.glb');
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());

@@ -1,0 +1,395 @@
+{
+  "runMeta": {
+    "tag": "smoke",
+    "startedAt": "2026-08-30T17:09:35.275Z",
+    "apiBase": "https://golem.moshe-barami111.workers.dev",
+    "models": [
+      "clay"
+    ],
+    "categories": "all",
+    "limit": 1,
+    "taskCount": 8,
+    "jobCount": 8,
+    "concurrency": 3,
+    "luauChecker": "luau-lsp (PATH)",
+    "transport": "POST /api/admin/model-test"
+  },
+  "perTask": [
+    {
+      "taskId": "ak-01-task-wait",
+      "category": "api-knowledge",
+      "model": "clay",
+      "ok": true,
+      "ms": 1570,
+      "usage": {
+        "inputTokens": 78,
+        "outputTokens": 174
+      },
+      "score": 0,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": false,
+          "weight": 1,
+          "detail": "missing \"task.wait\""
+        }
+      ],
+      "responsePreview": "\n\nmath.wait",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "db-01-busy-loop",
+      "category": "debugging",
+      "model": "clay",
+      "ok": true,
+      "ms": 3344,
+      "usage": {
+        "inputTokens": 107,
+        "outputTokens": 361
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /task\\.wait\\s*\\(/"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"while true do\""
+        }
+      ],
+      "responsePreview": "\n\nThe script freezes Roblox Studio because it contains an infinite loop without yielding, causing the main thread to hang.\n\n```luau\nlocal part = workspace.Beacon\nwhile true do\n\tpart.Transparency = 1 - part.Transparency\n\ttask.wait(0.5) -- Added yield to prevent freezing\nend\n```",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "fr-01-bad-path",
+      "category": "failure-recovery",
+      "model": "clay",
+      "ok": true,
+      "ms": 2466,
+      "usage": {
+        "inputTokens": 166,
+        "outputTokens": 290
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /list_scripts|get_project_tree|search_scripts/"
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /typo|misspell|wrong path|correct (path|name)|RoundManager/i"
+        }
+      ],
+      "responsePreview": "\n\nThe error suggests a typo in the script name. Next, use `search_scripts` to check for \"RoundManager\" in `game.ServerScriptService` to confirm the correct name before editing.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "lc-01-countdown",
+      "category": "luau-correctness",
+      "model": "clay",
+      "ok": true,
+      "ms": 3814,
+      "usage": {
+        "inputTokens": 86,
+        "outputTokens": 708
+      },
+      "score": 0.75,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": false,
+          "weight": 1,
+          "detail": "no match: /task\\.wait\\s*\\(/"
+        },
+        {
+          "type": "not_contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "pattern absent: /(?<!task\\.)\\bwait\\s*\\(/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /for\\s+/"
+        }
+      ],
+      "responsePreview": "\n\n```luau\nfunction countdown(seconds)\n    for i = seconds, 1, -1 do\n        print(i)\n        Task.Wait(1)\n    end\nend\n```",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "mf-01-heal-remote",
+      "category": "multi-file",
+      "model": "clay",
+      "ok": true,
+      "ms": 9798,
+      "usage": {
+        "inputTokens": 215,
+        "outputTokens": 1217
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"OnServerEvent\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"FireServer\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"Heal\""
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"MouseButton1Click\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Health\\s*=\\s*100|humanoid\\.Health\\s*=\\s*humanoid\\.MaxHealth|Health\\s*=\\s*.*MaxHealth/"
+        }
+      ],
+      "responsePreview": "\n\n```luau\n-- FILE game.ServerScriptService.HealthServer (Script)\nlocal Players = game:GetService(\"Players\")\nlocal ReplicatedStorage = game:GetService(\"ReplicatedStorage\")\nlocal healEvent = ReplicatedStorage:WaitForChild(\"Heal\")\n\nhealEvent.OnServerEvent:Connect(function(player)\n    local character = player.Character\n    if character then\n        local humanoid = character:FindFirstChild(\"Humanoid\")\n        if humanoid then\n            humanoid.Health = 100\n        end\n    end\nend)\n```\n\n```luau\n-- FILE game.StarterGui.HudGui.HealClient (LocalScript)\nlocal button = script.Parent:WaitForChild(\"Hea",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "pc-01-purchase-handler",
+      "category": "project-comprehension",
+      "model": "clay",
+      "ok": true,
+      "ms": 1593,
+      "usage": {
+        "inputTokens": 574,
+        "outputTokens": 219
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"RoundManager\""
+        }
+      ],
+      "responsePreview": "\n\nShopServer",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ts-01-explore-project",
+      "category": "tool-selection",
+      "model": "clay",
+      "ok": true,
+      "ms": 1068,
+      "usage": {
+        "inputTokens": 339,
+        "outputTokens": 163
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"get_project_tree\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"read_script\""
+        }
+      ],
+      "responsePreview": "\n\nget_project_tree",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "ui-01-centered-frame",
+      "category": "ui-implementation",
+      "model": "clay",
+      "ok": true,
+      "ms": 3950,
+      "usage": {
+        "inputTokens": 140,
+        "outputTokens": 568
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "luau_syntax",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "no syntax errors (luau-lsp (PATH))"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']ScreenGui[\"']/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /Instance\\.new\\s*\\(\\s*[\"']Frame[\"']/"
+        },
+        {
+          "type": "contains",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"PlayerGui\""
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /AnchorPoint\\s*=\\s*Vector2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)/"
+        },
+        {
+          "type": "regex",
+          "target": "code",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /UDim2\\.fromScale\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)|UDim2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\s*,\\s*0\\.5\\s*,\\s*0\\s*\\)/"
+        }
+      ],
+      "responsePreview": "\n\n```lua\nlocal player = game:GetService(\"Players\").LocalPlayer\nlocal playerGui = player:WaitForChild(\"PlayerGui\")\n\nlocal screenGui = Instance.new(\"ScreenGui\")\nscreenGui.Parent = playerGui\n\nlocal frame = Instance.new(\"Frame\")\nframe.Size = UDim2.new(0.5, 0, 0.5, 0)\nframe.AnchorPoint = Vector2.new(0.5, 0.5)\nframe.Position = UDim2.new(0.5, 0, 0.5, 0)\nframe.Parent = screenGui\n```",
+      "taskWeight": 2
+    }
+  ],
+  "perCategory": [
+    {
+      "model": "clay",
+      "category": "api-knowledge",
+      "score": 0,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "debugging",
+      "score": 1,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "failure-recovery",
+      "score": 1,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "luau-correctness",
+      "score": 0.75,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "multi-file",
+      "score": 1,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "project-comprehension",
+      "score": 1,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "tool-selection",
+      "score": 1,
+      "tasks": 1,
+      "transportErrors": 0
+    },
+    {
+      "model": "clay",
+      "category": "ui-implementation",
+      "score": 1,
+      "tasks": 1,
+      "transportErrors": 0
+    }
+  ],
+  "overall": [
+    {
+      "model": "clay",
+      "score": 0.7916666666666666,
+      "tasks": 8,
+      "transportErrors": 0
+    }
+  ]
+}
