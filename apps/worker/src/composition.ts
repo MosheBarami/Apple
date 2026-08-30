@@ -367,6 +367,86 @@ export function clusterMasses(parts: ScenePart[], gap = 1): number[][] {
 }
 
 /**
+ * The gate. Every threshold below is CALIBRATED, not reasoned: measured against the 12-fixture
+ * ladder in packages/evals/src/composition-ladder.mjs, whose ground truth is the mean of six
+ * independent blind critics who saw only the images (packages/evals/tasks-visual/composition/
+ * blind/jury.json). At these values the gate fires on every fixture the jury scored 4.0 or below
+ * and on none it scored 4.5 or above — no false positives and no false negatives on that ladder.
+ *
+ * For contrast, the property and whole-frame-pixel checks that were already shipped fire on ZERO
+ * of the same twelve, including one that is a single flat grey slab. That is the failure this
+ * replaces: a check calibrated so loosely it can only catch a synthetic buffer.
+ *
+ * HONEST LIMITATION. Twelve fixtures derived from one real scene is a calibration set, not a
+ * validation set. These numbers will need revisiting against genuinely independent scenes, and the
+ * gate is deliberately scoped to `scene` subjects — a prop has no landmark and no vertical tier, so
+ * applying it to a trophy would reject correct work. A legitimately flat design (a race circuit, a
+ * floor plan) would also trip `flat`; that is a known false positive and is why these cap the score
+ * rather than hard-refusing the build.
+ */
+export const COMPOSITION_GATES = {
+  /** below this the tallest element does not dominate the second tallest: there is no landmark */
+  verticalDominance: 1.25,
+  /** below this the tallest thing barely rises above the typical thing: the plate signature */
+  heightHierarchy: 2.0,
+  /** below this the geometry is effectively greyscale. Only meaningful on the MASKED statistic —
+   *  the whole-frame version reads 46.2 on a grey slab because sky and ground own the frame. */
+  maskedColorfulness: 12,
+};
+
+/**
+ * Composition failures, measured. `structure` is free (no render). `views` may be empty, in which
+ * case only the structural checks run — which is the point: a blockout can be rejected before a
+ * single pixel or model token has been spent on it.
+ */
+export function compositionHardFails(
+  structure: StructureMetrics,
+  views: { name: string; metrics: CompositionMetrics }[] = [],
+  subject: 'scene' | 'prop' = 'scene',
+): string[] {
+  const fails: string[] = [];
+  if (subject === 'scene') {
+    if (structure.parts > 0 && structure.verticalElements === 0) {
+      fails.push(
+        'nothing in this scene stands up — every part is floor-height, so it reads as a plate from any camera and there is no silhouette to compose with',
+      );
+    } else if (structure.verticalDominance < COMPOSITION_GATES.verticalDominance) {
+      fails.push(
+        `no landmark: the tallest element is only ${structure.verticalDominance}x the height of the next one (want at least ${COMPOSITION_GATES.verticalDominance}x), so nothing dominates and the eye has nowhere to land`,
+      );
+    }
+    if (structure.heightHierarchy < COMPOSITION_GATES.heightHierarchy) {
+      fails.push(
+        `no vertical variation: the tallest part is ${structure.heightHierarchy}x the median part height (want at least ${COMPOSITION_GATES.heightHierarchy}x) — adding more parts at the same height cannot fix this`,
+      );
+    }
+  }
+  const judged = views.filter((v) => v.metrics.coverage >= 0.05);
+  if (judged.length) {
+    const colour = Math.max(...judged.map((v) => v.metrics.maskedColorfulness));
+    if (colour < COMPOSITION_GATES.maskedColorfulness) {
+      fails.push(
+        `the built geometry is close to greyscale (colourfulness ${colour} measured over the geometry only, want at least ${COMPOSITION_GATES.maskedColorfulness})`,
+      );
+    }
+  }
+  return fails;
+}
+
+/** One compact line per view for the critic, carrying only the statistics that survived calibration. */
+export function compositionLine(name: string, m: CompositionMetrics): string {
+  return `${name}: interior detail ${m.interiorEdgeDensity}, geometry colourfulness ${m.maskedColorfulness}, mass concentration ${m.occupancyGini}, skyline peak ${m.silhouettePeakProminence}, figure/ground value gap ${m.figureGroundContrast}`;
+}
+
+/** The structural line: view-independent, and the only part a blockout can be judged on. */
+export function structureLine(s: StructureMetrics): string {
+  return (
+    `${s.parts} parts in ${s.verticalElements} vertical elements; tallest element ${s.verticalDominance}x the next ` +
+    `(landmark dominance), tallest part ${s.heightHierarchy}x the median part height, plan footprint ${Math.round(s.footprintOccupancy * 100)}% covered`
+  );
+}
+
+/**
  * Vertical elements, clustered in plan. Paving and floor slabs are excluded by height, then what
  * remains is grouped by XZ proximity so a monument built from eight stacked parts counts once and
  * a lamp post counts once. Returns each cluster's height above the scene floor, tallest first.
@@ -401,6 +481,21 @@ export function verticalElementHeights(parts: ScenePart[], minHeight = 2, planGa
     top.set(r, Math.max(top.get(r) ?? 0, h));
   }
   return [...top.values()].sort((a, b) => b - a);
+}
+
+/**
+ * Structure from the compact capture the plugin already sends. SceneLayout.parts is
+ * [x, y, z, sx, sy, sz, yawDeg] per part, so this costs nothing extra on the wire — the geometry
+ * needed to judge macro composition is already in the request that asks for a critique.
+ */
+export function structureFromLayout(parts: number[][] | undefined): StructureMetrics | null {
+  if (!parts?.length) return null;
+  return structureMetrics(
+    parts.map((a) => ({
+      pos: [a[0]!, a[1]!, a[2]!] as [number, number, number],
+      size: [a[3]!, a[4]!, a[5]!] as [number, number, number],
+    })),
+  );
 }
 
 export function structureMetrics(allParts: ScenePart[]): StructureMetrics {

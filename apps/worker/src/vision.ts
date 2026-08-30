@@ -11,6 +11,13 @@ import type { RenderViewResult, RenderedView } from '@golem/shared';
 import { chat } from './gateway';
 import { rgbBase64ToDataUrl, decodeRgbBase64 } from './png';
 import { pixelStats, pixelHardFails, statsLine, type ViewStats } from './pixel-stats';
+import {
+  compositionMetrics,
+  compositionHardFails,
+  compositionLine,
+  structureFromLayout,
+  structureLine,
+} from './composition';
 import { analyseLayout } from './layout';
 
 /** At most this many frames go to the model in one critique — each image costs input tokens. */
@@ -247,14 +254,34 @@ export async function critiqueViews(
   // that renders as a flat grey plate — measured on a 725-part plaza with 10 materials and 5
   // lights whose plan view was a single uniform tone. These statistics cost nothing: the buffer is
   // already decoded on the way to PNG.
-  const viewStats: ViewStats[] = result.views.map((v) => ({
-    name: v.name,
-    coverage: v.meta.subjectCoverage,
-    stats: pixelStats(decodeRgbBase64(v.rgbBase64), v.meta.width, v.meta.height),
+  const decoded = result.views.map((v) => ({ view: v, rgb: decodeRgbBase64(v.rgbBase64) }));
+  const viewStats: ViewStats[] = decoded.map(({ view, rgb }) => ({
+    name: view.name,
+    coverage: view.meta.subjectCoverage,
+    stats: pixelStats(rgb, view.meta.width, view.meta.height),
   }));
+
+  // Composition: the statistics that survived calibration against a blind jury. These do two things
+  // the whole-frame statistics above cannot. First, they are restricted to the GEOMETRY MASK, so
+  // sky and ground stop diluting them — the same grey slab reads colourfulness 46.2 whole-frame and
+  // 1.7 masked, which is the difference between a check that never fires and one that does. Second,
+  // the structural half needs no image at all, so a bad macro composition can be rejected before any
+  // detail is paid for. docs/COMPOSITION.md carries the measured separations and the rejected
+  // candidates.
+  const composition = decoded.map(({ view, rgb }) => ({
+    name: view.name,
+    metrics: compositionMetrics(rgb, view.meta.width, view.meta.height),
+  }));
+  const structure = structureFromLayout(result.layout?.parts);
+
   // Composition is a question about PLACEMENT, which pixels cannot answer once objects overlap.
   const layout = subject === 'scene' ? analyseLayout(result.layout, result.boundsSize) : null;
-  const hardFails = [...hardFailChecks(result, subject), ...pixelHardFails(viewStats), ...(layout?.flags ?? [])];
+  const hardFails = [
+    ...hardFailChecks(result, subject),
+    ...pixelHardFails(viewStats),
+    ...(structure ? compositionHardFails(structure, composition, subject) : []),
+    ...(layout?.flags ?? []),
+  ];
 
   const content: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [
     {
@@ -266,6 +293,9 @@ export async function critiqueViews(
         frames.map(statsFor).join('\n') +
         `\n\nMEASURED FROM THE PIXELS (arithmetic over the actual image, not opinion):\n` +
         frames.map((f) => statsLine(f.name, viewStats.find((v) => v.name === f.name)!.stats)).join('\n') +
+        `\n\nMEASURED COMPOSITION (geometry only — sky and ground excluded):\n` +
+        frames.map((f) => compositionLine(f.name, composition.find((c) => c.name === f.name)!.metrics)).join('\n') +
+        (structure ? `\nSTRUCTURE: ${structureLine(structure)}` : '') +
         (layout
           ? `\n\nMEASURED LAYOUT: ${layout.props} props over ${layout.structural} structural parts, nearest-neighbour spacing variation ${layout.neighbourSpacingCV}, grid-snap ${layout.latticeScore}, rotation variety ${layout.rotationEntropy}`
           : '') +

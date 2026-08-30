@@ -1,380 +1,567 @@
 {
+  "round": 2,
+  "critics": 6,
   "key": {
-    "S01": "real-baseline",
-    "S02": "flattened",
-    "S03": "equalised",
-    "S04": "grey-plate",
-    "S05": "one-blob-void",
-    "S06": "confetti",
-    "S07": "blockout",
-    "S08": "hierarchised",
-    "S09": "real-improved",
-    "S10": "levelled",
-    "S11": "tiled-mush"
+    "T01": "flattened",
+    "T02": "tiled-mush",
+    "T03": "real-improved",
+    "T04": "lopsided",
+    "T05": "levelled",
+    "T06": "one-blob-void",
+    "T07": "equalised",
+    "T08": "confetti",
+    "T09": "real-baseline",
+    "T10": "grey-plate",
+    "T11": "blockout",
+    "T12": "hierarchised"
   },
   "juries": [
     {
       "scores": [
         {
-          "code": "S01",
+          "code": "T01",
           "score": 2,
-          "reason": "A bare grey wedge platform with four toothpick posts and two pinhead props — no dominant mass, no medium tier, and from player-eye the whole scene nearly vanishes below the horizon."
+          "reason": "A domed disc of paving tiles with essentially nothing built on it — no focal mass, no medium or small elements, so the silhouette is a bare lump and the plan view reads as texture rather than composition."
         },
         {
-          "code": "S02",
-          "score": 3,
-          "reason": "A flat brown tile disc with a rim: the ground plane is the only mass, nothing rises above ankle height, so the silhouette is a pancake and there is no focal point at all."
-        },
-        {
-          "code": "S03",
-          "score": 5,
-          "reason": "Same circular arena footprint as S02 but populated with evenly-scattered small props and posts of nearly identical height — a readable disc silhouette, yet everything competes at one scale with only a faint center accent."
-        },
-        {
-          "code": "S04",
-          "score": 1,
-          "reason": "Nothing but two untextured grey ground planes; no props, no verticals, no hierarchy — an empty stage rather than a composition."
-        },
-        {
-          "code": "S05",
-          "score": 3,
-          "reason": "One colossal column dominates absolutely, but it overruns the frame in every camera with no medium or small masses and no surrounding site, so dominance without hierarchy or negative space."
-        },
-        {
-          "code": "S06",
+          "code": "T02",
           "score": 2,
-          "reason": "An exploded cloud of loose cubes floating at all heights with no ground footprint, no grouping and no silhouette — visual noise where the eye finds nothing to land on."
+          "reason": "A flat rectangular grid of same-size cubes edge to edge: no dominant mass, no hierarchy, no negative space, and a silhouette that is a single uniform slab from every camera."
         },
         {
-          "code": "S07",
-          "score": 6,
-          "reason": "A plaza with a slim central obelisk and a ring of dark posts gives real large/medium/small tiers, but the focal spire is too short relative to the wide deck so dominance is only just readable."
-        },
-        {
-          "code": "S08",
+          "code": "T03",
           "score": 8,
-          "reason": "Clear winner of the plaza family: one tall tower unmistakably dominates, lamp posts form a coherent medium tier, small props and benches fill the third tier, and the disc sits in clean negative space."
+          "reason": "Clear read: a tall central monument on a raised base as focal point, a ring of lamp posts as the medium tier, benches and hedges as small punctuation, and a defined circular rim holding it all — plan view shows deliberate radial order with open paving between masses."
         },
         {
-          "code": "S09",
-          "score": 7,
-          "reason": "Same plaza as S08 with a shorter tower and a denser, more evenly-spaced lamp ring, so the vertical hierarchy is a step flatter and the mid tier starts to compete with the focal point."
+          "code": "T04",
+          "score": 5,
+          "reason": "Same object set and same central monument as T03, but the lamps, benches and planters have been pushed off the paving onto the surrounding grass — the rim no longer contains anything, the ring reads as debris scattered outside the plaza, and the silhouette breaks into disconnected fragments."
         },
         {
-          "code": "S10",
+          "code": "T05",
           "score": 4,
-          "reason": "The plaza is crowded with a dozen near-equal-height pillars that surround and visually swallow the central tower — competing verticals destroy the focal point and clot the negative space."
+          "reason": "Oversized dark slabs and pillars crowd the plaza perimeter at a scale that rivals and visually buries the central monument, so the focal point is lost behind a picket of equal-weight verticals and the player-eye view is a wall."
         },
         {
-          "code": "S11",
+          "code": "T06",
+          "score": 1,
+          "reason": "A single column fills the frame in four of five cameras with one tiny object stranded far away on empty grass — there is no scene to compose, just one object and void."
+        },
+        {
+          "code": "T07",
           "score": 3,
-          "reason": "A dense uniform carpet of blocks covering the whole footprint: an even field with no dominant mass, no vertical accent and no breathing room, though the slab silhouette at least reads cleanly."
+          "reason": "Dozens of near-identical small dark props are strewn evenly over a circular plot with no large or medium mass anywhere, so nothing dominates and the top-down view is uniform speckle; some clusters float above the deck."
+        },
+        {
+          "code": "T08",
+          "score": 1,
+          "reason": "An unanchored cloud of cubes suspended in mid-air with no ground plane, no base, and no readable silhouette — unusable as an arrangement."
+        },
+        {
+          "code": "T09",
+          "score": 3,
+          "reason": "A bare grey wedge platform with four thin posts and two or three tiny markers: the symmetry gives a faint axis, but there is no dominant mass, no mid-tier, and the ground shape itself is doing all the work."
+        },
+        {
+          "code": "T10",
+          "score": 1,
+          "reason": "A single flat grey wedge on grass with literally nothing built on it — no focal point, no masses, no hierarchy of any kind."
+        },
+        {
+          "code": "T11",
+          "score": 6,
+          "reason": "Central monument and lamp verticals still read as a hierarchy, but the containing rim has broken up and paving tiles and props spill loosely outward, so the plaza edge is ragged and the negative space is noisy rather than intentional."
+        },
+        {
+          "code": "T12",
+          "score": 8,
+          "reason": "Strongest focal dominance of the set — a tall slab tower rises well above the lamp ring, giving an unmistakable silhouette apex, with the ring, hedges and benches stepping down cleanly in scale inside a well-defined circular rim."
         }
       ]
     },
     {
       "scores": [
         {
-          "code": "S01",
+          "code": "T01",
           "score": 2,
-          "reason": "A near-empty gray wedge with a handful of hairline poles and one blue speck — the frame is mostly sky and ground with no mass to anchor it and no focal point at any camera."
+          "reason": "An empty paved disc with a couple of loose slabs on it — the paving is the whole build, there is literally nothing to walk to, look at, or stand on."
         },
         {
-          "code": "S02",
-          "score": 4,
-          "reason": "A low brown dome reads as a single undifferentiated blob against the horizon; nothing rises above the silhouette line, so every view flattens to one lump with detail visible only from directly above."
-        },
-        {
-          "code": "S03",
-          "score": 5,
-          "reason": "A rimmed circular arena with a ring of dark uprights gives real figure-ground and a legible boundary, but the center is a mush of same-value clutter so the eye circles the rim and never lands."
-        },
-        {
-          "code": "S04",
-          "score": 1,
-          "reason": "Bare untextured planes and nothing else — no vertical element, no separation, no subject; this is an empty stage, not a composition."
-        },
-        {
-          "code": "S05",
-          "score": 3,
-          "reason": "One colossal column fills and crops out the top of nearly every frame with no supporting mass around it, and the plan view collapses to a lone tiny object — a subject with no scene."
-        },
-        {
-          "code": "S06",
+          "code": "T02",
           "score": 2,
-          "reason": "Scattered debris cubes hang in a cloud with no ground footprint or grouping; the frame is filled edge to edge but has no silhouette, no hierarchy, and no place for the eye to rest."
+          "reason": "A flat rectangular field of colored cubes laid out like bathroom tile; no height, no landmark, no path, it reads as a texture test rather than a place."
         },
         {
-          "code": "S07",
-          "score": 6,
-          "reason": "A tiled platform with a genuine central pylon reads clearly, but the thin black poles scatter without rhythm and the ragged platform edge weakens the base against the ground."
-        },
-        {
-          "code": "S08",
+          "code": "T03",
           "score": 8,
-          "reason": "Dominant central tower, a disciplined rim of lamps and planting stepping down from it, and a clean circular footprint — the strongest figure-ground and the only scene where the eye lands immediately from every camera."
+          "reason": "Real plaza logic: central monument sized right for the disc, a ring of lampposts spaced evenly around the rim, benches and hedges tucked between them, and ramps breaking the edge so you can see where you enter — I'd actually run around this."
         },
         {
-          "code": "S09",
-          "score": 7,
-          "reason": "Same plaza as S08 with the lamp posts raised into a flanking colonnade; the rhythm frames the tower nicely but the taller verticals start competing with it and crowd the top of the frame."
+          "code": "T04",
+          "score": 4,
+          "reason": "Same plaza as T03 but the benches, planters and ramps have been dumped onto the grass outside the paving, leaving gaps in the lamp ring and a bare stone donut in the middle — the arrangement differs from T03 only in where the objects sit relative to the paving."
         },
         {
-          "code": "S10",
-          "score": 5,
-          "reason": "Same plaza again, now choked with tall dark slabs that occlude the central tower and mass along the rim — the frame is full rather than balanced and the focal point is buried."
+          "code": "T05",
+          "score": 4,
+          "reason": "The plaza is buried under six enormous slab pillars that dwarf the monument and block every sightline; top-down you can barely see the floor, and at player-eye it's a wall of dark boxes."
         },
         {
-          "code": "S11",
+          "code": "T06",
+          "score": 1,
+          "reason": "One lamp column shot from touching distance in four of five cameras and a single tiny slab in the top-down — there is essentially no scene here at all."
+        },
+        {
+          "code": "T07",
           "score": 3,
-          "reason": "A flat rectangular grid of colored cubes: an even carpet of noise with no vertical accent and no dominant shape, so the plan and hero views carry identical, hierarchy-free information."
+          "reason": "A disc evenly speckled with identical small dark clumps and a few floating black panels; uniform noise with no center, no landmark, nothing that draws you anywhere."
+        },
+        {
+          "code": "T08",
+          "score": 1,
+          "reason": "A cloud of unconnected cubes floating in mid-air with no ground plane, no footprint in the top-down — it's an explosion, not a build."
+        },
+        {
+          "code": "T09",
+          "score": 3,
+          "reason": "A big blank gray ramp-pyramid with four thin poles and two postage-stamp props; the geometry is fine but there's nothing on it to do and the huge flat face is dead space."
+        },
+        {
+          "code": "T10",
+          "score": 1,
+          "reason": "A bare gray pyramid slab and nothing else in any of the five views — zero content."
+        },
+        {
+          "code": "T11",
+          "score": 6,
+          "reason": "Readable plaza with a decent center monument on a square paving grid, but the poles are bare sticks with no lamp heads, several props lie tipped over flat, and the rim has no border so the space just stops."
+        },
+        {
+          "code": "T12",
+          "score": 7,
+          "reason": "Same well-organized plaza as T03 — ringed lamps, benches, hedges — but the monument has been stretched into a skinny tower two or three times too tall for the disc, so the scale feels wrong from every angle."
         }
       ]
     },
     {
       "scores": [
         {
-          "code": "S01",
-          "score": 3,
-          "reason": "A few enormous bare gray wedges with four toothpick posts stuck at the corners and two tiny props floating near the middle — the ground dominates and nothing is placed in relation to anything else."
-        },
-        {
-          "code": "S02",
+          "code": "T01",
           "score": 2,
-          "reason": "A circular pad of loose flat tiles with a couple of panels sliding off the rim; entirely horizontal, zero vertical accent, and the plan view shows no center, path, or edge intent."
+          "reason": "A domed bowl of paving tiles with a few unreadable specks at the centre and slabs sliding off the rim; no focal object, no axis, and the top-down shows tiles filling the disc with no organizing logic."
         },
         {
-          "code": "S03",
-          "score": 5,
-          "reason": "Same disc as S02 but with a legible radial idea — a rim of low props, a ring of dark posts, and a raised center — though the posts are unevenly spaced and the center object is too small to hold the ring."
-        },
-        {
-          "code": "S04",
-          "score": 1,
-          "reason": "Bare gray planes and nothing else; there is no arrangement to judge."
-        },
-        {
-          "code": "S05",
+          "code": "T02",
           "score": 2,
-          "reason": "One oversized pillar filling four of five frames while the top-down shows a single speck — scale and placement are so broken that the scene has no readable extent."
+          "reason": "A flat rectangular field of same-size cubes in a uniform grid — an even texture swatch with no centre, no hierarchy and nothing an eye can land on."
         },
         {
-          "code": "S06",
-          "score": 1,
-          "reason": "Hundreds of small cubes flung into a cloud floating above no floor — this is scattering in its purest form, with no ground, grouping, or silhouette."
-        },
-        {
-          "code": "S07",
-          "score": 6,
-          "reason": "Real plaza logic — tiled circular floor, stepped plinth, central obelisk, perimeter posts — but the tiles are visibly kicked out of alignment and the post ring is ragged, so the order reads accidental in places."
-        },
-        {
-          "code": "S08",
-          "score": 8,
-          "reason": "Clear hierarchy that survives every camera: one tall monolith on axis, an evenly spaced lamp ring reading at half its height, low planting banding the rim, and a plan view with a genuine center and radial paths."
-        },
-        {
-          "code": "S09",
+          "code": "T03",
           "score": 7,
-          "reason": "Same composition as S08 with the lamps grown and the monument shortened, so the ring now competes with the center instead of framing it, but the plan still shows deliberate symmetry."
+          "reason": "A circular plaza with a rimmed edge, a central monument on a stepped base, a symmetric ring of lampposts and benches/hedges tucked to the perimeter — everything sits on the paving and the plan view reads as a deliberate radial layout."
         },
         {
-          "code": "S10",
-          "score": 4,
-          "reason": "The same plaza with the perimeter elements ballooned into slabs taller than the monument — from every eye-level camera they wall off the center, killing the hierarchy the layout was built around."
-        },
-        {
-          "code": "S11",
+          "code": "T04",
           "score": 3,
-          "reason": "A large uniform grid of blocks, regular but featureless: no focal point, no vertical element, no edge treatment — order without a single compositional decision."
+          "reason": "Same plaza kit and same paving as T03, but the benches, planters and several lampposts have been pushed off the disc onto bare grass, so the ring collapses and the objects read as strewn around the plaza rather than composed on it — this is the scene that differs from another only in where the built objects sit relative to the paving."
+        },
+        {
+          "code": "T05",
+          "score": 3,
+          "reason": "The plaza layout is buried under half a dozen grotesquely oversized dark slabs standing shoulder-height to the monument, killing the hierarchy and walling off the centre in every view."
+        },
+        {
+          "code": "T06",
+          "score": 2,
+          "reason": "A single column on a small stepped plinth, cropped by the frame in four of five cameras and reduced to one lonely tilted plank in the top-down — effectively one object, not an arrangement."
+        },
+        {
+          "code": "T07",
+          "score": 4,
+          "reason": "A circular ring of small dark props with some perimeter rhythm, but the interior is a lumpy scatter and the four tall figures hover in a row with no relation to the ring below them."
+        },
+        {
+          "code": "T08",
+          "score": 1,
+          "reason": "A cloud of hundreds of loose cubes exploded in mid-air with no ground plane, no grouping and no shape — unusable."
+        },
+        {
+          "code": "T09",
+          "score": 4,
+          "reason": "A grey pyramid with four symmetric corner posts gives a real axis, but the panels and small props float unattached in the air and the centre is an empty slope."
+        },
+        {
+          "code": "T10",
+          "score": 1,
+          "reason": "A bare grey pyramid slab and nothing else — no props, no secondary masses, no composition to judge."
+        },
+        {
+          "code": "T11",
+          "score": 4,
+          "reason": "Same monument-and-lamppost kit on a square tile grid, but the lampposts are unevenly spaced, benches lie flat at odd angles and several pieces hang past the paving edge, so the plan reads as loose scatter rather than a plan."
+        },
+        {
+          "code": "T12",
+          "score": 8,
+          "reason": "The strongest arrangement: tall central spire gives clear vertical hierarchy, the lamppost ring is evenly spaced and concentric with the paving, and benches and planters ring the perimeter so the plan view reads as an intentional radial plaza."
         }
       ]
     },
     {
       "scores": [
         {
-          "code": "S01",
-          "score": 4,
-          "reason": "A wide gray ramp/bowl with four corner poles and two tiny props: the poles do weakly bracket a space, but nothing occupies the center, so from the player-eye view there is no landmark to walk toward — just an empty slope."
-        },
-        {
-          "code": "S02",
+          "code": "T01",
           "score": 3,
-          "reason": "A round tiled disc with a low rim and flat rubble in the middle; the top-down plan reads as an arena but the player-eye view is nearly a horizon line with no vertical element, so there is nowhere to look and no entrance."
+          "reason": "A round paved disc with a raised rim and a barely-visible scrap of structure at its center — the ground plane reads clearly but there is no vertical landmark, no entrance break in the rim, and nothing to walk toward."
         },
         {
-          "code": "S03",
-          "score": 6,
-          "reason": "Same round arena base, now with a ring of tall dark banner-shapes evenly spaced around a small raised center object — the ring genuinely encloses and points inward, but the center is too small to read as the goal from eye level."
-        },
-        {
-          "code": "S04",
-          "score": 1,
-          "reason": "Bare gray ramps and a diamond slab with zero props, edges, or vertical elements — degenerate; the stripped version of S01, offering nothing to orient to at all."
-        },
-        {
-          "code": "S05",
-          "score": 3,
-          "reason": "One colossal column that overruns the frame from every camera while the rest of the ground is empty; there is a landmark but no legible scale, approach, or floor extent, and the top-down view is almost blank."
-        },
-        {
-          "code": "S06",
-          "score": 1,
-          "reason": "A cloud of loose debris cubes floating with no floor plane, no silhouette, and no center — degenerate noise, unreadable from any of the five cameras."
-        },
-        {
-          "code": "S07",
-          "score": 7,
-          "reason": "Square tiled plaza with a clear floor edge, a central pedestal-plus-monolith, and dark posts marking the perimeter — center and boundary both read, though tilted scattered debris muddies the approach."
-        },
-        {
-          "code": "S08",
-          "score": 8,
-          "reason": "Round plaza whose tall central monolith dominates the silhouette in every view while low lamps and hedges ring the rim without competing — you know instantly where to look and where the edge is."
-        },
-        {
-          "code": "S09",
-          "score": 7,
-          "reason": "Same plaza with a denser ring of lamp posts that reads as a clear perimeter path, but the eight identical verticals compete with the central monument for attention and slightly crowd the sightline to it."
-        },
-        {
-          "code": "S10",
-          "score": 5,
-          "reason": "The same plaza with the perimeter verticals swollen into thick pillars that wall off and occlude the center monument from the player-eye view, destroying the landmark the composition is built around."
-        },
-        {
-          "code": "S11",
+          "code": "T02",
           "score": 2,
-          "reason": "A flat checkerboard field of cubes with a readable ground plane but no vertical element, no center, and no entrance — a texture swatch rather than a place to spawn into."
+          "reason": "A flat rectangular grid of uniformly sized cubes filling the whole footprint; no center, no edge treatment, no gap or ramp reading as a way in, so a player spawning here has no cue about direction at all."
+        },
+        {
+          "code": "T03",
+          "score": 8,
+          "reason": "Circular plaza with a clear central monument, a ring of lamp posts framing it, benches and planters banked at the perimeter, and stepped slabs breaking the rim at several points that read unmistakably as entrances."
+        },
+        {
+          "code": "T04",
+          "score": 5,
+          "reason": "Same plaza and same central monument as T03, but the benches, planters and several lamps have been pushed off the paving onto the surrounding grass — the difference from T03 is purely where the built objects sit relative to the paving, and it costs the plaza its readable edge and entrances."
+        },
+        {
+          "code": "T05",
+          "score": 4,
+          "reason": "The plaza is intact but ringed by enormous slab-like pillars that tower over the central monument, so the landmark is swallowed by the frame and the scale of a player against these masses is unreadable."
+        },
+        {
+          "code": "T06",
+          "score": 2,
+          "reason": "The camera is inside a single colossal column base that fills every elevation; the plan view shows one small object on empty ground, so there is no site, no path and no legible scale."
+        },
+        {
+          "code": "T07",
+          "score": 3,
+          "reason": "A round disc evenly littered with same-size planters and shrubs plus a few dark figures floating above it — texture without hierarchy: no center, no taller landmark, no gap in the ring to enter by."
+        },
+        {
+          "code": "T08",
+          "score": 1,
+          "reason": "A midair cloud of loose blocks with nothing touching the ground plane; no floor, no landmark, no path — unusable as a place to stand."
+        },
+        {
+          "code": "T09",
+          "score": 2,
+          "reason": "A bare grey wedge of terrain carrying a handful of thin poles, a tiny floating blue marker and a stray plank; no structure large enough to orient by and no defined route across it."
+        },
+        {
+          "code": "T10",
+          "score": 1,
+          "reason": "An empty grey wedge plane with zero built content in any of the five views — nothing to look at and nowhere to go."
+        },
+        {
+          "code": "T11",
+          "score": 6,
+          "reason": "Square rotated paving with a legible central obelisk and a loose ring of poles, but the slab edges are ragged with tiles and benches half-overhanging, and no side reads as the entrance."
+        },
+        {
+          "code": "T12",
+          "score": 9,
+          "reason": "The strongest read of the set: a tall central tower visible from every angle over a circular plaza, lamp ring, benches and planters at the perimeter, and radial paving plus stepped rim breaks that point the player inward."
+        }
+      ]
+    },
+    {
+      "scores": [
+        {
+          "code": "T01",
+          "score": 3,
+          "reason": "A pancake: the paved disc has almost nothing standing above it, so every view is a low lumpy ellipse pinned to the horizon line with no vertical anchor and nothing for the eye to land on."
+        },
+        {
+          "code": "T02",
+          "score": 2,
+          "reason": "An edge-to-edge checkerboard of colored cubes filling the frame corner to corner — uniform texture, no focal accent, no silhouette, the frame is filled rather than composed."
+        },
+        {
+          "code": "T03",
+          "score": 8,
+          "reason": "Genuine composition: a central obelisk anchors a radial plaza, a ring of lamps carries the eye around, benches and hedges break the rim, and the mass reads clearly as figure against sky in hero, front, side and plan alike."
+        },
+        {
+          "code": "T04",
+          "score": 6,
+          "reason": "The same plaza as T03 but with the lamps, benches and planters pushed off the paving onto the surrounding grass, so the ring reads as debris scattered around the disc instead of framing it — the only difference I can see is where the objects sit relative to the paving."
+        },
+        {
+          "code": "T05",
+          "score": 4,
+          "reason": "Oversized dark slabs and posts crowd the perimeter and visually eclipse the pale central monument; the values clump into one dark mass and the figure-ground read collapses at every angle."
+        },
+        {
+          "code": "T06",
+          "score": 2,
+          "reason": "A single lamp base cropped hard by the top of the frame in four views, with the plan view showing one small object adrift on empty grass — subject amputated, frame otherwise empty."
+        },
+        {
+          "code": "T07",
+          "score": 3,
+          "reason": "A disc of small dark planters with dark lamp heads floating above; everything sits at the same low height and near-identical dark value, so it reads as flat speckle with no hierarchy or vertical accent."
+        },
+        {
+          "code": "T08",
+          "score": 1,
+          "reason": "An exploded cloud of loose cubes hanging in the air with no ground relationship, no mass, no edge — pure noise across all five cameras."
+        },
+        {
+          "code": "T09",
+          "score": 4,
+          "reason": "Big flat gray tent forms with a few tiny bright accents; the silhouette is clean but the masses read as one undifferentiated value and the plan view is a bare gray diamond."
+        },
+        {
+          "code": "T10",
+          "score": 2,
+          "reason": "The same gray forms as T09 with even the small accents gone — featureless polygons of one value on green, offering the eye no entry point at all."
+        },
+        {
+          "code": "T11",
+          "score": 6,
+          "reason": "A square paved plaza with a real central monument and a rim of posts and benches gives it structure, but the posts are thin and unevenly spaced and the paving edge frays, so the frame feels loosely held."
+        },
+        {
+          "code": "T12",
+          "score": 7,
+          "reason": "A tall central slab dominates decisively and the lamps and hedges step down from it in a clear hierarchy; the monolith is blunt against the sky but the eye knows exactly where to go in every view."
+        }
+      ]
+    },
+    {
+      "scores": [
+        {
+          "code": "T01",
+          "score": 4,
+          "reason": "Top-down shows a well-formed circular paved disc with a perimeter wall and two stair approaches, but the interior is completely empty of built mass — an edge and an approach with no centre and nothing to enclose."
+        },
+        {
+          "code": "T02",
+          "score": 2,
+          "reason": "A flat rectangular carpet of cubes packed edge to edge: the plan is a uniform grid with no open ground, no boundary, no centre and no way in."
+        },
+        {
+          "code": "T03",
+          "score": 9,
+          "reason": "The clearest plan of the set — circular paving inside a ring wall, a single vertical monument dead centre, an evenly spaced ring of lamps mediating between centre and edge, seating and planters at the rim, and stair approaches breaking the wall at intervals."
+        },
+        {
+          "code": "T04",
+          "score": 4,
+          "reason": "Same scheme as T03 but the built objects have been pushed off the paving: the top-down shows the disc bare and the lamps, benches and planters stranded on the grass outside the rim, so the plaza reads as an empty floor with debris around it."
+        },
+        {
+          "code": "T05",
+          "score": 5,
+          "reason": "Same circular plaza and edge as T03, but the vertical elements are oversized slabs crowded right around the monument, choking the centre and leaving the open ground only at the periphery — mass and void are inverted."
+        },
+        {
+          "code": "T06",
+          "score": 1,
+          "reason": "A single column on a small base with no ground plane at all; the top-down is almost entirely empty grass, so there is no centre, edge, approach or figure-ground to judge."
+        },
+        {
+          "code": "T07",
+          "score": 3,
+          "reason": "The ring wall and disc survive, but the surface is peppered with small props at even spacing across the whole floor, so there is no centre, no clearing and no path — a texture rather than a plan."
+        },
+        {
+          "code": "T08",
+          "score": 1,
+          "reason": "A cloud of loose cubes suspended in mid-air with no ground contact; every view including the plan shows scatter without floor, edge or organisation."
+        },
+        {
+          "code": "T09",
+          "score": 2,
+          "reason": "A large bare grey plane with a few tiny markers at its corners and one speck near the middle; the platform has a shape but carries essentially no built mass to compose."
+        },
+        {
+          "code": "T10",
+          "score": 1,
+          "reason": "An empty grey plane and nothing else — no objects, no boundary treatment, no centre; the plan view is a blank diamond."
+        },
+        {
+          "code": "T11",
+          "score": 6,
+          "reason": "A square-on-diagonal field of paving with a central tower and a loose ring of lamps and benches, but the tiles break into gaps, there is no perimeter to hold the ground, and several pieces sit half off the paving."
+        },
+        {
+          "code": "T12",
+          "score": 8,
+          "reason": "Strong version of the plaza scheme — tall central tower reading clearly from every angle, ring wall giving a firm edge, lamps and planters distributed around it — held back slightly by the cluttered, off-axis pieces around the tower base."
         }
       ]
     }
   ],
   "consensus": [
     {
-      "code": "S08",
+      "code": "T03",
+      "id": "real-improved",
+      "scores": [
+        8,
+        8,
+        7,
+        8,
+        8,
+        9
+      ],
+      "mean": 8,
+      "sd": 0.58
+    },
+    {
+      "code": "T12",
       "id": "hierarchised",
       "scores": [
         8,
+        7,
         8,
-        8,
+        9,
+        7,
         8
       ],
-      "mean": 8,
-      "sd": 0
+      "mean": 7.83,
+      "sd": 0.69
     },
     {
-      "code": "S09",
-      "id": "real-improved",
-      "scores": [
-        7,
-        7,
-        7,
-        7
-      ],
-      "mean": 7,
-      "sd": 0
-    },
-    {
-      "code": "S07",
+      "code": "T11",
       "id": "blockout",
       "scores": [
         6,
         6,
+        4,
         6,
-        7
-      ],
-      "mean": 6.25,
-      "sd": 0.43
-    },
-    {
-      "code": "S03",
-      "id": "equalised",
-      "scores": [
-        5,
-        5,
-        5,
+        6,
         6
       ],
-      "mean": 5.25,
-      "sd": 0.43
+      "mean": 5.67,
+      "sd": 0.75
     },
     {
-      "code": "S10",
+      "code": "T04",
+      "id": "lopsided",
+      "scores": [
+        5,
+        4,
+        3,
+        5,
+        6,
+        4
+      ],
+      "mean": 4.5,
+      "sd": 0.96
+    },
+    {
+      "code": "T05",
       "id": "levelled",
       "scores": [
         4,
-        5,
+        4,
+        3,
+        4,
         4,
         5
       ],
-      "mean": 4.5,
-      "sd": 0.5
+      "mean": 4,
+      "sd": 0.58
     },
     {
-      "code": "S02",
-      "id": "flattened",
+      "code": "T07",
+      "id": "equalised",
       "scores": [
+        3,
+        3,
+        4,
+        3,
+        3,
+        3
+      ],
+      "mean": 3.17,
+      "sd": 0.37
+    },
+    {
+      "code": "T09",
+      "id": "real-baseline",
+      "scores": [
+        3,
         3,
         4,
         2,
-        3
+        4,
+        2
       ],
       "mean": 3,
-      "sd": 0.71
+      "sd": 0.82
     },
     {
-      "code": "S01",
-      "id": "real-baseline",
+      "code": "T01",
+      "id": "flattened",
       "scores": [
         2,
         2,
+        2,
+        3,
         3,
         4
       ],
-      "mean": 2.75,
-      "sd": 0.83
+      "mean": 2.67,
+      "sd": 0.75
     },
     {
-      "code": "S05",
-      "id": "one-blob-void",
-      "scores": [
-        3,
-        3,
-        2,
-        3
-      ],
-      "mean": 2.75,
-      "sd": 0.43
-    },
-    {
-      "code": "S11",
+      "code": "T02",
       "id": "tiled-mush",
       "scores": [
-        3,
-        3,
-        3,
+        2,
+        2,
+        2,
+        2,
+        2,
         2
       ],
-      "mean": 2.75,
-      "sd": 0.43
+      "mean": 2,
+      "sd": 0
     },
     {
-      "code": "S06",
-      "id": "confetti",
+      "code": "T06",
+      "id": "one-blob-void",
       "scores": [
-        2,
-        2,
         1,
+        1,
+        2,
+        2,
+        2,
         1
       ],
       "mean": 1.5,
       "sd": 0.5
     },
     {
-      "code": "S04",
+      "code": "T10",
       "id": "grey-plate",
       "scores": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        1
+      ],
+      "mean": 1.17,
+      "sd": 0.37
+    },
+    {
+      "code": "T08",
+      "id": "confetti",
+      "scores": [
+        1,
+        1,
         1,
         1,
         1,

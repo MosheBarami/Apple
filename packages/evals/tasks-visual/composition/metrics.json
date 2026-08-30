@@ -7,68 +7,68 @@
   "groundTruth": "blind jury consensus (4 independent critics)",
   "split": {
     "badMax": 3,
-    "goodMin": 6
+    "goodMin": 5.5
   },
   "labelsUsed": [
     {
       "id": "grey-plate",
       "priorLabel": 1,
-      "truth": 1
+      "truth": 1.17
     },
     {
       "id": "real-baseline",
       "priorLabel": 2,
-      "truth": 2.75
+      "truth": 3
     },
     {
       "id": "tiled-mush",
       "priorLabel": 2,
-      "truth": 2.75
+      "truth": 2
     },
     {
       "id": "confetti",
       "priorLabel": 2,
-      "truth": 1.5
+      "truth": 1
     },
     {
       "id": "flattened",
       "priorLabel": 3,
-      "truth": 3
+      "truth": 2.67
     },
     {
       "id": "equalised",
       "priorLabel": 3,
-      "truth": 5.25
+      "truth": 3.17
     },
     {
       "id": "one-blob-void",
       "priorLabel": 3,
-      "truth": 2.75
+      "truth": 1.5
     },
     {
       "id": "levelled",
       "priorLabel": 4,
-      "truth": 4.5
+      "truth": 4
     },
     {
       "id": "blockout",
       "priorLabel": 5,
-      "truth": 6.25
+      "truth": 5.67
     },
     {
       "id": "real-improved",
       "priorLabel": 5,
-      "truth": 7
+      "truth": 8
     },
     {
       "id": "lopsided",
       "priorLabel": 3,
-      "truth": 3
+      "truth": 4.5
     },
     {
       "id": "hierarchised",
       "priorLabel": 7,
-      "truth": 8
+      "truth": 7.83
     }
   ],
   "rows": [
@@ -1588,7 +1588,7 @@
     {
       "metric": "centroidOffset",
       "family": "composition.image",
-      "rho": 0.72,
+      "rho": 0.825,
       "auc": 1,
       "sign": 1,
       "signAgrees": true,
@@ -1596,10 +1596,10 @@
       "falsePositives": []
     },
     {
-      "metric": "structure.verticalDominance",
+      "metric": "structure.verticalElements",
       "family": "composition.geometry",
-      "rho": 0.587,
-      "auc": 0.952,
+      "rho": 0.77,
+      "auc": 1,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1610,18 +1610,18 @@
     {
       "metric": "structure.heightHierarchy",
       "family": "composition.geometry",
-      "rho": 0.765,
-      "auc": 0.929,
+      "rho": 0.746,
+      "auc": 1,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
       "falsePositives": []
     },
     {
-      "metric": "structure.verticalElements",
+      "metric": "structure.verticalDominance",
       "family": "composition.geometry",
-      "rho": 0.638,
-      "auc": 0.929,
+      "rho": 0.653,
+      "auc": 1,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1630,22 +1630,10 @@
       ]
     },
     {
-      "metric": "silhouettePeakProminence",
-      "family": "composition.image",
-      "rho": 0.561,
-      "auc": 0.857,
-      "sign": 1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": [
-        "one-blob-void"
-      ]
-    },
-    {
       "metric": "interiorEdgeDensity",
       "family": "composition.image",
-      "rho": 0.653,
-      "auc": 0.762,
+      "rho": 0.657,
+      "auc": 0.889,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1656,8 +1644,8 @@
     {
       "metric": "layout.neighbourSpacingCV",
       "family": "layout-metrics [PROV]",
-      "rho": 0.502,
-      "auc": 0.762,
+      "rho": 0.651,
+      "auc": 0.833,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1666,44 +1654,10 @@
       ]
     },
     {
-      "metric": "structure.massCount",
-      "family": "composition.geometry",
-      "rho": 0.34,
-      "auc": 0.762,
-      "sign": 1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": [
-        "confetti"
-      ]
-    },
-    {
-      "metric": "silhouetteRange",
-      "family": "composition.image",
-      "rho": 0.328,
-      "auc": 0.762,
-      "sign": 1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": [
-        "one-blob-void"
-      ]
-    },
-    {
-      "metric": "layout.rotationEntropy",
-      "family": "layout-metrics [PROV]",
-      "rho": 0.601,
-      "auc": 0.738,
-      "sign": 1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": []
-    },
-    {
       "metric": "occupancyGini",
       "family": "composition.image",
-      "rho": 0.579,
-      "auc": 0.714,
+      "rho": 0.566,
+      "auc": 0.833,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1713,10 +1667,22 @@
       ]
     },
     {
+      "metric": "silhouettePeakProminence",
+      "family": "composition.image",
+      "rho": 0.524,
+      "auc": 0.833,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void"
+      ]
+    },
+    {
       "metric": "silhouetteRoughness",
       "family": "composition.image",
-      "rho": 0.468,
-      "auc": 0.714,
+      "rho": 0.471,
+      "auc": 0.833,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1726,10 +1692,20 @@
       ]
     },
     {
+      "metric": "layout.rotationEntropy",
+      "family": "layout-metrics [PROV]",
+      "rho": 0.512,
+      "auc": 0.778,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": []
+    },
+    {
       "metric": "structure.footprintOccupancy",
       "family": "composition.geometry",
-      "rho": -0.397,
-      "auc": 0.667,
+      "rho": -0.286,
+      "auc": 0.778,
       "sign": -1,
       "signAgrees": true,
       "constant": false,
@@ -1739,10 +1715,10 @@
       ]
     },
     {
-      "metric": "figureGroundContrast",
-      "family": "composition.image",
-      "rho": 0.36,
-      "auc": 0.667,
+      "metric": "structure.massCount",
+      "family": "composition.geometry",
+      "rho": 0.285,
+      "auc": 0.778,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1753,8 +1729,8 @@
     {
       "metric": "structure.landmarkShare",
       "family": "composition.geometry",
-      "rho": -0.285,
-      "auc": 0.667,
+      "rho": -0.278,
+      "auc": 0.778,
       "sign": -1,
       "signAgrees": true,
       "constant": false,
@@ -1764,61 +1740,34 @@
       ]
     },
     {
-      "metric": "structure.heightBandEntropy",
-      "family": "composition.geometry",
-      "rho": 0.183,
-      "auc": 0.643,
+      "metric": "silhouetteRange",
+      "family": "composition.image",
+      "rho": 0.28,
+      "auc": 0.722,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
       "falsePositives": [
-        "confetti",
         "one-blob-void"
+      ]
+    },
+    {
+      "metric": "figureGroundContrast",
+      "family": "composition.image",
+      "rho": 0.266,
+      "auc": 0.722,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti"
       ]
     },
     {
       "metric": "control.colourCount",
       "family": "control",
-      "rho": 0.466,
-      "auc": 0.619,
-      "sign": 1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": [
-        "tiled-mush",
-        "confetti"
-      ]
-    },
-    {
-      "metric": "layout.latticeScore",
-      "family": "layout-metrics [PROV]",
-      "rho": -0.012,
-      "auc": 0.595,
-      "sign": -1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": [
-        "confetti"
-      ]
-    },
-    {
-      "metric": "structure.parts",
-      "family": "composition.geometry",
-      "rho": 0.33,
-      "auc": 0.571,
-      "sign": 1,
-      "signAgrees": true,
-      "constant": false,
-      "falsePositives": [
-        "tiled-mush",
-        "confetti"
-      ]
-    },
-    {
-      "metric": "control.partCount",
-      "family": "control",
-      "rho": 0.33,
-      "auc": 0.571,
+      "rho": 0.337,
+      "auc": 0.667,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1830,10 +1779,10 @@
     {
       "metric": "layout.symmetryX",
       "family": "layout-metrics [PROV]",
-      "rho": 0.099,
-      "auc": 0.571,
+      "rho": -0.035,
+      "auc": 0.667,
       "sign": -1,
-      "signAgrees": false,
+      "signAgrees": true,
       "constant": false,
       "falsePositives": [
         "lopsided",
@@ -1841,10 +1790,23 @@
       ]
     },
     {
-      "metric": "maskedColorfulness",
-      "family": "composition.image",
+      "metric": "structure.heightBandEntropy",
+      "family": "composition.geometry",
       "rho": 0.025,
-      "auc": 0.524,
+      "auc": 0.667,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti",
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "structure.parts",
+      "family": "composition.geometry",
+      "rho": 0.218,
+      "auc": 0.611,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1854,9 +1816,47 @@
       ]
     },
     {
+      "metric": "control.partCount",
+      "family": "control",
+      "rho": 0.218,
+      "auc": 0.611,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "layout.latticeScore",
+      "family": "layout-metrics [PROV]",
+      "rho": 0.077,
+      "auc": 0.583,
+      "sign": -1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "confetti"
+      ]
+    },
+    {
       "metric": "control.materialCount",
       "family": "control",
-      "rho": 0.329,
+      "rho": 0.226,
+      "auc": 0.528,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "maskedColorfulness",
+      "family": "composition.image",
+      "rho": 0.126,
       "auc": 0.5,
       "sign": 1,
       "signAgrees": true,
@@ -1867,10 +1867,23 @@
       ]
     },
     {
+      "metric": "energyGini",
+      "family": "composition.image",
+      "rho": 0.077,
+      "auc": 0.5,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void",
+        "lopsided"
+      ]
+    },
+    {
       "metric": "structure.volumeGini",
       "family": "composition.geometry",
-      "rho": 0.109,
-      "auc": 0.452,
+      "rho": 0.166,
+      "auc": 0.444,
       "sign": 1,
       "signAgrees": true,
       "constant": false,
@@ -1879,25 +1892,12 @@
       ]
     },
     {
-      "metric": "structure.massHierarchy",
-      "family": "composition.geometry",
-      "rho": -0.185,
-      "auc": 0.429,
-      "sign": 1,
-      "signAgrees": false,
-      "constant": false,
-      "falsePositives": [
-        "tiled-mush",
-        "one-blob-void"
-      ]
-    },
-    {
-      "metric": "energyGini",
+      "metric": "energyEntropy",
       "family": "composition.image",
-      "rho": -0.088,
-      "auc": 0.429,
-      "sign": 1,
-      "signAgrees": false,
+      "rho": -0.028,
+      "auc": 0.444,
+      "sign": -1,
+      "signAgrees": true,
       "constant": false,
       "falsePositives": [
         "one-blob-void",
@@ -1907,8 +1907,8 @@
     {
       "metric": "layout.propDensity",
       "family": "layout-metrics [PROV]",
-      "rho": -0.004,
-      "auc": 0.429,
+      "rho": -0.238,
+      "auc": 0.389,
       "sign": 1,
       "signAgrees": false,
       "constant": false,
@@ -1919,40 +1919,40 @@
       ]
     },
     {
-      "metric": "energyEntropy",
-      "family": "composition.image",
-      "rho": 0.12,
-      "auc": 0.381,
-      "sign": -1,
-      "signAgrees": false,
-      "constant": false,
-      "falsePositives": [
-        "one-blob-void",
-        "lopsided"
-      ]
-    },
-    {
-      "metric": "coverage",
-      "family": "composition.image",
-      "rho": -0.414,
-      "auc": 0.357,
-      "sign": 1,
-      "signAgrees": false,
-      "constant": false,
-      "falsePositives": [
-        "tiled-mush"
-      ]
-    },
-    {
-      "metric": "occupiedCellShare",
-      "family": "composition.image",
-      "rho": -0.408,
+      "metric": "structure.massHierarchy",
+      "family": "composition.geometry",
+      "rho": -0.214,
       "auc": 0.333,
       "sign": 1,
       "signAgrees": false,
       "constant": false,
       "falsePositives": [
+        "tiled-mush",
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "occupiedCellShare",
+      "family": "composition.image",
+      "rho": -0.316,
+      "auc": 0.306,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
         "confetti",
+        "tiled-mush"
+      ]
+    },
+    {
+      "metric": "coverage",
+      "family": "composition.image",
+      "rho": -0.291,
+      "auc": 0.25,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
         "tiled-mush"
       ]
     }

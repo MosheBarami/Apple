@@ -273,7 +273,7 @@ export async function calibrate({ write = false, width = 288, height = 180, useJ
   const jury = useJury ? juryLabels() : null;
   const labels = rows.map((r) => (jury && jury[r.id] != null ? jury[r.id] : r.label));
   const badMax = jury ? 3 : 3;
-  const goodMin = jury ? 6 : 5;
+  const goodMin = jury ? 5.5 : 5;
   const truth = jury ? 'blind jury consensus (4 independent critics)' : "author's prior labels";
   const report = [];
 
