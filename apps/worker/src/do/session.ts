@@ -32,6 +32,7 @@ interface AgentState {
   maxSteps: number;
   sparksSpent: number;
   trace: ToolTraceEntry[];
+  seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   finalText: string;
   streamedText?: string;
   startedAt: number;
@@ -353,8 +354,20 @@ export class SessionDO extends DurableObject<Env> {
     try {
       await this.runStep(agent);
     } catch (e) {
-      agent.finalText = agent.finalText || `Something went wrong: ${e instanceof Error ? e.message : String(e)}`;
-      await this.finishRun(agent, 'error', e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === 'CAPACITY_EXHAUSTED') {
+        const resetsAt = new Date();
+        resetsAt.setUTCHours(24, 0, 0, 0);
+        const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
+        agent.finalText =
+          (agent.finalText ? agent.finalText + '\n\n' : '') +
+          `Golem has reached today's shared building capacity, so I stopped here. Everything I finished is saved — your project and checkpoints are untouched. Capacity resets in about ${hours} hour${hours === 1 ? '' : 's'} (midnight UTC), and you can pick up right where we left off.`;
+        this.broadcast({ type: 'error', code: 'capacity', message: `Golem is at capacity for today. Resets in ~${hours}h (midnight UTC).` });
+        await this.finishRun(agent, 'quota');
+        return;
+      }
+      agent.finalText = agent.finalText || `Something went wrong: ${msg}`;
+      await this.finishRun(agent, 'error', msg);
     }
   }
 
@@ -406,9 +419,24 @@ export class SessionDO extends DurableObject<Env> {
     });
 
     const ctx = this.agentCtx();
+    agent.seenCalls = agent.seenCalls ?? [];
     for (const call of res.toolCalls.slice(0, 4)) {
       const t0 = Date.now();
       const toolId = call.id;
+      const sig = `${call.name}:${call.arguments}`;
+      if (agent.seenCalls.includes(sig)) {
+        // the model is looping — refuse the duplicate and steer it back to building
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `↺ ${call.name} (already done)` });
+        agent.llm.push({
+          role: 'tool',
+          content: `[${call.name}] You already made this exact call earlier in this run and have the result above. Do not repeat it. Use what you know now and make the actual change to the project.`,
+          toolCallId: call.id,
+          name: call.name,
+        });
+        continue;
+      }
+      agent.seenCalls.push(sig);
       this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
       const out = await runTool(ctx, call.name, call.arguments);
       const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
@@ -425,6 +453,16 @@ export class SessionDO extends DurableObject<Env> {
     if (agent.status === 'stopping') {
       await this.finishRun(agent, 'stopped');
       return;
+    }
+    // if the model has spent several steps without changing anything, steer it
+    const BUILD_TOOLS = ['create_instances', 'edit_script', 'set_properties', 'delete_instances', 'run_luau', 'move_instances'];
+    const built = agent.trace.some((t) => BUILD_TOOLS.includes(t.tool) && t.ok);
+    if (!built && agent.step >= 4 && agent.step % 3 === 1) {
+      agent.llm.push({
+        role: 'user',
+        content:
+          'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
+      });
     }
     await this.ctx.storage.put('agent', agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);

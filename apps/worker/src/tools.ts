@@ -157,7 +157,8 @@ export const TOOLS: Record<string, ToolImpl> = {
   insert_asset: {
     def: {
       name: 'insert_asset',
-      description: 'Insert a Creator Store asset (model/mesh) by numeric assetId into the given parent.',
+      description:
+        'Insert a Creator Store asset by numeric assetId. ONLY use an assetId the user explicitly gave you — there is no asset search and guessed ids fail or insert something random. To create objects, build them from Parts with create_instances instead.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,

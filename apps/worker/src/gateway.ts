@@ -181,6 +181,13 @@ export async function chat(env: Env, req: GatewayRequest): Promise<GatewayRespon
       lastErr = e;
       const msg = e instanceof Error ? e.message : String(e);
       // transient provider errors (5xx/8005/capacity) are worth retrying
+      // daily allocation exhausted is NOT transient — fail fast with a typed error
+      if (/4006|daily free allocation|neurons/i.test(msg)) {
+        breakerRecord(cfg.id, false);
+        const err = new Error('CAPACITY_EXHAUSTED');
+        (err as Error & { code?: string }).code = 'CAPACITY_EXHAUSTED';
+        throw err;
+      }
       const transient = /8005|Internal server error|429|capacity|timeout|3040/i.test(msg);
       if (!transient || attempt === attempts) {
         breakerRecord(cfg.id, false);

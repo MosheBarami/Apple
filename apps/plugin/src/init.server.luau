@@ -282,18 +282,20 @@ if session then
 	startPolling()
 end
 
--- Headless pairing: a StringValue named GolemPairingCode in ServerStorage pairs
--- automatically (requires edit access to the place — same trust level as any plugin).
+-- Headless pairing: dropping a StringValue named GolemPairingCode into ServerStorage
+-- pairs (or re-pairs to a different project) without using the dock UI. Requires edit
+-- access to the place, i.e. the same trust level any plugin already has.
 task.spawn(function()
 	local ServerStorage = game:GetService("ServerStorage")
-	for _ = 1, 60 do
-		if connected then return end
+	while true do
 		local codeValue = ServerStorage:FindFirstChild("GolemPairingCode")
 		if codeValue and codeValue:IsA("StringValue") and #codeValue.Value >= 4 then
-			local code = codeValue.Value
+			local code = string.gsub(string.upper(codeValue.Value), "[^A-Z0-9]", "")
 			codeValue:Destroy()
-			claimCode((string.gsub(string.upper(code), "[^A-Z0-9]", "")))
-			return
+			if connected then
+				disconnectSession("Switching project…")
+			end
+			claimCode(code)
 		end
 		task.wait(2)
 	end
