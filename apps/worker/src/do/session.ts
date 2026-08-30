@@ -33,6 +33,7 @@ interface AgentState {
   sparksSpent: number;
   trace: ToolTraceEntry[];
   finalText: string;
+  streamedText?: string;
   startedAt: number;
   lastStepAt: number;
   userId: string;
@@ -133,7 +134,8 @@ export class SessionDO extends DurableObject<Env> {
       );
       const st = await this.ctx.storage.get<StudioEventState>('pluginState');
       if (st) server.send(JSON.stringify({ type: 'studio_status', connected: await this.pluginConnected(), state: st } satisfies ServerMsg));
-      return new Response(null, { status: 101, webSocket: client });
+      // browsers abort the handshake unless a requested subprotocol is echoed back
+      return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'golem.v1' } });
     }
 
     if (path === '/plugin/register' && req.method === 'POST') {
@@ -384,6 +386,7 @@ export class SessionDO extends DurableObject<Env> {
 
     if (res.text) {
       agent.finalText = res.text;
+      agent.streamedText = (agent.streamedText ?? '') + res.text;
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: res.text });
     }
 
@@ -427,6 +430,10 @@ export class SessionDO extends DurableObject<Env> {
   private async finishRun(agent: AgentState, reason: 'done' | 'stopped' | 'error' | 'quota', error?: string) {
     agent.status = 'idle';
     const content = agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.');
+    if (content !== agent.streamedText) {
+      // make sure fallback/step-limit text reaches clients that saw no delta for it
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: agent.streamedText ? '\n' + content : content });
+    }
     this.sql.exec(
       `insert into messages(id, role, mode, content, tool_trace, created_at) values(?,?,?,?,?,?)`,
       agent.msgId,

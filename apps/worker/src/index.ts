@@ -311,7 +311,7 @@ app.post('/api/admin/static-upload', async (c) => {
   } else {
     await c.env.CORPUS.prepare(`delete from static_chunks where path = ?`).bind(path).run();
   }
-  await c.env.CORPUS.prepare(`insert into static_chunks(path, idx, data) values(?,?,?)`).bind(path, idx, bytes).run();
+  await c.env.CORPUS.prepare(`insert into static_chunks(path, idx, data) values(?,?,?)`).bind(path, idx, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)).run();
   await c.env.CORPUS.prepare(
     `insert into static_assets(path, n_chunks, content_type, immutable, updated_at) values(?,?,?,?,?)
      on conflict(path) do update set n_chunks=excluded.n_chunks, content_type=excluded.content_type, immutable=excluded.immutable, updated_at=excluded.updated_at`

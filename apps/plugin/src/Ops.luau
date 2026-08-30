@@ -246,7 +246,8 @@ end
 handlers.run_code = function(op)
 	local module = Instance.new("ModuleScript")
 	module.Name = "GolemEval"
-	module.Source = [[
+	-- NOTE: long-bracket strings swallow a leading newline, so join segments explicitly
+	local header = [[
 local __prints = {}
 local print = function(...)
 	local parts = {}
@@ -254,12 +255,12 @@ local print = function(...)
 	table.insert(__prints, table.concat(parts, " "))
 end
 local warn = print
-local __fn = function()
-]] .. (op.code or "") .. [[
+local __fn = function()]]
+	local footer = [[
 end
 local ok, res = pcall(__fn)
-return { ok = ok, res = res, prints = __prints }
-]]
+return { ok = ok, res = res, prints = __prints }]]
+	module.Source = header .. "\n" .. (op.code or "") .. "\n" .. footer
 	local ok, result = pcall(require, module)
 	module:Destroy()
 	if not ok then

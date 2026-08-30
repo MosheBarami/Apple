@@ -64,13 +64,14 @@ export async function serveStatic(env: Env, req: Request): Promise<Response> {
 
   const chunks = await env.CORPUS.prepare(`select data from static_chunks where path = ? order by idx`)
     .bind(row.path)
-    .all<{ data: ArrayBuffer }>();
-  const total = chunks.results.reduce((n, c) => n + c.data.byteLength, 0);
+    .all<{ data: ArrayBuffer | number[] }>();
+  const parts = chunks.results.map((c) => (c.data instanceof ArrayBuffer ? new Uint8Array(c.data) : Uint8Array.from(c.data as number[])));
+  const total = parts.reduce((n, p2) => n + p2.byteLength, 0);
   const buf = new Uint8Array(total);
   let off = 0;
-  for (const c of chunks.results) {
-    buf.set(new Uint8Array(c.data), off);
-    off += c.data.byteLength;
+  for (const p2 of parts) {
+    buf.set(p2, off);
+    off += p2.byteLength;
   }
 
   const isNotFound = path === '/404.html' && !candidates.includes('/404.html');

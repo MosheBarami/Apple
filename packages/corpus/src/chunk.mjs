@@ -41,7 +41,8 @@ function cleanRefs(s) {
   return s
     .replace(/`(?:Class|Datatype|Enum|Library|Global)\.[^`|]*\|([^`]+)`/g, '$1')
     .replace(/`(?:Class|Datatype|Library|Global)\.([^`|]+)`/g, '`$1`')
-    .replace(/`Enum\.([^`|]+)`/g, '`Enum.$1`');
+    .replace(/`Enum\.([^`|]+)`/g, '`Enum.$1`')
+    .replace(/\[([^\]]+)\]\([^)\s]*\)/g, '$1'); // markdown links -> label
 }
 
 function oneLine(s, max = 170) {
@@ -80,7 +81,7 @@ function paramSig(p) {
 
 function returnSig(returns) {
   if (!Array.isArray(returns) || returns.length === 0) return '';
-  const types = returns.map((r) => typeStr(r.type)).filter((t) => t && t !== 'void' && t !== 'null');
+  const types = returns.map((r) => typeStr(r.type)).filter((t) => t && t !== 'void' && t !== 'null' && t !== '()');
   return types.length > 0 ? ` -> ${types.join(', ')}` : '';
 }
 
@@ -108,12 +109,12 @@ function packApiSections(headerText, sections, contextLine) {
     cur = '';
   };
   for (const section of sections) {
-    const lines = [section.heading, ...section.lines];
-    let block = lines.join('\n');
-    if (cur && cur.length + block.length + 2 > API_CHUNK_MAX) flush();
-    if (!cur && block.length > API_CHUNK_MAX) {
-      // split this group by member lines
-      let piece = `${contextLine}\n${section.heading}`;
+    const block = [section.heading, ...section.lines].join('\n');
+    if (block.length > API_CHUNK_MAX) {
+      // split this group by member lines; keep whatever is buffered (e.g. the
+      // class header) attached to the first piece instead of orphaning it
+      let piece = `${cur || contextLine}\n${section.heading}`;
+      cur = '';
       for (const line of section.lines) {
         if (piece.length + line.length + 1 > API_CHUNK_MAX) {
           chunks.push(piece);
@@ -124,8 +125,9 @@ function packApiSections(headerText, sections, contextLine) {
       chunks.push(piece);
       continue;
     }
+    if (cur && cur.length + block.length + 2 > API_CHUNK_MAX) flush();
     if (!cur) cur = chunks.length === 0 ? headerText : contextLine;
-    cur += (cur ? '\n' : '') + block;
+    cur += `\n${block}`;
   }
   flush();
   return chunks;
@@ -389,7 +391,7 @@ function chunkMarkdownFile({ src, relPath, urlBase, slugPrefix, defaultTitle }) 
   const h1 = body.match(/^#\s+(.+?)\s*$/m);
   const pageTitle = (meta.title || h1?.[1] || defaultTitle).toString().trim();
   const noExt = relPath.replace(/\.mdx?$/, '');
-  const urlPath = noExt.replace(/\/index$/, '').replace(/\\/g, '/');
+  const urlPath = (typeof meta.slug === 'string' && meta.slug.trim() ? meta.slug.trim() : noExt.replace(/\/index$/, '')).replace(/\\/g, '/');
   const url = `${urlBase}/${urlPath}`;
   const docSlug = `${slugPrefix}-${slugify(urlPath)}`.slice(0, 96);
   const sections = splitByH2(body.replace(/^#\s+.+$/m, '').trim(), pageTitle);
@@ -447,20 +449,23 @@ async function buildLuauChunks() {
     console.warn('[chunk] raw/manifest.json unreadable — SKIPPING Luau docs (license unverified).');
     return { chunks: out, files, skipped: 'manifest missing' };
   }
-  for await (const file of walk(LUAU_SITE)) {
+  // Docs pages live in src/content/docs (Astro/Starlight); frontmatter `slug`
+  // is the luau.org URL path. src/content/news (historical recaps) is skipped.
+  const docsDir = path.join(LUAU_SITE, 'src', 'content', 'docs');
+  if (!existsSync(docsDir)) {
+    console.warn('[chunk] luau-site src/content/docs missing — skipping Luau docs.');
+    return { chunks: out, files, skipped: 'docs dir missing' };
+  }
+  for await (const file of walk(docsDir)) {
     if (!file.endsWith('.md')) continue;
-    const rel = path.relative(LUAU_SITE, file).replace(/\\/g, '/');
-    const base = path.basename(rel).toLowerCase();
-    if (['readme.md', 'contributing.md', 'code_of_conduct.md', 'security.md'].includes(base)) continue;
-    // site sources keep pages under docs/ or _pages/; url path is the filename
-    const urlName = path.basename(rel, '.md');
+    const rel = path.relative(docsDir, file).replace(/\\/g, '/');
     const chunks = chunkMarkdownFile({
       src: readFileSync(file, 'utf8'),
       relPath: rel,
       urlBase: 'https://luau.org',
       slugPrefix: 'luau',
-      defaultTitle: `Luau ${urlName}`,
-    }).map((c) => ({ ...c, url: `https://luau.org/${urlName}`, docSlug: `luau-${slugify(urlName)}` }));
+      defaultTitle: `Luau ${path.basename(rel, '.md')}`,
+    });
     if (chunks.length > 0) files++;
     out.push(...chunks);
   }
