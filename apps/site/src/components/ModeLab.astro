@@ -171,7 +171,7 @@ const modes = [
               {Number(m.perDay) > 20 && <span class="burn__more mono">+40</span>}
             </div>
             <p class="burn__note">
-              {m.perDay} {m.name} request{m.perDay === '1' ? '' : 's'} — or any
+              {m.perDay} {m.name} request{Number(m.perDay) === 1 ? '' : 's'} — or any
               mix across all three modes.
             </p>
           </div>

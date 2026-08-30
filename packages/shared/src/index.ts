@@ -121,11 +121,26 @@ export interface SceneLighting {
   effects: string[];
 }
 
+/**
+ * Compact geometry for layout analysis. Composition is a question about PLACEMENT, and placement is
+ * invisible in a rendered image once objects overlap — a plaza can look identical in pixels whether
+ * its props were designed or stamped out on a grid. Flat tuples rather than named fields: 1,500
+ * parts is ~60 KB this way and roughly triple that with names, for no gain on the worker side.
+ */
+export interface SceneLayout {
+  /** always "x,y,z,sx,sy,sz,yawDeg" */
+  format: string;
+  parts: number[][];
+  /** parts omitted because the cap was reached */
+  skipped: number;
+}
+
 export interface RenderViewResult {
   subject: string;
   boundsSize: [number, number, number];
   views: RenderedView[];
   lighting?: SceneLighting;
+  layout?: SceneLayout;
 }
 
 export interface PendingOp {

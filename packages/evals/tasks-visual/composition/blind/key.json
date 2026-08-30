@@ -1,0 +1,13 @@
+{
+  "S01": "real-baseline",
+  "S02": "flattened",
+  "S03": "equalised",
+  "S04": "grey-plate",
+  "S05": "one-blob-void",
+  "S06": "confetti",
+  "S07": "blockout",
+  "S08": "hierarchised",
+  "S09": "real-improved",
+  "S10": "levelled",
+  "S11": "tiled-mush"
+}

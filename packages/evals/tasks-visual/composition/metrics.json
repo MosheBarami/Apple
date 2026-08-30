@@ -1,0 +1,1960 @@
+{
+  "generatedBy": "packages/evals/src/composition-calibration.mjs",
+  "render": {
+    "width": 288,
+    "height": 180
+  },
+  "groundTruth": "blind jury consensus (4 independent critics)",
+  "split": {
+    "badMax": 3,
+    "goodMin": 6
+  },
+  "labelsUsed": [
+    {
+      "id": "grey-plate",
+      "priorLabel": 1,
+      "truth": 1
+    },
+    {
+      "id": "real-baseline",
+      "priorLabel": 2,
+      "truth": 2.75
+    },
+    {
+      "id": "tiled-mush",
+      "priorLabel": 2,
+      "truth": 2.75
+    },
+    {
+      "id": "confetti",
+      "priorLabel": 2,
+      "truth": 1.5
+    },
+    {
+      "id": "flattened",
+      "priorLabel": 3,
+      "truth": 3
+    },
+    {
+      "id": "equalised",
+      "priorLabel": 3,
+      "truth": 5.25
+    },
+    {
+      "id": "one-blob-void",
+      "priorLabel": 3,
+      "truth": 2.75
+    },
+    {
+      "id": "levelled",
+      "priorLabel": 4,
+      "truth": 4.5
+    },
+    {
+      "id": "blockout",
+      "priorLabel": 5,
+      "truth": 6.25
+    },
+    {
+      "id": "real-improved",
+      "priorLabel": 5,
+      "truth": 7
+    },
+    {
+      "id": "lopsided",
+      "priorLabel": 3,
+      "truth": 3
+    },
+    {
+      "id": "hierarchised",
+      "priorLabel": 7,
+      "truth": 8
+    }
+  ],
+  "rows": [
+    {
+      "id": "grey-plate",
+      "label": 1,
+      "source": "derived",
+      "failure": "one flat untextured slab; nothing to read",
+      "parts": 1,
+      "materials": 1,
+      "colours": 1,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.325,
+            "maskedColorfulness": 1.81,
+            "interiorEdgeDensity": 0.028,
+            "figureGroundContrast": 0.094,
+            "energyGini": 0.795,
+            "occupancyGini": 0.646,
+            "energyEntropy": 0.614,
+            "occupiedCellShare": 0.444,
+            "centroidOffset": 0.145,
+            "silhouetteRange": 0.172,
+            "silhouettePeakProminence": 0.083,
+            "silhouetteRoughness": 0.002
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.319,
+            "maskedColorfulness": 1.705,
+            "interiorEdgeDensity": 0.036,
+            "figureGroundContrast": 0.127,
+            "energyGini": 0.834,
+            "occupancyGini": 0.634,
+            "energyEntropy": 0.5,
+            "occupiedCellShare": 0.444,
+            "centroidOffset": 0.128,
+            "silhouetteRange": 0.306,
+            "silhouettePeakProminence": 0.05,
+            "silhouetteRoughness": 0.002
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.319,
+            "maskedColorfulness": 1.705,
+            "interiorEdgeDensity": 0.036,
+            "figureGroundContrast": 0.127,
+            "energyGini": 0.834,
+            "occupancyGini": 0.634,
+            "energyEntropy": 0.5,
+            "occupiedCellShare": 0.444,
+            "centroidOffset": 0.128,
+            "silhouetteRange": 0.306,
+            "silhouettePeakProminence": 0.05,
+            "silhouetteRoughness": 0.002
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.469,
+            "maskedColorfulness": 1.5,
+            "interiorEdgeDensity": 0,
+            "figureGroundContrast": 0.048,
+            "energyGini": 0,
+            "occupancyGini": 0.504,
+            "energyEntropy": 0,
+            "occupiedCellShare": 0.667,
+            "centroidOffset": 0.004,
+            "silhouetteRange": 0.494,
+            "silhouettePeakProminence": 0.183,
+            "silhouetteRoughness": 0.004
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.085,
+            "maskedColorfulness": 2.109,
+            "interiorEdgeDensity": 0.129,
+            "figureGroundContrast": 0.135,
+            "energyGini": 0.873,
+            "occupancyGini": 0.844,
+            "energyEntropy": 0.465,
+            "occupiedCellShare": 0.222,
+            "centroidOffset": 0.037,
+            "silhouetteRange": 0.033,
+            "silhouettePeakProminence": 0.017,
+            "silhouetteRoughness": 0
+          }
+        }
+      ],
+      "structure": {
+        "parts": 1,
+        "volumeGini": 0,
+        "massHierarchy": 999,
+        "massCount": 1,
+        "verticalDominance": 1,
+        "verticalElements": 0,
+        "heightHierarchy": 1,
+        "footprintOccupancy": 1,
+        "heightBandEntropy": 0,
+        "landmarkShare": 1
+      },
+      "layout": {
+        "error": "not enough geometry to measure layout"
+      }
+    },
+    {
+      "id": "real-baseline",
+      "label": 2,
+      "source": "REAL — the scene the owner rejected, critic-scored 2/10",
+      "failure": "scattered primitives on a factory-grey slab, no hierarchy",
+      "parts": 16,
+      "materials": 4,
+      "colours": 7,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.295,
+            "maskedColorfulness": 31.5,
+            "interiorEdgeDensity": 0.045,
+            "figureGroundContrast": 0.224,
+            "energyGini": 0.765,
+            "occupancyGini": 0.668,
+            "energyEntropy": 0.673,
+            "occupiedCellShare": 0.528,
+            "centroidOffset": 0.191,
+            "silhouetteRange": 0.333,
+            "silhouettePeakProminence": 0.217,
+            "silhouetteRoughness": 0.005
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.358,
+            "maskedColorfulness": 20.083,
+            "interiorEdgeDensity": 0.055,
+            "figureGroundContrast": 0.268,
+            "energyGini": 0.751,
+            "occupancyGini": 0.591,
+            "energyEntropy": 0.66,
+            "occupiedCellShare": 0.556,
+            "centroidOffset": 0.252,
+            "silhouetteRange": 0.583,
+            "silhouettePeakProminence": 0.25,
+            "silhouetteRoughness": 0.007
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.361,
+            "maskedColorfulness": 18.48,
+            "interiorEdgeDensity": 0.038,
+            "figureGroundContrast": 0.27,
+            "energyGini": 0.825,
+            "occupancyGini": 0.593,
+            "energyEntropy": 0.559,
+            "occupiedCellShare": 0.556,
+            "centroidOffset": 0.252,
+            "silhouetteRange": 0.583,
+            "silhouettePeakProminence": 0.194,
+            "silhouetteRoughness": 0.008
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.37,
+            "maskedColorfulness": 20.132,
+            "interiorEdgeDensity": 0.021,
+            "figureGroundContrast": 0.166,
+            "energyGini": 0.79,
+            "occupancyGini": 0.582,
+            "energyEntropy": 0.625,
+            "occupiedCellShare": 0.667,
+            "centroidOffset": 0.008,
+            "silhouetteRange": 0.494,
+            "silhouettePeakProminence": 0.267,
+            "silhouetteRoughness": 0.004
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.115,
+            "maskedColorfulness": 37.699,
+            "interiorEdgeDensity": 0.135,
+            "figureGroundContrast": 0.296,
+            "energyGini": 0.846,
+            "occupancyGini": 0.793,
+            "energyEntropy": 0.546,
+            "occupiedCellShare": 0.333,
+            "centroidOffset": 0.04,
+            "silhouetteRange": 0.378,
+            "silhouettePeakProminence": 0.361,
+            "silhouetteRoughness": 0.007
+          }
+        }
+      ],
+      "structure": {
+        "parts": 16,
+        "volumeGini": 0.895,
+        "massHierarchy": 182.5,
+        "massCount": 3,
+        "verticalDominance": 1,
+        "verticalElements": 6,
+        "heightHierarchy": 1.095,
+        "footprintOccupancy": 1,
+        "heightBandEntropy": 0.129,
+        "landmarkShare": 0.99
+      },
+      "layout": {
+        "parts": 16,
+        "props": 14,
+        "structural": 2,
+        "footprintStuds2": 1681,
+        "sizeStuds": [
+          41,
+          11.5,
+          41
+        ],
+        "neighbourSpacingCV": 3.606,
+        "latticeScore": 1,
+        "rotationEntropy": 0,
+        "symmetryX": 0.571,
+        "propDensity": 8.328,
+        "flags": [
+          "grid clone: 100% of props snap to one grid pitch and nearly all face the same way — stamped out, not placed"
+        ]
+      }
+    },
+    {
+      "id": "tiled-mush",
+      "label": 2,
+      "source": "derived (adversarial)",
+      "failure": "high part/material/colour count, uniformly tiled, zero arrangement",
+      "parts": 255,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.329,
+            "maskedColorfulness": 25.607,
+            "interiorEdgeDensity": 0.649,
+            "figureGroundContrast": 0.325,
+            "energyGini": 0.675,
+            "occupancyGini": 0.643,
+            "energyEntropy": 0.747,
+            "occupiedCellShare": 0.472,
+            "centroidOffset": 0.146,
+            "silhouetteRange": 0.189,
+            "silhouettePeakProminence": 0.089,
+            "silhouetteRoughness": 0.002
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.367,
+            "maskedColorfulness": 22.536,
+            "interiorEdgeDensity": 0.503,
+            "figureGroundContrast": 0.385,
+            "energyGini": 0.66,
+            "occupancyGini": 0.6,
+            "energyEntropy": 0.753,
+            "occupiedCellShare": 0.611,
+            "centroidOffset": 0.157,
+            "silhouetteRange": 0.333,
+            "silhouettePeakProminence": 0.067,
+            "silhouetteRoughness": 0.003
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.322,
+            "maskedColorfulness": 24.971,
+            "interiorEdgeDensity": 0.559,
+            "figureGroundContrast": 0.332,
+            "energyGini": 0.683,
+            "occupancyGini": 0.612,
+            "energyEntropy": 0.736,
+            "occupiedCellShare": 0.444,
+            "centroidOffset": 0.112,
+            "silhouetteRange": 0.267,
+            "silhouettePeakProminence": 0.033,
+            "silhouetteRoughness": 0.003
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.44,
+            "maskedColorfulness": 24.685,
+            "interiorEdgeDensity": 0.442,
+            "figureGroundContrast": 0.279,
+            "energyGini": 0.559,
+            "occupancyGini": 0.504,
+            "energyEntropy": 0.828,
+            "occupiedCellShare": 0.611,
+            "centroidOffset": 0.003,
+            "silhouetteRange": 0.533,
+            "silhouettePeakProminence": 0.189,
+            "silhouetteRoughness": 0.005
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.092,
+            "maskedColorfulness": 18.841,
+            "interiorEdgeDensity": 0.51,
+            "figureGroundContrast": 0.356,
+            "energyGini": 0.816,
+            "occupancyGini": 0.817,
+            "energyEntropy": 0.578,
+            "occupiedCellShare": 0.25,
+            "centroidOffset": 0.048,
+            "silhouetteRange": 0.022,
+            "silhouettePeakProminence": 0.006,
+            "silhouetteRoughness": 0
+          }
+        }
+      ],
+      "structure": {
+        "parts": 255,
+        "volumeGini": 0,
+        "massHierarchy": 999,
+        "massCount": 1,
+        "verticalDominance": 1,
+        "verticalElements": 1,
+        "heightHierarchy": 1,
+        "footprintOccupancy": 1,
+        "heightBandEntropy": 0,
+        "landmarkShare": 1
+      },
+      "layout": {
+        "parts": 255,
+        "props": 255,
+        "structural": 0,
+        "footprintStuds2": 2257,
+        "sizeStuds": [
+          44.6,
+          2.6,
+          50.6
+        ],
+        "neighbourSpacingCV": 0,
+        "latticeScore": 0.282,
+        "rotationEntropy": 0.5,
+        "symmetryX": 0.933,
+        "propDensity": 112.994,
+        "flags": [
+          "mechanical spacing: nearest-neighbour CV 0 (below 0.15) — props evenly spaced like fence posts",
+          "cluttered: 112.994 props per 1000 stud² (a plaza wants 5-25)",
+          "flat: spans 51 studs across but only 2.6 tall — no vertical variation, so it reads as a plate"
+        ]
+      }
+    },
+    {
+      "id": "confetti",
+      "label": 2,
+      "source": "derived (adversarial)",
+      "failure": "maximum height variation with no structure",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.22,
+            "maskedColorfulness": 20.916,
+            "interiorEdgeDensity": 0.435,
+            "figureGroundContrast": 0.381,
+            "energyGini": 0.697,
+            "occupancyGini": 0.653,
+            "energyEntropy": 0.739,
+            "occupiedCellShare": 0.528,
+            "centroidOffset": 0.093,
+            "silhouetteRange": 0.311,
+            "silhouettePeakProminence": 0.083,
+            "silhouetteRoughness": 0.014
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.276,
+            "maskedColorfulness": 19.279,
+            "interiorEdgeDensity": 0.36,
+            "figureGroundContrast": 0.404,
+            "energyGini": 0.609,
+            "occupancyGini": 0.514,
+            "energyEntropy": 0.81,
+            "occupiedCellShare": 0.694,
+            "centroidOffset": 0.107,
+            "silhouetteRange": 0.389,
+            "silhouettePeakProminence": 0.083,
+            "silhouetteRoughness": 0.01
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.278,
+            "maskedColorfulness": 21.689,
+            "interiorEdgeDensity": 0.35,
+            "figureGroundContrast": 0.377,
+            "energyGini": 0.624,
+            "occupancyGini": 0.535,
+            "energyEntropy": 0.803,
+            "occupiedCellShare": 0.722,
+            "centroidOffset": 0.077,
+            "silhouetteRange": 0.539,
+            "silhouettePeakProminence": 0.061,
+            "silhouetteRoughness": 0.011
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.184,
+            "maskedColorfulness": 23.784,
+            "interiorEdgeDensity": 0.465,
+            "figureGroundContrast": 0.294,
+            "energyGini": 0.587,
+            "occupancyGini": 0.56,
+            "energyEntropy": 0.812,
+            "occupiedCellShare": 0.583,
+            "centroidOffset": 0.012,
+            "silhouetteRange": 0.55,
+            "silhouettePeakProminence": 0.261,
+            "silhouetteRoughness": 0.012
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.183,
+            "maskedColorfulness": 15.082,
+            "interiorEdgeDensity": 0.224,
+            "figureGroundContrast": 0.41,
+            "energyGini": 0.77,
+            "occupancyGini": 0.703,
+            "energyEntropy": 0.663,
+            "occupiedCellShare": 0.417,
+            "centroidOffset": 0.168,
+            "silhouetteRange": 0.467,
+            "silhouettePeakProminence": 0.144,
+            "silhouetteRoughness": 0.012
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0.441,
+        "massHierarchy": 1.023,
+        "massCount": 137,
+        "verticalDominance": 1.003,
+        "verticalElements": 6,
+        "heightHierarchy": 1.815,
+        "footprintOccupancy": 0.505,
+        "heightBandEntropy": 0.99,
+        "landmarkShare": 0.038
+      },
+      "layout": {
+        "parts": 219,
+        "props": 219,
+        "structural": 0,
+        "footprintStuds2": 2264,
+        "sizeStuds": [
+          45.6,
+          24.2,
+          49.7
+        ],
+        "neighbourSpacingCV": 0.52,
+        "latticeScore": 0.032,
+        "rotationEntropy": 0.561,
+        "symmetryX": 0.169,
+        "propDensity": 96.751,
+        "flags": [
+          "cluttered: 96.751 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "flattened",
+      "label": 3,
+      "source": "derived",
+      "failure": "correct plan, all verticality removed",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.222,
+            "maskedColorfulness": 17.395,
+            "interiorEdgeDensity": 0.565,
+            "figureGroundContrast": 0.272,
+            "energyGini": 0.747,
+            "occupancyGini": 0.741,
+            "energyEntropy": 0.672,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.1,
+            "silhouetteRange": 0.283,
+            "silhouettePeakProminence": 0.039,
+            "silhouetteRoughness": 0.003
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.207,
+            "maskedColorfulness": 17.095,
+            "interiorEdgeDensity": 0.501,
+            "figureGroundContrast": 0.273,
+            "energyGini": 0.776,
+            "occupancyGini": 0.757,
+            "energyEntropy": 0.644,
+            "occupiedCellShare": 0.361,
+            "centroidOffset": 0.103,
+            "silhouetteRange": 0.217,
+            "silhouettePeakProminence": 0.028,
+            "silhouetteRoughness": 0.002
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.213,
+            "maskedColorfulness": 17.632,
+            "interiorEdgeDensity": 0.523,
+            "figureGroundContrast": 0.294,
+            "energyGini": 0.746,
+            "occupancyGini": 0.741,
+            "energyEntropy": 0.675,
+            "occupiedCellShare": 0.361,
+            "centroidOffset": 0.092,
+            "silhouetteRange": 0.239,
+            "silhouettePeakProminence": 0.028,
+            "silhouetteRoughness": 0.003
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.331,
+            "maskedColorfulness": 16.281,
+            "interiorEdgeDensity": 0.352,
+            "figureGroundContrast": 0.213,
+            "energyGini": 0.637,
+            "occupancyGini": 0.602,
+            "energyEntropy": 0.782,
+            "occupiedCellShare": 0.556,
+            "centroidOffset": 0.022,
+            "silhouetteRange": 0.683,
+            "silhouettePeakProminence": 0.061,
+            "silhouetteRoughness": 0.01
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.055,
+            "maskedColorfulness": 15.579,
+            "interiorEdgeDensity": 0.766,
+            "figureGroundContrast": 0.317,
+            "energyGini": 0.841,
+            "occupancyGini": 0.843,
+            "energyEntropy": 0.541,
+            "occupiedCellShare": 0.222,
+            "centroidOffset": 0.018,
+            "silhouetteRange": 0.05,
+            "silhouettePeakProminence": 0.006,
+            "silhouetteRoughness": 0.001
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0.619,
+        "massHierarchy": 999,
+        "massCount": 1,
+        "verticalDominance": 1,
+        "verticalElements": 0,
+        "heightHierarchy": 1,
+        "footprintOccupancy": 0.743,
+        "heightBandEntropy": 0,
+        "landmarkShare": 1
+      },
+      "layout": {
+        "parts": 219,
+        "props": 164,
+        "structural": 55,
+        "footprintStuds2": 2335,
+        "sizeStuds": [
+          46.6,
+          1.2,
+          50.1
+        ],
+        "neighbourSpacingCV": 0.889,
+        "latticeScore": 0.049,
+        "rotationEntropy": 0.69,
+        "symmetryX": 0.39,
+        "propDensity": 70.246,
+        "flags": [
+          "cluttered: 70.246 props per 1000 stud² (a plaza wants 5-25)",
+          "flat: spans 50 studs across but only 1.2 tall — no vertical variation, so it reads as a plate"
+        ]
+      }
+    },
+    {
+      "id": "equalised",
+      "label": 3,
+      "source": "derived",
+      "failure": "correct layout, every mass the same size — no large/medium/small",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.174,
+            "maskedColorfulness": 17.288,
+            "interiorEdgeDensity": 0.59,
+            "figureGroundContrast": 0.401,
+            "energyGini": 0.713,
+            "occupancyGini": 0.706,
+            "energyEntropy": 0.719,
+            "occupiedCellShare": 0.444,
+            "centroidOffset": 0.188,
+            "silhouetteRange": 0.572,
+            "silhouettePeakProminence": 0.189,
+            "silhouetteRoughness": 0.013
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.19,
+            "maskedColorfulness": 16.007,
+            "interiorEdgeDensity": 0.501,
+            "figureGroundContrast": 0.427,
+            "energyGini": 0.698,
+            "occupancyGini": 0.676,
+            "energyEntropy": 0.731,
+            "occupiedCellShare": 0.472,
+            "centroidOffset": 0.207,
+            "silhouetteRange": 0.544,
+            "silhouettePeakProminence": 0.194,
+            "silhouetteRoughness": 0.014
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.204,
+            "maskedColorfulness": 16.596,
+            "interiorEdgeDensity": 0.499,
+            "figureGroundContrast": 0.428,
+            "energyGini": 0.687,
+            "occupancyGini": 0.671,
+            "energyEntropy": 0.736,
+            "occupiedCellShare": 0.472,
+            "centroidOffset": 0.235,
+            "silhouetteRange": 0.494,
+            "silhouettePeakProminence": 0.272,
+            "silhouetteRoughness": 0.014
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.118,
+            "maskedColorfulness": 20.341,
+            "interiorEdgeDensity": 0.502,
+            "figureGroundContrast": 0.327,
+            "energyGini": 0.752,
+            "occupancyGini": 0.72,
+            "energyEntropy": 0.67,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.028,
+            "silhouetteRange": 0.372,
+            "silhouettePeakProminence": 0.05,
+            "silhouetteRoughness": 0.007
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.093,
+            "maskedColorfulness": 15.028,
+            "interiorEdgeDensity": 0.362,
+            "figureGroundContrast": 0.43,
+            "energyGini": 0.853,
+            "occupancyGini": 0.828,
+            "energyEntropy": 0.526,
+            "occupiedCellShare": 0.25,
+            "centroidOffset": 0.007,
+            "silhouetteRange": 0.389,
+            "silhouettePeakProminence": 0.261,
+            "silhouetteRoughness": 0.015
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0,
+        "massHierarchy": 10.4,
+        "massCount": 29,
+        "verticalDominance": 1,
+        "verticalElements": 1,
+        "heightHierarchy": 11.65,
+        "footprintOccupancy": 0.442,
+        "heightBandEntropy": 0.597,
+        "landmarkShare": 0.475
+      },
+      "layout": {
+        "parts": 219,
+        "props": 219,
+        "structural": 0,
+        "footprintStuds2": 2341,
+        "sizeStuds": [
+          46.2,
+          24.5,
+          50.6
+        ],
+        "neighbourSpacingCV": 0.886,
+        "latticeScore": 0.05,
+        "rotationEntropy": 0.561,
+        "symmetryX": 0.621,
+        "propDensity": 93.55,
+        "flags": [
+          "cluttered: 93.55 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "one-blob-void",
+      "label": 3,
+      "source": "derived (adversarial)",
+      "failure": "a single mass alone in a large empty footprint",
+      "parts": 23,
+      "materials": 4,
+      "colours": 8,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.165,
+            "maskedColorfulness": 11.39,
+            "interiorEdgeDensity": 0.274,
+            "figureGroundContrast": 0.227,
+            "energyGini": 0.847,
+            "occupancyGini": 0.737,
+            "energyEntropy": 0.547,
+            "occupiedCellShare": 0.333,
+            "centroidOffset": 0.099,
+            "silhouetteRange": 0.811,
+            "silhouettePeakProminence": 0.622,
+            "silhouetteRoughness": 0.016
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.158,
+            "maskedColorfulness": 10.213,
+            "interiorEdgeDensity": 0.151,
+            "figureGroundContrast": 0.246,
+            "energyGini": 0.872,
+            "occupancyGini": 0.75,
+            "energyEntropy": 0.479,
+            "occupiedCellShare": 0.333,
+            "centroidOffset": 0.131,
+            "silhouetteRange": 0.989,
+            "silhouettePeakProminence": 0.628,
+            "silhouetteRoughness": 0.022
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.157,
+            "maskedColorfulness": 11.23,
+            "interiorEdgeDensity": 0.172,
+            "figureGroundContrast": 0.219,
+            "energyGini": 0.86,
+            "occupancyGini": 0.75,
+            "energyEntropy": 0.514,
+            "occupiedCellShare": 0.333,
+            "centroidOffset": 0.134,
+            "silhouetteRange": 0.989,
+            "silhouettePeakProminence": 0.628,
+            "silhouetteRoughness": 0.02
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.076,
+            "maskedColorfulness": 36.904,
+            "interiorEdgeDensity": 0.29,
+            "figureGroundContrast": 0.033,
+            "energyGini": 0.897,
+            "occupancyGini": 0.87,
+            "energyEntropy": 0.421,
+            "occupiedCellShare": 0.222,
+            "centroidOffset": 0.003,
+            "silhouetteRange": 0.233,
+            "silhouettePeakProminence": 0.117,
+            "silhouetteRoughness": 0.005
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.138,
+            "maskedColorfulness": 7.284,
+            "interiorEdgeDensity": 0.21,
+            "figureGroundContrast": 0.294,
+            "energyGini": 0.869,
+            "occupancyGini": 0.771,
+            "energyEntropy": 0.496,
+            "occupiedCellShare": 0.333,
+            "centroidOffset": 0.003,
+            "silhouetteRange": 0.65,
+            "silhouettePeakProminence": 0.417,
+            "silhouetteRoughness": 0.011
+          }
+        }
+      ],
+      "structure": {
+        "parts": 23,
+        "volumeGini": 0.688,
+        "massHierarchy": 999,
+        "massCount": 1,
+        "verticalDominance": 1,
+        "verticalElements": 1,
+        "heightHierarchy": 1.363,
+        "footprintOccupancy": 1,
+        "heightBandEntropy": 0.628,
+        "landmarkShare": 1
+      },
+      "layout": {
+        "parts": 23,
+        "props": 10,
+        "structural": 13,
+        "footprintStuds2": 121,
+        "sizeStuds": [
+          11,
+          23.3,
+          11
+        ],
+        "neighbourSpacingCV": 0.887,
+        "latticeScore": 0.1,
+        "rotationEntropy": 0,
+        "symmetryX": 0.4,
+        "propDensity": 82.645,
+        "flags": [
+          "cluttered: 82.645 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "levelled",
+      "label": 4,
+      "source": "derived",
+      "failure": "several equal-height verticals; no element dominates",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.27,
+            "maskedColorfulness": 18.4,
+            "interiorEdgeDensity": 0.491,
+            "figureGroundContrast": 0.349,
+            "energyGini": 0.704,
+            "occupancyGini": 0.65,
+            "energyEntropy": 0.731,
+            "occupiedCellShare": 0.528,
+            "centroidOffset": 0.158,
+            "silhouetteRange": 0.578,
+            "silhouettePeakProminence": 0.111,
+            "silhouetteRoughness": 0.018
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.297,
+            "maskedColorfulness": 18.168,
+            "interiorEdgeDensity": 0.466,
+            "figureGroundContrast": 0.366,
+            "energyGini": 0.66,
+            "occupancyGini": 0.627,
+            "energyEntropy": 0.767,
+            "occupiedCellShare": 0.556,
+            "centroidOffset": 0.163,
+            "silhouetteRange": 0.583,
+            "silhouettePeakProminence": 0.039,
+            "silhouetteRoughness": 0.017
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.315,
+            "maskedColorfulness": 18.584,
+            "interiorEdgeDensity": 0.419,
+            "figureGroundContrast": 0.364,
+            "energyGini": 0.672,
+            "occupancyGini": 0.62,
+            "energyEntropy": 0.754,
+            "occupiedCellShare": 0.556,
+            "centroidOffset": 0.192,
+            "silhouetteRange": 0.478,
+            "silhouettePeakProminence": 0.083,
+            "silhouetteRoughness": 0.018
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.241,
+            "maskedColorfulness": 18.826,
+            "interiorEdgeDensity": 0.445,
+            "figureGroundContrast": 0.237,
+            "energyGini": 0.74,
+            "occupancyGini": 0.705,
+            "energyEntropy": 0.695,
+            "occupiedCellShare": 0.5,
+            "centroidOffset": 0.032,
+            "silhouetteRange": 0.6,
+            "silhouettePeakProminence": 0.106,
+            "silhouetteRoughness": 0.008
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.15,
+            "maskedColorfulness": 13.803,
+            "interiorEdgeDensity": 0.384,
+            "figureGroundContrast": 0.404,
+            "energyGini": 0.854,
+            "occupancyGini": 0.753,
+            "energyEntropy": 0.536,
+            "occupiedCellShare": 0.361,
+            "centroidOffset": 0.062,
+            "silhouetteRange": 0.506,
+            "silhouettePeakProminence": 0.222,
+            "silhouetteRoughness": 0.025
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0.691,
+        "massHierarchy": 948.517,
+        "massCount": 2,
+        "verticalDominance": 1,
+        "verticalElements": 8,
+        "heightHierarchy": 11.65,
+        "footprintOccupancy": 0.743,
+        "heightBandEntropy": 0.432,
+        "landmarkShare": 0.999
+      },
+      "layout": {
+        "parts": 219,
+        "props": 141,
+        "structural": 78,
+        "footprintStuds2": 2335,
+        "sizeStuds": [
+          46.6,
+          23.3,
+          50.1
+        ],
+        "neighbourSpacingCV": 0.804,
+        "latticeScore": 0.057,
+        "rotationEntropy": 0.763,
+        "symmetryX": 0.426,
+        "propDensity": 60.394,
+        "flags": [
+          "cluttered: 60.394 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "blockout",
+      "label": 5,
+      "source": "derived",
+      "failure": "correct massing, no surface detail and no material language",
+      "parts": 102,
+      "materials": 1,
+      "colours": 13,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.213,
+            "maskedColorfulness": 18.348,
+            "interiorEdgeDensity": 0.503,
+            "figureGroundContrast": 0.265,
+            "energyGini": 0.777,
+            "occupancyGini": 0.744,
+            "energyEntropy": 0.653,
+            "occupiedCellShare": 0.417,
+            "centroidOffset": 0.241,
+            "silhouetteRange": 0.522,
+            "silhouettePeakProminence": 0.233,
+            "silhouetteRoughness": 0.012
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.217,
+            "maskedColorfulness": 18.496,
+            "interiorEdgeDensity": 0.44,
+            "figureGroundContrast": 0.28,
+            "energyGini": 0.775,
+            "occupancyGini": 0.736,
+            "energyEntropy": 0.653,
+            "occupiedCellShare": 0.417,
+            "centroidOffset": 0.259,
+            "silhouetteRange": 0.567,
+            "silhouettePeakProminence": 0.3,
+            "silhouetteRoughness": 0.012
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.242,
+            "maskedColorfulness": 18.629,
+            "interiorEdgeDensity": 0.403,
+            "figureGroundContrast": 0.278,
+            "energyGini": 0.754,
+            "occupancyGini": 0.712,
+            "energyEntropy": 0.676,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.277,
+            "silhouetteRange": 0.472,
+            "silhouettePeakProminence": 0.3,
+            "silhouetteRoughness": 0.015
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.205,
+            "maskedColorfulness": 16.517,
+            "interiorEdgeDensity": 0.365,
+            "figureGroundContrast": 0.186,
+            "energyGini": 0.806,
+            "occupancyGini": 0.759,
+            "energyEntropy": 0.607,
+            "occupiedCellShare": 0.361,
+            "centroidOffset": 0.026,
+            "silhouetteRange": 0.528,
+            "silhouettePeakProminence": 0.067,
+            "silhouetteRoughness": 0.011
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.085,
+            "maskedColorfulness": 15.473,
+            "interiorEdgeDensity": 0.562,
+            "figureGroundContrast": 0.348,
+            "energyGini": 0.902,
+            "occupancyGini": 0.857,
+            "energyEntropy": 0.422,
+            "occupiedCellShare": 0.222,
+            "centroidOffset": 0.049,
+            "silhouetteRange": 0.394,
+            "silhouettePeakProminence": 0.333,
+            "silhouetteRoughness": 0.016
+          }
+        }
+      ],
+      "structure": {
+        "parts": 102,
+        "volumeGini": 0.415,
+        "massHierarchy": 328.818,
+        "massCount": 10,
+        "verticalDominance": 1.618,
+        "verticalElements": 8,
+        "heightHierarchy": 8.321,
+        "footprintOccupancy": 0.701,
+        "heightBandEntropy": 0.288,
+        "landmarkShare": 0.979
+      },
+      "layout": {
+        "parts": 102,
+        "props": 55,
+        "structural": 47,
+        "footprintStuds2": 2164,
+        "sizeStuds": [
+          43.8,
+          23.3,
+          49.4
+        ],
+        "neighbourSpacingCV": 1.482,
+        "latticeScore": 0.073,
+        "rotationEntropy": 0.288,
+        "symmetryX": 0.073,
+        "propDensity": 25.419,
+        "flags": [
+          "cluttered: 25.419 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "real-improved",
+      "label": 5,
+      "source": "REAL — production agent output, critic-scored 5/10",
+      "failure": "competent layout, weak focal dominance, floats on a bare plane",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.217,
+            "maskedColorfulness": 19.368,
+            "interiorEdgeDensity": 0.611,
+            "figureGroundContrast": 0.317,
+            "energyGini": 0.759,
+            "occupancyGini": 0.737,
+            "energyEntropy": 0.673,
+            "occupiedCellShare": 0.417,
+            "centroidOffset": 0.225,
+            "silhouetteRange": 0.517,
+            "silhouettePeakProminence": 0.194,
+            "silhouetteRoughness": 0.013
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.23,
+            "maskedColorfulness": 19.164,
+            "interiorEdgeDensity": 0.56,
+            "figureGroundContrast": 0.335,
+            "energyGini": 0.742,
+            "occupancyGini": 0.717,
+            "energyEntropy": 0.687,
+            "occupiedCellShare": 0.472,
+            "centroidOffset": 0.241,
+            "silhouetteRange": 0.556,
+            "silhouettePeakProminence": 0.256,
+            "silhouetteRoughness": 0.015
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.253,
+            "maskedColorfulness": 19.367,
+            "interiorEdgeDensity": 0.525,
+            "figureGroundContrast": 0.336,
+            "energyGini": 0.733,
+            "occupancyGini": 0.703,
+            "energyEntropy": 0.688,
+            "occupiedCellShare": 0.444,
+            "centroidOffset": 0.262,
+            "silhouetteRange": 0.478,
+            "silhouettePeakProminence": 0.272,
+            "silhouetteRoughness": 0.015
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.208,
+            "maskedColorfulness": 18.92,
+            "interiorEdgeDensity": 0.491,
+            "figureGroundContrast": 0.218,
+            "energyGini": 0.772,
+            "occupancyGini": 0.752,
+            "energyEntropy": 0.651,
+            "occupiedCellShare": 0.361,
+            "centroidOffset": 0.015,
+            "silhouetteRange": 0.544,
+            "silhouettePeakProminence": 0.044,
+            "silhouetteRoughness": 0.009
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.091,
+            "maskedColorfulness": 14.211,
+            "interiorEdgeDensity": 0.553,
+            "figureGroundContrast": 0.403,
+            "energyGini": 0.89,
+            "occupancyGini": 0.849,
+            "energyEntropy": 0.459,
+            "occupiedCellShare": 0.25,
+            "centroidOffset": 0.029,
+            "silhouetteRange": 0.383,
+            "silhouettePeakProminence": 0.294,
+            "silhouetteRoughness": 0.017
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0.569,
+        "massHierarchy": 557.888,
+        "massCount": 2,
+        "verticalDominance": 1.618,
+        "verticalElements": 8,
+        "heightHierarchy": 11.65,
+        "footprintOccupancy": 0.743,
+        "heightBandEntropy": 0.332,
+        "landmarkShare": 0.998
+      },
+      "layout": {
+        "parts": 219,
+        "props": 172,
+        "structural": 47,
+        "footprintStuds2": 2335,
+        "sizeStuds": [
+          46.6,
+          23.3,
+          50.1
+        ],
+        "neighbourSpacingCV": 0.937,
+        "latticeScore": 0.047,
+        "rotationEntropy": 0.667,
+        "symmetryX": 0.372,
+        "propDensity": 73.672,
+        "flags": [
+          "cluttered: 73.672 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "lopsided",
+      "label": 3,
+      "source": "derived (adversarial — targets centroidOffset)",
+      "failure": "the entire build shoved into one corner; every other property unchanged",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.153,
+            "maskedColorfulness": 19.214,
+            "interiorEdgeDensity": 0.706,
+            "figureGroundContrast": 0.318,
+            "energyGini": 0.822,
+            "occupancyGini": 0.786,
+            "energyEntropy": 0.581,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.18,
+            "silhouetteRange": 0.333,
+            "silhouettePeakProminence": 0.111,
+            "silhouetteRoughness": 0.009
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.186,
+            "maskedColorfulness": 18.663,
+            "interiorEdgeDensity": 0.575,
+            "figureGroundContrast": 0.334,
+            "energyGini": 0.804,
+            "occupancyGini": 0.754,
+            "energyEntropy": 0.618,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.219,
+            "silhouetteRange": 0.644,
+            "silhouettePeakProminence": 0.194,
+            "silhouetteRoughness": 0.018
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.157,
+            "maskedColorfulness": 19.537,
+            "interiorEdgeDensity": 0.681,
+            "figureGroundContrast": 0.34,
+            "energyGini": 0.821,
+            "occupancyGini": 0.789,
+            "energyEntropy": 0.59,
+            "occupiedCellShare": 0.333,
+            "centroidOffset": 0.187,
+            "silhouetteRange": 0.439,
+            "silhouettePeakProminence": 0.217,
+            "silhouetteRoughness": 0.012
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.172,
+            "maskedColorfulness": 18.555,
+            "interiorEdgeDensity": 0.464,
+            "figureGroundContrast": 0.21,
+            "energyGini": 0.801,
+            "occupancyGini": 0.775,
+            "energyEntropy": 0.628,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.041,
+            "silhouetteRange": 0.544,
+            "silhouettePeakProminence": 0.05,
+            "silhouetteRoughness": 0.01
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.067,
+            "maskedColorfulness": 13.653,
+            "interiorEdgeDensity": 0.473,
+            "figureGroundContrast": 0.406,
+            "energyGini": 0.887,
+            "occupancyGini": 0.836,
+            "energyEntropy": 0.458,
+            "occupiedCellShare": 0.25,
+            "centroidOffset": 0.028,
+            "silhouetteRange": 0.361,
+            "silhouettePeakProminence": 0.278,
+            "silhouetteRoughness": 0.018
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0.569,
+        "massHierarchy": 17.759,
+        "massCount": 7,
+        "verticalDominance": 1.618,
+        "verticalElements": 8,
+        "heightHierarchy": 11.65,
+        "footprintOccupancy": 0.585,
+        "heightBandEntropy": 0.332,
+        "landmarkShare": 0.911
+      },
+      "layout": {
+        "parts": 219,
+        "props": 172,
+        "structural": 47,
+        "footprintStuds2": 3155,
+        "sizeStuds": [
+          57.4,
+          23.3,
+          54.9
+        ],
+        "neighbourSpacingCV": 0.948,
+        "latticeScore": 0.07,
+        "rotationEntropy": 0.667,
+        "symmetryX": 0.041,
+        "propDensity": 54.512,
+        "flags": [
+          "cluttered: 54.512 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    },
+    {
+      "id": "hierarchised",
+      "label": 7,
+      "source": "derived",
+      "failure": "none intended — focal hierarchy imposed without adding parts",
+      "parts": 219,
+      "materials": 10,
+      "colours": 17,
+      "views": [
+        {
+          "name": "hero",
+          "metrics": {
+            "coverage": 0.198,
+            "maskedColorfulness": 18.912,
+            "interiorEdgeDensity": 0.615,
+            "figureGroundContrast": 0.307,
+            "energyGini": 0.782,
+            "occupancyGini": 0.758,
+            "energyEntropy": 0.646,
+            "occupiedCellShare": 0.361,
+            "centroidOffset": 0.242,
+            "silhouetteRange": 0.633,
+            "silhouettePeakProminence": 0.311,
+            "silhouetteRoughness": 0.014
+          }
+        },
+        {
+          "name": "front",
+          "metrics": {
+            "coverage": 0.209,
+            "maskedColorfulness": 18.969,
+            "interiorEdgeDensity": 0.572,
+            "figureGroundContrast": 0.327,
+            "energyGini": 0.782,
+            "occupancyGini": 0.745,
+            "energyEntropy": 0.646,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.266,
+            "silhouetteRange": 0.689,
+            "silhouettePeakProminence": 0.378,
+            "silhouetteRoughness": 0.016
+          }
+        },
+        {
+          "name": "side",
+          "metrics": {
+            "coverage": 0.217,
+            "maskedColorfulness": 19.435,
+            "interiorEdgeDensity": 0.519,
+            "figureGroundContrast": 0.313,
+            "energyGini": 0.757,
+            "occupancyGini": 0.726,
+            "energyEntropy": 0.672,
+            "occupiedCellShare": 0.389,
+            "centroidOffset": 0.278,
+            "silhouetteRange": 0.611,
+            "silhouettePeakProminence": 0.4,
+            "silhouetteRoughness": 0.017
+          }
+        },
+        {
+          "name": "top",
+          "metrics": {
+            "coverage": 0.169,
+            "maskedColorfulness": 18.098,
+            "interiorEdgeDensity": 0.449,
+            "figureGroundContrast": 0.211,
+            "energyGini": 0.814,
+            "occupancyGini": 0.796,
+            "energyEntropy": 0.59,
+            "occupiedCellShare": 0.278,
+            "centroidOffset": 0.013,
+            "silhouetteRange": 0.494,
+            "silhouettePeakProminence": 0.039,
+            "silhouetteRoughness": 0.009
+          }
+        },
+        {
+          "name": "eye",
+          "metrics": {
+            "coverage": 0.089,
+            "maskedColorfulness": 13.226,
+            "interiorEdgeDensity": 0.531,
+            "figureGroundContrast": 0.391,
+            "energyGini": 0.894,
+            "occupancyGini": 0.839,
+            "energyEntropy": 0.444,
+            "occupiedCellShare": 0.25,
+            "centroidOffset": 0.037,
+            "silhouetteRange": 0.494,
+            "silhouettePeakProminence": 0.411,
+            "silhouetteRoughness": 0.018
+          }
+        }
+      ],
+      "structure": {
+        "parts": 219,
+        "volumeGini": 0.595,
+        "massHierarchy": 434.234,
+        "massCount": 8,
+        "verticalDominance": 3.112,
+        "verticalElements": 8,
+        "heightHierarchy": 15.9,
+        "footprintOccupancy": 0.743,
+        "heightBandEntropy": 0.437,
+        "landmarkShare": 0.985
+      },
+      "layout": {
+        "parts": 219,
+        "props": 162,
+        "structural": 57,
+        "footprintStuds2": 2335,
+        "sizeStuds": [
+          46.6,
+          31.8,
+          50.1
+        ],
+        "neighbourSpacingCV": 0.914,
+        "latticeScore": 0.049,
+        "rotationEntropy": 0.696,
+        "symmetryX": 0.395,
+        "propDensity": 69.389,
+        "flags": [
+          "cluttered: 69.389 props per 1000 stud² (a plaza wants 5-25)"
+        ]
+      }
+    }
+  ],
+  "report": [
+    {
+      "metric": "centroidOffset",
+      "family": "composition.image",
+      "rho": 0.72,
+      "auc": 1,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": []
+    },
+    {
+      "metric": "structure.verticalDominance",
+      "family": "composition.geometry",
+      "rho": 0.587,
+      "auc": 0.952,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "structure.heightHierarchy",
+      "family": "composition.geometry",
+      "rho": 0.765,
+      "auc": 0.929,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": []
+    },
+    {
+      "metric": "structure.verticalElements",
+      "family": "composition.geometry",
+      "rho": 0.638,
+      "auc": 0.929,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "silhouettePeakProminence",
+      "family": "composition.image",
+      "rho": 0.561,
+      "auc": 0.857,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "interiorEdgeDensity",
+      "family": "composition.image",
+      "rho": 0.653,
+      "auc": 0.762,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "layout.neighbourSpacingCV",
+      "family": "layout-metrics [PROV]",
+      "rho": 0.502,
+      "auc": 0.762,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "structure.massCount",
+      "family": "composition.geometry",
+      "rho": 0.34,
+      "auc": 0.762,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti"
+      ]
+    },
+    {
+      "metric": "silhouetteRange",
+      "family": "composition.image",
+      "rho": 0.328,
+      "auc": 0.762,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "layout.rotationEntropy",
+      "family": "layout-metrics [PROV]",
+      "rho": 0.601,
+      "auc": 0.738,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": []
+    },
+    {
+      "metric": "occupancyGini",
+      "family": "composition.image",
+      "rho": 0.579,
+      "auc": 0.714,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "lopsided",
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "silhouetteRoughness",
+      "family": "composition.image",
+      "rho": 0.468,
+      "auc": 0.714,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void",
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "structure.footprintOccupancy",
+      "family": "composition.geometry",
+      "rho": -0.397,
+      "auc": 0.667,
+      "sign": -1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti",
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "figureGroundContrast",
+      "family": "composition.image",
+      "rho": 0.36,
+      "auc": 0.667,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti"
+      ]
+    },
+    {
+      "metric": "structure.landmarkShare",
+      "family": "composition.geometry",
+      "rho": -0.285,
+      "auc": 0.667,
+      "sign": -1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti",
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "structure.heightBandEntropy",
+      "family": "composition.geometry",
+      "rho": 0.183,
+      "auc": 0.643,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti",
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "control.colourCount",
+      "family": "control",
+      "rho": 0.466,
+      "auc": 0.619,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "layout.latticeScore",
+      "family": "layout-metrics [PROV]",
+      "rho": -0.012,
+      "auc": 0.595,
+      "sign": -1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "confetti"
+      ]
+    },
+    {
+      "metric": "structure.parts",
+      "family": "composition.geometry",
+      "rho": 0.33,
+      "auc": 0.571,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "control.partCount",
+      "family": "control",
+      "rho": 0.33,
+      "auc": 0.571,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "layout.symmetryX",
+      "family": "layout-metrics [PROV]",
+      "rho": 0.099,
+      "auc": 0.571,
+      "sign": -1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "lopsided",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "maskedColorfulness",
+      "family": "composition.image",
+      "rho": 0.025,
+      "auc": 0.524,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "control.materialCount",
+      "family": "control",
+      "rho": 0.329,
+      "auc": 0.5,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti"
+      ]
+    },
+    {
+      "metric": "structure.volumeGini",
+      "family": "composition.geometry",
+      "rho": 0.109,
+      "auc": 0.452,
+      "sign": 1,
+      "signAgrees": true,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "structure.massHierarchy",
+      "family": "composition.geometry",
+      "rho": -0.185,
+      "auc": 0.429,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "energyGini",
+      "family": "composition.image",
+      "rho": -0.088,
+      "auc": 0.429,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void",
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "layout.propDensity",
+      "family": "layout-metrics [PROV]",
+      "rho": -0.004,
+      "auc": 0.429,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush",
+        "confetti",
+        "one-blob-void"
+      ]
+    },
+    {
+      "metric": "energyEntropy",
+      "family": "composition.image",
+      "rho": 0.12,
+      "auc": 0.381,
+      "sign": -1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "one-blob-void",
+        "lopsided"
+      ]
+    },
+    {
+      "metric": "coverage",
+      "family": "composition.image",
+      "rho": -0.414,
+      "auc": 0.357,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "tiled-mush"
+      ]
+    },
+    {
+      "metric": "occupiedCellShare",
+      "family": "composition.image",
+      "rho": -0.408,
+      "auc": 0.333,
+      "sign": 1,
+      "signAgrees": false,
+      "constant": false,
+      "falsePositives": [
+        "confetti",
+        "tiled-mush"
+      ]
+    }
+  ]
+}

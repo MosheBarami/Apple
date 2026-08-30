@@ -332,7 +332,41 @@ function Render.capture(rootPath: string?, view: string, width: number, height: 
 		},
 		views = views,
 		lighting = Render.lightingState(),
+		layout = Render.layoutSummary(root),
 	}
+end
+
+--- Compact geometry summary for layout analysis: position, size and yaw per part.
+--- Composition is a question about PLACEMENT, and placement is invisible in a rendered image once
+--- objects overlap. The worker computes spacing, lattice and rotation statistics from this — all
+--- arithmetic, no model call. Capped so a huge place cannot produce an unbounded payload.
+function Render.layoutSummary(root: Instance): any
+	local MAX_PARTS = 1500
+	local out = {}
+	local skipped = 0
+	local function consider(p: BasePart)
+		if p.Size.X > GROUND_PLANE_STUDS or p.Size.Z > GROUND_PLANE_STUDS then return end
+		if #out >= MAX_PARTS then
+			skipped += 1
+			return
+		end
+		local _, yaw = p.CFrame:ToEulerAnglesYXZ()
+		local function r1(v: number): number
+			return math.round(v * 10) / 10
+		end
+		table.insert(out, {
+			r1(p.Position.X), r1(p.Position.Y), r1(p.Position.Z),
+			r1(p.Size.X), r1(p.Size.Y), r1(p.Size.Z),
+			math.round(math.deg(yaw)),
+		})
+	end
+	if root:IsA("BasePart") and renderable(root) then consider(root) end
+	for _, d in root:GetDescendants() do
+		if renderable(d) then consider(d :: BasePart) end
+	end
+	-- flat arrays rather than named fields: 1,500 parts of {x,y,z,sx,sy,sz,yaw} is ~60 KB, and
+	-- naming every field would roughly triple that for no gain on the worker side
+	return { format = "x,y,z,sx,sy,sz,yawDeg", parts = out, skipped = skipped }
 end
 
 --- Reported alongside the render because the rasteriser CANNOT draw lighting: it has one fixed sun

@@ -11,6 +11,7 @@ import type { RenderViewResult, RenderedView } from '@golem/shared';
 import { chat } from './gateway';
 import { rgbBase64ToDataUrl, decodeRgbBase64 } from './png';
 import { pixelStats, pixelHardFails, statsLine, type ViewStats } from './pixel-stats';
+import { analyseLayout } from './layout';
 
 /** At most this many frames go to the model in one critique — each image costs input tokens. */
 const MAX_FRAMES = 3;
@@ -251,7 +252,9 @@ export async function critiqueViews(
     coverage: v.meta.subjectCoverage,
     stats: pixelStats(decodeRgbBase64(v.rgbBase64), v.meta.width, v.meta.height),
   }));
-  const hardFails = [...hardFailChecks(result, subject), ...pixelHardFails(viewStats)];
+  // Composition is a question about PLACEMENT, which pixels cannot answer once objects overlap.
+  const layout = subject === 'scene' ? analyseLayout(result.layout, result.boundsSize) : null;
+  const hardFails = [...hardFailChecks(result, subject), ...pixelHardFails(viewStats), ...(layout?.flags ?? [])];
 
   const content: ({ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } })[] = [
     {
@@ -263,6 +266,9 @@ export async function critiqueViews(
         frames.map(statsFor).join('\n') +
         `\n\nMEASURED FROM THE PIXELS (arithmetic over the actual image, not opinion):\n` +
         frames.map((f) => statsLine(f.name, viewStats.find((v) => v.name === f.name)!.stats)).join('\n') +
+        (layout
+          ? `\n\nMEASURED LAYOUT: ${layout.props} props over ${layout.structural} structural parts, nearest-neighbour spacing variation ${layout.neighbourSpacingCV}, grid-snap ${layout.latticeScore}, rotation variety ${layout.rotationEntropy}`
+          : '') +
         `\n\nLIGHTING CONFIGURATION (judge lighting from this, never from the images):\n${lightingSummary(result.lighting)}` +
         (hardFails.length ? `\n\nAlready confirmed by measurement: ${hardFails.join('; ')}` : ''),
     },

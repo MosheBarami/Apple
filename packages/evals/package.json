@@ -7,7 +7,7 @@
   "scripts": {
     "check": "node --check src/run.mjs && node --check src/compare.mjs && node --check src/report.mjs && node --check src/selftest.mjs && node --check src/grade.mjs && node --check src/luau.mjs && node --check src/tasks.mjs && node --check src/transport.mjs",
     "selftest": "node src/selftest.mjs",
-    "test": "node src/selftest.mjs",
+    "test": "node src/selftest.mjs && node --test src/*.test.mjs tasks-visual/*.test.mjs",
     "run": "node src/run.mjs",
     "compare": "node src/compare.mjs",
     "report": "node src/report.mjs"
