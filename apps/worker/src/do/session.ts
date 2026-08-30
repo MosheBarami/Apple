@@ -19,9 +19,11 @@ import type {
   QuotaState,
 } from '@golem/shared';
 import { MODE_INFO } from '@golem/shared';
-import { chat as llmChat } from '../gateway';
+import { sparksForNeurons } from '../pricing';
+import { chat as llmChat, BudgetError } from '../gateway';
 import { systemPrompt, MEMORY_UPDATE_PROMPT } from '../prompts';
-import { toolDefs, runTool, type AgentCtx } from '../tools';
+import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
+import { routeStep, toolsForMode } from '../router';
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -31,8 +33,11 @@ interface AgentState {
   step: number;
   maxSteps: number;
   sparksSpent: number;
+  /** neurons this run has consumed, so Sparks round once per run instead of once per call */
+  neuronsUsed?: number;
   trace: ToolTraceEntry[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
+  lastCalls?: { id: string; name: string; arguments: string }[];
   finalText: string;
   streamedText?: string;
   startedAt: number;
@@ -40,12 +45,13 @@ interface AgentState {
   userId: string;
 }
 
-const STEP_LIMITS: Record<GolemMode, number> = { clay: 4, stone: 14, rune: 32 };
+// step limits are a direct cost multiplier: every step is a full priced inference call
+const STEP_LIMITS: Record<GolemMode, number> = { clay: 3, stone: 8, rune: 14 };
 const PLUGIN_TIMEOUT_MS = 9000;
 const STEP_STALE_MS = 180_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
-const MAX_PROMPT_CHARS = 120_000; // keep the growing agent transcript bounded
+const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
 
 export class SessionDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -297,7 +303,9 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
       return;
     }
-    const quota = await this.quotaSpend(bind.ownerId, MODE_INFO[mode].sparksPerRequest, `chat_${mode}`);
+    // Sparks are billed from measured usage after each model call, so entering a run only
+    // requires having some balance left — the user is never charged for an estimate.
+    const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
     if (!quota.ok) {
       this.broadcast({ type: 'error', code: 'quota', message: 'Daily Sparks are used up. They refill at midnight UTC.' });
       this.broadcast({ type: 'quota', quota: quota.state });
@@ -335,7 +343,7 @@ export class SessionDO extends DurableObject<Env> {
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text }],
       step: 0,
       maxSteps: STEP_LIMITS[mode],
-      sparksSpent: MODE_INFO[mode].sparksPerRequest,
+      sparksSpent: 1,
       trace: [],
       finalText: '',
       startedAt: Date.now(),
@@ -369,6 +377,23 @@ export class SessionDO extends DurableObject<Env> {
     try {
       await this.runStep(agent);
     } catch (e) {
+      if (e instanceof BudgetError) {
+        const resetsAt = new Date();
+        resetsAt.setUTCHours(24, 0, 0, 0);
+        const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
+        const tail =
+          e.reason === 'monthly_cap'
+            ? 'Capacity refills at the start of next month.'
+            : e.reason === 'killed'
+              ? 'An administrator paused generation; it will be back shortly.'
+              : `Capacity resets in about ${hours} hour${hours === 1 ? '' : 's'} (midnight UTC).`;
+        agent.finalText =
+          (agent.finalText ? agent.finalText + '\n\n' : '') +
+          `${e.message} Everything I finished is saved — your project and checkpoints are untouched. ${tail}`;
+        this.broadcast({ type: 'error', code: 'capacity', message: e.message });
+        await this.finishRun(agent, 'quota');
+        return;
+      }
       const msg = e instanceof Error ? e.message : String(e);
       if (msg === 'CAPACITY_EXHAUSTED') {
         const resetsAt = new Date();
@@ -397,13 +422,12 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (agent.step > 1) {
-      const spend = await this.quotaSpend(agent.userId, 1, `step_${agent.mode}`);
-      if (!spend.ok) {
+      const state = await this.quotaState(agent.userId);
+      if (state.sparksRemaining <= 0) {
         agent.finalText = agent.finalText || 'I paused because your daily Sparks ran out. Progress is saved.';
         await this.finishRun(agent, 'quota');
         return;
       }
-      agent.sparksSpent += 1;
     }
     // keep the transcript bounded: drop the oldest tool exchanges, never the system prompt
     let promptChars = agent.llm.reduce((n, m) => n + m.content.length, 0);
@@ -415,11 +439,37 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
 
     const studioConnected = await this.pluginConnected();
-    const res = await llmChat(this.env, {
-      model: agent.mode,
-      messages: agent.llm,
-      tools: toolDefs(studioConnected),
-    });
+    const BUILD_TOOLS_SET = ['create_instances', 'edit_script', 'set_properties', 'delete_instances', 'run_luau', 'move_instances'];
+    const hasBuilt = agent.trace.some((t) => BUILD_TOOLS_SET.includes(t.tool) && t.ok);
+    const route = routeStep({ mode: agent.mode, step: agent.step, lastToolCalls: agent.lastCalls ?? [], hasBuilt });
+    const allowed = toolsForMode(agent.mode, studioConnected, toolNames());
+    const res = await llmChat(
+      this.env,
+      { model: route.model, messages: agent.llm, tools: toolDefs(studioConnected, allowed) },
+      { kind: `${agent.mode}:${route.reason}` },
+    );
+    agent.lastCalls = res.toolCalls;
+
+    // Sparks track real spend: charge the difference between what this call actually cost
+    // and the 1 Spark already taken for the step. Users are never billed for our estimate.
+    // Round Sparks once per RUN, not once per call: otherwise a run of five small calls costs
+    // five whole Sparks when the compute used barely fills one.
+    agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neurons;
+    const owed = sparksForNeurons(agent.neuronsUsed) - agent.sparksSpent;
+    if (owed > 0) {
+      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
+      agent.sparksSpent += owed;
+      if (!settle.ok) {
+        // they have run out mid-run: finish this step's work, then stop cleanly
+        agent.finalText =
+          (res.text || agent.finalText || '') +
+          '\n\nThat used the last of your Sparks for today. Everything so far is saved — they refill at midnight UTC.';
+        this.broadcast({ type: 'quota', quota: settle.state });
+        await this.finishRun(agent, 'quota');
+        return;
+      }
+      this.broadcast({ type: 'quota', quota: settle.state });
+    }
 
     if (res.text) {
       agent.finalText = res.text;
@@ -484,7 +534,7 @@ export class SessionDO extends DurableObject<Env> {
     // if the model has spent several steps without changing anything, steer it
     const BUILD_TOOLS = ['create_instances', 'edit_script', 'set_properties', 'delete_instances', 'run_luau', 'move_instances'];
     const built = agent.trace.some((t) => BUILD_TOOLS.includes(t.tool) && t.ok);
-    if (!built && agent.step >= 4 && agent.step % 3 === 1) {
+    if (!built && agent.step >= 2) {
       agent.llm.push({
         role: 'user',
         content:
@@ -515,9 +565,10 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error });
     // background memory distillation (only after substantive runs)
     if (agent.trace.length > 2 && reason === 'done') {
-      // distillation is a real model call, so it is metered like any other
-      const spend = await this.quotaSpend(agent.userId, 1, 'memory');
-      if (!spend.ok) return;
+      // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget
+      // (so it can never create an uncontrolled bill) but is not charged to the user's Sparks.
+      const budgetLeft = await this.quotaState(agent.userId);
+      if (budgetLeft.sparksRemaining <= 0) return;
       this.ctx.waitUntil?.(this.updateMemory().catch(() => {}));
       if (!this.ctx.waitUntil) await this.updateMemory().catch(() => {});
     }
@@ -529,16 +580,23 @@ export class SessionDO extends DurableObject<Env> {
       this.sql.exec(`select role, content from messages order by created_at desc limit 8`).toArray() as { role: string; content: string }[]
     )
       .reverse()
-      .map((m) => `${m.role}: ${m.content.slice(0, 1500)}`)
+      .map((m) => `${m.role}: ${m.content.slice(0, 600)}`)
       .join('\n');
-    const res = await llmChat(this.env, {
-      model: 'memory',
-      messages: [
-        { role: 'system', content: MEMORY_UPDATE_PROMPT },
-        { role: 'user', content: `Previous summary:\n${memory.summary ?? '(none)'}\n\nExisting facts:\n${memory.facts.join('\n')}\n\nLatest conversation:\n${recent}` },
-      ],
-      maxTokens: 900,
-    });
+    const res = await llmChat(
+      this.env,
+      {
+        model: 'memory',
+        messages: [
+          { role: 'system', content: MEMORY_UPDATE_PROMPT },
+          {
+            role: 'user',
+            content: `Previous summary:\n${memory.summary ?? '(none)'}\n\nExisting facts:\n${memory.facts.join('\n')}\n\nLatest conversation:\n${recent}`,
+          },
+        ],
+        maxTokens: 600,
+      },
+      { kind: 'memory' },
+    );
     try {
       const jsonStart = res.text.indexOf('{');
       const parsed = JSON.parse(res.text.slice(jsonStart)) as { summary?: string; facts?: string[] };

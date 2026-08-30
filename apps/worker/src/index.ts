@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
-import { chat as llmChat, embed, getModels } from './gateway';
+import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, BudgetError } from './gateway';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
 
@@ -11,6 +11,7 @@ export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
 export { PairingDO } from './do/pairing';
 export { AdminDO } from './do/admin';
+export { BudgetDO } from './do/budget';
 
 type Vars = { user: AuthedUser };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -39,10 +40,12 @@ function count(env: Env, key: string) {
     .catch(() => {});
 }
 
-// in-isolate IP limiter for unauthenticated endpoints (best effort; codes are single-use + high entropy anyway)
+// Sliding-ish limiter. Per-isolate and therefore best-effort, which is why it is defence in
+// depth only: the authoritative spend controls are the Budget and Quota Durable Objects.
 const ipHits = new Map<string, { n: number; at: number }>();
 function ipLimited(ip: string, limit = 20, windowMs = 60_000): boolean {
   const now = Date.now();
+  if (ipHits.size > 5000) ipHits.clear(); // bound memory under a distributed flood
   const rec = ipHits.get(ip);
   if (!rec || now - rec.at > windowMs) {
     ipHits.set(ip, { n: 1, at: now });
@@ -67,6 +70,8 @@ app.use('/api/*', async (c, next) => {
   if (!token) return c.json({ error: 'unauthorized' }, 401);
   const user = await verifyJwt(c.env, token);
   if (!user) return c.json({ error: 'unauthorized' }, 401);
+  // per-account request ceiling: stops a single credential driving a flood
+  if (ipLimited(`user:${user.userId}`, 240)) return c.json({ error: 'Too many requests — slow down.' }, 429);
   c.set('user', user);
   return next();
 });
@@ -196,7 +201,15 @@ app.get('/api/me', async (c) => {
     getProfile(c.env, user.jwt, user.userId),
     c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/state'),
   ]);
-  return c.json({ userId: user.userId, email: user.email, profile, quota: await quotaRes.json() });
+  const budget = (await budgetState(c.env)) as { dayRemainingFraction: number; killed: boolean };
+  return c.json({
+    userId: user.userId,
+    email: user.email,
+    profile,
+    quota: await quotaRes.json(),
+    // service-wide headroom, so the app can explain a shared-capacity stop honestly
+    service: { capacityRemaining: budget.dayRemainingFraction, paused: budget.killed },
+  });
 });
 
 app.get('/api/me/usage', async (c) => {
@@ -216,8 +229,13 @@ app.get('/api/docs/search', async (c) => {
   });
   const { ok } = (await spend.json()) as { ok: boolean };
   if (!ok) return c.json({ error: 'Daily Sparks used up', hits: [] }, 429);
-  const hits = await searchDocs(c.env, q, 6);
-  return c.json({ hits });
+  try {
+    const hits = await searchDocs(c.env, q, 6);
+    return c.json({ hits });
+  } catch (e) {
+    if (e instanceof BudgetError) return c.json({ error: e.message, hits: [] }, 429);
+    throw e;
+  }
 });
 
 // ---------------------------------------------------------------- admin
@@ -256,6 +274,43 @@ app.post('/api/admin/model-test', async (c) => {
 });
 
 app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
+
+/** Full AI spend picture: today, this month, per-model, per-purpose, against the hard caps. */
+app.get('/api/admin/spend', async (c) => c.json(await budgetReport(c.env)));
+
+/** Emergency stop. Flips a flag the gateway checks before every single inference call. */
+/** Tune the hard caps without a redeploy. Lowering takes effect on the very next call. */
+app.post('/api/admin/spend-limits', async (c) => {
+  const body = await c.req.json<Record<string, number>>();
+  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName('singleton'));
+  const res = await stub.fetch('https://do/limits', { method: 'POST', body: JSON.stringify(body) });
+  return c.json(await res.json());
+});
+
+/** "Would a call of this size be allowed right now?" — no tokens spent. */
+app.post('/api/admin/spend-probe', async (c) => {
+  const { neurons } = await c.req.json<{ neurons: number }>();
+  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName('singleton'));
+  return c.json(await (await stub.fetch('https://do/probe', { method: 'POST', body: JSON.stringify({ neurons }) })).json());
+});
+
+/** Test hook: move the spend ledger without calling a model, to exercise the caps. */
+app.post('/api/admin/spend-simulate', async (c) => {
+  const { neurons } = await c.req.json<{ neurons: number }>();
+  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName('singleton'));
+  return c.json(await (await stub.fetch('https://do/simulate-usage', { method: 'POST', body: JSON.stringify({ neurons }) })).json());
+});
+
+/** Clears the spend ledger (used after testing). Real usage rolls over on its own. */
+app.post('/api/admin/spend-reset', async (c) => {
+  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName('singleton'));
+  return c.json(await (await stub.fetch('https://do/reset-ledger', { method: 'POST' })).json());
+});
+
+app.post('/api/admin/kill-switch', async (c) => {
+  const { killed, reason } = await c.req.json<{ killed: boolean; reason?: string }>();
+  return c.json(await setKillSwitch(c.env, !!killed, reason));
+});
 
 app.post('/api/admin/config', async (c) => {
   const { key, value } = await c.req.json<{ key: string; value: unknown }>();

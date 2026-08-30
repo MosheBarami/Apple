@@ -33,6 +33,7 @@ export function Composer({ disabledReason, running, quota, onSend, onStop }: Com
   const [mode, setMode] = useState<GolemMode>('stone');
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
+  // typical, not fixed: a run is billed from the compute it actually uses
   const cost = MODE_INFO[mode].sparksPerRequest;
   const quotaExhausted = quota !== null && quota.sparksRemaining < cost;
   const resetIn = useCountdown(quotaExhausted && quota ? quota.resetsAtIso : null);
@@ -76,7 +77,7 @@ export function Composer({ disabledReason, running, quota, onSend, onStop }: Com
                 aria-checked={mode === m}
                 className={`mode-btn mode-btn-${m}${mode === m ? ' mode-btn-active' : ''}`}
                 onClick={() => setMode(m)}
-                title={`${info.name} — ${info.blurb} (${info.sparksPerRequest} ${info.sparksPerRequest === 1 ? 'spark' : 'sparks'})`}
+                title={`${info.name} — ${info.blurb} (typically ${info.typicalSparks} sparks)`}
               >
                 <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
                 {info.name}
@@ -85,7 +86,7 @@ export function Composer({ disabledReason, running, quota, onSend, onStop }: Com
           })}
         </div>
         <span className="sparks-hint" title={`${MODE_INFO[mode].blurb}`}>
-          <span aria-hidden="true">⚡</span> {cost} {cost === 1 ? 'spark' : 'sparks'}
+          <span aria-hidden="true">⚡</span> ~{MODE_INFO[mode].typicalSparks} sparks
           {quota && (
             <span className="sparks-remaining"> · {quota.sparksRemaining} left today</span>
           )}

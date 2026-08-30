@@ -3,8 +3,11 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  adminKillSwitch,
   adminModelTest,
   adminRagTest,
+  adminSpend,
+  adminSpendLimits,
   adminStats,
   fetchMe,
   type ModelTestResponse,
@@ -19,6 +22,154 @@ function readAdminKey(): string {
   } catch {
     return '';
   }
+}
+
+
+const usd = (n: number) => `$${n.toFixed(n < 0.01 ? 4 : 2)}`;
+
+/** AI spend against the hard caps, plus the emergency stop. */
+function SpendPanel({ adminKey }: { adminKey: string }) {
+  const spend = useQuery({
+    queryKey: ['admin-spend', adminKey],
+    queryFn: () => adminSpend(adminKey),
+    enabled: adminKey.length > 0,
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const [busy, setBusy] = useState(false);
+
+  const toggleKill = async (killed: boolean) => {
+    setBusy(true);
+    try {
+      await adminKillSwitch(adminKey, killed, killed ? 'Paused from the admin console.' : undefined);
+      await spend.refetch();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const tighten = async (factor: number) => {
+    if (!spend.data) return;
+    setBusy(true);
+    try {
+      await adminSpendLimits(adminKey, {
+        billableNeuronsPerDay: Math.round(spend.data.limits.billableNeuronsPerDay * factor),
+        billableNeuronsPerMonth: Math.round(spend.data.limits.billableNeuronsPerMonth * factor),
+      });
+      await spend.refetch();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const d = spend.data;
+  const dayUsedPct = d ? Math.min(100, Math.round((1 - d.state.dayRemainingFraction) * 100)) : 0;
+  const monthPct = d ? Math.min(100, Math.round((d.state.monthBillableNeurons / Math.max(1, d.limits.billableNeuronsPerMonth)) * 100)) : 0;
+
+  return (
+    <section className="card admin-panel">
+      <div className="rail-head">
+        <h3>AI spend</h3>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => void spend.refetch()} disabled={!adminKey}>
+          Refresh
+        </button>
+      </div>
+      {!adminKey && <p className="muted">Enter the admin key above.</p>}
+      {spend.isError && <p className="error-text">Could not load spend — check the admin key.</p>}
+      {d && (
+        <>
+          {d.state.killed && (
+            <p className="error-text" role="status">
+              AI generation is PAUSED{d.state.killedReason ? ` — ${d.state.killedReason}` : ''}.
+            </p>
+          )}
+          <dl className="spend-grid">
+            <div>
+              <dt>This month (billable)</dt>
+              <dd>
+                <strong>{usd(d.state.estimatedMonthUsd)}</strong> of {usd(d.maxMonthlyUsd)} cap
+                <div className="meter" aria-hidden="true">
+                  <span style={{ width: `${monthPct}%` }} />
+                </div>
+              </dd>
+            </div>
+            <div>
+              <dt>Today</dt>
+              <dd>
+                {d.state.dayNeurons.toLocaleString()} neurons ({dayUsedPct}% of today&rsquo;s ceiling)
+                <div className="meter" aria-hidden="true">
+                  <span style={{ width: `${dayUsedPct}%` }} />
+                </div>
+              </dd>
+            </div>
+            <div>
+              <dt>Free allowance left today</dt>
+              <dd>{d.state.freeRemainingToday.toLocaleString()} neurons</dd>
+            </div>
+            <div>
+              <dt>Worst case this month</dt>
+              <dd>
+                {usd(d.maxMonthlyUsd)} AI + $5.00 platform = <strong>{usd(d.maxMonthlyUsd + 5)}</strong>
+              </dd>
+            </div>
+          </dl>
+
+          <div className="admin-actions">
+            <button
+              type="button"
+              className={d.state.killed ? 'btn btn-primary btn-sm' : 'btn btn-danger btn-sm'}
+              onClick={() => void toggleKill(!d.state.killed)}
+              disabled={busy}
+            >
+              {d.state.killed ? 'Resume AI generation' : 'Stop all AI generation'}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void tighten(0.5)} disabled={busy}>
+              Halve the caps
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void tighten(2)} disabled={busy}>
+              Double the caps
+            </button>
+          </div>
+
+          <h4 className="admin-subhead">Last 30 days</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>Day</th><th>Calls</th><th>Neurons</th><th>Billable</th></tr>
+            </thead>
+            <tbody>
+              {d.days.slice(0, 10).map((row) => (
+                <tr key={row.day}>
+                  <td>{row.day}</td>
+                  <td>{row.calls}</td>
+                  <td>{row.neurons.toLocaleString()}</td>
+                  <td>{row.billableUsd > 0 ? usd(row.billableUsd) : '—'}</td>
+                </tr>
+              ))}
+              {d.days.length === 0 && <tr><td colSpan={4} className="muted">No usage recorded yet.</td></tr>}
+            </tbody>
+          </table>
+
+          <h4 className="admin-subhead">Where it went</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>Purpose</th><th>Model</th><th>Calls</th><th>Neurons</th></tr>
+            </thead>
+            <tbody>
+              {d.breakdown.slice(0, 12).map((row, i) => (
+                <tr key={`${row.day}-${row.kind}-${row.model}-${i}`}>
+                  <td>{row.kind}</td>
+                  <td className="mono-cell">{row.model.split('/').pop()}</td>
+                  <td>{row.calls}</td>
+                  <td>{row.neurons.toLocaleString()}</td>
+                </tr>
+              ))}
+              {d.breakdown.length === 0 && <tr><td colSpan={4} className="muted">Nothing yet.</td></tr>}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
+  );
 }
 
 function StatsPanel({ adminKey }: { adminKey: string }) {
@@ -240,6 +391,7 @@ export function AdminPage() {
         </label>
       </section>
 
+      <SpendPanel adminKey={adminKey} />
       <StatsPanel adminKey={adminKey} />
       <ModelTester adminKey={adminKey} />
       <RagTester adminKey={adminKey} />

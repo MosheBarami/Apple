@@ -3,8 +3,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
-
-const DAILY: Record<string, number> = { free: 80, pro: 400 };
+import { PLAN_LIMITS } from '../pricing';
 
 export class QuotaDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -23,16 +22,29 @@ export class QuotaDO extends DurableObject<Env> {
     return new Date().toISOString().slice(0, 10);
   }
 
+  private thisMonth(): string {
+    return new Date().toISOString().slice(0, 7);
+  }
+
   private async state(): Promise<QuotaState> {
     const plan = (await this.ctx.storage.get<string>('plan')) ?? 'free';
+    const limits = plan === 'pro' ? PLAN_LIMITS.pro : PLAN_LIMITS.free;
     const day = this.today();
-    const row = this.sql.exec(`select coalesce(sum(sparks),0) as s from ledger where day = ?`, day).one() as { s: number };
-    const daily = DAILY[plan] ?? DAILY.free!;
+    const dayRow = this.sql.exec(`select coalesce(sum(sparks),0) as s from ledger where day = ?`, day).one() as { s: number };
+    const monthRow = this.sql
+      .exec(`select coalesce(sum(sparks),0) as s from ledger where day like ?`, `${this.thisMonth()}%`)
+      .one() as { s: number };
     const tomorrow = new Date();
     tomorrow.setUTCHours(24, 0, 0, 0);
+    // whichever limit bites first is the one the user actually has
+    const dailyLeft = Math.max(0, limits.sparksPerDay - dayRow.s);
+    const monthlyLeft = Math.max(0, limits.sparksPerMonth - monthRow.s);
     return {
-      sparksRemaining: Math.max(0, daily - row.s),
-      sparksDaily: daily,
+      sparksRemaining: Math.min(dailyLeft, monthlyLeft),
+      sparksDaily: limits.sparksPerDay,
+      sparksMonthly: limits.sparksPerMonth,
+      sparksUsedToday: dayRow.s,
+      sparksUsedThisMonth: monthRow.s,
       resetsAtIso: tomorrow.toISOString(),
       plan: plan === 'pro' ? 'pro' : 'free',
     };

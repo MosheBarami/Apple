@@ -1925,3 +1925,74 @@ textarea {
 .rag-preview {
   font-size: 12.5px;
 }
+
+
+/* ---- admin spend panel ---- */
+.spend-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin: 4px 0 16px;
+}
+.spend-grid dt {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.spend-grid dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.meter {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber), var(--violet));
+}
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.admin-subhead {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 18px 0 8px;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.admin-table th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+.mono-cell {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+.btn-danger {
+  background: var(--danger, #f87171);
+  color: #1a0b0b;
+}

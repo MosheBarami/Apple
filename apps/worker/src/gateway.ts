@@ -1,9 +1,14 @@
-// Model gateway: single entry point for all inference. Primary provider is Workers AI
-// (open-weight models, server-side). Registry is KV-overridable so routing changes
-// never require a redeploy. Defensive response normalization because input/output
-// schemas differ per model family.
+// Model gateway: the single entry point for ALL inference in the product.
+//
+// Spend safety is enforced here, not at call sites, so there is no way to spend money by
+// forgetting a check:
+//   1. the kill switch and the global neuron budget are consulted BEFORE any tokens are spent
+//   2. calls run through Cloudflare AI Gateway (caching + independent rate limiting + logs)
+//   3. actual usage is settled back to the budget ledger afterwards
+//   4. there are NO automatic retries — a retry is a second bill for the same request
 import type { Env } from './env';
 import type { GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
+import { estimateNeurons, neuronsFor, MAX_NEURONS_PER_REQUEST } from './pricing';
 
 export interface ModelCfg {
   id: string;
@@ -14,12 +19,28 @@ export interface ModelCfg {
   reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
+/** Thrown when spend policy — not the provider — refuses a call. Callers surface these kindly. */
+export class BudgetError extends Error {
+  constructor(
+    readonly reason: 'killed' | 'daily_cap' | 'monthly_cap' | 'request_too_large',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'BudgetError';
+  }
+}
+
 export const DEFAULT_MODELS: Record<string, ModelCfg> = {
-  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 2500, ctx: 32768, temperature: 0.3 },
-  stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 4500, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 6000, ctx: 128000, temperature: 0.25, reasoningEffort: 'medium' },
-  memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 1200, ctx: 32768, temperature: 0.2 },
-  vision: { id: '@cf/meta/llama-3.2-11b-vision-instruct', nativeTools: false, maxTokens: 1500, ctx: 8192, temperature: 0.3 },
+  // Clay: cheap conversational model. ~5x cheaper per token than the builder model.
+  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 1200, ctx: 32768, temperature: 0.3 },
+  // Stone/Rune: the measured-best builder (97.6 on the Roblox eval suite).
+  stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 2000, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
+  rune: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 2400, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
+  // Cheap worker used for routine agent steps that do not need the flagship (see router).
+  cheap: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 1200, ctx: 32768, temperature: 0.25 },
+  // Housekeeping: memory distillation, summarisation. Never needs the flagship.
+  memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 600, ctx: 32768, temperature: 0.2 },
+  vision: { id: '@cf/meta/llama-3.2-11b-vision-instruct', nativeTools: false, maxTokens: 900, ctx: 8192, temperature: 0.3 },
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
@@ -37,28 +58,59 @@ export async function getModels(env: Env): Promise<Record<string, ModelCfg>> {
   return models;
 }
 
-// -- circuit breaker (per isolate, best effort) ------------------------------
-const breaker = new Map<string, { fails: number; openUntil: number }>();
-function breakerOpen(id: string): boolean {
-  const b = breaker.get(id);
-  return !!b && b.openUntil > Date.now();
-}
-function breakerRecord(id: string, ok: boolean) {
-  const b = breaker.get(id) ?? { fails: 0, openUntil: 0 };
-  if (ok) {
-    b.fails = 0;
-    b.openUntil = 0;
-  } else {
-    b.fails += 1;
-    if (b.fails >= 3) b.openUntil = Date.now() + 30_000;
-  }
-  breaker.set(id, b);
+// ---------------------------------------------------------------------------
+// Budget plumbing
+// ---------------------------------------------------------------------------
+
+function budgetStub(env: Env) {
+  return env.BUDGET_DO.get(env.BUDGET_DO.idFromName('singleton'));
 }
 
-// -- prompted tool-calling fallback ------------------------------------------
+const BUDGET_MESSAGES: Record<string, string> = {
+  daily_cap: "Golem has reached today's shared building capacity. It resets at midnight UTC.",
+  monthly_cap: "Golem has reached this month's shared building capacity.",
+  request_too_large: 'That request needs more context than a single step allows — try narrowing it.',
+  killed: 'AI generation is paused right now.',
+};
+
+async function reserve(env: Env, model: string, neurons: number): Promise<number> {
+  const res = await budgetStub(env).fetch('https://do/reserve', {
+    method: 'POST',
+    body: JSON.stringify({ neurons, model }),
+  });
+  const data = (await res.json()) as { ok: boolean; reserved?: number; reason?: string; message?: string };
+  if (!data.ok) {
+    const reason = (data.reason ?? 'daily_cap') as BudgetError['reason'];
+    throw new BudgetError(reason, data.message ?? BUDGET_MESSAGES[reason] ?? BUDGET_MESSAGES.daily_cap!);
+  }
+  return data.reserved ?? neurons;
+}
+
+async function settle(env: Env, reserved: number, actual: number, model: string, kind: string): Promise<void> {
+  await budgetStub(env)
+    .fetch('https://do/settle', { method: 'POST', body: JSON.stringify({ reserved, actual, model, kind }) })
+    .catch(() => {});
+}
+
+async function release(env: Env, reserved: number): Promise<void> {
+  await budgetStub(env)
+    .fetch('https://do/release', { method: 'POST', body: JSON.stringify({ reserved }) })
+    .catch(() => {});
+}
+
+/** AI Gateway options attached to every env.AI.run call: caching, logging, and cost attribution. */
+function gatewayOpts(env: Env, kind: string, cacheTtl: number) {
+  const id = env.AI_GATEWAY_ID;
+  if (!id) return undefined;
+  return { gateway: { id, cacheTtl, collectLog: true, metadata: { kind } } };
+}
+
+// ---------------------------------------------------------------------------
+// prompted tool-calling fallback (only for models without native tool support)
+// ---------------------------------------------------------------------------
 function promptedToolPreamble(tools: GatewayToolDef[]): string {
-  const list = tools.map((t) => `- ${t.name}: ${t.description}\n  parameters (JSON schema): ${JSON.stringify(t.parameters)}`).join('\n');
-  return `\n\nYou can call tools. Available tools:\n${list}\n\nTo call a tool, reply with ONLY a fenced block:\n\`\`\`tool_call\n{"name": "<tool>", "arguments": { ... }}\n\`\`\`\nOne tool call per reply. When you are finished and no tool is needed, reply with your final answer as plain text (no tool_call block).`;
+  const list = tools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
+  return `\n\nAvailable tools:\n${list}\n\nTo call one, reply with ONLY a fenced block tagged tool_call containing {"name": "<tool>", "arguments": { ... }}. One call per reply. When finished, reply with plain text and no block.`;
 }
 
 function parsePromptedToolCalls(text: string): { calls: GatewayToolCall[]; cleaned: string } {
@@ -80,7 +132,9 @@ function parsePromptedToolCalls(text: string): { calls: GatewayToolCall[]; clean
   return { calls, cleaned: cleaned.trim() };
 }
 
-// -- normalization ------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// response normalization
+// ---------------------------------------------------------------------------
 function extractText(r: any): string {
   if (typeof r === 'string') return r;
   if (typeof r?.response === 'string') return r.response;
@@ -90,9 +144,7 @@ function extractText(r: any): string {
     const parts: string[] = [];
     for (const item of r.output) {
       if (item?.type === 'message' && Array.isArray(item.content)) {
-        for (const c of item.content) {
-          if (typeof c?.text === 'string') parts.push(c.text);
-        }
+        for (const c of item.content) if (typeof c?.text === 'string') parts.push(c.text);
       }
     }
     if (parts.length) return parts.join('');
@@ -120,28 +172,34 @@ function extractToolCalls(r: any): GatewayToolCall[] {
     }
   }
   if (Array.isArray(r?.output)) {
-    for (const item of r.output) {
-      if (item?.type === 'function_call') push(item.name, item.arguments, item.call_id ?? item.id);
-    }
+    for (const item of r.output) if (item?.type === 'function_call') push(item.name, item.arguments, item.call_id ?? item.id);
   }
   return out;
 }
 
-function extractUsage(r: any, req: GatewayRequest, text: string): { inputTokens: number; outputTokens: number } {
+function extractUsage(r: any, inputChars: number, text: string): { inputTokens: number; outputTokens: number } {
   const u = r?.usage ?? r?.result?.usage;
   const inTok = u?.prompt_tokens ?? u?.input_tokens;
   const outTok = u?.completion_tokens ?? u?.output_tokens;
   if (typeof inTok === 'number' && typeof outTok === 'number') return { inputTokens: inTok, outputTokens: outTok };
-  const inputChars = req.messages.reduce((n, m) => n + m.content.length, 0);
-  return { inputTokens: Math.ceil(inputChars / 4), outputTokens: Math.ceil(text.length / 4) };
+  // no usage reported: estimate conservatively so unmetered calls still cost the budget something
+  return { inputTokens: Math.ceil(inputChars / 3.5), outputTokens: Math.ceil(text.length / 3.5) };
 }
 
-// -- main entry ---------------------------------------------------------------
-export async function chat(env: Env, req: GatewayRequest): Promise<GatewayResponse> {
+// ---------------------------------------------------------------------------
+// main entry
+// ---------------------------------------------------------------------------
+export interface ChatOptions {
+  /** what this call is for, used for spend attribution in the admin report */
+  kind?: string;
+  /** seconds; 0 disables caching for this call */
+  cacheTtl?: number;
+}
+
+export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}): Promise<GatewayResponse> {
   const models = await getModels(env);
   const cfg = models[req.model];
   if (!cfg) throw new Error(`unknown model key: ${req.model}`);
-  if (breakerOpen(cfg.id)) throw new Error(`model ${cfg.id} temporarily unavailable (circuit open)`);
 
   const usePrompted = !!req.tools?.length && !cfg.nativeTools;
   let messages = req.messages.map((m) => ({
@@ -157,9 +215,10 @@ export async function chat(env: Env, req: GatewayRequest): Promise<GatewayRespon
     messages = messages.map((m) => (m.role === 'tool' ? { ...m, role: 'user' as const, content: `Tool result:\n${m.content}` } : m));
   }
 
+  const maxTokens = Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens);
   const payload: Record<string, unknown> = {
     messages,
-    max_tokens: req.maxTokens ?? cfg.maxTokens,
+    max_tokens: maxTokens,
     temperature: req.temperature ?? cfg.temperature,
   };
   if (req.tools?.length && cfg.nativeTools) {
@@ -168,35 +227,28 @@ export async function chat(env: Env, req: GatewayRequest): Promise<GatewayRespon
   if (cfg.reasoningEffort) payload.reasoning = { effort: cfg.reasoningEffort };
   if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
 
-  let raw: unknown;
-  let lastErr: unknown;
-  const attempts = 3;
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never);
-      breakerRecord(cfg.id, true);
-      lastErr = null;
-      break;
-    } catch (e) {
-      lastErr = e;
-      const msg = e instanceof Error ? e.message : String(e);
-      // transient provider errors (5xx/8005/capacity) are worth retrying
-      // daily allocation exhausted is NOT transient — fail fast with a typed error
-      if (/4006|daily free allocation|neurons/i.test(msg)) {
-        breakerRecord(cfg.id, false);
-        const err = new Error('CAPACITY_EXHAUSTED');
-        (err as Error & { code?: string }).code = 'CAPACITY_EXHAUSTED';
-        throw err;
-      }
-      const transient = /8005|Internal server error|429|capacity|timeout|3040/i.test(msg);
-      if (!transient || attempt === attempts) {
-        breakerRecord(cfg.id, false);
-        throw new Error(`inference failed (${cfg.id}): ${msg}`);
-      }
-      await new Promise((r) => setTimeout(r, attempt * 1500));
-    }
+  // ---- spend gate: nothing below this line runs without a reservation ----
+  const inputChars = messages.reduce((n, m) => n + m.content.length, 0) + JSON.stringify(payload.tools ?? '').length;
+  const estimate = estimateNeurons(cfg.id, inputChars, maxTokens);
+  if (estimate > MAX_NEURONS_PER_REQUEST) {
+    throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }
-  if (lastErr) throw lastErr;
+  const reserved = await reserve(env, cfg.id, estimate);
+
+  const kind = opts.kind ?? req.model;
+  let raw: unknown;
+  try {
+    // NOTE: exactly one attempt. Retrying inference bills the same work twice; the caller
+    // decides whether a failure is worth another paid attempt.
+    raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never, gatewayOpts(env, kind, opts.cacheTtl ?? 0) as never);
+  } catch (e) {
+    await release(env, reserved);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/4006|daily free allocation|neurons/i.test(msg)) {
+      throw new BudgetError('daily_cap', BUDGET_MESSAGES.daily_cap!);
+    }
+    throw new Error(`inference failed (${cfg.id}): ${msg}`);
+  }
 
   let text = extractText(raw);
   let toolCalls = cfg.nativeTools ? extractToolCalls(raw) : [];
@@ -205,22 +257,50 @@ export async function chat(env: Env, req: GatewayRequest): Promise<GatewayRespon
     toolCalls = parsed.calls;
     text = parsed.cleaned;
   }
-  // NOTE: deliberately NO fence-parsing fallback in native-tool mode. Tool results contain
-  // untrusted content (script sources, Studio logs); if the model quotes a ```tool_call block
-  // from that content, parsing it here would turn quoted text into an executed tool call.
-  const usage = extractUsage(raw, req, text);
+  // NOTE: no fence-parsing fallback in native mode — tool results contain untrusted content and
+  // parsing quoted fences would turn that content into executed tool calls.
+
+  const usage = extractUsage(raw, inputChars, text);
+  const actual = neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens);
+  await settle(env, reserved, actual, cfg.id, kind);
+
   return {
     text,
     toolCalls,
     usage,
+    neurons: actual,
     provider: 'workers-ai',
     model: cfg.id,
     finishReason: toolCalls.length ? 'tool_calls' : 'stop',
   };
 }
 
-export async function embed(env: Env, texts: string[]): Promise<number[][]> {
-  const r = (await env.AI.run('@cf/baai/bge-small-en-v1.5', { text: texts } as never)) as { data?: number[][] };
-  if (!r?.data) throw new Error('embedding failed');
-  return r.data;
+/** Embeddings are cheap but not free, so they are metered on the same ledger. */
+export async function embed(env: Env, texts: string[], kind = 'embed'): Promise<number[][]> {
+  const model = '@cf/baai/bge-small-en-v1.5';
+  const chars = texts.reduce((n, t) => n + t.length, 0);
+  const estimate = Math.max(1, estimateNeurons(model, chars, 0));
+  const reserved = await reserve(env, model, estimate);
+  try {
+    // embeddings are deterministic, so a long cache is safe and repeat queries become free
+    const r = (await env.AI.run(model, { text: texts } as never, gatewayOpts(env, kind, 86_400) as never)) as {
+      data?: number[][];
+    };
+    if (!r?.data) throw new Error('embedding failed');
+    await settle(env, reserved, neuronsFor(model, Math.ceil(chars / 3.5), 0), model, kind);
+    return r.data;
+  } catch (e) {
+    await release(env, reserved);
+    throw e;
+  }
+}
+
+export async function budgetState(env: Env): Promise<unknown> {
+  return (await budgetStub(env).fetch('https://do/state')).json();
+}
+export async function budgetReport(env: Env): Promise<unknown> {
+  return (await budgetStub(env).fetch('https://do/report')).json();
+}
+export async function setKillSwitch(env: Env, killed: boolean, reason?: string): Promise<unknown> {
+  return (await budgetStub(env).fetch('https://do/kill', { method: 'POST', body: JSON.stringify({ killed, reason }) })).json();
 }

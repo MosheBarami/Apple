@@ -24,7 +24,7 @@ interface ToolImpl {
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
 }
 
-const MAX_RESULT_CHARS = 7000;
+const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
@@ -199,10 +199,14 @@ export const TOOLS: Record<string, ToolImpl> = {
   },
 };
 
-export function toolDefs(studioConnected: boolean): GatewayToolDef[] {
-  return Object.values(TOOLS)
-    .filter((t) => studioConnected || !t.studio)
-    .map((t) => t.def);
+export function toolNames(): string[] {
+  return Object.keys(TOOLS);
+}
+
+export function toolDefs(studioConnected: boolean, allowed?: Set<string>): GatewayToolDef[] {
+  return Object.entries(TOOLS)
+    .filter(([name, t]) => (studioConnected || !t.studio) && (!allowed || allowed.has(name)))
+    .map(([, t]) => t.def);
 }
 
 export async function runTool(ctx: AgentCtx, name: string, argsJson: string): Promise<{ summary: string; resultForLlm: string; ok: boolean }> {

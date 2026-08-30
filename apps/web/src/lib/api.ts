@@ -83,6 +83,47 @@ export interface AdminCounterRow {
 export const adminStats = (adminKey: string) =>
   request<{ counters: AdminCounterRow[] }>('/api/admin/stats', {}, { 'X-Admin-Key': adminKey });
 
+export interface SpendReport {
+  state: {
+    day: string;
+    month: string;
+    dayNeurons: number;
+    dayPending: number;
+    monthBillableNeurons: number;
+    killed: boolean;
+    killedReason: string | null;
+    dayRemainingFraction: number;
+    estimatedMonthUsd: number;
+    freeRemainingToday: number;
+  };
+  limits: {
+    freeNeuronsPerDay: number;
+    billableNeuronsPerDay: number;
+    billableNeuronsPerMonth: number;
+    maxNeuronsPerRequest: number;
+  };
+  maxMonthlyUsd: number;
+  days: { day: string; neurons: number; calls: number; billableNeurons: number; billableUsd: number }[];
+  breakdown: { day: string; model: string; kind: string; neurons: number; calls: number; usd: number }[];
+}
+
+export const adminSpend = (adminKey: string) =>
+  request<SpendReport>('/api/admin/spend', {}, { 'X-Admin-Key': adminKey });
+
+export const adminKillSwitch = (adminKey: string, killed: boolean, reason?: string) =>
+  request<{ ok: boolean; killed: boolean }>(
+    '/api/admin/kill-switch',
+    { method: 'POST', body: JSON.stringify({ killed, reason }) },
+    { 'X-Admin-Key': adminKey },
+  );
+
+export const adminSpendLimits = (adminKey: string, limits: Record<string, number>) =>
+  request<{ ok: boolean; limits: Record<string, number> }>(
+    '/api/admin/spend-limits',
+    { method: 'POST', body: JSON.stringify(limits) },
+    { 'X-Admin-Key': adminKey },
+  );
+
 export interface ModelTestResponse {
   ok: boolean;
   ms: number;

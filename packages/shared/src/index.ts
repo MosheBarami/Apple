@@ -150,6 +150,9 @@ export type ServerMsg =
 export interface QuotaState {
   sparksRemaining: number;
   sparksDaily: number;
+  sparksMonthly: number;
+  sparksUsedToday: number;
+  sparksUsedThisMonth: number;
   resetsAtIso: string;
   plan: 'free' | 'pro';
 }
@@ -225,15 +228,22 @@ export interface GatewayResponse {
   text: string;
   toolCalls: GatewayToolCall[];
   usage: { inputTokens: number; outputTokens: number };
+  /** what this call actually cost, in Cloudflare neurons */
+  neurons: number;
   provider: string;
   model: string;
   finishReason: 'stop' | 'tool_calls' | 'length' | 'error';
 }
 
-export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; sparksPerRequest: number }> = {
-  clay: { name: 'Clay', blurb: 'Fast answers and small edits', sparksPerRequest: 1 },
-  stone: { name: 'Stone', blurb: 'Builds features across your project', sparksPerRequest: 4 },
-  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', sparksPerRequest: 10 },
+/**
+ * Sparks are billed from the neurons a run actually consumes (1 Spark = 90 neurons), so these
+ * are *typical measured* costs shown in the UI, not fixed prices. Measured 2026-08-30:
+ * Clay ~29 neurons, Stone answer-only ~139, Stone full build+verify in Studio ~1,266.
+ */
+export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; sparksPerRequest: number; typicalSparks: string }> = {
+  clay: { name: 'Clay', blurb: 'Fast answers and small edits', sparksPerRequest: 1, typicalSparks: '~1' },
+  stone: { name: 'Stone', blurb: 'Builds features across your project', sparksPerRequest: 2, typicalSparks: '2-15' },
+  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', sparksPerRequest: 3, typicalSparks: '10-30' },
 };
 
 export const PROTOCOL_VERSION = 1;

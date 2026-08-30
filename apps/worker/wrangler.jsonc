@@ -8,10 +8,14 @@
       { "name": "SESSION_DO", "class_name": "SessionDO" },
       { "name": "QUOTA_DO", "class_name": "QuotaDO" },
       { "name": "PAIRING_DO", "class_name": "PairingDO" },
-      { "name": "ADMIN_DO", "class_name": "AdminDO" }
+      { "name": "ADMIN_DO", "class_name": "AdminDO" },
+      { "name": "BUDGET_DO", "class_name": "BudgetDO" }
     ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionDO", "QuotaDO", "PairingDO", "AdminDO"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["SessionDO", "QuotaDO", "PairingDO", "AdminDO"] },
+    { "tag": "v2", "new_sqlite_classes": ["BudgetDO"] }
+  ],
   "ai": { "binding": "AI" },
   "d1_databases": [{ "binding": "CORPUS", "database_name": "golem-corpus", "database_id": "32c9471e-a7d7-49ee-a8fe-0a7def2c68bd" }],
   "kv_namespaces": [{ "binding": "KV", "id": "cc341a7db4d748139f161fdc292e6e84" }],
@@ -19,7 +23,8 @@
   "vars": {
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcXZ5aWpzdnprdXdkZHlodHBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDEzMTMsImV4cCI6MjEwMzY3NzMxM30.M2_tic6p0oRItxYg4VvsDtM8UDmi4wYd22ouH2mEwMw",
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    "AI_GATEWAY_ID": "golem"
   },
   "observability": { "enabled": true }
 }
