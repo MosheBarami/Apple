@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+.wrangler/
+.astro/
+*.rbxm
+!apps/plugin/release/*.rbxm
+.dev.vars
+secrets/
+packages/corpus/data/
+packages/corpus/raw/
+packages/evals/results/raw/
