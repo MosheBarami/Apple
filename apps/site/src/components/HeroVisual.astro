@@ -313,13 +313,19 @@
       ]);
 
       const scene = new THREE.Scene();
-      const rect = mount.getBoundingClientRect();
-      const camera = new THREE.PerspectiveCamera(38, rect.width / rect.height, 0.1, 100);
-      camera.position.set(0, 1.1, 4.2);
+      // the mount is display:none until activated, so measure the always-laid-out wrapper
+      const measure = () => {
+        const host = (mount.parentElement ?? mount).getBoundingClientRect();
+        const w = Math.round(host.width) || 520;
+        return { w, h: Math.round(host.height) || w };
+      };
+      const first = measure();
+      const camera = new THREE.PerspectiveCamera(38, first.w / first.h, 0.1, 100);
+      camera.position.set(0, 0.15, 5.4);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(rect.width, rect.height);
+      renderer.setSize(first.w, first.h);
       mount.appendChild(renderer.domElement);
 
       scene.add(new THREE.AmbientLight(0x8a94a6, 0.7));
@@ -336,7 +342,7 @@
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
-      const scale = 2.4 / Math.max(size.x, size.y, size.z);
+      const scale = 3.1 / Math.max(size.x, size.y, size.z);
       model.scale.setScalar(scale);
       box.setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
@@ -347,6 +353,12 @@
       renderer.render(scene, camera);
       mount.classList.add('active');
       fallback.classList.add('hidden');
+      // now that the mount is visible, re-measure in case layout differs
+      const shown = measure();
+      camera.aspect = shown.w / shown.h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(shown.w, shown.h);
+      renderer.render(scene, camera);
 
       if (!reduced.matches) {
         const spin = () => {
@@ -358,10 +370,10 @@
       }
 
       window.addEventListener('resize', () => {
-        const r = mount.getBoundingClientRect();
-        camera.aspect = r.width / r.height;
+        const r = measure();
+        camera.aspect = r.w / r.h;
         camera.updateProjectionMatrix();
-        renderer.setSize(r.width, r.height);
+        renderer.setSize(r.w, r.h);
         renderer.render(scene, camera);
       });
     } catch {
