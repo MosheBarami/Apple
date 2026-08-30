@@ -210,19 +210,27 @@ app.get('/api/admin/stats', async (c) => {
 });
 
 app.post('/api/admin/model-test', async (c) => {
-  const body = await c.req.json<{ model: string; prompt: string; tools?: boolean }>();
+  const body = await c.req.json<{ model: string; prompt: string; tools?: boolean; system?: string; rag?: boolean; maxTokens?: number }>();
   const t0 = Date.now();
   try {
+    let userContent = body.prompt;
+    if (body.rag) {
+      const hits = await searchDocs(c.env, body.prompt.slice(0, 500), 4).catch(() => []);
+      if (hits.length) {
+        const ctxBlock = hits.map((h) => `## ${h.title}\n${h.text.slice(0, 1200)}`).join('\n\n');
+        userContent = `Relevant official Roblox documentation:\n\n${ctxBlock}\n\n---\n\n${body.prompt}`;
+      }
+    }
     const res = await llmChat(c.env, {
       model: body.model,
       messages: [
-        { role: 'system', content: 'You are a helpful assistant. Be brief.' },
-        { role: 'user', content: body.prompt },
+        { role: 'system', content: body.system ?? 'You are a helpful assistant. Be brief.' },
+        { role: 'user', content: userContent },
       ],
       tools: body.tools
         ? [{ name: 'echo_tool', description: 'Echo a message back (test tool)', parameters: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] } }]
         : undefined,
-      maxTokens: 400,
+      maxTokens: body.maxTokens ?? 1600,
     });
     return c.json({ ok: true, ms: Date.now() - t0, ...res });
   } catch (e) {

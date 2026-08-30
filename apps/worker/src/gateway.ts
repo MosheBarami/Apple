@@ -169,13 +169,27 @@ export async function chat(env: Env, req: GatewayRequest): Promise<GatewayRespon
   if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
 
   let raw: unknown;
-  try {
-    raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never);
-    breakerRecord(cfg.id, true);
-  } catch (e) {
-    breakerRecord(cfg.id, false);
-    throw new Error(`inference failed (${cfg.id}): ${e instanceof Error ? e.message : String(e)}`);
+  let lastErr: unknown;
+  const attempts = 3;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never);
+      breakerRecord(cfg.id, true);
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+      const msg = e instanceof Error ? e.message : String(e);
+      // transient provider errors (5xx/8005/capacity) are worth retrying
+      const transient = /8005|Internal server error|429|capacity|timeout|3040/i.test(msg);
+      if (!transient || attempt === attempts) {
+        breakerRecord(cfg.id, false);
+        throw new Error(`inference failed (${cfg.id}): ${msg}`);
+      }
+      await new Promise((r) => setTimeout(r, attempt * 1500));
+    }
   }
+  if (lastErr) throw lastErr;
 
   let text = extractText(raw);
   let toolCalls = cfg.nativeTools ? extractToolCalls(raw) : [];

@@ -12,6 +12,9 @@ export type PropValue =
   | { t: 'number'; v: number }
   | { t: 'bool'; v: boolean }
   | { t: 'Vector3'; v: [number, number, number] }
+  | { t: 'Vector2'; v: [number, number] }
+  | { t: 'NumberRange'; v: [number, number] }
+  | { t: 'Rect'; v: [number, number, number, number] }
   | { t: 'CFrame'; v: number[] } // 12 components
   | { t: 'Color3'; v: [number, number, number] } // 0..1
   | { t: 'UDim2'; v: [number, number, number, number] }

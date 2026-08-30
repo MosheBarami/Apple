@@ -11,6 +11,8 @@ local CONTAINERS = {
 }
 
 local SKIP_CLASSES = { Terrain = true, Camera = true }
+-- containers that cannot be destroyed/recreated; restore merges into them instead
+local MERGE_CLASSES = { StarterPlayerScripts = true, StarterCharacterScripts = true }
 
 local function propList(inst: Instance): { string }
 	local props = {}
@@ -187,16 +189,35 @@ function Serializer.restore(snapshot: any): any
 		i.Parent = parent
 	end
 
+	local function clearChildren(inst: Instance)
+		for _, child in inst:GetChildren() do
+			if SKIP_CLASSES[child.ClassName] then
+				-- keep
+			elseif MERGE_CLASSES[child.ClassName] then
+				clearChildren(child)
+			else
+				pcall(function() child:Destroy() end)
+			end
+		end
+	end
+	local function buildInto(node: any, parent: Instance)
+		if MERGE_CLASSES[node.class] then
+			local existing = parent:FindFirstChildOfClass(node.class)
+			if existing then
+				if node.children then
+					for _, ch in node.children do buildInto(ch, existing) end
+				end
+				return
+			end
+		end
+		build(node, parent)
+	end
 	for _, container in snapshot.containers do
 		local ok, svc = pcall(function() return (game :: any):GetService(container.service) end)
 		if ok and svc then
-			for _, child in (svc :: Instance):GetChildren() do
-				if not SKIP_CLASSES[child.ClassName] then
-					child:Destroy()
-				end
-			end
+			clearChildren(svc :: Instance)
 			for _, node in container.children do
-				build(node, svc :: Instance)
+				buildInto(node, svc :: Instance)
 			end
 		end
 	end

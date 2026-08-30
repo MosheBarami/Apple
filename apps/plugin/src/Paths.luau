@@ -97,6 +97,9 @@ function Paths.decode(pv: any): any
 	elseif t == "number" then return tonumber(v)
 	elseif t == "bool" then return v == true
 	elseif t == "Vector3" then return Vector3.new(v[1], v[2], v[3])
+	elseif t == "Vector2" then return Vector2.new(v[1], v[2])
+	elseif t == "NumberRange" then return NumberRange.new(v[1], v[2] or v[1])
+	elseif t == "Rect" then return Rect.new(v[1], v[2], v[3], v[4])
 	elseif t == "CFrame" then return CFrame.new(table.unpack(v))
 	elseif t == "Color3" then return Color3.new(v[1], v[2], v[3])
 	elseif t == "UDim2" then return UDim2.new(v[1], v[2], v[3], v[4])
@@ -120,6 +123,8 @@ function Paths.encode(value: any, depth: number?): any
 	elseif ty == "number" then return { t = "number", v = value }
 	elseif ty == "boolean" then return { t = "bool", v = value }
 	elseif ty == "Vector3" then return { t = "Vector3", v = { value.X, value.Y, value.Z } }
+	elseif ty == "Vector2" then return { t = "Vector2", v = { value.X, value.Y } }
+	elseif ty == "NumberRange" then return { t = "NumberRange", v = { value.Min, value.Max } }
 	elseif ty == "CFrame" then return { t = "CFrame", v = { value:GetComponents() } }
 	elseif ty == "Color3" then return { t = "Color3", v = { value.R, value.G, value.B } }
 	elseif ty == "UDim2" then return { t = "UDim2", v = { value.X.Scale, value.X.Offset, value.Y.Scale, value.Y.Offset } }
@@ -141,8 +146,9 @@ function Paths.encode(value: any, depth: number?): any
 	return { t = "string", v = tostring(value) }
 end
 
-function Paths.setProp(inst: Instance, name: string, pv: PropValue)
+function Paths.setProp(inst: Instance, name: string, pv: PropValue): boolean
 	(inst :: any)[name] = Paths.decode(pv)
+	return true
 end
 
 return Paths

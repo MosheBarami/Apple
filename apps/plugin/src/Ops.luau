@@ -45,23 +45,29 @@ local function eachScript(root: Instance?, fn: (Instance) -> boolean?)
 	end
 end
 
-local function createFromSpec(spec: any, parentOverride: Instance?): Instance
+local function createFromSpec(spec: any, parentOverride: Instance?, issues: { string }): Instance
 	local parent = parentOverride or Paths.resolve(spec.parent)
 	local inst = Instance.new(spec.className)
 	inst.Name = spec.name or spec.className
 	if spec.props then
 		for p, pv in spec.props do
-			Paths.setProp(inst, p, pv)
+			local ok, err = pcall(Paths.setProp, inst, p, pv)
+			if not ok then
+				table.insert(issues, ("%s.%s: %s"):format(inst.Name, p, tostring(err)))
+			end
 		end
 	end
 	if spec.attributes then
 		for k, pv in spec.attributes do
-			inst:SetAttribute(k, Paths.decode(pv))
+			local ok, err = pcall(function() inst:SetAttribute(k, Paths.decode(pv)) end)
+			if not ok then
+				table.insert(issues, ("%s@%s: %s"):format(inst.Name, k, tostring(err)))
+			end
 		end
 	end
 	if spec.children then
 		for _, ch in spec.children do
-			createFromSpec(ch, inst)
+			createFromSpec(ch, inst, issues)
 		end
 	end
 	inst.Parent = parent
@@ -195,29 +201,37 @@ end
 
 handlers.create_instances = function(op)
 	local created = {}
+	local issues = {}
 	for _, spec in op.items do
-		local inst = createFromSpec(spec, nil)
+		local inst = createFromSpec(spec, nil, issues)
 		table.insert(created, Paths.fullPath(inst))
 	end
-	return { created = created }
+	local result: any = { created = created }
+	if #issues > 0 then
+		result.propIssues = issues -- instances were still created; fix these with set_properties
+	end
+	return result
 end
 
 handlers.set_props = function(op)
 	local inst = Paths.resolve(op.path)
 	local set = {}
+	local issues = {}
 	if op.props then
 		for p, pv in op.props do
-			Paths.setProp(inst, p, pv)
-			table.insert(set, p)
+			local ok, err = pcall(Paths.setProp, inst, p, pv)
+			if ok then table.insert(set, p) else table.insert(issues, p .. ": " .. tostring(err)) end
 		end
 	end
 	if op.attributes then
 		for k, pv in op.attributes do
-			inst:SetAttribute(k, Paths.decode(pv))
-			table.insert(set, "@" .. k)
+			local ok, err = pcall(function() inst:SetAttribute(k, Paths.decode(pv)) end)
+			if ok then table.insert(set, "@" .. k) else table.insert(issues, "@" .. k .. ": " .. tostring(err)) end
 		end
 	end
-	return { path = op.path, set = set }
+	local result: any = { path = op.path, set = set }
+	if #issues > 0 then result.propIssues = issues end
+	return result
 end
 
 handlers.delete_instances = function(op)

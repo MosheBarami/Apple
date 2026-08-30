@@ -23,7 +23,7 @@ export function buildPrompt(system, prompt) {
  * @returns {Promise<{ok: true, ms: number, text: string, usage?: object, raw: object}>}
  * @throws {TransportError} on network failure, non-JSON body, HTTP error, or {ok:false}.
  */
-export async function callModel({ apiBase, adminKey, model, prompt, system, timeoutMs = 120_000, fetchImpl = fetch }) {
+export async function callModel({ apiBase, adminKey, model, prompt, system, rag = false, timeoutMs = 120_000, fetchImpl = fetch }) {
   const url = `${apiBase.replace(/\/+$/, '')}/api/admin/model-test`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(new Error(`timeout after ${timeoutMs}ms`)), timeoutMs);
@@ -32,7 +32,7 @@ export async function callModel({ apiBase, adminKey, model, prompt, system, time
     res = await fetchImpl(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
-      body: JSON.stringify({ model, prompt: buildPrompt(system, prompt) }),
+      body: JSON.stringify({ model, prompt: buildPrompt(system, prompt), rag }),
       signal: ctrl.signal,
     });
   } catch (e) {

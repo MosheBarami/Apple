@@ -215,12 +215,16 @@ export class SessionDO extends DurableObject<Env> {
     if (path === '/info') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
       const msgs = this.sql.exec(`select count(*) as c from messages`).one() as { c: number };
+      const oplog = this.sql
+        .exec(`select op_id, kind, ok, summary, created_at from oplog order by id desc limit 25`)
+        .toArray();
       return json({
         bind,
         agentStatus: agent?.status ?? 'idle',
         messages: msgs.c,
         pluginConnected: await this.pluginConnected(),
         queuedOps: this.opQueue.length,
+        oplog,
       });
     }
 
@@ -328,8 +332,7 @@ export class SessionDO extends DurableObject<Env> {
 
     // auto-checkpoint before builder modes touch the project
     if (studioConnected && mode !== 'clay') {
-      const cp = await this.createCheckpoint('before Golem changes', 'pre_agent');
-      if (!('error' in cp)) this.broadcast({ type: 'checkpoint', checkpoint: cp });
+      await this.createCheckpoint('before Golem changes', 'pre_agent'); // broadcasts internally
     }
     await this.ctx.storage.setAlarm(Date.now() + 10);
   }

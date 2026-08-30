@@ -281,3 +281,20 @@ end)
 if session then
 	startPolling()
 end
+
+-- Headless pairing: a StringValue named GolemPairingCode in ServerStorage pairs
+-- automatically (requires edit access to the place — same trust level as any plugin).
+task.spawn(function()
+	local ServerStorage = game:GetService("ServerStorage")
+	for _ = 1, 60 do
+		if connected then return end
+		local codeValue = ServerStorage:FindFirstChild("GolemPairingCode")
+		if codeValue and codeValue:IsA("StringValue") and #codeValue.Value >= 4 then
+			local code = codeValue.Value
+			codeValue:Destroy()
+			claimCode((string.gsub(string.upper(code), "[^A-Z0-9]", "")))
+			return
+		end
+		task.wait(2)
+	end
+end)
