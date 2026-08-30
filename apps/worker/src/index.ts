@@ -16,6 +16,7 @@ type Vars = { user: AuthedUser };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 const VERSION = '0.1.0';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------- helpers
 function sessionStub(env: Env, projectId: string) {
@@ -84,13 +85,16 @@ app.get('/api/health', async (c) => {
 // ---------------------------------------------------------------- project session routes
 async function withOwnedProject(c: { env: Env; get: (k: 'user') => AuthedUser }, projectId: string) {
   const user = c.get('user');
+  if (!UUID_RE.test(projectId)) return null;
   const project = await getOwnedProject(c.env, user.jwt, projectId);
   if (!project) return null;
-  const stub = sessionStub(c.env, projectId);
-  await stub.fetch('https://do/init', {
+  // address the DO by the canonical row id so casing/encoding variants cannot fan out DOs
+  const stub = sessionStub(c.env, project.id);
+  const init = await stub.fetch('https://do/init', {
     method: 'POST',
-    body: JSON.stringify({ projectId, projectName: project.name, ownerId: user.userId }),
+    body: JSON.stringify({ projectId: project.id, projectName: project.name, ownerId: user.userId }),
   });
+  if (!init.ok) return null; // owner mismatch on a recycled id — refuse
   return { user, project, stub };
 }
 
@@ -173,8 +177,13 @@ app.post('/api/studio/claim', async (c) => {
 app.post('/api/studio/poll', async (c) => {
   const token = c.req.header('X-Golem-Token') ?? '';
   const dot = token.indexOf('.');
-  if (dot < 1) return c.json({ error: 'invalid token' }, 401);
+  if (dot < 1 || token.length > 200) return c.json({ error: 'invalid token' }, 401);
   const projectId = token.slice(0, dot);
+  // reject before touching storage: an unauthenticated caller must not be able to
+  // materialize Durable Objects for arbitrary ids
+  if (!UUID_RE.test(projectId) || token.length - dot - 1 !== 48) return c.json({ error: 'invalid token' }, 401);
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  if (ipLimited(`poll:${ip}`, 400)) return c.json({ error: 'slow down' }, 429);
   const stub = sessionStub(c.env, projectId);
   const headers = new Headers({ 'X-Golem-Token': token, 'Content-Type': 'application/json' });
   return stub.fetch('https://do/plugin/poll', { method: 'POST', headers, body: await c.req.raw.text() });
@@ -197,8 +206,16 @@ app.get('/api/me/usage', async (c) => {
 });
 
 app.get('/api/docs/search', async (c) => {
-  const q = c.req.query('q') ?? '';
+  const q = (c.req.query('q') ?? '').slice(0, 300);
   if (!q.trim()) return c.json({ hits: [] });
+  // embeddings cost neurons, so this is metered like any other inference
+  const user = c.get('user');
+  const spend = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
+    method: 'POST',
+    body: JSON.stringify({ sparks: 1, kind: 'docs_search' }),
+  });
+  const { ok } = (await spend.json()) as { ok: boolean };
+  if (!ok) return c.json({ error: 'Daily Sparks used up', hits: [] }, 429);
   const hits = await searchDocs(c.env, q, 6);
   return c.json({ hits });
 });

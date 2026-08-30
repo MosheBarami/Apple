@@ -205,14 +205,9 @@ export async function chat(env: Env, req: GatewayRequest): Promise<GatewayRespon
     toolCalls = parsed.calls;
     text = parsed.cleaned;
   }
-  if (cfg.nativeTools && !toolCalls.length && text) {
-    // some models emit prompted-style calls even in native mode; recover them
-    const parsed = parsePromptedToolCalls(text);
-    if (parsed.calls.length) {
-      toolCalls = parsed.calls;
-      text = parsed.cleaned;
-    }
-  }
+  // NOTE: deliberately NO fence-parsing fallback in native-tool mode. Tool results contain
+  // untrusted content (script sources, Studio logs); if the model quotes a ```tool_call block
+  // from that content, parsing it here would turn quoted text into an executed tool call.
   const usage = extractUsage(raw, req, text);
   return {
     text,

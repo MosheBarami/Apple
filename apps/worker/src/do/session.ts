@@ -43,6 +43,9 @@ interface AgentState {
 const STEP_LIMITS: Record<GolemMode, number> = { clay: 4, stone: 14, rune: 32 };
 const PLUGIN_TIMEOUT_MS = 9000;
 const STEP_STALE_MS = 180_000;
+const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
+const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
+const MAX_PROMPT_CHARS = 120_000; // keep the growing agent transcript bounded
 
 export class SessionDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -119,8 +122,10 @@ export class SessionDO extends DurableObject<Env> {
     if (path === '/ws') {
       const userId = req.headers.get('X-User-Id');
       if (userId !== bind.ownerId) return json({ error: 'forbidden' }, 403);
+      // the JWT is kept only in memory for the lifetime of this DO instance so a
+      // background memory sync can use it; it is never written to durable storage
       const jwt = req.headers.get('X-User-Jwt');
-      if (jwt) await this.ctx.storage.put('lastJwt', jwt);
+      if (jwt) this.liveJwt = jwt;
       const pair = new WebSocketPair();
       const [client, server] = [pair[0], pair[1]];
       this.ctx.acceptWebSocket(server, ['client']);
@@ -141,14 +146,17 @@ export class SessionDO extends DurableObject<Env> {
 
     if (path === '/plugin/register' && req.method === 'POST') {
       const { tokenHash } = (await req.json()) as { tokenHash: string };
-      await this.ctx.storage.put('pluginTokenHash', tokenHash);
+      // a fresh pairing supersedes any previous plugin token for this project
+      await this.ctx.storage.put({ pluginTokenHash: tokenHash, pluginTokenIssuedAt: Date.now() });
       return json({ ok: true });
     }
 
     if (path === '/plugin/poll' && req.method === 'POST') {
       const token = req.headers.get('X-Golem-Token') ?? '';
       const expect = await this.ctx.storage.get<string>('pluginTokenHash');
-      if (!expect || (await sha256hex(token)) !== expect) return json({ error: 'invalid token' }, 401);
+      const issuedAt = (await this.ctx.storage.get<number>('pluginTokenIssuedAt')) ?? 0;
+      if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS) return json({ error: 'token expired' }, 401);
+      if (!(await timingSafeEqual(await sha256hex(token), expect))) return json({ error: 'invalid token' }, 401);
       const body = (await req.json()) as PluginPollRequest;
       return this.handlePluginPoll(body);
     }
@@ -390,6 +398,12 @@ export class SessionDO extends DurableObject<Env> {
       }
       agent.sparksSpent += 1;
     }
+    // keep the transcript bounded: drop the oldest tool exchanges, never the system prompt
+    let promptChars = agent.llm.reduce((n, m) => n + m.content.length, 0);
+    while (promptChars > MAX_PROMPT_CHARS && agent.llm.length > 4) {
+      const removed = agent.llm.splice(1, 1)[0];
+      promptChars -= removed?.content.length ?? 0;
+    }
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
 
@@ -487,9 +501,11 @@ export class SessionDO extends DurableObject<Env> {
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error });
     // background memory distillation (only after substantive runs)
-    if (agent.trace.length > 0 || reason === 'done') {
+    if (agent.trace.length > 2 && reason === 'done') {
+      // distillation is a real model call, so it is metered like any other
+      const spend = await this.quotaSpend(agent.userId, 1, 'memory');
+      if (!spend.ok) return;
       this.ctx.waitUntil?.(this.updateMemory().catch(() => {}));
-      // DurableObjectState has waitUntil in newer runtimes; fall back to inline
       if (!this.ctx.waitUntil) await this.updateMemory().catch(() => {});
     }
   }
@@ -517,7 +533,7 @@ export class SessionDO extends DurableObject<Env> {
         const facts = Array.isArray(parsed.facts) ? parsed.facts.slice(0, 12).map(String) : memory.facts;
         await this.ctx.storage.put('memory', { summary: parsed.summary.slice(0, 3000), facts });
         // best-effort sync to Supabase registry with the user's own JWT
-        const jwt = await this.ctx.storage.get<string>('lastJwt');
+        const jwt = this.liveJwt;
         const bind = await this.bind();
         if (jwt && bind) {
           await fetch(`${this.env.SUPABASE_URL}/rest/v1/projects?id=eq.${bind.projectId}`, {
@@ -552,6 +568,7 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private pluginSeenRecently = false;
+  private liveJwt: string | null = null;
 
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
@@ -632,6 +649,9 @@ export class SessionDO extends DurableObject<Env> {
     const snap = await this.execStudioOp({ op: 'snapshot', root: 'game', includeScripts: true }, 60_000);
     if (!snap.ok) return { error: snap.error ?? 'snapshot failed' };
     const payload = JSON.stringify(snap.data);
+    if (payload.length > MAX_SNAPSHOT_BYTES) {
+      return { error: `This project is too large to checkpoint (${Math.round(payload.length / 1e6)} MB). Golem still edits it normally — use Studio's own undo for large rollbacks.` };
+    }
     const gz = await gzip(payload);
     const id = crypto.randomUUID();
     const meta = (snap.data ?? {}) as { scriptCount?: number; instanceCount?: number };
@@ -706,6 +726,13 @@ export class SessionDO extends DurableObject<Env> {
 // ---------------------------------------------------------------------- utils
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 async function sha256hex(s: string): Promise<string> {

@@ -31,7 +31,16 @@ function contentTypeFor(path: string): string {
 export async function serveStatic(env: Env, req: Request): Promise<Response> {
   if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('method not allowed', { status: 405 });
   const url = new URL(req.url);
-  let path = decodeURIComponent(url.pathname);
+  let path: string;
+  try {
+    path = decodeURIComponent(url.pathname);
+  } catch {
+    return new Response('bad request', { status: 400 }); // malformed %-encoding
+  }
+  // control characters (tab/CR/LF) would let two different requests share a cache key
+  if (/[\u0000-\u001f\u007f]/.test(path) || path.includes('..') || path.length > 512) {
+    return new Response('bad request', { status: 400 });
+  }
   if (path.endsWith('/')) path += 'index.html';
 
   const cache = caches.default;

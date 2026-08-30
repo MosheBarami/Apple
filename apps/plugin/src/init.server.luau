@@ -282,21 +282,24 @@ if session then
 	startPolling()
 end
 
--- Headless pairing: dropping a StringValue named GolemPairingCode into ServerStorage
--- pairs (or re-pairs to a different project) without using the dock UI. Requires edit
--- access to the place, i.e. the same trust level any plugin already has.
-task.spawn(function()
-	local ServerStorage = game:GetService("ServerStorage")
-	while true do
-		local codeValue = ServerStorage:FindFirstChild("GolemPairingCode")
-		if codeValue and codeValue:IsA("StringValue") and #codeValue.Value >= 4 then
-			local code = string.gsub(string.upper(codeValue.Value), "[^A-Z0-9]", "")
-			codeValue:Destroy()
-			if connected then
-				disconnectSession("Switching project…")
+-- Headless pairing (developer convenience, OFF by default).
+-- A place-resident script could otherwise drop a StringValue and silently re-point this
+-- Studio at somebody else's project, which would hand them code execution here. So it is
+-- gated behind an explicit per-machine opt-in and never re-points an active session.
+if plugin:GetSetting("golem_allow_headless_pairing") == true then
+	task.spawn(function()
+		local ServerStorage = game:GetService("ServerStorage")
+		while true do
+			if not connected then
+				local codeValue = ServerStorage:FindFirstChild("GolemPairingCode")
+				if codeValue and codeValue:IsA("StringValue") and #codeValue.Value >= 4 then
+					local code = string.gsub(string.upper(codeValue.Value), "[^A-Z0-9]", "")
+					codeValue:Destroy()
+					warn("[Golem] headless pairing opt-in is enabled; claiming code from ServerStorage")
+					claimCode(code)
+				end
 			end
-			claimCode(code)
+			task.wait(2)
 		end
-		task.wait(2)
-	end
-end)
+	end)
+end
