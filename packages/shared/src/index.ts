@@ -58,8 +58,8 @@ export type StudioOp =
   | { op: 'camera_focus'; path: string }
   | { op: 'viewport_info' } // camera cframe, viewport size, spatial summary
   | { op: 'screenshot'; target?: string } // best-effort; plugin reports capability
-  | { op: 'snapshot'; root: string; includeScripts?: boolean } // serialize subtree -> chunked upload
-  | { op: 'restore'; snapshotChunks: number; root: string } // body chunks fetched separately
+  | { op: 'snapshot'; root: string; includeScripts?: boolean } // serialize subtree
+  | { op: 'restore'; root: string; snapshot: unknown } // apply a snapshot payload
   | { op: 'insert_asset'; assetId: number; parent: string }
   | { op: 'undo_waypoint'; name: string }; // explicit ChangeHistoryService waypoint
 
