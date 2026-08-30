@@ -130,11 +130,28 @@ async function release(env: Env, reserved: number): Promise<void> {
     .catch(() => {});
 }
 
-/** AI Gateway options attached to every env.AI.run call: caching, logging, and cost attribution. */
-function gatewayOpts(env: Env, kind: string, cacheTtl: number) {
+/**
+ * Options attached to every env.AI.run call: session affinity, caching, logging, cost attribution.
+ *
+ * SESSION AFFINITY IS WHY cached_tokens WAS ALWAYS 0. Workers AI does prefix caching — it reuses
+ * the prefill tensors for the shared prefix of consecutive requests and bills those tokens at a
+ * discounted cached rate — but only when consecutive requests land on the same model instance, and
+ * that requires the `x-session-affinity` header. Golem sent none, so every step re-prefilled an
+ * identical ~5,200-token prefix of system prompt plus tool definitions from cold.
+ * https://developers.cloudflare.com/changelog/product/workers-ai/ ("Prefix caching and session
+ * affinity") describes exactly this workload: "When an agent sends a new prompt, it resends all
+ * previous prompts, tools, and context from the session."
+ *
+ * The key is the caller's own session identifier and is never shared between tenants. It is a
+ * ROUTING hint, not a cache key: it decides which instance serves the request, so a collision costs
+ * a cache miss, never a cross-tenant read. Response caching, which WOULD be a cross-tenant risk, is
+ * a different feature and stays off (cacheTtl 0) on every agent call.
+ */
+function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?: string) {
   const id = env.AI_GATEWAY_ID;
-  if (!id) return undefined;
-  return { gateway: { id, cacheTtl, collectLog: true, metadata: { kind } } };
+  const affinity = sessionId ? { extraHeaders: { 'x-session-affinity': sessionId } } : undefined;
+  if (!id) return affinity;
+  return { ...affinity, gateway: { id, cacheTtl, collectLog: true, metadata: { kind } } };
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +276,12 @@ export interface ChatOptions {
   kind?: string;
   /** seconds; 0 disables caching for this call */
   cacheTtl?: number;
+  /**
+   * Opaque per-session identifier used for Workers AI prefix caching (x-session-affinity). Pass the
+   * SAME value for every step of one agent run so the shared system-prompt-and-tools prefix is
+   * reused; never share it between tenants. Omit it and every step re-prefills from cold.
+   */
+  sessionId?: string;
 }
 
 export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}): Promise<GatewayResponse> {
@@ -345,7 +368,11 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     let lastErr: unknown = null;
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_WAITS; attempt++) {
       try {
-        raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never, gatewayOpts(env, kind, opts.cacheTtl ?? 0) as never);
+        raw = await env.AI.run(
+          cfg.id as Parameters<Ai['run']>[0],
+          payload as never,
+          gatewayOpts(env, kind, opts.cacheTtl ?? 0, opts.sessionId) as never,
+        );
         lastErr = null;
         break;
       } catch (e) {

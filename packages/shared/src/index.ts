@@ -297,6 +297,12 @@ export interface GatewayMessage {
   name?: string;
   /** structured tool calls made by the assistant on this turn (never serialised as text) */
   toolCalls?: GatewayToolCall[];
+  /**
+   * The transcript trim may never evict this message. Set on the user's original request, which a
+   * character-budget trim would otherwise delete out from under a long run — see trimTranscript in
+   * do/session.ts. Never serialised: the gateway builds the wire payload by explicit field pick.
+   */
+  pinned?: boolean;
 }
 
 export interface GatewayRequest {

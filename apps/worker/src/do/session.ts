@@ -26,6 +26,7 @@ import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
+import { trimTranscript } from '../transcript';
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -410,7 +411,9 @@ export class SessionDO extends DurableObject<Env> {
       status: 'running',
       mode,
       msgId,
-      llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text }],
+      // The original request is PINNED: the trim may never evict it. Losing it was the defect
+      // trimTranscript documents — the agent kept working with no record of the task.
+      llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
       step: 0,
       maxSteps: STEP_LIMITS[mode],
       sparksSpent: 1,
@@ -522,12 +525,7 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
     }
-    // keep the transcript bounded: drop the oldest tool exchanges, never the system prompt
-    let promptChars = agent.llm.reduce((n, m) => n + m.content.length, 0);
-    while (promptChars > MAX_PROMPT_CHARS && agent.llm.length > 4) {
-      const removed = agent.llm.splice(1, 1)[0];
-      promptChars -= removed?.content.length ?? 0;
-    }
+    agent.llm = trimTranscript(agent.llm, MAX_PROMPT_CHARS);
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
 
@@ -556,7 +554,10 @@ export class SessionDO extends DurableObject<Env> {
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(MODE_BASE_TOKENS[agent.mode], choice.effort),
       },
-      { kind: `${agent.mode}:step:${choice.effort}` },
+      // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
+      // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
+      // The DO id is per-project and opaque, so it is never shared across tenants.
+      { kind: `${agent.mode}:step:${choice.effort}`, sessionId: this.ctx.id.toString() },
     );
     agent.lastCalls = res.toolCalls;
     // Signals are recomputed from what actually happens each step, so an escalation lapses once
