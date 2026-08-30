@@ -19,6 +19,14 @@ export interface ModelCfg {
   reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
+/** The provider refused before running the model, so nothing was billed. Safe to try again. */
+export class RateLimitedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RateLimitedError';
+  }
+}
+
 /** Thrown when spend policy — not the provider — refuses a call. Callers surface these kindly. */
 export class BudgetError extends Error {
   constructor(
@@ -31,16 +39,25 @@ export class BudgetError extends Error {
 }
 
 export const DEFAULT_MODELS: Record<string, ModelCfg> = {
-  // Clay: cheap conversational model. ~5x cheaper per token than the builder model.
-  clay: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 1200, ctx: 32768, temperature: 0.3 },
-  // Stone/Rune: the measured-best builder (97.6 on the Roblox eval suite).
-  stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 2000, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 2400, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
-  // Cheap worker used for routine agent steps that do not need the flagship (see router).
-  cheap: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: true, maxTokens: 1200, ctx: 32768, temperature: 0.25 },
-  // Housekeeping: memory distillation, summarisation. Never needs the flagship.
-  memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 600, ctx: 32768, temperature: 0.2 },
-  vision: { id: '@cf/meta/llama-3.2-11b-vision-instruct', nativeTools: false, maxTokens: 900, ctx: 8192, temperature: 0.3 },
+  // ---------------------------------------------------------------------------
+  // GLM-5.3 Flash is the production model for every user-facing path: reasoning,
+  // Luau authoring, Studio agent work, debugging, tool use and vision.
+  //
+  // reasoning effort is 'low' on purpose and it is the single most important setting here.
+  // MEASURED on the same debugging prompt (2026-08-30):
+  //   default  -> 249 output tokens, 11.69 neurons, answer produced
+  //   'low'    ->  24 output tokens,  1.46 neurons, answer produced   <-- 8x cheaper
+  //   'medium' -> 600 output tokens, 28.13 neurons, budget consumed by reasoning, NO answer
+  // Higher effort makes the model think past its own token budget and return nothing, so 'low'
+  // is both the cheap option and the correct one.
+  // ---------------------------------------------------------------------------
+  clay: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 1400, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
+  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2400, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
+  rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2800, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
+  // Housekeeping and vision run on the same model: it is multimodal, so a separate vision
+  // model is no longer needed, and one model means one behaviour to reason about.
+  memory: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 800, ctx: 1048576, temperature: 0.2, reasoningEffort: 'low' },
+  vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 1000, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
@@ -136,6 +153,11 @@ function parsePromptedToolCalls(text: string): { calls: GatewayToolCall[]; clean
 // response normalization
 // ---------------------------------------------------------------------------
 function extractText(r: any): string {
+  // Reasoning models (GLM-5.3) return message.content alongside message.reasoning_content.
+  // Only `content` is the answer — reasoning_content is an internal scratchpad and must never
+  // reach the user or be fed back as if it were the model's reply.
+  const rc = r?.choices?.[0]?.message;
+  if (rc && typeof rc.content === 'string' && rc.content.length > 0) return rc.content;
   if (typeof r === 'string') return r;
   if (typeof r?.response === 'string') return r.response;
   if (typeof r?.output_text === 'string') return r.output_text;
@@ -177,13 +199,30 @@ function extractToolCalls(r: any): GatewayToolCall[] {
   return out;
 }
 
-function extractUsage(r: any, inputChars: number, text: string): { inputTokens: number; outputTokens: number } {
+interface Usage {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+  /** neurons as reported by Cloudflare, when present — this is the billing truth */
+  reportedNeurons?: number;
+}
+
+function extractUsage(r: any, inputChars: number, text: string): Usage {
   const u = r?.usage ?? r?.result?.usage;
   const inTok = u?.prompt_tokens ?? u?.input_tokens;
   const outTok = u?.completion_tokens ?? u?.output_tokens;
-  if (typeof inTok === 'number' && typeof outTok === 'number') return { inputTokens: inTok, outputTokens: outTok };
+  const cached = u?.prompt_tokens_details?.cached_tokens ?? 0;
+  const reported = typeof u?.neurons === 'number' ? u.neurons : undefined;
+  if (typeof inTok === 'number' && typeof outTok === 'number') {
+    return { inputTokens: inTok, outputTokens: outTok, cachedInputTokens: cached, reportedNeurons: reported };
+  }
   // no usage reported: estimate conservatively so unmetered calls still cost the budget something
-  return { inputTokens: Math.ceil(inputChars / 3.5), outputTokens: Math.ceil(text.length / 3.5) };
+  return {
+    inputTokens: Math.ceil(inputChars / 3.5),
+    outputTokens: Math.ceil(text.length / 3.5),
+    cachedInputTokens: 0,
+    reportedNeurons: reported,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -202,17 +241,39 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   if (!cfg) throw new Error(`unknown model key: ${req.model}`);
 
   const usePrompted = !!req.tools?.length && !cfg.nativeTools;
+  // Assistant tool calls go back to the model as STRUCTURED tool_calls, never as text fences.
+  // Serialising them as ```tool_call blocks teaches a model to imitate the pattern in prose,
+  // which then never executes — observed with GLM-5.3-flash before this was fixed.
   let messages = req.messages.map((m) => ({
     role: m.role,
     content: m.content,
     ...(m.toolCallId ? { tool_call_id: m.toolCallId } : {}),
     ...(m.name ? { name: m.name } : {}),
+    ...(m.toolCalls?.length
+      ? {
+          tool_calls: m.toolCalls.map((c) => ({
+            id: c.id,
+            type: 'function',
+            function: { name: c.name, arguments: c.arguments },
+          })),
+        }
+      : {}),
   }));
   if (usePrompted) {
     if (messages[0]?.role === 'system') {
       messages = [{ ...messages[0], content: messages[0].content + promptedToolPreamble(req.tools!) }, ...messages.slice(1)];
     }
-    messages = messages.map((m) => (m.role === 'tool' ? { ...m, role: 'user' as const, content: `Tool result:\n${m.content}` } : m));
+    messages = messages.map((m) => {
+      if (m.role === 'tool') return { ...m, role: 'user' as const, content: `Tool result:\n${m.content}` };
+      const withCalls = m as typeof m & { tool_calls?: { function: { name: string; arguments: string } }[] };
+      if (m.role === 'assistant' && withCalls.tool_calls?.length) {
+        const rendered = withCalls.tool_calls
+          .map((c) => '```tool_call\n' + JSON.stringify({ name: c.function.name, arguments: JSON.parse(c.function.arguments || '{}') }) + '\n```')
+          .join('\n');
+        return { role: 'assistant' as const, content: (m.content ? m.content + '\n' : '') + rendered };
+      }
+      return m;
+    });
   }
 
   const maxTokens = Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens);
@@ -237,17 +298,44 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
 
   const kind = opts.kind ?? req.model;
   let raw: unknown;
-  try {
-    // NOTE: exactly one attempt. Retrying inference bills the same work twice; the caller
-    // decides whether a failure is worth another paid attempt.
-    raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never, gatewayOpts(env, kind, opts.cacheTtl ?? 0) as never);
-  } catch (e) {
-    await release(env, reserved);
-    const msg = e instanceof Error ? e.message : String(e);
-    if (/4006|daily free allocation|neurons/i.test(msg)) {
-      throw new BudgetError('daily_cap', BUDGET_MESSAGES.daily_cap!);
+  {
+    // Retry policy, stated precisely because it is a spending decision:
+    //
+    //   * A FAILED INFERENCE is never retried. The model ran, tokens were billed, and running
+    //     it again bills the same work twice. The caller decides whether to spend again.
+    //   * A RATE-LIMIT REJECTION (Workers AI error 3021) is different: the request never reached
+    //     the model and NOTHING was billed. Retrying costs nothing and is the only way to ride
+    //     out the per-model requests-per-minute ceiling, which GLM-5.3-flash hits easily during
+    //     a multi-step agent run. We wait and retry a bounded number of times.
+    const MAX_RATE_LIMIT_WAITS = 3;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt <= MAX_RATE_LIMIT_WAITS; attempt++) {
+      try {
+        raw = await env.AI.run(cfg.id as Parameters<Ai['run']>[0], payload as never, gatewayOpts(env, kind, opts.cacheTtl ?? 0) as never);
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        const msg = e instanceof Error ? e.message : String(e);
+        const rateLimited = /\b3021\b|rate limit|too many requests|capacity temporarily/i.test(msg);
+        if (!rateLimited || attempt === MAX_RATE_LIMIT_WAITS) break;
+        // no tokens were spent; hold the reservation and wait for the window to roll
+        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+      }
     }
-    throw new Error(`inference failed (${cfg.id}): ${msg}`);
+    if (lastErr) {
+      await release(env, reserved);
+      const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+      if (/4006|daily free allocation|neurons/i.test(msg)) {
+        throw new BudgetError('daily_cap', BUDGET_MESSAGES.daily_cap!);
+      }
+      if (/\b3021\b|rate limit|too many requests/i.test(msg)) {
+        throw new RateLimitedError(
+          'Golem is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
+        );
+      }
+      throw new Error(`inference failed (${cfg.id}): ${msg}`);
+    }
   }
 
   let text = extractText(raw);
@@ -258,16 +346,23 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     text = parsed.cleaned;
   }
   // NOTE: no fence-parsing fallback in native mode — tool results contain untrusted content and
-  // parsing quoted fences would turn that content into executed tool calls.
+  // parsing quoted fences would turn that content into executed tool calls. But a fence the model
+  // emits as prose must not reach the user either: strip it from the visible reply.
+  if (cfg.nativeTools) {
+    text = text.replace(/```tool_call[\s\S]*?(?:```|$)/g, '').trim();
+  }
 
   const usage = extractUsage(raw, inputChars, text);
-  const actual = neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens);
+  // Cloudflare returns the exact neuron cost on models that support it; use it when present and
+  // fall back to the price table otherwise. Never bill less than the provider says we spent.
+  const computed = neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
+  const actual = Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
   await settle(env, reserved, actual, cfg.id, kind);
 
   return {
     text,
     toolCalls,
-    usage,
+    usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
     neurons: actual,
     provider: 'workers-ai',
     model: cfg.id,

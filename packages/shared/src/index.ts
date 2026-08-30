@@ -207,7 +207,14 @@ export interface PairingCodeDto {
 // Model gateway internals (worker-side only, exported for evals)
 export interface GatewayRequest {
   model: string; // internal model key, not provider id
-  messages: { role: 'system' | 'user' | 'assistant' | 'tool'; content: string; toolCallId?: string; name?: string }[];
+  messages: {
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content: string;
+    toolCallId?: string;
+    name?: string;
+    /** structured tool calls made by the assistant on this turn (never serialised as text) */
+    toolCalls?: GatewayToolCall[];
+  }[];
   tools?: GatewayToolDef[];
   maxTokens?: number;
   temperature?: number;

@@ -69,7 +69,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
   return (
     <section className="card admin-panel">
       <div className="rail-head">
-        <h3>AI spend</h3>
+        <h3>AI spend <span className="muted model-tag">glm-5.3-flash</span></h3>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => void spend.refetch()} disabled={!adminKey}>
           Refresh
         </button>

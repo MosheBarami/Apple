@@ -1,4 +1,40 @@
-# Golem model evaluation findings — 2026-08-30 (v0.1 baseline)
+# Golem model evaluation findings
+
+## Production model: `@cf/zai-org/glm-5.3-flash` (migrated 2026-08-30)
+
+Measured on the 56-task Roblox suite, **same corrected grader for both models**:
+
+| category | **GLM-5.3-flash (production)** | gpt-oss-120b (previous) |
+|---|---|---|
+| api-knowledge | 100.0 | 100.0 |
+| debugging | **100.0** | 92.6 |
+| failure-recovery | **100.0** | 87.5 |
+| luau-correctness | **98.2** | 93.6 |
+| multi-file | **100.0** | 97.1 |
+| project-comprehension | 93.8 | **100.0** |
+| tool-selection | 100.0 | 100.0 |
+| ui-implementation | 100.0 | 100.0 |
+| **OVERALL** | **98.9** | 96.8 |
+
+GLM-5.3-flash wins on 4 categories, ties 3, and loses 1. It is also cheaper per token
+($0.15/$0.50 vs $0.35/$0.75), so the migration improved quality *and* unit cost.
+
+### A grader bug found during the migration
+The original `not_contains` checks in project-comprehension marked an answer wrong for merely
+*mentioning* an unaffected script — punishing the more useful answer that correctly lists what
+breaks and then explains what does not. Checks now carry `scope: "claimed"`, which limits them to
+the assertion part of the answer. This lifted GLM 81.3 → 93.8 and required re-baselining
+gpt-oss-120b (96.8, previously reported as 97.6 under the buggy grader).
+
+### Reasoning effort is the key setting
+GLM is a reasoning model that emits `reasoning_content` alongside `content`. Measured on one
+debugging prompt: default = 249 output tokens / 11.69 neurons; `low` = 24 tokens / 1.46 neurons;
+`medium` = 600 tokens / 28.13 neurons **and no answer at all** (reasoning consumed the whole
+budget). Production runs `reasoning: low` — both the cheapest and the only reliable setting.
+
+---
+
+# Historical: v0.1 baseline (pre-migration, buggy grader)
 
 56 Roblox-specific tasks, 8 categories, run against the production gateway
 (single-turn; graded by deterministic checks + local `luau-lsp` syntax analysis).

@@ -1,0 +1,253 @@
+{
+  "runMeta": {
+    "tag": "glm-pc-scoped",
+    "startedAt": "2026-08-30T19:01:32.500Z",
+    "apiBase": "https://golem.moshe-barami111.workers.dev",
+    "models": [
+      "stone"
+    ],
+    "categories": [
+      "project-comprehension"
+    ],
+    "limit": null,
+    "taskCount": 6,
+    "jobCount": 6,
+    "concurrency": 2,
+    "luauChecker": "luau-lsp (PATH)",
+    "transport": "POST /api/admin/model-test"
+  },
+  "perTask": [
+    {
+      "taskId": "pc-01-purchase-handler",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 239,
+      "usage": {
+        "inputTokens": 570,
+        "outputTokens": 4
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"RoundManager\""
+        }
+      ],
+      "responsePreview": "ShopServer",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-02-killbrick",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 224,
+      "usage": {
+        "inputTokens": 577,
+        "outputTokens": 20
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"CheckpointHandler\""
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /checkpoint/i"
+        }
+      ],
+      "responsePreview": "CheckpointHandler reacts: it teleports the player's character back to their last recorded checkpoint.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-03-module-blast-radius",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 118,
+      "usage": {
+        "inputTokens": 576,
+        "outputTokens": 115
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopClient\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"RoundManager\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"CheckpointHandler\""
+        }
+      ],
+      "responsePreview": "**Affected scripts:**\n\n1. **ShopServer** (ServerScriptService) — calls `require(game.ReplicatedStorage.ItemConfig)` at the top; the error propagates and the script dies.\n2. **ShopClient** (StarterGui.ShopGui) — also requires ItemConfig at the top; the require error stops the LocalScript.\n\n**Not affected:**\n- **RoundManager** — doesn't require ItemConfig.\n- **CheckpointHandler** — doesn't require ItemConfig.\n\nSo exactly two scripts break: ShopServer and ShopClient.",
+      "taskWeight": 2
+    },
+    {
+      "taskId": "pc-04-round-remote",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 119,
+      "usage": {
+        "inputTokens": 578,
+        "outputTokens": 23
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"RoundState\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"StageLabel\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "absent: \"BuyItem\""
+        }
+      ],
+      "responsePreview": "RoundState (RemoteEvent) carries the updates; StageLabel (TextLabel in ShopGui) displays them.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-05-stage-attribute",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 129,
+      "usage": {
+        "inputTokens": 578,
+        "outputTokens": 48
+      },
+      "score": 1,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"RoundStage\""
+        },
+        {
+          "type": "regex",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "matched: /[Ww]orkspace/"
+        }
+      ],
+      "responsePreview": "The attribute is **RoundStage**, set on **Workspace** (e.g., `workspace:SetAttribute(\"RoundStage\", \"Intermission\")`), so any script can read it via `workspace:GetAttribute(\"RoundStage\")`.",
+      "taskWeight": 1
+    },
+    {
+      "taskId": "pc-06-rename-blast-radius",
+      "category": "project-comprehension",
+      "model": "stone",
+      "ok": true,
+      "ms": 122,
+      "usage": {
+        "inputTokens": 584,
+        "outputTokens": 174
+      },
+      "score": 0.75,
+      "checks": [
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"RoundManager\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopServer\""
+        },
+        {
+          "type": "contains",
+          "target": "text",
+          "passed": true,
+          "weight": 1,
+          "detail": "found \"ShopClient\""
+        },
+        {
+          "type": "not_contains",
+          "target": "text",
+          "passed": false,
+          "weight": 1,
+          "detail": "forbidden text found: \"CheckpointHandler\""
+        }
+      ],
+      "responsePreview": "All three scripts that reference the Remotes folder would break — each uses `WaitForChild(\"Remotes\")`, which will hang (infinite yield) since the folder no longer exists:\n\n1. **ServerScriptService.RoundManager** — hangs at `Remotes = ...WaitForChild(\"Remotes\")` before the loop starts.\n2. **ServerScriptService.ShopServer** — hangs at the same line.\n3. **StarterGui.ShopGui.ShopClient** — hangs at the same line, so the round label and buy button never work.\n\n**CheckpointHandler** is unaffected — it only touches `workspace.Course` and never references Remotes.",
+      "taskWeight": 2
+    }
+  ],
+  "perCategory": [
+    {
+      "model": "stone",
+      "category": "project-comprehension",
+      "score": 0.9375,
+      "tasks": 6,
+      "transportErrors": 0
+    }
+  ],
+  "overall": [
+    {
+      "model": "stone",
+      "score": 0.9375,
+      "tasks": 6,
+      "transportErrors": 0
+    }
+  ]
+}

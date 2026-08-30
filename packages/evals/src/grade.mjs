@@ -17,8 +17,20 @@ export function extractCode(text) {
   return blocks.join('\n');
 }
 
+// Markers a model uses to switch from "these are affected" to "these are not".
+const NEGATION_MARKERS = /\n\s*(?:\*\*)?(?:not affected|unaffected|not impacted|safe|would not break|no impact)/i;
+
 function targetText(check, text, code) {
-  return check.target === 'code' ? code : text;
+  const t = check.target === 'code' ? code : text;
+  // `scope: 'claimed'` restricts a check to the part of the answer where the model is ASSERTING
+  // something, i.e. before any "Not affected:" section. Without this a bare not_contains punishes
+  // a model for the *more* useful answer — correctly naming what breaks, then explaining what
+  // does not. Verified against GLM-5.3-flash on pc-03: the answer was right, the check was wrong.
+  if (check.scope === 'claimed') {
+    const m = t.match(NEGATION_MARKERS);
+    if (m && m.index != null) return t.slice(0, m.index);
+  }
+  return t;
 }
 
 function evalCheck(check, text, code, luauCheck) {

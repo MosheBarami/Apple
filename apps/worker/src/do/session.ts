@@ -20,10 +20,10 @@ import type {
 } from '@golem/shared';
 import { MODE_INFO } from '@golem/shared';
 import { sparksForNeurons } from '../pricing';
-import { chat as llmChat, BudgetError } from '../gateway';
+import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
-import { routeStep, toolsForMode } from '../router';
+import { toolsForMode } from '../router';
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -394,7 +394,24 @@ export class SessionDO extends DurableObject<Env> {
         await this.finishRun(agent, 'quota');
         return;
       }
+      if (e instanceof RateLimitedError) {
+        agent.finalText =
+          (agent.finalText ? agent.finalText + '\n\n' : '') +
+          `${e.message} Everything I finished is saved.`;
+        this.broadcast({ type: 'error', code: 'busy', message: e.message });
+        await this.finishRun(agent, 'error', 'rate_limited');
+        return;
+      }
       const msg = e instanceof Error ? e.message : String(e);
+      // Provider hiccups are surfaced, never silently re-billed. The agent recovers by asking
+      // the user to continue rather than spending a second time on the same step.
+      if (/inference failed/i.test(msg) && agent.step > 1) {
+        agent.finalText =
+          (agent.finalText ? agent.finalText + '\n\n' : '') +
+          'The model dropped that step. Everything up to here is saved — send another message and I will pick up where I left off.';
+        await this.finishRun(agent, 'error', msg);
+        return;
+      }
       if (msg === 'CAPACITY_EXHAUSTED') {
         const resetsAt = new Date();
         resetsAt.setUTCHours(24, 0, 0, 0);
@@ -439,14 +456,11 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
 
     const studioConnected = await this.pluginConnected();
-    const BUILD_TOOLS_SET = ['create_instances', 'edit_script', 'set_properties', 'delete_instances', 'run_luau', 'move_instances'];
-    const hasBuilt = agent.trace.some((t) => BUILD_TOOLS_SET.includes(t.tool) && t.ok);
-    const route = routeStep({ mode: agent.mode, step: agent.step, lastToolCalls: agent.lastCalls ?? [], hasBuilt });
     const allowed = toolsForMode(agent.mode, studioConnected, toolNames());
     const res = await llmChat(
       this.env,
-      { model: route.model, messages: agent.llm, tools: toolDefs(studioConnected, allowed) },
-      { kind: `${agent.mode}:${route.reason}` },
+      { model: agent.mode, messages: agent.llm, tools: toolDefs(studioConnected, allowed) },
+      { kind: `${agent.mode}:step` },
     );
     agent.lastCalls = res.toolCalls;
 
@@ -483,11 +497,9 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
 
-    // record assistant turn with tool calls (as text for portability across models)
-    agent.llm.push({
-      role: 'assistant',
-      content: (res.text ? res.text + '\n' : '') + res.toolCalls.map((c) => `\`\`\`tool_call\n{"name":"${c.name}","arguments":${c.arguments}}\n\`\`\``).join('\n'),
-    });
+    // record the assistant turn with STRUCTURED tool calls; the gateway renders them in whatever
+    // form the target model expects
+    agent.llm.push({ role: 'assistant', content: res.text ?? '', toolCalls: res.toolCalls });
 
     const ctx = this.agentCtx();
     agent.seenCalls = agent.seenCalls ?? [];

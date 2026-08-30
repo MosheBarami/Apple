@@ -275,6 +275,24 @@ app.post('/api/admin/model-test', async (c) => {
 
 app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
 
+/** Raw provider response, for adapting the normalizer to a new model's shape. */
+app.post('/api/admin/raw-probe', async (c) => {
+  const { model, prompt, maxTokens, reasoning } = await c.req.json<{ model: string; prompt: string; maxTokens?: number; reasoning?: string }>();
+  const payload: Record<string, unknown> = {
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: maxTokens ?? 200,
+  };
+  if (reasoning) payload.reasoning = { effort: reasoning };
+  const raw = await c.env.AI.run(model as never, payload as never, { gateway: { id: c.env.AI_GATEWAY_ID ?? 'golem', cacheTtl: 0 } } as never);
+  const shape = (o: unknown, d = 0): unknown => {
+    if (o === null || typeof o !== 'object') return typeof o === 'string' ? `str(${o.length}):${o.slice(0, 120)}` : o;
+    if (Array.isArray(o)) return o.slice(0, 3).map((x) => shape(x, d + 1));
+    if (d > 4) return '…';
+    return Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, shape(v, d + 1)]));
+  };
+  return c.json({ keys: Object.keys(raw as object), shape: shape(raw) });
+});
+
 /** Full AI spend picture: today, this month, per-model, per-purpose, against the hard caps. */
 app.get('/api/admin/spend', async (c) => c.json(await budgetReport(c.env)));
 
