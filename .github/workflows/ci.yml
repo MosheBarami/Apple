@@ -1,0 +1,243 @@
+name: CI
+
+# Deterministic checks only.
+#
+# COST POLICY — read before adding a job.
+# Nothing in this workflow may call a paid model provider. The eval RUNNERS
+# (packages/evals/src/run.mjs, visual-bench.mjs, tasks-visual/grade-visual.mjs)
+# spend real money against the worker's admin gateway and are therefore NEVER
+# invoked here. `pnpm -r test` is safe and stays safe because every test that
+# touches HTTP injects its own `fetchImpl` — verified, not assumed. If you add
+# a test that makes a real network call, it does not belong in this workflow.
+#
+# No job in this file is given repository secrets. That is deliberate: a
+# workflow with no credentials cannot leak them and cannot spend anything.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push supersedes an in-flight run for the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '11.13.0'
+
+jobs:
+  # ---------------------------------------------------------------- checks --
+  typecheck-and-test:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck every package
+        run: pnpm -r typecheck
+
+      - name: Tests
+        # Offline by construction. See the cost policy at the top of this file.
+        run: pnpm -r test
+
+  # ----------------------------------------------------------------- build --
+  build:
+    name: Build site and web
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build marketing site
+        run: pnpm --filter @golem/site build
+
+      - name: Build web app
+        run: pnpm --filter @golem/web build
+
+      - name: Landing payload budget
+        # The root route is meant to be one viewport of HTML and CSS with no
+        # JavaScript at all. This fails if that regresses, because a budget
+        # nobody enforces is not a budget.
+        run: node scripts/check-landing-budget.mjs
+
+      - name: Upload built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: apps/site/dist
+          retention-days: 7
+
+  # ---------------------------------------------------------------- plugin --
+  plugin:
+    name: Build Studio plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rojo
+        # Pinned and fetched straight from the upstream release rather than via
+        # a third-party action, so the plugin toolchain is one fewer supply
+        # chain to trust.
+        env:
+          ROJO_VERSION: '7.7.0'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o rojo.zip \
+            "https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/rojo-${ROJO_VERSION}-linux-x86_64.zip"
+          unzip -q rojo.zip -d "$RUNNER_TEMP/rojo"
+          chmod +x "$RUNNER_TEMP/rojo/rojo"
+          echo "$RUNNER_TEMP/rojo" >> "$GITHUB_PATH"
+
+      - name: Rojo version
+        run: rojo --version
+
+      - name: Build plugin
+        run: rojo build apps/plugin/default.project.json --output golem-plugin.rbxm
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: golem-plugin
+          path: golem-plugin.rbxm
+          retention-days: 7
+
+  # --------------------------------------------------------- static checks --
+  static-checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Syntax-check eval scripts
+        run: pnpm --filter @golem/evals check
+
+      - name: Formatting drift (report only)
+        run: npx --yes prettier@3 --check "apps/**/*.{ts,tsx,css,astro}" || echo "::warning::prettier reported formatting drift"
+
+  # ------------------------------------------------------------- security ---
+  security:
+    name: Secrets and dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: a secret committed and later removed is still a
+          # leaked secret, and a shallow clone would not see it.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Scan full history for secrets
+        run: python3 scripts/secret-scan.py
+
+      - name: Assert no environment files are tracked
+        run: |
+          set -euo pipefail
+          for f in .env .env.local .dev.vars; do
+            if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error::$f is tracked by git"
+              exit 1
+            fi
+          done
+          echo "no tracked environment files"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency audit
+        # Advisory: a new upstream advisory should not block an unrelated PR,
+        # but it must be visible in the run summary.
+        run: pnpm audit --audit-level moderate || echo "::warning::pnpm audit reported advisories"
+
+  # ------------------------------------------------------------------ e2e ---
+  e2e:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build site
+        run: pnpm --filter @golem/site build
+
+      - name: Smoke tests
+        # Static preview of the built output. No worker, no Supabase, no
+        # provider — so these cost nothing and cannot flake on a backend.
+        run: pnpm exec playwright test
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

@@ -501,7 +501,45 @@ export function toolDefs(studioConnected: boolean, allowed?: Set<string>): Gatew
     .map(([, t]) => t.def);
 }
 
-export async function runTool(ctx: AgentCtx, name: string, argsJson: string): Promise<{ summary: string; resultForLlm: string; ok: boolean }> {
+/**
+ * The largest structured result we will hand to the browser.
+ *
+ * The `detail` payload exists so the web app's typed generative-UI validator
+ * has something real to validate — before this it was always undefined, which
+ * silently made the entire component registry dead outside mock mode. It is
+ * capped independently of MAX_RESULT_CHARS because the two limits protect
+ * different things: that one protects the model's context, this one protects
+ * the WebSocket.
+ */
+const MAX_DETAIL_CHARS = 24_000;
+
+/**
+ * Structured results are forwarded to the UI, plain strings are not.
+ *
+ * A tool that returns a bare string has nothing a component could render, and
+ * an `error` result is already conveyed by `ok: false` plus the summary. Only
+ * objects that carry actual structure are worth sending.
+ */
+function detailForUi(result: unknown): unknown {
+  if (typeof result !== 'object' || result === null) return undefined;
+  if ('error' in (result as Record<string, unknown>)) return undefined;
+  // Cheap size guard: serialise once and drop anything oversized rather than
+  // truncating it into invalid JSON that the validator would reject anyway.
+  let encoded: string;
+  try {
+    encoded = JSON.stringify(result);
+  } catch {
+    return undefined;
+  }
+  if (encoded.length > MAX_DETAIL_CHARS) return undefined;
+  return result;
+}
+
+export async function runTool(
+  ctx: AgentCtx,
+  name: string,
+  argsJson: string,
+): Promise<{ summary: string; resultForLlm: string; ok: boolean; detail?: unknown }> {
   const impl = TOOLS[name];
   if (!impl) return { summary: `unknown tool ${name}`, resultForLlm: JSON.stringify({ error: `unknown tool: ${name}` }), ok: false };
   if (impl.studio && !ctx.studioConnected()) {
@@ -518,7 +556,7 @@ export async function runTool(ctx: AgentCtx, name: string, argsJson: string): Pr
     let str = typeof result === 'string' ? result : JSON.stringify(result);
     if (str.length > MAX_RESULT_CHARS) str = str.slice(0, MAX_RESULT_CHARS) + `\n...[truncated ${str.length - MAX_RESULT_CHARS} chars]`;
     const failed = typeof result === 'object' && result !== null && 'error' in (result as Record<string, unknown>);
-    return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed };
+    return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed, detail: detailForUi(result) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { summary: `${name} failed: ${msg.slice(0, 80)}`, resultForLlm: JSON.stringify({ error: msg }), ok: false };

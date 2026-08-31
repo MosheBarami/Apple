@@ -263,21 +263,141 @@ export type ClientMsg =
   | { type: 'checkpoint_restore'; checkpointId: string }
   | { type: 'ping' };
 
+/**
+ * The build lifecycle, as the UI shows it.
+ *
+ * Every value here corresponds to a real, observable point in the agent's
+ * execution — either an explicit stage in `runStep` or the tool that is
+ * actually running at that moment. Nothing here is inferred, predicted or
+ * interpolated: if the worker has not reached a stage, it does not announce it.
+ * Adding a phase means adding the code point that emits it.
+ */
+export type AgentPhase =
+  | 'understanding' // the request has arrived, before the first model call
+  | 'planning' // first step of a multi-step mode
+  | 'inspecting' // reading the project: tree, scripts, docs, assets
+  | 'building' // creating or configuring instances
+  | 'writing_luau' // editing script source
+  | 'rendering' // the plugin is rasterising the scene
+  | 'critiquing' // composition / semantic / vision gate is judging it
+  | 'rebuilding' // a gate rejected the work and the agent is starting over
+  | 'playtesting' // run mode is active in Studio
+  | 'debugging' // reading logs after a failure
+  | 'verifying' // confirming the change actually landed
+  | 'checkpointing' // snapshotting the place
+  | 'remembering' // writing project memory
+  | 'done';
+
+/**
+ * Which phase a tool represents. Used by the worker to announce the stage and
+ * by the web app to group activity. Kept here so both sides cannot drift.
+ */
+export function phaseForTool(tool: string): AgentPhase {
+  switch (tool) {
+    case 'get_project_tree':
+    case 'list_scripts':
+    case 'read_script':
+    case 'search_scripts':
+    case 'search_docs':
+    case 'choose_asset_source':
+    case 'search_asset_library':
+    case 'find_verified_asset':
+    case 'inspect_model':
+      return 'inspecting';
+    case 'edit_script':
+      return 'writing_luau';
+    case 'create_instances':
+    case 'set_properties':
+    case 'delete_instances':
+    case 'insert_asset':
+    case 'generate_model':
+    case 'run_luau':
+      return 'building';
+    case 'render_view':
+      return 'rendering';
+    case 'check_composition':
+    case 'inspect_visually':
+      return 'critiquing';
+    case 'run_and_check':
+      return 'playtesting';
+    case 'get_output_logs':
+      return 'debugging';
+    case 'create_checkpoint':
+      return 'checkpointing';
+    case 'remember':
+      return 'remembering';
+    default:
+      return 'building';
+  }
+}
+
+/**
+ * A live snapshot of an in-flight run, replayed to a client that connects or
+ * reconnects while the agent is working.
+ *
+ * This exists because the run itself is durable — it is driven by a Durable
+ * Object alarm and continues with zero sockets attached — but the events
+ * announcing it were not: `broadcast` drops anything sent while nobody is
+ * listening. Before this, refreshing the browser mid-build left the user
+ * staring at their own message with no sign that work was still happening.
+ */
+export interface RunSnapshot {
+  msgId: string;
+  mode: GolemMode;
+  phase: AgentPhase;
+  step: number;
+  totalSteps: number;
+  /** Text the assistant has produced so far this run. */
+  text: string;
+  /** Tools already executed this run, oldest first. */
+  tools: RunSnapshotTool[];
+  startedAt: number;
+  /** The reasoning policy's own explanation of the effort it chose. */
+  effort?: 'low' | 'medium' | 'high';
+  effortReason?: string;
+}
+
+export interface RunSnapshotTool {
+  toolId: string;
+  tool: string;
+  ok: boolean;
+  summary: string;
+  durationMs: number;
+  detail?: unknown;
+}
+
 export type ServerMsg =
   | { type: 'hello'; sessionId: string; studioConnected: boolean; quota: QuotaState }
   | { type: 'studio_status'; connected: boolean; state?: StudioEventState }
   | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
   | { type: 'delta'; msgId: string; text: string }
   | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
+  // `detail` carries the tool's STRUCTURED result, which the web app offers to
+  // the typed generative-UI validator. Anything that validates becomes a real
+  // component; anything that does not is simply not rendered. It is capped in
+  // do/session.ts so a large result cannot wedge the socket.
   | { type: 'tool_end'; msgId: string; toolId: string; ok: boolean; summary: string; detail?: unknown }
   // 'incomplete' means the run ended having changed nothing. It is deliberately distinct from
   // 'error': nothing failed loudly, the agent simply never did the work and would otherwise have
   // reported success. See finishRun in do/session.ts.
   | { type: 'msg_end'; msgId: string; stopReason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete'; error?: string }
-  | { type: 'agent_status'; phase: string; step?: number; totalSteps?: number }
+  // `effortReason` is the reasoning POLICY's own summary (e.g. "stone baseline;
+  // visual design task"). It is a classification of the request, not the
+  // model's hidden reasoning, and never contains prompt or transcript content.
+  | {
+      type: 'agent_status';
+      phase: AgentPhase;
+      step?: number;
+      totalSteps?: number;
+      tool?: string;
+      effort?: 'low' | 'medium' | 'high';
+      effortReason?: string;
+    }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
   | { type: 'studio_log'; entries: StudioEventLog[] }
+  // Sent in reply to `resume`, and unprompted on connect when a run is live.
+  | { type: 'run_state'; run: RunSnapshot | null }
   | { type: 'error'; code: string; message: string }
   | { type: 'pong' };
 

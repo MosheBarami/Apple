@@ -1,0 +1,1056 @@
+/* ==========================================================================
+   GOLEM — workspace design system.
+
+   The product surface, in the same material as the landing: warm charcoal
+   stone, ivory type, one ember that only ever means "something is happening
+   right now".
+
+   Composition is conversation-first. A narrow calm rail on the left, the
+   conversation in the middle with room to breathe, a large composer at the
+   bottom. Everything else — checkpoints, memory, settings, usage, admin — is
+   reachable but not resident. Nothing is deleted; it is re-homed.
+
+   All classes here are prefixed `gx-` so this layer can sit on top of the
+   older stylesheet without either one fighting the other. Old rules simply
+   stop being referenced as components move over.
+   ========================================================================== */
+
+.gx {
+  /* --- material ---------------------------------------------------------- */
+  --gx-ground: #0e0d0b;
+  --gx-rail: #121110;
+  --gx-raise: #171512;
+  --gx-raise-2: #1e1b17;
+
+  --gx-ink: #f2ede2;
+  --gx-ink-2: #a49a89;
+  --gx-ink-3: #8b8274;
+
+  --gx-line: rgba(242, 237, 226, 0.09);
+  --gx-line-2: rgba(242, 237, 226, 0.15);
+
+  --gx-ember: #c96a2e;
+  --gx-ember-soft: rgba(201, 106, 46, 0.14);
+  --gx-good: #7dad6e;
+  --gx-bad: #d27653;
+  --gx-warn: #c2943f;
+
+  --gx-cream: #f5f1e8;
+  --gx-cream-ink: #16140f;
+
+  /* --- geometry ---------------------------------------------------------- */
+  --gx-rail-w: 244px;
+  --gx-measure: 68ch;
+  --gx-r: 10px;
+  --gx-r-sm: 7px;
+
+  /* --- motion -----------------------------------------------------------
+     One easing curve and four durations for the whole product. Motion is fast,
+     soft, and always attached to a real state change. */
+  --gx-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --gx-t-press: 90ms;
+  --gx-t-hover: 150ms;
+  --gx-t-move: 240ms;
+  --gx-t-enter: 380ms;
+}
+
+:root[data-theme='light'] .gx {
+  --gx-ground: #f4f1ea;
+  --gx-rail: #efebe2;
+  --gx-raise: #fbf9f4;
+  --gx-raise-2: #f6f2ea;
+  --gx-ink: #191713;
+  --gx-ink-2: #5f584c;
+  --gx-ink-3: #6f6759;
+  --gx-line: rgba(25, 23, 19, 0.12);
+  --gx-line-2: rgba(25, 23, 19, 0.2);
+  --gx-ember: #a2450f;
+  --gx-ember-soft: rgba(162, 69, 15, 0.1);
+  --gx-good: #3d6b33;
+  --gx-bad: #a33f22;
+  --gx-cream: #22201a;
+  --gx-cream-ink: #fbf9f4;
+}
+
+/* --------------------------------------------------------------------------
+   1. Shell
+   -------------------------------------------------------------------------- */
+
+.gx-shell {
+  display: grid;
+  grid-template-columns: var(--gx-rail-w) minmax(0, 1fr);
+  height: 100dvh;
+  background: var(--gx-ground);
+  color: var(--gx-ink);
+}
+
+.gx-main {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   2. Left rail — logo, new build, recent. Nothing else lives here.
+   -------------------------------------------------------------------------- */
+
+.gx-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--gx-rail);
+  border-right: 1px solid var(--gx-line);
+}
+
+.gx-rail__head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1rem 0.9rem 0.75rem;
+  color: var(--gx-ink);
+  text-decoration: none;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.gx-new {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: calc(100% - 1.4rem);
+  margin: 0 0.7rem 0.9rem;
+  min-height: 40px;
+  padding: 0 0.75rem;
+  border-radius: var(--gx-r-sm);
+  border: 1px solid var(--gx-line-2);
+  background: transparent;
+  color: var(--gx-ink);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    border-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-new:hover {
+  background: rgba(242, 237, 226, 0.045);
+}
+
+.gx-rail__label {
+  padding: 0.4rem 0.95rem 0.35rem;
+  color: var(--gx-ink-3);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.gx-rail__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0.5rem 0.5rem;
+  margin: 0;
+  list-style: none;
+}
+
+.gx-conv {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--gx-r-sm);
+  color: var(--gx-ink-2);
+  text-decoration: none;
+  font-size: 0.87rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-conv:hover {
+  background: rgba(242, 237, 226, 0.04);
+  color: var(--gx-ink);
+}
+
+.gx-conv.is-active {
+  background: rgba(242, 237, 226, 0.07);
+  color: var(--gx-ink);
+}
+
+.gx-rail__foot {
+  border-top: 1px solid var(--gx-line);
+  padding: 0.6rem;
+}
+
+/* --------------------------------------------------------------------------
+   3. Account menu — where Settings, Usage, Docs and Admin now live
+   -------------------------------------------------------------------------- */
+
+.gx-account {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 0.55rem;
+  border: 0;
+  border-radius: var(--gx-r-sm);
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-account:hover {
+  background: rgba(242, 237, 226, 0.05);
+}
+
+.gx-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gx-raise-2);
+  border: 1px solid var(--gx-line-2);
+  color: var(--gx-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.gx-account__email {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   4. Popover — one primitive, used by the account menu, mode and provider
+   -------------------------------------------------------------------------- */
+
+.gx-pop-wrap {
+  position: relative;
+}
+
+.gx-pop {
+  position: absolute;
+  z-index: 40;
+  min-width: 236px;
+  padding: 0.35rem;
+  border-radius: var(--gx-r);
+  border: 1px solid var(--gx-line-2);
+  background: var(--gx-raise);
+  box-shadow: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
+  animation: gx-pop-in var(--gx-t-move) var(--gx-ease) both;
+}
+
+.gx-pop--up {
+  bottom: calc(100% + 6px);
+  left: 0;
+}
+
+.gx-pop--down-right {
+  top: calc(100% + 6px);
+  right: 0;
+}
+
+@keyframes gx-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gx-pop__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.4rem 0.6rem;
+  border: 0;
+  border-radius: var(--gx-r-sm);
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.87rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-pop__item:hover {
+  background: rgba(242, 237, 226, 0.055);
+  color: var(--gx-ink);
+}
+
+.gx-pop__item[aria-checked='true'] {
+  color: var(--gx-ink);
+}
+
+/* A provider that cannot actually be reached is shown, but never as if it
+   were available. */
+.gx-pop__item[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gx-pop__item[aria-disabled='true']:hover {
+  background: transparent;
+  color: var(--gx-ink-2);
+}
+
+.gx-pop__sep {
+  height: 1px;
+  margin: 0.35rem 0.3rem;
+  background: var(--gx-line);
+}
+
+.gx-pop__note {
+  padding: 0.35rem 0.65rem 0.5rem;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.gx-pop__sub {
+  display: block;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin-top: 0.1rem;
+}
+
+.gx-pop__main {
+  min-width: 0;
+  flex: 1;
+}
+
+/* --------------------------------------------------------------------------
+   5. Topbar
+   -------------------------------------------------------------------------- */
+
+.gx-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 52px;
+  padding: 0 0.9rem;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.gx-top__title {
+  font-size: 0.92rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gx-top__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+/* --------------------------------------------------------------------------
+   6. Status pill — Studio connection
+   -------------------------------------------------------------------------- */
+
+.gx-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  min-height: 30px;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--gx-line);
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.gx-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--gx-ink-3);
+}
+
+.gx-pill.is-live .gx-dot {
+  background: var(--gx-good);
+  box-shadow: 0 0 0 3px rgba(125, 173, 110, 0.16);
+}
+
+/* --------------------------------------------------------------------------
+   7. Buttons
+   -------------------------------------------------------------------------- */
+
+.gx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 34px;
+  padding: 0 0.75rem;
+  border-radius: var(--gx-r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    border-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease),
+    transform var(--gx-t-press) var(--gx-ease);
+}
+
+.gx-btn:hover {
+  color: var(--gx-ink);
+  background: rgba(242, 237, 226, 0.05);
+}
+
+.gx-btn:active {
+  transform: translateY(0.5px);
+}
+
+.gx-btn--outline {
+  border-color: var(--gx-line-2);
+}
+
+.gx-btn--solid {
+  background: var(--gx-cream);
+  color: var(--gx-cream-ink);
+}
+
+.gx-btn--solid:hover {
+  background: var(--gx-cream);
+  color: var(--gx-cream-ink);
+  filter: brightness(1.05);
+}
+
+.gx-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gx-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--gx-r-sm);
+  border: 0;
+  background: transparent;
+  color: var(--gx-ink-2);
+  cursor: pointer;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-icon-btn:hover {
+  background: rgba(242, 237, 226, 0.06);
+  color: var(--gx-ink);
+}
+
+/* --------------------------------------------------------------------------
+   8. Conversation
+   -------------------------------------------------------------------------- */
+
+.gx-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.gx-thread {
+  max-width: var(--gx-measure);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.9rem;
+}
+
+/* The user's turn gets a restrained surface so the eye can find it when
+   scrolling back. It is the only thing in the thread that sits on a card. */
+.gx-user {
+  align-self: flex-end;
+  max-width: 82%;
+  padding: 0.7rem 0.95rem;
+  border-radius: var(--gx-r);
+  border: 1px solid var(--gx-line);
+  background: var(--gx-raise);
+  color: var(--gx-ink);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The assistant flows directly on the canvas. No card, no border, no chrome —
+   just well-set text at a readable measure. */
+.gx-assistant {
+  font-size: 0.95rem;
+  line-height: 1.72;
+  color: var(--gx-ink);
+  min-width: 0;
+}
+
+.gx-assistant p {
+  margin: 0 0 0.85em;
+}
+
+.gx-assistant p:last-child {
+  margin-bottom: 0;
+}
+
+.gx-assistant h1,
+.gx-assistant h2,
+.gx-assistant h3 {
+  margin: 1.5em 0 0.5em;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.gx-assistant ul,
+.gx-assistant ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.3em;
+}
+
+.gx-assistant li {
+  margin-bottom: 0.3em;
+}
+
+.gx-assistant code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(242, 237, 226, 0.07);
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.87em;
+}
+
+.gx-assistant pre {
+  margin: 0 0 1em;
+  padding: 0.85rem 1rem;
+  border-radius: var(--gx-r);
+  border: 1px solid var(--gx-line);
+  background: var(--gx-raise);
+  overflow-x: auto;
+  font-size: 0.83rem;
+  line-height: 1.6;
+}
+
+.gx-assistant pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   9. Thinking — the reasoning / action summary
+   -------------------------------------------------------------------------- */
+
+.gx-think {
+  border-left: 1px solid var(--gx-line);
+  padding-left: 0.95rem;
+  margin-bottom: 1.1rem;
+}
+
+.gx-think__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.15rem 0;
+  border: 0;
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-think__toggle:hover {
+  color: var(--gx-ink);
+}
+
+.gx-think__chev {
+  flex: none;
+  transition: transform var(--gx-t-move) var(--gx-ease);
+}
+
+.gx-think__toggle[aria-expanded='true'] .gx-think__chev {
+  transform: rotate(90deg);
+}
+
+.gx-think__count {
+  margin-left: auto;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsed by default. Expanding animates a grid row from 0fr to 1fr, which
+   transitions smoothly without needing a measured pixel height. */
+.gx-think__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--gx-t-move) var(--gx-ease);
+}
+
+.gx-think__body.is-open {
+  grid-template-rows: 1fr;
+}
+
+.gx-think__inner {
+  overflow: hidden;
+}
+
+.gx-steps {
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.32rem 0;
+  color: var(--gx-ink-3);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+.gx-step__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 21px;
+}
+
+.gx-step__label {
+  min-width: 0;
+}
+
+.gx-step__detail {
+  display: block;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.gx-step.is-done {
+  color: var(--gx-ink-2);
+}
+
+.gx-step.is-failed {
+  color: var(--gx-bad);
+}
+
+/* The active step is the only thing in the interface that moves on its own,
+   and it stops the moment the step completes. */
+.gx-step.is-active {
+  color: var(--gx-ink);
+}
+
+.gx-ring {
+  width: 11px;
+  height: 11px;
+}
+
+.gx-ring circle {
+  fill: none;
+  stroke-width: 2;
+}
+
+.gx-ring__track {
+  stroke: var(--gx-line-2);
+}
+
+.gx-ring__spin {
+  stroke: var(--gx-ember);
+  stroke-linecap: round;
+  stroke-dasharray: 10 22;
+  transform-origin: 50% 50%;
+  animation: gx-spin 1.05s linear infinite;
+}
+
+@keyframes gx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gx-tick {
+  animation: gx-tick-in var(--gx-t-move) var(--gx-ease) both;
+}
+
+@keyframes gx-tick-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The ember thread down the left edge while work is happening. This is the
+   whole "the model is alive" gesture: no character, just the interface warming
+   up exactly where the work is, and settling when it stops. */
+.gx-think.is-live {
+  border-left-color: transparent;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--gx-ember) 20%,
+    var(--gx-ember) 80%,
+    transparent 100%
+  );
+  background-size: 1px 100%;
+  background-repeat: no-repeat;
+  background-position: left top;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gx-think.is-live {
+    animation: gx-breathe 2.6s ease-in-out infinite;
+  }
+
+  @keyframes gx-breathe {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.74;
+    }
+  }
+
+  .gx-msg-in {
+    animation: gx-msg 320ms var(--gx-ease) both;
+  }
+
+  @keyframes gx-msg {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   10. Composer
+   -------------------------------------------------------------------------- */
+
+.gx-composer {
+  border-top: 1px solid var(--gx-line);
+  padding: 0.9rem 1.5rem 1.1rem;
+}
+
+.gx-composer__inner {
+  max-width: var(--gx-measure);
+  margin: 0 auto;
+  border-radius: var(--gx-r);
+  border: 1px solid var(--gx-line-2);
+  background: var(--gx-raise);
+  transition: border-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-composer__inner:focus-within {
+  border-color: rgba(242, 237, 226, 0.28);
+}
+
+.gx-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 58px;
+  max-height: 230px;
+  padding: 0.8rem 0.95rem 0.2rem;
+  border: 0;
+  background: transparent;
+  color: var(--gx-ink);
+  font: inherit;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+}
+
+.gx-composer textarea::placeholder {
+  color: var(--gx-ink-3);
+}
+
+.gx-composer__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.5rem 0.5rem 0.6rem;
+}
+
+.gx-composer__send {
+  margin-left: auto;
+}
+
+.gx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 30px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--gx-line);
+  background: transparent;
+  color: var(--gx-ink-2);
+  font-size: 0.79rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    border-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-chip:hover {
+  color: var(--gx-ink);
+  border-color: var(--gx-line-2);
+}
+
+.gx-chip__swatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.gx-chip__caret {
+  opacity: 0.55;
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   11. Drawer — checkpoints, memory
+   -------------------------------------------------------------------------- */
+
+.gx-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  border: 0;
+  padding: 0;
+  background: rgba(6, 5, 4, 0.55);
+  animation: gx-fade var(--gx-t-move) var(--gx-ease) both;
+}
+
+@keyframes gx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.gx-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 51;
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--gx-rail);
+  border-left: 1px solid var(--gx-line-2);
+  box-shadow: -24px 0 60px -20px rgba(0, 0, 0, 0.7);
+  animation: gx-slide var(--gx-t-enter) var(--gx-ease) both;
+}
+
+@keyframes gx-slide {
+  from {
+    transform: translateX(14px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-drawer,
+  .gx-scrim,
+  .gx-pop,
+  .gx-msg-in {
+    animation: none;
+  }
+
+  .gx-think.is-live {
+    animation: none;
+  }
+
+  .gx-ring__spin {
+    animation: none;
+    stroke-dasharray: 32;
+  }
+
+  .gx-tick {
+    animation: none;
+  }
+}
+
+.gx-drawer__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.gx-drawer__title {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.gx-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.9rem;
+}
+
+.gx-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.65rem;
+  border-radius: var(--gx-r-sm);
+  border: 1px solid var(--gx-line);
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.gx-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.gx-row__meta {
+  display: block;
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+  margin-top: 0.1rem;
+}
+
+.gx-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--gx-ink-3);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.gx-memory {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.87rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+/* --------------------------------------------------------------------------
+   12. Accessibility
+   -------------------------------------------------------------------------- */
+
+.gx :focus-visible {
+  outline: 2px solid var(--gx-ember);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+
+.gx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   13. Responsive — the rail becomes an overlay below tablet
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .gx-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gx-rail {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 52;
+    width: var(--gx-rail-w);
+    transform: translateX(-100%);
+    transition: transform var(--gx-t-enter) var(--gx-ease);
+  }
+
+  .gx-rail.is-open {
+    transform: none;
+  }
+
+  .gx-thread,
+  .gx-composer__inner {
+    max-width: none;
+  }
+
+  .gx-thread {
+    padding: 1.25rem 1rem 0.75rem;
+  }
+
+  .gx-composer {
+    padding: 0.7rem 1rem 0.85rem;
+  }
+
+  .gx-user {
+    max-width: 92%;
+  }
+}

@@ -26,6 +26,7 @@ import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
+import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import { trimTranscript } from '../transcript';
 import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
 
@@ -71,6 +72,15 @@ interface AgentState {
   passes?: PassRecord[];
   /** a rebuild has already been ordered this run; ordering it twice would loop */
   rebuildOrdered?: boolean;
+  // ---- live-UI state. Optional so a run persisted by an older deployment
+  // deserialises unchanged and simply replays an emptier snapshot. ----
+  /** the stage the run is currently in, for the reconnect snapshot */
+  phase?: AgentPhase;
+  /** tools executed this run, kept so a reconnecting browser can rebuild the trace */
+  uiTools?: RunSnapshotTool[];
+  /** the reasoning policy's chosen effort and its own explanation, for the UI */
+  effort?: Effort;
+  effortReason?: string;
 }
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
@@ -189,6 +199,10 @@ export class SessionDO extends DurableObject<Env> {
       );
       const st = await this.ctx.storage.get<StudioEventState>('pluginState');
       if (st) server.send(JSON.stringify({ type: 'studio_status', connected: await this.pluginConnected(), state: st } satisfies ServerMsg));
+      // If a build is already in flight, hand the client the whole picture
+      // straight away rather than making it ask.
+      const live = await this.runSnapshot();
+      if (live) server.send(JSON.stringify({ type: 'run_state', run: live } satisfies ServerMsg));
       // browsers abort the handshake unless a requested subprotocol is echoed back
       return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'golem.v1' } });
     }
@@ -330,6 +344,33 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ websocket
+  /**
+   * A replayable picture of the run currently in flight, or null when idle.
+   *
+   * The run itself is durable: it is driven by a storage alarm and keeps
+   * stepping with no sockets attached. What was not durable was the user's
+   * view of it — `broadcast` drops every event sent while nobody is listening,
+   * and the assistant row is only written to SQL at finishRun. So refreshing
+   * the browser mid-build used to show the user their own message and nothing
+   * else, with no indication that anything was still happening.
+   */
+  private async runSnapshot(): Promise<RunSnapshot | null> {
+    const agent = await this.ctx.storage.get<AgentState>('agent');
+    if (!agent || agent.status === 'idle') return null;
+    return {
+      msgId: agent.msgId,
+      mode: agent.mode,
+      phase: agent.phase ?? 'planning',
+      step: agent.step,
+      totalSteps: agent.maxSteps,
+      text: agent.streamedText ?? '',
+      tools: agent.uiTools ?? [],
+      startedAt: agent.startedAt,
+      effort: agent.effort,
+      effortReason: agent.effortReason,
+    };
+  }
+
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
     let msg: ClientMsg;
     try {
@@ -343,6 +384,10 @@ export class SessionDO extends DurableObject<Env> {
     switch (msg.type) {
       case 'ping':
         ws.send(JSON.stringify({ type: 'pong' } satisfies ServerMsg));
+        return;
+      case 'resume':
+        // Previously declared in the protocol and silently unhandled.
+        ws.send(JSON.stringify({ type: 'run_state', run: await this.runSnapshot() } satisfies ServerMsg));
         return;
       case 'chat':
         await this.startRun(bind, msg.text.slice(0, 8000), msg.mode);
@@ -445,7 +490,8 @@ export class SessionDO extends DurableObject<Env> {
     };
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
-    this.broadcast({ type: 'agent_status', phase: mode === 'clay' ? 'thinking' : 'planning' });
+    agent.phase = mode === 'clay' ? 'understanding' : 'planning';
+    this.broadcast({ type: 'agent_status', phase: agent.phase });
 
     // auto-checkpoint before builder modes touch the project
     if (studioConnected && mode !== 'clay') {
@@ -551,7 +597,11 @@ export class SessionDO extends DurableObject<Env> {
     }
     agent.llm = trimTranscript(agent.llm, MAX_PROMPT_CHARS);
     await this.ctx.storage.put('agent', agent);
-    this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
+    // The opening phase of a step is 'understanding' on the first step and
+    // otherwise carries whatever the previous tool left us in, until the next
+    // tool call renames it. Never invent a stage the agent has not entered.
+    agent.phase = agent.step === 1 ? (agent.mode === 'clay' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
+    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, totalSteps: agent.maxSteps });
 
     const studioConnected = await this.pluginConnected();
     const allowed = toolsForMode(agent.mode, studioConnected, toolNames());
@@ -568,6 +618,19 @@ export class SessionDO extends DurableObject<Env> {
     });
     if (agent.forcedEffort) choice.effort = agent.forcedEffort;
     if (choice.effort === 'high') agent.highEffortUsed = (agent.highEffortUsed ?? 0) + 1;
+    // Surface the reasoning POLICY's decision — the tier it picked and its own
+    // one-line justification. This is a classification of the request, never
+    // the model's hidden reasoning, and carries no prompt or transcript text.
+    agent.effort = choice.effort;
+    agent.effortReason = choice.reason;
+    this.broadcast({
+      type: 'agent_status',
+      phase: agent.phase ?? 'planning',
+      step: agent.step,
+      totalSteps: agent.maxSteps,
+      effort: choice.effort,
+      effortReason: choice.reason,
+    });
 
     const res = await llmChat(
       this.env,
@@ -636,7 +699,14 @@ export class SessionDO extends DurableObject<Env> {
         agent.step < agent.maxSteps - 1
       ) {
         agent.autoCritiqued = true;
-        this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
+        agent.phase = 'critiquing';
+        this.broadcast({
+          type: 'agent_status',
+          phase: 'critiquing',
+          step: agent.step,
+          totalSteps: agent.maxSteps,
+          tool: 'inspect_visually',
+        });
         const ctx2 = this.agentCtx();
         const out = await runTool(ctx2, 'inspect_visually', JSON.stringify({ intent: agent.request ?? 'the requested build' }));
         agent.trace.push({ tool: 'inspect_visually', summary: out.summary, ok: out.ok, durationMs: 0 });
@@ -727,6 +797,17 @@ export class SessionDO extends DurableObject<Env> {
         continue;
       }
       agent.seenCalls.push(sig);
+      // Announce the stage this tool actually represents, immediately before it
+      // runs. The phase is derived from the tool, so the UI never claims a
+      // stage the agent has not entered.
+      agent.phase = phaseForTool(call.name);
+      this.broadcast({
+        type: 'agent_status',
+        phase: agent.phase,
+        step: agent.step,
+        totalSteps: agent.maxSteps,
+        tool: call.name,
+      });
       this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
       const out = await runTool(ctx, call.name, call.arguments);
       const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
@@ -736,7 +817,18 @@ export class SessionDO extends DurableObject<Env> {
       if (!out.ok) agent.priorStepFailed = true;
       if (out.ok && MUTATING_TOOLS.has(call.name)) agent.mutated = true;
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
-      this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary });
+      this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
+      // Keep the live trace the reconnect snapshot replays from.
+      agent.uiTools = agent.uiTools ?? [];
+      agent.uiTools.push({
+        toolId,
+        tool: call.name,
+        ok: out.ok,
+        summary: out.summary,
+        durationMs: entry.durationMs,
+        detail: out.detail,
+      });
+      if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
       // fence tool output as untrusted data — it can contain attacker-authored text
       agent.llm.push({
         role: 'tool',

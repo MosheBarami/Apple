@@ -3,6 +3,7 @@
 // message history hydration, and typed ServerMsg fan-out into React state.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
+  AgentPhase,
   CheckpointMeta,
   ClientMsg,
   GolemMode,
@@ -43,9 +44,20 @@ export interface ChatItem {
 }
 
 export interface AgentStatus {
-  phase: string;
+  /** A real stage the worker has entered. Never predicted or interpolated. */
+  phase: AgentPhase;
   step?: number;
   totalSteps?: number;
+  /** The tool running right now, when the phase came from one. */
+  tool?: string;
+  /**
+   * The reasoning POLICY's chosen tier and its own one-line justification
+   * (e.g. "stone baseline; visual design task"). This is a classification of
+   * the request, not the model's hidden reasoning — it never carries prompt or
+   * transcript content.
+   */
+  effort?: 'low' | 'medium' | 'high';
+  effortReason?: string;
 }
 
 export type ConnState = 'connecting' | 'open' | 'reconnecting' | 'offline';
@@ -320,8 +332,62 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         });
         break;
       case 'agent_status':
-        setAgentStatus({ phase: msg.phase, step: msg.step, totalSteps: msg.totalSteps });
+        // Carry forward the last known effort: the policy announces it once per
+        // step, but the phase changes several times within a step.
+        setAgentStatus((prev) => ({
+          phase: msg.phase,
+          step: msg.step ?? prev?.step,
+          totalSteps: msg.totalSteps ?? prev?.totalSteps,
+          tool: msg.tool,
+          effort: msg.effort ?? prev?.effort,
+          effortReason: msg.effortReason ?? prev?.effortReason,
+        }));
         break;
+      case 'run_state': {
+        // A build was already in flight when this socket opened — most often
+        // because the user refreshed mid-run. The run never stopped; only our
+        // view of it did. Rebuild that view from the worker's snapshot.
+        if (!msg.run) {
+          setRunning(false);
+          setAgentStatus(null);
+          break;
+        }
+        const run = msg.run;
+        setRunning(true);
+        setAgentStatus({
+          phase: run.phase,
+          step: run.step,
+          totalSteps: run.totalSteps,
+          effort: run.effort,
+          effortReason: run.effortReason,
+        });
+        setMessages((list) => {
+          const restored: ChatItem = {
+            id: run.msgId,
+            role: 'assistant',
+            mode: run.mode,
+            content: run.text,
+            tools: run.tools.map((t) => ({
+              toolId: t.toolId,
+              tool: t.tool,
+              summary: t.summary,
+              ok: t.ok,
+              startedAt: run.startedAt,
+              durationMs: t.durationMs,
+              done: true,
+              detail: t.detail,
+            })),
+            streaming: true,
+            createdAt: run.startedAt,
+          };
+          const idx = list.findIndex((m) => m.id === run.msgId);
+          if (idx === -1) return [...list, restored];
+          const next = [...list];
+          next[idx] = restored;
+          return next;
+        });
+        break;
+      }
       case 'quota':
         setQuota(msg.quota);
         break;

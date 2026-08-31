@@ -6,9 +6,27 @@
 //   2. calls run through Cloudflare AI Gateway (caching + independent rate limiting + logs)
 //   3. actual usage is settled back to the budget ledger afterwards
 //   4. there are NO automatic retries — a retry is a second bill for the same request
+//
+// PROVIDER NEUTRALITY. As of 2026-08-31 the transport lives behind an adapter (see ./providers):
+// this file owns spend policy, the prompted-tool fallback and response post-processing, and an
+// adapter owns one provider's wire format. The production path is unchanged — every model key
+// still resolves to a Workers AI model id, so adapterForModelId() returns the Workers AI adapter
+// and the call is still `env.AI.run(id, payload, gatewayOpts(...))` with the same payload and the
+// same options. Nothing else is credentialed, and the layer reports that honestly.
 import type { Env } from './env';
-import type { GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
+import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
 import { estimateNeurons, neuronsFor, MAX_NEURONS_PER_REQUEST } from './pricing';
+import {
+  adapterForModelId,
+  contentText,
+  estimateNeuronsForModel,
+  gatewayOpts,
+  modelById,
+  neuronsForModelTokens,
+  recordProviderCall,
+} from './providers';
+
+export { providerHealth, capabilityTable, providerAvailability, selectProvider } from './providers';
 
 export interface ModelCfg {
   id: string;
@@ -130,30 +148,6 @@ async function release(env: Env, reserved: number): Promise<void> {
     .catch(() => {});
 }
 
-/**
- * Options attached to every env.AI.run call: session affinity, caching, logging, cost attribution.
- *
- * SESSION AFFINITY IS WHY cached_tokens WAS ALWAYS 0. Workers AI does prefix caching — it reuses
- * the prefill tensors for the shared prefix of consecutive requests and bills those tokens at a
- * discounted cached rate — but only when consecutive requests land on the same model instance, and
- * that requires the `x-session-affinity` header. Golem sent none, so every step re-prefilled an
- * identical ~5,200-token prefix of system prompt plus tool definitions from cold.
- * https://developers.cloudflare.com/changelog/product/workers-ai/ ("Prefix caching and session
- * affinity") describes exactly this workload: "When an agent sends a new prompt, it resends all
- * previous prompts, tools, and context from the session."
- *
- * The key is the caller's own session identifier and is never shared between tenants. It is a
- * ROUTING hint, not a cache key: it decides which instance serves the request, so a collision costs
- * a cache miss, never a cross-tenant read. Response caching, which WOULD be a cross-tenant risk, is
- * a different feature and stays off (cacheTtl 0) on every agent call.
- */
-function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?: string) {
-  const id = env.AI_GATEWAY_ID;
-  const affinity = sessionId ? { extraHeaders: { 'x-session-affinity': sessionId } } : undefined;
-  if (!id) return affinity;
-  return { ...affinity, gateway: { id, cacheTtl, collectLog: true, metadata: { kind } } };
-}
-
 // ---------------------------------------------------------------------------
 // prompted tool-calling fallback (only for models without native tool support)
 // ---------------------------------------------------------------------------
@@ -181,92 +175,8 @@ function parsePromptedToolCalls(text: string): { calls: GatewayToolCall[]; clean
   return { calls, cleaned: cleaned.trim() };
 }
 
-// ---------------------------------------------------------------------------
-// response normalization
-// ---------------------------------------------------------------------------
-function extractText(r: any): string {
-  // Reasoning models (GLM-5.3) return message.content alongside message.reasoning_content.
-  // Only `content` is the answer — reasoning_content is an internal scratchpad and must never
-  // reach the user or be fed back as if it were the model's reply.
-  const rc = r?.choices?.[0]?.message;
-  if (rc && typeof rc.content === 'string' && rc.content.length > 0) return rc.content;
-  if (typeof r === 'string') return r;
-  if (typeof r?.response === 'string') return r.response;
-  if (typeof r?.output_text === 'string') return r.output_text;
-  if (typeof r?.result?.response === 'string') return r.result.response;
-  if (Array.isArray(r?.output)) {
-    const parts: string[] = [];
-    for (const item of r.output) {
-      if (item?.type === 'message' && Array.isArray(item.content)) {
-        for (const c of item.content) if (typeof c?.text === 'string') parts.push(c.text);
-      }
-    }
-    if (parts.length) return parts.join('');
-  }
-  const choice = r?.choices?.[0]?.message;
-  if (typeof choice?.content === 'string') return choice.content;
-  return '';
-}
-
-function extractToolCalls(r: any): GatewayToolCall[] {
-  const out: GatewayToolCall[] = [];
-  const push = (name: unknown, args: unknown, id?: unknown) => {
-    if (typeof name !== 'string' || !name) return;
-    const argStr = typeof args === 'string' ? args : JSON.stringify(args ?? {});
-    out.push({ id: typeof id === 'string' ? id : `tc_${out.length}_${Date.now()}`, name, arguments: argStr });
-  };
-  const lists = [r?.tool_calls, r?.result?.tool_calls, r?.choices?.[0]?.message?.tool_calls];
-  for (const list of lists) {
-    if (Array.isArray(list)) {
-      for (const tc of list) {
-        if (tc?.function) push(tc.function.name, tc.function.arguments, tc.id);
-        else push(tc?.name, tc?.arguments ?? tc?.parameters, tc?.id);
-      }
-      if (out.length) return out;
-    }
-  }
-  if (Array.isArray(r?.output)) {
-    for (const item of r.output) if (item?.type === 'function_call') push(item.name, item.arguments, item.call_id ?? item.id);
-  }
-  return out;
-}
-
-/**
- * Character weight of a message for the pre-flight reservation. Image parts are costed by their
- * base64 length, which over-states what a vision model actually charges for a small frame — the
- * safe direction, since under-reserving is the only way a bill escapes. The ledger settles on the
- * provider's reported usage afterwards, so the real bill is unaffected.
- */
-function contentChars(content: string | { type: string; text?: string; image_url?: { url: string } }[]): number {
-  if (typeof content === 'string') return content.length;
-  return content.reduce((n, p) => n + (p.text?.length ?? 0) + (p.image_url?.url.length ?? 0), 0);
-}
-
-interface Usage {
-  inputTokens: number;
-  outputTokens: number;
-  cachedInputTokens: number;
-  /** neurons as reported by Cloudflare, when present — this is the billing truth */
-  reportedNeurons?: number;
-}
-
-function extractUsage(r: any, inputChars: number, text: string): Usage {
-  const u = r?.usage ?? r?.result?.usage;
-  const inTok = u?.prompt_tokens ?? u?.input_tokens;
-  const outTok = u?.completion_tokens ?? u?.output_tokens;
-  const cached = u?.prompt_tokens_details?.cached_tokens ?? 0;
-  const reported = typeof u?.neurons === 'number' ? u.neurons : undefined;
-  if (typeof inTok === 'number' && typeof outTok === 'number') {
-    return { inputTokens: inTok, outputTokens: outTok, cachedInputTokens: cached, reportedNeurons: reported };
-  }
-  // no usage reported: estimate conservatively so unmetered calls still cost the budget something
-  return {
-    inputTokens: Math.ceil(inputChars / 3.5),
-    outputTokens: Math.ceil(text.length / 3.5),
-    cachedInputTokens: 0,
-    reportedNeurons: reported,
-  };
-}
+// Response normalization now lives with the provider that produces the shape — see
+// providers/workers-ai.ts (extractText / extractToolCalls / extractUsage, moved verbatim).
 
 // ---------------------------------------------------------------------------
 // main entry
@@ -289,39 +199,33 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const cfg = models[req.model];
   if (!cfg) throw new Error(`unknown model key: ${req.model}`);
 
+  // Which provider owns this model id. Every DEFAULT_MODELS entry is a Workers AI id, so in
+  // production this is always the Workers AI adapter and the call below is the same env.AI.run it
+  // has always been. An unrecognised id also resolves to Workers AI — the AI binding is the only
+  // transport this worker has.
+  const adapter = adapterForModelId(cfg.id);
+  const priced = modelById(cfg.id);
+
   const usePrompted = !!req.tools?.length && !cfg.nativeTools;
-  // Assistant tool calls go back to the model as STRUCTURED tool_calls, never as text fences.
-  // Serialising them as ```tool_call blocks teaches a model to imitate the pattern in prose,
-  // which then never executes — observed with GLM-5.3-flash before this was fixed.
-  let messages = req.messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-    ...(m.toolCallId ? { tool_call_id: m.toolCallId } : {}),
-    ...(m.name ? { name: m.name } : {}),
-    ...(m.toolCalls?.length
-      ? {
-          tool_calls: m.toolCalls.map((c) => ({
-            id: c.id,
-            type: 'function',
-            function: { name: c.name, arguments: c.arguments },
-          })),
-        }
-      : {}),
-  }));
+  // The prompted-tool fallback is GATEWAY policy, not provider format: it rewrites the
+  // conversation into plain text before any adapter sees it, so an adapter never has to know the
+  // fallback exists. Assistant tool calls otherwise go back to the model as STRUCTURED tool_calls,
+  // never as text fences — serialising them as ```tool_call blocks teaches a model to imitate the
+  // pattern in prose, which then never executes (observed with GLM-5.3-flash before this was fixed).
+  let messages: GatewayMessage[] = req.messages;
   if (usePrompted) {
     // Prompted-tool mode is text-only by construction; images only ever ride on tool-less
     // vision calls, so flattening to a string here cannot lose an attachment.
-    const asText = (c: (typeof messages)[number]['content']) =>
-      typeof c === 'string' ? c : c.map((p) => ('text' in p ? p.text : '[image]')).join('\n');
-    if (messages[0]?.role === 'system') {
-      messages = [{ ...messages[0], content: asText(messages[0].content) + promptedToolPreamble(req.tools!) }, ...messages.slice(1)];
+    const asText = contentText;
+    const first = messages[0];
+    if (first?.role === 'system') {
+      messages = [{ ...first, content: asText(first.content) + promptedToolPreamble(req.tools!) }, ...messages.slice(1)];
     }
-    messages = messages.map((m) => {
+    messages = messages.map((m): GatewayMessage => {
       if (m.role === 'tool') return { ...m, role: 'user' as const, content: `Tool result:\n${asText(m.content)}` };
-      const withCalls = m as typeof m & { tool_calls?: { function: { name: string; arguments: string } }[] };
-      if (m.role === 'assistant' && withCalls.tool_calls?.length) {
-        const rendered = withCalls.tool_calls
-          .map((c) => '```tool_call\n' + JSON.stringify({ name: c.function.name, arguments: JSON.parse(c.function.arguments || '{}') }) + '\n```')
+      if (m.role === 'assistant' && m.toolCalls?.length) {
+        const rendered = m.toolCalls
+          .map((c) => '```tool_call\n' + JSON.stringify({ name: c.name, arguments: JSON.parse(c.arguments || '{}') }) + '\n```')
           .join('\n');
         const prefix = asText(m.content);
         return { role: 'assistant' as const, content: (prefix ? prefix + '\n' : '') + rendered };
@@ -331,29 +235,35 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   }
 
   const maxTokens = Math.min(req.maxTokens ?? cfg.maxTokens, cfg.maxTokens);
-  const payload: Record<string, unknown> = {
-    messages,
-    max_tokens: maxTokens,
-    temperature: req.temperature ?? cfg.temperature,
-  };
-  if (req.tools?.length && cfg.nativeTools) {
-    payload.tools = req.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }));
-  }
   // Per-call effort wins over the model default: the adaptive policy decides how hard to think
   // based on what the step is, and pays for it out of the same budget.
   const effort = req.reasoningEffort ?? cfg.reasoningEffort;
-  if (effort) payload.reasoning = { effort };
-  if (req.jsonSchema) payload.response_format = { type: 'json_schema', json_schema: req.jsonSchema };
+  const encoded = adapter.encode({
+    modelId: cfg.id,
+    messages,
+    // Tool definitions only reach the wire in NATIVE mode; in prompted mode they are already
+    // baked into the system message above.
+    tools: cfg.nativeTools ? req.tools : undefined,
+    maxTokens,
+    temperature: req.temperature ?? cfg.temperature,
+    ...(effort ? { reasoningEffort: effort } : {}),
+    ...(req.jsonSchema ? { jsonSchema: req.jsonSchema } : {}),
+  });
 
   // ---- spend gate: nothing below this line runs without a reservation ----
-  const inputChars = messages.reduce((n, m) => n + contentChars(m.content), 0) + JSON.stringify(payload.tools ?? '').length;
-  const estimate = estimateNeurons(cfg.id, inputChars, maxTokens);
+  // Providers that bill in tokens are converted to neurons here, so the BudgetDO ceiling applies
+  // to every provider in the same unit. For Workers AI this is the identical price-table path.
+  const inputChars = encoded.promptChars;
+  const estimate = priced
+    ? estimateNeuronsForModel(priced, inputChars, maxTokens)
+    : estimateNeurons(cfg.id, inputChars, maxTokens);
   if (estimate > MAX_NEURONS_PER_REQUEST) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }
   const reserved = await reserve(env, cfg.id, estimate);
 
   const kind = opts.kind ?? req.model;
+  const invokeCtx = { modelId: cfg.id, kind, cacheTtl: opts.cacheTtl ?? 0, ...(opts.sessionId ? { sessionId: opts.sessionId } : {}) };
   let raw: unknown;
   {
     // Retry policy, stated precisely because it is a spending decision:
@@ -364,22 +274,29 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     //     the model and NOTHING was billed. Retrying costs nothing and is the only way to ride
     //     out the per-model requests-per-minute ceiling, which GLM-5.3-flash hits easily during
     //     a multi-step agent run. We wait and retry a bounded number of times.
+    //
+    // The adapter decides which failures are free to retry (`retryable`), and for Workers AI that
+    // is the exact regex this loop used before the provider layer existed.
     const MAX_RATE_LIMIT_WAITS = 3;
     let lastErr: unknown = null;
     for (let attempt = 0; attempt <= MAX_RATE_LIMIT_WAITS; attempt++) {
+      const started = Date.now();
       try {
-        raw = await env.AI.run(
-          cfg.id as Parameters<Ai['run']>[0],
-          payload as never,
-          gatewayOpts(env, kind, opts.cacheTtl ?? 0, opts.sessionId) as never,
-        );
+        raw = await adapter.invoke(env, encoded.payload, invokeCtx);
         lastErr = null;
+        recordProviderCall(adapter.id, { model: cfg.id, latencyMs: Date.now() - started, ok: true });
         break;
       } catch (e) {
         lastErr = e;
-        const msg = e instanceof Error ? e.message : String(e);
-        const rateLimited = /\b3021\b|rate limit|too many requests|capacity temporarily/i.test(msg);
-        if (!rateLimited || attempt === MAX_RATE_LIMIT_WAITS) break;
+        const cls = adapter.classifyError(e);
+        recordProviderCall(adapter.id, {
+          model: cfg.id,
+          latencyMs: Date.now() - started,
+          ok: false,
+          errorKind: cls.kind,
+          errorMessage: e instanceof Error ? e.message : String(e),
+        });
+        if (!cls.retryable || attempt === MAX_RATE_LIMIT_WAITS) break;
         // no tokens were spent; hold the reservation and wait for the window to roll
         await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
       }
@@ -399,8 +316,9 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     }
   }
 
-  let text = extractText(raw);
-  let toolCalls = cfg.nativeTools ? extractToolCalls(raw) : [];
+  const decoded = adapter.decode(raw, inputChars, cfg.id);
+  let text = decoded.text;
+  let toolCalls = cfg.nativeTools ? decoded.toolCalls : [];
   if (usePrompted) {
     const parsed = parsePromptedToolCalls(text);
     toolCalls = parsed.calls;
@@ -413,10 +331,13 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     text = text.replace(/```tool_call[\s\S]*?(?:```|$)/g, '').trim();
   }
 
-  const usage = extractUsage(raw, inputChars, text);
+  const usage = decoded.usage;
   // Cloudflare returns the exact neuron cost on models that support it; use it when present and
   // fall back to the price table otherwise. Never bill less than the provider says we spent.
-  const computed = neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
+  // Token-billed providers have no neuron figure of their own, so the converted cost is the bill.
+  const computed = priced
+    ? neuronsForModelTokens(priced, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens)
+    : neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
   const actual = Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
   await settle(env, reserved, actual, cfg.id, kind);
 
@@ -425,7 +346,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     toolCalls,
     usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
     neurons: actual,
-    provider: 'workers-ai',
+    provider: adapter.id,
     model: cfg.id,
     finishReason: toolCalls.length ? 'tool_calls' : 'stop',
   };
