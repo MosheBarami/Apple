@@ -1,7 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocs } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
@@ -19,6 +19,15 @@ export interface AgentCtx {
   /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
   restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
   addMemoryFact(fact: string): Promise<void>;
+  /**
+   * Forward a rasterised frame to the browser.
+   *
+   * Optional so an older caller still satisfies this type, and separate from
+   * the tool result on purpose: pixels must reach the USER without ever
+   * entering the model's transcript, where they would cost a fortune in
+   * tokens and tell it nothing it did not already get from the metadata.
+   */
+  emitFrame?(frame: StudioFrame): void;
   /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
   lastRender?: RenderViewResult;
   lastCritique?: VisualCritique;
@@ -62,6 +71,21 @@ async function renderViews(ctx: AgentCtx, target: string | undefined, view: stri
   const data = res.data as RenderViewResult & { error?: string };
   if (data?.error) return { error: data.error };
   if (!data?.views?.length) return { error: 'the renderer returned no views' };
+  // Push the pixels to the browser as they arrive. This is the only path by
+  // which a frame reaches the user; the tool result below still strips them.
+  if (ctx.emitFrame) {
+    for (const v of data.views) {
+      if (!v.rgbBase64) continue;
+      ctx.emitFrame({
+        rgbBase64: v.rgbBase64,
+        width: v.meta.width,
+        height: v.meta.height,
+        view: v.name,
+        subject: data.subject,
+        capturedAt: Date.now(),
+      });
+    }
+  }
   return data;
 }
 

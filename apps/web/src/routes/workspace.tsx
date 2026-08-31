@@ -18,6 +18,7 @@ import { PairingDialog } from '../components/pairing-dialog';
 import { Composer, type ProviderOption } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
+import { StudioView } from '../components/ws/studio-view';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -79,6 +80,7 @@ export function WorkspacePage() {
     running,
     checkpoints,
     checkpointsState,
+    frames,
     sendChat,
     stop,
     createCheckpoint,
@@ -218,6 +220,10 @@ export function WorkspacePage() {
           {messages.map((item) => (
             <Turn key={item.id} item={item} status={agentStatus} isLast={item.id === lastAssistantId} />
           ))}
+
+          {/* Renders forwarded from Studio during this session. Pinned below
+              the conversation so a long build does not push them out of sight. */}
+          <StudioView frames={frames} running={running} />
         </div>
       </div>
 

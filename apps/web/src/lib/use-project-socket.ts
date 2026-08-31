@@ -6,6 +6,7 @@ import type {
   AgentPhase,
   CheckpointMeta,
   ClientMsg,
+  StudioFrame,
   GolemMode,
   QuotaState,
   ServerMsg,
@@ -13,7 +14,7 @@ import type {
   StudioEventState,
 } from '@golem/shared';
 import { fetchCheckpoints, fetchMessages } from './api';
-import { MOCK_MODE, mockCheckpoints, mockLiveTools, mockLogs, mockMessages, mockQuota, mockStudioState } from './mock';
+import { MOCK_MODE, mockCheckpoints, mockFrames, mockLiveTools, mockLogs, mockMessages, mockQuota, mockStudioState } from './mock';
 import { getAccessToken, supabase } from './supabase';
 
 export interface ToolEvent {
@@ -71,6 +72,8 @@ export interface ProjectSocket {
   agentStatus: AgentStatus | null;
   running: boolean;
   logs: StudioEventLog[];
+  /** Recent frames rasterised inside Studio. Capped — these are large. */
+  frames: StudioFrame[];
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
   sendChat: (text: string, mode: GolemMode) => boolean;
@@ -83,6 +86,8 @@ export interface ProjectSocket {
 }
 
 const MAX_LOGS = 300;
+/** Each frame is ~207KB of base64 at the default 288x180. Keep very few. */
+const MAX_FRAMES = 8;
 let localIdCounter = 0;
 const localId = () => `local-${Date.now()}-${localIdCounter++}`;
 
@@ -139,6 +144,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<StudioEventLog[]>([]);
+  const [frames, setFrames] = useState<StudioFrame[]>([]);
   const [checkpoints, setCheckpoints] = useState<CheckpointMeta[]>([]);
   const [checkpointsState, setCheckpointsState] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -195,6 +201,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     if (MOCK_MODE) {
       setCheckpoints(mockCheckpoints);
       setCheckpointsState('ready');
+      setFrames(mockFrames());
       return;
     }
     setCheckpointsState('loading');
@@ -397,6 +404,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           return [msg.checkpoint, ...without].sort((a, b) => b.createdAt - a.createdAt);
         });
         break;
+      case 'studio_frame':
+        // Uncompressed RGB is heavy, so only the most recent handful are kept
+        // in memory. They are never persisted.
+        setFrames((list) => [...list, msg.frame].slice(-MAX_FRAMES));
+        break;
       case 'studio_log':
         setLogs((list) => [...list, ...msg.entries].slice(-MAX_LOGS));
         break;
@@ -563,6 +575,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     agentStatus,
     running,
     logs,
+    frames,
     checkpoints,
     checkpointsState,
     sendChat,

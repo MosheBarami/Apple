@@ -1079,3 +1079,87 @@
     max-width: 92%;
   }
 }
+
+/* --------------------------------------------------------------------------
+   14. Studio stage — diagnostic renders forwarded from the plugin
+   -------------------------------------------------------------------------- */
+
+.gx-stage {
+  margin: 0 0 1.1rem;
+  border-radius: var(--gx-r);
+  border: 1px solid var(--gx-line);
+  background: var(--gx-raise);
+  overflow: hidden;
+}
+
+.gx-stage__frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: #080806;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.gx-stage.is-expanded .gx-stage__frame {
+  cursor: zoom-out;
+}
+
+/* The rasteriser output is 288x180. Scaling it up smoothly would invent
+   detail the renderer never produced, so keep the pixels honest. */
+.gx-stage__canvas {
+  width: 100%;
+  height: auto;
+  max-height: 190px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.gx-stage.is-expanded .gx-stage__canvas {
+  max-height: 62vh;
+}
+
+.gx-stage__working {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(14, 13, 11, 0.8);
+  color: var(--gx-ink-2);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.gx-stage__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-top: 1px solid var(--gx-line);
+  font-size: 0.76rem;
+  color: var(--gx-ink-3);
+}
+
+.gx-stage__what {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--gx-ink-2);
+}
+
+.gx-stage__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+}
+
+.gx-stage__count {
+  font-variant-numeric: tabular-nums;
+  min-width: 2.4em;
+  text-align: center;
+}

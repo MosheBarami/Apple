@@ -110,6 +110,8 @@ export class SessionDO extends DurableObject<Env> {
   private opQueue: PendingOp[] = [];
   private opWaiters = new Map<string, (r: OpResult) => void>();
   private pollWaiter: (() => void) | null = null;
+  /** msgId of the run in flight, so a forwarded frame can be attributed. */
+  private currentMsgId: string | undefined;
   private seq = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -490,6 +492,7 @@ export class SessionDO extends DurableObject<Env> {
     };
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
+    this.currentMsgId = agent.msgId;
     agent.phase = mode === 'clay' ? 'understanding' : 'planning';
     this.broadcast({ type: 'agent_status', phase: agent.phase });
 
@@ -960,6 +963,13 @@ export class SessionDO extends DurableObject<Env> {
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),
       restoreCheckpoint: (id: string) => this.restoreCheckpoint(id),
+      // Frames go to the browser and nowhere else. They are deliberately not
+      // persisted: a run's worth of uncompressed RGB would be tens of megabytes
+      // in DO storage to show something the user was already watching. A client
+      // that reconnects mid-run gets the trace, not the pixels.
+      emitFrame: (frame) => {
+        this.broadcast({ type: 'studio_frame', frame: { ...frame, msgId: this.currentMsgId } });
+      },
       addMemoryFact: async (fact) => {
         const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
         memory.facts = [...memory.facts.filter((f) => f !== fact), fact].slice(-24);

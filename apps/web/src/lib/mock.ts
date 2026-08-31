@@ -17,6 +17,7 @@ import type {
   QuotaState,
   StudioEventLog,
   StudioEventState,
+  StudioFrame,
 } from '@golem/shared';
 import type { MeResponse, UsageDay } from './api';
 import type { ProfileRow, ProjectRow } from './supabase';
@@ -464,4 +465,70 @@ export function mockRenderDocumentInput(variant: 'before' | 'after' = 'after') {
       },
     ],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Studio frames
+// ---------------------------------------------------------------------------
+
+/**
+ * Two synthetic frames in the plugin's real wire format: packed 24-bit RGB
+ * rows, base64, at the rasteriser's default 288x180.
+ *
+ * These exist so the render stage can be exercised without a Studio session.
+ * They are deliberately crude — a horizon, a ground plane and a couple of
+ * blocks — because their job is to prove the decode path, not to look like a
+ * game. Mock mode only; never reachable in a production build.
+ */
+export function mockFrames(): StudioFrame[] {
+  const W = 288;
+  const H = 180;
+
+  const build = (seed: number): string => {
+    const bytes = new Uint8Array(W * H * 3);
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const i = (y * W + x) * 3;
+        let r: number;
+        let g: number;
+        let b: number;
+        if (y < H * 0.52) {
+          // sky, darkening with height
+          const t = y / (H * 0.52);
+          r = 26 + t * 30;
+          g = 24 + t * 26;
+          b = 22 + t * 22;
+        } else {
+          // ground
+          r = 58;
+          g = 54;
+          b = 47;
+        }
+        // two blocks, offset by seed so consecutive frames differ visibly
+        const bx = 70 + seed * 26;
+        if (x > bx && x < bx + 54 && y > H * 0.30 && y < H * 0.62) {
+          r = 150;
+          g = 132;
+          b = 104;
+        }
+        if (x > bx + 78 && x < bx + 112 && y > H * 0.42 && y < H * 0.62) {
+          r = 96;
+          g = 90;
+          b = 80;
+        }
+        bytes[i] = r;
+        bytes[i + 1] = g;
+        bytes[i + 2] = b;
+      }
+    }
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+    return btoa(binary);
+  };
+
+  const now = Date.now();
+  return [
+    { rgbBase64: build(0), width: W, height: H, view: 'hero', subject: 'Workspace.Lobby', capturedAt: now - 42_000 },
+    { rgbBase64: build(1), width: W, height: H, view: 'eye', subject: 'Workspace.Lobby', capturedAt: now - 6_000 },
+  ];
 }

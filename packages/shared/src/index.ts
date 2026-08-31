@@ -357,6 +357,38 @@ export interface RunSnapshot {
   effortReason?: string;
 }
 
+/**
+ * One frame rasterised by the Studio plugin and forwarded to the browser.
+ *
+ * WHAT THIS IS, EXACTLY. Roblox gives plugins no viewport readback, so there
+ * is no screenshot of what the user is looking at and no video to stream. The
+ * plugin instead runs its own depth-buffered triangle rasteriser in Luau and
+ * returns pixels it computed itself: flat Lambert shading, one fixed sun, no
+ * shadows, no PointLights, no post-effects, no characters and no particles.
+ *
+ * It is therefore a DIAGNOSTIC RENDER of scene geometry, and the UI is
+ * required to say so. Presenting it as a live view of the game would be a
+ * lie, and a convincing one.
+ *
+ * Cost is why these are occasional rather than continuous: rasterising runs
+ * synchronously on Studio's main thread, so every frame briefly freezes the
+ * user's editor, and each one crosses the wire as uncompressed base64 RGB
+ * (~207KB at the default 288x180).
+ */
+export interface StudioFrame {
+  /** Packed 24-bit RGB rows, base64. Decoded to a canvas in the browser. */
+  rgbBase64: string;
+  width: number;
+  height: number;
+  /** Which camera preset produced it. */
+  view: string;
+  /** What was framed. */
+  subject: string;
+  capturedAt: number;
+  /** The run this belongs to, so late frames cannot attach to a new turn. */
+  msgId?: string;
+}
+
 export interface RunSnapshotTool {
   toolId: string;
   tool: string;
@@ -398,6 +430,9 @@ export type ServerMsg =
   | { type: 'studio_log'; entries: StudioEventLog[] }
   // Sent in reply to `resume`, and unprompted on connect when a run is live.
   | { type: 'run_state'; run: RunSnapshot | null }
+  // A real frame rasterised inside Studio and forwarded to the browser.
+  // See StudioFrame — this is a diagnostic render, NOT a viewport capture.
+  | { type: 'studio_frame'; frame: StudioFrame }
   | { type: 'error'; code: string; message: string }
   | { type: 'pong' };
 
