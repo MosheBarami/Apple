@@ -1,6 +1,7 @@
 // /login and /signup — a carved split layout with email/password auth.
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { safeInternalPath } from '../lib/safe-redirect';
 import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
@@ -72,7 +73,9 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  // Validated, not trusted: the catch-all route sits INSIDE AuthGuard, so this
+  // path may have been chosen by whoever sent the link. See lib/safe-redirect.
+  const from = safeInternalPath((location.state as { from?: string } | null)?.from);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
