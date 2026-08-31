@@ -163,3 +163,34 @@ test('structureFromLayout reads the wire format the plugin already sends', () =>
   assert.equal(C.structureFromLayout(undefined), null);
   assert.equal(C.structureFromLayout([]), null);
 });
+
+test('a legitimate interior is NOT rejected — the false positive the docs warn about', () => {
+  // docs/COMPOSITION.md flags this risk explicitly: an interior has no landmark by design, so a
+  // landmark rule could reject correct work. Measured on a plausible tavern interior (walls, floor,
+  // ceiling, bar counter, stools, tables, fireplace) it passes, because the wall-and-ceiling shell
+  // clusters as one tall element with the furniture beneath it. Note what the metric is really
+  // reading there: enclosure against furniture, not landmark against secondary. It gives the right
+  // answer for a defensible structural reason, and this test exists so that stops being luck.
+  const p = (x, y, z, sx, sy, sz) => [x, y, z, sx, sy, sz, 0];
+  const interior = [
+    p(0, 0.5, 0, 40, 1, 30), p(0, 12.5, 0, 40, 1, 30),
+    p(-20, 6.5, 0, 1, 12, 30), p(20, 6.5, 0, 1, 12, 30),
+    p(0, 6.5, -15, 40, 12, 1), p(0, 6.5, 15, 40, 12, 1),
+    p(-8, 3, -10, 16, 4, 2),
+    ...[-14, -11, -8, -5].map((x) => p(x, 2, -7, 1.5, 3, 1.5)),
+    p(10, 2.5, 5, 6, 0.4, 6), p(10, 1.2, 5, 1, 2, 1),
+    p(-2, 2.5, 8, 6, 0.4, 6), p(-2, 1.2, 8, 1, 2, 1),
+    p(18, 4, 10, 4, 7, 3),
+  ];
+  const s = C.structureFromLayout(interior);
+  assert.ok(s.verticalDominance >= 1.25, `interior verticalDominance ${s.verticalDominance} must clear the gate`);
+  assert.deepEqual(C.compositionHardFails(s, [], 'scene'), [], 'a furnished interior must not be rejected');
+});
+
+test('a flat empty room IS rejected — the interior test above is not vacuous', () => {
+  // Same footprint, no furniture and no ceiling: nothing to build a hierarchy from.
+  const p = (x, y, z, sx, sy, sz) => [x, y, z, sx, sy, sz, 0];
+  const bare = [p(0, 0.5, 0, 40, 1, 30), p(-20, 0.6, 0, 1, 1.2, 30), p(20, 0.6, 0, 1, 1.2, 30)];
+  const s = C.structureFromLayout(bare);
+  assert.ok(C.compositionHardFails(s, [], 'scene').length > 0, 'an empty flat room must still fail');
+});
