@@ -1,72 +1,76 @@
-# Cloudflare Workers Builds — why the PR check is red
+# Deployment paths — one controlled path, by decision
 
-`Workers Builds: golem` fails on **every** commit to the PR, including commits
-that change only a Markdown file. It is a build-configuration problem, not a
-code problem, and it cannot be fixed by pushing to the branch.
+Owner decision, 2026-08-31: **one controlled deployment path.** The redundant
+Cloudflare Git build/deploy integration is removed; GitHub stays the
+source-control / PR / CI system and deploys nothing.
 
-## What actually happens
-
-The build itself succeeds — `pnpm install`, `pnpm -r build`, the Astro site and
-the web app all complete. Only the deploy step fails:
+## The canonical path (unchanged)
 
 ```
-Executing user deploy command: npx wrangler versions upload
-✘ [ERROR] Missing entry-point to Worker script or to assets directory
-```
-
-`wrangler` reads its config from the current working directory. The integration
-runs at the **repository root**, and this repo has exactly one wrangler config:
-
-```
-./apps/worker/wrangler.jsonc      <- the only one
-```
-
-There is no root config, so wrangler finds nothing to upload.
-
-## The fix is one dashboard setting
-
-In the Cloudflare dashboard, under the Worker's **Builds** settings, either:
-
-- set the build's **root directory** to `apps/worker`, or
-- change the **deploy command** to
-  `npx wrangler versions upload --config apps/worker/wrangler.jsonc`
-
-Either resolves it. Both are dashboard state; neither lives in this repository.
-
-## Why a root `wrangler.jsonc` was NOT added instead
-
-That would make the default deploy command work, and it is the wrong fix.
-
-`apps/worker/wrangler.jsonc` carries five Durable Object bindings and their
-**migration tags** (`v1` creating `SessionDO`/`QuotaDO`/`PairingDO`/`AdminDO`,
-`v2` adding `BudgetDO`). A second config duplicating those is a second source of
-truth for migration state. The day the two drift, a deploy either fails or
-applies the wrong migration to a live Durable Object namespace — and DO
-migrations are not something you undo.
-
-A red check on a Draft PR is a much smaller problem than that, so the check stays
-red until the dashboard setting is corrected.
-
-## The repo's own deploy path is unaffected
-
-`README.md` documents the real one, and it works:
-
-```
-cd apps/worker && pnpm exec wrangler deploy     # API
+cd apps/worker && pnpm exec wrangler deploy     # API, from apps/worker/wrangler.jsonc
 node infra/deploy-static.mjs                    # site + app -> D1 static store
 ```
 
-The Workers Builds Git integration is a **second, redundant** deploy path.
-Correcting it is worthwhile so the check is honest, but nothing depends on it.
+`apps/worker/wrangler.jsonc` is the only wrangler config in the repository and
+remains canonical. It was not moved and no root copy was created.
 
-## One real bug this surfaced, now fixed
+## What was removed, and why it mattered more than the red check
 
-`apps/worker/package.json` declared:
+The Cloudflare Workers Builds Git integration was connected to
+`MosheBarami/golem` and configured like this:
 
-```json
-"deploy:api": "node ../../infra/deploy.mjs"
-```
+| setting | value |
+|---|---|
+| repository | `MosheBarami/golem`, branch **`main`** |
+| production build command | `pnpm run build` |
+| **production deploy command** | **`npx wrangler deploy`** |
+| production root directory | `/` |
+| previews enabled | `false` |
+| preview deploy command | `npx wrangler versions upload` |
+| preview root directory | `/` |
 
-`infra/deploy.mjs` has never existed in this repository — `git log --all` on that
-path returns nothing. The script has been dead since it was written. It now runs
-`wrangler deploy`, matching the documented runbook.
+The failing PR check was the visible symptom — `root_directory: "/"` has no
+wrangler config, so the deploy step died with `Missing entry-point`. The real
+problem was underneath it: **production was wired to `npx wrangler deploy` on
+every push to `main`.** Not a preview upload — a full production deploy, against
+live D1, KV, Vectorize and five Durable Object namespaces, carrying the migration
+tags in `wrangler.jsonc`.
+
+It had never fired only because the root directory was wrong. Correcting that one
+setting to make the check green — the obvious fix, and the one requested twice by
+automation — would have silently armed automatic production deployment from Git.
+That is why the check was left red rather than "fixed".
+
+The build configuration was deleted via
+`DELETE /accounts/{account_id}/builds/workers/{script_tag}`.
+
+## Restoring it, if it is ever wanted
+
+Recreate with `POST /accounts/{account_id}/builds/workers`, script tag for the
+`golem` Worker, using the table above **with these corrections**:
+
+- `root_directory` must be `apps/worker`, not `/`
+- reconsider `deploy_command`: `npx wrangler versions upload` uploads a version
+  without shifting traffic; `npx wrangler deploy` promotes immediately
+
+The build token UUID is deliberately not recorded here — it is account
+credential material and belongs in the dashboard, not in a repository.
+
+## GitHub Actions: audited, deploys nothing
+
+Both workflows were inspected against the invariant
+*feature PR → tests/build/security/review → no production mutation*:
+
+| workflow | triggers | jobs | deploys? |
+|---|---|---|---|
+| `ci.yml` | `push: [main]`, `pull_request: [main]`, `workflow_dispatch` | typecheck-and-test, build, plugin, static-checks, security | **no** |
+| `plugin-release.yml` | `workflow_dispatch` **only** | plugin artifact | **no** — and it stops at the human publish step |
+
+`grep` for `wrangler`, `deploy`, `secrets.` and `CLOUDFLARE` across
+`.github/workflows/` returns **nothing**. `ci.yml`'s own header states no job is
+given repository secrets, deliberately: a workflow with no credentials cannot
+leak them and cannot spend anything.
+
+So no GitHub Actions path mutates production, and none ever did. The only
+automatic production path that existed was the Cloudflare integration above,
+and it is now gone. Production deployment is a deliberate human command.
