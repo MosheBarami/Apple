@@ -52,6 +52,13 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   roughly 3,000 characters; if what you are writing is getting longer than that, stop, send it, and
   continue in the next call. Use a helper function at the top of each script rather than repeating
   Instance.new blocks.
+- GATE THE BLOCKOUT. After stages 1-2, before any detail, call check_composition. It costs nothing:
+  no render, no critique. If it fails, do NOT go on to stage 3 — the failures it reports are
+  structural and adding parts cannot move them. That is measured, not a guess: across a calibrated
+  set of scenes, part count, material count and colour count each predicted quality no better than a
+  coin flip, while landmark dominance separated good from bad completely. Change the LAYOUT — give
+  one element clear dominance in height and mass and let the rest step down beneath it — then check
+  again. Decorating a failed blockout wastes every step that follows it.
 
 Never report a change you have not observed (this is the rule that matters most):
 - Do NOT claim a property is set, a part exists, or a script is correct because you inferred it
@@ -104,6 +111,41 @@ errors, fix them and re-verify (up to 3 fix cycles). Prefer small verifiable inc
 summary of what you built, what you verified, and anything the user should playtest manually.`,
 };
 
+/**
+ * Sentinels around the art-direction brief so it can be dropped once it has done its job.
+ *
+ * MEASURED: the brief is 7,001 of the ~15,048-character system prompt, and the system prompt is
+ * re-sent on EVERY step because the whole transcript is re-sent on every step. That is ~1,945 input
+ * tokens per step, about 27 neurons, for all 16 steps of a Stone build.
+ *
+ * It earns that while the agent is deciding what to build and how it should look. It earns nothing
+ * once the blockout exists and the work is placing trim. So it is dropped after the first successful
+ * mutating tool call and replaced by a one-line reminder, which on a 16-step build removes it from
+ * roughly the last ten steps: ~270 neurons, about 12% of a gated build.
+ *
+ * NOT removed from step one, and not made a tool the agent has to ask for. A tool would not save
+ * anything — a tool RESULT is part of the transcript and is re-sent exactly like the prompt is,
+ * which is why the previously recorded "move the brief behind a tool for a 19% saving" does not
+ * work as described.
+ */
+export const BRIEF_START = '<<<ART_DIRECTION>>>';
+export const BRIEF_END = '<<<END_ART_DIRECTION>>>';
+
+/** The one-line reminder that replaces the brief once the blockout exists. */
+export const BRIEF_REMINDER =
+  'Art direction (full brief already given above earlier in this run): keep one element dominant in height and mass, keep the material and colour language you established, and add detail in layers rather than scattering props.';
+
+/**
+ * Replace the art-direction brief with a short reminder. Returns the prompt unchanged when the
+ * brief is absent, so calling it twice is safe.
+ */
+export function collapseArtDirection(sys: string): string {
+  const a = sys.indexOf(BRIEF_START);
+  const b = sys.indexOf(BRIEF_END);
+  if (a < 0 || b < 0 || b < a) return sys;
+  return sys.slice(0, a) + BRIEF_REMINDER + sys.slice(b + BRIEF_END.length);
+}
+
 export function systemPrompt(opts: {
   mode: GolemMode;
   studioConnected: boolean;
@@ -130,7 +172,7 @@ export function systemPrompt(opts: {
   return [
     IDENTITY,
     MODE_RULES[opts.mode],
-    opts.sceneKind ? worldBuildingBrief(opts.sceneKind) : '',
+    opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,
     memory,
     `Today: ${new Date().toISOString().slice(0, 10)}.`,

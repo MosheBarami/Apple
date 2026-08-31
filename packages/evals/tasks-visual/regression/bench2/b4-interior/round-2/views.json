@@ -1,0 +1,330 @@
+{
+ "subject": "game.Workspace",
+ "boundsSize": [
+  37.8,
+  26.8,
+  44.1
+ ],
+ "lighting": {
+  "clockTime": 20,
+  "fogEnd": 400,
+  "effects": [
+   "Sky",
+   "SunRaysEffect",
+   "Atmosphere",
+   "BloomEffect",
+   "DepthOfFieldEffect",
+   "ColorCorrectionEffect"
+  ],
+  "geographicLatitude": 45,
+  "ambient": [
+   70,
+   55,
+   45
+  ],
+  "outdoorAmbient": [
+   60,
+   50,
+   45
+  ],
+  "brightness": 1.4,
+  "lightInstances": 9,
+  "exposureCompensation": 0
+ },
+ "views": [
+  {
+   "name": "hero",
+   "meta": {
+    "partsConsidered": 353,
+    "distinctColours": 30,
+    "materials": [
+     {
+      "parts": 198,
+      "material": "Wood"
+     },
+     {
+      "parts": 53,
+      "material": "SmoothPlastic"
+     },
+     {
+      "parts": 26,
+      "material": "Glass"
+     },
+     {
+      "parts": 21,
+      "material": "Slate"
+     },
+     {
+      "parts": 19,
+      "material": "Neon"
+     },
+     {
+      "parts": 15,
+      "material": "Metal"
+     },
+     {
+      "parts": 6,
+      "material": "Grass"
+     },
+     {
+      "parts": 5,
+      "material": "Brick"
+     },
+     {
+      "parts": 4,
+      "material": "Fabric"
+     },
+     {
+      "parts": 2,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.31,
+    "partsVisible": 351,
+    "width": 288
+   }
+  },
+  {
+   "name": "front",
+   "meta": {
+    "partsConsidered": 353,
+    "distinctColours": 30,
+    "materials": [
+     {
+      "parts": 198,
+      "material": "Wood"
+     },
+     {
+      "parts": 53,
+      "material": "SmoothPlastic"
+     },
+     {
+      "parts": 26,
+      "material": "Glass"
+     },
+     {
+      "parts": 21,
+      "material": "Slate"
+     },
+     {
+      "parts": 19,
+      "material": "Neon"
+     },
+     {
+      "parts": 15,
+      "material": "Metal"
+     },
+     {
+      "parts": 6,
+      "material": "Grass"
+     },
+     {
+      "parts": 5,
+      "material": "Brick"
+     },
+     {
+      "parts": 4,
+      "material": "Fabric"
+     },
+     {
+      "parts": 2,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.36,
+    "partsVisible": 351,
+    "width": 288
+   }
+  },
+  {
+   "name": "side",
+   "meta": {
+    "partsConsidered": 353,
+    "distinctColours": 30,
+    "materials": [
+     {
+      "parts": 198,
+      "material": "Wood"
+     },
+     {
+      "parts": 53,
+      "material": "SmoothPlastic"
+     },
+     {
+      "parts": 26,
+      "material": "Glass"
+     },
+     {
+      "parts": 21,
+      "material": "Slate"
+     },
+     {
+      "parts": 19,
+      "material": "Neon"
+     },
+     {
+      "parts": 15,
+      "material": "Metal"
+     },
+     {
+      "parts": 6,
+      "material": "Grass"
+     },
+     {
+      "parts": 5,
+      "material": "Brick"
+     },
+     {
+      "parts": 4,
+      "material": "Fabric"
+     },
+     {
+      "parts": 2,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.42,
+    "partsVisible": 351,
+    "width": 288
+   }
+  },
+  {
+   "name": "top",
+   "meta": {
+    "partsConsidered": 353,
+    "distinctColours": 31,
+    "materials": [
+     {
+      "parts": 198,
+      "material": "Wood"
+     },
+     {
+      "parts": 53,
+      "material": "SmoothPlastic"
+     },
+     {
+      "parts": 26,
+      "material": "Glass"
+     },
+     {
+      "parts": 21,
+      "material": "Slate"
+     },
+     {
+      "parts": 19,
+      "material": "Neon"
+     },
+     {
+      "parts": 15,
+      "material": "Metal"
+     },
+     {
+      "parts": 6,
+      "material": "Grass"
+     },
+     {
+      "parts": 5,
+      "material": "Brick"
+     },
+     {
+      "parts": 4,
+      "material": "Fabric"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     },
+     {
+      "parts": 2,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 1,
+      "material": "Plastic"
+     }
+    ],
+    "partsOffCamera": 1,
+    "height": 180,
+    "subjectCoverage": 1,
+    "partsVisible": 352,
+    "width": 288
+   }
+  },
+  {
+   "name": "eye",
+   "meta": {
+    "partsConsidered": 353,
+    "distinctColours": 30,
+    "materials": [
+     {
+      "parts": 198,
+      "material": "Wood"
+     },
+     {
+      "parts": 53,
+      "material": "SmoothPlastic"
+     },
+     {
+      "parts": 26,
+      "material": "Glass"
+     },
+     {
+      "parts": 21,
+      "material": "Slate"
+     },
+     {
+      "parts": 19,
+      "material": "Neon"
+     },
+     {
+      "parts": 15,
+      "material": "Metal"
+     },
+     {
+      "parts": 6,
+      "material": "Grass"
+     },
+     {
+      "parts": 5,
+      "material": "Brick"
+     },
+     {
+      "parts": 4,
+      "material": "Fabric"
+     },
+     {
+      "parts": 2,
+      "material": "WoodPlanks"
+     },
+     {
+      "parts": 2,
+      "material": "Cobblestone"
+     }
+    ],
+    "partsOffCamera": 2,
+    "height": 180,
+    "subjectCoverage": 0.25,
+    "partsVisible": 351,
+    "width": 288
+   }
+  }
+ ]
+}

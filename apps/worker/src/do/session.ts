@@ -21,7 +21,7 @@ import type {
 import { MODE_INFO } from '@golem/shared';
 import { sparksForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
-import { systemPrompt, MEMORY_UPDATE_PROMPT } from '../prompts';
+import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -525,6 +525,16 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
     }
+    // Drop the art-direction brief once the blockout exists. It is 7,001 of the ~15,048-character
+    // system prompt and the whole transcript is re-sent every step, so carrying it through a
+    // 16-step build costs ~1,945 input tokens (~27 neurons) on every one of them. It earns that
+    // while the agent is deciding what to build; it earns nothing while the agent is placing trim.
+    if (agent.mutated && agent.llm[0]?.role === 'system') {
+      const collapsed = collapseArtDirection(agent.llm[0].content as string);
+      if (collapsed.length !== (agent.llm[0].content as string).length) {
+        agent.llm[0] = { ...agent.llm[0], content: collapsed };
+      }
+    }
     agent.llm = trimTranscript(agent.llm, MAX_PROMPT_CHARS);
     await this.ctx.storage.put('agent', agent);
     this.broadcast({ type: 'agent_status', phase: 'working', step: agent.step, totalSteps: agent.maxSteps });
@@ -887,7 +897,20 @@ export class SessionDO extends DurableObject<Env> {
     const ops = this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
     const running = agent?.status === 'running';
-    const res: PluginPollResponse = { ops, waitMs: running ? 400 : 2500 };
+    // Idle poll cadence is a COMPUTE cost, not an AI cost, and it is the one the $10.06 model does
+    // not contain. When nothing is running this handler returns immediately, so a 2,500 ms cadence
+    // is 34,560 requests/day per connected plugin, each arriving well inside the Durable Object's
+    // eviction window — so the DO is never evicted and bills wall-clock duration around the clock.
+    //
+    // The cadence only has to be quick when someone might start a run in the next moment. A run can
+    // only start from an attached browser, so when no client WebSocket is open there is nothing to
+    // be quick for: back off hard. With a browser attached the cadence is unchanged, so the latency
+    // a user can actually perceive is unchanged.
+    //
+    // ESTIMATE, not a measurement: the eviction threshold is not published and the GB-s saving here
+    // is inferred, not observed. The change is safe regardless of whether the estimate is right.
+    const idleBackoff = this.ctx.getWebSockets('client').length > 0 ? 2500 : 20_000;
+    const res: PluginPollResponse = { ops, waitMs: running ? 400 : idleBackoff };
     return json(res);
   }
 

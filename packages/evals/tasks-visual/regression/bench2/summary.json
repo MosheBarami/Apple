@@ -1,0 +1,248 @@
+[
+ {
+  "results": [
+   {
+    "task": "b4-interior",
+    "difficulty": 4,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 376916,
+      "metrics": {
+       "parts": 351,
+       "small": 273,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Wood",
+         "parts": 198
+        },
+        {
+         "material": "Glass",
+         "parts": 26
+        },
+        {
+         "material": "Neon",
+         "parts": 19
+        },
+        {
+         "material": "WoodPlanks",
+         "parts": 2
+        },
+        {
+         "material": "SmoothPlastic",
+         "parts": 53
+        },
+        {
+         "material": "Brick",
+         "parts": 5
+        },
+        {
+         "material": "Cobblestone",
+         "parts": 2
+        },
+        {
+         "material": "Grass",
+         "parts": 6
+        },
+        {
+         "material": "Slate",
+         "parts": 21
+        },
+        {
+         "material": "Fabric",
+         "parts": 4
+        },
+        {
+         "material": "Metal",
+         "parts": 15
+        }
+       ],
+       "colours": 30,
+       "lights": 9,
+       "heightSpan": 26.8,
+       "brightness": 1.4,
+       "clockTime": 20,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect",
+        "ColorCorrectionEffect"
+       ]
+      },
+      "boundsSize": [
+       37.8,
+       26.8,
+       44.1
+      ],
+      "score": 4,
+      "passed": false,
+      "unavailable": false,
+      "summary": "This is a competent small cottage exterior, not the requested cosy tavern interior. No view shows the bar, stools, tables or fireplace, so the core deliverable is unverifiable at best and absent at worst. What is visible — a flat green plane, a slab roof with a cartoonish overhang, frameless window holes, and a path that dead-ends in grass — sits at 'recognisable but crude'. The half-timbering and",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "The brief was a tavern INTERIOR and not one of the three views shows inside it. Every camera is parked outside looking at a closed box. Add at least one interior camera (eye height ~5 studs, positioned behind the bar looking toward the hear",
+        "observed": "All three views show the exterior of a small house on an empty flat green plane. The brief was a cosy tavern interior — bar, stools, tables, fireplace — and none of it is visible in any view. The doorway in 'front' is a dark rectangle; no暖光",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "ground",
+        "fix": "Replace the green plane with a proper baseplate treatment: cobblestone or packed-dirt terrain texture within ~20 studs of the building, a 6-stud-wide stone path with a 0.2-stud raised border running to the door, and scatter 3-4 low rocks/gr",
+        "observed": "The building sits on a featureless saturated green plane. The grey path is a single flat slab that starts 3 studs from the door and dead-ends in the grass with no edging, no stones, no wear.",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Reduce the roof overhang to 1.5-2 studs past the wall face, split the roof into 4-6 stepped slabs or add a 0.3-stud shingle course every 2 studs of slope, and add a 0.5-stud fascia board in a lighter timber tone around the eave line so the",
+        "observed": "The roof is a single enormous dark-brown slab that overhangs the walls by roughly a third of the building's height on all sides. It reads as a cardboard lid, not a roof — no ridge, no shingle courses, no fascia, no pitch break. The chimney",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Give each window a 0.3-stud frame in dark timber, a 4-pane mullion grid, and a 0.5-stud sill; add shutters on at least the front-facing pair. Add a 1-stud-deep door recess with a lintel and hanging sign bracket above it.",
+        "observed": "Windows are flat dark rectangles punched in the wall with zero reveal depth, no frames, no mullions, no sills. The door is the same. The only relief on the whole facade is a few red flower-box dots.",
+        "severity": "major",
+        "view": "front"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Anchor the building: add a stone foundation course 1 stud tall and 0.5 studs proud of the wall, a 12x12-stud packed-earth yard in front of the door, a bench and barrel cluster against the side wall, and 2-3 background elements (fence line,",
+        "observed": "The building floats in dead negative space — nothing within ~15 studs of it in any direction. No barrels, no sign, no fence, no lantern by the door, no vegetation. The silhouette is a plain box plus lid.",
+        "severity": "major",
+        "view": "hero, side"
+       }
+      ],
+      "neurons": 74
+     },
+     {
+      "round": 2,
+      "runMs": 209062,
+      "metrics": {
+       "parts": 351,
+       "small": 273,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [
+        {
+         "material": "Wood",
+         "parts": 198
+        },
+        {
+         "material": "Glass",
+         "parts": 26
+        },
+        {
+         "material": "Neon",
+         "parts": 19
+        },
+        {
+         "material": "WoodPlanks",
+         "parts": 2
+        },
+        {
+         "material": "SmoothPlastic",
+         "parts": 53
+        },
+        {
+         "material": "Brick",
+         "parts": 5
+        },
+        {
+         "material": "Cobblestone",
+         "parts": 2
+        },
+        {
+         "material": "Grass",
+         "parts": 6
+        },
+        {
+         "material": "Slate",
+         "parts": 21
+        },
+        {
+         "material": "Fabric",
+         "parts": 4
+        },
+        {
+         "material": "Metal",
+         "parts": 15
+        }
+       ],
+       "colours": 30,
+       "lights": 9,
+       "heightSpan": 26.8,
+       "brightness": 1.4,
+       "clockTime": 20,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect",
+        "ColorCorrectionEffect"
+       ]
+      },
+      "boundsSize": [
+       37.8,
+       26.8,
+       44.1
+      ],
+      "score": 4,
+      "passed": false,
+      "unavailable": false,
+      "summary": "This is a competent small cottage exterior, not the requested cosy tavern interior. No view shows the bar, stools, tables or fireplace, so the core deliverable is unverifiable at best and absent at worst. What is visible — a flat green plane, a slab roof with a cartoonish overhang, frameless window holes, and a path that dead-ends in grass — sits at 'recognisable but crude'. The half-timbering and",
+      "hardFails": [],
+      "defects": [
+       {
+        "dimension": "composition",
+        "fix": "The brief was a tavern INTERIOR and not one of the three views shows inside it. Every camera is parked outside looking at a closed box. Add at least one interior camera (eye height ~5 studs, positioned behind the bar looking toward the hear",
+        "observed": "All three views show the exterior of a small house on an empty flat green plane. The brief was a cosy tavern interior — bar, stools, tables, fireplace — and none of it is visible in any view. The doorway in 'front' is a dark rectangle; no暖光",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "ground",
+        "fix": "Replace the green plane with a proper baseplate treatment: cobblestone or packed-dirt terrain texture within ~20 studs of the building, a 6-stud-wide stone path with a 0.2-stud raised border running to the door, and scatter 3-4 low rocks/gr",
+        "observed": "The building sits on a featureless saturated green plane. The grey path is a single flat slab that starts 3 studs from the door and dead-ends in the grass with no edging, no stones, no wear.",
+        "severity": "major",
+        "view": "hero, side"
+       },
+       {
+        "dimension": "proportion",
+        "fix": "Reduce the roof overhang to 1.5-2 studs past the wall face, split the roof into 4-6 stepped slabs or add a 0.3-stud shingle course every 2 studs of slope, and add a 0.5-stud fascia board in a lighter timber tone around the eave line so the",
+        "observed": "The roof is a single enormous dark-brown slab that overhangs the walls by roughly a third of the building's height on all sides. It reads as a cardboard lid, not a roof — no ridge, no shingle courses, no fascia, no pitch break. The chimney",
+        "severity": "major",
+        "view": "hero, front, side"
+       },
+       {
+        "dimension": "detail",
+        "fix": "Give each window a 0.3-stud frame in dark timber, a 4-pane mullion grid, and a 0.5-stud sill; add shutters on at least the front-facing pair. Add a 1-stud-deep door recess with a lintel and hanging sign bracket above it.",
+        "observed": "Windows are flat dark rectangles punched in the wall with zero reveal depth, no frames, no mullions, no sills. The door is the same. The only relief on the whole facade is a few red flower-box dots.",
+        "severity": "major",
+        "view": "front"
+       },
+       {
+        "dimension": "composition",
+        "fix": "Anchor the building: add a stone foundation course 1 stud tall and 0.5 studs proud of the wall, a 12x12-stud packed-earth yard in front of the door, a bench and barrel cluster against the side wall, and 2-3 background elements (fence line,",
+        "observed": "The building floats in dead negative space — nothing within ~15 studs of it in any direction. No barrels, no sign, no fence, no lantern by the door, no vegetation. The silhouette is a plain box plus lid.",
+        "severity": "major",
+        "view": "hero, side"
+       }
+      ],
+      "neurons": 74
+     }
+    ],
+    "best": 4,
+    "passed": false
+   }
+  ]
+ }
+]
