@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit",
-    "deploy:api": "node ../../infra/deploy.mjs"
+    "deploy:api": "wrangler deploy"
   },
   "dependencies": {
     "@golem/shared": "workspace:*",
