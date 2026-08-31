@@ -1,38 +1,83 @@
 --!strict
 --[[
-	Crystal Canyon — Theme: the UI construction kit.
+	Crystal Canyon — Theme: the simulator DESIGN SYSTEM.
 
-	Every surface this game draws is built here, and that is the point. §2 of
-	docs/ROBLOX-STYLE-SPEC.md says an otherwise perfect design fails the category
-	test on outline weight alone, so this module is written so that there is no
-	way to obtain a panel, a button, a card, a counter or an icon without the
-	thick near-black outline, the rounded corner, the vertical gradient and the
-	hard bottom edge already attached. Hud and Panels never call
-	`Instance.new("Frame")` for a surface; they call in here.
+	Every surface this game draws is built here. That was already true; what
+	changed is what "a surface" means. The previous version handed out rounded
+	rectangles with an outline on them, and the owner's verdict on the result was
+	blunt: too many plain black pills, weak panel personality, limited depth,
+	limited motion feedback, no cohesion with a colourful simulator world.
 
-	Section numbers in comments refer to that spec.
+	The fix is not more decoration. It is that a surface in this category is a
+	MOULDED OBJECT, and a moulded object is built from five layers, always in
+	this order, bottom to top:
 
-	Three decisions below are not obvious and are worth checking:
+	    1. drop shadow   solid dark shape, offset down-right, low transparency —
+	                     never a soft glow, never a blur (§3 forbids both)
+	    2. outline       thick near-black, and it does not thin down (§2)
+	    3. body          vertical gradient, lighter top / deeper bottom (§3)
+	    4. hard edge     a darker band of the SAME hue along the lower edge —
+	                     this, not the shadow, is what reads as thickness (§3)
+	    5. highlight     a thin light bar inset along the TOP edge, which is what
+	                     turns a flat fill into something with a lit face
 
-	1. Buttons carry TWO pieces of text machinery. The button's own `Text` is the
+	`surfaceLayers` below is the one function that applies all five, and
+	`Theme.surface` is its public door. Buttons, cards, counters, panel headers
+	and the panel itself all go through it, which is why they now read as one
+	family instead of five separately-tuned frames.
+
+	Section numbers in comments refer to docs/ROBLOX-STYLE-SPEC.md.
+
+	Six decisions below are not obvious and are worth reading before editing.
+
+	1. TOKENS, NOT TUNING. `Theme.Spacing`, `Theme.Radius`, `Theme.Edge` and
+	   `Theme.Type` are the scales. Panels used to pick its own paddings per
+	   modal; anything that wants a gap now names one of these. Two values in
+	   the spacing scale (Snug = 12, Base = 14) are load-bearing: Panels measures
+	   card interiors against exactly those numbers (`CARD_PAD_Y`, `CARD_PAD_X`),
+	   so they are a contract with that file, not free parameters.
+
+	2. BUTTONS CARRY TWO PIECES OF TEXT MACHINERY. The button's own `Text` is the
 	   public API — callers do `btn.Text = "SELL"` and expect it to work — but its
 	   single UIStroke is already spent on the silhouette (ApplyStrokeMode.Border),
 	   so it cannot also carry the heavy contextual stroke §4 demands on type.
 	   The caption therefore lives in a child TextLabel with its own stroke, the
 	   button's native text is made invisible, and a property-changed connection
-	   mirrors one into the other. `btn.Text` keeps working; the type gets its
-	   outline.
+	   mirrors one into the other.
 
-	2. Depth is a real child, not a shadow (§3). Each button clips to its own
-	   rounded silhouette and holds a darker band of the same hue pinned to its
-	   lower edge. That band is what reads as thickness, and it is why every
-	   button here sets ClipsDescendants — without the clip the band would square
-	   off the rounded corners.
+	3. DISPLAY TYPE IS TWO LABELS, AND THE *SHADE* IS THE OUTER ONE. §4 asks for
+	   white fill + black outline + drop shadow. A child always draws above its
+	   parent in Roblox, so a shadow cannot be a child of the label it sits under.
+	   It has to be the parent. So `displayText` returns a dark "shade" label and
+	   parents a white "face" label inside it, offset upward by the shadow
+	   distance. The shade is the instance callers hold: `Theme.counter` returns
+	   it, `Theme.sectionLabel` returns it, and a caption's `Caption` child is it.
+	   Writing `.Text` on the shade mirrors into the face automatically, so the
+	   whole arrangement is invisible from outside — Hud can still resize
+	   `button.Caption` and set `counterLabel.Text` exactly as before.
 
-	3. Panels are sized by scale and clamped in pixels rather than given a fixed
-	   width. A fixed 700px panel is unusable on a phone; a pure 60% scale panel
-	   is unreadably narrow on one. So the panel picks a scale appropriate to the
-	   viewport and a UISizeConstraint guarantees it can never exceed the screen.
+	4. PRESSED MUST PHYSICALLY SINK. A chunky button reads as depressed when its
+	   hard bottom edge shrinks AND its face moves down by the same number of
+	   pixels — do one without the other and it reads as a colour change. So
+	   `wireFeedback` shrinks the edge from `Edge.Rest` to `Edge.Pressed` and
+	   offsets every face child down by the difference. The offset is applied as
+	   a *delta* against the child's current position rather than against a
+	   remembered base, so a caller that repositioned the caption (Hud insets the
+	   SELL caption to make room for a shard icon) is not stomped.
+
+	5. THE DROP SHADOW IS A SIBLING, AND IS SKIPPED INSIDE LAYOUTS. It cannot be
+	   a child (see 3), so it is a sibling plate mirroring the target's geometry.
+	   That is safe everywhere except inside a UIListLayout or UIGridLayout, which
+	   would lay the plate out as a cell of its own — a phantom gap in the shop
+	   grid. So `attachShadow` refuses when the parent owns a UILayout, and those
+	   surfaces fall back on the hard bottom edge, which is the category's
+	   primary depth device anyway (§3). Panels' scrollers and grids all create
+	   their layout before their children, so the check sees the truth.
+
+	6. PANELS ARE SIZED BY SCALE AND CLAMPED IN PIXELS. A fixed 700px panel is
+	   unusable on a phone; a pure 60%-scale panel is unreadably narrow on one.
+	   The panel picks a scale appropriate to the viewport and a UISizeConstraint
+	   guarantees it can never exceed the screen.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -44,22 +89,86 @@ local Util = require(Shared:WaitForChild("Util") :: ModuleScript)
 
 local Theme = {}
 
--- Layout constants. These are geometry, not balance, so they live here rather
--- than in Config — nothing in the economy can be tuned by moving them.
-local EDGE_BUTTON = 6 -- §3 hard bottom edge, in pixels
-local EDGE_PRESSED = 2 -- the edge a button sinks to while held
-local HEADER_HEIGHT = 62
+--------------------------------------------------------------------------------
+-- design tokens
+--------------------------------------------------------------------------------
 
---[[ §5's construction diagram draws a black rule between the saturated header
-	 bar and the white body, and §2 wants the header outlined like every other
-	 surface. Both come from one Border-mode UIStroke on the header — see the
-	 note in Theme.panel — and a Border stroke is drawn entirely OUTSIDE its
-	 object, so the body has to start this many pixels further down or it would
-	 simply cover the rule. Keep this equal to the header's stroke thickness. ]]
-local HEADER_RULE = Palette.Outline.Panel
+--[[ ONE spacing scale for the whole client. Before this existed every panel
+	 invented its own paddings, which is half of why the UI read as five separate
+	 screens rather than one product.
 
-local BODY_PADDING = 18
-local BACKDROP_DIM = 0.45
+	 `Snug` (12) and `Base` (14) are not arbitrary: Panels measures a card's
+	 interior as `width - CARD_PAD_X * 2` with CARD_PAD_X = 14 and CARD_PAD_Y =
+	 12. `Theme.card` pads by exactly those, so changing either number here
+	 silently mis-measures every card in the game. Change both together or not
+	 at all. ]]
+Theme.Spacing = {
+	Hair = 4,
+	Tight = 8,
+	Snug = 12, -- card padding, vertical  (Panels.CARD_PAD_Y)
+	Base = 14, -- card padding, horizontal (Panels.CARD_PAD_X)
+	Room = 18, -- panel body padding
+	Loose = 24,
+	Section = 32,
+}
+
+--[[ ONE corner scale. §3 wants ~12–20px on panels and full pills on buttons;
+	 anything smaller than `Chip` starts to read as a web UI rather than a
+	 moulded toy, which is the failure mode the owner named. ]]
+Theme.Radius = {
+	Chip = UDim.new(0, 8),
+	Button = Palette.Radius.Button,
+	Card = Palette.Radius.Card,
+	Panel = Palette.Radius.Panel,
+	Pill = Palette.Radius.Pill,
+	Icon = Palette.Radius.Icon,
+}
+
+--[[ §3 depth, in pixels. `Rest` is how thick a control looks; `Pressed` is how
+	 thick it looks while held, and the difference is exactly how far its face
+	 travels down (decision 4). ]]
+Theme.Edge = {
+	Rest = 6,
+	Pressed = 2,
+	Card = 5,
+	Counter = 6,
+	Header = 7,
+	Panel = 9,
+}
+
+--[[ The drop shadow (decision 5). Solid, offset, low transparency — a shape,
+	 not a glow. Roblox has no blur worth using here and §3 forbids one anyway. ]]
+Theme.Shadow = {
+	Offset = Vector2.new(5, 7),
+	Transparency = 0.62,
+	PanelOffset = Vector2.new(8, 12),
+	PanelTransparency = 0.46,
+}
+
+--[[ §4 typography. `ShadeDrop` is the distance the white face is lifted above
+	 its dark shade, i.e. the visible drop-shadow distance on display type. ]]
+Theme.Type = {
+	Title = Palette.TextSize.Title,
+	Section = Palette.TextSize.Section,
+	Card = Palette.TextSize.Card,
+	Button = Palette.TextSize.Button,
+	Counter = Palette.TextSize.Counter,
+	Small = Palette.TextSize.Small,
+	ShadeDrop = 2,
+	-- The shade is near-black but not the outline colour: identical values make
+	-- the shadow disappear into the 3px stroke and the type looks flat again.
+	ShadeColor = Color3.fromRGB(24, 20, 30),
+	ShadeTransparency = 0.25,
+}
+
+Theme.Metrics = {
+	HeaderHeight = 68,
+	CloseSize = 52,
+	OrnamentSize = 44,
+	ButtonHeight = 54,
+	IconButton = 70,
+	CounterHeight = 46,
+}
 
 -- Below this viewport width the panel switches to a near-full-bleed layout.
 -- A 60%-wide modal on a 390pt phone is a column of clipped words.
@@ -69,10 +178,38 @@ local PANEL_SCALE_WIDE = UDim2.fromScale(0.60, 0.68)
 local PANEL_SCALE_NARROW = UDim2.fromScale(0.94, 0.80)
 local PANEL_MAX = Vector2.new(820, 680)
 local PANEL_MIN = Vector2.new(280, 240)
+local BACKDROP_DIM = 0.45
+
+--[[ §5's construction diagram draws a black rule between the saturated header
+	 bar and the white body, and §2 wants the header outlined like every other
+	 surface. Both come from one Border-mode UIStroke on the header — see the
+	 note in Theme.panel — and a Border stroke is drawn entirely OUTSIDE its
+	 object, so the body has to start this many pixels further down or it would
+	 simply cover the rule. Keep this equal to the header's stroke thickness. ]]
+local HEADER_RULE = Palette.Outline.Panel
 
 -- Modals sit above the HUD. ScreenGui ZIndexBehavior is Sibling, so this only
 -- has to beat the HUD's own root frames, not every descendant.
 local Z_BACKDROP = 50
+
+--------------------------------------------------------------------------------
+-- colour helpers
+--------------------------------------------------------------------------------
+
+--[[ Blend two colours. Used to tint neutrals toward a hue rather than replacing
+	 them, which is how a counter can stay a dark pill (§6) while still belonging
+	 to its currency's colour family. ]]
+function Theme.mix(a: Color3, b: Color3, k: number): Color3
+	return a:Lerp(b, math.clamp(k, 0, 1))
+end
+
+--[[ The counter fill, and the direct answer to "too many plain black pill-shaped
+	 surfaces". §6 asks for dark currency pills, so these stay dark — but a gold
+	 pill now reads as deep amber and a coin pill as deep forest, instead of both
+	 being the same black lozenge with a different dot on the left. ]]
+local function counterFill(hue: Color3): Color3
+	return Theme.mix(Palette.UI.CounterFill, Palette.shade(hue, 0.62), 0.58)
+end
 
 --------------------------------------------------------------------------------
 -- primitives
@@ -85,13 +222,30 @@ local function corner(inst: GuiObject, radius: UDim): UICorner
 	return c
 end
 
---[[ §3 Slight vertical gradient on fills: lighter top, deeper bottom. The
-	 gradient multiplies the instance's BackgroundColor3, so hover/press states
+--[[ A surface should always draw above whatever it was parented into. Sibling
+	 ZIndexBehavior would let this slide, but a ScreenGui left on the legacy
+	 Global behaviour draws by absolute ZIndex, and then a button whose children
+	 sat at the default 1 would vanish underneath its own panel. ]]
+local function zAbove(parent: Instance): number
+	if parent:IsA("GuiObject") then
+		return parent.ZIndex + 1
+	end
+	return 1
+end
+
+--[[ §3 body gradient: lighter top, deeper bottom. Three stops rather than two —
+	 a straight two-stop ramp reads as a wash, whereas holding the true fill
+	 across the middle and only lifting/deepening the extremes reads as a curved,
+	 moulded face. The gradient multiplies BackgroundColor3, so hover and press
 	 can recolour the fill underneath it and the shading survives. ]]
-local function gradient(inst: GuiObject, fill: Color3): UIGradient
+local function bodyGradient(inst: GuiObject, fill: Color3): UIGradient
 	local g = Instance.new("UIGradient")
 	g.Rotation = 90 -- 0 is left-to-right; 90 runs top-to-bottom
-	g.Color = ColorSequence.new(Palette.lift(fill), Palette.shade(fill, 0.10))
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Palette.lift(fill, 0.22)),
+		ColorSequenceKeypoint.new(0.52, fill),
+		ColorSequenceKeypoint.new(1, Palette.shade(fill, 0.16)),
+	})
 	g.Parent = inst
 	return g
 end
@@ -103,28 +257,134 @@ end
 	 This is deliberately NOT stroked, and an outline audit should not add one:
 	 the band is shading *within* the host's silhouette, not a surface of its
 	 own. The host already carries the outline that encloses both. ]]
-local function hardEdge(host: GuiObject, fill: Color3, thickness: number): Frame
+local function hardEdge(host: GuiObject, fill: Color3, thickness: number, darken: number?): Frame
 	local edge = Instance.new("Frame")
 	edge.Name = "Edge"
 	edge.AnchorPoint = Vector2.new(0.5, 1)
 	edge.Position = UDim2.fromScale(0.5, 1)
 	edge.Size = UDim2.new(1, 0, 0, thickness)
-	edge.BackgroundColor3 = Palette.shade(fill)
+	-- 0.34 on a saturated fill lands on the same hue two shades down, which is
+	-- what §3 asks for. A white surface needs far less — shading white by a third
+	-- produces a mid-grey strip that reads as a shadow lying on the card rather
+	-- than as the card's own edge — so `Theme.card` passes a gentler figure.
+	edge.BackgroundColor3 = Palette.shade(fill, darken or 0.34)
 	edge.BorderSizePixel = 0
 	edge.ZIndex = host.ZIndex
 	edge.Parent = host
 	return edge
 end
 
---[[ A surface should always draw above whatever it was parented into. Sibling
-	 ZIndexBehavior would let this slide, but a ScreenGui left on the legacy
-	 Global behaviour draws by absolute ZIndex, and then a button whose children
-	 sat at the default 1 would vanish underneath its own panel. ]]
-local function zAbove(parent: Instance): number
-	if parent:IsA("GuiObject") then
-		return parent.ZIndex + 1
+--[[ The lit top edge. A thin light bar inset inside the host's top border is
+	 what separates "a moulded plastic object" from "a rounded rectangle" — it
+	 is the single cheapest cue in this whole file.
+
+	 `widthScale` is 1 for a pill or a rectangle (inset from both ends by the
+	 corner radius so the bar does not ride out onto the curve) and a fraction
+	 for a circle, where a scale-based width tracks the button through the
+	 resizing Hud does after construction. Like the hard edge it is shading
+	 inside the host, so it carries no outline of its own. ]]
+local function topHighlight(
+	host: GuiObject,
+	widthScale: number,
+	inset: number,
+	thickness: number,
+	transparency: number
+): Frame
+	local hi = Instance.new("Frame")
+	hi.Name = "Highlight"
+	hi.AnchorPoint = Vector2.new(0.5, 0)
+	hi.Position = UDim2.new(0.5, 0, 0, math.max(3, thickness - 1))
+	hi.Size = UDim2.new(widthScale, -inset * 2, 0, thickness)
+	hi.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	hi.BackgroundTransparency = transparency
+	hi.BorderSizePixel = 0
+	hi.ZIndex = host.ZIndex
+	hi.Parent = host
+	corner(hi, Theme.Radius.Pill)
+	return hi
+end
+
+--[[ §3's diagonal sheen band, used on saturated headers. Rotated so it reads as
+	 a highlight sweep rather than a stripe; the host's clip trims the overhang.
+	 Shading, not a surface — outlining it would draw a black diagonal stripe. ]]
+local function sheen(host: GuiObject, height: number, transparency: number): Frame
+	local band = Instance.new("Frame")
+	band.Name = "Sheen"
+	band.AnchorPoint = Vector2.new(0.5, 0.5)
+	band.Position = UDim2.fromScale(0.5, 0.3)
+	band.Size = UDim2.new(1.7, 0, 0, height)
+	band.Rotation = -7
+	band.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	band.BackgroundTransparency = transparency
+	band.BorderSizePixel = 0
+	band.ZIndex = host.ZIndex
+	band.Parent = host
+	return band
+end
+
+--[[ Decision 5: the offset drop shadow. A sibling plate, solid and dark, that
+	 mirrors the target's geometry — including Visible, because Panels stacks
+	 three action buttons in one spot and shows one at a time, and a shadow left
+	 behind a hidden button would be a floating dark smear.
+
+	 Returns nil, deliberately and silently, when the parent runs a UILayout: the
+	 plate would be laid out as a cell of its own. Callers in that position get
+	 their depth from the hard bottom edge instead, which is what §3 actually
+	 asks for. ]]
+local function attachShadow(target: GuiObject, radius: UDim, offset: Vector2, transparency: number): Frame?
+	local parent = target.Parent
+	if not parent or not parent:IsA("GuiObject") then
+		return nil
 	end
-	return 1
+	if parent:FindFirstChildWhichIsA("UILayout") then
+		return nil
+	end
+
+	local plate = Instance.new("Frame")
+	plate.Name = "Shadow"
+	plate.BackgroundColor3 = Palette.Outline.Color
+	plate.BackgroundTransparency = transparency
+	plate.BorderSizePixel = 0
+	plate.ZIndex = math.max(0, target.ZIndex - 1)
+	plate.Parent = parent
+	local plateCorner = corner(plate, radius)
+
+	--[[ The silhouette is not fixed at construction. Hud builds its nav tiles
+		 from `Theme.button` — for the press feel and the hard edge — and then
+		 reaches in to swap the pill corner for a rounded square, which is a
+		 legitimate thing to do to a button. A shadow frozen at the radius it was
+		 handed would then be a pill lying behind a square, so it tracks the
+		 target's own UICorner instead of the argument it was called with. ]]
+	local hostCorner = target:FindFirstChildOfClass("UICorner")
+	if hostCorner then
+		plateCorner.CornerRadius = hostCorner.CornerRadius
+		hostCorner:GetPropertyChangedSignal("CornerRadius"):Connect(function()
+			plateCorner.CornerRadius = hostCorner.CornerRadius
+		end)
+	end
+
+	local function sync()
+		local p = target.Position
+		plate.Position = UDim2.new(p.X.Scale, p.X.Offset + offset.X, p.Y.Scale, p.Y.Offset + offset.Y)
+		plate.Size = target.Size
+		plate.AnchorPoint = target.AnchorPoint
+		plate.Rotation = target.Rotation
+		plate.Visible = target.Visible
+	end
+	sync()
+
+	-- Mirroring by signal rather than by copying once: every caller in this game
+	-- resizes or repositions the thing it just built (Hud widens the counters,
+	-- Panels reflows an action button between two layouts, Theme.open tweens a
+	-- panel's Size), and a shadow that did not follow would tear off it.
+	for _, property in { "Position", "Size", "AnchorPoint", "Rotation", "Visible" } do
+		target:GetPropertyChangedSignal(property):Connect(sync)
+	end
+	target.Destroying:Connect(function()
+		plate:Destroy()
+	end)
+
+	return plate
 end
 
 --[[ Let type shrink to fit a small screen but never grow past the size the
@@ -139,47 +399,244 @@ local function clampText(label: TextLabel, maxSize: number)
 	c.Parent = label
 end
 
---[[ The caption described in decision (1) at the top of this file. ]]
+--------------------------------------------------------------------------------
+-- display type (decision 3)
+--------------------------------------------------------------------------------
+
+--[[ §4's near-universal treatment: white fill, black outline, drop shadow.
+
+	 The returned label is the SHADE — the dark one underneath — and the white
+	 face is its child, lifted by `Theme.Type.ShadeDrop`. That inversion is
+	 forced by Roblox: children always draw above their parent, so a shadow
+	 cannot be a child of the text it sits under.
+
+	 Everything a caller normally does to a label still works on the shade. Size,
+	 Position and LayoutOrder move both (the face is sized `(1, 0, 1, 0)` of its
+	 parent), and `.Text` is mirrored by the connection below, so
+	 `counterLabel.Text = "1,250"` behaves exactly as it did when this was one
+	 plain label. `TextColor3` is the one property that does not: it belongs to
+	 the face now, which is why `Theme.setTextColor` exists. ]]
+local function displayText(parent: Instance, size: number, color: Color3?): (TextLabel, TextLabel)
+	local shade = Instance.new("TextLabel")
+	shade.Name = "Text"
+	shade.BackgroundTransparency = 1
+	shade.BorderSizePixel = 0
+	shade.Font = Palette.Font.Display
+	shade.TextSize = size
+	shade.TextColor3 = Theme.Type.ShadeColor
+	shade.TextTransparency = Theme.Type.ShadeTransparency
+	shade.TextStrokeTransparency = 1
+	shade.ZIndex = zAbove(parent)
+	shade.Size = UDim2.new(1, 0, 1, 0)
+	clampText(shade, size)
+	shade.Parent = parent
+
+	local face = Instance.new("TextLabel")
+	face.Name = "Face"
+	face.Size = UDim2.new(1, 0, 1, 0)
+	face.Position = UDim2.fromOffset(0, -Theme.Type.ShadeDrop)
+	face.ZIndex = shade.ZIndex + 1
+	Palette.styleText(face, size, color)
+	clampText(face, size)
+	face.Parent = shade
+
+	local function mirrorText()
+		face.Text = shade.Text
+		face.TextXAlignment = shade.TextXAlignment
+		face.TextYAlignment = shade.TextYAlignment
+	end
+	mirrorText()
+	shade:GetPropertyChangedSignal("Text"):Connect(mirrorText)
+	shade:GetPropertyChangedSignal("TextXAlignment"):Connect(mirrorText)
+	shade:GetPropertyChangedSignal("TextYAlignment"):Connect(mirrorText)
+
+	--[[ Callers raise the shade's ZIndex after construction (the panel title and
+		 the close-button caption both do, to clear furniture underneath them).
+		 Under `ZIndexBehavior.Sibling` a child always wins against its parent
+		 anyway, but both ScreenGuis in this game only *happen* to be on Sibling —
+		 keeping the face one step ahead means the pair survives a switch to
+		 Global, where the face would otherwise sink behind its own shadow. ]]
+	shade:GetPropertyChangedSignal("ZIndex"):Connect(function()
+		face.ZIndex = shade.ZIndex + 1
+	end)
+
+	return shade, face
+end
+
+--[[ Recolour the white face of a `displayText` pair. Callers hold the shade, so
+	 without this they would tint the shadow and leave the type white. ]]
+function Theme.setTextColor(label: TextLabel, color: Color3)
+	local face = label:FindFirstChild("Face")
+	if face and face:IsA("TextLabel") then
+		face.TextColor3 = color
+	else
+		label.TextColor3 = color
+	end
+end
+
+--------------------------------------------------------------------------------
+-- the moulded surface
+--------------------------------------------------------------------------------
+
+export type SurfaceSpec = {
+	Fill: Color3,
+	Radius: UDim?,
+	Stroke: number?,
+	Edge: number?,
+	EdgeShade: number?,
+	Gradient: boolean?,
+	Highlight: boolean?,
+	HighlightScale: number?,
+	HighlightInset: number?,
+	HighlightThickness: number?,
+	HighlightTransparency: number?,
+	Sheen: number?, -- height of the diagonal sheen band, nil for none
+	Shadow: Vector2?, -- offset, nil for none
+	ShadowTransparency: number?,
+}
+
+type SurfaceParts = {
+	edge: Frame?,
+	highlight: Frame?,
+	shadow: Frame?,
+}
+
+--[[ The five layers, in order. Every surface in the game is one call to this.
+
+	 `host` must already be parented and must clip: layers 4 and 5 are square
+	 frames pinned to the host's edges, and without ClipsDescendants their corners
+	 punch straight through the rounded silhouette. ]]
+local function surfaceLayers(host: GuiObject, spec: SurfaceSpec): SurfaceParts
+	local radius = spec.Radius or Theme.Radius.Button
+	local fill = spec.Fill
+
+	host.BackgroundColor3 = fill
+	host.BorderSizePixel = 0
+	host.ClipsDescendants = true
+
+	corner(host, radius)
+	if spec.Gradient ~= false then
+		bodyGradient(host, fill)
+	end
+
+	-- §2: the outline is the single most important signal, and it does not thin
+	-- down on small elements. Every branch of this file goes through here.
+	Palette.stroke(host, spec.Stroke or Palette.Outline.Button)
+
+	local parts: SurfaceParts = {}
+
+	if spec.Shadow then
+		parts.shadow = attachShadow(host, radius, spec.Shadow, spec.ShadowTransparency or Theme.Shadow.Transparency)
+	end
+	if spec.Sheen then
+		sheen(host, spec.Sheen, 0.86)
+	end
+	if spec.Edge and spec.Edge > 0 then
+		parts.edge = hardEdge(host, fill, spec.Edge, spec.EdgeShade)
+	end
+	if spec.Highlight ~= false then
+		parts.highlight = topHighlight(
+			host,
+			spec.HighlightScale or 1,
+			spec.HighlightInset or 16,
+			spec.HighlightThickness or 5,
+			spec.HighlightTransparency or 0.55
+		)
+	end
+
+	return parts
+end
+
+--[[ Public door onto the construction above, for a surface this file does not
+	 have a named recipe for. Returns the frame; its layers are children named
+	 `Edge` and `Highlight`, and its shadow (when it got one) is a sibling. ]]
+function Theme.surface(parent: Instance, spec: SurfaceSpec, size: UDim2?, position: UDim2?): Frame
+	local frame = Instance.new("Frame")
+	frame.Name = "Surface"
+	frame.Size = size or UDim2.fromOffset(120, 48)
+	frame.Position = position or UDim2.fromOffset(0, 0)
+	frame.ZIndex = zAbove(parent)
+	frame.Parent = parent
+	surfaceLayers(frame, spec)
+	return frame
+end
+
+--[[ Attach a drop shadow to something this file did not build. Returns nil when
+	 the target sits in a layout (decision 5), so callers must tolerate that. ]]
+function Theme.dropShadow(target: GuiObject, radius: UDim?, offset: Vector2?, transparency: number?): Frame?
+	return attachShadow(
+		target,
+		radius or Theme.Radius.Button,
+		offset or Theme.Shadow.Offset,
+		transparency or Theme.Shadow.Transparency
+	)
+end
+
+--------------------------------------------------------------------------------
+-- buttons
+--------------------------------------------------------------------------------
+
+--[[ Children a press must NOT move. `Edge` and `Highlight` are the button's own
+	 moulding — the edge shrinks instead, and the highlight is the fixed lit rim.
+	 `Veil` is Hud's full-bleed disabled wash, which has to stay registered with
+	 the silhouette. `Badge` is the notification dot: it is pinned to the corner
+	 and a bouncing dot reads as a bug. Everything else — the caption, Hud's
+	 pictograms, the SELL button's shard icon — is the button's FACE and travels
+	 with the press. ]]
+local SINK_SKIP: { [string]: boolean } = {
+	Edge = true,
+	Highlight = true,
+	Sheen = true,
+	Veil = true,
+	Badge = true,
+	Shadow = true,
+}
+
+--[[ The caption described in decision 2, built on the display type of decision
+	 3. The label returned (and named `Caption`, which Hud looks up by name) is
+	 the dark shade; the white face is inside it. ]]
 local function caption(btn: TextButton, textSize: number, bottomPad: number): TextLabel
 	--[[ The native text stays as the API surface but is never drawn.
 
 		 It is also dragged onto the category's own font and size instead of being
-		 left on the TextButton defaults (LegacyArial at 8px). Two reasons:
-
-		   • A style audit that reads properties rather than pixels — which is how
-		     the live playtest reported `Button 'SELL SHARDS' font=LegacyArial
-		     size=8` sitting under `Caption 'SELL SHARDS' FredokaOne 22` — sees a
-		     thin, non-category font on a control, and §9.10 fails that outright.
-		   • More importantly it is one stray write from being true: any code that
-		     cleared TextTransparency would surface hairline Arial underneath the
-		     styled caption. Matching the caption means the worst case is a
-		     doubled correct glyph, not a category failure.
+		 left on the TextButton defaults (LegacyArial at 8px). A style audit that
+		 reads properties rather than pixels sees a thin, non-category font on a
+		 control and §9.10 fails that outright — and more importantly it is one
+		 stray write from being true: any code that cleared TextTransparency would
+		 surface hairline Arial underneath the styled caption. Matching the caption
+		 means the worst case is a doubled correct glyph, not a category failure.
 
 		 Clearing `btn.Text` instead is not an option: it is the documented public
-		 API (decision 1 at the top of this file) and Panels drives caption changes
-		 through it. ]]
+		 API and Panels drives caption changes through it. ]]
 	btn.Font = Palette.Font.Display
 	btn.TextSize = textSize
 	btn.TextColor3 = Palette.UI.TextLight
 	btn.TextTransparency = 1
 	btn.TextStrokeTransparency = 1
 
-	local label = Instance.new("TextLabel")
+	local label = displayText(btn, textSize)
 	label.Name = "Caption"
 	label.AnchorPoint = Vector2.new(0.5, 0)
+	--[[ Sits above the hard bottom edge so the type is optically centred in the
+		 LIT FACE of the button rather than in its full silhouette.
+
+		 The Y offset is deliberately left at zero rather than being nudged down
+		 to compensate for the shade drop (decision 3). Hud rewrites this label's
+		 Position outright when it insets the SELL caption around a shard plate,
+		 preserving only the Y *terms it can see* — so any compensation encoded
+		 here would survive on every button except the one that most needs it, and
+		 the SELL button would be the odd one out. Two pixels of shade drop on
+		 22px type is below the threshold where that matters; an inconsistency
+		 between one button and every other one is not.
+
+		 Horizontally only 10px: a nav tile is barely wider than its word, and a
+		 generous inset there scales "UPGRADES" down to nothing. ]]
 	label.Position = UDim2.new(0.5, 0, 0, 0)
-	-- Sits above the hard bottom edge so the label is optically centred in the
-	-- lit face of the button rather than in its full silhouette.
-	-- Only a 10px horizontal inset: a circular icon button is barely wider than
-	-- its word, and a generous inset there scales "UPGRADES" down to nothing.
 	label.Size = UDim2.new(1, -10, 1, -bottomPad)
 	label.ZIndex = btn.ZIndex + 1
-	Palette.styleText(label, textSize)
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.TextYAlignment = Enum.TextYAlignment.Center
 	label.Text = btn.Text
-	clampText(label, textSize)
-	label.Parent = btn
 
 	btn:GetPropertyChangedSignal("Text"):Connect(function()
 		label.Text = btn.Text
@@ -192,18 +649,61 @@ local function caption(btn: TextButton, textSize: number, bottomPad: number): Te
 	return label
 end
 
---[[ Hover and press feedback. Both states recolour the fill and shorten the
-	 hard edge, so a held button physically sinks into its own thickness. Only
-	 properties the button owns are touched — never Size or Position — so this
-	 cannot fight a UIListLayout or a caller-set position. ]]
-local function wireFeedback(btn: TextButton, fill: Color3, edge: Frame, rest: number)
-	local hoverFill = Palette.lift(fill, 0.10)
-	local pressFill = Palette.shade(fill, 0.12)
-	local quick = TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+--[[ idle / hover / pressed (decision 4).
 
-	local function state(color: Color3, thickness: number)
-		TweenService:Create(btn, quick, { BackgroundColor3 = color }):Play()
-		TweenService:Create(edge, quick, { Size = UDim2.new(1, 0, 0, thickness) }):Play()
+	 Hover brightens the fill and the lit rim. Press does three things at once,
+	 and all three are needed for the button to read as depressed rather than
+	 merely recoloured: the fill deepens, the hard bottom edge collapses from
+	 `rest` to `Edge.Pressed`, and every face child moves down by exactly that
+	 difference. The button's own Size and Position are never touched, so this
+	 cannot fight a UIListLayout or a caller-set position.
+
+	 The press half is applied instantly rather than tweened. A chunky button
+	 that eases into being pressed feels soft; the category's read is a hard
+	 mechanical click, and an eased edge would also drift out of step with the
+	 snapped caption for the length of the tween. Only colour is tweened. ]]
+local function wireFeedback(btn: TextButton, fill: Color3, parts: SurfaceParts, rest: number)
+	local hoverFill = Palette.lift(fill, 0.14)
+	local pressFill = Palette.shade(fill, 0.14)
+	local edge = parts.edge
+	local highlight = parts.highlight
+	-- Written long-hand rather than as `highlight and x or 1`: a highlight that
+	-- was fully opaque (transparency 0) would make that idiom fall through to 1
+	-- and the rim would vanish on the first hover.
+	local restGlow = 1
+	if highlight then
+		restGlow = highlight.BackgroundTransparency
+	end
+
+	local colourTween = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+	-- How far the face is currently displaced, so a state change can be applied
+	-- as a delta. Deltas rather than a remembered base is what lets Hud reposition
+	-- the SELL caption after construction without this stomping it back.
+	local sunk = 0
+	local function sink(depth: number)
+		local delta = depth - sunk
+		if delta == 0 then
+			return
+		end
+		sunk = depth
+		for _, child in btn:GetChildren() do
+			if child:IsA("GuiObject") and not SINK_SKIP[child.Name] then
+				local p = child.Position
+				child.Position = UDim2.new(p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset + delta)
+			end
+		end
+	end
+
+	local function state(color: Color3, edgeThickness: number, glow: number)
+		TweenService:Create(btn, colourTween, { BackgroundColor3 = color }):Play()
+		if edge then
+			edge.Size = UDim2.new(1, 0, 0, edgeThickness)
+		end
+		if highlight then
+			TweenService:Create(highlight, colourTween, { BackgroundTransparency = glow }):Play()
+		end
+		sink(rest - edgeThickness)
 	end
 
 	local hovering = false
@@ -211,11 +711,11 @@ local function wireFeedback(btn: TextButton, fill: Color3, edge: Frame, rest: nu
 
 	local function refresh()
 		if held then
-			state(pressFill, EDGE_PRESSED)
+			state(pressFill, Theme.Edge.Pressed, math.min(1, restGlow + 0.25))
 		elseif hovering then
-			state(hoverFill, rest)
+			state(hoverFill, rest, math.max(0, restGlow - 0.18))
 		else
-			state(fill, rest)
+			state(fill, rest, restGlow)
 		end
 	end
 
@@ -252,7 +752,7 @@ end
 
 --[[ The one place a button is actually constructed. Theme.button, the panel
 	 close button and Theme.iconButton all come through here so none of them can
-	 drift from the others on outline weight or depth. ]]
+	 drift from the others on outline weight, depth or press behaviour. ]]
 local function makeButton(
 	parent: Instance,
 	text: string,
@@ -261,26 +761,36 @@ local function makeButton(
 	position: UDim2,
 	radius: UDim,
 	textSize: number,
-	edgeThickness: number
+	edgeThickness: number,
+	highlightScale: number,
+	highlightInset: number,
+	shadowOffset: Vector2
 ): (TextButton, TextLabel)
 	local btn = Instance.new("TextButton")
 	btn.Name = "Button"
 	btn.Size = size
 	btn.Position = position
-	btn.BackgroundColor3 = fillColor
-	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false -- the hover/press states below replace it
-	btn.ClipsDescendants = true -- required by hardEdge
 	btn.Text = string.upper(text)
-	btn.ZIndex = zAbove(parent) -- set before the edge and caption copy it
+	btn.ZIndex = zAbove(parent) -- set before the layers and caption copy it
+	-- Parented before the layers, because the drop shadow is a SIBLING and has
+	-- to be able to see where it is going (decision 5).
 	btn.Parent = parent
 
-	corner(btn, radius)
-	gradient(btn, fillColor)
-	Palette.stroke(btn, Palette.Outline.Button)
-	local edge = hardEdge(btn, fillColor, edgeThickness)
+	local parts = surfaceLayers(btn, {
+		Fill = fillColor,
+		Radius = radius,
+		Stroke = Palette.Outline.Button,
+		Edge = edgeThickness,
+		HighlightScale = highlightScale,
+		HighlightInset = highlightInset,
+		HighlightThickness = 5,
+		HighlightTransparency = 0.52,
+		Shadow = shadowOffset,
+	})
+
 	local label = caption(btn, textSize, edgeThickness)
-	wireFeedback(btn, fillColor, edge, edgeThickness)
+	wireFeedback(btn, fillColor, parts, edgeThickness)
 
 	return btn, label
 end
@@ -289,136 +799,368 @@ end
 -- public surface
 --------------------------------------------------------------------------------
 
---[[ §3 Pill or rounded, vertical gradient, hard bottom edge, thick outline,
-	 heavy uppercase type. `size` and `position` are optional. ]]
+--[[ §3 Pill, vertical gradient, lit top rim, hard bottom edge, offset shadow,
+	 thick outline, heavy uppercase type. `size` and `position` are optional. ]]
 function Theme.button(parent: Instance, text: string, fillColor: Color3, size: UDim2?, position: UDim2?): TextButton
 	local btn = makeButton(
 		parent,
 		text,
 		fillColor,
-		size or UDim2.fromOffset(220, 54),
+		size or UDim2.fromOffset(220, Theme.Metrics.ButtonHeight),
 		position or UDim2.fromOffset(0, 0),
-		Palette.Radius.Pill, -- §3 buttons are often full pills; this is the default action shape
-		Palette.TextSize.Button,
-		EDGE_BUTTON
+		Theme.Radius.Pill, -- §3 buttons are often full pills; this is the default action shape
+		Theme.Type.Button,
+		Theme.Edge.Rest,
+		1,
+		18,
+		Theme.Shadow.Offset
 	)
 	return btn
 end
 
 --[[ §5.4 Item cards are white, outlined, rounded. The action button goes
 	 *inside* the card, right-aligned — that is the caller's job, and the padding
-	 here is what gives it somewhere to sit. ]]
+	 here is what gives it somewhere to sit.
+
+	 A white card cannot use the white top highlight (it would be invisible), so
+	 its moulding comes from the gradient and from a light-grey hard bottom edge
+	 that reads as the card's thickness. That is also why it clips: the edge is a
+	 square band and the card's corners are 14px round. Panels lays every card
+	 child out inside the padding, so nothing legitimate is clipped by this —
+	 including the action button's own shadow, which lands inside the padding
+	 rather than past the card border. ]]
 function Theme.card(parent: Instance, size: UDim2?): Frame
 	local card = Instance.new("Frame")
 	card.Name = "Card"
 	card.Size = size or UDim2.new(1, 0, 0, 92)
-	card.BackgroundColor3 = Palette.UI.CardFill
-	card.BorderSizePixel = 0
 	card.ZIndex = zAbove(parent)
 	card.Parent = parent
 
-	corner(card, Palette.Radius.Card)
-	-- §2: the outline does not thin down on small elements. A card gets the same
-	-- weight as a button even when it is a 60px chip in a grid.
-	Palette.stroke(card, Palette.Outline.Card)
+	surfaceLayers(card, {
+		Fill = Palette.UI.CardFill,
+		Radius = Theme.Radius.Card,
+		-- §2: the outline does not thin down on small elements. A card gets the
+		-- same weight as a button even when it is a 60px chip in a grid.
+		Stroke = Palette.Outline.Card,
+		Edge = Theme.Edge.Card,
+		EdgeShade = 0.16,
+		Highlight = false,
+		Shadow = Theme.Shadow.Offset,
+		ShadowTransparency = 0.74,
+	})
 
 	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 12)
-	pad.PaddingBottom = UDim.new(0, 12)
-	pad.PaddingLeft = UDim.new(0, 14)
-	pad.PaddingRight = UDim.new(0, 14)
+	-- Contract with Panels.CARD_PAD_X / CARD_PAD_Y — see decision 1.
+	pad.PaddingTop = UDim.new(0, Theme.Spacing.Snug)
+	pad.PaddingBottom = UDim.new(0, Theme.Spacing.Snug)
+	pad.PaddingLeft = UDim.new(0, Theme.Spacing.Base)
+	pad.PaddingRight = UDim.new(0, Theme.Spacing.Base)
 	pad.Parent = card
 
 	return card
 end
 
---[[ §6 Currency counter: a dark rounded pill, coloured coin at the left end, a
-	 big comma-separated number. Returns the pill and the number label; the HUD
-	 owns what goes in the label (via Util.comma). ]]
+--[[ §6 Currency counter. A dark rounded pill — but a pill TINTED toward its own
+	 currency, a minted medallion at the left end, and a big comma-separated
+	 number in outlined display type.
+
+	 Returns the pill and the number label. The label is a `displayText` shade
+	 (decision 3): `label.Text = Util.comma(n)` is all a caller needs and it
+	 keeps working exactly as it did. ]]
 function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (Frame, TextLabel)
+	local fill = counterFill(iconColor)
+
 	local pill = Instance.new("Frame")
 	pill.Name = "Counter"
-	pill.Size = UDim2.fromOffset(196, 46)
+	pill.Size = UDim2.fromOffset(196, Theme.Metrics.CounterHeight)
 	pill.Position = position or UDim2.fromOffset(0, 0)
-	pill.BackgroundColor3 = Palette.UI.CounterFill
-	pill.BorderSizePixel = 0
-	pill.ClipsDescendants = true
 	pill.ZIndex = zAbove(parent)
 	pill.Parent = parent
 
-	corner(pill, Palette.Radius.Pill)
-	gradient(pill, Palette.UI.CounterFill)
-	Palette.stroke(pill, Palette.Outline.Button)
-	hardEdge(pill, Palette.UI.CounterFill, 5)
+	surfaceLayers(pill, {
+		Fill = fill,
+		Radius = Theme.Radius.Pill,
+		Stroke = Palette.Outline.Button,
+		Edge = Theme.Edge.Counter,
+		HighlightScale = 1,
+		HighlightInset = 22,
+		HighlightThickness = 4,
+		-- Subtler than a button's: this is a readout, not a control, and a bright
+		-- rim here would compete with the number for attention.
+		HighlightTransparency = 0.74,
+		Shadow = Theme.Shadow.Offset,
+	})
 
-	local coin = Instance.new("Frame")
-	coin.Name = "Coin"
-	coin.AnchorPoint = Vector2.new(0, 0.5)
-	coin.Position = UDim2.new(0, 7, 0.5, -2)
-	coin.Size = UDim2.fromOffset(30, 30)
-	coin.BackgroundColor3 = iconColor
-	coin.BorderSizePixel = 0
-	coin.ZIndex = pill.ZIndex + 1
-	coin.Parent = pill
-	corner(coin, Palette.Radius.Icon)
-	gradient(coin, iconColor)
-	Palette.stroke(coin, Palette.Outline.Icon)
+	--[[ The medallion. Three concentric parts rather than one flat disc — rim,
+		 face, gloss — because a single coloured circle inside a dark pill is
+		 exactly the "basic icon treatment" the owner called out. It is anchored
+		 to the pill's left end and vertically centred, so the Hud resizing the
+		 pill (it does, to line the counters up with the pack bar) moves it. ]]
+	local rim = Instance.new("Frame")
+	rim.Name = "Coin"
+	rim.AnchorPoint = Vector2.new(0, 0.5)
+	rim.Position = UDim2.new(0, 8, 0.5, -2)
+	rim.Size = UDim2.fromOffset(32, 32)
+	rim.ZIndex = pill.ZIndex + 1
+	rim.Parent = pill
+	surfaceLayers(rim, {
+		Fill = Palette.shade(iconColor, 0.24),
+		Radius = Theme.Radius.Icon,
+		Stroke = Palette.Outline.Icon,
+		Edge = 0,
+		Highlight = false,
+	})
 
-	local number = Instance.new("TextLabel")
+	local face = Instance.new("Frame")
+	face.Name = "Face"
+	face.AnchorPoint = Vector2.new(0.5, 0.5)
+	face.Position = UDim2.fromScale(0.5, 0.46)
+	face.Size = UDim2.fromScale(0.72, 0.72)
+	face.BackgroundColor3 = Palette.lift(iconColor, 0.24)
+	face.BorderSizePixel = 0
+	face.ZIndex = rim.ZIndex + 1
+	face.Parent = rim
+	corner(face, Theme.Radius.Icon)
+	bodyGradient(face, Palette.lift(iconColor, 0.24))
+
+	local gloss = Instance.new("Frame")
+	gloss.Name = "Gloss"
+	gloss.AnchorPoint = Vector2.new(0.5, 0.5)
+	gloss.Position = UDim2.fromScale(0.36, 0.3)
+	gloss.Size = UDim2.fromScale(0.3, 0.22)
+	gloss.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	gloss.BackgroundTransparency = 0.42
+	gloss.BorderSizePixel = 0
+	gloss.Rotation = -25
+	gloss.ZIndex = face.ZIndex + 1
+	gloss.Parent = face
+	corner(gloss, Theme.Radius.Pill)
+
+	local number = displayText(pill, Theme.Type.Counter)
 	number.Name = "Amount"
 	number.AnchorPoint = Vector2.new(0, 0.5)
-	number.Position = UDim2.new(0, 46, 0.5, -2)
-	number.Size = UDim2.new(1, -56, 0, 30)
+	-- -1 rather than 0: the pill carries a 6px hard bottom edge, so its optical
+	-- centre is above its geometric one, and the white face already sits one
+	-- ShadeDrop up from this box.
+	number.Position = UDim2.new(0, 48, 0.5, -1)
+	number.Size = UDim2.new(1, -58, 0, 30)
 	number.ZIndex = pill.ZIndex + 1
-	Palette.styleText(number, Palette.TextSize.Counter)
 	number.TextXAlignment = Enum.TextXAlignment.Left
 	-- §4 never truncated to "1B"; the comma form is part of the fantasy.
 	number.Text = Util.comma(0)
-	clampText(number, Palette.TextSize.Counter)
-	number.Parent = pill
 
 	return pill, number
 end
 
 --[[ §6 Left-edge circular icon button. `label` is the short word inside it —
 	 emoji are ornamental only in this category (§4), never functional icons, so
-	 these carry heavy type instead. ]]
+	 these carry heavy type instead, and the Hud passes an empty string because it
+	 draws vector pictograms into the circle and puts the word underneath.
+
+	 The highlight is scale-width rather than inset-width so it stays a correct
+	 arc of the circle after the Hud shrinks these from 70px to 62px. ]]
 function Theme.iconButton(parent: Instance, label: string, fillColor: Color3, position: UDim2?): TextButton
 	local btn = makeButton(
 		parent,
 		label,
 		fillColor,
-		UDim2.fromOffset(70, 70),
+		UDim2.fromOffset(Theme.Metrics.IconButton, Theme.Metrics.IconButton),
 		position or UDim2.fromOffset(0, 0),
-		Palette.Radius.Icon, -- full circle
-		Palette.TextSize.Small,
-		EDGE_BUTTON
+		Theme.Radius.Icon, -- full circle
+		Theme.Type.Small,
+		Theme.Edge.Rest,
+		0.56,
+		0,
+		-- Tighter than a pill's: the Hud stacks these 14px apart with a word
+		-- underneath each, and the standard offset would put a wedge of shadow
+		-- behind the top of that caption.
+		Vector2.new(4, 5)
 	)
 	btn.Name = "IconButton"
 	return btn
 end
 
---[[ §5.3 Sections are labelled, centred, outlined. Flanked by rules because a
-	 bare centred word reads as a caption rather than a heading. ]]
+--[[ §5.3 Sections are labelled, centred, outlined. Flanked by real rules — two
+	 stubby dark bars with a diamond cap — rather than by em-dashes inside the
+	 string, because a rule drawn in type is a hyphen and reads as one.
+
+	 Returns a TextLabel so callers can set LayoutOrder and Text on it; the rules
+	 and the white face are its children (decision 3). ]]
 function Theme.sectionLabel(parent: Instance, text: string): TextLabel
-	local label = Instance.new("TextLabel")
+	local label = displayText(parent, Theme.Type.Section)
 	label.Name = "SectionLabel"
-	label.Size = UDim2.new(1, 0, 0, 34)
-	Palette.styleText(label, Palette.TextSize.Section)
-	label.Text = `— {string.upper(text)} —`
+	-- Taller than the type by ShadeDrop so lifting the face does not push it out
+	-- of its own layout slot.
+	label.Size = UDim2.new(1, 0, 0, 34 + Theme.Type.ShadeDrop)
+	label.Text = string.upper(text)
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	label.ZIndex = zAbove(parent)
-	clampText(label, Palette.TextSize.Section)
-	label.Parent = parent
+
+	local function rule(anchorX: number, positionX: number)
+		local bar = Instance.new("Frame")
+		bar.Name = "Rule"
+		bar.AnchorPoint = Vector2.new(anchorX, 0.5)
+		bar.Position = UDim2.new(positionX, 0, 0.5, 0)
+		bar.Size = UDim2.new(0.13, 0, 0, 5)
+		bar.BackgroundColor3 = Palette.Outline.Color
+		bar.BackgroundTransparency = 0.3
+		bar.BorderSizePixel = 0
+		bar.ZIndex = label.ZIndex
+		bar.Parent = label
+		corner(bar, Theme.Radius.Pill)
+
+		local cap = Instance.new("Frame")
+		cap.Name = "Cap"
+		cap.AnchorPoint = Vector2.new(anchorX, 0.5)
+		cap.Position = UDim2.new(1 - anchorX, 0, 0.5, 0)
+		cap.Size = UDim2.fromOffset(9, 9)
+		cap.Rotation = 45
+		cap.BackgroundColor3 = Palette.Outline.Color
+		cap.BackgroundTransparency = 0.3
+		cap.BorderSizePixel = 0
+		cap.ZIndex = label.ZIndex
+		cap.Parent = bar
+		corner(cap, UDim.new(0, 2))
+	end
+
+	rule(0, 0)
+	rule(1, 1)
+
 	return label
+end
+
+--------------------------------------------------------------------------------
+-- header ornaments
+--------------------------------------------------------------------------------
+
+--[[ A small shape composed from rounded frames. Coordinates are in the 30x30
+	 box the ornament slot scales, which keeps every ornament drawn to one grid. ]]
+local function pip(
+	host: Frame,
+	width: number,
+	height: number,
+	x: number,
+	y: number,
+	radius: number,
+	color: Color3,
+	rotation: number?
+): Frame
+	local part = Instance.new("Frame")
+	part.AnchorPoint = Vector2.new(0.5, 0.5)
+	part.Position = UDim2.fromScale(x / 30, y / 30)
+	part.Size = UDim2.fromScale(width / 30, height / 30)
+	part.BackgroundColor3 = color
+	part.BorderSizePixel = 0
+	part.Rotation = rotation or 0
+	part.ZIndex = host.ZIndex + 1
+	part.Parent = host
+	corner(part, UDim.new(0, radius))
+	Palette.stroke(part, Palette.Outline.Icon)
+	return part
+end
+
+--[[ §5's header is the panel's personality, and four modals that differ only in
+	 hue still read as one screen repeated. This is the optional slot on the LEFT
+	 of the header — mirroring the close button on the right, so the title stays
+	 optically centred between them — that lets SHOP wear a gem and ZONES wear a
+	 marker.
+
+	 Shapes are original vector primitives, never a logo or a third-party mark. ]]
+function Theme.headerOrnament(panel: Frame, kind: string, color: Color3?): Frame?
+	local header = panel:FindFirstChild("Header")
+	if not header or not header:IsA("Frame") then
+		return nil
+	end
+
+	local existing = header:FindFirstChild("Ornament")
+	if existing then
+		existing:Destroy()
+	end
+
+	local slot = Instance.new("Frame")
+	slot.Name = "Ornament"
+	slot.AnchorPoint = Vector2.new(0, 0.5)
+	slot.Position = UDim2.new(0, 14, 0.5, -3)
+	slot.Size = UDim2.fromOffset(Theme.Metrics.OrnamentSize, Theme.Metrics.OrnamentSize)
+	slot.BackgroundTransparency = 1
+	slot.BorderSizePixel = 0
+	slot.ZIndex = header.ZIndex + 2
+	slot.Parent = header
+
+	local tint = color or Palette.UI.TextLight
+	local deep = Palette.shade(tint, 0.3)
+
+	if kind == "gem" then
+		-- A cut stone: a broad table over a tapered body.
+		pip(slot, 20, 20, 15, 16, 4, tint, 45)
+		pip(slot, 16, 6, 15, 10, 3, Palette.lift(tint, 0.45))
+	elseif kind == "coin" then
+		pip(slot, 22, 22, 15, 15, 11, tint)
+		pip(slot, 10, 10, 15, 15, 5, deep)
+	elseif kind == "star" then
+		pip(slot, 8, 24, 15, 15, 4, tint)
+		pip(slot, 24, 8, 15, 15, 4, tint)
+		pip(slot, 14, 14, 15, 15, 7, Palette.lift(tint, 0.4))
+	elseif kind == "pin" then
+		-- A map marker: a head over a tapered spike.
+		pip(slot, 9, 9, 15, 22, 2, deep, 45)
+		pip(slot, 20, 20, 15, 13, 10, tint)
+		pip(slot, 8, 8, 15, 13, 4, deep)
+	elseif kind == "key" then
+		pip(slot, 16, 16, 12, 12, 8, tint)
+		pip(slot, 6, 6, 12, 12, 3, deep)
+		pip(slot, 14, 6, 21, 19, 3, tint, -45)
+	elseif kind == "bolt" then
+		pip(slot, 8, 16, 13, 11, 3, tint, 18)
+		pip(slot, 8, 16, 17, 19, 3, Palette.lift(tint, 0.35), 18)
+	else
+		slot:Destroy()
+		return nil
+	end
+
+	return slot
 end
 
 --------------------------------------------------------------------------------
 -- panel
 --------------------------------------------------------------------------------
 
---[[ Keeps a panel legible on every screen (decision 3 at the top of this file).
-	 Re-runs on viewport change, which also covers a phone being rotated. ]]
+export type PanelOptions = {
+	size: UDim2?,
+	ornament: string?, -- "gem" | "coin" | "star" | "pin" | "key" | "bolt" | "none"
+	ornamentColor: Color3?,
+}
+
+--[[ The default ornament for each of the four header hues.
+
+	 "Weak panel personality" was one of the named defects, and four modals that
+	 differ only in header colour are exactly that. A caller can always pass
+	 `opts.ornament` (or "none"), but a panel should not have to opt IN to having
+	 a face — so the hue it already chose picks one.
+
+	 The mapping is deliberately by Palette token rather than by panel id, because
+	 Theme does not know what a panel is for. It happens to land correctly on the
+	 four modals this game ships: gold SHOP wears a coin, cyan UPGRADES a bolt,
+	 green CODES a key, purple ZONES a map marker. A header built from any other
+	 colour simply gets no ornament. ]]
+local DEFAULT_ORNAMENT: { { hue: Color3, kind: string } } = {
+	{ hue = Palette.UI.HeaderGold, kind = "coin" },
+	{ hue = Palette.UI.HeaderCyan, kind = "bolt" },
+	{ hue = Palette.UI.HeaderGreen, kind = "key" },
+	{ hue = Palette.UI.HeaderPurple, kind = "pin" },
+}
+
+local function defaultOrnament(headerColor: Color3): string?
+	for _, entry in DEFAULT_ORNAMENT do
+		if entry.hue == headerColor then
+			return entry.kind
+		end
+	end
+	return nil
+end
+
+--[[ Keeps a panel legible on every screen (decision 6). Re-runs on viewport
+	 change, which also covers a phone being rotated. ]]
 local function bindResponsive(panel: Frame, fixed: UDim2?)
 	local constraint = Instance.new("UISizeConstraint")
 	constraint.Parent = panel
@@ -479,18 +1221,30 @@ local function bindResponsive(panel: Frame, fixed: UDim2?)
 	end)
 end
 
---[[ §5 A modal: thick outline, ONE saturated header bar over a white body, the
-	 title centred, and a large red rounded-square close button top-right with a
-	 white X — never a small glyph.
+--[[ §5 A modal: thick outline, ONE saturated header bar over a neutral body, an
+	 optional ornament and the title on the left and centre of that header, and a
+	 large red rounded-square close button top-right with a white X — never a
+	 small glyph.
 
-	 Returns (panel, body). Two things are worth knowing about the panel:
+	 Returns (panel, body). Three things are worth knowing about the panel:
 	   • `panel.Parent` is the full-screen Backdrop this function also creates.
 	     It starts hidden; Theme.open reveals and fades it.
 	   • The close button is wired to Theme.close already, and `panel.Closed`
 	     (a BindableEvent) fires once the close animation finishes, so Panels can
 	     enforce "exactly one open at a time" without touching the button.
+	   • `opts.ornament` is the header's personality slot; it can also be set
+	     later through `Theme.headerOrnament(panel, kind)`.
 ]]
-function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, size: UDim2?): (Frame, Frame)
+function Theme.panel(
+	parent: Instance,
+	titleText: string,
+	headerColor: Color3,
+	size: UDim2?,
+	opts: PanelOptions?
+): (Frame, Frame)
+	local options: PanelOptions = opts or {}
+	local fixedSize = size or options.size
+
 	local backdrop = Instance.new("Frame")
 	backdrop.Name = "Backdrop"
 	backdrop.Size = UDim2.fromScale(1, 1)
@@ -517,26 +1271,25 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 	panel.ClipsDescendants = true
 	panel.ZIndex = Z_BACKDROP + 1
 	panel.Parent = backdrop
-	corner(panel, Palette.Radius.Panel)
+	corner(panel, Theme.Radius.Panel)
 	Palette.stroke(panel, Palette.Outline.Panel)
 
-	bindResponsive(panel, size)
+	--[[ The panel's own drop shadow. This is the one place in the file where the
+		 shadow really matters: a modal has to feel like it is floating over the
+		 world, and §3 rules out the blur every other engine would use for that.
+		 A solid offset plate at low transparency does the same job in the
+		 category's own language. Safe here because the panel is the backdrop's
+		 only laid-out child. ]]
+	attachShadow(panel, Theme.Radius.Panel, Theme.Shadow.PanelOffset, Theme.Shadow.PanelTransparency)
 
-	local header = Instance.new("Frame")
-	header.Name = "Header"
-	header.Size = UDim2.new(1, 0, 0, HEADER_HEIGHT)
-	header.BackgroundColor3 = headerColor
-	header.BorderSizePixel = 0
-	header.ZIndex = panel.ZIndex + 1
-	header.Parent = panel
-	gradient(header, headerColor)
-	hardEdge(header, headerColor, EDGE_BUTTON)
+	bindResponsive(panel, fixedSize)
 
-	--[[ §2/§9.1: the header is a surface, so it carries the outline too. Without
-		 it this was the one surface in the game meeting the white body on a bare
-		 seam, and §5's diagram puts a black rule exactly there.
+	--[[ §5.1 The header is the only saturated surface, and it is built as a full
+		 moulded surface rather than a coloured strip: gradient, diagonal sheen,
+		 lit top rim, hard bottom edge.
 
-		 The geometry is worth understanding before touching it, because a naive
+		 §2/§9.1: the header is a surface, so it carries the outline too. The
+		 geometry is worth understanding before touching it, because a naive
 		 stroke here would read as two stacked pills with a doubled line:
 
 		   • The stroke is ApplyStrokeMode.Border, so it is drawn wholly OUTSIDE
@@ -548,51 +1301,62 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 		     square top corners inherit the panel's radius from the same clip.
 		   • Only the bottom band survives, inside the panel: the seam rule.
 		     `body` is offset down by HEADER_RULE so it cannot cover it — header
-		     and body share a ZIndex, and the later sibling would otherwise win.
+		     and body share a ZIndex, and the later sibling would otherwise win. ]]
+	local header = Instance.new("Frame")
+	header.Name = "Header"
+	header.Size = UDim2.new(1, 0, 0, Theme.Metrics.HeaderHeight)
+	header.ZIndex = panel.ZIndex + 1
+	header.Parent = panel
+	surfaceLayers(header, {
+		Fill = headerColor,
+		-- Square: the panel's clip is what rounds its top corners, and a radius
+		-- here would round the BOTTOM ones too and break the seam rule.
+		Radius = UDim.new(0, 0),
+		Stroke = Palette.Outline.Panel,
+		Edge = Theme.Edge.Header,
+		HighlightScale = 1,
+		HighlightInset = 20,
+		HighlightThickness = 6,
+		HighlightTransparency = 0.62,
+		Sheen = 24,
+	})
 
-		 So the visible result is one outlined panel with an outlined header band,
-		 which is what §5 asks for. ]]
-	Palette.stroke(header, Palette.Outline.Panel)
+	-- Built before the title so the two never fight for the same ZIndex.
+	local ornament = options.ornament or defaultOrnament(headerColor)
+	if ornament and ornament ~= "none" then
+		Theme.headerOrnament(panel, ornament, options.ornamentColor or Palette.lift(headerColor, 0.62))
+	end
 
-	-- §3 headers often add a diagonal sheen band. Rotated, so it reads as a
-	-- highlight sweep rather than a stripe; the panel's clip trims the overhang.
-	-- Like the hard edge, it is shading rather than a surface: outlining it would
-	-- draw a black diagonal stripe across the header, so it stays unstroked.
-	local sheen = Instance.new("Frame")
-	sheen.Name = "Sheen"
-	sheen.AnchorPoint = Vector2.new(0.5, 0.5)
-	sheen.Position = UDim2.fromScale(0.5, 0.28)
-	sheen.Size = UDim2.new(1.6, 0, 0, 22)
-	sheen.Rotation = -8
-	sheen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	sheen.BackgroundTransparency = 0.86
-	sheen.BorderSizePixel = 0
-	sheen.ZIndex = header.ZIndex
-	sheen.Parent = header
-
-	local title = Instance.new("TextLabel")
+	--[[ §4 the title in heavy outlined uppercase with a drop shadow. Inset
+		 equally on both sides even though the two sides hold different furniture
+		 (ornament left, close button right), so the title stays optically centred
+		 whether or not an ornament is present. ]]
+	local title = displayText(header, Theme.Type.Title)
 	title.Name = "Title"
-	-- Inset equally on both sides even though only the right side holds the
-	-- close button, so the title stays optically centred (§5.1).
-	title.Size = UDim2.new(1, -144, 1, -EDGE_BUTTON)
-	title.Position = UDim2.fromOffset(72, 0)
+	-- Same two vertical insets as a button caption: clear of the header's hard
+	-- bottom edge, then pushed down by one ShadeDrop so the white face lands on
+	-- the centre line rather than three pixels above it.
+	title.Size = UDim2.new(1, -152, 1, -(Theme.Edge.Header + Theme.Type.ShadeDrop))
+	title.Position = UDim2.fromOffset(76, Theme.Type.ShadeDrop)
 	title.ZIndex = header.ZIndex + 2
-	Palette.styleText(title, Palette.TextSize.Title)
 	title.Text = string.upper(titleText)
 	title.TextXAlignment = Enum.TextXAlignment.Center
-	clampText(title, Palette.TextSize.Title)
-	title.Parent = header
 
 	-- §5.2 large red rounded SQUARE, top-right, white X, outlined.
 	local close, closeCaption = makeButton(
 		header,
 		"X",
 		Palette.UI.Close,
-		UDim2.fromOffset(48, 48),
-		UDim2.new(1, -12, 0.5, -3),
-		Palette.Radius.Button, -- square-ish, not a pill: this is a button, not a glyph
-		30,
-		5
+		UDim2.fromOffset(Theme.Metrics.CloseSize, Theme.Metrics.CloseSize),
+		UDim2.new(1, -14, 0.5, -3),
+		Theme.Radius.Button, -- square-ish, not a pill: this is a button, not a glyph
+		32,
+		5,
+		1,
+		12,
+		-- Small, because the header clips and a full-size plate would be sheared
+		-- off against the header's bottom edge.
+		Vector2.new(3, 4)
 	)
 	close.Name = "CloseButton"
 	close.AnchorPoint = Vector2.new(1, 0.5)
@@ -600,9 +1364,11 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 	-- out of the modal.
 	close.ZIndex = title.ZIndex + 1
 	closeCaption.ZIndex = close.ZIndex + 1
-	local closeEdge = close:FindFirstChild("Edge")
-	if closeEdge and closeEdge:IsA("Frame") then
-		closeEdge.ZIndex = close.ZIndex
+	for _, layer in { "Edge", "Highlight" } do
+		local child = close:FindFirstChild(layer)
+		if child and child:IsA("Frame") then
+			child.ZIndex = close.ZIndex
+		end
 	end
 
 	local body = Instance.new("Frame")
@@ -611,19 +1377,55 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 	-- The body is deliberately NOT stroked: it is flush with the panel on three
 	-- sides and the same white, so an outline here would only redraw the panel's
 	-- own on those sides and double the seam rule on the fourth.
-	body.Size = UDim2.new(1, 0, 1, -(HEADER_HEIGHT + HEADER_RULE))
-	body.Position = UDim2.fromOffset(0, HEADER_HEIGHT + HEADER_RULE)
+	body.Size = UDim2.new(1, 0, 1, -(Theme.Metrics.HeaderHeight + HEADER_RULE))
+	body.Position = UDim2.fromOffset(0, Theme.Metrics.HeaderHeight + HEADER_RULE)
 	body.BackgroundColor3 = Palette.UI.Body
 	body.BorderSizePixel = 0
 	body.ZIndex = panel.ZIndex + 1
 	body.Parent = panel
 
+	--[[ §5.1 keeps the body neutral, but a flat sheet of #FFFFFF under a
+		 saturated header is the "limited depth" the owner named. A gentle ramp to
+		 the cool body tint gives the panel an interior without making it a second
+		 coloured surface. UIGradient applies only to the object it is parented
+		 to, so this does not tint a single card sitting on it. ]]
+	local bodyRamp = Instance.new("UIGradient")
+	bodyRamp.Rotation = 90
+	bodyRamp.Color = ColorSequence.new(Palette.UI.Body, Palette.UI.BodyTint)
+	bodyRamp.Parent = body
+
 	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, BODY_PADDING)
-	pad.PaddingBottom = UDim.new(0, BODY_PADDING)
-	pad.PaddingLeft = UDim.new(0, BODY_PADDING)
-	pad.PaddingRight = UDim.new(0, BODY_PADDING)
+	pad.PaddingTop = UDim.new(0, Theme.Spacing.Room)
+	pad.PaddingBottom = UDim.new(0, Theme.Spacing.Room)
+	pad.PaddingLeft = UDim.new(0, Theme.Spacing.Room)
+	pad.PaddingRight = UDim.new(0, Theme.Spacing.Room)
 	pad.Parent = body
+
+	--[[ The header's cast shadow onto the body — the last of the five depth
+		 layers, and the thing that makes scroll content read as passing UNDER the
+		 header rather than starting below it.
+
+		 It is a sibling of the body rather than a child of it, for one reason:
+		 the body carries a UIPadding, which insets every child, and an inset
+		 cast shadow would leave a visible pale gutter down both sides. As a
+		 sibling one ZIndex above the body it also covers the body's scroller,
+		 which is exactly where the content needs to slide under. ]]
+	local cast = Instance.new("Frame")
+	cast.Name = "HeaderCast"
+	cast.Size = UDim2.new(1, 0, 0, 12)
+	cast.Position = UDim2.fromOffset(0, Theme.Metrics.HeaderHeight + HEADER_RULE)
+	cast.BackgroundColor3 = Palette.Outline.Color
+	cast.BorderSizePixel = 0
+	cast.ZIndex = body.ZIndex + 1
+	cast.Parent = panel
+
+	local castRamp = Instance.new("UIGradient")
+	castRamp.Rotation = 90
+	castRamp.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.72),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	castRamp.Parent = cast
 
 	local closed = Instance.new("BindableEvent")
 	closed.Name = "Closed"

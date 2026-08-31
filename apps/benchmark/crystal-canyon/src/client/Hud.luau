@@ -14,13 +14,48 @@
 	server refuses a sell, the numbers simply never change — there is no local
 	prediction to roll back, and nothing here can be edited into free currency.
 
-	Layout (all clusters anchored to an edge, all scaled together for touch):
+	Layout (every cluster welded to an edge, each with its own UIScale):
 
-	  top-left     SHARDS pill / COINS pill / pack-fill bar
-	  left edge    SHOP · UPGRADES · CODES · ZONES  (circular icon buttons)
-	  right edge   SELL SHARDS pill + payout chip
+	  top-left     wallet: SHARDS capsule / COINS capsule / pack gauge
+	  left edge    nav rail: SHOP · UPGRADES · CODES · ZONES
+	  right edge   SELL SHARDS action + payout chip
 	  top-centre   objective mount (empty; Objective.luau fills it)
 	  bottom-left  version string
+
+	--- what changed, and why ---
+
+	The first pass was rejected as "too many plain black pill-shaped surfaces",
+	a side menu that "looks like a basic icon stack", and "insufficient visual
+	hierarchy". Three decisions answer that, and each is worth understanding
+	before it is undone:
+
+	1. THE NAV IS A CLUSTER, NOT FOUR CIRCLES. The four entries sit on one
+	   outlined slate RAIL, and each is a rounded-square tile in its own
+	   saturated hue with a dark caption plate notched into its lower edge. A
+	   rail is what makes four buttons read as one designed control; the plates
+	   are what let the words be legible without shrinking them into the tile.
+
+	2. THE CURRENCY COUNTERS ARE COMPOSITES, NOT PILLS. §6 wants dark rounded
+	   currency pills and it gets them — but the body of each is tinted toward
+	   its own currency (deep gold for shards, deep green for coins) rather than
+	   left at flat charcoal, and each carries a saturated icon plate, a small
+	   currency name, and the big number under it. That is three levels of
+	   hierarchy inside one surface, which is what the flat pills lacked.
+
+	3. ICONS ARE A FAMILY, DRAWN FROM ONE GRID. All pictograms come from
+	   Icons.luau, which draws every glyph on a 32-unit design box entirely in
+	   scale units. The previous pass inlined fixed-pixel interiors into
+	   scale-positioned art frames here, and the four glyphs drifted apart the
+	   moment a tile resized. Nothing in this file draws a glyph any more.
+
+	Buttons still come from `Theme.button` — the nav tiles and the sell action
+	included — so the HUD's press feel, gradient and §3 hard bottom edge are
+	literally the same code the modals use. The nav tile only overrides the
+	corner radius, because §6's circular icon button is the shape the owner
+	rejected. Everything Theme does not have a primitive for (the rail, the
+	capsules, the gauge, the caption plates) is built here from the same Palette
+	tokens, in the same grammar: gradient, hard bottom edge, thick near-black
+	outline.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,6 +67,26 @@ local Config = require(Shared:WaitForChild("Config"))
 local Palette = require(Shared:WaitForChild("Palette"))
 local Util = require(Shared:WaitForChild("Util"))
 local Theme = require(script.Parent:WaitForChild("Theme"))
+
+--[[ Icons is a sibling ModuleScript, and the wait is deliberately BOUNDED. An
+	 untimed WaitForChild here would hang client boot forever on an install whose
+	 manifest has not been taught about the module yet; five seconds is far
+	 longer than a local install takes. A missing icon set must cost the HUD its
+	 pictograms, never the HUD itself. ]]
+local Icons: any = nil
+do
+	local module = script.Parent:WaitForChild("Icons", 5)
+	if module and module:IsA("ModuleScript") then
+		local ok, result = pcall(require, module)
+		if ok then
+			Icons = result
+		else
+			warn(`[CrystalCanyon] Hud: Icons failed to load, drawing without pictograms: {result}`)
+		end
+	else
+		warn("[CrystalCanyon] Hud: Icons module missing, drawing without pictograms")
+	end
+end
 
 local Hud = {}
 
@@ -85,53 +140,104 @@ export type Deps = {
 -- Chunky by policy (§3). These are the unscaled desktop sizes; a per-cluster
 -- UIScale shrinks them on small viewports, never below the touch floor below.
 local M = {
-	Margin = 14,
-	PillHeight = 54,
-	PillGap = 8,
-	BarHeight = 34,
-	BarKnob = 42, -- the icon knob at the left end of the pack bar
-	IconSize = 62,
-	IconGap = 14,
-	CaptionHeight = 15,
-	SellHeight = 64,
-	ChipHeight = 26,
+	Margin = 16,
+
+	-- wallet
+	CapsuleHeight = 56,
+	CapsuleGap = 8,
+	GaugeGap = 12,
+	GaugeKnob = 46,
+	GaugeTrack = 34,
+
+	-- nav rail
+	Tile = 62,
+	TileGap = 14,
+	RailPad = 11,
+	PlateWidth = 78,
+	PlateHeight = 20,
+	PlateOverlap = 7, -- how far the caption plate notches into the tile
+
+	-- sell
+	SellHeight = 66,
+	ChipHeight = 34,
+	ChipGap = 8,
+
 	ObjectiveHeight = 56,
 }
 
--- The smallest comfortable touch target is 44px. MinScale is chosen so that
--- IconSize (62) never renders smaller than that: 62 * 0.72 = 44.6.
+--[[ The smallest comfortable touch target is 44px, and the nav tile is the
+	 smallest thing in this HUD a finger has to hit: 62 * 0.72 = 44.6. Every
+	 other control here is larger, so this one ratio is the whole mobile floor. ]]
 local MIN_SCALE = 0.72
 local MAX_SCALE = 1
 
-local BUTTONS = {
-	{ Id = "shop", Caption = "SHOP", Art = "bag", Fill = Palette.UI.HeaderCyan },
-	{ Id = "upgrades", Caption = "UPGRADES", Art = "arrow", Fill = Palette.UI.HeaderPurple },
-	{ Id = "codes", Caption = "CODES", Art = "key", Fill = Palette.UI.Premium },
-	{ Id = "zones", Caption = "ZONES", Art = "pin", Fill = Palette.UI.HeaderGreen },
+local TILE_RADIUS = UDim.new(0, 18) -- §3: rounded rectangle, not a circle
+
+-- Cluster width rules, kept next to each other because the objective collision
+-- check below is only honest if it uses the numbers the clusters are built from.
+local WALLET_WIDTH = { Fraction = 0.2, Min = 226, Max = 306 }
+local SELL_WIDTH = { Fraction = 0.22, Min = 218, Max = 320 }
+local OBJECTIVE_WIDTH = { Fraction = 0.34, Min = 300, Max = 480 }
+local WALLET_HEIGHT = M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap + M.GaugeKnob
+
+local NAV_CELL = M.Tile + M.PlateHeight - M.PlateOverlap
+local NAV_WIDTH = M.Tile + M.RailPad * 2
+
+--[[ The rail needs more room under the last cell than over the first one: its
+	 own hard bottom edge lives there, and the caption plate is wider than the
+	 tile, so with symmetric padding the last plate's corners would be shaved off
+	 by the rail's rounded corner and its clip. ]]
+local RAIL_BOTTOM = M.RailPad + 8
+
+--[[ Neutral darks. The rail is deliberately a cool slate rather than the
+	 counters' near-black: four saturated tiles need something to sit ON, and a
+	 black rail behind black-ish tiles is the "plain black surface" note again.
+	 Caption plates go darker than the rail so they read as inset into it. ]]
+local RAIL_FILL = Color3.fromRGB(48, 58, 70)
+local PLATE_FILL = Color3.fromRGB(29, 33, 38)
+
+local NAV = {
+	{ Id = "shop", Caption = "SHOP", Art = "shop", Fill = Palette.UI.HeaderCyan },
+	{ Id = "upgrades", Caption = "UPGRADES", Art = "upgrades", Fill = Palette.UI.HeaderPurple },
+	{ Id = "codes", Caption = "CODES", Art = "codes", Fill = Palette.UI.Premium },
+	{ Id = "zones", Caption = "ZONES", Art = "zones", Fill = Palette.UI.HeaderGreen },
 }
 
 -- Runtime handles ----------------------------------------------------------
+type Capsule = {
+	pill: Frame,
+	plate: Frame,
+	amount: TextLabel,
+	tint: Color3,
+	plateFill: Color3,
+}
+
 local gui: ScreenGui? = nil
 local scales: { UIScale } = {}
 local viewportConn: RBXScriptConnection? = nil
 
-local shardsLabel: TextLabel? = nil
-local shardsPill: Frame? = nil
-local coinsLabel: TextLabel? = nil
-local coinsPill: Frame? = nil
+local shardsCapsule: Capsule? = nil
+local coinsCapsule: Capsule? = nil
 local barFill: Frame? = nil
 local barLabel: TextLabel? = nil
+local gaugeKnob: Frame? = nil
 local sellButton: TextButton? = nil
 local sellVeil: Frame? = nil
+local sellPlate: Frame? = nil
+local sellPulse: Tween? = nil
 local payoutLabel: TextLabel? = nil
 local objectiveMount: Frame? = nil
 local dots: { [string]: Frame } = {}
 
 local lastShards = -1
 local lastCoins = -1
+local lastFull = false
 local lastSellAt = 0
 
--- Helpers ------------------------------------------------------------------
+-- Construction primitives --------------------------------------------------
+-- Theme owns panels, cards and buttons. These are the few shapes the HUD needs
+-- that Theme has no primitive for; they follow exactly the same §2/§3 grammar
+-- so a HUD surface and a panel surface cannot drift apart.
 
 local function corner(inst: GuiObject, radius: UDim): UICorner
 	local c = Instance.new("UICorner")
@@ -139,6 +245,117 @@ local function corner(inst: GuiObject, radius: UDim): UICorner
 	c.Parent = inst
 	return c
 end
+
+--[[ §3 Slight vertical gradient on fills: lighter top, deeper bottom. ]]
+local function gradient(inst: GuiObject, fill: Color3): UIGradient
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(Palette.lift(fill), Palette.shade(fill, 0.10))
+	g.Parent = inst
+	return g
+end
+
+--[[ §3 Depth is a hard bottom edge, not a soft shadow. Shading within the
+	 host's silhouette rather than a surface of its own, so — like Theme's
+	 equivalent — it is deliberately NOT stroked. `host` must clip. ]]
+local function hardEdge(host: GuiObject, fill: Color3, thickness: number): Frame
+	local edge = Instance.new("Frame")
+	edge.Name = "Edge"
+	edge.AnchorPoint = Vector2.new(0.5, 1)
+	edge.Position = UDim2.fromScale(0.5, 1)
+	edge.Size = UDim2.new(1, 0, 0, thickness)
+	edge.BackgroundColor3 = Palette.shade(fill)
+	edge.BorderSizePixel = 0
+	edge.ZIndex = host.ZIndex
+	edge.Parent = host
+	return edge
+end
+
+--[[ A soft top highlight so a dark surface reads as a moulded plastic slab
+	 rather than a hole cut in the screen. Shading again: unstroked. ]]
+local function gloss(host: GuiObject, height: number): Frame
+	local sheen = Instance.new("Frame")
+	sheen.Name = "Gloss"
+	sheen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	sheen.BackgroundTransparency = 0.9
+	sheen.BorderSizePixel = 0
+	sheen.Position = UDim2.fromOffset(0, 0)
+	sheen.Size = UDim2.new(1, 0, 0, height)
+	sheen.ZIndex = host.ZIndex
+	sheen.Parent = host
+	corner(sheen, Palette.Radius.Pill)
+	return sheen
+end
+
+local function mix(a: Color3, b: Color3, t: number): Color3
+	return Color3.new(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t)
+end
+
+--[[ Let type shrink to fit a small screen but never grow past the size the
+	 design was drawn at. Mirrors Theme's private helper of the same name. ]]
+local function clampText(label: TextLabel, maxSize: number)
+	label.TextScaled = true
+	label.TextWrapped = false
+	local c = Instance.new("UITextSizeConstraint")
+	c.MaxTextSize = maxSize
+	c.MinTextSize = 9
+	c.Parent = label
+end
+
+local function text(parent: Instance, name: string, size: number, color: Color3?): TextLabel
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.ZIndex = (if parent:IsA("GuiObject") then parent.ZIndex else 1) + 3
+	Palette.styleText(label, size, color)
+	clampText(label, size)
+	label.Parent = parent
+	return label
+end
+
+--[[ Draw a pictogram, tolerating an absent Icons module (see the require at the
+	 top). Returns nothing: no caller needs the handle, and the ones that animate
+	 something animate the plate the glyph sits on, not the glyph. ]]
+local function glyph(parent: Instance, name: string, opts: any)
+	if not Icons then
+		return
+	end
+	local ok, err = pcall(Icons.draw, parent, name, opts)
+	if not ok then
+		warn(`[CrystalCanyon] Hud: could not draw the "{name}" pictogram: {err}`)
+	end
+end
+
+--[[ The saturated round plate a pictogram sits on. This is the single element
+	 that carries colour into the dark surfaces — capsules, gauge knob, payout
+	 chip and the sell button all use it, which is what makes them read as one
+	 kit rather than four unrelated widgets. ]]
+local function iconPlate(parent: GuiObject, fill: Color3, diameter: number, position: UDim2, art: string?): Frame
+	local plate = Instance.new("Frame")
+	plate.Name = "Plate"
+	plate.AnchorPoint = Vector2.new(0.5, 0.5)
+	plate.Position = position
+	plate.Size = UDim2.fromOffset(diameter, diameter)
+	plate.BackgroundColor3 = fill
+	plate.BorderSizePixel = 0
+	plate.ZIndex = parent.ZIndex + 4
+	plate.Parent = parent
+	corner(plate, Palette.Radius.Icon)
+	gradient(plate, fill)
+	Palette.stroke(plate, Palette.Outline.Icon)
+
+	if art then
+		glyph(plate, art, {
+			size = UDim2.fromScale(0.64, 0.64),
+			fill = Palette.UI.TextLight,
+			accent = Palette.lift(fill, 0.7),
+			cut = fill,
+			zIndex = plate.ZIndex + 1,
+		})
+	end
+	return plate
+end
+
+-- Layout -------------------------------------------------------------------
 
 --[[ A cluster is a transparent, edge-anchored container that owns one region
 	 of the HUD. Each carries its own UIScale rather than the HUD sharing a
@@ -163,8 +380,8 @@ local function cluster(parent: Instance, name: string, anchor: Vector2, position
 end
 
 --[[ Widths are part-relative so the HUD breathes on a wider monitor, but a
-	 relative width alone turns a currency pill into a 700px slab on an
-	 ultrawide. The constraint is what keeps it a pill. ]]
+	 relative width alone turns a currency capsule into a 700px slab on an
+	 ultrawide. The constraint is what keeps it a capsule. ]]
 local function constrain(frame: Frame, minWidth: number, maxWidth: number)
 	local c = Instance.new("UISizeConstraint")
 	c.MinSize = Vector2.new(minWidth, 0)
@@ -182,23 +399,16 @@ local function computeScale(): number
 		return MAX_SCALE
 	end
 	-- Both axes matter: a short landscape phone is as tight as a narrow
-	-- portrait one, and the left icon stack is what runs out of room first.
+	-- portrait one, and the left nav rail is what runs out of room first.
 	return math.clamp(math.min(v.X / 1100, v.Y / 760), MIN_SCALE, MAX_SCALE)
 end
 
--- Width rules, kept next to each other because the collision check below is
--- only honest if it uses exactly the numbers the two clusters are built from.
-local CURRENCY_WIDTH = { Fraction = 0.2, Min = 212, Max = 300 }
-local SELL_WIDTH = { Fraction = 0.22, Min = 214, Max = 320 }
-local OBJECTIVE_WIDTH = { Fraction = 0.34, Min = 300, Max = 480 }
-local CURRENCY_HEIGHT = M.PillHeight * 2 + M.PillGap + M.BarKnob + 10
-
---[[ On a phone the top-left currency column and a centred objective chip want
-	 the same pixels: at 390 wide the column already reaches past the point where
-	 a 300px-minimum chip would start, and no amount of scaling fixes that
-	 because both have a floor. Rather than let them overlap — or shrink the chip
-	 until its text is unreadable — the chip steps down below the column. It is
-	 still pinned to the top band, so the middle of the screen stays empty. ]]
+--[[ On a phone the top-left wallet column and a centred objective chip want the
+	 same pixels: at 390 wide the column already reaches past the point where a
+	 300px-minimum chip would start, and no amount of scaling fixes that because
+	 both have a floor. Rather than let them overlap — or shrink the chip until
+	 its text is unreadable — the chip steps down below the column. It is still
+	 pinned to the top band, so the middle of the screen stays empty. ]]
 local function layoutObjective(s: number)
 	local mount = objectiveMount
 	if not mount then
@@ -206,13 +416,13 @@ local function layoutObjective(s: number)
 	end
 	local camera = workspace.CurrentCamera
 	local vx = camera and camera.ViewportSize.X or 1920
-	local columnRight = M.Margin + math.clamp(vx * CURRENCY_WIDTH.Fraction, CURRENCY_WIDTH.Min, CURRENCY_WIDTH.Max) * s
+	local columnRight = M.Margin + math.clamp(vx * WALLET_WIDTH.Fraction, WALLET_WIDTH.Min, WALLET_WIDTH.Max) * s
 	local chipLeft = vx / 2
 		- math.clamp(vx * OBJECTIVE_WIDTH.Fraction, OBJECTIVE_WIDTH.Min, OBJECTIVE_WIDTH.Max) * s / 2
 
 	local y = M.Margin
 	if chipLeft < columnRight + 8 then
-		y = M.Margin + CURRENCY_HEIGHT * s + 8
+		y = M.Margin + WALLET_HEIGHT * s + 8
 	end
 	mount.Position = UDim2.new(0.5, 0, 0, y)
 end
@@ -225,87 +435,66 @@ local function applyScale()
 	layoutObjective(s)
 end
 
---[[ A single white shape inside a 30x30 pictogram frame. Coordinates are
-	 centre-relative within that box, so the art below reads like a tiny
-	 drawing rather than a pile of offsets. ]]
-local function pip(
-	parent: Instance,
-	w: number,
-	h: number,
-	x: number,
-	y: number,
-	radius: number,
-	z: number,
-	fill: Color3?,
-	rotation: number?
-): Frame
-	local f = Instance.new("Frame")
-	f.BackgroundColor3 = fill or Palette.UI.TextLight
-	f.BorderSizePixel = 0
-	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Position = UDim2.fromOffset(x, y)
-	f.Size = UDim2.fromOffset(w, h)
-	f.Rotation = rotation or 0
-	f.ZIndex = z
-	corner(f, UDim.new(0, radius))
-	f.Parent = parent
-	return f
-end
+-- Motion -------------------------------------------------------------------
+-- "Limited motion feedback" was one of the rejections. Reward feedback that is
+-- not visible reads as breakage (§8), so every value that can change has a
+-- gesture attached to it: a punch when a number grows, a flash on the plate
+-- that owns that number, a pulse on the action the player now needs to take.
 
---[[ Pictograms are built from primitives instead of images or emoji. §4 allows
-	 emoji as ornament only and bans them as functional icons, and this build
-	 ships no uploaded assets, so the icon buttons draw their own glyphs. A
-	 shape filled with the button's own colour punches a hole in the shape
-	 beneath it — that is how the bag handle, the key bow and the pin get their
-	 ring without a second stroke. ]]
-local function pictogram(button: TextButton, kind: string, fill: Color3)
-	local art = Instance.new("Frame")
-	art.Name = "Pictogram"
-	art.BackgroundTransparency = 1
-	art.AnchorPoint = Vector2.new(0.5, 0.5)
-	art.Position = UDim2.fromScale(0.5, 0.5)
-	art.Size = UDim2.fromOffset(30, 30)
-	art.ZIndex = 4
-	art.Parent = button
-
-	if kind == "bag" then
-		pip(art, 15, 13, 15, 10, 6, 5)
-		pip(art, 9, 11, 15, 12, 4, 6, fill)
-		pip(art, 23, 17, 15, 20, 5, 7)
-	elseif kind == "arrow" then
-		pip(art, 6, 15, 15, 20, 3, 5)
-		pip(art, 13, 6, 10, 11, 3, 6, nil, -45)
-		pip(art, 13, 6, 20, 11, 3, 6, nil, 45)
-	elseif kind == "key" then
-		pip(art, 15, 15, 15, 9, 8, 5)
-		pip(art, 6, 6, 15, 9, 3, 6, fill)
-		pip(art, 5, 15, 15, 20, 2, 5)
-		pip(art, 8, 4, 19, 20, 2, 5)
-		pip(art, 6, 4, 18, 25, 2, 5)
-	elseif kind == "pin" then
-		pip(art, 11, 11, 15, 20, 2, 5, nil, 45)
-		pip(art, 19, 19, 15, 12, 10, 6)
-		pip(art, 7, 7, 15, 12, 4, 7, fill)
+local function scaleOf(frame: GuiObject): UIScale
+	local existing = frame:FindFirstChildOfClass("UIScale")
+	if existing and existing:IsA("UIScale") then
+		return existing
 	end
+	local s = Instance.new("UIScale")
+	s.Parent = frame
+	return s
 end
 
---[[ The little red "you can afford something" dot. It reads the same Config
-	 tables the server charges against, so it can never light up for a purchase
-	 the server would refuse. ]]
-local function badge(button: TextButton): Frame
-	local dot = Instance.new("Frame")
-	dot.Name = "Badge"
-	dot.BackgroundColor3 = Palette.UI.Close
-	dot.BorderSizePixel = 0
-	dot.AnchorPoint = Vector2.new(0.5, 0.5)
-	dot.Position = UDim2.fromScale(0.88, 0.12)
-	dot.Size = UDim2.fromOffset(18, 18)
-	dot.ZIndex = 8
-	dot.Visible = false
-	corner(dot, Palette.Radius.Icon)
-	Palette.stroke(dot, Palette.Outline.Icon)
-	dot.Parent = button
-	return dot
+local function punch(frame: GuiObject, amount: number?)
+	local s = scaleOf(frame)
+	s.Scale = amount or 1.1
+	TweenService:Create(s, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+--[[ A one-shot brighten that decays back to the surface's own colour. Used on
+	 the icon plate of whichever currency just went up, so the eye is told WHICH
+	 number changed rather than just that something moved. ]]
+local function flash(frame: Frame, base: Color3)
+	frame.BackgroundColor3 = Palette.lift(base, 0.6)
+	TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundColor3 = base,
+	}):Play()
+end
+
+--[[ The only looping animation in the HUD, and it is on for exactly one state:
+	 the pack is full, so collecting is pointless until the player sells. It is
+	 cancelled the moment that stops being true — an idle loop that never ends
+	 is noise, and noise is the other half of the rejection. ]]
+local function setSellPulse(on: boolean)
+	local plate = sellPlate
+	if not plate then
+		return
+	end
+	if on == (sellPulse ~= nil) then
+		return
+	end
+	if not on then
+		local running = sellPulse
+		sellPulse = nil
+		if running then
+			running:Cancel()
+		end
+		scaleOf(plate).Scale = 1
+		return
+	end
+	local tween = TweenService:Create(
+		scaleOf(plate),
+		TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.14 }
+	)
+	sellPulse = tween
+	tween:Play()
 end
 
 -- Snapshot readers ----------------------------------------------------------
@@ -348,73 +537,97 @@ local function upgradeNextCost(upgrades: any, id: string): number?
 	return Config.upgradeCost(id, upgradeLevel(upgrades, id))
 end
 
---[[ Reward feedback has to be visible or it reads as breakage (§8). A short
-	 overshoot on the pill whenever its number goes up is the cheapest honest
-	 signal that the server credited something. ]]
-local function punch(frame: GuiObject)
-	local existing = frame:FindFirstChildOfClass("UIScale")
-	local s: UIScale
-	if existing and existing:IsA("UIScale") then
-		s = existing
-	else
-		s = Instance.new("UIScale")
-		s.Parent = frame
-	end
-	s.Scale = 1.12
-	TweenService:Create(s, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-end
-
 -- Construction -------------------------------------------------------------
 
-local function buildCounters(parent: Instance)
-	local width = UDim2.new(CURRENCY_WIDTH.Fraction, 0, 0, CURRENCY_HEIGHT)
-	local box = cluster(parent, "Currency", Vector2.new(0, 0), UDim2.fromOffset(M.Margin, M.Margin), width)
-	constrain(box, CURRENCY_WIDTH.Min, CURRENCY_WIDTH.Max)
+--[[ One currency capsule: dark tinted body, saturated icon plate at the left
+	 end, the currency's name small above its big comma-separated number.
 
-	local shardFrame, shardText = Theme.counter(box, Palette.UI.SoftCurrency, UDim2.fromOffset(0, 0))
-	local coinFrame, coinText =
-		Theme.counter(box, Palette.UI.HardCurrency, UDim2.fromOffset(0, M.PillHeight + M.PillGap))
-	-- Theme sizes a counter for a standalone pill; the HUD overrides the width
-	-- so both pills and the bar beneath them share one left column edge.
-	shardFrame.Size = UDim2.new(1, 0, 0, M.PillHeight)
-	coinFrame.Size = UDim2.new(1, 0, 0, M.PillHeight)
+	 §6 asks for "dark rounded pills, coin icon, big number" and this is still
+	 that — but the body is mixed 22% toward the currency's own hue, which is
+	 enough to tell shards from coins at a glance without leaving the dark family
+	 the spec asks for. Flat charcoal on both was the "plain black pill" note. ]]
+local function capsule(parent: GuiObject, name: string, caption: string, tint: Color3, art: string, y: number): Capsule
+	local body = mix(Palette.UI.CounterFill, tint, 0.22)
 
-	shardsPill, shardsLabel = shardFrame, shardText
-	coinsPill, coinsLabel = coinFrame, coinText
+	local pill = Instance.new("Frame")
+	pill.Name = name
+	pill.Position = UDim2.fromOffset(0, y)
+	pill.Size = UDim2.new(1, 0, 0, M.CapsuleHeight)
+	pill.BackgroundColor3 = body
+	pill.BorderSizePixel = 0
+	pill.ClipsDescendants = true -- required by hardEdge and gloss
+	pill.ZIndex = parent.ZIndex + 2
+	pill.Parent = parent
+	corner(pill, Palette.Radius.Pill)
+	gradient(pill, body)
+	Palette.stroke(pill, Palette.Outline.Button)
+	hardEdge(pill, body, 6)
+	gloss(pill, math.floor(M.CapsuleHeight * 0.42))
 
-	-- Pack-fill bar --------------------------------------------------------
+	local diameter = M.CapsuleHeight - 16
+	local plate = iconPlate(pill, tint, diameter, UDim2.new(0, 6 + diameter / 2, 0.5, -3), art)
+
+	local textLeft = 12 + diameter
+
+	local title = text(pill, "Label", 12, Palette.lift(tint, 0.4))
+	title.AnchorPoint = Vector2.new(0, 0)
+	title.Position = UDim2.fromOffset(textLeft, 6)
+	title.Size = UDim2.new(1, -(textLeft + 12), 0, 14)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Text = caption
+
+	local amount = text(pill, "Amount", Palette.TextSize.Counter, Palette.UI.TextLight)
+	amount.AnchorPoint = Vector2.new(0, 0)
+	amount.Position = UDim2.fromOffset(textLeft, 19)
+	amount.Size = UDim2.new(1, -(textLeft + 10), 0, 29)
+	amount.TextXAlignment = Enum.TextXAlignment.Left
+	-- §4: never truncated to "1B"; the comma form is part of the fantasy.
+	amount.Text = Util.comma(0)
+
+	return { pill = pill, plate = plate, amount = amount, tint = tint, plateFill = tint }
+end
+
+--[[ The pack gauge. §6 asks for a thick rounded progress bar with an icon at
+	 the left end and the label inside; the brief asks for it to read as a chunky
+	 GAUGE, so the track is deep, the fill is gradient-lit, and three notches
+	 divide it into quarters so a glance reads "about half" rather than "some". ]]
+local function buildGauge(parent: GuiObject, y: number)
 	local row = Instance.new("Frame")
-	row.Name = "PackBar"
+	row.Name = "PackGauge"
 	row.BackgroundTransparency = 1
-	row.Position = UDim2.fromOffset(0, M.PillHeight * 2 + M.PillGap + 10)
-	row.Size = UDim2.new(1, 0, 0, M.BarKnob)
-	row.Parent = box
+	row.Position = UDim2.fromOffset(0, y)
+	row.Size = UDim2.new(1, 0, 0, M.GaugeKnob)
+	row.ZIndex = parent.ZIndex + 2
+	row.Parent = parent
+
+	local trackFill = mix(Palette.UI.CounterFill, Palette.UI.SoftCurrency, 0.1)
 
 	local track = Instance.new("Frame")
 	track.Name = "Track"
-	track.BackgroundColor3 = Palette.UI.CounterFill
+	track.BackgroundColor3 = trackFill
 	track.BorderSizePixel = 0
 	track.AnchorPoint = Vector2.new(0, 0.5)
-	track.Position = UDim2.new(0, M.BarKnob // 2, 0.5, 0)
-	track.Size = UDim2.new(1, -(M.BarKnob // 2), 0, M.BarHeight)
-	track.ZIndex = 2
+	track.Position = UDim2.new(0, M.GaugeKnob // 2, 0.5, 0)
+	track.Size = UDim2.new(1, -(M.GaugeKnob // 2), 0, M.GaugeTrack)
+	track.ClipsDescendants = true
+	track.ZIndex = row.ZIndex
+	track.Parent = row
 	corner(track, Palette.Radius.Pill)
 	Palette.stroke(track, Palette.Outline.Card)
-	track.Parent = row
 
 	-- Padding is what insets the fill inside the track's outline; sizing the
 	-- fill by scale against the padded area keeps the inset exact at every
 	-- viewport width instead of guessing an offset.
 	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 4)
-	pad.PaddingBottom = UDim.new(0, 4)
-	pad.PaddingLeft = UDim.new(0, 4)
-	pad.PaddingRight = UDim.new(0, 4)
+	pad.PaddingTop = UDim.new(0, 5)
+	pad.PaddingBottom = UDim.new(0, 5)
+	pad.PaddingLeft = UDim.new(0, 5)
+	pad.PaddingRight = UDim.new(0, 5)
 	pad.Parent = track
 
 	--[[ The fill is the only surface in this cluster without its own outline, and
 		 that is deliberate. It is a level indicator inside the already-outlined
-		 track, inset by the 4px padding above — a 3px Border stroke would all but
+		 track, inset by the padding above — a 3px Border stroke would all but
 		 close that gap against the track's inner edge, and at zero shards (the
 		 very first thing a new player sees) a zero-width frame with a Border
 		 stroke renders as a small black lozenge floating in an empty bar. ]]
@@ -423,93 +636,193 @@ local function buildCounters(parent: Instance)
 	fill.BackgroundColor3 = Palette.UI.SoftCurrency
 	fill.BorderSizePixel = 0
 	fill.Size = UDim2.new(0, 0, 1, 0)
-	fill.ZIndex = 3
-	corner(fill, Palette.Radius.Pill)
+	fill.ZIndex = track.ZIndex + 1
 	fill.Parent = track
+	corner(fill, Palette.Radius.Pill)
 
 	local grad = Instance.new("UIGradient")
 	grad.Rotation = 90
 	grad.Color = ColorSequence.new(Palette.lift(Palette.UI.SoftCurrency), Palette.shade(Palette.UI.SoftCurrency, 0.12))
 	grad.Parent = fill
 
-	local label = Instance.new("TextLabel")
-	label.Name = "Amount"
+	-- Quarter notches. Shading over the fill rather than surfaces of their own,
+	-- so like every other piece of shading in this file they are unstroked.
+	for i = 1, 3 do
+		local notch = Instance.new("Frame")
+		notch.Name = `Notch{i}`
+		notch.AnchorPoint = Vector2.new(0.5, 0.5)
+		notch.Position = UDim2.fromScale(i / 4, 0.5)
+		notch.Size = UDim2.new(0, 2, 1, 0)
+		notch.BackgroundColor3 = Palette.Outline.Color
+		notch.BackgroundTransparency = 0.55
+		notch.BorderSizePixel = 0
+		notch.ZIndex = track.ZIndex + 2
+		notch.Parent = track
+	end
+
+	local label = text(track, "Amount", 15, Palette.UI.TextLight)
 	label.Size = UDim2.new(1, 0, 1, 0)
-	label.ZIndex = 5
+	label.ZIndex = track.ZIndex + 3
 	label.Text = "0 / 0"
-	Palette.styleText(label, Palette.TextSize.Small)
-	label.Parent = track
 
-	local knob = Instance.new("Frame")
+	-- The knob overhangs the track's left end so the gauge reads as one object
+	-- with a head, not as a bar with a circle parked next to it.
+	local knob = iconPlate(row, Palette.UI.SoftCurrency, M.GaugeKnob, UDim2.new(0, M.GaugeKnob // 2, 0.5, 0), "pack")
 	knob.Name = "Knob"
-	knob.BackgroundColor3 = Palette.UI.SoftCurrency
-	knob.BorderSizePixel = 0
-	knob.AnchorPoint = Vector2.new(0.5, 0.5)
-	knob.Position = UDim2.new(0, M.BarKnob // 2, 0.5, 0)
-	knob.Size = UDim2.fromOffset(M.BarKnob, M.BarKnob)
-	knob.ZIndex = 6
-	corner(knob, Palette.Radius.Icon)
-	Palette.stroke(knob, Palette.Outline.Icon)
-	knob.Parent = row
+	knob.ZIndex = track.ZIndex + 4
 
-	-- A shard reads as a diamond: a square stood on its corner.
-	local shardGlyph = Instance.new("Frame")
-	shardGlyph.BackgroundColor3 = Palette.UI.TextLight
-	shardGlyph.BorderSizePixel = 0
-	shardGlyph.AnchorPoint = Vector2.new(0.5, 0.5)
-	shardGlyph.Position = UDim2.fromScale(0.5, 0.5)
-	shardGlyph.Size = UDim2.fromOffset(15, 15)
-	shardGlyph.Rotation = 45
-	shardGlyph.ZIndex = 7
-	corner(shardGlyph, UDim.new(0, 3))
-	shardGlyph.Parent = knob
-
-	barFill, barLabel = fill, label
+	barFill, barLabel, gaugeKnob = fill, label, knob
 end
 
-local function buildIconStack(parent: Instance, openPanel: (string) -> ())
-	local cellHeight = M.IconSize + M.CaptionHeight + 2
-	local height = #BUTTONS * cellHeight + (#BUTTONS - 1) * M.IconGap
+local function buildWallet(parent: Instance)
 	local box = cluster(
 		parent,
-		"Actions",
+		"Wallet",
+		Vector2.new(0, 0),
+		UDim2.fromOffset(M.Margin, M.Margin),
+		UDim2.new(WALLET_WIDTH.Fraction, 0, 0, WALLET_HEIGHT)
+	)
+	constrain(box, WALLET_WIDTH.Min, WALLET_WIDTH.Max)
+
+	shardsCapsule = capsule(box, "Shards", Config.Currency.Shards.Display, Palette.UI.SoftCurrency, "shard", 0)
+	coinsCapsule = capsule(
+		box,
+		"Coins",
+		Config.Currency.Coins.Display,
+		Palette.UI.HardCurrency,
+		"coin",
+		M.CapsuleHeight + M.CapsuleGap
+	)
+	buildGauge(box, M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap)
+end
+
+--[[ The little red "you can afford something" dot. It is parented to the CELL
+	 rather than to the tile: the tile clips its own descendants (Theme needs
+	 that for the hard bottom edge), so a badge pinned to a corner from inside
+	 would have its outer half sliced off by the rounded corner. ]]
+local function badge(cell: Frame, z: number): Frame
+	local dot = Instance.new("Frame")
+	dot.Name = "Badge"
+	dot.BackgroundColor3 = Palette.UI.Close
+	dot.BorderSizePixel = 0
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.fromOffset(M.Tile - 7, 7)
+	dot.Size = UDim2.fromOffset(20, 20)
+	dot.ZIndex = z
+	dot.Visible = false
+	dot.Parent = cell
+	corner(dot, Palette.Radius.Icon)
+	gradient(dot, Palette.UI.Close)
+	Palette.stroke(dot, Palette.Outline.Icon)
+	return dot
+end
+
+local function buildNav(parent: Instance, openPanel: (string) -> ())
+	local railHeight = #NAV * NAV_CELL + (#NAV - 1) * M.TileGap + M.RailPad + RAIL_BOTTOM
+	local box = cluster(
+		parent,
+		"Nav",
 		Vector2.new(0, 0.5),
 		UDim2.new(0, M.Margin, 0.5, 0),
-		UDim2.fromOffset(M.IconSize, height)
+		UDim2.fromOffset(NAV_WIDTH, railHeight)
 	)
 
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Vertical
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Padding = UDim.new(0, M.IconGap)
-	list.Parent = box
+	--[[ The rail. This single surface is the difference between "a designed
+		 navigation cluster" and "a basic icon stack": it groups the four
+		 entries, gives them a shared ground to sit on, and carries the same
+		 outline + gradient + hard bottom edge as every other surface. ]]
+	local rail = Instance.new("Frame")
+	rail.Name = "Rail"
+	rail.Size = UDim2.fromScale(1, 1)
+	rail.BackgroundColor3 = RAIL_FILL
+	rail.BorderSizePixel = 0
+	rail.ClipsDescendants = true
+	rail.ZIndex = 2
+	rail.Parent = box
+	corner(rail, Palette.Radius.Panel)
+	gradient(rail, RAIL_FILL)
+	Palette.stroke(rail, Palette.Outline.Panel)
+	hardEdge(rail, RAIL_FILL, 7)
 
-	for index, entry in BUTTONS do
+	local list = Instance.new("Frame")
+	list.Name = "Cells"
+	list.BackgroundTransparency = 1
+	list.Position = UDim2.fromOffset(M.RailPad, M.RailPad)
+	list.Size = UDim2.new(1, -M.RailPad * 2, 1, -(M.RailPad + RAIL_BOTTOM))
+	list.ZIndex = rail.ZIndex + 1
+	list.Parent = rail
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, M.TileGap)
+	layout.Parent = list
+
+	for index, entry in NAV do
 		local cell = Instance.new("Frame")
 		cell.Name = entry.Caption
 		cell.BackgroundTransparency = 1
 		cell.LayoutOrder = index
-		cell.Size = UDim2.fromOffset(M.IconSize, cellHeight)
-		cell.Parent = box
+		cell.Size = UDim2.fromOffset(M.Tile, NAV_CELL)
+		cell.ZIndex = list.ZIndex + 1
+		cell.Parent = list
 
-		-- The label argument is deliberately empty: a four-to-eight letter word
-		-- squeezed inside a 62px circle is unreadable, so the glyph is drawn as
-		-- vector art and the word goes underneath the button where it fits.
-		local button = Theme.iconButton(cell, "", entry.Fill, UDim2.fromOffset(0, 0))
-		button.Size = UDim2.fromOffset(M.IconSize, M.IconSize)
-		pictogram(button, entry.Art, entry.Fill)
-		dots[entry.Id] = badge(button)
+		--[[ Theme.button, not Theme.iconButton. The press feel, the gradient and
+			 the §3 hard bottom edge all have to be the same code the modals use —
+			 but §6's circular icon button is exactly the shape the owner rejected,
+			 so the silhouette is overridden to a rounded square and nothing else
+			 about the button is touched. The caption is empty on purpose: the word
+			 lives on the plate below, where it is legible. ]]
+		local tile = Theme.button(cell, "", entry.Fill, UDim2.fromOffset(M.Tile, M.Tile), UDim2.fromOffset(0, 0))
+		tile.Name = "Tile"
+		local silhouette = tile:FindFirstChildOfClass("UICorner")
+		if silhouette and silhouette:IsA("UICorner") then
+			silhouette.CornerRadius = TILE_RADIUS
+		end
 
-		local caption = Instance.new("TextLabel")
-		caption.Name = "Caption"
-		caption.Position = UDim2.fromOffset(-8, M.IconSize + 2)
-		caption.Size = UDim2.fromOffset(M.IconSize + 16, M.CaptionHeight)
+		glyph(tile, entry.Art, {
+			-- Lifted 2px so the glyph is optically centred in the lit face of the
+			-- tile rather than in the silhouette that includes its hard edge.
+			position = UDim2.new(0.5, 0, 0.5, -2),
+			size = UDim2.fromScale(0.58, 0.58),
+			fill = Palette.UI.TextLight,
+			accent = Palette.lift(entry.Fill, 0.68),
+			cut = entry.Fill,
+			zIndex = tile.ZIndex + 3,
+		})
+
+		--[[ The caption plate, notched up into the tile's lower edge so the two
+			 read as one object. Dark against the saturated tile, which is what
+			 gives the cluster its hierarchy: colour identifies, dark labels. ]]
+		local plate = Instance.new("Frame")
+		plate.Name = "Label"
+		plate.AnchorPoint = Vector2.new(0.5, 0)
+		plate.Position = UDim2.new(0.5, 0, 0, M.Tile - M.PlateOverlap)
+		plate.Size = UDim2.fromOffset(M.PlateWidth, M.PlateHeight)
+		plate.BackgroundColor3 = PLATE_FILL
+		plate.BorderSizePixel = 0
+		plate.ZIndex = tile.ZIndex + 6
+		plate.Parent = cell
+		corner(plate, Palette.Radius.Pill)
+		gradient(plate, PLATE_FILL)
+		Palette.stroke(plate, Palette.Outline.Card)
+
+		local caption = text(plate, "Caption", 12, Palette.UI.TextLight)
+		caption.Size = UDim2.new(1, -8, 1, 0)
+		caption.Position = UDim2.fromOffset(4, 0)
+		caption.ZIndex = plate.ZIndex + 1
 		caption.Text = entry.Caption
-		Palette.styleText(caption, 13)
-		caption.Parent = cell
+
+		dots[entry.Id] = badge(cell, plate.ZIndex + 2)
 
 		local id = entry.Id
-		button.Activated:Connect(function()
+		tile.Activated:Connect(function()
+			-- The press already sinks the tile into its own edge (Theme's
+			-- feedback); the glyph-free plate punch is what confirms the tap on a
+			-- touch screen, where there is no hover state to have told the player
+			-- the control was live.
+			punch(plate, 1.12)
 			openPanel(id)
 		end)
 	end
@@ -521,51 +834,38 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 		"Sell",
 		Vector2.new(1, 0.5),
 		UDim2.new(1, -M.Margin, 0.5, 0),
-		UDim2.new(SELL_WIDTH.Fraction, 0, 0, M.SellHeight + 6 + M.ChipHeight)
+		UDim2.new(SELL_WIDTH.Fraction, 0, 0, M.SellHeight + M.ChipGap + M.ChipHeight)
 	)
 	constrain(box, SELL_WIDTH.Min, SELL_WIDTH.Max)
 
 	local button =
 		Theme.button(box, "SELL SHARDS", Palette.UI.Buy, UDim2.new(1, 0, 0, M.SellHeight), UDim2.fromOffset(0, 0))
 
-	--[[ The leading shard icon needs clear space at the left end of the button.
+	--[[ The leading shard plate needs clear space at the left end of the button.
 		 That inset must NOT be a UIPadding on the button: UIPadding insets EVERY
 		 child, including two that must stay full-bleed.
 
 		   · Theme's `Edge` frame — the §3 hard bottom edge that reads as the
-		     button's thickness — would be drawn 40px narrow and shifted right,
-		     leaving the bottom-left corner visibly flat.
+		     button's thickness — would be drawn narrow and shifted right, leaving
+		     the bottom-left corner visibly flat.
 		   · The disabled `Veil` below would inset the same way, so with 0 shards
-		     the leftmost 40px (the shard icon included) stayed fully saturated on
-		     a button the player cannot press.
+		     the leftmost strip (the plate included) stayed fully saturated on a
+		     button the player cannot press.
 
 		 So the inset goes on the one child that actually wants it: Theme's
 		 centred caption. Theme owns the caption's vertical terms (they lift the
 		 text off the hard edge), so only the X terms are touched here. ]]
-	local ICON_INSET = 40
+	local ICON_INSET = 50
 	local captionLabel = button:FindFirstChild("Caption")
 	if captionLabel and captionLabel:IsA("TextLabel") then
 		local size = captionLabel.Size
 		-- Narrow by the full inset and shift the centre by half of it: the text
-		-- ends up optically centred in what is left, not sitting under the icon.
+		-- ends up optically centred in what is left, not sitting under the plate.
 		captionLabel.Position = UDim2.new(0.5, ICON_INSET / 2, 0, 0)
 		captionLabel.Size = UDim2.new(size.X.Scale, size.X.Offset - ICON_INSET, size.Y.Scale, size.Y.Offset)
 	end
 
-	local icon = Instance.new("Frame")
-	icon.Name = "Icon"
-	icon.BackgroundColor3 = Palette.UI.SoftCurrency
-	icon.BorderSizePixel = 0
-	icon.AnchorPoint = Vector2.new(0, 0.5)
-	-- Absolute now that there is no padding to offset it. 14px keeps the rotated
-	-- 28px diamond's corners inside the button, which clips its descendants.
-	icon.Position = UDim2.new(0, 14, 0.5, 0)
-	icon.Size = UDim2.fromOffset(28, 28)
-	icon.Rotation = 45
-	icon.ZIndex = 4
-	corner(icon, UDim.new(0, 5))
-	Palette.stroke(icon, Palette.Outline.Icon)
-	icon.Parent = button
+	local plate = iconPlate(button, Palette.UI.SoftCurrency, 42, UDim2.new(0, 31, 0.5, -3), "shard")
 
 	-- Disabled state is drawn as a desaturating veil rather than by recolouring
 	-- the fill: Theme owns the button's gradient and its hard bottom edge (§3),
@@ -576,28 +876,35 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 	veil.BackgroundTransparency = 0.4
 	veil.BorderSizePixel = 0
 	veil.Size = UDim2.new(1, 0, 1, 0)
-	veil.ZIndex = 10
+	veil.ZIndex = 20
 	veil.Visible = false
-	corner(veil, Palette.Radius.Pill)
 	veil.Parent = button
+	corner(veil, Palette.Radius.Pill)
 
+	-- The payout chip: same kit as the capsules, one size down.
 	local chip = Instance.new("Frame")
 	chip.Name = "Payout"
-	chip.BackgroundColor3 = Palette.UI.CounterFill
+	chip.BackgroundColor3 = mix(Palette.UI.CounterFill, Palette.UI.HardCurrency, 0.22)
 	chip.BorderSizePixel = 0
-	chip.Position = UDim2.fromOffset(0, M.SellHeight + 6)
+	chip.ClipsDescendants = true
+	chip.Position = UDim2.fromOffset(0, M.SellHeight + M.ChipGap)
 	chip.Size = UDim2.new(1, 0, 0, M.ChipHeight)
-	corner(chip, Palette.Radius.Pill)
-	Palette.stroke(chip, Palette.Outline.Card)
+	chip.ZIndex = 2
 	chip.Parent = box
+	corner(chip, Palette.Radius.Pill)
+	gradient(chip, chip.BackgroundColor3)
+	Palette.stroke(chip, Palette.Outline.Card)
+	hardEdge(chip, chip.BackgroundColor3, 4)
 
-	local chipText = Instance.new("TextLabel")
-	chipText.Name = "Amount"
-	chipText.Size = UDim2.new(1, 0, 1, 0)
-	chipText.ZIndex = 2
+	local chipPlate = iconPlate(chip, Palette.UI.HardCurrency, M.ChipHeight - 10, UDim2.new(0, 15, 0.5, -2), "coin")
+	chipPlate.Name = "CoinPlate"
+
+	local chipText = text(chip, "Amount", 15, Palette.UI.TextLight)
+	chipText.AnchorPoint = Vector2.new(0, 0.5)
+	chipText.Position = UDim2.new(0, 32, 0.5, -2)
+	chipText.Size = UDim2.new(1, -42, 0, 18)
+	chipText.TextXAlignment = Enum.TextXAlignment.Left
 	chipText.Text = "+0 COINS"
-	Palette.styleText(chipText, 14, Palette.UI.SoftCurrency)
-	chipText.Parent = chip
 
 	button.Activated:Connect(function()
 		-- Cosmetic only. The server measures proximity to the sell pad, owns the
@@ -612,7 +919,7 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 		sellRemote:FireServer()
 	end)
 
-	sellButton, sellVeil, payoutLabel = button, veil, chipText
+	sellButton, sellVeil, sellPlate, payoutLabel = button, veil, plate, chipText
 end
 
 local function buildObjectiveMount(parent: Instance)
@@ -656,6 +963,7 @@ function Hud.init(newDeps: Deps)
 		gui:Destroy()
 		table.clear(scales)
 		table.clear(dots)
+		sellPulse = nil
 	end
 
 	local player = Players.LocalPlayer
@@ -670,8 +978,8 @@ function Hud.init(newDeps: Deps)
 	screen.Parent = playerGui
 	gui = screen
 
-	buildCounters(screen)
-	buildIconStack(screen, newDeps.openPanel)
+	buildWallet(screen)
+	buildNav(screen, newDeps.openPanel)
 	buildSell(screen, sellRemote)
 	buildObjectiveMount(screen)
 	buildVersion(screen)
@@ -693,7 +1001,7 @@ function Hud.init(newDeps: Deps)
 	-- with it; rebinding here is what keeps rotation handling alive.
 	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(bindViewport)
 
-	lastShards, lastCoins = -1, -1
+	lastShards, lastCoins, lastFull = -1, -1, false
 end
 
 --[[ Render one authoritative snapshot. Called by the client boot script for
@@ -715,7 +1023,7 @@ function Hud.render(state: HudState?)
 	local zones: any = state.zones or {}
 
 	-- Capacity comes from the snapshot when the server sends it, and otherwise
-	-- from the same Config table the server caps against — so the bar can never
+	-- from the same Config table the server caps against — so the gauge can never
 	-- advertise a capacity the economy does not enforce. The floor of 1 exists
 	-- purely so the ratio below can never divide by zero.
 	local packLevel = upgradeLevel(upgrades, "pack")
@@ -723,24 +1031,29 @@ function Hud.render(state: HudState?)
 	local ratio = math.clamp(shards / capacity, 0, 1)
 	local full = shards >= capacity
 
-	if shardsLabel then
-		shardsLabel.Text = Util.comma(shards)
+	local shardBox = shardsCapsule
+	if shardBox then
+		shardBox.amount.Text = Util.comma(shards)
+		if shards > lastShards and lastShards >= 0 then
+			punch(shardBox.pill)
+			flash(shardBox.plate, shardBox.plateFill)
+		end
 	end
-	if coinsLabel then
-		coinsLabel.Text = Util.comma(coins)
-	end
-	if shardsPill and shards > lastShards and lastShards >= 0 then
-		punch(shardsPill)
-	end
-	if coinsPill and coins > lastCoins and lastCoins >= 0 then
-		punch(coinsPill)
+
+	local coinBox = coinsCapsule
+	if coinBox then
+		coinBox.amount.Text = Util.comma(coins)
+		if coins > lastCoins and lastCoins >= 0 then
+			punch(coinBox.pill)
+			flash(coinBox.plate, coinBox.plateFill)
+		end
 	end
 
 	if barFill then
 		local tint = full and Palette.UI.Close or Palette.UI.SoftCurrency
-		local gradient = barFill:FindFirstChildOfClass("UIGradient")
-		if gradient then
-			gradient.Color = ColorSequence.new(Palette.lift(tint), Palette.shade(tint, 0.12))
+		local gradientFill = barFill:FindFirstChildOfClass("UIGradient")
+		if gradientFill and gradientFill:IsA("UIGradient") then
+			gradientFill.Color = ColorSequence.new(Palette.lift(tint), Palette.shade(tint, 0.12))
 		end
 		-- Tweened because a shard arrives every few hundred milliseconds and a
 		-- snapping bar reads as a glitch rather than as progress.
@@ -752,6 +1065,11 @@ function Hud.render(state: HudState?)
 	if barLabel then
 		barLabel.Text = full and `FULL — {Util.comma(capacity)}` or `{Util.comma(shards)} / {Util.comma(capacity)}`
 	end
+	-- The knob is the gauge's head, so it is where "you just hit the ceiling"
+	-- gets announced — once, on the transition, not on every Sync while full.
+	if gaugeKnob and full and not lastFull then
+		punch(gaugeKnob, 1.2)
+	end
 
 	if sellButton and sellVeil then
 		local canSell = shards > 0
@@ -762,6 +1080,7 @@ function Hud.render(state: HudState?)
 	if payoutLabel then
 		payoutLabel.Text = `+{Util.comma(shards * Config.Sell.CoinsPerShard)} COINS`
 	end
+	setSellPulse(full)
 
 	-- Affordability badges. Priced from the server's own `nextCost`, so a lit dot
 	-- always corresponds to a purchase the server would actually accept — and a
@@ -781,17 +1100,25 @@ function Hud.render(state: HudState?)
 			break
 		end
 	end
-	if dots.shop then
-		dots.shop.Visible = canUpgrade
-	end
-	if dots.upgrades then
-		dots.upgrades.Visible = canUpgrade
-	end
-	if dots.zones then
-		dots.zones.Visible = canUnlock
-	end
 
-	lastShards, lastCoins = shards, coins
+	--[[ A dot that appears silently is a dot nobody notices, so becoming visible
+		 pops. Turning off is not animated: nothing was earned, and an outgoing
+		 flourish would read as a reward. ]]
+	local function setBadge(id: string, on: boolean)
+		local dot = dots[id]
+		if not dot or dot.Visible == on then
+			return
+		end
+		dot.Visible = on
+		if on then
+			punch(dot, 1.5)
+		end
+	end
+	setBadge("shop", canUpgrade)
+	setBadge("upgrades", canUpgrade)
+	setBadge("zones", canUnlock)
+
+	lastShards, lastCoins, lastFull = shards, coins, full
 end
 
 --[[ Where Objective.luau parents its chip. Returned rather than exposed as a

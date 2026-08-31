@@ -476,29 +476,6 @@
         }
       },
       {
-        "assetId": 105210942423223,
-        "name": "Meshes/fenceee2",
-        "class": "MeshPart",
-        "normalisedSize": [
-          44.8,
-          7,
-          64.7
-        ],
-        "provenance": {
-          "source": "roblox_creator_store",
-          "assetId": 105210942423223,
-          "url": "https://create.roblox.com/store/asset/105210942423223",
-          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
-          "attributionRequired": false,
-          "commercialUseInRoblox": true,
-          "importedAt": "2026-08-31",
-          "modifications": [
-            "scripts stripped (none present)",
-            "uniform scale to family height"
-          ]
-        }
-      },
-      {
         "assetId": 6330585204,
         "name": "Meshes/fence (1)",
         "class": "MeshPart",
@@ -640,6 +617,22 @@
           ]
         }
       }
+    ]
+  },
+  "renderReview": {
+    "reviewedAt": "2026-08-31",
+    "method": "contact sheet rendered in Studio, judged by eye",
+    "rejected": [
+      {
+        "family": "fence",
+        "assetId": 105210942423223,
+        "reason": "a 45x65 stud fenced ENCLOSURE, not a fence segment; wrong scale and wrong shape for path edging"
+      }
+    ],
+    "notes": [
+      "The snowy pine variant is kept deliberately: it gives Frost Hollow its own tree rather than a recoloured meadow tree.",
+      "Crystals read as faceted stylised gems and match the collectible language already in the world.",
+      "Rocks skew pale; they suit the frost zone better than the rust canyon and should be tinted where used in the meadow."
     ]
   }
 }

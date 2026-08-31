@@ -8,7 +8,18 @@
 	something, a toast every time it says something, and a genuinely noisy
 	celebration when a zone opens.
 
-	Three things here are load-bearing and not obvious:
+	It also owns the two motion primitives that are NOT specific to one surface,
+	because both are wanted in more than one place and neither belongs to
+	whichever surface happened to need it first:
+
+	  • `Effects.countTo` — a currency number that counts toward its new value
+	    instead of snapping to it. The HUD's coin and shard pills want it and so
+	    does the balance strip at the foot of every panel; both count FROM the
+	    previous snapshot's value, which is the caller's to supply because only
+	    the caller knows which snapshot it last drew.
+	  • `Effects.pulse` — the brief scale punch that goes with it.
+
+	Five things here are load-bearing and not obvious:
 
 	1. `Pop` fires several times a second per player. Every pop therefore comes
 	   out of a fixed pool of Attachment + BillboardGui pairs that are recycled,
@@ -24,6 +35,20 @@
 	   rather than five invented ids. An id that does not resolve is silent at
 	   best and an error at worst, and a broken audio call must never take the
 	   rest of the feedback down with it — hence the pcall wrappers.
+
+	4. EVERY transient instance this module creates is handed to `Debris` with a
+	   lifetime as well as being destroyed by its own tween. The tween is the
+	   nice path; Debris is the guarantee. A celebration whose tween is cancelled
+	   (by a second unlock landing mid-animation, say) must not leave a banner
+	   parked on screen forever, and a `Completed` handler is not a guarantee
+	   because a cancelled tween never completes.
+
+	5. Anything that reserves a resource — a pool slot, a label's animation
+	   claim — reserves it and then does the fallible work inside a pcall with a
+	   single release path. An earlier pass set `busy = true` and then threw on
+	   the next line, which permanently removed a slot from a 24-entry pool;
+	   twenty-four of those and number pops stop for the session. That ordering
+	   is repeated deliberately everywhere it applies below.
 ]]
 
 local Debris = game:GetService("Debris")
@@ -36,6 +61,7 @@ local Shared = ReplicatedStorage:WaitForChild("CrystalCanyon")
 local Config = require(Shared:WaitForChild("Config"))
 local Palette = require(Shared:WaitForChild("Palette"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Util = require(Shared:WaitForChild("Util"))
 
 local Effects = {}
 
@@ -46,8 +72,13 @@ local POP_RISE = 4.5 -- studs travelled while fading
 local POP_POOL_MAX = 24 -- hard ceiling; beyond this a pop is dropped, not queued
 
 -- Toasts -----------------------------------------------------------------
-local TOAST_WIDTH = 330
-local TOAST_HEIGHT = 58
+local TOAST_WIDTH = 348
+local TOAST_HEIGHT = 64
+--[[ The toast's coloured left cap. §5's grammar is one saturated block against a
+	 neutral one, and this is that shape at notification size: the severity is a
+	 solid colour block with a white pictogram in it, not a hairline rule. It is
+	 also what stops the toast reading as one more plain dark pill. ]]
+local TOAST_CAP = 54
 local TOAST_GAP = 10
 local TOAST_MARGIN = 16
 local TOAST_LIFE = 2.6
@@ -55,16 +86,28 @@ local TOAST_VISIBLE_MAX = 3
 local TOAST_QUEUE_MAX = 8
 
 -- Celebration ------------------------------------------------------------
-local BANNER_LIFE = 2.2
+local BANNER_LIFE = 2.4
 --[[ The banner is sized by SCALE, capped by a UISizeConstraint — not by a flat
-	 520px offset. A fixed 520 overflowed a 390pt phone viewport by 65px on each
-	 side, so the celebration for unlocking a zone was the one moment the UI ran
-	 off the screen. 0.86 of the width keeps the same generous desktop look
-	 (clamped to 520 well before 1080p) and stays inside the smallest phone. ]]
+	 560px offset. A fixed width overflows a 390pt phone viewport, so the
+	 celebration for unlocking a zone would be the one moment the UI ran off the
+	 screen. 0.86 of the width keeps the same generous desktop look (clamped well
+	 before 1080p) and stays inside the smallest phone. ]]
 local BANNER_WIDTH_SCALE = 0.86
-local BANNER_MAX = Vector2.new(520, 96)
-local BURST_PARTS = 20
-local BURST_LIFE = 1.8
+local BANNER_MAX = Vector2.new(560, 104)
+local BANNER_EDGE = 8
+local RAY_COUNT = 6
+local BURST_PARTS = 30
+local BURST_LIFE = 2
+local SHOCKWAVE_LIFE = 0.55
+local SCREEN_FLASH_LIFE = 0.42
+
+-- Counting numbers -------------------------------------------------------
+local COUNT_DURATION = 0.45
+--[[ Above this jump the count still runs but is stretched slightly, so banking a
+	 six-figure sale reads as a roll rather than a blur. Below it the default
+	 duration is already imperceptibly short. ]]
+local COUNT_LONG_JUMP = 5000
+local COUNT_LONG_DURATION = 0.75
 
 --[[ One shipped Roblox asset, re-pitched per cue. See the header: inventing
 	 asset ids for "sell" and "unlock" would be a guess, and a guess that fails
@@ -76,6 +119,7 @@ local CUES: { [string]: { pitch: number, volume: number } } = {
 	sell = { pitch = 1.05, volume = 0.6 },
 	purchase = { pitch = 1.25, volume = 0.6 },
 	unlock = { pitch = 0.8, volume = 0.85 },
+	fanfare = { pitch = 1.6, volume = 0.7 }, -- the second half of the unlock stinger
 	error = { pitch = 0.55, volume = 0.5 },
 }
 
@@ -92,13 +136,21 @@ local CUES: { [string]: { pitch: number, volume: number } } = {
 	 was not green and PACK FULL was not coloured as a warning at all. Keys that
 	 nothing fires are worse than useless here: they read as coverage.
 
-	 `warn` is amber rather than red on purpose. §3's accent bar is the toast's
-	 severity code, and a pack that filled up because the player is collecting
-	 well is not the same event as a refused purchase. ]]
+	 `warn` is amber rather than red on purpose. The cap is the toast's severity
+	 code, and a pack that filled up because the player is collecting well is not
+	 the same event as a refused purchase. ]]
 local KIND_COLOR: { [string]: Color3 } = {
 	success = Palette.UI.Buy,
 	warn = Palette.UI.Premium,
 	error = Palette.UI.Close,
+}
+
+--[[ The pictogram drawn in the cap, per kind. Drawn from primitives rather than
+	 emoji: §4 permits emoji as ornament only, never as a functional icon. ]]
+local KIND_GLYPH: { [string]: string } = {
+	success = "tick",
+	warn = "bang",
+	error = "cross",
 }
 
 --[[ An unknown kind — a future server build, or a payload with no `kind` at
@@ -179,6 +231,91 @@ local activeToasts: { Toast } = {}
 local toastQueue: { { kind: string, text: string } } = {}
 local sounds: { [string]: Sound } = {}
 
+--[[ The celebration currently on screen, if any. A second unlock landing while
+	 the first is still playing takes the stage over rather than drawing a second
+	 banner on top of it — see `Effects.celebrate`. ]]
+local celebrationStage: Frame? = nil
+
+-- Small construction helpers ----------------------------------------------
+
+local function corner(inst: GuiObject, radius: UDim): UICorner
+	local c = Instance.new("UICorner")
+	c.CornerRadius = radius
+	c.Parent = inst
+	return c
+end
+
+--[[ §3 Slight vertical gradient on fills: lighter top, deeper bottom. ]]
+local function gradient(inst: GuiObject, fill: Color3): UIGradient
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90
+	g.Color = ColorSequence.new(Palette.lift(fill), Palette.shade(fill, 0.12))
+	g.Parent = inst
+	return g
+end
+
+--[[ §3 Depth is a hard bottom edge, not a soft shadow. `host` must clip, or the
+	 band's square ends punch through the rounded corners. Deliberately NOT
+	 stroked: it is shading inside the host's silhouette, and the host already
+	 carries the outline that encloses both. ]]
+local function hardEdge(host: GuiObject, fill: Color3, thickness: number): Frame
+	local edge = Instance.new("Frame")
+	edge.Name = "Edge"
+	edge.AnchorPoint = Vector2.new(0.5, 1)
+	edge.Position = UDim2.fromScale(0.5, 1)
+	edge.Size = UDim2.new(1, 0, 0, thickness)
+	edge.BackgroundColor3 = Palette.shade(fill)
+	edge.BorderSizePixel = 0
+	edge.ZIndex = host.ZIndex
+	edge.Parent = host
+	return edge
+end
+
+--[[ A white bar inside a 32x32 box, positioned in that box's own coordinates.
+	 Used for the toast cap pictograms, which are the only vector art this module
+	 draws. Panels and Hud each own their own icon sets; three small drawings in
+	 three files is cheaper than a shared icon module none of them would agree on
+	 the sizing rules for. ]]
+local GLYPH_BOX = 32
+
+local function bar(parent: Instance, w: number, h: number, x: number, y: number, rot: number?, z: number?): Frame
+	local f = Instance.new("Frame")
+	f.BackgroundColor3 = Palette.UI.TextLight
+	f.BorderSizePixel = 0
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Size = UDim2.fromScale(w / GLYPH_BOX, h / GLYPH_BOX)
+	f.Position = UDim2.fromScale(x, y)
+	f.Rotation = rot or 0
+	f.ZIndex = z or (parent :: any).ZIndex + 1
+	f.Parent = parent
+	corner(f, UDim.new(0, 2))
+	return f
+end
+
+local function capGlyph(parent: Frame, kind: string)
+	local art = Instance.new("Frame")
+	art.Name = "Glyph"
+	art.BackgroundTransparency = 1
+	art.AnchorPoint = Vector2.new(0.5, 0.5)
+	art.Position = UDim2.fromScale(0.5, 0.5)
+	art.Size = UDim2.fromOffset(GLYPH_BOX, GLYPH_BOX)
+	art.ZIndex = parent.ZIndex + 1
+	art.Parent = parent
+
+	if kind == "tick" then
+		bar(art, 6, 13, 0.36, 0.62, -45)
+		bar(art, 6, 22, 0.58, 0.44, 40)
+	elseif kind == "cross" then
+		bar(art, 6, 24, 0.5, 0.5, 45)
+		bar(art, 6, 24, 0.5, 0.5, -45)
+	elseif kind == "bang" then
+		bar(art, 6, 16, 0.5, 0.38)
+		bar(art, 6, 6, 0.5, 0.72)
+	else
+		bar(art, 12, 12, 0.5, 0.5, 45)
+	end
+end
+
 -- Sound -------------------------------------------------------------------
 
 local function cueSound(name: string): Sound?
@@ -219,6 +356,133 @@ function Effects.playCue(name: string)
 		local cue = CUES[name]
 		s.PlaybackSpeed = cue.pitch * (0.96 + rng:NextNumber() * 0.08)
 		s:Play()
+	end)
+end
+
+-- Motion primitives --------------------------------------------------------
+
+--[[ §11 BUTTON/COUNTER feedback: a brief overshoot on a surface that just
+	 changed. Reuses the target's existing UIScale rather than adding one per
+	 call — a pill that punches on every collect would otherwise accumulate one
+	 UIScale per shard, and the last one written would win while the rest sat
+	 there as garbage. ]]
+function Effects.pulse(target: GuiObject, amount: number?)
+	if typeof(target) ~= "Instance" or not target:IsA("GuiObject") then
+		return
+	end
+	local existing = target:FindFirstChildOfClass("UIScale")
+	local scale: UIScale
+	if existing then
+		scale = existing
+	else
+		scale = Instance.new("UIScale")
+		scale.Parent = target
+	end
+	scale.Scale = 1 + (amount or 0.12)
+	TweenService:Create(scale, TweenInfo.new(0.26, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+		:Play()
+end
+
+--[[ Claims on a counting label, one per label, keyed weakly so a destroyed
+	 label is not kept alive by its own animation bookkeeping. The value is a
+	 generation number: a newer count bumps it, and the older loop sees that its
+	 own generation is stale on its next frame and returns. That is what makes
+	 counting interruptible — the common case is a second Sync landing while the
+	 first count is still rolling. ]]
+local countClaims: { [TextLabel]: number } = setmetatable({}, { __mode = "k" }) :: any
+
+--[[ §11 CURRENCY CHANGE: the number counts toward its new value instead of
+	 snapping to it.
+
+	 `from` is the caller's to supply and is deliberately not remembered here:
+	 only the caller knows which snapshot it last drew, and reading "the number
+	 currently in the label" would count from whatever a half-finished previous
+	 animation happened to have written — or from a comma-formatted string this
+	 function would then have to parse back into a number.
+
+	 No instances are created: the loop writes `label.Text` on a `task.spawn`ed
+	 coroutine and stops on the first frame its generation is stale. A failed
+	 write (a label destroyed mid-count) releases the claim and returns rather
+	 than spinning. ]]
+export type CountOptions = {
+	duration: number?,
+	format: ((value: number) -> string)?,
+	pulse: GuiObject?,
+}
+
+function Effects.countTo(label: TextLabel, from: number, to: number, options: CountOptions?)
+	if typeof(label) ~= "Instance" or not label:IsA("TextLabel") then
+		return
+	end
+
+	local format = (options and options.format) or Util.comma
+	local target = tonumber(to) or 0
+	local start = tonumber(from) or target
+	-- NaN survives tonumber; it would make every frame's interpolation NaN and
+	-- the label would read "-0" forever.
+	if target ~= target then
+		target = 0
+	end
+	if start ~= start then
+		start = target
+	end
+	target = math.floor(target)
+	start = math.floor(start)
+
+	local claim = (countClaims[label] or 0) + 1
+	countClaims[label] = claim
+
+	if options and options.pulse and start ~= target then
+		Effects.pulse(options.pulse, 0.1)
+	end
+
+	local jump = math.abs(target - start)
+	local duration = (options and options.duration)
+		or (if jump >= COUNT_LONG_JUMP then COUNT_LONG_DURATION else COUNT_DURATION)
+
+	local function write(value: number): boolean
+		local ok = pcall(function()
+			label.Text = format(value)
+		end)
+		if not ok and countClaims[label] == claim then
+			countClaims[label] = nil
+		end
+		return ok
+	end
+
+	if jump == 0 or duration <= 0 then
+		write(target)
+		if countClaims[label] == claim then
+			countClaims[label] = nil
+		end
+		return
+	end
+
+	task.spawn(function()
+		local began = os.clock()
+		while true do
+			if countClaims[label] ~= claim then
+				return -- a newer count owns the label now
+			end
+			local t = (os.clock() - began) / duration
+			if t >= 1 then
+				break
+			end
+			-- Cubic ease-out: fast off the mark, settling onto the final value,
+			-- which is what makes a credited payout read as arriving.
+			local eased = 1 - (1 - t) ^ 3
+			if not write(math.floor(start + (target - start) * eased + 0.5)) then
+				return
+			end
+			task.wait()
+		end
+		if countClaims[label] ~= claim then
+			return
+		end
+		write(target)
+		if countClaims[label] == claim then
+			countClaims[label] = nil
+		end
 	end)
 end
 
@@ -348,9 +612,7 @@ end
 		one of the two runs. ]]
 function Effects.pop(position: Vector3, text: string, color: Color3?)
 	if typeof(position) ~= "Vector3" or type(text) ~= "string" then
-		warn(
-			`[CrystalCanyon] Effects.pop ignored a malformed call: position={typeof(position)} text={typeof(text)}`
-		)
+		warn(`[CrystalCanyon] Effects.pop ignored a malformed call: position={typeof(position)} text={typeof(text)}`)
 		return
 	end
 	local tint = typeof(color) == "Color3" and color or nil
@@ -388,13 +650,11 @@ local function reflowToasts()
 	for i, toast in activeToasts do
 		if toast.slot ~= i then
 			toast.slot = i
-			TweenService
-				:Create(
-					toast.frame,
-					TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-					{ Position = toastY(i) }
-				)
-				:Play()
+			TweenService:Create(
+				toast.frame,
+				TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ Position = toastY(i) }
+			):Play()
 		end
 	end
 end
@@ -417,10 +677,15 @@ local function dismissToast(toast: Toast)
 		toast.frame:Destroy()
 	end)
 	tween:Play()
+	-- The tween is the nice exit; this is the guarantee (header note 4).
+	Debris:AddItem(toast.frame, 1)
 
 	pumpToasts()
 end
 
+--[[ One toast: a dark body carrying a saturated cap with a white pictogram in
+	 it. The cap is the severity code — readable before the words are — and it is
+	 what keeps the notification from being one more featureless black pill. ]]
 local function showToast(kind: string, text: string)
 	local parent = mount
 	if not parent then
@@ -437,47 +702,73 @@ local function showToast(kind: string, text: string)
 	frame.Position = UDim2.new(1, TOAST_WIDTH + TOAST_MARGIN, 0, TOAST_MARGIN)
 	frame.BackgroundColor3 = Palette.UI.CounterFill
 	frame.BorderSizePixel = 0
+	-- Required by the cap's corner trick and by the hard edge below.
+	frame.ClipsDescendants = true
 	frame.ZIndex = 40
 	frame.Parent = parent
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Palette.Radius.Card
-	corner.Parent = frame
+	corner(frame, Palette.Radius.Card)
+	gradient(frame, Palette.UI.CounterFill)
 	Palette.stroke(frame, Palette.Outline.Card)
+	hardEdge(frame, Palette.UI.CounterFill, 5)
 
-	-- §3: depth is a hard edge, not a blur. The accent bar doubles as the
-	-- colour code for the message kind, so severity is readable pre-literacy.
-	local bar = Instance.new("Frame")
-	bar.Name = "Accent"
-	bar.Size = UDim2.new(0, 10, 1, 0)
-	bar.BackgroundColor3 = accent
-	bar.BorderSizePixel = 0
-	bar.ZIndex = 41
-	bar.Parent = frame
-	local barCorner = Instance.new("UICorner")
-	barCorner.CornerRadius = Palette.Radius.Card
-	barCorner.Parent = bar
+	local cap = Instance.new("Frame")
+	cap.Name = "Cap"
+	cap.Size = UDim2.new(0, TOAST_CAP, 1, 0)
+	cap.BackgroundColor3 = accent
+	cap.BorderSizePixel = 0
+	cap.ZIndex = frame.ZIndex + 1
+	cap.Parent = frame
+	corner(cap, Palette.Radius.Card)
+	gradient(cap, accent)
+
+	--[[ The cap's UICorner rounds all four of its corners; this squares the two
+		 that meet the message. Filling the patch with the cap's own colour is the
+		 same punch-out trick the pictograms use, and it costs one frame rather
+		 than a second clipping container. ]]
+	local square = Instance.new("Frame")
+	square.Name = "SquareOff"
+	square.AnchorPoint = Vector2.new(1, 0.5)
+	square.Position = UDim2.new(1, 0, 0.5, 0)
+	square.Size = UDim2.new(0, 16, 1, 0)
+	square.BackgroundColor3 = accent
+	square.BorderSizePixel = 0
+	square.ZIndex = cap.ZIndex
+	square.Parent = cap
+	gradient(square, accent)
+
+	--[[ The black rule between the cap and the message. §5's construction diagram
+		 puts one exactly here, between the saturated block and the neutral one. ]]
+	local rule = Instance.new("Frame")
+	rule.Name = "Rule"
+	rule.AnchorPoint = Vector2.new(1, 0.5)
+	rule.Position = UDim2.new(1, 0, 0.5, 0)
+	rule.Size = UDim2.new(0, Palette.Outline.Card, 1, 0)
+	rule.BackgroundColor3 = Palette.Outline.Color
+	rule.BorderSizePixel = 0
+	rule.ZIndex = cap.ZIndex + 2
+	rule.Parent = cap
+
+	capGlyph(cap, KIND_GLYPH[kind] or "dot")
 
 	local label = Instance.new("TextLabel")
 	label.Name = "Text"
-	label.Size = UDim2.new(1, -32, 1, -12)
-	label.Position = UDim2.fromOffset(24, 6)
+	label.Position = UDim2.fromOffset(TOAST_CAP + 14, 0)
+	label.Size = UDim2.new(1, -(TOAST_CAP + 26), 1, -6)
 	label.BackgroundTransparency = 1
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextWrapped = true
-	label.ZIndex = 42
-	label.Text = text
+	label.ZIndex = frame.ZIndex + 2
+	label.Text = string.upper(text)
 	Palette.styleText(label, Palette.TextSize.Small + 2)
 	label.Parent = frame
 
 	local toast: Toast = { frame = frame, slot = slot }
 	table.insert(activeToasts, toast)
 
-	TweenService
-		:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Position = toastY(slot),
-		})
-		:Play()
+	TweenService:Create(frame, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = toastY(slot),
+	}):Play()
 
 	task.delay(TOAST_LIFE, function()
 		dismissToast(toast)
@@ -509,6 +800,8 @@ function Effects.notify(kind: string, text: string)
 		 paying, and §8 is explicit that silence there reads as breakage. ]]
 	if kind == "error" or kind == "warn" then
 		Effects.playCue("error")
+	elseif kind == "success" then
+		Effects.playCue("purchase")
 	end
 	pumpToasts()
 end
@@ -529,57 +822,170 @@ local function burst(origin: Vector3, color: Color3)
 		p.Parent = workspace
 		-- Set velocity after parenting; an unparented assembly has no assembly
 		-- to push, so doing this earlier silently does nothing.
-		p.AssemblyLinearVelocity =
-			Vector3.new(rng:NextNumber(-22, 22), rng:NextNumber(28, 46), rng:NextNumber(-22, 22))
+		p.AssemblyLinearVelocity = Vector3.new(rng:NextNumber(-22, 22), rng:NextNumber(28, 46), rng:NextNumber(-22, 22))
 		p.AssemblyAngularVelocity = Vector3.new(rng:NextNumber(-8, 8), rng:NextNumber(-8, 8), rng:NextNumber(-8, 8))
 		Debris:AddItem(p, BURST_LIFE)
 	end
 end
 
+--[[ A brief wash of the accent colour over the whole screen. This is the part
+	 that makes the unlock louder than a toast rather than merely bigger: the
+	 player's peripheral vision registers it before they have read anything. ]]
+local function screenFlash(accent: Color3)
+	local parent = mount
+	if not parent then
+		return
+	end
+	local flash = Instance.new("Frame")
+	flash.Name = "UnlockFlash"
+	flash.Size = UDim2.fromScale(1, 1)
+	flash.BackgroundColor3 = Palette.lift(accent, 0.65)
+	flash.BackgroundTransparency = 0.5
+	flash.BorderSizePixel = 0
+	-- A wash, not a surface: it has no edge of its own, so it carries no outline.
+	flash.ZIndex = 56
+	flash.Active = false
+	flash.Parent = parent
+	Debris:AddItem(flash, SCREEN_FLASH_LIFE + 0.4)
+
+	TweenService:Create(flash, TweenInfo.new(SCREEN_FLASH_LIFE, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 1,
+	}):Play()
+end
+
+--[[ An outlined ring expanding out of the centre. It is transient by design —
+	 §6 keeps the centre of the screen empty, and "empty" is about the furniture
+	 that stays there, not about a half-second of celebration. ]]
+local function shockwave(accent: Color3)
+	local parent = mount
+	if not parent then
+		return
+	end
+	local ring = Instance.new("Frame")
+	ring.Name = "Shockwave"
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromOffset(80, 80)
+	ring.BackgroundTransparency = 1
+	ring.BorderSizePixel = 0
+	ring.ZIndex = 57
+	ring.Parent = parent
+	corner(ring, Palette.Radius.Pill)
+	Debris:AddItem(ring, SHOCKWAVE_LIFE + 0.4)
+
+	local edge = Instance.new("UIStroke")
+	edge.Color = Palette.lift(accent, 0.35)
+	edge.Thickness = 10
+	edge.Parent = ring
+
+	local out = TweenInfo.new(SHOCKWAVE_LIFE, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(ring, out, { Size = UDim2.fromScale(1.1, 1.1) }):Play()
+	TweenService:Create(edge, out, { Transparency = 1, Thickness = 2 }):Play()
+end
+
+--[[ The banner and the sunburst behind it, built as ONE stage frame so the two
+	 cannot come apart and so a second unlock can retire both with a single
+	 Destroy. ]]
 local function banner(text: string, accent: Color3)
 	local parent = mount
 	if not parent then
 		return
 	end
 
+	-- A second unlock takes the stage over rather than drawing on top of the
+	-- first. Nothing about the first is worth preserving by then.
+	local previous = celebrationStage
+	if previous then
+		previous:Destroy()
+		celebrationStage = nil
+	end
+
+	local stage = Instance.new("Frame")
+	stage.Name = "UnlockStage"
+	stage.AnchorPoint = Vector2.new(0.5, 0.5)
+	stage.Position = UDim2.fromScale(0.5, 0.26)
+	stage.Size = UDim2.new(1, 0, 0, 220)
+	stage.BackgroundTransparency = 1
+	stage.BorderSizePixel = 0
+	stage.ZIndex = 58
+	stage.Parent = parent
+	celebrationStage = stage
+	Debris:AddItem(stage, BANNER_LIFE + 1.2)
+
+	-- Sunburst. Each bar is two rays, so RAY_COUNT bars read as twice that many
+	-- spokes; they are shading behind the banner and carry no outline.
+	local rays = Instance.new("Frame")
+	rays.Name = "Rays"
+	rays.AnchorPoint = Vector2.new(0.5, 0.5)
+	rays.Position = UDim2.fromScale(0.5, 0.5)
+	rays.Size = UDim2.fromScale(1, 1)
+	rays.BackgroundTransparency = 1
+	rays.BorderSizePixel = 0
+	rays.ZIndex = stage.ZIndex
+	rays.Parent = stage
+
+	for i = 1, RAY_COUNT do
+		local ray = Instance.new("Frame")
+		ray.AnchorPoint = Vector2.new(0.5, 0.5)
+		ray.Position = UDim2.fromScale(0.5, 0.5)
+		ray.Size = UDim2.new(0, 22, 2.4, 0)
+		ray.Rotation = (i - 1) * (180 / RAY_COUNT)
+		ray.BackgroundColor3 = Palette.lift(accent, 0.6)
+		ray.BackgroundTransparency = 0.82
+		ray.BorderSizePixel = 0
+		ray.ZIndex = rays.ZIndex
+		ray.Parent = rays
+	end
+
+	TweenService:Create(rays, TweenInfo.new(BANNER_LIFE + 0.6, Enum.EasingStyle.Linear), { Rotation = 26 }):Play()
+
 	local frame = Instance.new("Frame")
 	frame.Name = "UnlockBanner"
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.new(0.5, 0, 0.24, 0)
-	frame.Size = UDim2.fromOffset(0, 0)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.Size = UDim2.new(BANNER_WIDTH_SCALE, 0, 0, 0)
 	frame.BackgroundColor3 = accent
 	frame.BorderSizePixel = 0
-	frame.ZIndex = 60
-	frame.Parent = parent
+	frame.ClipsDescendants = true -- required by the hard edge and the sheen
+	frame.ZIndex = stage.ZIndex + 2
+	frame.Parent = stage
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Palette.Radius.Panel
-	corner.Parent = frame
+	corner(frame, Palette.Radius.Panel)
+	gradient(frame, accent)
 	Palette.stroke(frame, Palette.Outline.Panel)
+	hardEdge(frame, accent, BANNER_EDGE)
 
 	--[[ The cap that makes the scale safe: MaxSize keeps the desktop banner at
-		 the intended 520x96, and the width scale below it is what shrinks on a
-		 phone. MaxSize only — a MinSize is enforced every frame, so it would be
-		 applied to the (w,0) start and end sizes too and flatten both halves of
-		 the grow/collapse animation. ]]
+		 the intended size, and the width scale is what shrinks on a phone.
+		 MaxSize only — a MinSize is enforced every frame, so it would be applied
+		 to the zero-height start and end sizes too and flatten both halves of the
+		 grow/collapse animation. ]]
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = BANNER_MAX
 	limit.Parent = frame
 
-	local gradient = Instance.new("UIGradient")
-	gradient.Rotation = 90
-	gradient.Color = ColorSequence.new(Palette.lift(accent), Palette.shade(accent, 0.18))
-	gradient.Parent = frame
+	-- §3 headers often add a diagonal sheen band; the clip trims the overhang.
+	local sheen = Instance.new("Frame")
+	sheen.Name = "Sheen"
+	sheen.AnchorPoint = Vector2.new(0.5, 0.5)
+	sheen.Position = UDim2.fromScale(0.5, 0.26)
+	sheen.Size = UDim2.new(1.6, 0, 0, 26)
+	sheen.Rotation = -8
+	sheen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	sheen.BackgroundTransparency = 0.86
+	sheen.BorderSizePixel = 0
+	sheen.ZIndex = frame.ZIndex
+	sheen.Parent = frame
 
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
+	label.Size = UDim2.new(1, 0, 1, -BANNER_EDGE)
 	label.BackgroundTransparency = 1
-	label.ZIndex = 61
+	label.ZIndex = frame.ZIndex + 1
 	label.Text = text
 	Palette.styleText(label, Palette.TextSize.Title)
-	--[[ Zone names are authored, not user text, but the banner is now narrower on
-		 a phone than the 520px the 34pt title was measured against. Scaling down
-		 to a floor keeps "FROST HOLLOW UNLOCKED!" on one line instead of clipping;
+	--[[ Zone names are authored, not user text, but the banner is narrower on a
+		 phone than the size the title was measured against. Scaling down to a
+		 floor keeps "FROST HOLLOW UNLOCKED!" on one line instead of clipping it;
 		 the max keeps it from growing past the display size §4 asks for. ]]
 	label.TextScaled = true
 	local textLimit = Instance.new("UITextSizeConstraint")
@@ -587,29 +993,32 @@ local function banner(text: string, accent: Color3)
 	textLimit.MinTextSize = 16
 	textLimit.Parent = label
 	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 18)
-	pad.PaddingRight = UDim.new(0, 18)
+	pad.PaddingLeft = UDim.new(0, 20)
+	pad.PaddingRight = UDim.new(0, 20)
 	pad.Parent = label
 	label.Parent = frame
 
-	--[[ Width is a scale so it tracks the viewport; the constraint above clamps
-		 it. Height stays an offset — 96px is a fixed bar height, not a share of
-		 the screen. ]]
 	local grown = UDim2.new(BANNER_WIDTH_SCALE, 0, 0, BANNER_MAX.Y)
 	local collapsed = UDim2.new(BANNER_WIDTH_SCALE, 0, 0, 0)
 
-	TweenService
-		:Create(frame, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = grown,
-		})
+	TweenService:Create(frame, TweenInfo.new(0.34, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = grown })
 		:Play()
 
 	task.delay(BANNER_LIFE, function()
-		local out = TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		-- The stage may already be gone (a second unlock, or Debris); tweening a
+		-- destroyed instance is harmless but reparenting checks are not needed —
+		-- the Destroy below is idempotent and Debris is the backstop either way.
+		if stage.Parent == nil then
+			return
+		end
+		local out = TweenService:Create(frame, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Size = collapsed,
 		})
 		out.Completed:Connect(function()
-			frame:Destroy()
+			if celebrationStage == stage then
+				celebrationStage = nil
+			end
+			stage:Destroy()
 		end)
 		out:Play()
 	end)
@@ -617,28 +1026,48 @@ end
 
 --[[ The loud one. Fires on the server's `Unlocked` cue, never on a local guess
 	 that a purchase succeeded — the celebration must mean the coins were
-	 actually spent, or it teaches the player to distrust it. ]]
+	 actually spent, or it teaches the player to distrust it.
+
+	 §11 asks for this to be louder than a normal toast, and "louder" is four
+	 channels at once rather than one bigger box: a screen wash, an expanding
+	 ring, a sunburst banner, and physical debris thrown off the player. ]]
 function Effects.celebrate(zoneId: string)
 	local zone = Config.zoneById(zoneId)
 	local accent = zone and zone.AccentColor or Palette.UI.Premium
 	local name = zone and zone.Name or "NEW ZONE"
 
 	Effects.playCue("unlock")
+	-- The second half of the stinger, offset so the two read as one rising cue
+	-- rather than as a single flat ping.
+	task.delay(0.14, function()
+		Effects.playCue("fanfare")
+	end)
+
+	screenFlash(accent)
+	shockwave(accent)
 	banner(name .. " UNLOCKED!", accent)
 
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then
 		burst(root.Position + Vector3.new(0, 2, 0), accent)
+		-- A second wave a beat later; one instantaneous puff reads as a glitch,
+		-- two reads as a celebration.
+		task.delay(0.22, function()
+			local stillThere = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if stillThere and stillThere:IsA("BasePart") then
+				burst(stillThere.Position + Vector3.new(0, 3, 0), Palette.UI.Premium)
+			end
+		end)
 	end
 end
 
 -- Wiring ------------------------------------------------------------------
 
---[[ `mountPoint` is the ScreenGui (or a full-screen Frame inside it) that Hud
-	 owns. Effects deliberately does not create its own ScreenGui: two
-	 ScreenGuis means two ZIndex spaces, and a toast that draws under a modal is
-	 the bug that follows. ]]
+--[[ `mountPoint` is the ScreenGui (or a full-screen Frame inside it) that the
+	 boot script owns. Effects deliberately does not create its own ScreenGui:
+	 two ScreenGuis means two ZIndex spaces, and a toast that draws under a modal
+	 is the bug that follows. ]]
 function Effects.init(mountPoint: Instance)
 	if mount then
 		return -- init is idempotent; a second boot must not double-bind remotes

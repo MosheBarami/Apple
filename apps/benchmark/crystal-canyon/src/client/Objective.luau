@@ -2,11 +2,11 @@
 --[[
 	Crystal Canyon — the onboarding chip.
 
-	A single pill at top-centre reading e.g. "COLLECT 25 SHARDS   12/25". It is
-	the only thing the game puts near the middle of the screen, and it earns
-	that spot by being the one instruction a new player needs; §6 of the style
-	spec keeps the centre otherwise empty, so this chip hugs the top edge and
-	vanishes the moment the chain is finished.
+	A single chip in the top band reading e.g. "① COLLECT 25 SHARDS  [12/25]". It
+	is the only thing the game puts anywhere near the middle of the screen, and
+	it earns that spot by being the one instruction a new player needs; §6 of the
+	style spec keeps the centre otherwise empty, so this chip hugs the top edge
+	and vanishes the moment the chain is finished.
 
 	Everything here is derived from server state. The chip never counts anything
 	itself and never decides which step is current: it renders the single
@@ -15,12 +15,23 @@
 	progress the server did not record, and it cannot disagree with the server
 	about which step is live.
 
-	The one piece of real machinery is the hand-off animation. Progress can jump
-	several steps in one `Sync` (a code redeem that completes two objectives at
-	once), and `render` can be called again mid-transition. So a transition owns
-	the chip exclusively while it runs and the newest state is parked in
-	`pending`, replayed when the animation lets go. Without that, two overlapping
-	slides leave the chip stranded off-screen.
+	Two pieces of real machinery:
+
+	1. THE HAND-OFF. Progress can jump several steps in one `Sync` (a code redeem
+	   that completes two objectives at once), and `render` can be called again
+	   mid-transition. So a transition owns the chip exclusively while it runs and
+	   the newest state is parked in `pending`, replayed when the animation lets
+	   go. Without that, two overlapping slides leave the chip stranded
+	   off-screen. See `travel` for why the distance it slides is measured the way
+	   it is.
+
+	2. THE LAYOUT CONTRACT. The chip is one auto-sized pill laid out by a
+	   UIListLayout, and a UIListLayout lays out EVERY visible child — there is no
+	   opt-out. So the chip has exactly three children (step badge, title,
+	   progress capsule) and no free-floating decoration: the §3 hard bottom edge
+	   is drawn by the gradient's own keypoints rather than by an extra frame that
+	   the layout would have pushed into the row. Anything that wants to float
+	   goes inside one of the three children, where the layout cannot reach it.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -33,9 +44,13 @@ local Util = require(Shared:WaitForChild("Util"))
 
 local Objective = {}
 
-local CHIP_HEIGHT = 48
+local CHIP_HEIGHT = 52
 local CHIP_TOP = 12
 local HOME = UDim2.new(0.5, 0, 0, CHIP_TOP)
+
+local BADGE = 34
+local CAPSULE_W = 112
+local CAPSULE_H = 30
 
 --[[ How far past the viewport edge the chip parks while it is "off", in screen
 	 pixels. Non-zero for two reasons: a slide that stops exactly on the edge can
@@ -46,10 +61,15 @@ local HOME = UDim2.new(0.5, 0, 0, CHIP_TOP)
 local EXIT_MARGIN = 40
 
 --[[ Last resort, for the case where there is nothing to measure against at all:
-	 no camera, or the chip somehow unparented. Wide enough to clear any viewport
-	 this game is realistically played on. A missing width alone does NOT land
-	 here — that is handled with a real number below. ]]
+	 no camera, or a viewport still reporting zero. Wide enough to clear any
+	 viewport this game is realistically played on. ]]
 local FALLBACK_SLIDE = 2400
+
+--[[ The width assumed for a chip that has not been laid out yet. Deliberately a
+	 constant of THIS module rather than the mount's measured width — see
+	 `travel`. Over-estimating costs nothing (the chip is off-screen either way);
+	 under-estimating is the entire bug this replaces. ]]
+local ASSUMED_CHIP_WIDTH = 520
 
 local TICK_HOLD = 0.5 -- how long the green "done" state is held before moving on
 local SLIDE_OUT = 0.22
@@ -58,64 +78,171 @@ local SLIDE_IN = 0.3
 local chip: Frame? = nil
 local titleLabel: TextLabel? = nil
 local countLabel: TextLabel? = nil
-local tickBadge: Frame? = nil
-local chipStroke: UIStroke? = nil
+local stepLabel: TextLabel? = nil
+local stepBadge: Frame? = nil
+local tickArt: Frame? = nil
+local meterFill: Frame? = nil
+local capsule: Frame? = nil
 
 -- Index of the objective currently drawn. 0 means "nothing drawn yet", which
 -- is what suppresses a spurious completion animation on the very first Sync.
 local shownIndex = 0
 local busy = false
 local pending: any = nil
+local fillTween: Tween? = nil
 
 -- Construction ------------------------------------------------------------
 
+local function corner(inst: GuiObject, radius: UDim): UICorner
+	local c = Instance.new("UICorner")
+	c.CornerRadius = radius
+	c.Parent = inst
+	return c
+end
+
+--[[ §3 asks for a slight vertical gradient and for depth to read as a hard
+	 bottom edge rather than a soft shadow. Both come from one gradient here, and
+	 the keypoints are NEUTRAL greys rather than tinted colours on purpose:
+
+	   • A UIGradient multiplies its object's BackgroundColor3. A grey ramp
+	     therefore shades whatever colour the object currently is, so the chip can
+	     be tweened from its dark rest colour to celebration green and keep its
+	     shading — a gradient built from the rest colour would multiply the green
+	     down to near-black instead.
+	   • The near-vertical jump at `cut` is the hard edge. It is a band of the
+	     same hue, two shades down, exactly as §3 describes, and unlike a child
+	     frame it cannot be picked up and re-positioned by the UIListLayout that
+	     owns this chip's children. ]]
+local function faceGradient(inst: GuiObject, cut: number?): UIGradient
+	local g = Instance.new("UIGradient")
+	g.Rotation = 90 -- 0 is left-to-right; 90 runs top-to-bottom
+	local edge = cut or 0.78
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+		ColorSequenceKeypoint.new(edge, Color3.new(0.88, 0.88, 0.88)),
+		ColorSequenceKeypoint.new(math.min(edge + 0.01, 0.999), Color3.new(0.64, 0.64, 0.64)),
+		ColorSequenceKeypoint.new(1, Color3.new(0.6, 0.6, 0.6)),
+	})
+	g.Parent = inst
+	return g
+end
+
 --[[ A checkmark drawn from two rotated bars rather than a glyph. §4 permits
 	 emoji only as ornament, never as a functional icon, and a font glyph would
-	 not carry the mandatory outline the way a real GuiObject does. ]]
+	 not carry the mandatory outline the way a real GuiObject does. Lives inside
+	 the step badge, so it swaps places with the step number rather than adding a
+	 fourth item to the chip's row. ]]
 local function buildTick(parent: Frame): Frame
-	local badge = Instance.new("Frame")
-	badge.Name = "Tick"
-	badge.Size = UDim2.fromOffset(26, 26)
-	badge.BackgroundColor3 = Palette.UI.Buy
-	badge.BorderSizePixel = 0
-	badge.Visible = false
-	badge.ZIndex = 12
-	badge.LayoutOrder = 0
-	badge.Parent = parent
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Palette.Radius.Icon
-	corner.Parent = badge
-	Palette.stroke(badge, Palette.Outline.Icon)
+	local art = Instance.new("Frame")
+	art.Name = "Tick"
+	art.AnchorPoint = Vector2.new(0.5, 0.5)
+	art.Position = UDim2.fromScale(0.5, 0.5)
+	art.Size = UDim2.fromScale(1, 1)
+	art.BackgroundTransparency = 1
+	art.Visible = false
+	art.ZIndex = parent.ZIndex + 2
+	art.Parent = parent
 
 	local short = Instance.new("Frame")
 	short.Name = "Short"
 	short.AnchorPoint = Vector2.new(0.5, 0.5)
-	short.Position = UDim2.new(0.36, 0, 0.62, 0)
-	short.Size = UDim2.fromOffset(4, 10)
+	short.Position = UDim2.fromScale(0.38, 0.6)
+	short.Size = UDim2.fromScale(0.14, 0.34)
 	short.Rotation = -45
 	short.BackgroundColor3 = Palette.UI.TextLight
 	short.BorderSizePixel = 0
-	short.ZIndex = 13
-	short.Parent = badge
+	short.ZIndex = art.ZIndex
+	short.Parent = art
+	corner(short, UDim.new(0, 2))
 
 	local long = Instance.new("Frame")
 	long.Name = "Long"
 	long.AnchorPoint = Vector2.new(0.5, 0.5)
-	long.Position = UDim2.new(0.58, 0, 0.45, 0)
-	long.Size = UDim2.fromOffset(4, 18)
+	long.Position = UDim2.fromScale(0.58, 0.44)
+	long.Size = UDim2.fromScale(0.14, 0.6)
 	long.Rotation = 40
 	long.BackgroundColor3 = Palette.UI.TextLight
 	long.BorderSizePixel = 0
-	long.ZIndex = 13
-	long.Parent = badge
+	long.ZIndex = art.ZIndex
+	long.Parent = art
+	corner(long, UDim.new(0, 2))
 
-	return badge
+	return art
 end
 
---[[ `mountPoint` is Hud's ScreenGui (or a full-screen frame inside it). Sharing
-	 Hud's ScreenGui keeps the chip in one ZIndex space with the rest of the HUD,
-	 so an open modal reliably draws over it. ]]
+--[[ The step badge: a saturated outlined square carrying the step number. It is
+	 the chip's one block of colour, and it is what stops the chip reading as one
+	 more plain dark pill — §1's grammar is a saturated block against a neutral
+	 body, at every scale. ]]
+local function buildBadge(parent: Frame): (Frame, TextLabel, Frame)
+	local badge = Instance.new("Frame")
+	badge.Name = "Step"
+	badge.Size = UDim2.fromOffset(BADGE, BADGE)
+	badge.BackgroundColor3 = Palette.UI.Premium
+	badge.BorderSizePixel = 0
+	badge.ClipsDescendants = true
+	badge.LayoutOrder = 0
+	badge.ZIndex = parent.ZIndex + 1
+	badge.Parent = parent
+	corner(badge, Palette.Radius.Button)
+	faceGradient(badge, 0.74)
+	Palette.stroke(badge, Palette.Outline.Icon)
+
+	local number = Instance.new("TextLabel")
+	number.Name = "Number"
+	number.Size = UDim2.fromScale(1, 1)
+	number.ZIndex = badge.ZIndex + 1
+	number.Text = "1"
+	Palette.styleText(number, 20)
+	number.Parent = badge
+
+	local tick = buildTick(badge)
+
+	return badge, number, tick
+end
+
+--[[ The progress capsule: a dark outlined track with a gold fill behind the
+	 "12/25". §6 wants progress drawn as a thick rounded bar with its label inside
+	 it, and putting the count INSIDE the bar is also what keeps the chip to three
+	 laid-out children instead of four. ]]
+local function buildCapsule(parent: Frame): (Frame, Frame, TextLabel)
+	local track = Instance.new("Frame")
+	track.Name = "Progress"
+	track.Size = UDim2.fromOffset(CAPSULE_W, CAPSULE_H)
+	track.BackgroundColor3 = Palette.shade(Palette.UI.CounterFill, 0.35)
+	track.BorderSizePixel = 0
+	track.ClipsDescendants = true
+	track.LayoutOrder = 2
+	track.ZIndex = parent.ZIndex + 1
+	track.Parent = parent
+	corner(track, Palette.Radius.Pill)
+	Palette.stroke(track, Palette.Outline.Card)
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.new(0, 0, 1, 0)
+	fill.BackgroundColor3 = Palette.UI.SoftCurrency
+	fill.BorderSizePixel = 0
+	fill.ZIndex = track.ZIndex + 1
+	fill.Parent = track
+	corner(fill, Palette.Radius.Pill)
+	faceGradient(fill, 0.7)
+
+	local label = Instance.new("TextLabel")
+	label.Name = "Count"
+	label.Size = UDim2.fromScale(1, 1)
+	label.ZIndex = track.ZIndex + 2
+	label.Text = ""
+	Palette.styleText(label, Palette.TextSize.Small + 1)
+	label.Parent = track
+
+	return track, fill, label
+end
+
+--[[ `mountPoint` is Hud's top-centre cluster (or, if the HUD failed to build,
+	 the boot script's ScreenGui). Sharing that ScreenGui keeps the chip in one
+	 ZIndex space with the rest of the HUD, so an open modal reliably draws over
+	 it. Nothing below assumes the mount is either one in particular. ]]
 function Objective.init(mountPoint: Instance)
 	if chip then
 		return -- idempotent; a second boot must not leave an orphaned chip
@@ -133,24 +260,23 @@ function Objective.init(mountPoint: Instance)
 	frame.ZIndex = 10
 	frame.Parent = mountPoint
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = Palette.Radius.Pill
-	corner.Parent = frame
-	chipStroke = Palette.stroke(frame, Palette.Outline.Panel)
+	corner(frame, Palette.Radius.Pill)
+	faceGradient(frame)
+	Palette.stroke(frame, Palette.Outline.Panel)
 
 	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 20)
-	padding.PaddingRight = UDim.new(0, 20)
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 14)
 	padding.Parent = frame
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 10)
+	layout.Padding = UDim.new(0, 12)
 	layout.Parent = frame
 
-	tickBadge = buildTick(frame)
+	local badge, number, tick = buildBadge(frame)
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
@@ -158,25 +284,21 @@ function Objective.init(mountPoint: Instance)
 	title.AutomaticSize = Enum.AutomaticSize.X
 	title.BackgroundTransparency = 1
 	title.LayoutOrder = 1
-	title.ZIndex = 12
+	title.ZIndex = frame.ZIndex + 1
 	title.Text = ""
 	Palette.styleText(title, Palette.TextSize.Section)
 	title.Parent = frame
 
-	local count = Instance.new("TextLabel")
-	count.Name = "Count"
-	count.Size = UDim2.new(0, 0, 1, 0)
-	count.AutomaticSize = Enum.AutomaticSize.X
-	count.BackgroundTransparency = 1
-	count.LayoutOrder = 2
-	count.ZIndex = 12
-	count.Text = ""
-	Palette.styleText(count, Palette.TextSize.Section, Palette.UI.SoftCurrency)
-	count.Parent = frame
+	local track, fill, count = buildCapsule(frame)
 
 	chip = frame
 	titleLabel = title
 	countLabel = count
+	stepBadge = badge
+	stepLabel = number
+	tickArt = tick
+	capsule = track
+	meterFill = fill
 end
 
 -- State reading -----------------------------------------------------------
@@ -254,9 +376,34 @@ end
 
 -- Drawing -----------------------------------------------------------------
 
+--[[ The fill is tweened rather than snapped: a shard lands every few hundred
+	 milliseconds while the player is collecting, and a bar that jumps reads as a
+	 glitch where one that slides reads as progress. One tween at a time — the
+	 previous is cancelled, so a burst of Syncs cannot stack writes on the same
+	 property. ]]
+local function setProgress(ratio: number)
+	local fill = meterFill
+	if not fill then
+		return
+	end
+	local running = fillTween
+	if running then
+		running:Cancel()
+		fillTween = nil
+	end
+	local target = UDim2.new(math.clamp(ratio, 0, 1), 0, 1, 0)
+	local tween = TweenService:Create(
+		fill,
+		TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = target }
+	)
+	fillTween = tween
+	tween:Play()
+end
+
 local function paint(step: Step)
-	local frame, title, count = chip, titleLabel, countLabel
-	if not (frame and title and count) then
+	local frame, title, count, badgeLabel, track = chip, titleLabel, countLabel, stepLabel, capsule
+	if not (frame and title and count and badgeLabel and track) then
 		return
 	end
 
@@ -269,31 +416,20 @@ local function paint(step: Step)
 	end
 
 	title.Text = step.text
+	badgeLabel.Text = tostring(math.min(step.index, DONE_INDEX - 1))
+
 	-- A "0/1" on a one-shot step ("SELL AT THE GOLD PAD") is noise, so the
-	-- counter only appears where counting is actually the instruction.
+	-- capsule only appears where counting is actually the instruction.
 	if step.target > 1 then
 		count.Text = Util.comma(step.progress) .. "/" .. Util.comma(step.target)
-		count.Visible = true
+		track.Visible = true
+		setProgress(step.progress / step.target)
 	else
 		count.Text = ""
-		count.Visible = false
+		track.Visible = false
 	end
 	frame.Visible = true
 end
-
---[[ The chip is NOT mounted in a full-screen frame. Hud parents it inside the
-	 objective cluster, which is only clamp(viewport * 0.34, 300, 480) px wide, so
-	 a slide expressed as a fraction of the parent — the old
-	 UDim2.new(-0.35, ...) / UDim2.new(1.35, ...) — barely moves it: on a 1920px
-	 client the chip stopped at x ~ 552, still fully on screen, blanked there, and
-	 re-entered from x ~ 1368, also on screen. The player saw it jump sideways and
-	 pop in and out over the playfield, which is exactly the centre-of-screen
-	 furniture §6 exists to prevent.
-
-	 So the travel is measured in PIXELS, off the chip's own AbsoluteSize and the
-	 mount's absolute centre, and converted back into the parent's offset units.
-	 That makes the distance independent of how wide the mount happens to be: at
-	 390px and at 1920px the chip leaves the viewport either way. ]]
 
 --[[ An offset inside a UIScale'd cluster renders at `scale * offset`, so a shift
 	 of N screen pixels is N / scale in the units Position.Offset speaks. Hud puts
@@ -323,31 +459,55 @@ local function homeAt(offsetX: number): UDim2
 end
 
 --[[ Returns (exitLeft, enterRight): the two Position offsets, in the chip's own
-	 units, that park it fully outside the left and right edges of the viewport.
+	 units, that park it fully outside the left and right edges of the VIEWPORT.
 
-	 The chip's home centre is the mount's centre — that is what AnchorPoint 0.5
-	 plus Position 0.5 means — so both distances can be derived without the chip
-	 having to be sitting at HOME when we measure, which matters because the
-	 incoming distance is measured after the NEXT step's text has changed the
-	 width. ]]
-local function exitOffsets(frame: Frame): (number, number)
+	 The mount's width must not appear in either number, and that is the whole
+	 point of this function. Two earlier versions got it wrong in the same way
+	 from opposite directions:
+
+	   • The first expressed the slide as a fraction of the parent
+	     (`UDim2.new(-0.35, ...)`). Hud mounts the chip inside a cluster that is
+	     clamp(viewport * 0.34, 300, 480) px wide, so on a 1920px client the chip
+	     stopped at x ≈ 552 — still fully on screen — blanked there, and re-entered
+	     from x ≈ 1368, also on screen. The player saw it jump sideways and pop in
+	     and out over the playfield, which is exactly the centre-of-screen
+	     furniture §6 exists to prevent.
+	   • The second measured in pixels but took the chip's WIDTH as
+	     `max(chip, mount)`, so the mount's 480px still leaked into the distance.
+	     That one over-travels rather than under-travels, so it looks fine — but
+	     it means the animation silently changes if the HUD's cluster is ever
+	     resized, which is the same class of bug waiting to happen again.
+
+	 What is left uses the mount for one thing only, and only because it is the
+	 definition rather than an approximation: the chip's home CENTRE. AnchorPoint
+	 0.5 with Position scale 0.5 means "the centre of my parent", so that is what
+	 home is. Everything else — the travel, the chip's own width — is measured off
+	 the chip and the viewport. A mount that is not a GuiObject at all (the boot
+	 script's ScreenGui fallback) falls back to the centre of the screen, which is
+	 where a full-bleed mount puts the chip anyway. ]]
+local function travel(frame: Frame): (number, number)
 	local camera = workspace.CurrentCamera
-	local parent = frame.Parent
-	if not camera or not parent or not parent:IsA("GuiObject") then
-		return -FALLBACK_SLIDE, FALLBACK_SLIDE
-	end
-
-	local viewport = camera.ViewportSize.X
+	local viewport = camera and camera.ViewportSize.X or 0
 	if viewport <= 0 then
 		return -FALLBACK_SLIDE, FALLBACK_SLIDE
 	end
 
-	--[[ AutomaticSize can report 0 for a frame that has not been laid out yet.
-		 The mount's width is the right stand-in: the chip is normally near it, and
-		 over-travelling is harmless where under-travelling is the whole bug. ]]
-	local width = math.max(frame.AbsoluteSize.X, parent.AbsoluteSize.X)
-	local centre = parent.AbsolutePosition.X + parent.AbsoluteSize.X / 2
 	local scale = localScale(frame)
+
+	local parent = frame.Parent
+	local centre = viewport / 2
+	if parent and parent:IsA("GuiObject") and parent.AbsoluteSize.X > 0 then
+		centre = parent.AbsolutePosition.X + parent.AbsoluteSize.X / 2
+	end
+
+	--[[ AutomaticSize reports 0 for a frame that has not been laid out yet. The
+		 stand-in is a constant of this module, not the mount's width: over-
+		 travelling is invisible, under-travelling is the bug. ]]
+	local width = frame.AbsoluteSize.X
+	if width < 1 then
+		width = math.min(viewport, ASSUMED_CHIP_WIDTH * scale)
+	end
+
 	-- Out to the left: the chip's RIGHT edge has to pass x = 0.
 	-- In from the right: the chip's LEFT edge has to start past x = viewport.
 	return -(centre + width / 2 + EXIT_MARGIN) / scale, (viewport - centre + width / 2 + EXIT_MARGIN) / scale
@@ -368,30 +528,31 @@ end
 	 out to the left, then bring the next step in from the right. Runs on its own
 	 task because it yields; `busy` is what keeps a second one from starting. ]]
 local function transition(nextStep: Step)
-	local frame, badge, title, count = chip, tickBadge, titleLabel, countLabel
-	if not (frame and badge and title and count) then
+	local frame, badge, tick, number, track = chip, stepBadge, tickArt, stepLabel, capsule
+	if not (frame and badge and tick and number and track) then
 		return
 	end
 
 	busy = true
 	task.spawn(function()
-		badge.Visible = true
-		badge.Size = UDim2.fromOffset(10, 10)
-		TweenService
-			:Create(badge, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Size = UDim2.fromOffset(26, 26),
-			})
-			:Play()
-		count.Visible = false
-		TweenService
-			:Create(frame, TweenInfo.new(0.18), { BackgroundColor3 = Palette.UI.Buy })
-			:Play()
+		--[[ The badge becomes the tick rather than a tick appearing beside it.
+			 The chip's UIListLayout owns the row, so a fourth child would shove
+			 the title sideways at the exact moment the player is reading it. ]]
+		number.Visible = false
+		tick.Visible = true
+		track.Visible = false
+		--[[ Colour is tweened, never re-styled: `Palette.styleText` attaches a NEW
+			 UIStroke on every call, so calling it from a per-transition path would
+			 leak one stroke per completed objective onto the same label. ]]
+		local quick = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		TweenService:Create(badge, quick, { BackgroundColor3 = Palette.UI.Buy }):Play()
+		TweenService:Create(frame, TweenInfo.new(0.18), { BackgroundColor3 = Palette.UI.Buy }):Play()
 
 		task.wait(TICK_HOLD)
 
 		-- Measured now, while the finished step is still the thing on screen: this
 		-- distance has to clear the width the player is actually looking at.
-		local exitLeft = exitOffsets(frame)
+		local exitLeft = travel(frame)
 		local out = TweenService:Create(
 			frame,
 			TweenInfo.new(SLIDE_OUT, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
@@ -400,7 +561,9 @@ local function transition(nextStep: Step)
 		out:Play()
 		out.Completed:Wait()
 
-		badge.Visible = false
+		tick.Visible = false
+		number.Visible = true
+		badge.BackgroundColor3 = Palette.UI.Premium
 		frame.BackgroundColor3 = Palette.UI.CounterFill
 		shownIndex = nextStep.index
 
@@ -419,7 +582,7 @@ local function transition(nextStep: Step)
 			 the entry distance. The chip is off-screen left for that frame, so the
 			 wait costs the player nothing. ]]
 		task.wait()
-		local _, enterRight = exitOffsets(frame)
+		local _, enterRight = travel(frame)
 		frame.Position = homeAt(enterRight)
 		local incoming = TweenService:Create(
 			frame,
