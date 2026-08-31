@@ -19,3 +19,6 @@ packages/evals/results/raw/
 # Playwright
 test-results/
 playwright-report/
+
+# Throwaway measurement scaffolding
+measure-tmp.mjs

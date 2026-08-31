@@ -86,7 +86,18 @@ export const ICONS = {
   plus: 'M12 5v14M5 12h14',
 } as const;
 
-/** Empty-state mark for the project list. */
+/**
+ * Empty-state mark for the project list: an uncarved form.
+ *
+ * Geometry only, and deliberately so. The previous version of this mark was a
+ * head on a body with two accent-filled eyes that blinked on a timer, plus
+ * bobbing motes — i.e. a character. DESIGN-SPEC §0 cancels exactly that ("not a
+ * face, not a character… a mark that blinks or reacts is a mascot") and §3
+ * lists "No mascot" among the things that must not come back. So this is the
+ * product's own hexagon vocabulary instead: one hexagon carrying the cube
+ * lines, two empty ones beside it, on a faint ground line — a shape that has
+ * been carved and two that have not. No fill, no accent, no animation.
+ */
 export function SummonIllustration() {
   return (
     <svg
@@ -98,33 +109,47 @@ export function SummonIllustration() {
       aria-hidden="true"
       focusable="false"
     >
-      <ellipse cx="90" cy="136" rx="52" ry="7" fill="var(--line)" opacity="0.55" />
-      <rect x="58" y="62" width="64" height="58" rx="12" fill="var(--surface-2)" stroke="var(--line)" strokeWidth="1.6" />
-      <rect x="68" y="30" width="44" height="36" rx="10" fill="var(--surface-2)" stroke="var(--line)" strokeWidth="1.6" />
-      <circle cx="82" cy="48" r="3.4" fill="var(--accent)">
-        <animate attributeName="opacity" values="1;0.35;1" dur="2.6s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="98" cy="48" r="3.4" fill="var(--accent)">
-        <animate attributeName="opacity" values="1;0.35;1" dur="2.6s" begin="0.3s" repeatCount="indefinite" />
-      </circle>
-      <path d="M90 76l10 7v13l-10 7-10-7V83z" stroke="var(--acc-rune)" strokeWidth="1.8" strokeLinejoin="round" fill="none">
-        <animate attributeName="opacity" values="0.55;1;0.55" dur="3.2s" repeatCount="indefinite" />
-      </path>
-      <circle cx="90" cy="90" r="2.4" fill="var(--acc-rune)" />
-      <path d="M58 100h64" stroke="var(--accent)" strokeWidth="1.2" strokeDasharray="4 6" opacity="0.6" />
-      <rect x="40" y="70" width="15" height="33" rx="7" fill="var(--surface-2)" stroke="var(--line)" strokeWidth="1.6" />
-      <rect x="125" y="70" width="15" height="33" rx="7" fill="var(--surface-2)" stroke="var(--line)" strokeWidth="1.6" />
-      <circle cx="48" cy="52" r="1.9" fill="var(--accent)">
-        <animate attributeName="cy" values="52;44;52" dur="3.4s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="134" cy="44" r="1.5" fill="var(--acc-rune)">
-        <animate attributeName="cy" values="44;36;44" dur="4.1s" repeatCount="indefinite" />
-      </circle>
+      {/* The carved form: hexagon + the three isometric cube edges. */}
+      <path
+        d="M90 30 L122.91 49 L122.91 87 L90 106 L57.09 87 L57.09 49 Z"
+        stroke="var(--line-strong)"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M90 30 V68 M90 68 L57.09 87 M90 68 L122.91 87"
+        stroke="var(--line-strong)"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Two blanks waiting to be carved. */}
+      <path
+        d="M36 72 L53.32 82 L53.32 102 L36 112 L18.68 102 L18.68 82 Z"
+        stroke="var(--line)"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M144 72 L161.32 82 L161.32 102 L144 112 L126.68 102 L126.68 82 Z"
+        stroke="var(--line)"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+
+      <path d="M22 126 H158" stroke="var(--line)" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
 
-/** 404 mark. */
+/**
+ * 404 mark: the same hexagon with one edge missing, and that edge lying below.
+ *
+ * The page is not there, so the shape is not whole — the meaning comes from the
+ * geometry rather than from a personified character. The earlier version was a
+ * tilted robot with a blinking accent eye, which §3 forbids. No animation.
+ */
 export function LostGolemIllustration() {
   return (
     <svg
@@ -136,34 +161,49 @@ export function LostGolemIllustration() {
       aria-hidden="true"
       focusable="false"
     >
-      <ellipse cx="100" cy="146" rx="60" ry="7" fill="var(--line)" opacity="0.55" />
-      <g transform="rotate(-4 100 90)">
-        <rect x="70" y="70" width="60" height="54" rx="12" fill="var(--surface-2)" stroke="var(--line)" strokeWidth="1.6" />
-        <rect x="78" y="38" width="44" height="36" rx="10" fill="var(--surface-2)" stroke="var(--line)" strokeWidth="1.6" />
-        <circle cx="92" cy="56" r="3.2" fill="var(--muted)" />
-        <circle cx="108" cy="56" r="3.2" fill="var(--accent)">
-          <animate attributeName="opacity" values="1;0.3;1" dur="1.8s" repeatCount="indefinite" />
-        </circle>
-        <path
-          d="M100 84l9 6v11l-9 6-9-6V90z"
-          stroke="var(--muted)"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-          fill="none"
-          opacity="0.5"
-        />
-      </g>
-      <g transform="rotate(9 152 100)">
-        <rect x="138" y="86" width="30" height="24" rx="3" fill="var(--surface)" stroke="var(--line)" strokeWidth="1.6" />
-        <path d="M142 104l6-8 5 6 6-9 5 7" stroke="var(--acc-rune)" strokeWidth="1.5" fill="none" />
-        <circle cx="160" cy="93" r="1.6" fill="var(--accent)" />
-      </g>
-      <text x="60" y="34" fill="var(--muted)" fontSize="18" fontFamily="var(--font-display)">
-        ?
-      </text>
-      <text x="132" y="26" fill="var(--muted)" fontSize="13" fontFamily="var(--font-display)" opacity="0.7">
-        ?
-      </text>
+      {/* The hexagon, drawn as two open runs so the lower-right edge is absent. */}
+      <path
+        d="M65.36 48 L100 28 L134.64 48 L134.64 88"
+        stroke="var(--line-strong)"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M100 108 L65.36 88 L65.36 48"
+        stroke="var(--line-strong)"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Where that edge should be. */}
+      <path
+        d="M134.64 88 L100 108"
+        stroke="var(--line)"
+        strokeWidth="1.4"
+        strokeDasharray="3 7"
+        strokeLinecap="round"
+      />
+
+      {/* The cube's edges, faint — the form is incomplete. */}
+      <path
+        d="M100 28 V68 M100 68 L65.36 88"
+        stroke="var(--line)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* The missing piece, come to rest away from the shape. */}
+      <path
+        d="M150 124 L168 134"
+        stroke="var(--muted)"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        opacity="0.75"
+      />
+
+      <path d="M32 142 H168" stroke="var(--line)" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }

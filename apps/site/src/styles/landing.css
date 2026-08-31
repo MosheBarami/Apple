@@ -149,36 +149,46 @@ body {
   pointer-events: none;
 }
 
-/* The warm glow, centred on the summit. Drawn after the far ridge and before
-   the near facets — see the note in index.astro; painted first it is simply
-   invisible, because the ridge is opaque and covers everything below 60vh.
+/* The warm glow. Drawn after the far ridge and before the near facets —
+   painted first it is simply invisible, because the ridge is opaque and covers
+   everything below 60vh.
 
-   Its core is sunk well BELOW the summit, where the prism occludes it. That is
-   not a compromise, it is the shape of the problem: the CTA micro-line sits a
-   couple of vh above the summit, so a core centred there put 12px type on the
-   brightest pixel of the gradient and dropped it to 4.29:1. Sinking the centre
-   keeps the bloom hugging the peak — where it is wanted and where nothing is
-   written — while the falloff does the work above it. Measured 4.9:1 under the
-   micro-line. Raise the alphas or lift the centre and that is the number that
-   breaks first. */
+   WHERE THE LIGHT IS ALLOWED TO LAND is the whole design of this element, and
+   it is decided by two fixed obstacles:
+
+   1. Type. At 1366x768 the CTA micro-line occupies 76.2–78.6vh and the summit
+      is at 78.0vh — they OVERLAP. There is no gap to thread. So a bloom bright
+      enough to see directly above the summit is, at that size, a bloom sitting
+      on 12px type, and the contrast audit fails.
+   2. The near facets. They are painted after this element and span 78→100vh at
+      up to 26vw of half-width, so anything centred behind them is simply not
+      on screen.
+
+   Sinking the core to 94vh — the previous attempt at (1) — put it squarely
+   inside (2): at 94vh the facets are 18.9vw wide and swallowed the core whole.
+   Measured, that glow moved the brightest pixel on the page by ZERO and the
+   centre column by at most 3/765. It was not a dim glow, it was no glow.
+
+   So the light rises from BELOW the frame and spills around the mountain's
+   shoulders — the flanks, in the 79–91vh band that carries no type at any
+   supported size. The peak silhouettes against it, which is the read the spec
+   asks for, and the summit itself stays dark because that is the one place the
+   type cannot afford it. If you lift the centre or widen the vertical radius,
+   the laptop micro-line is the number that breaks first. */
 .stage__glow {
   position: absolute;
   left: 50%;
-  /* Sunk further than it looks like it needs to be. The core is placed in vh,
-     so at 1440x900 and 1366x768 it rides higher relative to the CTA block than
-     it does on a tall phone — which is exactly where the contrast check caught
-     it at 4.36:1 on desktop and laptop while mobile passed. Anchoring lower and
-     easing the core keeps the bloom hugging the peak, where nothing is written. */
-  bottom: 6vh;
+  /* Core below the fold: the visible gradient is its upper flank. */
+  bottom: -3vh;
   transform: translate(-50%, 50%);
-  width: min(1180px, 86vw);
-  height: min(660px, 58vh);
+  width: min(1620px, 112vw);
+  height: min(700px, 60vh);
   background: radial-gradient(
     50% 50% at 50% 50%,
-    rgba(201, 138, 60, 0.15) 0%,
-    rgba(201, 138, 60, 0.095) 30%,
-    rgba(201, 138, 60, 0.035) 54%,
-    transparent 76%
+    rgba(201, 138, 60, 0.34) 0%,
+    rgba(201, 138, 60, 0.18) 34%,
+    rgba(201, 138, 60, 0.06) 60%,
+    transparent 80%
   );
 }
 
@@ -601,14 +611,20 @@ a:focus-visible {
     border-top: 1px solid var(--line);
   }
 
-  /* The strip stacks into three rows here, so it climbs to roughly where the
-     glow's core sits on a wide screen — and its 12.6px subtitles then stand on
-     the brightest pixels of it. Lifting the centre above the strip puts them
-     back out on the falloff. */
+  /* Portrait rewrites the problem. The strip stacks into three rows and takes
+     the whole 80–100vh band, so the flank window the wide layout paints into
+     does not exist here — every pixel of it is under a 12.6px subtitle. What
+     portrait has instead is clear air between the micro-line (ends 71.9vh) and
+     the strip (starts 80.5vh), with the summit at 82vh, so here the glow sits
+     ABOVE the peak rather than behind its shoulders.
+
+     The alphas are the wide layout's, scaled back: those were raised for a core
+     that is off-screen and half-occluded, and at this size the core is neither. */
   .stage__glow {
     bottom: 26vh;
     width: min(560px, 96vw);
     height: min(460px, 46vh);
+    opacity: 0.46;
   }
 
   /* The prism keeps its slope as the viewport narrows rather than flattening
