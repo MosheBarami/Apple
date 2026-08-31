@@ -2726,19 +2726,29 @@ end
 for i = 1, 6 do
 	local ang = (i / 6) * math.pi * 2
 	local r = 36
-	box(
-		fLandmark,
-		"Mote",
-		Vector3.new(2.8, 2.8, 2.8),
-		Vector3.new(
-			LANDMARK.X + math.cos(ang) * r,
-			plinthTop + 44 + math.sin(ang * 2) * 6,
-			LANDMARK.Z + math.sin(ang) * r
-		),
-		P.Sell,
-		45,
-		false
+	local at = Vector3.new(
+		LANDMARK.X + math.cos(ang) * r,
+		plinthTop + 44 + math.sin(ang * 2) * 6,
+		LANDMARK.Z + math.sin(ang) * r
 	)
+	local m = box(fLandmark, "Mote", Vector3.new(2.2, 2.2, 2.2), at, P.Sell, 45, false)
+	--[[ A YAW ALONE IS NOT A DIAMOND. Rotated only about Y, a cube keeps its top
+		 and bottom faces horizontal, so from a camera at monument height it still
+		 presents a flat square lid — which is why these read in review as six gold
+		 BOXES parked in the sky, the "floating geometry with no visual purpose"
+		 failure, rather than as motes. Tilting on all three axes turns a CORNER
+		 toward the viewer from any angle, and a corner-on cube is an octahedral
+		 silhouette.
+
+		 Material stays SmoothPlastic. This world is single-material by decision —
+		 §7 wants flat-shaded low-poly and §9.10 fails a realistic material — and a
+		 Neon mote would be the only glowing object on the map, which is exactly
+		 the "meaningless neon" §AQ rules out. The lightness comes from being small
+		 and part-transparent instead, and the shadow is dropped because a hard
+		 shadow cast by a speck of drifting light is what makes it read as a solid. ]]
+	m.CFrame = CFrame.new(at) * CFrame.Angles(math.rad(35), math.rad(45), math.rad(30))
+	m.Transparency = 0.28
+	m.CastShadow = false
 end
 
 -- The palette apron: raw crystal and rock breaking out of the dais foot, so the
