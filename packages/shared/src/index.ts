@@ -135,6 +135,60 @@ export interface SceneLayout {
   skipped: number;
 }
 
+/**
+ * Heights of the distinct vertical elements in a captured layout, tallest first, measured from the
+ * scene floor and clustered in plan so a monument built from eight stacked parts counts once.
+ *
+ * Lives in shared because both the worker (which gates on it) and the web app (which displays it)
+ * need the same number, and a second implementation would drift. `parts` is SceneLayout.parts:
+ * [x, y, z, sx, sy, sz, yawDeg].
+ *
+ * The ratio of the first two entries is `verticalDominance`, the one metric that separated good
+ * composition from bad across the whole calibration ladder — see docs/COMPOSITION.md. Below about
+ * 1.25 nothing dominates and the scene has no landmark, however many parts it contains.
+ */
+export function verticalElementHeights(parts: number[][], minHeight = 2, planGap = 3): number[] {
+  const live = parts.filter((p) => p[3]! <= 600 && p[5]! <= 600);
+  if (!live.length) return [];
+  const floor = Math.min(...live.map((p) => p[1]! - p[4]! / 2));
+  const tall = live.filter((p) => p[4]! >= minHeight);
+  if (!tall.length) return [];
+
+  const parent = tall.map((_, i) => i);
+  const find = (a: number): number => {
+    let x = a;
+    while (parent[x] !== x) { parent[x] = parent[parent[x]!]!; x = parent[x]!; }
+    return x;
+  };
+  for (let i = 0; i < tall.length; i++) {
+    for (let j = i + 1; j < tall.length; j++) {
+      const a = tall[i]!;
+      const b = tall[j]!;
+      const dx = Math.abs(a[0]! - b[0]!) - (a[3]! + b[3]!) / 2;
+      const dz = Math.abs(a[2]! - b[2]!) - (a[5]! + b[5]!) / 2;
+      if (dx <= planGap && dz <= planGap) {
+        const ra = find(i);
+        const rb = find(j);
+        if (ra !== rb) parent[ra] = rb;
+      }
+    }
+  }
+  const top = new Map<number, number>();
+  for (let i = 0; i < tall.length; i++) {
+    const r = find(i);
+    top.set(r, Math.max(top.get(r) ?? 0, tall[i]![1]! + tall[i]![4]! / 2 - floor));
+  }
+  return [...top.values()].sort((a, b) => b - a);
+}
+
+/** Landmark dominance: tallest vertical element over the next tallest. 1 means nothing dominates. */
+export function verticalDominance(parts: number[][] | undefined): number | null {
+  if (!parts?.length) return null;
+  const h = verticalElementHeights(parts);
+  if (h.length < 2) return h.length === 1 ? 1 : null;
+  return Math.round((h[0]! / Math.max(1e-6, h[1]!)) * 1000) / 1000;
+}
+
 export interface RenderViewResult {
   subject: string;
   boundsSize: [number, number, number];

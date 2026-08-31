@@ -4,8 +4,29 @@
     {
       "name": "site-preview",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--dir", "apps/site", "exec", "astro", "preview", "--port", "4321"],
+      "runtimeArgs": [
+        "--dir",
+        "apps/site",
+        "exec",
+        "astro",
+        "preview",
+        "--port",
+        "4321"
+      ],
       "port": 4321
+    },
+    {
+      "name": "web-app",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "apps/web",
+        "exec",
+        "vite",
+        "--port",
+        "5174"
+      ],
+      "port": 5174
     }
   ]
 }

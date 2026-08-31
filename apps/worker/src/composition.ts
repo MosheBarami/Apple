@@ -31,6 +31,10 @@
 // ones that do not separate are recorded as rejected in docs/COMPOSITION.md. Do not promote a
 // metric into a gate without a measured separation.
 
+// verticalElementHeights lives in @golem/shared: the worker gates on it and the web app displays
+// it, and two implementations of the same number would drift apart.
+import { verticalElementHeights } from '@golem/shared';
+
 /** Background fill constants — must match the rasteriser in apps/plugin/src/Render.luau. */
 export const SKY_RGB = [0x9f, 0xc7, 0xe8] as const;
 export const GROUND_RGB = [0x6e, 0x7a, 0x63] as const;
@@ -447,43 +451,6 @@ export function structureLine(s: StructureMetrics): string {
 }
 
 /**
- * Vertical elements, clustered in plan. Paving and floor slabs are excluded by height, then what
- * remains is grouped by XZ proximity so a monument built from eight stacked parts counts once and
- * a lamp post counts once. Returns each cluster's height above the scene floor, tallest first.
- */
-export function verticalElementHeights(parts: ScenePart[], minHeight = 2, planGap = 3): number[] {
-  const floor = Math.min(...parts.map((p) => p.pos[1] - p.size[1] / 2));
-  const tall = parts.filter((p) => p.size[1] >= minHeight);
-  if (tall.length === 0) return [];
-  const n = tall.length;
-  const parent = Array.from({ length: n }, (_, i) => i);
-  const find = (a: number): number => {
-    let x = a;
-    while (parent[x] !== x) { parent[x] = parent[parent[x]!]!; x = parent[x]!; }
-    return x;
-  };
-  for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      const a = tall[i]!;
-      const b = tall[j]!;
-      const dx = Math.abs(a.pos[0] - b.pos[0]) - (a.size[0] + b.size[0]) / 2;
-      const dz = Math.abs(a.pos[2] - b.pos[2]) - (a.size[2] + b.size[2]) / 2;
-      if (dx <= planGap && dz <= planGap) {
-        const ra = find(i); const rb = find(j);
-        if (ra !== rb) parent[ra] = rb;
-      }
-    }
-  }
-  const top = new Map<number, number>();
-  for (let i = 0; i < n; i++) {
-    const r = find(i);
-    const h = tall[i]!.pos[1] + tall[i]!.size[1] / 2 - floor;
-    top.set(r, Math.max(top.get(r) ?? 0, h));
-  }
-  return [...top.values()].sort((a, b) => b - a);
-}
-
-/**
  * Structure from the compact capture the plugin already sends. SceneLayout.parts is
  * [x, y, z, sx, sy, sz, yawDeg] per part, so this costs nothing extra on the wire — the geometry
  * needed to judge macro composition is already in the request that asks for a critique.
@@ -555,7 +522,7 @@ export function structureMetrics(allParts: ScenePart[]): StructureMetrics {
     bands[b]! += vol[i]!;
   });
 
-  const vTops = verticalElementHeights(parts);
+  const vTops = verticalElementHeights(parts.map((p) => [p.pos[0], p.pos[1], p.pos[2], p.size[0], p.size[1], p.size[2], 0]));
 
   return {
     parts: parts.length,

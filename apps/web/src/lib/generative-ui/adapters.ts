@@ -13,6 +13,7 @@ import type {
   RenderedView,
   SceneLighting,
 } from '@golem/shared';
+import { verticalDominance } from '@golem/shared';
 import type { UIDocument } from './schema';
 import { sanitizeDocument, type ValidationResult } from './validate';
 
@@ -164,11 +165,22 @@ export function comparisonToDocument(
     return {
       label,
       image: entry?.image,
+      // "Distinct colours" used to sit here and it was actively misleading. Measured against a
+      // twelve-fixture ladder judged by six blind critics, colour count separates good composition
+      // from bad at AUC 0.667 and part count at 0.611 — both close to a coin flip. Showing them
+      // side by side in a before/after invites the reader to conclude that more parts and more
+      // colours mean a better scene, which is the exact belief that measurement falsified.
+      // Landmark dominance separated at AUC 1.000. See docs/COMPOSITION.md.
       stats: view
         ? [
             { key: 'Coverage', value: `${Math.round(view.meta.subjectCoverage * 100)}%` },
             { key: 'Parts visible', value: String(view.meta.partsVisible) },
-            { key: 'Distinct colours', value: String(view.meta.distinctColours) },
+            ...(() => {
+              const d = verticalDominance(result.layout?.parts);
+              return d == null
+                ? []
+                : [{ key: 'Landmark dominance', value: d >= 1.25 ? `${d}x` : `${d}x — no landmark` }];
+            })(),
           ]
         : undefined,
     };

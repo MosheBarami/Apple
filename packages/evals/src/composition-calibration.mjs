@@ -37,12 +37,19 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
 const OUT = join(HERE, '..', 'tasks-visual', 'composition');
 
-/** Transpile the production TypeScript metrics module and import it. One implementation, no mirror. */
+/**
+ * Bundle the production TypeScript metrics module and import it. One implementation, no mirror.
+ * Bundled rather than merely transpiled because composition.ts imports verticalElementHeights from
+ * @golem/shared, and a bare transpile would emit an import a temp file cannot resolve.
+ */
 export async function loadCompositionModule() {
   const src = join(REPO, 'apps', 'worker', 'src', 'composition.ts');
   const bin = join(REPO, 'apps', 'worker', 'node_modules', '.bin', 'esbuild');
   const dest = join(tmpdir(), `golem-composition-${process.pid}-${process.hrtime.bigint()}.mjs`);
-  execFileSync(bin, [src, '--format=esm', '--target=es2022', `--outfile=${dest}`], { stdio: 'pipe' });
+  execFileSync(bin, [src, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
+    stdio: 'pipe',
+    cwd: join(REPO, 'apps', 'worker'),
+  });
   const mod = await import(`file://${dest}`);
   try { rmSync(dest, { force: true }); } catch { /* best effort */ }
   return mod;
