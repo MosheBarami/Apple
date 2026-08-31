@@ -5,8 +5,16 @@ import { readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
-  const m = line.match(/^([A-Z_]+)=(.*)$/);
+  const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+}
+
+// The E2E account's credentials come from the environment, never from source.
+// See the note in infra/real-chat.mjs and docs/DECISIONS.md.
+const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
+const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+if (!E2E_EMAIL || !E2E_PASSWORD) {
+  throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';

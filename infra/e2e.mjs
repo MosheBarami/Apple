@@ -4,8 +4,18 @@ import { readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
-  const m = line.match(/^([A-Z_]+)=(.*)$/);
+  const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+}
+
+// The E2E account's credentials come from the environment, never from source.
+// They used to be inline literals in four scripts, which put a real Supabase
+// password in git history. Set GOLEM_E2E_EMAIL and GOLEM_E2E_PASSWORD in .env
+// (gitignored) — see docs/DECISIONS.md.
+const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
+const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+if (!E2E_EMAIL || !E2E_PASSWORD) {
+  throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
@@ -18,7 +28,7 @@ const fail = (msg) => { console.error('E2E FAIL:', msg); process.exit(1); };
 const authRes = await fetch(`${SUPA}/auth/v1/token?grant_type=password`, {
   method: 'POST',
   headers: { apikey: ANON, 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email: 'e2e-test@golem.internal', password: 'golem-e2e-Passw0rd!' }),
+  body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }),
 });
 if (!authRes.ok) fail('auth: ' + (await authRes.text()));
 const { access_token: jwt, user } = await authRes.json();

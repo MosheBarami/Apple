@@ -31,6 +31,12 @@ PATTERNS = [
     ("Supabase service role", re.compile(rb"(?i)service_role[\"'\s:=]+[A-Za-z0-9._\-]{40,}")),
     ("Assigned secret literal",
      re.compile(rb"(?i)\b(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*[\"'][A-Za-z0-9/+_\-]{24,}[\"']")),
+    # A real account password is often shorter than 24 characters and contains
+    # punctuation the rule above excludes. A 20-character one lived in four
+    # committed scripts for weeks precisely because the generic threshold missed
+    # it, so passwords get their own, tighter rule.
+    ("Password literal",
+     re.compile(rb"(?i)\bpass(?:word|wd)?\b\s*[:=]\s*[\"'][^\"'\s]{8,}[\"']")),
 ]
 
 # Strings that are obviously not credentials. Without this the generic rule
@@ -63,7 +69,19 @@ def jwt_role(token: bytes) -> str | None:
         return None
 
 
+def head_blobs() -> set[str]:
+    """Blob shas reachable from the current commit."""
+    out = sh("git", "ls-tree", "-r", "HEAD", "--format=%(objectname)").split()
+    return {b.decode() for b in out}
+
+
 def main() -> int:
+    # A credential in an old commit cannot be un-leaked by a later commit — the
+    # only real remedy is rotating it. So findings are split: anything present
+    # in the CURRENT tree fails the build, because that is fixable by editing a
+    # file; anything that survives only in history is reported loudly as a
+    # rotation task but does not hold the build hostage forever.
+    live = head_blobs()
     objects = sh("git", "rev-list", "--all", "--objects").splitlines()
     findings: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
     scanned = 0
@@ -88,7 +106,11 @@ def main() -> int:
                 if name == "JWT" and jwt_role(value) == "anon":
                     continue  # publishable by design; see jwt_role
                 findings[name].append(
-                    (path.decode("utf8", "replace"), value[:16].decode("utf8", "replace"))
+                    (
+                        path.decode("utf8", "replace"),
+                        value[:16].decode("utf8", "replace"),
+                        sha.decode() in live,
+                    )
                 )
 
     print(f"blobs scanned across full history: {scanned}")
@@ -96,14 +118,28 @@ def main() -> int:
         print("RESULT: clean — no credentials found on any ref")
         return 0
 
-    print("RESULT: POTENTIAL CREDENTIALS FOUND")
-    for name, hits in findings.items():
-        print(f"\n::error::[{name}] {len(hits)} hit(s)")
-        for path, fragment in sorted(set(hits))[:10]:
-            print(f"   {path}  ~  {fragment}...")
-    print("\nA credential in history is not fixed by deleting the file: "
-          "rotate the key first, then rewrite history.")
-    return 1
+    in_tree = {n: [h for h in hits if h[2]] for n, hits in findings.items()}
+    in_tree = {n: h for n, h in in_tree.items() if h}
+    history_only = {n: [h for h in hits if not h[2]] for n, hits in findings.items()}
+    history_only = {n: h for n, h in history_only.items() if h}
+
+    if history_only:
+        print("\nHISTORY ONLY — not in the current tree, so nothing to delete.")
+        print("These cannot be un-leaked by a commit. ROTATE THEM.")
+        for name, hits in history_only.items():
+            paths = sorted({p for p, _, _ in hits})
+            print(f"::warning::[{name}] {len(hits)} historical hit(s) in {', '.join(paths[:5])}")
+
+    if in_tree:
+        print("\nRESULT: CREDENTIALS IN THE CURRENT TREE")
+        for name, hits in in_tree.items():
+            print(f"::error::[{name}] {len(hits)} hit(s)")
+            for path, fragment, _ in sorted(set(hits))[:10]:
+                print(f"   {path}  ~  {fragment}...")
+        return 1
+
+    print("\nRESULT: current tree is clean")
+    return 0
 
 
 if __name__ == "__main__":

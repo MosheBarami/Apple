@@ -332,6 +332,31 @@ export function phaseForTool(tool: string): AgentPhase {
 }
 
 /**
+ * What the agent understood the request to be, and what it therefore has to
+ * produce. Shown as the Intent and Plan rows of the Thinking card.
+ *
+ * Every field here is DERIVED DETERMINISTICALLY by the intent extractor in
+ * `semantic.ts` from the user's own words — no model call, no inference, no
+ * cost. That matters for honesty as much as for money: these rows are a
+ * restatement of what the user asked for, not a claim about what the model is
+ * privately thinking. Nothing here is chain-of-thought, and none of it is
+ * guessed when the request did not say.
+ */
+export interface RunIntent {
+  /** One line restating the request in the agent's own terms. */
+  summary: string;
+  /**
+   * The concrete things the request named by hand — "bar counter", "stools",
+   * "warm interior lighting". The build is checked against this list, so it is
+   * the honest content of a "Plan" row: not a predicted sequence of steps, but
+   * the set of things that must exist when the run is done.
+   */
+  checklist: string[];
+  /** Where the request genuinely did not say. Surfaced rather than assumed. */
+  questions: string[];
+}
+
+/**
  * A live snapshot of an in-flight run, replayed to a client that connects or
  * reconnects while the agent is working.
  *
@@ -355,6 +380,8 @@ export interface RunSnapshot {
   /** The reasoning policy's own explanation of the effort it chose. */
   effort?: 'low' | 'medium' | 'high';
   effortReason?: string;
+  /** What the agent understood, replayed so a refresh does not lose it. */
+  intent?: RunIntent;
 }
 
 /**
@@ -433,6 +460,8 @@ export type ServerMsg =
   // A real frame rasterised inside Studio and forwarded to the browser.
   // See StudioFrame — this is a diagnostic render, NOT a viewport capture.
   | { type: 'studio_frame'; frame: StudioFrame }
+  // Emitted once, at run start, after the request has been classified.
+  | { type: 'run_intent'; msgId: string; intent: RunIntent }
   | { type: 'error'; code: string; message: string }
   | { type: 'pong' };
 
