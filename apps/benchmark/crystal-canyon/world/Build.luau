@@ -525,6 +525,48 @@ local function isTintable(inst: any): boolean
 	return true
 end
 
+--[[ TEXTURE IS A PROPERTY, NOT A FACT ABOUT THE MESH.
+
+	 The previous pass recorded "a Cube mesh is textured, so it cannot take the
+	 biome tint" as a hard constraint and paid for it twice: the frost wall kept
+	 its plain purple slabs, and three generated cliff mesas were rejected because
+	 their baked strata banding read as a candy stripe against flat-shaded rock.
+	 Both conclusions follow from treating TextureID as immutable. It is not.
+
+	 MEASURED, NOT ASSUMED. The same four crystal meshes were cloned twice, both
+	 copies set to Color = pure red, differing only in TextureID:
+	   TextureID kept    -> renders cyan / violet / teal. Color ignored.
+	   TextureID cleared -> renders pure red on all four. Color honoured.
+	 Geometry, normals and flat-shaded facets are untouched; only the baked colour
+	 is dropped. Evidence: docs/evidence/2026-09-01-detexture-ab.md
+
+	 So the policy is per family and turns on ONE question: does the texture carry
+	 INFORMATION, or only COLOUR?
+	   crystal, crystal_cube, cliff_module -> colour only. Stripped.
+	   sign (glyphs), crate (painted panels), tree_* (canopy over trunk),
+	   kiosk (striped awning), landmark (the accepted hero gradient) -> the
+	   texture IS the art, and blanking it really would yield a white blob.
+
+	 Stripping happens on the CLONE, never on the ServerStorage original, so the
+	 acquired palette stays byte-for-byte as downloaded and the whole decision is
+	 reversible by editing this one table. ]]
+local DETEXTURE: { [string]: boolean } = {
+	crystal = true,
+	crystal_cube = true,
+	cliff_module = true,
+}
+
+local function detexture(inst: any)
+	if inst:IsA("MeshPart") then
+		(inst :: MeshPart).TextureID = ""
+	end
+	for _, d in inst:GetDescendants() do
+		if d:IsA("MeshPart") then
+			(d :: MeshPart).TextureID = ""
+		end
+	end
+end
+
 local function curatedFor(family: string, inst: any): boolean
 	local list = CURATED[family]
 	if not list then
@@ -582,7 +624,10 @@ for _, family in FAMILIES do
 				continue
 			end
 			table.insert(all, member)
-			if isTintable(member) then
+			--[[ A family on the DETEXTURE list is tintable BY POLICY: the clone
+				 that reaches the world has its TextureID cleared, so Color lands on
+				 it. Decided here, performed at the clone. ]]
+			if isTintable(member) or DETEXTURE[family] then
 				table.insert(tintable, member)
 			else
 				table.insert(texturedNames, `{family}/{member.Name}`)
@@ -633,15 +678,22 @@ tintablePools.cliff_rock = tintablePools.rock
 	    unvetted acquisition. The allowlist is untouched and still governs the
 	    third-party families; these simply are not third-party.
 
-	 2. NO TINT, EVER. Every Cube mesh carries a texture, so `Color` has no
-	    effect on it — the same mechanism `isTintable` measures. They are
-	    therefore placed only where their OWN colours already belong, which is a
-	    placement rule rather than a paint rule. The geode and the cyan crystal
-	    read as crystal accents and are allowed in either half. Nothing else
-	    passed: rust mesas could only ever have gone in the canyon, and a rust
-	    mesa behind a snowfield is the exact contamination the biome bibles exist
-	    to prevent. Note which way that cuts — a family that can only live in
-	    half the map is a family the tint system would have handled for free.
+	 2. TINT IS A CHOICE PER FAMILY, NOT A BLANKET NO.
+
+	    This rule used to read "NO TINT, EVER — every Cube mesh carries a texture,
+	    so Color has no effect on it", and it closed with the observation that "a
+	    family that can only live in half the map is a family the tint system
+	    would have handled for free." That was the right instinct and the wrong
+	    conclusion: the texture is a PROPERTY of the clone, and clearing it hands
+	    the mesh straight back to the tint system. See DETEXTURE above for the
+	    measured A/B.
+
+	    So a Cube family now declares which side of that line it sits on. The
+	    geode and the kiosk keep their textures, because their baked gradient and
+	    striped awning ARE the authored art. `crystal_cube` and `cliff_module` are
+	    stripped and tinted, because their textures only ever carried colour —
+	    and in the mesas' case, carried the candy-stripe banding that got them
+	    rejected in the first place.
 
 	 3. NO PRIMITIVE FALLBACK OF THEIR OWN, because they do not need one: the
 	    authored geometry each of them replaces still builds when the mesh is
@@ -715,7 +767,11 @@ local function cubeDraw(family: string, u: number): any?
 	if not pool or #pool == 0 then
 		return nil
 	end
-	return pool[math.min(#pool, math.floor(u * #pool) + 1)]:Clone()
+	local clone = pool[math.min(#pool, math.floor(u * #pool) + 1)]:Clone()
+	if DETEXTURE[family] then
+		detexture(clone)
+	end
+	return clone
 end
 
 --[[ How a Cube mesh is allowed to depart from uniform scale. Only the monument
@@ -743,7 +799,8 @@ local function cubePlace(
 	targetH: number,
 	rot: CFrame,
 	collide: boolean,
-	fit: CubeFit?
+	fit: CubeFit?,
+	tint: Color3?
 ): number
 	local ext = extentsOf(clone)
 	local scale = targetH / math.max(0.1, ext.Y)
@@ -769,6 +826,14 @@ local function cubePlace(
 		p.CanCollide = collide
 		p.CanTouch = false
 		p.Material = Enum.Material.SmoothPlastic
+		--[[ A de-textured Cube family is an ordinary tintable prop: its clone
+			 arrived with TextureID cleared, so Color lands and the caller hands in
+			 the biome tint under the placement. Guarded on the TEXTURE STATE rather
+			 than on the family name, so a member that kept its texture can never be
+			 half-painted. ]]
+		if tint and (not p:IsA("MeshPart") or (p :: MeshPart).TextureID == "") then
+			p.Color = tint
+		end
 		n += 1
 	end
 
@@ -1421,7 +1486,11 @@ local function pick(family: string, x: number, z: number, r: Random): (string, a
 		end
 		return resolved, nil
 	end
-	return resolved, pool[math.min(#pool, math.floor(u * #pool) + 1)]:Clone()
+	local clone = pool[math.min(#pool, math.floor(u * #pool) + 1)]:Clone()
+	if DETEXTURE[resolved] then
+		detexture(clone)
+	end
+	return resolved, clone
 end
 
 --[[ Stand a clone on the ground at (x, z).
@@ -1432,10 +1501,14 @@ end
 	 THE TINT IS NOT A PARAMETER. It is read from the biome under the placement,
 	 which is the whole mechanism that makes contamination unwriteable. Material
 	 is forced to SmoothPlastic: §7 wants flat-shaded untextured low-poly and
-	 §9.10 fails a realistic material outright. TextureID is left alone — the
-	 palette members that carry one carry it as authored art, and blanking it
-	 yields an untextured white blob. Colour therefore lands only on the members
-	 that can take it, which is exactly the set each biome admits. ]]
+	 §9.10 fails a realistic material outright.
+
+	 TextureID is not touched HERE. It is decided upstream, per family, by
+	 DETEXTURE, and performed on the clone in `pick`. This function only ever
+	 asks the arriving clone whether it can take a colour. That split matters:
+	 the older note here claimed blanking a texture "yields an untextured white
+	 blob", which is true of a sign or a crate and measurably false of a crystal.
+	 Colour therefore lands on exactly the members each biome admits. ]]
 local function place(
 	parent: Instance,
 	clone: any,
@@ -2298,19 +2371,41 @@ local function stoneDais(
 			Palette.shade(tone, 0.16),
 			22.5
 		)
-		-- Ashlar ring: eight cut blocks laid tangentially. 1.14 on the chord so
-		-- neighbours share a mitre instead of showing a joint.
-		local chord = 2 * radius * math.sin(math.pi / SIDES) * 1.14
+		--[[ Ashlar ring: eight cut blocks laid TANGENTIALLY around the circle.
+
+			 Two numbers here were wrong, and together they are why the owner's pixel
+			 review saw a heap of rectangles from the very elevation the comment above
+			 promised there wasn't one.
+
+			 1. THE YAW WAS 90 DEGREES OUT. `CFrame.Angles(0, -ang, 0)` maps the
+			    block's local +X — its CHORD axis — onto (cos ang, 0, sin ang), which
+			    is the RADIAL direction. Every block was therefore laid as a plank
+			    pointing straight out of the centre, and eight of them made a pinwheel
+			    of spokes rather than a closed drum. Tangential yaw is -(ang + pi/2).
+
+			 2. THE CHORD WAS MEASURED ON THE WRONG CIRCLE. It used the OUTER
+			    `radius`, while the blocks stand on `rr = radius - dep/2`. At the
+			    Glacier Heart's 23-stud tier that is a 20.1-stud chord placed on a
+			    118-stud circumference: eight of them ask for 161 studs of arc, so
+			    they overlapped and threw their corners out past one another.
+
+			 Now measured on `rr`, and 1.06 rather than 1.14 — enough overlap to close
+			 a mitre, not enough to balloon one. ]]
 		local dep = radius * 0.36
+		local rr = radius - dep / 2
+		local chord = 2 * rr * math.sin(math.pi / SIDES) * 1.06
+		--[[ Half a sector of twist per tier, so each step presents a FACE where the
+			 tier below presents a CORNER. Without it all three tiers stack their
+			 corners on one line and the drum reads as a single extruded prism. ]]
+		local twist = (t - 1) * (math.pi / SIDES)
 		for k = 1, SIDES do
-			local ang = (k / SIDES) * math.pi * 2
-			local rr = radius - dep / 2
+			local ang = (k / SIDES) * math.pi * 2 + twist
 			local at = Vector3.new(cx + math.cos(ang) * rr, top + h / 2, cz + math.sin(ang) * rr)
 			newPart(
 				parent,
 				"DaisBlock",
 				Vector3.new(chord, h, dep),
-				CFrame.new(at) * CFrame.Angles(0, -ang, 0),
+				CFrame.new(at) * CFrame.Angles(0, -(ang + math.pi / 2), 0),
 				if k % 2 == 0 then tone else Palette.lift(tone, 0.10)
 			)
 		end
@@ -2319,16 +2414,20 @@ local function stoneDais(
 	-- Chamfer course on the crown: eight wedges falling outward off the top tier.
 	local crown = tiers[#tiers]
 	local cr = crown[1] :: number
-	local chord = 2 * cr * math.sin(math.pi / SIDES) * 1.14
+	-- Same two corrections as the ashlar ring above: chord measured on the circle
+	-- the wedges actually stand on, and tangential yaw rather than radial. The
+	-- twist matches the crown tier's so the chamfer sits square on its own course.
+	local rr = cr - cr * 0.14
+	local chord = 2 * rr * math.sin(math.pi / SIDES) * 1.06
+	local twist = (#tiers - 1) * (math.pi / SIDES)
 	for k = 1, SIDES do
-		local ang = (k / SIDES) * math.pi * 2
-		local rr = cr - cr * 0.14
+		local ang = (k / SIDES) * math.pi * 2 + twist
 		local at = Vector3.new(cx + math.cos(ang) * rr, top + 0.9, cz + math.sin(ang) * rr)
 		wedge(
 			parent,
 			"DaisChamfer",
 			Vector3.new(chord * 0.92, 1.8, cr * 0.28),
-			CFrame.new(at) * CFrame.Angles(0, -ang, 0),
+			CFrame.new(at) * CFrame.Angles(0, -(ang + math.pi / 2), 0),
 			Palette.lift(tones[1], 0.16)
 		)
 	end
@@ -2539,7 +2638,9 @@ for i = 1, 6 do
 			0.0,
 			COLLAR_H[i],
 			CFrame.Angles(math.sin(ang) * 0.24, ang, -math.cos(ang) * 0.24),
-			true
+			true,
+			nil,
+			biomeAt(LANDMARK.X + math.cos(ang) * r, LANDMARK.Z + math.sin(ang) * r).Tint.crystal
 		)
 		collarPlaced += 1
 	end
@@ -3247,11 +3348,15 @@ for i = 1, 6 do
 	})
 end
 --[[ Three Cube collectibles set into the head of the fan. The outcrop is the
-	 meadow's resource formation and the cyan Cube crystal is the meadow's
-	 collectible, so this is the one place the two can be the same object. Warm
-	 canyon light on a cyan mesh is the biome its own colours belong to, which is
-	 why the same mesh is NOT used in the frost veins, where the zone's crystal
-	 is violet and cannot be painted onto a texture.
+	 meadow's resource formation and the Cube crystal is the meadow's
+	 collectible, so this is the one place the two can be the same object.
+
+	 This mesh used to be cyan-and-only-cyan, and the note here read "NOT used in
+	 the frost veins, where the zone's crystal is violet and cannot be painted
+	 onto a texture". That restriction is gone: `crystal_cube` is on the DETEXTURE
+	 list, so the clone arrives untextured and takes whatever crystal tint the
+	 biome under it declares. The mesh is now warm here and violet in the frost,
+	 and it is the same accepted silhouette in both.
 
 	 Authored heights and angles, no rng: a Cube family that fails to load must
 	 not shift the tufts below it. ]]
@@ -3271,7 +3376,9 @@ for i, spot in { { -6, 4, 11 }, { 3, 7, 14 }, { 9, -2, 9 } } do
 			-- Collides, like the fan crystals beside them: this file's rule is
 			-- that anything finishing at 9 studs or more is walked into, and
 			-- these are 9 to 14.
-			true
+			true,
+			nil,
+			biomeAt(OUT_X + dx, OUT_Z + dz).Tint.crystal
 		)
 	end
 end
@@ -3700,27 +3807,48 @@ local ghTop = stoneDais(
 	{ W.IcePathDark, W.IcePath, W.FrostDeep }
 )
 
--- The core: three faceted shafts in the frost hue, shorter and stouter than the
--- monument's spire so the silhouette is a different shape, not a smaller copy.
--- Two levels only, against the monument's seven: the taper reads as a blunt
--- crystal boulder rather than a spire.
-local heartTones = { frostHue, Palette.lift(frostHue, 0.22), Palette.shade(frostHue, 0.24) }
-for level = 1, 2 do
-	local w = 12.5 - (level - 1) * 3.5
-	local h = 16 - (level - 1) * 2
-	local yc = ghTop + (level - 1) * 15 + h / 2
-	for i = 1, 3 do
-		box(
-			heart,
-			"HeartFacet",
-			Vector3.new(w, h, w),
-			Vector3.new(GH_X, yc, GH_Z),
-			heartTones[(level + i) % 3 + 1],
-			(i - 1) * 60 + (level - 1) * 22
-		)
-	end
+--[[ THE CORE IS CRYSTAL, NOT MASONRY.
+
+	 This was seven boxes — two levels of three rotated cubes, plus a cap — and
+	 the comment on them called them "three faceted shafts". A rotated cube has no
+	 facets. The owner's pixel review named this object as the one that still
+	 reads as a prototype, and it was right: from the road at eye height it is a
+	 stack of rectangles wearing a crystal's colour.
+
+	 It is now built from the same curated crystal meshes as the rest of the
+	 world. Those only became available to this biome when `crystal` joined
+	 DETEXTURE — before that the frost tintable pool was EMPTY, so a crystal
+	 asked for here would have fallen back to precisely the boxes this replaces.
+	 That is the whole reason this section was masonry in the first place.
+
+	 The silhouette rule in the header above still holds, and is now carried by
+	 SHAPE rather than by box count: the monument is a tall, narrow spire cluster;
+	 this is a BLUNT RADIAL BURST — one stout centre with a fan leaning out around
+	 it, wide exactly where the monument is narrow. "A smaller copy" is still
+	 refused. It is simply refused in crystal now.
+
+	 If the palette is absent, `prop` falls back to authored bodies on the same
+	 rng draws, so the no-palette build still stands something here. ]]
+prop(heart, "crystal", GH_X, GH_Z, {
+	tier = "cliff",
+	maxW = 21,
+	tilt = 4,
+	groundY = ghTop - 1.5,
+	anywhere = true,
+	collide = true,
+})
+for i = 1, 5 do
+	local ang = (i / 5) * math.pi * 2 + 0.4
+	local r = 8.5
+	prop(heart, "crystal", GH_X + math.cos(ang) * r, GH_Z + math.sin(ang) * r, {
+		tier = if i % 2 == 0 then "large" else "sapling",
+		maxW = 13,
+		tilt = 27,
+		groundY = ghTop - 1.0,
+		anywhere = true,
+		collide = true,
+	})
 end
-box(heart, "HeartCap", Vector3.new(6.0, 10, 6.0), Vector3.new(GH_X, ghTop + 32, GH_Z), heartTones[2], 30)
 
 -- A ring of large palette crystals leaning out of the dais. Eight positions, but
 -- the tiers alternate hard, so it is a formation and not a fence of spikes.
