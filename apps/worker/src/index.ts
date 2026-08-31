@@ -79,9 +79,45 @@ app.use('/api/*', async (c, next) => {
   return next();
 });
 
+/**
+ * Compare two secrets without leaking their contents through timing.
+ *
+ * `a !== b` on a string returns as soon as it finds a differing byte, so the
+ * time it takes is a function of how many leading characters the guess got
+ * right. This walks the whole length either way.
+ */
+function secretEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 app.use('/api/admin/*', async (c, next) => {
+  // The admin key was the one credential in the system with no rate limit: the
+  // auth middleware above returns early for /api/admin/*, so an attacker could
+  // guess it as fast as the network allowed. It is a single static string that
+  // grants cross-tenant access to any project's Durable Object, so it is the
+  // last thing that should be guessable at line rate.
+  //
+  // Only FAILURES are counted. Throttling successful calls would break real
+  // work for no security gain — deploy-static.mjs alone makes one admin call
+  // per uploaded file and would trip any cap tight enough to matter against a
+  // guessing attack. A wrong key, by contrast, has no legitimate reason to
+  // arrive at line rate from one address.
+  //
+  // The allowance is deliberately generous rather than tight. Against a
+  // high-entropy secret the difference between 20 and 120 guesses a minute is
+  // no difference at all — both leave time-to-break effectively infinite. What
+  // matters is that unbounded guessing becomes bounded.
   const key = c.req.header('X-Admin-Key');
-  if (!c.env.ADMIN_KEY || key !== c.env.ADMIN_KEY) return c.json({ error: 'forbidden' }, 403);
+  if (!c.env.ADMIN_KEY || !key || !secretEquals(key, c.env.ADMIN_KEY)) {
+    const adminIp = c.req.header('CF-Connecting-IP') ?? 'unknown';
+    if (ipLimited(`admin-fail:${adminIp}`, 120)) {
+      return c.json({ error: 'Too many requests — slow down.' }, 429);
+    }
+    return c.json({ error: 'forbidden' }, 403);
+  }
   return next();
 });
 
@@ -226,7 +262,22 @@ app.get('/api/providers', async (c) => {
       unverifiedFields: r.unverifiedFields ?? [],
     })),
     auto: auto.ok ? { model: auto.model.id, reasoning: auto.reasoning } : { model: null, reasoning: auto.reasoning },
-    health: providerHealth(),
+    // Only the error KIND and when it happened. `lastError.message` is the
+    // upstream provider's own string, verbatim and length-uncapped — an
+    // authentication failure from a provider can quote the key it rejected.
+    // Harmless while the only credentialed provider is the key-less Workers AI
+    // binding; a credential leak to every signed-in user the day a provider
+    // secret is added. This route is new, so this egress path is new too.
+    health: providerHealth().map((h) => ({
+      provider: h.provider,
+      calls: h.calls,
+      ok: h.ok,
+      failed: h.failed,
+      lastLatencyMs: h.lastLatencyMs,
+      medianLatencyMs: h.medianLatencyMs,
+      lastAt: h.lastAt,
+      lastError: h.lastError ? { kind: h.lastError.kind, at: h.lastError.at } : null,
+    })),
   });
 });
 

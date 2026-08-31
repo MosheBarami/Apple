@@ -19,6 +19,3 @@ packages/evals/results/raw/
 # Playwright
 test-results/
 playwright-report/
-
-# In-progress agent working file; re-added when its workstream reports.
-packages/evals/src/security.test.mjs
