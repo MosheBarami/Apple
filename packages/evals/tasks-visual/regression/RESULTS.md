@@ -111,3 +111,63 @@ just solved.
 The plaza was never scored — the global daily neuron cap was reached first, and the cap was left
 alone rather than raised. The render above cost nothing: rasterisation happens in the plugin, so
 looking at a scene is always free even when judging it is not.
+
+---
+
+# Bench run, 2026-08-31 (overnight) — two failures worth keeping
+
+Run against the live service and live Studio, after the composition gate, the transcript fix and the
+session-affinity change were deployed. Both results are failures and both are informative.
+
+## b4-interior: 4 → 4, and the correction loop did not correct
+
+Previously recorded as "blocked by the daily cap". The cap had reset, so it ran.
+
+| round | time | parts | materials | lights | score |
+|---|---|---|---|---|---|
+| 1 | 377s | 351 | 11 | 9 | 4 |
+| 2 | 209s | 351 | 11 | 9 | 4 |
+
+Two things happened, and they are separate faults.
+
+**The agent built the wrong thing.** Asked for a *cosy tavern interior*, it produced a competent
+small cottage **exterior**. The critic caught it unprompted: "not the requested cosy tavern interior.
+No view shows the bar, stools, tables or fireplace." This is a prompt-fidelity failure, and no
+composition metric can or should catch it — `hardFails` was correctly empty, because a cottage with a
+roof genuinely does have vertical hierarchy. The visual gate did its job by refusing to pass it.
+
+**Round 2 changed nothing.** Identical part, material and light counts; identical critique, defect
+for defect. The agent spent 209 seconds and moved no measurable property. This is the
+"patch forever" failure inverted — not endless additive polish, but a correction round that produced
+no correction at all. It is the strongest argument in the repo for a rebuild trigger, and it is not
+yet fixed.
+
+## b3-plaza: a playtest destroyed the build
+
+| | |
+|---|---|
+| result | `ERR — nothing renderable found under game.Workspace`, parts 0 |
+| cost | ~1,295 neurons for a run that shipped nothing |
+
+The op log is unambiguous about the ordering:
+
+```
+00:13–00:19  run_code, render_view  ok=1     <- geometry existed and rendered
+00:27:27     run_mode               ok=1     <- playtest entered
+00:27:30     run_mode               ok=1     <- playtest left
+00:32:06     render_view            ok=0     <- "nothing renderable found under game.Workspace"
+```
+
+Workspace afterwards contained `Baseplate` and `Terrain` and nothing else — the b4 cottage was gone
+too. **A playtest cycle appears to discard everything the agent built.** This is not diagnosed: the
+mechanism (whether ops were applied to the play DataModel, or the edit DataModel was reverted on
+stop) has not been established, and it should not be guessed at. What is established is the ordering
+above and the empty Workspace after it.
+
+Checkpoints from before the playtest exist (snapshot ops at 00:15:32 and 00:16:12) so the state is
+recoverable; nothing was restored, because which state to restore is the owner's decision.
+
+**Why this matters more than the score:** `start_stop_play` is how the agent is supposed to verify
+its own work. If running a playtest deletes the work, then the verification step is destructive and
+every playtest-then-fix loop is unwinnable. That is a bigger defect than any composition problem in
+this file, and it was found by running the benchmark rather than by reading the code.

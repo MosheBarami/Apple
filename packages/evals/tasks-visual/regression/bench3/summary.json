@@ -1,0 +1,39 @@
+[
+ {
+  "results": [
+   {
+    "task": "b3-plaza",
+    "difficulty": 3,
+    "rounds": [
+     {
+      "round": 1,
+      "runMs": 362560,
+      "metrics": {
+       "parts": 0,
+       "small": 0,
+       "unanchored": 0,
+       "scripts": 0,
+       "materials": [],
+       "colours": 0,
+       "lights": 0,
+       "heightSpan": 0,
+       "brightness": 3,
+       "clockTime": 14.5,
+       "effects": [
+        "Sky",
+        "SunRaysEffect",
+        "Atmosphere",
+        "BloomEffect",
+        "DepthOfFieldEffect",
+        "ColorCorrectionEffect"
+       ]
+      },
+      "error": "nothing renderable found under game.Workspace"
+     }
+    ],
+    "best": null,
+    "passed": false
+   }
+  ]
+ }
+]
