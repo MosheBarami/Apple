@@ -279,7 +279,7 @@ app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
 
 /** Raw provider response, for adapting the normalizer to a new model's shape. */
 app.post('/api/admin/raw-probe', async (c) => {
-  const { model, prompt, system, tools, maxTokens, reasoning } = await c.req.json<{
+  const { model, prompt, system, tools, maxTokens, reasoning, sessionId } = await c.req.json<{
     model: string;
     prompt: string;
     /** optional system message, so the real production prompt can be reproduced exactly */
@@ -288,6 +288,12 @@ app.post('/api/admin/raw-probe', async (c) => {
     tools?: { name: string; description: string; parameters: unknown }[];
     maxTokens?: number;
     reasoning?: string;
+    /**
+     * Workers AI prefix-caching affinity key. Sending the same value on consecutive probes is what
+     * lets the shared prefix be reused; omitting it is the old behaviour, under which cached_tokens
+     * was always 0. Present so the two can be compared in one experiment rather than argued about.
+     */
+    sessionId?: string;
   }>();
   const payload: Record<string, unknown> = {
     messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }],
@@ -297,14 +303,20 @@ app.post('/api/admin/raw-probe', async (c) => {
     payload.tools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }));
   }
   if (reasoning) payload.reasoning = { effort: reasoning };
-  const raw = await c.env.AI.run(model as never, payload as never, { gateway: { id: c.env.AI_GATEWAY_ID ?? 'golem', cacheTtl: 0 } } as never);
+  const raw = await c.env.AI.run(model as never, payload as never, {
+    gateway: { id: c.env.AI_GATEWAY_ID ?? 'golem', cacheTtl: 0 },
+    ...(sessionId ? { extraHeaders: { 'x-session-affinity': sessionId } } : {}),
+  } as never);
   const shape = (o: unknown, d = 0): unknown => {
     if (o === null || typeof o !== 'object') return typeof o === 'string' ? `str(${o.length}):${o.slice(0, 120)}` : o;
     if (Array.isArray(o)) return o.slice(0, 3).map((x) => shape(x, d + 1));
     if (d > 7) return '…';
     return Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, shape(v, d + 1)]));
   };
-  return c.json({ keys: Object.keys(raw as object), shape: shape(raw) });
+  // usage is surfaced directly: the whole point of a probe is the numbers, and prompt_tokens_details
+  // .cached_tokens is the one that answers whether prefix caching engaged.
+  const u = (raw as { usage?: unknown; result?: { usage?: unknown } })?.usage ?? (raw as { result?: { usage?: unknown } })?.result?.usage;
+  return c.json({ keys: Object.keys(raw as object), usage: u, shape: shape(raw) });
 });
 
 /** Full AI spend picture: today, this month, per-model, per-purpose, against the hard caps. */

@@ -223,3 +223,39 @@ so a handful of simultaneous builders will queue rather than fail — visible as
 completed with **zero inference errors**. If this becomes a real constraint, the documented lever
 is prepaid AI Gateway credits, which raise the ceiling — that is a purchase and would be brought to
 the owner first.
+
+## Prompt caching — settled by measurement, 2026-08-31
+
+`cached_tokens` reported 0 on every identical call. The cause was **not** request shape and not the
+gateway: Workers AI prefix caching only engages when consecutive requests are routed to the same
+model instance, which requires an `x-session-affinity` header that Golem never sent
+(https://developers.cloudflare.com/changelog/product/workers-ai/ — "Prefix caching and session
+affinity"). Golem now sends it, keyed on the session Durable Object id: per-project, opaque, never
+shared across tenants. It is a routing hint rather than a cache key, so a collision costs a cache
+miss and can never produce a cross-tenant read. AI Gateway *response* caching, which would be a
+tenant risk, stays off (`cacheTtl: 0`) on every agent call.
+
+**Then the measurement, through the deployed worker, identical 2,700-token prefix, `cacheTtl: 0`:**
+
+| model | header | call 1 | call 2 | call 3 |
+|---|---|---|---|---|
+| `@cf/zai-org/glm-5.3-flash` | none | cached 0 | cached 0 | cached 0 |
+| `@cf/zai-org/glm-5.3-flash` | `x-session-affinity` | cached 0 | cached 0 | cached 0 |
+| `@cf/moonshotai/kimi-k2.5` | `x-session-affinity` | cached 0 | **cached 2,688 / 2,723** | **cached 2,688 / 2,723** |
+
+Same code path, same gateway, same header. **Prefix caching works on Workers AI and Golem's plumbing
+is now correct — but the production model does not surface cached tokens.** This is a per-model
+property, not a misconfiguration: Cloudflare's changelog documents the feature against kimi-k2.5 and
+lists cached pricing on that model's page.
+
+What this is worth if GLM ever surfaces it: a step sends ~5,226 input tokens of system prompt plus
+tool definitions, which is 72 neurons before the model writes anything. At the published cached rate
+($0.03/M against $0.15/M input, already in `MODEL_PRICES` and already applied by `neuronsFor`) a
+98%-cached prefix would cost ~14 neurons instead of 72 — about **58 neurons per step, ~930 on a
+16-step gated build, roughly 40%**. No further work is needed to collect it; the header is sent and
+the accounting already prices cached input.
+
+**Switching to kimi-k2.5 to get this today is NOT recommended.** GLM-5.3-flash was selected on a
+measured Roblox eval (98.9 vs 96.8) and the model is the product's quality floor. Trading that for an
+input-cost discount is the wrong trade, and it is recorded here so the option is not rediscovered as
+if it were new.

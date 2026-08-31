@@ -7,6 +7,7 @@ import { searchDocs } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { chooseAssetSource, verifyCreatorStoreAsset, findVerifiedAssets, type AssetNeed, type AssetKind } from './assets';
 import { searchAssetLibrary } from './asset-library';
+import { compositionHardFails, structureFromLayout, structureLine } from './composition';
 
 export interface AgentCtx {
   env: Env;
@@ -195,6 +196,38 @@ export const TOOLS: Record<string, ToolImpl> = {
       // are re-sent on every later step. inspect_visually is what actually shows them to a model.
       ctx.lastRender = res;
       return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })) };
+    },
+  },
+  check_composition: {
+    def: {
+      name: 'check_composition',
+      description:
+        'Check the MACRO COMPOSITION of what you have built — landmark dominance, vertical hierarchy and massing — without rendering images or spending a critique. Call this on your BLOCKOUT, before adding any detail. If it fails, adding parts cannot fix it: change the layout and check again.',
+      parameters: S({
+        target: { type: 'string', description: 'instance path to check, e.g. game.Workspace.Plaza. Omit for the whole workspace.' },
+        subject: { type: 'string', enum: ['scene', 'prop'], description: 'a prop has no landmark tier; defaults to scene' },
+      }),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      // Deliberately the cheapest check in the product: one Studio round-trip for geometry, then
+      // arithmetic. No vision model call and no image tokens, where inspect_visually costs a full
+      // critique. That difference is what makes "reject the blockout and rebuild it" affordable
+      // enough to do early, which is the only point at which rejecting it is cheap.
+      const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'top');
+      if ('error' in res) return res;
+      const structure = structureFromLayout(res.layout?.parts);
+      if (!structure) return { error: 'no geometry to judge — build the blockout first' };
+      const subject = a.subject === 'prop' ? 'prop' : 'scene';
+      const failures = compositionHardFails(structure, [], subject);
+      return {
+        structure: structureLine(structure),
+        passed: failures.length === 0,
+        failures,
+        guidance: failures.length
+          ? 'These are structural. More parts, more materials and more props will not move any of them — that was measured. Change the LAYOUT: give one element clear dominance in height and mass and let everything else step down beneath it.'
+          : 'Macro composition is sound. Build detail on top of it.',
+      };
     },
   },
   inspect_visually: {
