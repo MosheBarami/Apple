@@ -18,15 +18,25 @@
 // drives the real tool through the real dispatcher: a green §1-§5 with a rewired §6 is the exact
 // state this file used to be in, and now it fails.
 //
+// §7-§10 ARE THE OTHER DOORS. §6 proves `insert_asset` is gated; it proves nothing about the ways
+// into a place that do not go through `insert_asset`, and there were three. §7 pins the filter on
+// `run_luau`, which handed the model's Luau to the plugin and would run `game:GetObjects` — and
+// pins just as hard that ordinary building Luau still runs, because a guard that costs the escape
+// hatch is not a fix. §8 pins provenance behaviour against what `insert_asset`'s description now
+// claims, after the description promised a refusal the code could not perform. §9 drives the real
+// worker: `/api/admin/studio-op` forwarded any op it was handed, `insert_asset` included. §10 pins
+// that the system prompt and the tools tell the model the same story.
+//
 // NO NETWORK. Every function under test takes an injected `fetchImpl` or an injected bridge, and
 // §6 replaces `globalThis.fetch` at module scope for the tool path. Two dedicated tests assert that
-// nothing reached apis.roblox.com for real — the fakes record every URL they are asked for.
+// nothing reached apis.roblox.com for real — the fakes record every URL they are asked for. §9
+// imports the worker as a Hono app over a fake SESSION_DO, so it makes no request at all.
 //
 // Run: node --test packages/evals/src/asset-safety.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -913,4 +923,440 @@ test('the tool result stays small enough to be worth re-sending on every later s
 test('NO NETWORK: every request this section made went to the injected stub, and only to Roblox', () => {
   assert.ok(fetched.length > 5, 'the recorder should have seen the metadata gate work');
   for (const u of fetched) assert.match(u, /^https:\/\/apis\.roblox\.com\//, u);
+});
+
+// ==============================================================================================
+// 7. run_luau is not an asset-insertion channel
+//
+// The gate in §6 covers `insert_asset`. It covered nothing else, and `run_luau` hands arbitrary
+// Luau to the plugin's `run_code`, which requires it in PLUGIN context — so
+// `game:GetObjects("rbxassetid://12345")` reached exactly the same place as `insert_asset`, with no
+// verification, no post-insertion scan and no audit row. One line, in a tool both Agent and Super
+// Agent hold.
+//
+// These tests pin BOTH halves of the trade. The refusals are worthless if the tool stops being
+// useful, so the allow cases below are real building Luau — loops, Instance.new, materials — and
+// they are as load-bearing as the refusals.
+// ==============================================================================================
+
+/**
+ * A context that RECORDS what reached Studio rather than refusing it.
+ *
+ * The refusals below are only meaningful if the op queue could have been reached — a ctx that
+ * failed every op would pass them vacuously — so the fake succeeds, and each test asserts on the
+ * ops it saw.
+ */
+function recordingCtx() {
+  const calls = [];
+  return {
+    calls,
+    ctx: {
+      env: {},
+      studioConnected: () => true,
+      execStudioOp: async (op) => {
+        calls.push(op.op);
+        return { ok: true, data: { result: { t: 'string', v: 'ok' } } };
+      },
+      createCheckpoint: async () => ({ error: 'not part of this path' }),
+      addMemoryFact: async () => {},
+    },
+  };
+}
+
+const luau = async (code) => {
+  const { ctx, calls } = recordingCtx();
+  const out = await T.runTool(ctx, 'run_luau', JSON.stringify({ code }));
+  return { ...out, result: JSON.parse(out.resultForLlm), calls };
+};
+
+/** Every ingress primitive the guard must name: what it is, the snippet, and the code it must report. */
+const INGRESS = [
+  ['game:GetObjects', 'local objs = game:GetObjects("rbxassetid://12345")\nobjs[1].Parent = workspace', 'get_objects'],
+  ['InsertService:LoadAsset', 'local m = game:GetService("InsertService"):LoadAsset(12345)\nm.Parent = workspace', 'insert_service'],
+  ['InsertService:LoadAssetVersion', 'local m = game:GetService("InsertService"):LoadAssetVersion(999)\nm.Parent = workspace', 'insert_service'],
+  ['an rbxassetid:// literal', 'local p = Instance.new("MeshPart")\np.MeshId = "rbxassetid://12345"\np.Parent = workspace', 'asset_uri'],
+  ['an rbxthumb:// literal', 'local d = Instance.new("Decal")\nd.Texture = "rbxthumb://type=Asset&id=12345&w=420&h=420"\nd.Parent = workspace', 'asset_uri'],
+  ['Content.fromAssetId', 'local c = Content.fromAssetId(12345)\nlocal p = AssetService:CreateMeshPartAsync(c)', 'content_from_asset'],
+  ['require of an asset id', 'local lib = require(3163717554)\nlib.load(game, "owner")', 'require_asset_id'],
+  ['loadstring', 'local f = loadstring("return 1")\nreturn f()', 'dynamic_code'],
+];
+
+for (const [what, snippet, code] of INGRESS) {
+  test(`run_luau REFUSES ${what} — and the refusal happens before anything reaches Studio`, async () => {
+    const r = await luau(snippet);
+    assert.equal(r.ok, false, snippet);
+    assert.ok(r.result.blocked.includes(code), `expected ${code}, got ${JSON.stringify(r.result.blocked)}`);
+    assert.match(r.result.error, /insert_asset/, 'a refusal that does not say what to do instead is a dead end');
+    assert.deepEqual(r.calls, [], 'the op queue must never see code that was going to insert an asset');
+  });
+}
+
+test('THE OBVIOUS EVASIONS: concatenation, string.char and escapes all resolve to the same refusal', async () => {
+  // Concatenation, with no rbxassetid literal anywhere — the fold has to rebuild the method name.
+  const concat = await luau('local f = game["Get" .. "Objects"]\nreturn f');
+  assert.equal(concat.ok, false);
+  assert.ok(concat.result.blocked.includes('get_objects'));
+
+  // string.char assembly of "rbxassetid://", with no GetObjects to fall back on.
+  const chars = 'local p = Instance.new("MeshPart")\np.MeshId = string.char(114,98,120,97,115,115,101,116,105,100,58,47,47) .. "12345"';
+  const built = await luau(chars);
+  assert.equal(built.ok, false);
+  assert.deepEqual(built.result.blocked, ['asset_uri']);
+
+  // A decimal escape inside the literal.
+  const escaped = await luau('local p = Instance.new("MeshPart")\np.MeshId = "\\114bxassetid://12345"');
+  assert.equal(escaped.ok, false);
+  assert.deepEqual(escaped.result.blocked, ['asset_uri']);
+
+  // Splitting the URI across two literals.
+  const split = await luau('local p = Instance.new("MeshPart")\np.MeshId = "rbxasset" .. "id://12345"');
+  assert.equal(split.ok, false);
+  assert.deepEqual(split.result.blocked, ['asset_uri']);
+
+  for (const r of [concat, built, escaped, split]) assert.deepEqual(r.calls, []);
+});
+
+test('a computed member on `game` is refused, because that is the evasion the fold cannot follow', async () => {
+  // `game[k]` where k is decided at runtime is unreadable by any source filter, so it is refused
+  // rather than pretended about. This is the rule the honesty comment in tools.ts is about.
+  const r = await luau('local k = fetchName()\nlocal f = game[k]\nreturn f(game, 12345)');
+  assert.equal(r.ok, false);
+  assert.ok(r.result.blocked.includes('computed_member'));
+  assert.deepEqual(r.calls, []);
+});
+
+test('a string that looks like a comment cannot hide the next statement', async () => {
+  // The naive "strip from -- to end of line" would have eaten the GetObjects call with the string.
+  const r = await luau('local dash = "--" local objs = game:GetObjects("rbxassetid://1")');
+  assert.equal(r.ok, false);
+  assert.ok(r.result.blocked.includes('get_objects'));
+});
+
+test('a require by PATH is allowed; a require of anything unreadable is not', async () => {
+  // Both shapes real Luau uses: a full path, and a service captured into a local further up.
+  for (const ok of [
+    'local U = require(game.ServerScriptService.Utils)\nreturn U.version',
+    'local SS = game:GetService("ServerStorage")\nlocal Cfg = require(SS.Modules.Config)\nreturn Cfg.seed',
+  ]) {
+    const r = await luau(ok);
+    assert.equal(r.ok, true, r.resultForLlm);
+  }
+
+  // The backdoor with its id assembled out of two numbers, which is the fixture §1 scans.
+  const computed = await luau('local id = 316 .. 3717554\nrequire(tonumber(id))');
+  assert.equal(computed.ok, false);
+  assert.ok(computed.result.blocked.some((b) => b.startsWith('require_')));
+  assert.deepEqual(computed.calls, []);
+});
+
+// The other half of the trade: the tool still has to be worth having.
+const ORDINARY_LUAU = {
+  'a ring of parts': `local M = Instance.new("Model")
+M.Name = "Colonnade"
+for i = 1, 12 do
+	local p = Instance.new("Part")
+	p.Size = Vector3.new(1.4, 18, 1.4)
+	p.Position = Vector3.new(math.cos(i) * 30, 9, math.sin(i) * 30)
+	p.Material = Enum.Material.Marble
+	p.Color = Color3.fromRGB(210, 205, 190)
+	p.Anchored = true
+	p.Parent = M
+end
+M.Parent = workspace
+return #M:GetChildren()`,
+  'terrain and lighting': `local T = workspace.Terrain
+T:FillBlock(CFrame.new(0, -2, 0), Vector3.new(512, 4, 512), Enum.Material.Grass)
+local L = game:GetService("Lighting")
+L.Brightness = 2.5
+L.ClockTime = 15
+return "filled"`,
+  'a comment that names the primitive': `-- do NOT use game:GetObjects here; insert_asset owns that
+-- rbxassetid:// links belong in the asset library, not in a build script
+local p = Instance.new("Part")
+p.Anchored = true
+p.Parent = workspace
+return p.Name`,
+  'measurement': `local n = 0
+for _, d in workspace:GetDescendants() do
+	if d:IsA("BasePart") and d.Material == Enum.Material.Plastic then n += 1 end
+end
+return n`,
+  'a module required by path': 'local Cfg = require(script.Parent.Config)\nreturn Cfg.seed',
+};
+
+for (const [what, code] of Object.entries(ORDINARY_LUAU)) {
+  test(`run_luau STILL RUNS ordinary building Luau: ${what}`, async () => {
+    const r = await luau(code);
+    assert.equal(r.ok, true, r.resultForLlm);
+    assert.deepEqual(r.calls, ['run_code'], 'this is the case the escape hatch exists for');
+  });
+}
+
+test('non-vacuity: the allowed snippet becomes a refusal the moment one ingress line is added to it', async () => {
+  const clean = ORDINARY_LUAU['a ring of parts'];
+  assert.equal((await luau(clean)).ok, true);
+  const dirty = clean + '\nlocal extra = game:GetObjects("rbxassetid://12345")';
+  const r = await luau(dirty);
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.calls, [], 'the whole snippet is refused — a partial run would already have inserted');
+});
+
+test('the findings are deduplicated and every one carries a reason — this is the audit record', () => {
+  // Two GetObjects calls and two rbxassetid literals in one snippet are two findings, not four, and
+  // a code with no sentence attached would tell a later reader nothing about what was refused.
+  const findings = T.scanLuauForAssetIngress(
+    'local a = game:GetObjects("rbxassetid://1")\nlocal b = game:GetObjects("rbxassetid://2")',
+  );
+  assert.deepEqual(findings.map((f) => f.code).sort(), ['asset_uri', 'get_objects']);
+  for (const f of findings) assert.ok(f.why.length > 20, JSON.stringify(f));
+  assert.deepEqual(T.scanLuauForAssetIngress('return 1'), []);
+});
+
+test("run_luau's own description tells the model the rule, so a refusal is never a surprise", () => {
+  const d = T.TOOLS.run_luau.def.description;
+  for (const token of ['GetObjects', 'InsertService', 'rbxassetid://', 'insert_asset']) {
+    assert.ok(d.includes(token), `the description must name ${token}`);
+  }
+});
+
+// ==============================================================================================
+// 8. Provenance — the code and the description now say the same thing
+//
+// The description used to promise: "The id MUST have come from search_asset_library or
+// find_verified_asset in this conversation — an id from anywhere else is refused." It was not.
+// `provenance` is computed as library | search_result | user_supplied, and only `model_output` and
+// `unknown` are refused — and nothing assigns `model_output`, so the refusal could not fire.
+//
+// The gap is not fixable HERE: an id the user pasted and an id the model invented arrive at the
+// tool as the same integer, and the user's message text lives in the session Durable Object. So
+// the description was changed to state what actually happens, and these tests pin the two together:
+// an undiscovered id is the least-trusted provenance, it is verified in full, and the result SAYS
+// which provenance it ran under so the transcript records it.
+// ==============================================================================================
+
+test('AN UNDISCOVERED ID IS NOT REFUSED — it is verified in full and reported as user_supplied', async () => {
+  serveDetails(detailsFor(4242));
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio), 4242); // nothing in discoveredAssetIds
+
+  assert.equal(out.ok, true, out.resultForLlm);
+  assert.equal(out.result.provenance, 'user_supplied', 'the weakest provenance is recorded, not hidden');
+  assert.ok(fetched.some((u) => u.includes('assetIds=4242')), 'it was resolved against the Creator Store like any other id');
+  for (const required of ['insert_asset', 'get_tree', 'list_scripts']) {
+    assert.ok(studio.state.calls.includes(required), `${required} must run for an id nobody searched for`);
+  }
+});
+
+test('provenance is reported for every source, so the audit trail never has to infer it', async () => {
+  serveDetails(detailsFor(4243));
+  const searched = await insert(toolCtx(fakeStudio(), { discovered: [4243] }), 4243);
+  assert.equal(searched.result.provenance, 'search_result');
+
+  serveDetails(detailsFor(4244));
+  const lib = await insert(toolCtx(fakeStudio(), { discovered: [4244], library: [4244] }), 4244);
+  assert.equal(lib.result.provenance, 'library');
+});
+
+test('THE DESCRIPTION MATCHES THE CODE: it no longer promises a refusal that never fires', () => {
+  const d = T.TOOLS.insert_asset.def.description;
+  assert.equal(/anywhere else is refused/.test(d), false, 'that promise was false — the refusal branch is unreachable');
+  assert.match(d, /EVERY id is resolved/, 'what it does do is verify every id, whatever its source');
+  assert.match(d, /never one you produced yourself/, 'the model still has to be told not to invent ids');
+});
+
+test('an undiscovered id gets NO waiver — the library exemption is by provenance, not by pleading', async () => {
+  // The same unrated, unfree, unverified-creator asset that the library may waive in §6.
+  serveDetails(
+    detailsFor(4245, {
+      creator: { id: 91, name: 'Someone', isVerifiedCreator: false },
+      voting: { upVotePercent: 0, voteCount: 0 },
+      fiatProduct: { isFree: false },
+    }),
+  );
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio), 4245);
+  assert.equal(out.ok, false);
+  assert.match(out.result.error, /was not verified/);
+  assert.equal(studio.state.calls.length, 0);
+});
+
+// ==============================================================================================
+// 9. The admin diagnostics route
+//
+// `/api/admin/studio-op/:id` forwarded whatever JSON it was handed straight to the session DO, so
+// an admin key was enough to post `{op:'insert_asset'}` and put an arbitrary asset id into a paired
+// place — past the metadata gate, past the post-insertion scan, past the audit row. The route is
+// worth keeping (the smoke test, store-validation.mjs and visual-bench.mjs all drive a plugin
+// through it with no agent loop), so it is allowlisted rather than removed, and its `run_code`
+// carries the same filter §7 pins.
+//
+// The worker is imported and driven as a real Hono app with a fake SESSION_DO, so these tests
+// exercise the actual route, not a copy of its rules.
+// ==============================================================================================
+
+const workerOut = join(dir, 'worker.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
+  join(WORKER, 'src', 'index.ts'),
+  '--bundle',
+  '--format=esm',
+  '--target=es2022',
+  // Provided by the Workers runtime. The DO base class is stubbed below; nothing in this section
+  // instantiates a Durable Object, it only needs the module to import.
+  '--external:cloudflare:workers',
+  '--outfile=' + workerOut,
+], { stdio: 'pipe', cwd: WORKER });
+{
+  const src = readFileSync(workerOut, 'utf8');
+  const bound = [];
+  const stripped = src.replace(/import\s*\{([^}]*)\}\s*from\s*["']cloudflare:workers["'];?/g, (_m, names) => {
+    for (const n of names.split(',')) {
+      const local = n.trim().split(/\s+as\s+/).pop();
+      if (local) bound.push(local);
+    }
+    return '';
+  });
+  writeFileSync(workerOut, `class __DurableObjectStub { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n${bound.map((n) => `const ${n} = __DurableObjectStub;`).join('\n')}\n${stripped}`);
+}
+const worker = (await import(workerOut)).default;
+
+/** A session DO that records what the route forwarded, so "refused" and "forwarded" are separable. */
+function adminEnv() {
+  const forwarded = [];
+  return {
+    forwarded,
+    env: {
+      ADMIN_KEY: 'test-admin-key',
+      SESSION_DO: {
+        idFromName: (n) => n,
+        get: () => ({
+          fetch: async (_url, init) => {
+            forwarded.push(JSON.parse(init.body));
+            return new Response(JSON.stringify({ ok: true, data: { forwarded: true } }), { headers: { 'content-type': 'application/json' } });
+          },
+        }),
+      },
+    },
+  };
+}
+
+const adminOp = async (op, key = 'test-admin-key') => {
+  const { env, forwarded } = adminEnv();
+  const res = await worker.fetch(
+    new Request('https://golem.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
+      method: 'POST',
+      headers: { 'X-Admin-Key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op, timeoutMs: 5000 }),
+    }),
+    env,
+  );
+  return { status: res.status, body: await res.json(), forwarded };
+};
+
+test('THE ADMIN ROUTE REFUSES A GATED OP: an admin key is not a way past the asset gate', async () => {
+  const r = await adminOp({ op: 'insert_asset', assetId: 12345, parent: 'game.Workspace' });
+  assert.equal(r.status, 400);
+  assert.match(r.body.error, /not a diagnostics op/);
+  assert.match(r.body.error, /run-tool/, 'the refusal must name the route that does gate it');
+  assert.deepEqual(r.forwarded, [], 'nothing may reach the Durable Object');
+});
+
+test('the admin route cannot grant itself verified asset ids', async () => {
+  /* The plugin honours `op.verifiedAssetIds` as proof an id already passed the
+     gate (apps/plugin/src/Ops.luau, assetPolicyFor). This route forwards untyped
+     JSON, so without stripping it an admin key stops being a key to the
+     diagnostics surface and becomes a way AROUND the asset gate: `set_props`
+     with a MeshId would then be allowed to reference any id the caller named.
+
+     The first attempt at this fix rebuilt the outer envelope and left the field
+     untouched inside `op`, which closed nothing — hence the assertion is on
+     `forwarded[0].op`, not on the envelope. */
+  const r = await adminOp({
+    op: 'set_props',
+    path: 'game.Workspace.Part',
+    props: { MeshId: { t: 'Content', v: 'rbxassetid://12345' } },
+    verifiedAssetIds: [12345],
+  });
+  assert.equal(r.status, 200, 'set_props is a legitimate diagnostics op and must still be forwarded');
+  assert.equal(r.forwarded.length, 1);
+  assert.equal(
+    'verifiedAssetIds' in r.forwarded[0].op,
+    false,
+    'verifiedAssetIds must not survive the admin route — the plugin would read it as proof of verification',
+  );
+  // Non-vacuity: the rest of the op has to arrive intact, or the assertion above
+  // would pass simply because nothing was forwarded.
+  assert.equal(r.forwarded[0].op.op, 'set_props');
+  assert.equal(r.forwarded[0].op.path, 'game.Workspace.Part');
+});
+
+test('generate_model is refused here too — it is the other op that brings content in from outside', async () => {
+  const r = await adminOp({ op: 'generate_model', prompt: 'a tree', parent: 'game.Workspace' });
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.forwarded, []);
+});
+
+test('an op the route never heard of is refused rather than forwarded hopefully', async () => {
+  const r = await adminOp({ op: 'exfiltrate' });
+  assert.equal(r.status, 400);
+  assert.deepEqual(r.forwarded, []);
+  const empty = await adminOp({});
+  assert.equal(empty.status, 400);
+  assert.deepEqual(empty.forwarded, []);
+});
+
+test('run_code through the admin route carries the SAME filter as run_luau', async () => {
+  const blocked = await adminOp({ op: 'run_code', code: 'game:GetObjects("rbxassetid://12345")' });
+  assert.equal(blocked.status, 400);
+  assert.ok(blocked.body.blocked.includes('get_objects'), JSON.stringify(blocked.body));
+  assert.deepEqual(blocked.forwarded, []);
+});
+
+test('the harnesses still work: every op infra/ and packages/evals actually send is forwarded', async () => {
+  // ping/get_tree/list_scripts/viewport_info/create_instances/run_code from infra/store-validation.mjs
+  // and infra/smoke.mjs; render_view and run_code from packages/evals/src/visual-bench.mjs. If this
+  // list has to shrink, a harness broke; if it has to grow, someone widened the route on purpose.
+  const ops = [
+    { op: 'ping' },
+    { op: 'get_tree', maxDepth: 3, maxNodes: 400 },
+    { op: 'list_scripts' },
+    { op: 'viewport_info' },
+    { op: 'render_view', view: 'all' },
+    { op: 'create_instances', items: [{ className: 'Part', name: 'A', parent: 'game.Workspace' }] },
+    { op: 'delete_instances', paths: ['game.Workspace.A'] },
+    { op: 'run_code', code: 'local f = workspace:FindFirstChild("X") if f then f:Destroy() end return "CLEANED"' },
+  ];
+  for (const op of ops) {
+    const r = await adminOp(op);
+    assert.equal(r.status, 200, `${op.op} must still reach the plugin: ${JSON.stringify(r.body)}`);
+    assert.equal(r.forwarded.length, 1, op.op);
+  }
+});
+
+test('the admin key is still the gate: a wrong key never reaches the allowlist at all', async () => {
+  const r = await adminOp({ op: 'ping' }, 'wrong');
+  assert.equal(r.status, 403);
+  assert.deepEqual(r.forwarded, []);
+});
+
+// ==============================================================================================
+// 10. The system prompt and the tools agree
+//
+// The prompt said "There is no asset search; a made-up id fails or inserts something random" while
+// two asset-search tools existed and insert_asset's own description said the opposite. Two
+// contradictory instructions about one tool, in one context window, is a bug in the prompt.
+// ==============================================================================================
+
+const promptsOut = join(dir, 'prompts.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'prompts.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + promptsOut], { stdio: 'pipe', cwd: WORKER });
+const P = await import(promptsOut);
+
+test('THE SYSTEM PROMPT NO LONGER CONTRADICTS THE TOOLS it is describing', () => {
+  const sys = P.systemPrompt({ mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [] });
+  assert.equal(/There is no asset search/.test(sys), false, 'stale: search_asset_library and find_verified_asset both exist');
+  assert.match(sys, /search_asset_library/);
+  assert.match(sys, /find_verified_asset/);
+  assert.match(sys, /run_luau refuses/, 'the prompt must state the run_luau rule the tool enforces');
+  // And it must not re-introduce the old rule that only a user-given id may be inserted, which
+  // would send the model looking for permission it does not need for a searched id.
+  assert.equal(/Only call insert_asset with an id the USER gave you/.test(sys), false);
 });

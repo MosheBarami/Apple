@@ -266,3 +266,103 @@ test('no readable specialist name survives any effort line the catalogue can pro
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// 9. The contract, pinned to the worker that serves it
+// ---------------------------------------------------------------------------
+
+/**
+ * These read the worker's own source. That is the point.
+ *
+ * The roadmap engine is the source of truth and it is the tested half; this
+ * client is the half that moves. An earlier pass of this page was written
+ * against a guessed contract — POST /roadmap/suggest, statuses `active` and
+ * `planned` — and nothing failed, because a client that asks for a route the
+ * worker does not serve only breaks at runtime, in a browser, against a live
+ * Studio. So the alignment is asserted here, off the filesystem, with no
+ * network and no worker running: rename a status or move a route in
+ * apps/worker and this file is what says so.
+ */
+import { readFileSync } from 'node:fs';
+
+const workerRoadmap = readFileSync(new URL('../../worker/src/roadmap.ts', import.meta.url), 'utf8');
+const workerRoutes = readFileSync(new URL('../../worker/src/index.ts', import.meta.url), 'utf8');
+const clientApi = readFileSync(new URL('../src/lib/api.ts', import.meta.url), 'utf8');
+
+/** The string literals of an exported string-union type, sorted. */
+const unionOf = (name, source) => {
+  const decl = new RegExp(`export type ${name} =([^;]+);`).exec(source);
+  assert.ok(decl, `apps/worker no longer exports a ${name} union`);
+  return [...decl[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+};
+
+test('the worker emits exactly the four milestone statuses this client handles', () => {
+  assert.deepEqual(unionOf('MilestoneStatus', workerRoadmap), ['blocked', 'current', 'done', 'future']);
+});
+
+test('every status the worker can emit maps to a readiness — none falls through', () => {
+  // The guard that matters: the union above is only worth pinning if the client
+  // actually answers for each member. A status the worker adds and this client
+  // ignores would silently render as "ready to start".
+  const READINESS = {
+    done: 'landed',
+    current: 'in-progress',
+    future: 'ready',
+    blocked: 'waiting',
+  };
+  for (const status of unionOf('MilestoneStatus', workerRoadmap)) {
+    const readiness = deriveReadiness(ms('x', { status }), []);
+    assert.equal(readiness, READINESS[status], `status "${status}" has no readiness of its own`);
+  }
+});
+
+test('the worker detects in three values, and `unknown` is one of them', () => {
+  // Three-valued on purpose: `unknown` is "the scan hit a cap and could not
+  // see", not "no". The card has to be able to say that rather than rounding it
+  // down into a confident absence.
+  assert.deepEqual(unionOf('Detected', workerRoadmap), ['absent', 'present', 'unknown']);
+});
+
+test('this client calls exactly the roadmap routes the worker serves', () => {
+  // Both sides are reduced to the same shape: the worker's `:id` and the
+  // client's interpolations are the same hole in the same path.
+  const hole = (s) => s.replace(/\$\{[^}]*\}/g, '').replace(/:id/g, '');
+
+  const served = [...workerRoutes.matchAll(/app\.(get|post)\('(\/api\/projects\/:id\/roadmap[^']*)'/g)]
+    .map((m) => `${m[1].toUpperCase()} ${hole(m[2])}`)
+    .sort();
+  assert.deepEqual(served, [
+    'GET /api/projects//roadmap',
+    'GET /api/projects//roadmap/next',
+    'POST /api/projects//roadmap/brief',
+  ]);
+
+  const called = [...clientApi.matchAll(/`(\/api\/projects\/[^`]*\/roadmap[^`]*)`/g)]
+    .map((m) => hole(m[1]))
+    .sort();
+  // Every path the client asks for is one the worker answers. A guessed route
+  // (`/roadmap/suggest`, `/roadmap/milestones/…/start`) fails right here.
+  const servedPaths = new Set(served.map((r) => r.split(' ')[1]));
+  assert.ok(called.length > 0, 'lib/api.ts no longer calls the roadmap at all');
+  for (const path of called) {
+    assert.ok(servedPaths.has(path), `the worker serves no roadmap route at "${path}"`);
+  }
+  assert.deepEqual([...new Set(called)], [...servedPaths].sort());
+});
+
+test('the ranking pass is opt-in, with the query key the worker actually checks', () => {
+  // The deterministic roadmap is the product; polish costs a Spark and is asked
+  // for explicitly. The worker gates on `query('polish') !== '1'`, so the client
+  // has to send that exact key and value or it silently never ranks.
+  assert.ok(/query\('polish'\)\s*!==\s*'1'/.test(workerRoutes), 'the worker no longer gates polish on ?polish=1');
+  assert.ok(/\?polish=1/.test(clientApi), 'lib/api.ts no longer sends ?polish=1');
+});
+
+test('only the milestone id crosses the wire when asking for a brief', () => {
+  // The worker rebuilds the brief from a fresh scan precisely so a caller
+  // cannot hand the builder arbitrary instructions wearing Golem's roadmap as a
+  // disguise. A client that started posting the brief back would undo that.
+  const body = /roadmap\/brief`,\s*\{[^}]*body:\s*JSON\.stringify\(\{([^}]*)\}\)/.exec(clientApi);
+  assert.ok(body, 'the brief call no longer posts a JSON body');
+  assert.equal(body[1].trim(), 'milestoneId');
+});

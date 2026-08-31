@@ -6,9 +6,9 @@
 // between turns — checkpoints and project memory — are one click away in a
 // drawer rather than occupying a third of the screen forever.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
+import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
@@ -45,6 +45,8 @@ export function WorkspacePage() {
   const projectId = params.id ?? '';
   const { toast } = useToast();
   const { openRail } = useShell();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [showPairing, setShowPairing] = useState(false);
   const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory'>(null);
@@ -95,6 +97,28 @@ export function WorkspacePage() {
    * below cannot linger after Studio attaches or reappear while it is attached.
    */
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
+
+  /**
+   * The roadmap hands a milestone over as router state rather than in the URL,
+   * because the brief is prose: a query string would put a whole instruction in
+   * the address bar and leave it in browser history.
+   *
+   * It is consumed once and then cleared. Router state outlives a reload and is
+   * restored by a Back that lands here again, so leaving it in place would keep
+   * refilling the composer with a request the user may have deliberately
+   * abandoned — and would pin the mode chip to a choice they could not undo by
+   * navigating. Replacing the history entry is what makes this a handoff rather
+   * than a state the route can never leave.
+   */
+  useEffect(() => {
+    const handoff = location.state as { seed?: unknown; mode?: unknown } | null;
+    if (!handoff) return;
+    if (typeof handoff.seed === 'string' && handoff.seed.trim() !== '') setSeed(handoff.seed);
+    // Anything at all can be pushed into router state, so the mode is checked
+    // against the shared vocabulary instead of being trusted into a typed setter.
+    if (PRODUCT_MODES.includes(handoff.mode as ProductMode)) setMode(handoff.mode as ProductMode);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location, navigate]);
 
   // Toast when Studio comes online, once per transition.
   const wasConnected = useRef(false);
@@ -205,7 +229,39 @@ export function WorkspacePage() {
             <Icon d={PATH.brain} />
           </button>
 
-          <button type="button" className="gx-btn gx-btn--outline gx-top__cp" onClick={showCheckpoints}>
+          {/* The way into the plan. The conversation says what is happening
+              now; the roadmap says what is worth doing next, so it sits beside
+              Checkpoints — forward and back from the same row.
+
+              It borrows the Checkpoints button's own classes rather than
+              introducing a control style: gx-top__cp is what gives a topbar
+              button its height and a thumb-sized target, and gx-top__cp-label
+              is what drops the word below 860px so a narrow topbar collapses
+              to icons instead of overflowing. No trailing chevron — that glyph
+              means "opens a drawer here" on the button next to it, and this
+              leaves the page.
+
+              Both controls carry an aria-label rather than relying on the text:
+              it is that same collapse that takes the name away, because a
+              display:none span contributes nothing to the accessible name. Below
+              860px Checkpoints was announcing as an unnamed button, and this
+              link would have been announced by its description. */}
+          <Link
+            to={`/projects/${projectId}/roadmap`}
+            className="gx-btn gx-btn--outline gx-top__cp"
+            aria-label="Roadmap"
+            title="What Golem would build next in this place"
+          >
+            <Icon d={PATH.listAll} size={15} />
+            <span className="gx-top__cp-label">Roadmap</span>
+          </Link>
+
+          <button
+            type="button"
+            className="gx-btn gx-btn--outline gx-top__cp"
+            aria-label="Checkpoints"
+            onClick={showCheckpoints}
+          >
             <Icon d={PATH.layers} size={15} />
             <span className="gx-top__cp-label">Checkpoints</span>
             <Icon d={PATH.chevronRight} size={13} />

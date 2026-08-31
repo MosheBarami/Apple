@@ -9,6 +9,7 @@ import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
+import { refuseLuauIngress } from './tools';
 import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
 
 export { SessionDO } from './do/session';
@@ -789,10 +790,77 @@ app.post('/api/admin/run-tool/:id', async (c) => {
   return c.json(await res.json(), res.status as 200);
 });
 
+/**
+ * Ops this diagnostics route may forward. An allowlist rather than a denylist, so a new op is
+ * unreachable from here until somebody decides it belongs.
+ *
+ * The route existed to let the smoke test, the store validation and the visual benchmark drive a
+ * paired plugin without an agent loop, and it forwarded whatever JSON it was given — so an admin
+ * key was enough to post `{op:'insert_asset'}` and put an arbitrary asset id into a place, skipping
+ * the metadata gate, the post-insertion script scan and the audit row that `insert_asset` the TOOL
+ * runs. `insert_asset` and `generate_model` are the two ops that bring content in from outside the
+ * place, and they are precisely the two an unvalidated bypass must not reach; both are still
+ * available through /api/admin/run-tool, which goes through the gate.
+ *
+ * The list is what the harnesses in infra/ and packages/evals actually send, and no more.
+ */
+const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([
+  'ping',
+  'get_tree',
+  'get_instance',
+  'list_scripts',
+  'read_script',
+  'search_scripts',
+  'get_logs',
+  'get_selection',
+  'select',
+  'camera_focus',
+  'viewport_info',
+  'render_view',
+  'screenshot',
+  'create_instances',
+  'set_props',
+  'delete_instances',
+  'move_instances',
+  'undo_waypoint',
+  'run_code',
+]);
+
 app.post('/api/admin/studio-op/:id', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { op?: StudioOp; timeoutMs?: number } | null;
+  const kind = body?.op?.op;
+  if (!kind || !ADMIN_STUDIO_OPS.has(kind)) {
+    return c.json(
+      {
+        error: `${kind ?? 'that'} is not a diagnostics op. This route forwards inspection and build ops only; anything that brings an asset into the place goes through /api/admin/run-tool so it passes the same gate the agent does.`,
+      },
+      400,
+    );
+  }
+  // `run_code` here is the same channel as the run_luau tool, so it gets the same filter: an admin
+  // key is a key to the diagnostics surface, not a way around the asset gate.
+  if (kind === 'run_code') {
+    const refusal = refuseLuauIngress(String((body?.op as { code?: unknown }).code ?? ''));
+    if (refusal) return c.json(refusal, 400);
+  }
+  /* The plugin reads MORE off the op than the StudioOp union declares.
+     `Ops.assetPolicyFor` honours `op.verifiedAssetIds`, which is how the worker
+     tells the plugin an asset id has already been through the gate. This route
+     hands the plugin untyped JSON, so a caller could include that field inside
+     the op and grant themselves any id they liked — turning an admin key into a
+     way around the asset gate rather than a key to the diagnostics surface.
+
+     Stripped rather than rejected, because a diagnostics caller has no reason to
+     assert that anything was verified: the only honest value here is "nothing
+     was". Note this is a property of the OP, not the envelope — the first
+     version of this fix rebuilt the envelope and left the field untouched inside
+     `op`, which closed nothing. The comment above about assets going through
+     /api/admin/run-tool is only true with this in place. */
+  const { verifiedAssetIds: _dropped, ...safeOp } = (body?.op ?? {}) as Record<string, unknown>;
+  const forwarded = { op: safeOp, timeoutMs: body?.timeoutMs };
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/studio-op', {
     method: 'POST',
-    body: JSON.stringify(await c.req.json()),
+    body: JSON.stringify(forwarded),
   });
   return c.json(await res.json(), res.status as 200);
 });

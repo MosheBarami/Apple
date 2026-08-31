@@ -20,6 +20,43 @@ local MUTATING = {
 	generate_model = true,
 }
 
+-- Ops that assign typed properties, and are therefore the two ways an asset id can enter a place
+-- without going through `insert_asset`. See the asset-policy section of Paths.luau.
+local PROPERTY_OPS = { create_instances = true, set_props = true }
+
+-- Ids this session has actually put through the gated insert path. `insert_asset` is the only op
+-- the worker emits after verifying an id, so an id that reached it is one the session has already
+-- imported: letting a later MeshId name it grants nothing the place does not already contain.
+local sessionVerifiedAssets: { [number]: boolean } = {}
+
+--- What the op may reference, opened for the duration of one op and closed after it. Spelled
+--- structurally rather than as `Paths.AssetPolicy` because luau-lsp cannot resolve the plugin's
+--- `script.Parent` requires outside Studio, and an unresolvable type name is a new analyze error.
+local function assetPolicyFor(kind: string, opBody: any): { allow: { [number]: boolean }, preexisting: boolean }?
+	if kind == "restore" then
+		-- A snapshot is a record of what was ALREADY here — Serializer.snapshot read it out of this
+		-- same place — so re-materialising it imports nothing. Refusing would make a rollback strip
+		-- the user's own MeshIds, which is destruction dressed up as caution.
+		return { allow = {}, preexisting = true }
+	end
+	if not PROPERTY_OPS[kind] then return nil end
+	local allow: { [number]: boolean } = {}
+	for id in sessionVerifiedAssets do
+		allow[id] = true
+	end
+	-- Read off the op ENVELOPE, never out of `items`/`props`. The worker builds the envelope; the
+	-- model authors the payload. That is the whole reason this list is trustworthy, and it is why a
+	-- worker tool must never spread model-supplied arguments into a StudioOp.
+	if type(opBody.verifiedAssetIds) == "table" then
+		for _, id in opBody.verifiedAssetIds do
+			if type(id) == "number" and id > 0 and id % 1 == 0 then
+				allow[id] = true
+			end
+		end
+	end
+	return { allow = allow, preexisting = false }
+end
+
 local SCRIPT_CONTAINERS = {
 	"Workspace", "ReplicatedStorage", "ServerScriptService", "ServerStorage",
 	"StarterGui", "StarterPack", "StarterPlayer", "ReplicatedFirst",
@@ -418,6 +455,8 @@ handlers.insert_asset = function(op)
 	local parent = Paths.resolve(op.parent or "game.Workspace")
 	local res = Generation.insertAsset(op.assetId, parent)
 	if not res.ok then return { error = res.error } end
+	-- Recorded only on success, and only here: this is the one op that carries a gate verdict.
+	sessionVerifiedAssets[op.assetId] = true
 	local placed = {}
 	for _, obj in res.instances do
 		table.insert(placed, Paths.fullPath(obj))
@@ -470,7 +509,11 @@ function Ops.execute(id: string, opBody: any): any
 		local rec = ChangeHistoryService:TryBeginRecording("Golem: " .. kind)
 		recording = rec
 	end
+	-- Opened immediately before the handler and closed immediately after, so every path out of the
+	-- handler — return, error, refusal — leaves the plugin back at "no asset may be referenced".
+	Paths.setAssetPolicy(assetPolicyFor(kind, opBody))
 	local ok, result = pcall(handler, opBody)
+	Paths.setAssetPolicy(nil)
 	if recording then
 		ChangeHistoryService:FinishRecording(recording, if ok then Enum.FinishRecordingOperation.Commit else Enum.FinishRecordingOperation.Cancel)
 	end

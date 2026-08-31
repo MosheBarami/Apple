@@ -48,12 +48,15 @@ export interface AgentCtx {
   lastRender?: RenderViewResult;
   lastCritique?: VisualCritique;
   /**
-   * Asset ids that came out of a verified search in THIS session. The only ids insert_asset will
-   * accept: an id that only ever appeared in model output is never inserted.
+   * Asset ids that came out of a verified search in THIS session.
    *
-   * Membership records PROVENANCE and nothing else. It used to double as a skip — an id in this
-   * set went to Studio without ever being resolved — which meant one bad row in the curated library
-   * could put an unverified Model into a customer's place. It never skips anything now.
+   * Membership records PROVENANCE and nothing else — not permission, and not a skip. It used to
+   * double as a skip (an id in this set went to Studio without ever being resolved), which meant
+   * one bad row in the curated library could put an unverified Model into a customer's place.
+   *
+   * Nor is it an admission list: an id that is NOT here is not refused, it is simply the weakest
+   * provenance and waives nothing. Refusing it would need evidence this worker does not have —
+   * see the note at the provenance computation in `insert_asset`.
    */
   discoveredAssetIds?: Set<number>;
   /**
@@ -325,6 +328,270 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   };
 }
 
+// ---------------------------------------------------------------------------------------------
+// run_luau's asset-ingress filter
+//
+// `run_luau` hands the model's Luau to the plugin's `run_code`, which concatenates it into a
+// ModuleScript and requires it in PLUGIN context. That is a legitimate and load-bearing escape
+// hatch — loops for trim and railings, terrain, bulk property edits, measurement — and it was also,
+// verbatim, the primitive `insert_asset` is gated for: `game:GetObjects("rbxassetid://123")` is one
+// line, and it reached the same place with none of the verification, none of the post-insertion
+// scan, and no audit row.
+//
+// THE TRADE. Blocking the tool, or admitting only an allowlist of Luau, would cost far more than
+// the gap is worth: almost everything the agent builds well, it builds with a loop. So the filter
+// is narrow by construction — it refuses ASSET INGRESS and nothing else, and every refusal names
+// `insert_asset` as the way to do the thing the code was reaching for. Ordinary building Luau
+// contains none of these tokens, so the false-positive surface is close to zero.
+//
+// WHAT IT DOES NOT CLAIM. This is a pattern filter over source text, not a Luau evaluator, and a
+// determined model can still defeat it:
+//   * a string assembled through values the fold cannot resolve — a table of byte values, a loop
+//     over `string.sub`, arithmetic on character codes, `table.concat` of computed parts;
+//   * an ingress primitive reached through an alias captured before the call
+//     (`local f = game.GetObjects` is caught, `local f = game[k]` with a computed `k` is not — which
+//     is the whole reason computed indexing of `game` is refused outright);
+//   * `edit_script` writing a game Script that calls `GetObjects`, then `run_and_check` running it.
+//     That is a deliberate product capability — the user asked for a game — and is out of scope
+//     here; it is bounded by the user owning and reading the scripts Golem writes.
+//   * ASSIGNING A COMPUTED ASSET URI TO A CONTENT PROPERTY. `Paths.setProp` in the plugin refuses an
+//     unverified `MeshId` / `Texture` / `SoundId`, which closes this for `create_instances` and
+//     `set_properties` — but `run_code` executes Luau straight against the engine and never goes
+//     through `setProp`, so that policy does not apply here. Measured as still allowed:
+//     `m.MeshId = a .. b` through variables, `string.format("%s://%d", "rbxassetid", 999)`,
+//     `table.concat({"rbxasset", "id://999"})`. The literal-fold catches adjacent literals only.
+//     This is a LICENCE-AND-PROVENANCE hole, not code execution: those properties load inert media.
+//     Recorded because the asymmetry is the dangerous part — a reader who knows the plugin gates
+//     Content properties would reasonably assume all three ops are covered, and two of them are.
+// So this raises the cost of the direct path and makes the indirect ones look like what they are.
+// It is not a sandbox, and nothing downstream may be built as though it were one: the real
+// guarantee still comes from the post-insertion scan that `insert_asset` runs inside the place.
+// ---------------------------------------------------------------------------------------------
+
+/** One refusal: a stable code for the audit trail, and the sentence the model is shown. */
+export interface LuauIngressFinding {
+  code: string;
+  why: string;
+}
+
+/** End index of a `[[ … ]]` / `[==[ … ]==]` span starting at `i`, or null. Strings and comments both. */
+function longBracketAt(src: string, i: number): number | null {
+  if (src[i] !== '[') return null;
+  let j = i + 1;
+  let eq = 0;
+  while (src[j] === '=') {
+    eq += 1;
+    j += 1;
+  }
+  if (src[j] !== '[') return null;
+  const close = ']' + '='.repeat(eq) + ']';
+  const at = src.indexOf(close, j + 1);
+  return at < 0 ? src.length : at + close.length;
+}
+
+/**
+ * Remove comments, leaving string literals intact.
+ *
+ * String-aware on purpose. A naive "cut from `--` to end of line" is a bypass rather than a
+ * simplification: `local s = "--" game:GetObjects(id)` would lose the half of the line that
+ * matters. Comments are removed at all so that `-- never call game:GetObjects here` is not a
+ * refusal.
+ */
+function stripLuauComments(src: string): string {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i] as string;
+    if (ch === '-' && src[i + 1] === '-') {
+      const long = longBracketAt(src, i + 2);
+      if (long !== null) {
+        i = long;
+      } else {
+        while (i < src.length && src[i] !== '\n') i += 1;
+      }
+      out += ' ';
+      continue;
+    }
+    const long = longBracketAt(src, i);
+    if (long !== null) {
+      out += src.slice(i, long);
+      i = long;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      out += ch;
+      i += 1;
+      while (i < src.length) {
+        const c = src[i] as string;
+        out += c;
+        i += 1;
+        if (c === '\\') {
+          if (i < src.length) {
+            out += src[i];
+            i += 1;
+          }
+          continue;
+        }
+        if (c === ch) break;
+      }
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+
+/** Printable ASCII only. Decoding a control character helps nobody and could split a token. */
+function printableChar(code: number, fallback: string): string {
+  return code >= 32 && code <= 126 ? String.fromCharCode(code) : fallback;
+}
+
+/** `\65`, `\x41`, `\u{41}` → `A`. Applied per segment so an escaped backslash never starts one. */
+function decodeLuauEscapes(seg: string): string {
+  return seg
+    .replace(/\\(\d{1,3})/g, (m, d: string) => printableChar(parseInt(d, 10), m))
+    .replace(/\\x([0-9a-fA-F]{2})/g, (m, h: string) => printableChar(parseInt(h, 16), m))
+    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (m, h: string) => printableChar(parseInt(h, 16), m));
+}
+
+/**
+ * Undo the two evasions that are cheap to write and cheap to reverse: escape sequences, and
+ * strings assembled out of literals.
+ *
+ * `"\114bxassetid://"`, `"rbxasset" .. "id://"` and `string.char(114,98,120)` all mean one thing to
+ * the Luau parser, so they have to mean one thing here. The fold is textual and deliberately
+ * conservative: anything it cannot resolve is left exactly as written rather than guessed at, and
+ * the rules run over BOTH the original text and the folded text, so folding can only add findings.
+ */
+function foldLuauLiterals(src: string): string {
+  // Split on the escaped backslash rather than substituting a sentinel: `"\\120"` is a backslash
+  // followed by three digits, not the character `x`.
+  let s = src
+    .split('\\\\')
+    .map(decodeLuauEscapes)
+    .join('\\\\');
+
+  s = s.replace(/\bstring\.char\s*\(([^()]*)\)/g, (m, args: string) => {
+    const parts = args.split(',').map((p) => p.trim());
+    if (!parts.length || !parts.every((p) => /^\d{1,3}$/.test(p))) return m;
+    return '"' + parts.map((p) => printableChar(Number(p), '')).join('') + '"';
+  });
+
+  // Fixed point rather than a single pass: `"a" .. "b" .. "c"` needs two.
+  for (let pass = 0; pass < 8; pass += 1) {
+    const next = s
+      .replace(/(['"])([^'"\n]*)\1\s*\.\.\s*(['"])([^'"\n]*)\3/g, (_m, q: string, a: string, _q2: string, b: string) => q + a + b + q)
+      .replace(/(\d)\s*\.\.\s*(\d)/g, '$1$2');
+    if (next === s) return s;
+    s = next;
+  }
+  return s;
+}
+
+/**
+ * The tokens that mean "geometry from outside this place is about to arrive", plus the two that
+ * mean "the source above is not the code that will run".
+ */
+const LUAU_INGRESS_RULES: readonly { code: string; pattern: RegExp; why: string }[] = [
+  {
+    code: 'get_objects',
+    pattern: /\bGetObjects\b/,
+    why: 'game:GetObjects loads an arbitrary asset id straight into the place — it is the exact primitive insert_asset exists to gate',
+  },
+  {
+    code: 'insert_service',
+    pattern: /\bInsertService\b|\bLoadAssetVersion\b|\bLoadAsset\b/,
+    why: 'InsertService:LoadAsset / LoadAssetVersion insert a third-party asset with no verification',
+  },
+  {
+    code: 'asset_uri',
+    pattern: /rbx(?:assetid|thumb|http|gameasset):\/\//i,
+    why: 'an rbxassetid:// or rbxthumb:// literal references content that has not been through the asset gate',
+  },
+  {
+    code: 'content_from_asset',
+    pattern: /\bContent\s*\.\s*from(?:AssetId|Uri)\b/,
+    why: 'Content.fromAssetId / Content.fromUri hands an unverified asset id to AssetService',
+  },
+  {
+    code: 'dynamic_code',
+    pattern: /\bloadstring\s*\(|\bgetfenv\s*\(|\bsetfenv\s*\(/,
+    why: 'loadstring/getfenv decide at runtime what code runs, so nothing in the source above them can be checked',
+  },
+  {
+    code: 'computed_member',
+    pattern: /\bgame\s*\[\s*[^'"\]\s]/,
+    why: 'game[<computed>] hides which member is called; write game.Workspace or game:GetService("…") instead',
+  },
+];
+
+/** The argument text of every `require(…)` call, brackets balanced. */
+function requireArgs(src: string): string[] {
+  const out: string[] = [];
+  const re = /\brequire\s*\(/g;
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const from = i;
+    while (i < src.length && depth > 0) {
+      if (src[i] === '(') depth += 1;
+      else if (src[i] === ')') depth -= 1;
+      i += 1;
+    }
+    out.push(src.slice(from, depth === 0 ? i - 1 : src.length));
+  }
+  return out;
+}
+
+/**
+ * Everything `run_luau` refuses, as findings rather than a boolean, so the refusal can say WHICH
+ * primitive was reached for.
+ *
+ * `require` is judged by its argument. A numeric literal is the classic marketplace backdoor, and
+ * an argument with no path structure at all — a bare name, a call, `tonumber(s)` — cannot be read
+ * from the source, so it is indistinguishable from one. Anything that traverses a path is allowed
+ * (`require(script.Parent.Config)`, `require(SS.Modules.Config)` where `SS` is a service captured
+ * further up), because that is what the legitimate uses of this tool look like and refusing them
+ * would cost more than the rule is worth.
+ */
+export function scanLuauForAssetIngress(code: string): LuauIngressFinding[] {
+  const stripped = stripLuauComments(code);
+  const variants = [stripped, foldLuauLiterals(stripped)];
+  const found = new Map<string, string>();
+  for (const rule of LUAU_INGRESS_RULES) {
+    if (variants.some((v) => rule.pattern.test(v))) found.set(rule.code, rule.why);
+  }
+  for (const variant of variants) {
+    for (const arg of requireArgs(variant)) {
+      const a = arg.trim();
+      if (/^["']?\d/.test(a)) {
+        found.set('require_asset_id', 'require(<asset id>) pulls a module off the marketplace at runtime — the classic Roblox backdoor');
+      } else if (/\btonumber\b/.test(a) || !/[.:]/.test(a)) {
+        found.set('require_computed', `require(${a.slice(0, 40)}) resolves to something the source does not say, so what it loads is unknown; require a module by its path`);
+      }
+    }
+  }
+  return [...found].map(([code_, why]) => ({ code: code_, why }));
+}
+
+/**
+ * The refusal itself, shared by `run_luau` and by the admin diagnostics route, so the two cannot
+ * drift apart. Returns null when the code may run.
+ */
+export function refuseLuauIngress(code: string): { error: string; blocked: string[] } | null {
+  const findings = scanLuauForAssetIngress(code);
+  if (!findings.length) return null;
+  return {
+    error:
+      `this Luau was refused because it reaches for an asset-ingress primitive: ${findings.map((f) => f.why).join('; ')}. ` +
+      'Luau is not how assets enter a place. Find an id with search_asset_library or find_verified_asset and insert it with insert_asset, ' +
+      'which verifies the id and then reads the place back to prove nothing executable arrived with it. ' +
+      'Everything else run_luau does — loops, terrain, bulk property edits, measurement — is unaffected.',
+    blocked: findings.map((f) => f.code),
+  };
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -413,11 +680,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_luau',
       description:
-        'Run a Luau snippet in Studio (edit-time, plugin context) for inspection, terrain, bulk edits, math. print() output and the returned value come back. No game scripts run. Use for anything the other tools cannot do.',
+        'Run a Luau snippet in Studio (edit-time, plugin context) for inspection, terrain, bulk edits, math. print() output and the returned value come back. No game scripts run. Use for anything the other tools cannot do. It may NOT be used to bring assets into the place: GetObjects, InsertService, rbxassetid://, Content.fromAssetId, loadstring and require of an asset id are refused here — use insert_asset, which verifies the id and scans the place afterwards.',
       parameters: S({ code: { type: 'string' } }, ['code']),
     },
     studio: true,
-    run: (ctx, a) => op(ctx, { op: 'run_code', code: String(a.code ?? ''), timeoutMs: 10_000 }, 25_000),
+    run: async (ctx, a) => {
+      const code = String(a.code ?? '');
+      // Refused BEFORE the op is queued. By the time an asset reaches the place its scripts have
+      // already had their chance to run, so there is no useful check on the far side of this.
+      return refuseLuauIngress(code) ?? (await op(ctx, { op: 'run_code', code, timeoutMs: 10_000 }, 25_000));
+    },
   },
   run_and_check: {
     def: {
@@ -670,7 +942,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. The id MUST have come from search_asset_library or find_verified_asset in this conversation — an id from anywhere else is refused, because guessed ids fail or insert something random, and unverified models can carry backdoor scripts. Every insertion is scanned INSIDE the place afterwards: any Luau that arrives with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
+        'Insert an asset by numeric assetId. Use an id from search_asset_library or find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
@@ -682,6 +954,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       // WHERE an id came from decides which assertions may be waived. It never decides whether the
       // gate runs — a membership test is not a verification, and treating it as one is how a bad
       // library row would have reached a place unresolved and unscanned.
+      //
+      // AND IT CANNOT DECIDE MORE THAN THAT, which the tool description used to claim it did: it
+      // promised that an id from outside this session's searches is refused. It was not, and the
+      // code could not have kept the promise. `verifyCreatorStoreAsset` refuses `model_output`, but
+      // nothing here assigns it, because nothing here can: an id the user pasted and an id the model
+      // invented arrive at this function as the same integer. The evidence that would separate them
+      // — the user's own message text — lives in the session Durable Object and is not passed to a
+      // tool, and adding a hook nobody fills in would be the same dead branch in a new place.
+      //
+      // So the description now states what this actually does, and `user_supplied` means exactly
+      // "not discovered in this session" — the LEAST trusted provenance, which waives nothing and
+      // faces the full gate plus the in-place scan below. Refusing it outright was considered and
+      // rejected: a user pasting an id they own is a real flow, and it is the flow that is hardest
+      // to work around when it is broken. The provenance is reported in the result so that an id
+      // nobody searched for is visible in the transcript and in the audit log rather than inferred.
       const fromLibrary = ctx.libraryAssetIds?.has(assetId) === true;
       const provenance: AssetProvenanceSource = fromLibrary ? 'library' : ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
 
@@ -706,10 +993,12 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
       const placed = await insertAndProveClean(ctx, assetId, parent);
-      if (typeof placed === 'object' && placed !== null && !('error' in placed) && fromLibrary && !verdict.ok) {
-        return { ...placed, waivedForLibraryAsset: verdict.reasons };
-      }
-      return placed;
+      if (typeof placed !== 'object' || placed === null || 'error' in placed) return placed;
+      return {
+        ...placed,
+        provenance,
+        ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
+      };
     },
   },
   generate_model: {
