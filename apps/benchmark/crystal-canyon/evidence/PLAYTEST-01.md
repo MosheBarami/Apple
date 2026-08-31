@@ -195,3 +195,39 @@ Each BUY button renders its price caption twice at identical coordinates (`'50'`
 at (765,180) twice, likewise 75 and 100). Two identical stacked labels read as
 slightly heavier text rather than visible duplication, so it is cosmetic —
 recorded rather than fixed.
+
+---
+
+# Visual verification 03 — the colour-collision fixes, confirmed in pixels
+
+Rendered in Studio after the polish pass. Camera at player eye height (~6 studs)
+rather than aerial, per §25.
+
+**Hub, looking north at the landmark.** Cliff banding is now irregular rather
+than the regular staircase the first build produced — the setback accumulates
+per segment and the tone cycle starts at a per-segment offset, so no single band
+runs the length of the wall. A faceted crystal cluster renders in the foreground
+and reads as collectible without a label.
+
+**Frost Hollow, looking south down the ice path.** This is the fix that mattered
+most and it is unambiguous in the render: the blue-grey path (`IcePath` /
+`IcePathDark`) now reads clearly against the white `FrostFloor`, where before
+three of six segments were *byte-identical* to the ground beneath them
+(sum|Δ| = 0) and the road simply did not exist. The cold-zone trees are teal
+rather than white-on-white — the same defect class, 300 lines away — and the
+tufts are cold-toned instead of meadow-green.
+
+**Meadow, player eye height, looking north.** The oversized green arrows read as
+a receding row of chevrons floating above the path, which is §8's
+"progression is signposted physically… no text should be needed to know where to
+go". The wide dirt path contrasts hard with the saturated grass (§9.5), props
+are clustered rather than evenly scattered (§9.7), and the cliffs enclose the
+space so the world does not leak away (§7).
+
+## One false alarm, recorded because it looked like a defect
+
+A render from y=14 showed a giant green surface filling the top half of the
+frame, which looked like an arrow placed low enough to block the view. It was
+not: the arrows sit at y=17 with their undersides at 15.8, well clear of a
+~5-stud eye line. The camera was underneath them. Measured before changing
+anything — the arrows were left alone.
