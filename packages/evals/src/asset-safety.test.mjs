@@ -386,6 +386,257 @@ test('the calibrated target is the style spec: its palette is the §1 environmen
 });
 
 // ==============================================================================================
+// 3B. The COHERENCE gate (§42) — "does this belong with what is already here?"
+//
+// WHY THIS SECTION EXISTS. §3 above is green, and the map it produced was rejected on sight: "the
+// world reads too much like multiple unrelated free assets placed into one map". Every asset in it
+// had passed the ranker. The ranker was not broken — it was answering an ABSOLUTE question ("is
+// this cartoon-compatible?") when the failure was RELATIVE ("does this belong with the eleven
+// things already standing here?").
+//
+// So every test below is written to fail if the gate ever collapses back into an absolute rule.
+// The load-bearing one is `THE SAME ASSET, TWO CONTEXTS`: one candidate, unchanged, coherent in a
+// meadow and refused in a frost biome. No absolute rule can produce that, which is exactly why it
+// is the test that proves the gate is doing the new job rather than a rename of the old one.
+//
+// The four hard fails the owner named from the screenshots are each pinned by name below: frost
+// contamination (B), silhouette mismatch (C/E's detail density), scale disagreement (F), and grey
+// unstyled props (G).
+// ==============================================================================================
+
+/** The eleven-ish assets already standing in the meadow: flat-shaded, saturated, low-poly. */
+const MEADOW_SET = [
+  { assetId: 11, name: 'Stylised Oak', triangles: 340, hasTexture: false, dominantColours: [[0.24, 0.62, 0.31], [0.48, 0.32, 0.19]], boundsStuds: [12, 22, 12], intent: 'tree' },
+  { assetId: 12, name: 'Stylised Pine', triangles: 300, hasTexture: false, dominantColours: [[0.34, 0.72, 0.35]], boundsStuds: [10, 20, 10], intent: 'tree' },
+  { assetId: 13, name: 'Round Rock', triangles: 180, hasTexture: false, dominantColours: [[0.72, 0.75, 0.77]], boundsStuds: [4, 3, 4], intent: 'rock' },
+  { assetId: 14, name: 'Wooden Crate', triangles: 120, hasTexture: false, dominantColours: [[0.79, 0.55, 0.30]], boundsStuds: [4, 4, 4], intent: 'crate' },
+  { assetId: 15, name: 'Painted Fence', triangles: 260, hasTexture: false, dominantColours: [[0.85, 0.72, 0.42]], boundsStuds: [8, 6, 1], intent: 'fence' },
+];
+
+/** HSV saturation, so a test can assert a retint actually moved off neutral. */
+const hsvSaturation = (c) => (Math.max(...c) === 0 ? 0 : (Math.max(...c) - Math.min(...c)) / Math.max(...c));
+
+const meadow = () => A.buildPaletteContext('meadow', MEADOW_SET);
+const frost = () => A.buildPaletteContext('frost', []);
+
+/** A newcomer that was authored for the same map: same density, same palette, same tier. */
+const COHERENT_BUSH = {
+  assetId: 21,
+  name: 'Stylised Shrub',
+  triangles: 260,
+  hasTexture: false,
+  dominantColours: [[0.30, 0.68, 0.33]],
+  boundsStuds: [4, 4, 4],
+  intent: 'bush',
+};
+
+test('a coherent asset passes: same density, same palette, same player-relative tier', () => {
+  const v = A.scoreAssetCoherence(COHERENT_BUSH, meadow());
+  assert.equal(v.verdict, 'coherent', A.coherenceToText(v));
+  assert.deepEqual(v.blockers, []);
+  assert.equal(v.transform, null);
+  assert.ok(v.total >= A.COHERENCE_FLOOR, `${v.total} should clear the ${A.COHERENCE_FLOOR} floor`);
+  assert.ok(v.confidence > 0.8, `it was fully measured, so confidence should be high, was ${v.confidence}`);
+});
+
+test('HARD FAIL C/E: a photoreal high-poly asset among flat-shaded ones is refused for detail density', () => {
+  const photoreal = { ...COHERENT_BUSH, assetId: 22, name: 'Scanned Granite Boulder', intent: 'rock', triangles: 40000, hasTexture: false, dominantColours: [[0.66, 0.70, 0.72]] };
+  const v = A.scoreAssetCoherence(photoreal, meadow());
+  assert.equal(v.verdict, 'incoherent', A.coherenceToText(v));
+  assert.ok(v.blockers.some((b) => /detail density|silhouette/i.test(b)), `expected a silhouette/detail-density blocker, got: ${v.blockers.join(' | ')}`);
+  // Non-vacuity: a rock three times as dense as its neighbours is BUSY, not incoherent. The gate
+  // must separate "more detailed than the set" from "from another game", or it culls everything.
+  const busy = { ...photoreal, triangles: 900 };
+  assert.notEqual(A.scoreAssetCoherence(busy, meadow()).verdict, 'incoherent', 'a merely busier asset must survive');
+  assert.equal(v.transform, null, 'nothing here decimates a mesh, so no transform may be offered');
+  // And the point of the gate: the ABSOLUTE ranker would not have said this on its own.
+  const silhouette = v.axes.find((a) => a.axis === 'silhouette');
+  assert.match(silhouette.reason, /x the accepted median/, 'the reason must be relative to the accepted set, not to a fixed budget');
+});
+
+test('HARD FAIL B: a lime-green asset offered to the frost biome is refused for palette contamination', () => {
+  const limeBush = { assetId: 23, name: 'Bright Lime Bush', triangles: 280, hasTexture: false, dominantColours: [[0.45, 0.85, 0.20]], boundsStuds: [4, 4, 4], intent: 'bush' };
+  const v = A.scoreAssetCoherence(limeBush, frost());
+  assert.equal(v.verdict, 'incoherent', A.coherenceToText(v));
+  assert.ok(v.reasons.some((r) => /palette contamination/i.test(r)), `expected a palette reason, got: ${v.reasons.join(' | ')}`);
+  assert.ok(v.blockers.some((b) => /identity colour/i.test(b)), 'foliage green is the object\'s identity, so a retint is not the fix — removal is');
+  assert.equal(v.transform, null);
+});
+
+test('THE SAME ASSET, TWO CONTEXTS: coherent in the meadow, refused in the frost biome', () => {
+  const inMeadow = A.scoreAssetCoherence(COHERENT_BUSH, meadow());
+  const inFrost = A.scoreAssetCoherence(COHERENT_BUSH, frost());
+  assert.equal(inMeadow.verdict, 'coherent');
+  assert.equal(inFrost.verdict, 'incoherent');
+  // This is the whole difference between this gate and the style ranker above: the ranker cannot
+  // tell these two apart, because nothing about the ASSET changed.
+  const style = A.scoreAssetStyle({ ...COHERENT_BUSH, materials: ['SmoothPlastic'] }, A.BRIGHT_SIMULATOR);
+  assert.equal(style.hardFails.length, 0, 'the absolute style gate is happy either way — that is the gap this section closes');
+});
+
+test('HARD FAIL G: a grey, unstyled prop is TRANSFORMED with a retint, not rejected', () => {
+  const greyFence = { assetId: 24, name: 'Fence', triangles: 240, hasTexture: false, dominantColours: [[0.58, 0.58, 0.59]], boundsStuds: [8, 6, 1], intent: 'fence' };
+  const v = A.scoreAssetCoherence(greyFence, meadow());
+  assert.equal(v.verdict, 'transform', A.coherenceToText(v));
+  assert.equal(v.transform.kind, 'retint');
+  assert.deepEqual(v.blockers, []);
+  assert.ok(v.reasons.some((r) => /grey|unstyled|saturation/i.test(r)), v.reasons.join(' | '));
+  // The retint must be an actual improvement, and must not be the approved grey it already is.
+  assert.ok(v.transform.colour, 'a retint must name the colour to move to');
+  assert.ok(hsvSaturation(v.transform.colour) >= 0.3, `a retint onto another neutral fixes nothing; saturation was ${hsvSaturation(v.transform.colour).toFixed(2)}`);
+  assert.ok(v.transform.projectedTotal > v.total, `the projection must beat the current score: ${v.transform.projectedTotal} vs ${v.total}`);
+});
+
+test('a DELIBERATE neutral is not a grey prop: the set approves the stone it already painted', () => {
+  // The grey-prop rule and the stone palette pull in opposite directions, and getting this wrong
+  // either lets factory grey through or repaints the scene's own stone lime. The line is precedent:
+  // sitting ON an approved colour is exempt, being merely near one is not.
+  const stone = { assetId: 41, name: 'Boulder', triangles: 200, hasTexture: false, dominantColours: [[0.72, 0.75, 0.77]], boundsStuds: [4, 3, 4], intent: 'rock' };
+  const painted = A.scoreAssetCoherence(stone, meadow());
+  assert.equal(painted.verdict, 'coherent', A.coherenceToText(painted));
+  assert.match(painted.axes.find((a) => a.axis === 'saturation').reason, /deliberate/);
+  // Factory part grey is close enough to the stone to be "in palette" and is still refused, which
+  // is the whole reason the exemption uses a tighter test than the palette axis does.
+  const factory = { ...stone, assetId: 42, dominantColours: [[0.58, 0.58, 0.59]] };
+  const v = A.scoreAssetCoherence(factory, meadow());
+  assert.equal(v.verdict, 'transform', A.coherenceToText(v));
+  assert.equal(v.transform.kind, 'retint');
+});
+
+test('the projected total is COMPUTED by re-scoring the transformed asset, not asserted', () => {
+  const greyFence = { assetId: 24, name: 'Fence', triangles: 240, hasTexture: false, dominantColours: [[0.58, 0.58, 0.59]], boundsStuds: [8, 6, 1], intent: 'fence' };
+  const ctx = meadow();
+  const v = A.scoreAssetCoherence(greyFence, ctx);
+  const after = A.scoreAssetCoherence({ ...greyFence, dominantColours: [v.transform.colour] }, ctx);
+  assert.ok(Math.abs(after.total - v.transform.projectedTotal) < 1e-9, `projection ${v.transform.projectedTotal} must equal the re-score ${after.total}`);
+  assert.equal(after.verdict, 'coherent', 'and applying the suggested transform must actually make it coherent');
+});
+
+test('a textured mesh among untextured ones is flagged UNRECOLOURABLE and refused', () => {
+  const textured = { ...COHERENT_BUSH, assetId: 25, name: 'Textured Shrub', hasTexture: true };
+  const v = A.scoreAssetCoherence(textured, meadow());
+  assert.equal(v.unrecolourable, true, 'a baked texture is beyond the reach of every colour repair this gate has');
+  assert.equal(v.verdict, 'incoherent', A.coherenceToText(v));
+  assert.ok(v.blockers.some((b) => /unrecolourable/i.test(b)), v.blockers.join(' | '));
+  assert.ok(v.reasons.some((r) => /read foreign/i.test(r)));
+});
+
+test('...unless the texture can be cleared in place, which turns it into a DROP_TEXTURE transform', () => {
+  const removable = { ...COHERENT_BUSH, assetId: 26, name: 'Textured Shrub', hasTexture: true, textureRemovable: true };
+  const v = A.scoreAssetCoherence(removable, meadow());
+  assert.equal(v.unrecolourable, true, 'it is still unrecolourable AS IT STANDS — that is why the fix is removal of the texture');
+  assert.equal(v.verdict, 'transform');
+  assert.equal(v.transform.kind, 'drop_texture');
+  assert.deepEqual(v.blockers, []);
+});
+
+test('HARD FAIL F: scale is judged against a PLAYER-RELATIVE tier, and ONE tier out is a rescale', () => {
+  // A tree at head height. The absolute envelope in SCALE_ENVELOPES catches the extremes; this
+  // catches the thing the owner actually saw, which is props disagreeing with EACH OTHER.
+  const shortTree = { assetId: 27, name: 'Stylised Oak', triangles: 320, hasTexture: false, dominantColours: [[0.30, 0.66, 0.32]], boundsStuds: [6, 10, 6], intent: 'tree' };
+  const v = A.scoreAssetCoherence(shortTree, meadow());
+  assert.equal(v.verdict, 'transform', A.coherenceToText(v));
+  assert.equal(v.transform.kind, 'rescale');
+  assert.ok(v.transform.scale > 2, `a 10-stud tree beside 22-stud ones needs a real correction, got ${v.transform.scale}`);
+  assert.match(v.axes.find((a) => a.axis === 'scale_tier').reason, /players tall/, 'the unit must be the player, not the stud');
+  assert.equal(A.tierForHeight(4), 'waist');
+  assert.equal(A.tierForHeight(22), 'canopy');
+  assert.equal(A.expectedTier('tree').tier, 'canopy');
+  assert.equal(A.expectedTier('crate').tier, 'waist');
+});
+
+test('...but TWO tiers out is a cull: a uniform scale carries the detail density with it', () => {
+  const dwarfTree = { assetId: 30, name: 'Stylised Oak', triangles: 320, hasTexture: false, dominantColours: [[0.30, 0.66, 0.32]], boundsStuds: [4, 4, 4], intent: 'tree' };
+  const v = A.scoreAssetCoherence(dwarfTree, meadow());
+  assert.equal(v.verdict, 'incoherent', A.coherenceToText(v));
+  assert.ok(v.blockers.some((b) => /tiers out/i.test(b)), v.blockers.join(' | '));
+  assert.equal(v.transform, null, 'a 7x blow-up is not a fix, it is a different asset');
+});
+
+test('two DIFFERENT corrections is a cull, not a patch — "a smaller coherent palette beats a larger one"', () => {
+  // Grey (needs a retint) AND one tier too tall (needs a rescale). Either alone is fixable.
+  const twoProblems = { assetId: 28, name: 'Fence', triangles: 240, hasTexture: false, dominantColours: [[0.58, 0.58, 0.59]], boundsStuds: [8, 20, 1], intent: 'fence' };
+  const v = A.scoreAssetCoherence(twoProblems, meadow());
+  assert.equal(v.verdict, 'incoherent', A.coherenceToText(v));
+  assert.ok(v.blockers.some((b) => /different corrections/i.test(b)), v.blockers.join(' | '));
+});
+
+test('an unmeasured candidate ABSTAINS rather than being refused — unknown is never a failure', () => {
+  const v = A.scoreAssetCoherence({ assetId: 29, name: 'thing' }, meadow());
+  assert.equal(v.abstained, true);
+  assert.equal(v.verdict, 'coherent', 'the gate must not refuse what it could not measure');
+  assert.deepEqual(v.blockers, []);
+  assert.ok(v.confidence < 0.4, `confidence should be low, was ${v.confidence}`);
+  assert.ok(v.reasons.some((r) => /abstained/i.test(r)), v.reasons.join(' | '));
+});
+
+test('the context is built from the accepted set: colours already standing in the map are approved', () => {
+  const ctx = meadow();
+  assert.equal(ctx.sampleSize, MEADOW_SET.length);
+  assert.equal(ctx.flatShaded, true);
+  assert.equal(ctx.medianTriangles, 260);
+  assert.ok(ctx.approvedColours.length > A.BIOME_PROFILES.meadow.palette.length, 'the accepted set must widen the palette');
+  // The warm fence gold is nowhere in the biome profile; it is approved because it is already there.
+  const gold = ctx.approvedColours.find((c) => Math.abs(c[0] - 0.85) < 1e-9 && Math.abs(c[1] - 0.72) < 1e-9);
+  assert.ok(gold, 'a colour measured off an accepted asset must join the approved set');
+  // But precedent does NOT widen the contamination bands.
+  const frostCtx = A.buildPaletteContext('frost', [{ dominantColours: [[0.45, 0.85, 0.20]], triangles: 300, hasTexture: false, boundsStuds: [4, 4, 4], intent: 'bush' }]);
+  const v = A.scoreAssetCoherence({ name: 'Lime Bush', intent: 'bush', triangles: 300, hasTexture: false, dominantColours: [[0.45, 0.85, 0.20]], boundsStuds: [4, 4, 4] }, frostCtx);
+  assert.equal(v.verdict, 'incoherent', 'one contaminant already present must not licence the next one');
+});
+
+test('CULL AGGRESSIVELY: cullPalette sorts a mixed set into keep / transform / drop', () => {
+  const mixed = [
+    ...MEADOW_SET,
+    { assetId: 31, name: 'Scanned Granite Boulder', intent: 'rock', triangles: 40000, hasTexture: false, dominantColours: [[0.66, 0.70, 0.72]], boundsStuds: [4, 3, 4] },
+    { assetId: 32, name: 'Fence', intent: 'fence', triangles: 240, hasTexture: false, dominantColours: [[0.58, 0.58, 0.59]], boundsStuds: [8, 6, 1] },
+    { assetId: 33, name: 'Textured Shrub', intent: 'bush', triangles: 260, hasTexture: true, dominantColours: [[0.30, 0.68, 0.33]], boundsStuds: [4, 4, 4] },
+  ];
+  const { keep, transform, drop } = A.cullPalette(mixed, 'meadow');
+  const ids = (rows) => rows.map((r) => r.member.assetId).sort((a, b) => a - b);
+  assert.ok(ids(drop).includes(31), `the 40k boulder must be culled: ${JSON.stringify(ids(drop))}`);
+  assert.ok(ids(drop).includes(33), 'the textured shrub must be culled');
+  assert.ok(ids(transform).includes(32), 'the grey fence is fixable, not culled');
+  assert.equal(keep.length + transform.length + drop.length, mixed.length, 'every member is accounted for exactly once');
+});
+
+test('a transform is EXPRESSIBLE as safe Luau, and fails closed on a hostile path', () => {
+  const retint = { kind: 'retint', instruction: 'x', colour: [0.3, 0.7, 0.35], repairs: ['palette'], projectedTotal: 80 };
+  const code = A.buildTransformLuau('game.Workspace.Fence', retint);
+  assert.match(code, /Color3\.new\(0\.3000, 0\.7000, 0\.3500\)/);
+  assert.match(code, /p\.Color = tint/);
+  assert.equal(A.buildTransformLuau('game.Workspace["a"] end; loadstring("x")() --', retint), null);
+  assert.equal(A.buildTransformLuau('game.Workspace.Fence', { ...retint, colour: [0.3, NaN, 0.35] }), null);
+  const rescale = { kind: 'rescale', instruction: 'x', scale: 4.5, repairs: ['scale_tier'], projectedTotal: 80 };
+  assert.match(A.buildTransformLuau('game.Workspace.Tree', rescale), /ScaleTo\(4\.5000\)/);
+  assert.equal(A.buildTransformLuau('game.Workspace.Tree', { ...rescale, scale: 500 }), null, 'an absurd scale yields no code at all');
+  assert.match(A.buildTransformLuau('game.Workspace.Bush', { kind: 'drop_texture', instruction: 'x', repairs: ['texture'], projectedTotal: 80 }), /TextureID = ""/);
+});
+
+test('every coherence axis carries a weight, the weights sum to 1, and every axis states a reason', () => {
+  const v = A.scoreAssetCoherence(COHERENT_BUSH, meadow());
+  assert.deepEqual(v.axes.map((a) => a.axis).sort(), [...A.COHERENCE_AXES].sort());
+  const sum = v.axes.reduce((a, x) => a + x.weight, 0);
+  assert.ok(Math.abs(sum - 1) < 1e-9, `weights summed to ${sum}`);
+  for (const a of v.axes) {
+    assert.ok(a.reason.length > 10, `${a.axis} has no reason`);
+    assert.ok(a.score >= 0 && a.score <= 1, `${a.axis} out of range`);
+  }
+});
+
+test('the frost biome forbids living green and the meadow does not — the band is the biome\'s, not global', () => {
+  assert.equal(A.BIOME_PROFILES.frost.forbidden.length, 1);
+  assert.equal(A.BIOME_PROFILES.meadow.forbidden.length, 0);
+  assert.match(A.BIOME_PROFILES.frost.forbidden[0].why, /another map/i);
+  // Frost's own pine green is desaturated enough to sit outside its own band, or the biome would
+  // be forbidding its own palette.
+  const pine = A.BIOME_PROFILES.frost.palette.find((c) => c[1] > c[0] && c[1] > c[2]);
+  assert.ok(pine, 'frost has a green in its palette');
+  const v = A.scoreAssetCoherence({ name: 'Frost Pine', intent: 'tree', triangles: 300, hasTexture: false, dominantColours: [pine], boundsStuds: [10, 20, 10] }, frost());
+  assert.ok(!v.blockers.some((b) => /contamination/i.test(b)), `frost must not forbid its own palette: ${v.blockers.join(' | ')}`);
+});
+
+// ==============================================================================================
 // 4. Pipeline plumbing: describe, creator, path safety, normalisation, tree
 // ==============================================================================================
 
@@ -487,7 +738,7 @@ function fakeStore(details = DETAILS(101, 'Low Poly Crate')) {
  * A fake Studio. `scripts` is the hierarchy the plugin will report AFTER insertion — i.e. what the
  * metadata gate could not see. Deletions actually mutate it, so `verify` is a real re-read.
  */
-function fakeStudio({ scripts = [], classes = ['Model', 'MeshPart'], failOn = null } = {}) {
+function fakeStudio({ scripts = [], classes = ['Model', 'MeshPart'], failOn = null, size = [4, 4, 4], colours = [] } = {}) {
   const state = { scripts: scripts.slice(), deleted: [], calls: [] };
   const bridge = {
     async execStudioOp(op) {
@@ -497,7 +748,7 @@ function fakeStudio({ scripts = [], classes = ['Model', 'MeshPart'], failOn = nu
         case 'insert_asset':
           return { ok: true, data: { inserted: ['game.Workspace.Crate'] } };
         case 'get_tree':
-          return { ok: true, data: { root: { name: 'Crate', class: classes[0], pos: [0, 2, 0], size: [4, 4, 4], children: classes.slice(1).map((c, i) => ({ name: `C${i}`, class: c })) } } };
+          return { ok: true, data: { root: { name: 'Crate', class: classes[0], pos: [0, size[1] / 2, 0], size, children: classes.slice(1).map((c, i) => ({ name: `C${i}`, class: c })) } } };
         case 'list_scripts':
           return { ok: true, data: { scripts: state.scripts.map((s) => ({ path: s.path, class: s.className })) } };
         case 'read_script': {
@@ -509,7 +760,9 @@ function fakeStudio({ scripts = [], classes = ['Model', 'MeshPart'], failOn = nu
           state.scripts = state.scripts.filter((s) => !op.paths.includes(s.path) && !op.paths.some((p) => s.path.startsWith(p + '.')));
           return { ok: true, data: { deleted: op.paths } };
         case 'run_code':
-          return { ok: true, data: { result: '{"anchored":3,"scaled":0,"size":[4,4,4],"pos":[0,2,0]}' } };
+          // The normalisation snippet now reports the colours it measured while anchoring, because
+          // the coherence gate cannot refuse a grey prop it was never told the colour of.
+          return { ok: true, data: { result: `{"anchored":3,"scaled":0,"size":[${size.join(',')}],"pos":[0,${size[1] / 2},0],"colours":${JSON.stringify(colours)}}` } };
         default:
           return { ok: true, data: {} };
       }
@@ -623,6 +876,63 @@ test('NO NETWORK: every URL the broker asked for went to the injected fake', asy
   await brokerAsset({}, { description: 'a low poly crate', intent: 'crate' }, studio.bridge, { fetchImpl: store.fetchImpl });
   assert.ok(store.urls.length > 0, 'the broker must have gone through the injected fetch');
   for (const u of store.urls) assert.match(u, /^https:\/\/apis\.roblox\.com\//, u);
+});
+
+// --- the coherence gate at the PIPELINE level -----------------------------------------------
+// §3B proves the gate works. These three prove it RUNS — the exact distinction that let the script
+// scanner ship with 47 green tests and zero call sites. If the `coherence` step is ever unwired
+// from `brokerAsset`, §3B stays green and these fail.
+
+test('THE COHERENCE GATE RUNS IN THE PIPELINE: it is a step, and it reports against the palette', async () => {
+  const store = fakeStore();
+  const studio = fakeStudio({ colours: [[0.79, 0.55, 0.30]] });
+  const palette = A.buildPaletteContext('meadow', MEADOW_SET);
+  const r = await brokerAsset({}, { description: 'a low poly crate', intent: 'crate' }, studio.bridge, { fetchImpl: store.fetchImpl, palette });
+  assert.equal(r.ok, true, r.summary);
+  assert.ok(BROKER_STEPS.includes('coherence'), 'coherence must be a declared step, not an ad-hoc call');
+  assert.ok(r.steps.some((st) => st.step === 'coherence'), 'the step must actually have run');
+  assert.equal(r.coherence.verdict, 'coherent', A.coherenceToText(r.coherence));
+  assert.equal(r.coherence.contextSize, MEADOW_SET.length, 'it must judge against the palette it was given, not a default');
+  // The colours came out of the normalisation pass, which is the only reason the gate has teeth.
+  assert.deepEqual(r.normalisation.colours, [[0.79, 0.55, 0.30]]);
+});
+
+test('AN INCOHERENT ASSET IS DISCARDED FROM THE PLACE, exactly like an unsafe one', async () => {
+  const store = fakeStore();
+  // A lime-green tree, inserted into a frost biome. Safe, on-style, and from another map.
+  const studio = fakeStudio({ size: [10, 22, 10], colours: [[0.45, 0.85, 0.20]] });
+  const palette = A.buildPaletteContext('frost', [
+    { triangles: 800, hasTexture: false, dominantColours: [[0.75, 0.90, 0.96]], boundsStuds: [10, 20, 10], intent: 'tree' },
+  ]);
+  const r = await brokerAsset({}, { description: 'a low poly pine tree', intent: 'tree' }, studio.bridge, { fetchImpl: store.fetchImpl, palette });
+  assert.equal(r.ok, false, r.summary);
+  assert.equal(r.aborted.step, 'coherence');
+  assert.match(r.summary, /contamination/i);
+  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate'], 'an asset that does not belong is removed, not left standing');
+});
+
+test('a TRANSFORMABLE asset is kept and the fix is applied in the place, not just described', async () => {
+  const store = fakeStore();
+  const studio = fakeStudio({ size: [8, 6, 1], colours: [[0.58, 0.58, 0.59]] });
+  const palette = A.buildPaletteContext('meadow', MEADOW_SET);
+  const r = await brokerAsset({}, { description: 'a wooden fence', intent: 'fence' }, studio.bridge, { fetchImpl: store.fetchImpl, palette, applyTransform: true });
+  assert.equal(r.ok, true, r.summary);
+  assert.equal(r.coherence.verdict, 'transform');
+  assert.equal(r.transformApplied.kind, 'retint');
+  assert.deepEqual(studio.state.deleted, [], 'a fixable asset is fixed, not culled');
+  // Two run_code calls: the normalisation pass, then the retint. The second one is the fix landing.
+  assert.equal(studio.state.calls.filter((c) => c === 'run_code').length, 2);
+});
+
+test('without applyTransform the fix is REPORTED and not silently performed', async () => {
+  const store = fakeStore();
+  const studio = fakeStudio({ size: [8, 6, 1], colours: [[0.58, 0.58, 0.59]] });
+  const palette = A.buildPaletteContext('meadow', MEADOW_SET);
+  const r = await brokerAsset({}, { description: 'a wooden fence', intent: 'fence' }, studio.bridge, { fetchImpl: store.fetchImpl, palette });
+  assert.equal(r.ok, true, r.summary);
+  assert.equal(r.transformApplied, null);
+  assert.match(r.steps.find((st) => st.step === 'coherence').detail, /needs a retint/);
+  assert.equal(studio.state.calls.filter((c) => c === 'run_code').length, 1);
 });
 
 test('the broker never throws — a Studio that fails every op is a refusal with an audit trail', async () => {

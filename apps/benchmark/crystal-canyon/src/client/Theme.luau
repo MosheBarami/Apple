@@ -26,6 +26,40 @@
 	and the panel itself all go through it, which is why they now read as one
 	family instead of five separately-tuned frames.
 
+	--- the direction change: dark is INK, not PAINT ---
+
+	The pass after that one was rejected again, and this time the note was about
+	WHERE the dark goes: "too much black surface area", "currency counters
+	dominate with large dark pills", "side navigation feels like unrelated
+	coloured circles". Every one of those is the same mistake — near-black was
+	being used as the default *fill* of a surface rather than as the line around
+	one.
+
+	So the rule this file now enforces is:
+
+	    dark is for OUTLINE, SHADOW and CONTRAST. It is not a fill.
+
+	A surface's fill is the colour of the thing it represents. A currency
+	counter is the currency's own colour with white outlined numerals on it
+	(`Theme.counter`); a nav tile is its section's colour; the primary action is
+	the brightest object on the screen (`Theme.actionButton`). Near-black appears
+	as the 3–4px stroke, the offset shadow plate, the hard bottom edge — and, in
+	the one place a fill is still justified, as `Theme.well`: a translucent inset
+	recess that sits BEHIND a number to lift it off a saturated body. A well is
+	shading, not a surface, so it is thin, it is see-through, and it never grows
+	into the pill it is drawn inside.
+
+	`Theme.Accent` is the other half of the answer. The owner's second note was
+	that the world and the UI "do not feel fully connected", so the HUD's
+	structural colours are no longer invented neutrals (a cool slate rail, a
+	charcoal chip) — they are read straight out of §7's WORLD palette: the sand
+	of the plaza floor for group plates, canyon rust and warm ink for recesses,
+	moss green for the primary action, and the cyan/violet of the crystals the
+	player is actually collecting for the nav. `Theme.groupPlate` is the one
+	primitive that carries that stone: the wallet, the nav rail and the sell
+	mount are all the same carved slab, which is what makes three clusters read
+	as one interface.
+
 	Section numbers in comments refer to docs/ROBLOX-STYLE-SPEC.md.
 
 	Six decisions below are not obvious and are worth reading before editing.
@@ -134,6 +168,10 @@ Theme.Edge = {
 	Counter = 6,
 	Header = 7,
 	Panel = 9,
+	-- The primary action is physically the thickest control on the screen. Depth
+	-- is the category's way of saying "this is the button", and it costs nothing
+	-- in noise — unlike a second colour or a permanent animation.
+	Action = 8,
 }
 
 --[[ The drop shadow (decision 5). Solid, offset, low transparency — a shape,
@@ -143,6 +181,10 @@ Theme.Shadow = {
 	Transparency = 0.62,
 	PanelOffset = Vector2.new(8, 12),
 	PanelTransparency = 0.46,
+	-- Cast further and darker than a normal control's, so the primary action
+	-- sits visibly ABOVE the plate it is mounted on.
+	ActionOffset = Vector2.new(6, 9),
+	ActionTransparency = 0.54,
 }
 
 --[[ §4 typography. `ShadeDrop` is the distance the white face is lifted above
@@ -154,6 +196,13 @@ Theme.Type = {
 	Button = Palette.TextSize.Button,
 	Counter = Palette.TextSize.Counter,
 	Small = Palette.TextSize.Small,
+	-- One step above a normal button. "SELL SHARDS" is the sentence the whole
+	-- HUD exists to make the player read, and it was reported as visually muted.
+	Action = 26,
+	-- Captions under an icon. The owner's note was literally "labels under icons
+	-- are tiny", so this is a named size rather than a number typed at a call
+	-- site, and it is deliberately only two steps below body type.
+	Label = 15,
 	ShadeDrop = 2,
 	-- The shade is near-black but not the outline colour: identical values make
 	-- the shadow disappear into the 3px stroke and the type looks flat again.
@@ -161,13 +210,54 @@ Theme.Type = {
 	ShadeTransparency = 0.25,
 }
 
+--[[ THE WORLD'S PALETTE, READ INTO THE INTERFACE.
+
+	 "World and UI art direction do not feel fully connected" was a named defect,
+	 and the cause was that the HUD's structural colours were invented in the HUD
+	 — a cool slate rail, a charcoal caption chip, a neutral dark counter — none
+	 of which appear anywhere in the canyon the player is standing in.
+
+	 Every value below is the UI reading of something that exists in §7's world
+	 palette, and that correspondence is the point:
+
+	   Stone / StoneDeep   the sand plaza floor. Group plates are carved out of
+	                       it, which is what lets the HUD hold saturated controls
+	                       without any large black surface behind them.
+	   Canyon / Ink        the rust cliff at its deepest. Wells, medallion rims
+	                       and ink captions use these instead of a neutral black,
+	                       so even the darks are warm and belong to the place.
+	   Moss / Action       the grass. Action is the lit face of it and is the
+	                       brightest colour this file will draw.
+	   CrystalCyan/Violet  the two crystal colours the player actually collects
+	                       (Config.Zones[].CrystalColor). The nav wears them, so
+	                       the menu is coloured by the game's own subject.
+
+	 These are UI tokens, not world tokens: they are tuned for type contrast on
+	 a screen, not for how a part looks under sunlight. Palette.World stays the
+	 authority for anything built out of parts. ]]
+Theme.Accent = {
+	Stone = Color3.fromRGB(228, 206, 166),
+	StoneDeep = Color3.fromRGB(191, 163, 118),
+	Canyon = Color3.fromRGB(74, 44, 36),
+	Ink = Color3.fromRGB(38, 28, 24),
+	Rust = Color3.fromRGB(181, 83, 58),
+	Moss = Color3.fromRGB(95, 201, 74),
+	Action = Color3.fromRGB(92, 222, 74),
+	CrystalCyan = Color3.fromRGB(76, 198, 244),
+	CrystalViolet = Color3.fromRGB(163, 124, 238),
+	Amber = Color3.fromRGB(245, 190, 60),
+}
+
 Theme.Metrics = {
 	HeaderHeight = 68,
 	CloseSize = 52,
 	OrnamentSize = 44,
 	ButtonHeight = 54,
+	ActionHeight = 72,
 	IconButton = 70,
 	CounterHeight = 46,
+	-- Inner padding of a group plate: how far its contents sit inside the stone.
+	PlatePad = 10,
 }
 
 -- Below this viewport width the panel switches to a near-full-bleed layout.
@@ -203,12 +293,22 @@ function Theme.mix(a: Color3, b: Color3, k: number): Color3
 	return a:Lerp(b, math.clamp(k, 0, 1))
 end
 
---[[ The counter fill, and the direct answer to "too many plain black pill-shaped
-	 surfaces". §6 asks for dark currency pills, so these stay dark — but a gold
-	 pill now reads as deep amber and a coin pill as deep forest, instead of both
-	 being the same black lozenge with a different dot on the left. ]]
-local function counterFill(hue: Color3): Color3
-	return Theme.mix(Palette.UI.CounterFill, Palette.shade(hue, 0.62), 0.58)
+--[[ THE COUNTER SURFACE. This one function is the direction change in miniature.
+
+	 It used to blend the currency's hue 58% into near-black, i.e. the number sat
+	 on a dark pill with a coloured hint. The owner's verdict on the result was
+	 "currency counters dominate with large dark pills", and it was right: the
+	 biggest, highest-contrast objects on the screen were black.
+
+	 Now the surface IS the currency. Only 8% is taken off the hue — just enough
+	 that white numerals carrying a 3px black stroke sit on a fill rather than
+	 glare against a pure highlight tone — so a shard counter reads as gold and a
+	 coin counter reads as green from across the room.
+
+	 §6 still gets what it is actually asking for: a rounded currency pill with a
+	 minted medallion and a big number. What it no longer gets is the black. ]]
+local function counterSurface(hue: Color3): Color3
+	return Palette.shade(hue, 0.08)
 end
 
 --------------------------------------------------------------------------------
@@ -572,6 +672,90 @@ function Theme.dropShadow(target: GuiObject, radius: UDim?, offset: Vector2?, tr
 	)
 end
 
+--[[ A WELL: the only dark fill this design system still hands out, and it is
+	 deliberately not a surface.
+
+	 The problem it solves is real — a big white numeral sitting directly on a
+	 saturated gold pill is legible, but a long one (`1,284,905`) starts to swim.
+	 The wrong fix is the one that was just rejected: make the pill dark. The
+	 right fix is to sink the number a few percent into the colour it is already
+	 on, which is what a moulded object does anyway.
+
+	 So a well is: translucent warm ink (never pure black, never opaque), with a
+	 lit lower lip. The lip is what sells it as a RECESS rather than as a stain —
+	 light comes from above in this category, so the bottom inner edge of a dent
+	 is the part that catches it.
+
+	 Like the hard edge and the sheen it is shading INSIDE its host, so it
+	 carries no outline of its own and an outline audit must not add one. `host`
+	 must clip. `strength` is how dark, 0–1; anything past ~0.3 and this stops
+	 being a recess and becomes the black pill it exists to replace. ]]
+function Theme.well(host: GuiObject, size: UDim2, position: UDim2, strength: number?, radius: UDim?): Frame
+	local well = Instance.new("Frame")
+	well.Name = "Well"
+	well.AnchorPoint = Vector2.new(0, 0)
+	well.Position = position
+	well.Size = size
+	well.BackgroundColor3 = Theme.Accent.Ink
+	well.BackgroundTransparency = 1 - math.clamp(strength or 0.2, 0, 0.3)
+	well.BorderSizePixel = 0
+	well.ZIndex = host.ZIndex
+	well.Parent = host
+	-- Pill by default, which is right for the short wide recess behind a number.
+	-- A tall channel (the nav rail's) must pass a fixed radius: a pill's radius
+	-- is half the SHORT axis, so a 84x380 well would come out as a stadium.
+	corner(well, radius or Theme.Radius.Pill)
+
+	local lip = Instance.new("Frame")
+	lip.Name = "Lip"
+	lip.AnchorPoint = Vector2.new(0.5, 1)
+	lip.Position = UDim2.new(0.5, 0, 1, -1)
+	lip.Size = UDim2.new(1, -10, 0, 2)
+	lip.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	lip.BackgroundTransparency = 0.82
+	lip.BorderSizePixel = 0
+	lip.ZIndex = well.ZIndex
+	lip.Parent = well
+	corner(lip, Theme.Radius.Pill)
+
+	return well
+end
+
+--[[ A GROUP PLATE: the carved sand slab a cluster of controls is mounted on.
+
+	 "Weak visual grouping" and "side navigation feels like unrelated coloured
+	 circles" are the same defect described twice — four controls floating on the
+	 world are four objects, and four controls bolted to one slab are one
+	 control group. This is that slab, and it is the same object for the wallet,
+	 the nav rail and the sell mount, which is what makes those three clusters
+	 read as parts of one interface.
+
+	 Stone rather than dark, because the alternative — a dark rail — is exactly
+	 the "too much black surface area" note. A light warm plate lets the
+	 saturated controls on it stay the brightest things in their own cluster.
+
+	 It clips (every `Theme.surface` does), so lay contents out inside
+	 `Theme.Metrics.PlatePad` and expect anything past the edge to be trimmed. ]]
+function Theme.groupPlate(parent: Instance, size: UDim2?, position: UDim2?): Frame
+	local plate = Theme.surface(parent, {
+		Fill = Theme.Accent.Stone,
+		Radius = Theme.Radius.Panel,
+		Stroke = Palette.Outline.Panel,
+		Edge = Theme.Edge.Panel,
+		-- Gentler than a saturated surface's 0.34: a third off sand produces a
+		-- muddy grey band that reads as dirt on the plate rather than as its
+		-- own thickness. Same reason `Theme.card` softens its edge.
+		EdgeShade = 0.2,
+		HighlightInset = 24,
+		HighlightThickness = 5,
+		HighlightTransparency = 0.42,
+		Shadow = Theme.Shadow.Offset,
+		ShadowTransparency = 0.66,
+	}, size, position)
+	plate.Name = "GroupPlate"
+	return plate
+end
+
 --------------------------------------------------------------------------------
 -- buttons
 --------------------------------------------------------------------------------
@@ -764,7 +948,13 @@ local function makeButton(
 	edgeThickness: number,
 	highlightScale: number,
 	highlightInset: number,
-	shadowOffset: Vector2
+	shadowOffset: Vector2,
+	-- Optional, and used by exactly one caller: the primary action. §3 hands the
+	-- diagonal sheen band to saturated headers, and the whole point of
+	-- `Theme.actionButton` is that the single most important control on the
+	-- screen gets the loudest surface treatment the design system owns.
+	sheenHeight: number?,
+	shadowTransparency: number?
 ): (TextButton, TextLabel)
 	local btn = Instance.new("TextButton")
 	btn.Name = "Button"
@@ -786,7 +976,9 @@ local function makeButton(
 		HighlightInset = highlightInset,
 		HighlightThickness = 5,
 		HighlightTransparency = 0.52,
+		Sheen = sheenHeight,
 		Shadow = shadowOffset,
+		ShadowTransparency = shadowTransparency,
 	})
 
 	local label = caption(btn, textSize, edgeThickness)
@@ -815,6 +1007,51 @@ function Theme.button(parent: Instance, text: string, fillColor: Color3, size: U
 		18,
 		Theme.Shadow.Offset
 	)
+	return btn
+end
+
+--[[ THE PRIMARY ACTION. One per screen, and on this game's HUD it is SELL
+	 SHARDS — the thing the entire loop is built to make the player press.
+
+	 It was reported as "visually muted", and the diagnosis matters: it was not
+	 the wrong colour, it was the same object as every other button. A control
+	 that has to out-read a whole HUD cannot be distinguished by hue alone, so
+	 this differs from `Theme.button` on five axes at once, all of them the
+	 category's own vocabulary rather than added noise:
+
+	   • the fill is `Theme.Accent.Action`, the lit face of the world's grass and
+	     the brightest colour this file will draw
+	   • the caption is one type step larger (`Theme.Type.Action`)
+	   • the hard bottom edge is thicker, so it is physically the deepest control
+	   • it carries the diagonal sheen band §3 otherwise reserves for headers
+	   • its shadow is cast further and darker, so it floats above its mount
+
+	 No pulse, no glow, no permanent animation: the HUD already pulses this
+	 button's icon when the pack is full, and a control that moves all the time
+	 stops meaning anything when it moves for a reason. ]]
+function Theme.actionButton(
+	parent: Instance,
+	text: string,
+	fillColor: Color3?,
+	size: UDim2?,
+	position: UDim2?
+): TextButton
+	local btn = makeButton(
+		parent,
+		text,
+		fillColor or Theme.Accent.Action,
+		size or UDim2.fromOffset(260, Theme.Metrics.ActionHeight),
+		position or UDim2.fromOffset(0, 0),
+		Theme.Radius.Pill,
+		Theme.Type.Action,
+		Theme.Edge.Action,
+		1,
+		18,
+		Theme.Shadow.ActionOffset,
+		26, -- sheen band height
+		Theme.Shadow.ActionTransparency
+	)
+	btn.Name = "ActionButton"
 	return btn
 end
 
@@ -860,15 +1097,28 @@ function Theme.card(parent: Instance, size: UDim2?): Frame
 	return card
 end
 
---[[ §6 Currency counter. A dark rounded pill — but a pill TINTED toward its own
-	 currency, a minted medallion at the left end, and a big comma-separated
-	 number in outlined display type.
+--[[ §6 Currency counter, rebuilt onto colour.
+
+	 A rounded pill IN THE CURRENCY'S OWN COLOUR, with a minted medallion at the
+	 left end and a big comma-separated number in white outlined display type
+	 sunk into a translucent well. Shards read gold, coins read green, and
+	 neither is a black lozenge with a coloured dot on it any more.
+
+	 The medallion inverts to keep working on the new ground. On a dark pill the
+	 coin was a bright disc; on a gold pill a gold disc would vanish, so the rim
+	 is now a deep shade of the same hue with a bright face inside it. Same
+	 object, same three concentric parts, reversed contrast.
+
+	 Geometry is unchanged, and that is a contract: Panels resizes this pill to
+	 half a strip's width at 42px tall and constrains it between 122 and 268 px,
+	 so the medallion's 32px offset size and the number's `x = 48` origin have to
+	 keep working at that height.
 
 	 Returns the pill and the number label. The label is a `displayText` shade
 	 (decision 3): `label.Text = Util.comma(n)` is all a caller needs and it
 	 keeps working exactly as it did. ]]
 function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (Frame, TextLabel)
-	local fill = counterFill(iconColor)
+	local fill = counterSurface(iconColor)
 
 	local pill = Instance.new("Frame")
 	pill.Name = "Counter"
@@ -887,15 +1137,23 @@ function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (
 		HighlightThickness = 4,
 		-- Subtler than a button's: this is a readout, not a control, and a bright
 		-- rim here would compete with the number for attention.
-		HighlightTransparency = 0.74,
+		HighlightTransparency = 0.66,
 		Shadow = Theme.Shadow.Offset,
 	})
 
+	--[[ The number's well (see `Theme.well`). Thin, translucent, and stopping
+		 short of the pill's ends so the gold or green surface is still what the
+		 eye reads first. Built BEFORE the number so it cannot cover it. ]]
+	-- Centred on the number's own centre line rather than on the pill's, and
+	-- sized in offset, so it stays registered with the type at both the 46px
+	-- height the HUD builds and the 42px one Panels resizes to.
+	Theme.well(pill, UDim2.new(1, -50, 0, 26), UDim2.new(0, 42, 0.5, -14), 0.2)
+
 	--[[ The medallion. Three concentric parts rather than one flat disc — rim,
-		 face, gloss — because a single coloured circle inside a dark pill is
-		 exactly the "basic icon treatment" the owner called out. It is anchored
-		 to the pill's left end and vertically centred, so the Hud resizing the
-		 pill (it does, to line the counters up with the pack bar) moves it. ]]
+		 face, gloss — because a single coloured circle is exactly the "basic icon
+		 treatment" the owner called out. It is anchored to the pill's left end
+		 and vertically centred, so the Hud resizing the pill (it does, to line
+		 the counters up with the pack bar) moves it. ]]
 	local rim = Instance.new("Frame")
 	rim.Name = "Coin"
 	rim.AnchorPoint = Vector2.new(0, 0.5)
@@ -904,7 +1162,9 @@ function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (
 	rim.ZIndex = pill.ZIndex + 1
 	rim.Parent = pill
 	surfaceLayers(rim, {
-		Fill = Palette.shade(iconColor, 0.24),
+		-- Deep enough to read as a struck rim against a pill of the same hue.
+		-- 0.24 was tuned against a near-black pill and disappears against this one.
+		Fill = Palette.shade(iconColor, 0.62),
 		Radius = Theme.Radius.Icon,
 		Stroke = Palette.Outline.Icon,
 		Edge = 0,
@@ -916,12 +1176,12 @@ function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (
 	face.AnchorPoint = Vector2.new(0.5, 0.5)
 	face.Position = UDim2.fromScale(0.5, 0.46)
 	face.Size = UDim2.fromScale(0.72, 0.72)
-	face.BackgroundColor3 = Palette.lift(iconColor, 0.24)
+	face.BackgroundColor3 = Palette.lift(iconColor, 0.42)
 	face.BorderSizePixel = 0
 	face.ZIndex = rim.ZIndex + 1
 	face.Parent = rim
 	corner(face, Theme.Radius.Icon)
-	bodyGradient(face, Palette.lift(iconColor, 0.24))
+	bodyGradient(face, Palette.lift(iconColor, 0.42))
 
 	local gloss = Instance.new("Frame")
 	gloss.Name = "Gloss"

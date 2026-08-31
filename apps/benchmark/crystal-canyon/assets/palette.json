@@ -634,5 +634,60 @@
       "Crystals read as faceted stylised gems and match the collectible language already in the world.",
       "Rocks skew pale; they suit the frost zone better than the rust canyon and should be tinted where used in the meadow."
     ]
+  },
+  "cubeGenerated": {
+    "service": "Roblox GenerationService (Cube)",
+    "method": "generate_mesh via run_as_job \u2014 asynchronous; a synchronous call exceeds the tool timeout and looks like a failure",
+    "generatedAt": "2026-08-31",
+    "provenanceClass": "golem_original",
+    "licence": "Generated for this project via Roblox GenerationService; not third-party licensed content",
+    "attributionRequired": false,
+    "accepted": [
+      {
+        "family": "crystal_cube",
+        "prompt": "small faceted low-poly crystal cluster, bright cyan, flat shaded",
+        "why": "clean faceted silhouette, light-cyan to deep-blue gradient, reads as a collectible"
+      },
+      {
+        "family": "kiosk",
+        "prompt": "cartoon wooden shop kiosk stall with striped awning and counter",
+        "why": "genuinely authored cartoon art \u2014 awning, counter, posts; the strongest single generation"
+      },
+      {
+        "family": "cliff_module",
+        "prompt": "rugged red rock canyon cliff mesa module with eroded ledges and layered strata",
+        "why": "real strata banding in warm rust/tan; breaks the repeated-rectangle read of the canyon wall"
+      },
+      {
+        "family": "cliff_module",
+        "prompt": "tall narrow red rock canyon butte with wind eroded notch",
+        "why": "vertical mass with a cave notch; gives the cliff line silhouette variety"
+      },
+      {
+        "family": "cliff_module",
+        "prompt": "wide low red rock canyon cliff wall segment with broken crumbling edge",
+        "why": "broken cracked top edge; reads as erosion rather than a cut block"
+      },
+      {
+        "family": "landmark",
+        "prompt": "one single giant crystal geode monument, shards growing from one rocky base",
+        "why": "unified silhouette \u2014 every shard grows from one base, unlike the rejected spire"
+      }
+    ],
+    "rejected": [
+      {
+        "prompt": "towering magical crystal spire monument",
+        "why": "three parts that do not cohere: a grey block, a floating diamond and a separate purple cluster"
+      },
+      {
+        "prompt": "chunky cartoon upgrade machine with dials pipes and glowing crystal core",
+        "why": "came back a flat pink/teal blob \u2014 no dials, no core, no vertical presence"
+      },
+      {
+        "prompt": "tall glowing crystal obelisk landmark on a carved stone plinth",
+        "why": "did not produce an obelisk; another mesa slab"
+      }
+    ],
+    "note": "3 of 9 generations rejected AFTER rendering. Generation succeeding is not acceptance."
   }
 }

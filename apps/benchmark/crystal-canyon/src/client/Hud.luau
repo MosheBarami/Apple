@@ -24,38 +24,61 @@
 
 	--- what changed, and why ---
 
-	The first pass was rejected as "too many plain black pill-shaped surfaces",
-	a side menu that "looks like a basic icon stack", and "insufficient visual
-	hierarchy". Three decisions answer that, and each is worth understanding
-	before it is undone:
+	Two passes were rejected. The first for "too many plain black pill-shaped
+	surfaces" and a side menu that "looks like a basic icon stack"; the second,
+	after a rail and tinted pills had been added, for the same thing described
+	more precisely: "too much black surface area", "currency counters dominate
+	with large dark pills", "side navigation feels like unrelated coloured
+	circles", "labels under icons are tiny", "SELL SHARDS is visually muted",
+	"world and UI art direction do not feel fully connected".
 
-	1. THE NAV IS A CLUSTER, NOT FOUR CIRCLES. The four entries sit on one
-	   outlined slate RAIL, and each is a rounded-square tile in its own
-	   saturated hue with a dark caption plate notched into its lower edge. A
-	   rail is what makes four buttons read as one designed control; the plates
-	   are what let the words be legible without shrinking them into the tile.
+	The single rule that answers all of it, and the rule Theme.luau now enforces:
 
-	2. THE CURRENCY COUNTERS ARE COMPOSITES, NOT PILLS. §6 wants dark rounded
-	   currency pills and it gets them — but the body of each is tinted toward
-	   its own currency (deep gold for shards, deep green for coins) rather than
-	   left at flat charcoal, and each carries a saturated icon plate, a small
-	   currency name, and the big number under it. That is three levels of
-	   hierarchy inside one surface, which is what the flat pills lacked.
+	    dark is for OUTLINE, SHADOW and CONTRAST. It is not a fill.
 
-	3. ICONS ARE A FAMILY, DRAWN FROM ONE GRID. All pictograms come from
+	Five decisions follow from it, and each is worth understanding before it is
+	undone:
+
+	1. THE THREE CLUSTERS ARE MOUNTED ON STONE. The wallet, the nav and the sell
+	   action each sit on a `Theme.groupPlate` — the same carved sand slab, taken
+	   from the colour of the world's plaza floor. That is what turns three piles
+	   of controls into three GROUPS, and it is why nothing on this HUD needs a
+	   large dark surface behind it any more. The previous rail was a cool slate
+	   that appears nowhere in the canyon; this stone is literally §7's sand.
+
+	2. THE COUNTERS ARE THE CURRENCY'S COLOUR. A shard capsule is gold and a coin
+	   capsule is green — the whole surface, not a dot on a black pill. The
+	   number is white outlined display type sunk into a `Theme.well`, which is
+	   the one translucent dark this design system still hands out, and the small
+	   currency name is dark INK on the colour with a light halo. Three levels of
+	   hierarchy, no black lozenge.
+
+	3. THE NAV IS ONE CONTROL GROUP. Four rounded-square tiles in the two crystal
+	   colours the player actually collects plus the world's amber and moss, in a
+	   channel on the stone rail, each with a caption plate in a DEEP SHADE OF
+	   ITS OWN TILE'S HUE rather than a near-black chip — so the plate reads as
+	   part of its tile instead of as a fifth unrelated object. Captions are
+	   `Theme.Type.Label`, a named size, because "tiny" was the note.
+
+	4. SELL IS THE BRIGHTEST OBJECT ON THE SCREEN. It is a `Theme.actionButton`:
+	   bigger type, thicker edge, a sheen band, a deeper cast shadow and the lit
+	   face of the world's grass for a fill. It is the only control on the HUD
+	   built from that primitive, which is the point of having one.
+
+	5. ICONS ARE A FAMILY, DRAWN FROM ONE GRID. All pictograms come from
 	   Icons.luau, which draws every glyph on a 32-unit design box entirely in
-	   scale units. The previous pass inlined fixed-pixel interiors into
+	   scale units. An earlier pass inlined fixed-pixel interiors into
 	   scale-positioned art frames here, and the four glyphs drifted apart the
 	   moment a tile resized. Nothing in this file draws a glyph any more.
 
-	Buttons still come from `Theme.button` — the nav tiles and the sell action
-	included — so the HUD's press feel, gradient and §3 hard bottom edge are
-	literally the same code the modals use. The nav tile only overrides the
-	corner radius, because §6's circular icon button is the shape the owner
-	rejected. Everything Theme does not have a primitive for (the rail, the
-	capsules, the gauge, the caption plates) is built here from the same Palette
-	tokens, in the same grammar: gradient, hard bottom edge, thick near-black
-	outline.
+	Every surface still comes from Theme — `Theme.surface` for the capsules and
+	chips, `Theme.button` for the nav tiles, `Theme.actionButton` for SELL,
+	`Theme.groupPlate` for the three mounts — so the HUD's press feel, gradient
+	and §3 hard bottom edge are literally the same code the modals use. The nav
+	tile only overrides the corner radius, because §6's circular icon button is
+	the shape the owner rejected. The few shapes Theme has no primitive for (the
+	gauge track and its notches) are built here in the same grammar: gradient,
+	hard bottom edge, thick near-black outline.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -141,33 +164,41 @@ export type Deps = {
 -- UIScale shrinks them on small viewports, never below the touch floor below.
 local M = {
 	Margin = 16,
+	-- How far a cluster's contents sit inside the stone plate they are mounted
+	-- on, and how much room that plate needs under them for its own hard bottom
+	-- edge (Theme.Edge.Panel is 9px of it).
+	Pad = Theme.Metrics.PlatePad,
+	Foot = 8,
 
 	-- wallet
-	CapsuleHeight = 56,
+	CapsuleHeight = 58,
 	CapsuleGap = 8,
-	GaugeGap = 12,
-	GaugeKnob = 46,
-	GaugeTrack = 34,
+	GaugeGap = 10,
+	GaugeKnob = 44,
+	GaugeTrack = 30,
 
 	-- nav rail
-	Tile = 62,
-	TileGap = 14,
+	Tile = 68,
+	TileGap = 12,
 	RailPad = 11,
-	PlateWidth = 78,
-	PlateHeight = 20,
-	PlateOverlap = 7, -- how far the caption plate notches into the tile
+	-- The caption plate is wider than its tile on purpose: "UPGRADES" at
+	-- Theme.Type.Label does not fit inside 68px, and the answer to "labels under
+	-- icons are tiny" is a wider plate, not smaller type.
+	PlateWidth = 84,
+	PlateHeight = 26,
+	PlateOverlap = 8, -- how far the caption plate notches into the tile
 
 	-- sell
-	SellHeight = 66,
-	ChipHeight = 34,
+	SellHeight = Theme.Metrics.ActionHeight,
+	ChipHeight = 36,
 	ChipGap = 8,
 
 	ObjectiveHeight = 56,
 }
 
 --[[ The smallest comfortable touch target is 44px, and the nav tile is the
-	 smallest thing in this HUD a finger has to hit: 62 * 0.72 = 44.6. Every
-	 other control here is larger, so this one ratio is the whole mobile floor. ]]
+	 smallest thing in this HUD a finger has to hit: 68 * 0.72 = 49. Every other
+	 control here is larger, so this one ratio is the whole mobile floor. ]]
 local MIN_SCALE = 0.72
 local MAX_SCALE = 1
 
@@ -175,33 +206,44 @@ local TILE_RADIUS = UDim.new(0, 18) -- §3: rounded rectangle, not a circle
 
 -- Cluster width rules, kept next to each other because the objective collision
 -- check below is only honest if it uses the numbers the clusters are built from.
-local WALLET_WIDTH = { Fraction = 0.2, Min = 226, Max = 306 }
-local SELL_WIDTH = { Fraction = 0.22, Min = 218, Max = 320 }
+-- Both wallet and sell grew by 2 * M.Pad when they gained their stone mounts.
+local WALLET_WIDTH = { Fraction = 0.21, Min = 250, Max = 326 }
+local SELL_WIDTH = { Fraction = 0.23, Min = 236, Max = 336 }
 local OBJECTIVE_WIDTH = { Fraction = 0.34, Min = 300, Max = 480 }
-local WALLET_HEIGHT = M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap + M.GaugeKnob
+
+local WALLET_HEIGHT = M.Pad * 2 + M.Foot + M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap + M.GaugeKnob
+local SELL_HEIGHT = M.Pad * 2 + M.Foot + M.SellHeight + M.ChipGap + M.ChipHeight
 
 local NAV_CELL = M.Tile + M.PlateHeight - M.PlateOverlap
-local NAV_WIDTH = M.Tile + M.RailPad * 2
+-- Sized to the PLATE rather than the tile, because the plate is the wider of
+-- the two and the rail clips.
+local NAV_WIDTH = M.PlateWidth + M.RailPad * 2
 
 --[[ The rail needs more room under the last cell than over the first one: its
 	 own hard bottom edge lives there, and the caption plate is wider than the
 	 tile, so with symmetric padding the last plate's corners would be shaved off
 	 by the rail's rounded corner and its clip. ]]
-local RAIL_BOTTOM = M.RailPad + 8
+local RAIL_BOTTOM = M.RailPad + M.Foot
 
---[[ Neutral darks. The rail is deliberately a cool slate rather than the
-	 counters' near-black: four saturated tiles need something to sit ON, and a
-	 black rail behind black-ish tiles is the "plain black surface" note again.
-	 Caption plates go darker than the rail so they read as inset into it. ]]
-local RAIL_FILL = Color3.fromRGB(48, 58, 70)
-local PLATE_FILL = Color3.fromRGB(29, 33, 38)
+--[[ The nav's four hues, and the clearest example of "pull the HUD's accents
+	 from the world palette". Two of them are the crystal colours the player is
+	 in the canyon to collect (Config.Zones[].CrystalColor, read into UI tones by
+	 Theme.Accent); the other two are the world's amber and its grass. Nothing
+	 here is a colour invented for a menu.
 
+	 A tile's caption plate is NOT listed: it is derived as a deep shade of the
+	 tile's own fill, so the two can never drift apart and the plate can never
+	 become the near-black chip that read as a fifth unrelated object. ]]
 local NAV = {
-	{ Id = "shop", Caption = "SHOP", Art = "shop", Fill = Palette.UI.HeaderCyan },
-	{ Id = "upgrades", Caption = "UPGRADES", Art = "upgrades", Fill = Palette.UI.HeaderPurple },
-	{ Id = "codes", Caption = "CODES", Art = "codes", Fill = Palette.UI.Premium },
-	{ Id = "zones", Caption = "ZONES", Art = "zones", Fill = Palette.UI.HeaderGreen },
+	{ Id = "shop", Caption = "SHOP", Art = "shop", Fill = Theme.Accent.CrystalCyan },
+	{ Id = "upgrades", Caption = "UPGRADES", Art = "upgrades", Fill = Theme.Accent.CrystalViolet },
+	{ Id = "codes", Caption = "CODES", Art = "codes", Fill = Theme.Accent.Amber },
+	{ Id = "zones", Caption = "ZONES", Art = "zones", Fill = Theme.Accent.Moss },
 }
+
+-- How far a caption plate is shaded below its tile. Deep enough for white type
+-- to carry on it, shallow enough that it is still visibly the tile's own colour.
+local PLATE_SHADE = 0.55
 
 -- Runtime handles ----------------------------------------------------------
 type Capsule = {
@@ -255,41 +297,12 @@ local function gradient(inst: GuiObject, fill: Color3): UIGradient
 	return g
 end
 
---[[ §3 Depth is a hard bottom edge, not a soft shadow. Shading within the
-	 host's silhouette rather than a surface of its own, so — like Theme's
-	 equivalent — it is deliberately NOT stroked. `host` must clip. ]]
-local function hardEdge(host: GuiObject, fill: Color3, thickness: number): Frame
-	local edge = Instance.new("Frame")
-	edge.Name = "Edge"
-	edge.AnchorPoint = Vector2.new(0.5, 1)
-	edge.Position = UDim2.fromScale(0.5, 1)
-	edge.Size = UDim2.new(1, 0, 0, thickness)
-	edge.BackgroundColor3 = Palette.shade(fill)
-	edge.BorderSizePixel = 0
-	edge.ZIndex = host.ZIndex
-	edge.Parent = host
-	return edge
-end
-
---[[ A soft top highlight so a dark surface reads as a moulded plastic slab
-	 rather than a hole cut in the screen. Shading again: unstroked. ]]
-local function gloss(host: GuiObject, height: number): Frame
-	local sheen = Instance.new("Frame")
-	sheen.Name = "Gloss"
-	sheen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	sheen.BackgroundTransparency = 0.9
-	sheen.BorderSizePixel = 0
-	sheen.Position = UDim2.fromOffset(0, 0)
-	sheen.Size = UDim2.new(1, 0, 0, height)
-	sheen.ZIndex = host.ZIndex
-	sheen.Parent = host
-	corner(sheen, Palette.Radius.Pill)
-	return sheen
-end
-
-local function mix(a: Color3, b: Color3, t: number): Color3
-	return Color3.new(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t)
-end
+--[[ The HUD used to carry its own `hardEdge`, `gloss` and `mix` helpers, and
+	 they are gone rather than left unused. Every surface here is now built by
+	 `Theme.surface`, `Theme.groupPlate`, `Theme.button` or `Theme.actionButton`,
+	 which apply the §3 moulding themselves — a second local copy of the depth
+	 grammar is exactly how the HUD and the modals drift apart. `Theme.mix` is
+	 the blend that survived, because it is the design system's own. ]]
 
 --[[ Let type shrink to fit a small screen but never grow past the size the
 	 design was drawn at. Mirrors Theme's private helper of the same name. ]]
@@ -312,6 +325,30 @@ local function text(parent: Instance, name: string, size: number, color: Color3?
 	return label
 end
 
+--[[ A caption written as INK on a saturated surface, rather than as white type.
+
+	 This is the small half of the direction change. Now that a currency capsule
+	 is gold instead of near-black, its "SHARDS" caption cannot be white — white
+	 on gold at 13px is the weakest thing on the screen — and it cannot keep the
+	 black stroke §4 gives display type either, because a dark glyph inside a
+	 black outline at that size is a blob.
+
+	 So the caption is a deep shade of the surface's own hue, and the mandatory
+	 stroke is inverted into a LIGHT HALO of the same hue. That still does §4's
+	 job (the glyphs are separated from the fill by a contrasting line) and it
+	 reads as stamped into the metal, which is the effect this category uses
+	 wherever it writes small text on a coloured plate. ]]
+local function inkLabel(parent: Instance, name: string, size: number, ink: Color3, halo: Color3): TextLabel
+	local label = text(parent, name, size, ink)
+	local stroke = label:FindFirstChildOfClass("UIStroke")
+	if stroke and stroke:IsA("UIStroke") then
+		stroke.Color = halo
+		stroke.Thickness = 2
+		stroke.Transparency = 0.2
+	end
+	return label
+end
+
 --[[ Draw a pictogram, tolerating an absent Icons module (see the require at the
 	 top). Returns nothing: no caller needs the handle, and the ones that animate
 	 something animate the plate the glyph sits on, not the glyph. ]]
@@ -325,11 +362,25 @@ local function glyph(parent: Instance, name: string, opts: any)
 	end
 end
 
---[[ The saturated round plate a pictogram sits on. This is the single element
-	 that carries colour into the dark surfaces — capsules, gauge knob, payout
-	 chip and the sell button all use it, which is what makes them read as one
-	 kit rather than four unrelated widgets. ]]
-local function iconPlate(parent: GuiObject, fill: Color3, diameter: number, position: UDim2, art: string?): Frame
+--[[ The round medallion a pictogram sits on. Capsules, the gauge knob, the
+	 payout chip and the sell button all use it, which is what makes them read as
+	 one kit rather than four unrelated widgets.
+
+	 `accent` exists because the surfaces under these medallions inverted. On a
+	 near-black capsule the plate was the bright thing and its glyph's accent
+	 could be derived by lifting its own fill. On a gold capsule the plate has to
+	 be the DARK thing or it disappears into the body, and lifting a dark brown
+	 by 70% gives a dead grey. So a caller that darkens the plate passes the
+	 accent it wants — normally a lift of the capsule's hue, so the glyph still
+	 belongs to its currency. ]]
+local function iconPlate(
+	parent: GuiObject,
+	fill: Color3,
+	diameter: number,
+	position: UDim2,
+	art: string?,
+	accent: Color3?
+): Frame
 	local plate = Instance.new("Frame")
 	plate.Name = "Plate"
 	plate.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -347,7 +398,7 @@ local function iconPlate(parent: GuiObject, fill: Color3, diameter: number, posi
 		glyph(plate, art, {
 			size = UDim2.fromScale(0.64, 0.64),
 			fill = Palette.UI.TextLight,
-			accent = Palette.lift(fill, 0.7),
+			accent = accent or Palette.lift(fill, 0.7),
 			cut = fill,
 			zIndex = plate.ZIndex + 1,
 		})
@@ -539,52 +590,82 @@ end
 
 -- Construction -------------------------------------------------------------
 
---[[ One currency capsule: dark tinted body, saturated icon plate at the left
-	 end, the currency's name small above its big comma-separated number.
+--[[ One currency capsule, and the clearest statement of the direction change.
 
-	 §6 asks for "dark rounded pills, coin icon, big number" and this is still
-	 that — but the body is mixed 22% toward the currency's own hue, which is
-	 enough to tell shards from coins at a glance without leaving the dark family
-	 the spec asks for. Flat charcoal on both was the "plain black pill" note. ]]
+	 THE SURFACE IS THE CURRENCY. The body is the currency's own hue taken down
+	 8% — gold for shards, green for coins — carrying the five layers every other
+	 surface in this game carries, because it is built by `Theme.surface` rather
+	 than assembled here. It was previously near-black mixed 22% toward the hue,
+	 which is what the owner saw as "currency counters dominate with large dark
+	 pills": the biggest, highest-contrast objects on the HUD were black.
+
+	 Three things had to invert to make colour work as the ground:
+
+	   • the medallion, which used to be the bright element on a dark pill and is
+	     now a deep-shaded disc with a lifted glyph — the reverse contrast, same
+	     three concentric parts
+	   • the currency's name, now dark ink with a light halo (`inkLabel`) instead
+	     of white, because white 13px type on gold is the weakest thing possible
+	   • the number, which keeps its white fill and black stroke but now sits in
+	     a `Theme.well` — the translucent recess that is the only dark fill this
+	     design system still hands out
+
+	 What did NOT change is §6's actual ask: a rounded currency pill, a minted
+	 coin at its left end, and a big comma-separated number. Only the black. ]]
 local function capsule(parent: GuiObject, name: string, caption: string, tint: Color3, art: string, y: number): Capsule
-	local body = mix(Palette.UI.CounterFill, tint, 0.22)
+	local body = Palette.shade(tint, 0.08)
 
-	local pill = Instance.new("Frame")
+	local pill = Theme.surface(parent, {
+		Fill = body,
+		Radius = Palette.Radius.Pill,
+		Stroke = Palette.Outline.Button,
+		Edge = 6,
+		HighlightInset = 26,
+		HighlightThickness = 5,
+		HighlightTransparency = 0.56,
+		Shadow = Theme.Shadow.Offset,
+		ShadowTransparency = 0.7,
+	}, UDim2.new(1, 0, 0, M.CapsuleHeight), UDim2.fromOffset(0, y))
 	pill.Name = name
-	pill.Position = UDim2.fromOffset(0, y)
-	pill.Size = UDim2.new(1, 0, 0, M.CapsuleHeight)
-	pill.BackgroundColor3 = body
-	pill.BorderSizePixel = 0
-	pill.ClipsDescendants = true -- required by hardEdge and gloss
-	pill.ZIndex = parent.ZIndex + 2
-	pill.Parent = parent
-	corner(pill, Palette.Radius.Pill)
-	gradient(pill, body)
-	Palette.stroke(pill, Palette.Outline.Button)
-	hardEdge(pill, body, 6)
-	gloss(pill, math.floor(M.CapsuleHeight * 0.42))
 
 	local diameter = M.CapsuleHeight - 16
-	local plate = iconPlate(pill, tint, diameter, UDim2.new(0, 6 + diameter / 2, 0.5, -3), art)
+	--[[ Deep, not bright. On a saturated body a medallion of the same hue is
+		 invisible, so it is shaded hard and the glyph inside it is lifted — which
+		 is also why `iconPlate` takes an accent now. ]]
+	local plate = iconPlate(
+		pill,
+		Palette.shade(tint, 0.62),
+		diameter,
+		UDim2.new(0, 6 + diameter / 2, 0.5, -3),
+		art,
+		Palette.lift(tint, 0.35)
+	)
 
 	local textLeft = 12 + diameter
 
-	local title = text(pill, "Label", 12, Palette.lift(tint, 0.4))
+	--[[ The well behind the number. Built before the two labels so it cannot
+		 cover them, and stopping well short of the pill's right end so the
+		 currency's colour is still the first thing read. ]]
+	Theme.well(pill, UDim2.new(1, -(textLeft + 4), 0, 30), UDim2.new(0, textLeft - 6, 0, 20), 0.2)
+
+	local title = inkLabel(pill, "Label", 13, Palette.shade(tint, 0.68), Palette.lift(tint, 0.55))
 	title.AnchorPoint = Vector2.new(0, 0)
-	title.Position = UDim2.fromOffset(textLeft, 6)
-	title.Size = UDim2.new(1, -(textLeft + 12), 0, 14)
+	title.Position = UDim2.fromOffset(textLeft, 5)
+	title.Size = UDim2.new(1, -(textLeft + 12), 0, 15)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = caption
 
 	local amount = text(pill, "Amount", Palette.TextSize.Counter, Palette.UI.TextLight)
 	amount.AnchorPoint = Vector2.new(0, 0)
-	amount.Position = UDim2.fromOffset(textLeft, 19)
-	amount.Size = UDim2.new(1, -(textLeft + 10), 0, 29)
+	amount.Position = UDim2.fromOffset(textLeft, 21)
+	amount.Size = UDim2.new(1, -(textLeft + 10), 0, 28)
 	amount.TextXAlignment = Enum.TextXAlignment.Left
 	-- §4: never truncated to "1B"; the comma form is part of the fantasy.
 	amount.Text = Util.comma(0)
 
-	return { pill = pill, plate = plate, amount = amount, tint = tint, plateFill = tint }
+	--[[ `plateFill` is what `flash` decays back to when this currency goes up,
+		 so it has to be the medallion's ACTUAL fill, not the capsule's tint. ]]
+	return { pill = pill, plate = plate, amount = amount, tint = tint, plateFill = plate.BackgroundColor3 }
 end
 
 --[[ The pack gauge. §6 asks for a thick rounded progress bar with an icon at
@@ -600,7 +681,13 @@ local function buildGauge(parent: GuiObject, y: number)
 	row.ZIndex = parent.ZIndex + 2
 	row.Parent = parent
 
-	local trackFill = mix(Palette.UI.CounterFill, Palette.UI.SoftCurrency, 0.1)
+	--[[ The one place on this HUD where a dark fill is still the right answer,
+		 and it is not an exception to the direction change but an example of it:
+		 a gauge track is a RECESS, and a recess is dark for the same reason a
+		 `Theme.well` is. What did change is the temperature — the old track was
+		 a neutral charcoal, this one is the canyon's own rust at its deepest,
+		 warmed a little toward the gold that fills it. ]]
+	local trackFill = Theme.mix(Theme.Accent.Canyon, Palette.UI.SoftCurrency, 0.12)
 
 	local track = Instance.new("Frame")
 	track.Name = "Track"
@@ -660,7 +747,7 @@ local function buildGauge(parent: GuiObject, y: number)
 		notch.Parent = track
 	end
 
-	local label = text(track, "Amount", 15, Palette.UI.TextLight)
+	local label = text(track, "Amount", Theme.Type.Label, Palette.UI.TextLight)
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.ZIndex = track.ZIndex + 3
 	label.Text = "0 / 0"
@@ -674,6 +761,33 @@ local function buildGauge(parent: GuiObject, y: number)
 	barFill, barLabel, gaugeKnob = fill, label, knob
 end
 
+--[[ The transparent, padded interior of a stone mount.
+
+	 Every cluster on this HUD is now `groupPlate -> mount -> contents`, and the
+	 middle layer is what lets the contents keep saying `UDim2.new(1, 0, ...)`
+	 instead of doing plate arithmetic at every call site. It is transparent, so
+	 it draws nothing; it exists purely as a coordinate space.
+
+	 It cannot be a UIPadding on the plate itself: a `Theme.surface` puts its
+	 hard bottom edge and its top highlight in as children, and a UIPadding would
+	 inset both of them off the silhouette they are supposed to trace. ]]
+local function mount(parent: Instance, name: string, size: UDim2, position: UDim2): Frame
+	local plate = Theme.groupPlate(parent, size, position)
+	plate.Name = name
+	plate.ZIndex = 2
+
+	local inner = Instance.new("Frame")
+	inner.Name = "Inner"
+	inner.BackgroundTransparency = 1
+	inner.BorderSizePixel = 0
+	inner.Position = UDim2.fromOffset(M.Pad, M.Pad)
+	inner.Size = UDim2.new(1, -M.Pad * 2, 1, -(M.Pad * 2 + M.Foot))
+	inner.ZIndex = plate.ZIndex + 1
+	inner.Parent = plate
+
+	return inner
+end
+
 local function buildWallet(parent: Instance)
 	local box = cluster(
 		parent,
@@ -684,16 +798,18 @@ local function buildWallet(parent: Instance)
 	)
 	constrain(box, WALLET_WIDTH.Min, WALLET_WIDTH.Max)
 
-	shardsCapsule = capsule(box, "Shards", Config.Currency.Shards.Display, Palette.UI.SoftCurrency, "shard", 0)
+	local inner = mount(box, "WalletPlate", UDim2.fromScale(1, 1), UDim2.fromOffset(0, 0))
+
+	shardsCapsule = capsule(inner, "Shards", Config.Currency.Shards.Display, Palette.UI.SoftCurrency, "shard", 0)
 	coinsCapsule = capsule(
-		box,
+		inner,
 		"Coins",
 		Config.Currency.Coins.Display,
 		Palette.UI.HardCurrency,
 		"coin",
 		M.CapsuleHeight + M.CapsuleGap
 	)
-	buildGauge(box, M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap)
+	buildGauge(inner, M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap)
 end
 
 --[[ The little red "you can afford something" dot. It is parented to the CELL
@@ -706,7 +822,10 @@ local function badge(cell: Frame, z: number): Frame
 	dot.BackgroundColor3 = Palette.UI.Close
 	dot.BorderSizePixel = 0
 	dot.AnchorPoint = Vector2.new(0.5, 0.5)
-	dot.Position = UDim2.fromOffset(M.Tile - 7, 7)
+	--[[ The tile's top-right corner, expressed against the CELL. The cell is as
+		 wide as the caption plate and the tile is centred in it, so the tile's
+		 right edge is half the difference in from the cell's. ]]
+	dot.Position = UDim2.fromOffset((M.PlateWidth + M.Tile) // 2 - 7, 7)
 	dot.Size = UDim2.fromOffset(20, 20)
 	dot.ZIndex = z
 	dot.Visible = false
@@ -727,22 +846,32 @@ local function buildNav(parent: Instance, openPanel: (string) -> ())
 		UDim2.fromOffset(NAV_WIDTH, railHeight)
 	)
 
-	--[[ The rail. This single surface is the difference between "a designed
-		 navigation cluster" and "a basic icon stack": it groups the four
-		 entries, gives them a shared ground to sit on, and carries the same
-		 outline + gradient + hard bottom edge as every other surface. ]]
-	local rail = Instance.new("Frame")
+	--[[ The rail, and the answer to "side navigation feels like unrelated
+		 coloured circles". It is the SAME `Theme.groupPlate` the wallet and the
+		 sell action are mounted on — one carved sand slab, three times — which
+		 is what makes four buttons read as one designed control group and what
+		 ties this cluster to the other two.
+
+		 It is deliberately stone rather than the slate it used to be. A dark rail
+		 behind four saturated tiles was a large black surface in a HUD that had
+		 already been failed for having too many of them, and slate grey appears
+		 nowhere in the canyon this game is set in. ]]
+	local rail = Theme.groupPlate(box, UDim2.fromScale(1, 1), UDim2.fromOffset(0, 0))
 	rail.Name = "Rail"
-	rail.Size = UDim2.fromScale(1, 1)
-	rail.BackgroundColor3 = RAIL_FILL
-	rail.BorderSizePixel = 0
-	rail.ClipsDescendants = true
 	rail.ZIndex = 2
-	rail.Parent = box
-	corner(rail, Palette.Radius.Panel)
-	gradient(rail, RAIL_FILL)
-	Palette.stroke(rail, Palette.Outline.Panel)
-	hardEdge(rail, RAIL_FILL, 7)
+
+	--[[ The channel the tiles sit in: a shallow well running the length of the
+		 rail. This is the second half of "one control group" — without it the
+		 four tiles are four objects lying on a slab, and with it they are four
+		 objects seated in a track cut into one. It is a `Theme.well`, so it is
+		 translucent warm ink with a lit lower lip rather than a black inlay. ]]
+	Theme.well(
+		rail,
+		UDim2.new(1, -(M.RailPad - 4) * 2, 1, -(M.RailPad - 4) - RAIL_BOTTOM + 4),
+		UDim2.fromOffset(M.RailPad - 4, M.RailPad - 4),
+		0.16,
+		Theme.Radius.Card
+	)
 
 	local list = Instance.new("Frame")
 	list.Name = "Cells"
@@ -764,7 +893,7 @@ local function buildNav(parent: Instance, openPanel: (string) -> ())
 		cell.Name = entry.Caption
 		cell.BackgroundTransparency = 1
 		cell.LayoutOrder = index
-		cell.Size = UDim2.fromOffset(M.Tile, NAV_CELL)
+		cell.Size = UDim2.fromOffset(M.PlateWidth, NAV_CELL)
 		cell.ZIndex = list.ZIndex + 1
 		cell.Parent = list
 
@@ -773,8 +902,12 @@ local function buildNav(parent: Instance, openPanel: (string) -> ())
 			 but §6's circular icon button is exactly the shape the owner rejected,
 			 so the silhouette is overridden to a rounded square and nothing else
 			 about the button is touched. The caption is empty on purpose: the word
-			 lives on the plate below, where it is legible. ]]
-		local tile = Theme.button(cell, "", entry.Fill, UDim2.fromOffset(M.Tile, M.Tile), UDim2.fromOffset(0, 0))
+			 lives on the plate below, where it is legible.
+
+			 Centred in the cell rather than filling it, because the cell is as
+			 wide as the caption plate and the plate is wider than the tile. ]]
+		local tile =
+			Theme.button(cell, "", entry.Fill, UDim2.fromOffset(M.Tile, M.Tile), UDim2.new(0.5, -M.Tile // 2, 0, 0))
 		tile.Name = "Tile"
 		local silhouette = tile:FindFirstChildOfClass("UICorner")
 		if silhouette and silhouette:IsA("UICorner") then
@@ -793,24 +926,38 @@ local function buildNav(parent: Instance, openPanel: (string) -> ())
 		})
 
 		--[[ The caption plate, notched up into the tile's lower edge so the two
-			 read as one object. Dark against the saturated tile, which is what
-			 gives the cluster its hierarchy: colour identifies, dark labels. ]]
-		local plate = Instance.new("Frame")
+			 read as one object.
+
+			 It is a DEEP SHADE OF THE TILE'S OWN HUE, not a near-black chip. That
+			 one change is most of what the owner was reacting to: a black plate
+			 under a cyan tile is a second, unrelated object, and the eye counts
+			 eight things in the rail instead of four. Shaded from `entry.Fill`
+			 rather than listed in NAV, so a recoloured tile can never leave its
+			 plate behind.
+
+			 Wider than the tile and 26px tall, carrying `Theme.Type.Label` type,
+			 because "labels under icons are tiny" was a named failure and the fix
+			 is a plate big enough to hold real type — not smaller words. ]]
+		local plateFill = Palette.shade(entry.Fill, PLATE_SHADE)
+		local plate = Theme.surface(cell, {
+			Fill = plateFill,
+			Radius = Palette.Radius.Pill,
+			Stroke = Palette.Outline.Card,
+			Edge = 4,
+			EdgeShade = 0.3,
+			HighlightInset = 16,
+			HighlightThickness = 3,
+			HighlightTransparency = 0.76,
+		}, UDim2.fromOffset(M.PlateWidth, M.PlateHeight), UDim2.new(0.5, 0, 0, M.Tile - M.PlateOverlap))
 		plate.Name = "Label"
 		plate.AnchorPoint = Vector2.new(0.5, 0)
-		plate.Position = UDim2.new(0.5, 0, 0, M.Tile - M.PlateOverlap)
-		plate.Size = UDim2.fromOffset(M.PlateWidth, M.PlateHeight)
-		plate.BackgroundColor3 = PLATE_FILL
-		plate.BorderSizePixel = 0
 		plate.ZIndex = tile.ZIndex + 6
-		plate.Parent = cell
-		corner(plate, Palette.Radius.Pill)
-		gradient(plate, PLATE_FILL)
-		Palette.stroke(plate, Palette.Outline.Card)
 
-		local caption = text(plate, "Caption", 12, Palette.UI.TextLight)
-		caption.Size = UDim2.new(1, -8, 1, 0)
-		caption.Position = UDim2.fromOffset(4, 0)
+		local caption = text(plate, "Caption", Theme.Type.Label, Palette.UI.TextLight)
+		-- Lifted 2px off the plate's own hard bottom edge, the same correction
+		-- every caption in Theme makes, so the word is centred in the lit face.
+		caption.Size = UDim2.new(1, -10, 1, -4)
+		caption.Position = UDim2.fromOffset(5, 0)
 		caption.ZIndex = plate.ZIndex + 1
 		caption.Text = entry.Caption
 
@@ -834,12 +981,29 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 		"Sell",
 		Vector2.new(1, 0.5),
 		UDim2.new(1, -M.Margin, 0.5, 0),
-		UDim2.new(SELL_WIDTH.Fraction, 0, 0, M.SellHeight + M.ChipGap + M.ChipHeight)
+		UDim2.new(SELL_WIDTH.Fraction, 0, 0, SELL_HEIGHT)
 	)
 	constrain(box, SELL_WIDTH.Min, SELL_WIDTH.Max)
 
-	local button =
-		Theme.button(box, "SELL SHARDS", Palette.UI.Buy, UDim2.new(1, 0, 0, M.SellHeight), UDim2.fromOffset(0, 0))
+	local inner = mount(box, "SellPlate", UDim2.fromScale(1, 1), UDim2.fromOffset(0, 0))
+
+	--[[ `Theme.actionButton`, and the only call to it in the game. SELL SHARDS
+		 was reported as "visually muted", and the cause was that it was the same
+		 object as every other button with a different fill. This primitive gives
+		 it larger type, a thicker hard edge, the diagonal sheen §3 otherwise
+		 reserves for headers, a deeper cast shadow, and the lit face of the
+		 world's grass — five differences in the category's own vocabulary rather
+		 than a glow or a permanent animation.
+
+		 Framing it on stone is the last part: a bright green control on a warm
+		 sand slab is louder than the same control floating on the sky. ]]
+	local button = Theme.actionButton(
+		inner,
+		"SELL SHARDS",
+		Theme.Accent.Action,
+		UDim2.new(1, 0, 0, M.SellHeight),
+		UDim2.fromOffset(0, 0)
+	)
 
 	--[[ The leading shard plate needs clear space at the left end of the button.
 		 That inset must NOT be a UIPadding on the button: UIPadding insets EVERY
@@ -865,7 +1029,10 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 		captionLabel.Size = UDim2.new(size.X.Scale, size.X.Offset - ICON_INSET, size.Y.Scale, size.Y.Offset)
 	end
 
-	local plate = iconPlate(button, Palette.UI.SoftCurrency, 42, UDim2.new(0, 31, 0.5, -3), "shard")
+	--[[ The leading shard medallion. Gold on green is the loudest legal pairing
+		 in this palette, and it is also literal: this button converts the gold
+		 thing into the green thing. 46px rather than 42 now the action is taller. ]]
+	local plate = iconPlate(button, Palette.UI.SoftCurrency, 46, UDim2.new(0, 33, 0.5, -4), "shard")
 
 	-- Disabled state is drawn as a desaturating veil rather than by recolouring
 	-- the fill: Theme owns the button's gradient and its hard bottom edge (§3),
@@ -881,28 +1048,39 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 	veil.Parent = button
 	corner(veil, Palette.Radius.Pill)
 
-	-- The payout chip: same kit as the capsules, one size down.
-	local chip = Instance.new("Frame")
-	chip.Name = "Payout"
-	chip.BackgroundColor3 = mix(Palette.UI.CounterFill, Palette.UI.HardCurrency, 0.22)
-	chip.BorderSizePixel = 0
-	chip.ClipsDescendants = true
-	chip.Position = UDim2.fromOffset(0, M.SellHeight + M.ChipGap)
-	chip.Size = UDim2.new(1, 0, 0, M.ChipHeight)
-	chip.ZIndex = 2
-	chip.Parent = box
-	corner(chip, Palette.Radius.Pill)
-	gradient(chip, chip.BackgroundColor3)
-	Palette.stroke(chip, Palette.Outline.Card)
-	hardEdge(chip, chip.BackgroundColor3, 4)
+	--[[ The payout chip: what this press is worth, in the currency it pays out.
 
-	local chipPlate = iconPlate(chip, Palette.UI.HardCurrency, M.ChipHeight - 10, UDim2.new(0, 15, 0.5, -2), "coin")
+		 A DEEP COIN GREEN rather than the charcoal it used to be. It has to be
+		 darker than the action above it — it is the quiet half of the pair and
+		 must not compete — but "darker" in this design system means a deeper
+		 shade of a real colour, not a slide toward black. Deep green also says
+		 COINS before the label is read, which is the job. ]]
+	local chipFill = Palette.shade(Palette.UI.HardCurrency, 0.55)
+	local chip = Theme.surface(inner, {
+		Fill = chipFill,
+		Radius = Palette.Radius.Pill,
+		Stroke = Palette.Outline.Card,
+		Edge = 4,
+		HighlightInset = 20,
+		HighlightThickness = 3,
+		HighlightTransparency = 0.74,
+	}, UDim2.new(1, 0, 0, M.ChipHeight), UDim2.fromOffset(0, M.SellHeight + M.ChipGap))
+	chip.Name = "Payout"
+
+	local chipPlate = iconPlate(
+		chip,
+		Palette.UI.HardCurrency,
+		M.ChipHeight - 10,
+		UDim2.new(0, 16, 0.5, -2),
+		"coin",
+		Palette.lift(Palette.UI.HardCurrency, 0.55)
+	)
 	chipPlate.Name = "CoinPlate"
 
-	local chipText = text(chip, "Amount", 15, Palette.UI.TextLight)
+	local chipText = text(chip, "Amount", Theme.Type.Label, Palette.UI.TextLight)
 	chipText.AnchorPoint = Vector2.new(0, 0.5)
-	chipText.Position = UDim2.new(0, 32, 0.5, -2)
-	chipText.Size = UDim2.new(1, -42, 0, 18)
+	chipText.Position = UDim2.new(0, 34, 0.5, -2)
+	chipText.Size = UDim2.new(1, -44, 0, 19)
 	chipText.TextXAlignment = Enum.TextXAlignment.Left
 	chipText.Text = "+0 COINS"
 
@@ -1075,7 +1253,12 @@ function Hud.render(state: HudState?)
 		local canSell = shards > 0
 		sellVeil.Visible = not canSell
 		sellButton.Active = canSell
-		sellButton.AutoButtonColor = canSell
+		--[[ Never re-enabled. Theme turns AutoButtonColor off because it draws
+			 its own hover and press states, and switching it back on here handed
+			 Roblox's built-in tint the same button — two systems recolouring one
+			 fill, which showed up as the action momentarily going flat grey mid
+			 press. `Active` alone is what gates the input. ]]
+		sellButton.AutoButtonColor = false
 	end
 	if payoutLabel then
 		payoutLabel.Text = `+{Util.comma(shards * Config.Sell.CoinsPerShard)} COINS`

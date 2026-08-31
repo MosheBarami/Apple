@@ -1,7 +1,7 @@
 // Asset strategy brain: WHERE a piece of a scene should come from, and whether a Creator Store
 // asset id is safe to touch.
 //
-// Five jobs, all of which exist because the naive answer is wrong:
+// Six jobs, all of which exist because the naive answer is wrong:
 //
 //   1. chooseAssetSource() — the decision table from docs/research/asset-strategy.md §E1.
 //      The default instinct ("search the toolbox for a tree") is the worst option in almost
@@ -20,7 +20,14 @@
 //      chair passes every security assertion and still ruins a bright simulator, so style is
 //      ranked separately and deterministically, before anything a model would have to judge.
 //
-//   5. brokerAsset() — the two above in the one order that is safe, with an audit trail.
+//   5. scoreAssetCoherence() / cullPalette() — right is not the same as right TOGETHER. Every
+//      asset in the rejected map passed 2, 3 and 4 individually, and the map still "reads too much
+//      like multiple unrelated free assets placed into one map". So a fifth gate runs AFTER
+//      insertion and scores a candidate against the PALETTE CONTEXT it is joining rather than
+//      against absolute rules — and returns a transform (retint, rescale, drop texture) where one
+//      would fix it, because "reject" is the expensive answer to a fixable tint.
+//
+//   6. brokerAsset() — all of the above in the one order that is safe, with an audit trail.
 //
 // Everything network-facing takes an injectable fetch so the gate is testable off-network, and
 // nothing here throws: a verification that crashes is a verification that gets skipped.
@@ -1948,11 +1955,776 @@ export function styleToText(score: StyleScore): string {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The COHERENCE gate — "does this belong with the assets already accepted?" (§42)
+//
+// WHY THIS EXISTS, IN THE OWNER'S WORDS: "the world reads too much like multiple unrelated free
+// assets placed into one map". Every asset in that map had passed security AND passed the style
+// ranker above. Both gates were working. Both were asking the wrong question.
+//
+// `scoreAssetStyle()` asks an ABSOLUTE question: is this cartoon-compatible, is it under budget,
+// is it saturated enough. A lime-green bush answers yes. So does a 40k-triangle photoreal rock
+// once you strip its texture. So does a grey fence. Each of those is individually defensible and
+// collectively they are a junk drawer, because "passes the style spec" is not the same as
+// "belongs next to the eleven things already standing here".
+//
+// So this gate asks the RELATIVE question, and it asks it AFTER insertion, against a PALETTE
+// CONTEXT built from what was already accepted:
+//
+//   palette      — distance from the colours this biome has already approved
+//   saturation   — distance from the saturation the accepted set actually runs at
+//   silhouette   — detail density against the accepted set's median, because a 40k-triangle
+//                  realistic rock beside 300-triangle stylised ones is incoherent even though
+//                  both are "rocks" and both are "under budget"
+//   texture      — a textured mesh among untextured ones cannot be recoloured and will always
+//                  read foreign, whatever else is done to it
+//   scale_tier   — plausibility against a PLAYER-RELATIVE tier, not an absolute stud range,
+//                  because the failure the owner saw was trees, rocks, fences and crates
+//                  disagreeing with EACH OTHER
+//   biome        — contamination: living lime-green standing inside a snow biome
+//
+// TWO OUTCOMES, NOT ONE. The owner said "rejected OR transformed". A grey fence in a saturated
+// meadow is not a bad asset, it is an untinted one, and throwing it away costs a search. So the
+// verdict carries a TRANSFORM when a single change would fix it — retint, rescale, drop texture —
+// and refuses only when no single change would. `buildTransformLuau()` turns that suggestion into
+// the code that applies it, so a transform is a thing that happens rather than a thing suggested.
+//
+// AND IT CULLS. "Do not interpret 26 assets acquired as 26 assets must remain. A smaller coherent
+// palette is better than a larger incoherent one." `cullPalette()` is that sentence as a function.
+// ---------------------------------------------------------------------------------------------
+
+/** The colour zones a map is divided into. Each one is its own coherence context. */
+export const BIOMES = ['meadow', 'frost', 'canyon', 'plaza'] as const;
+export type Biome = (typeof BIOMES)[number];
+
+/**
+ * A hue range that must not appear in a biome AT ALL, whatever else the asset does right.
+ *
+ * This is deliberately rarer than "off palette": most out-of-palette colours are a tint problem
+ * and get a retint. A contamination band is the case where the colour is the tell that the asset
+ * came from a different map — the owner's screenshot of bright lime trees standing in snow.
+ */
+export interface HueBand {
+  name: string;
+  /** Degrees, 0..360. */
+  minHue: number;
+  maxHue: number;
+  /** Below this saturation the hue is a neutral and reads as fine. */
+  minSaturation: number;
+  why: string;
+}
+
+export interface BiomeProfile {
+  id: Biome;
+  description: string;
+  /** The colours this biome has approved. Seeded from ROBLOX-STYLE-SPEC §1 where it names them. */
+  palette: readonly RGB[];
+  forbidden: readonly HueBand[];
+}
+
+/** Living leaf/lime green. Named once because two biomes forbid the same band for the same reason. */
+const VEGETATION_GREEN: HueBand = {
+  name: 'vegetation green',
+  minHue: 70,
+  maxHue: 165,
+  minSaturation: 0.35,
+  why: 'living lime/leaf green does not grow here — it reads as an asset from another map dropped into this one',
+};
+
+/**
+ * Only four biomes, and only one of them carries a contamination band, because inventing symmetry
+ * here would be inventing rules. Frost gets the band because frost contamination is the failure
+ * that was actually observed; a canyon genuinely tolerates scrub, so it gets no band and its
+ * off-palette greens are handled as an ordinary tint problem.
+ */
+export const BIOME_PROFILES: Readonly<Record<Biome, BiomeProfile>> = {
+  meadow: {
+    id: 'meadow',
+    description: 'Saturated grass, dirt paths, warm trunks. The default outdoor zone.',
+    palette: [hex('5FC94A'), hex('7ED957'), hex('3E9E4E'), hex('57B85F'), hex('C98A4B'), hex('E0A45C'), hex('7A5230'), hex('B8BFC4')],
+    forbidden: [],
+  },
+  frost: {
+    id: 'frost',
+    description: 'Snow, ice and cold stone. Cool hues only; its greens are desaturated pine, never leaf.',
+    palette: [hex('F2F7FA'), hex('BFE3F2'), hex('7FB6D9'), hex('9FB0BC'), hex('5C8C86'), hex('6E7F94')],
+    forbidden: [VEGETATION_GREEN],
+  },
+  canyon: {
+    id: 'canyon',
+    description: 'Layered warm rock: rust, ochre, sand. Reads by strata, not by repetition.',
+    palette: [hex('B5533A'), hex('C96A3F'), hex('E0A45C'), hex('E8D3A9'), hex('8C4A33'), hex('A9713F')],
+    forbidden: [],
+  },
+  plaza: {
+    id: 'plaza',
+    description: 'Built ground: pale stone, banners, painted trim. Where the player is meant to stop.',
+    palette: [hex('E8D3A9'), hex('B8BFC4'), hex('D9C08A'), hex('C05A4A'), hex('4A7FC0'), hex('F0E4C8')],
+    forbidden: [],
+  },
+};
+
+/** Hue in degrees, 0..360. Undefined for a neutral, so callers must check saturation first. */
+function hueOf(c: RGB): number {
+  const scale = Math.max(c[0], c[1], c[2]) > 1.0001 ? 1 / 255 : 1;
+  const r = c[0] * scale;
+  const g = c[1] * scale;
+  const b = c[2] * scale;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  let h: number;
+  if (max === r) h = 60 * (((g - b) / d) % 6);
+  else if (max === g) h = 60 * ((b - r) / d + 2);
+  else h = 60 * ((r - g) / d + 4);
+  return (h + 360) % 360;
+}
+
+function inBand(c: RGB, band: HueBand): boolean {
+  const { s } = saturationValue(c);
+  if (s < band.minSaturation) return false;
+  const h = hueOf(c);
+  return h >= band.minHue && h <= band.maxHue;
+}
+
+// --- player-relative scale tiers ---------------------------------------------------------------
+//
+// The scale failure the owner named is not "this tree is 300 studs tall" — the absolute envelope in
+// SCALE_ENVELOPES already catches that. It is "trees, rocks, fences, crates disagree strongly in
+// scale", which is a statement about the objects RELATIVE TO EACH OTHER and to the player. So the
+// unit here is the avatar, and the check is which band the asset lands in versus which band its
+// class belongs in.
+
+/** R15 avatar height. Every tier below is a multiple of this, which is the point. */
+export const PLAYER_HEIGHT_STUDS = 5;
+
+export const SCALE_TIERS = [
+  { id: 'underfoot', maxRatio: 0.55, label: 'below the knee — pebbles, flowers, litter' },
+  { id: 'waist', maxRatio: 1.15, label: 'knee to head — crates, bushes, rocks, seating' },
+  { id: 'player', maxRatio: 2.6, label: 'one to two-and-a-half players — doors, fences, signs, NPCs' },
+  { id: 'canopy', maxRatio: 9, label: 'overhead — trees, lamps, columns, statues' },
+  { id: 'landmark', maxRatio: Infinity, label: 'skyline — buildings, towers, the central landmark' },
+] as const;
+export type ScaleTier = (typeof SCALE_TIERS)[number]['id'];
+
+const TIER_ORDER: readonly ScaleTier[] = SCALE_TIERS.map((t) => t.id);
+
+/** Which tier a measured height lands in. */
+export function tierForHeight(heightStuds: number): ScaleTier {
+  const ratio = heightStuds / PLAYER_HEIGHT_STUDS;
+  for (const t of SCALE_TIERS) if (ratio <= t.maxRatio) return t.id;
+  return 'landmark';
+}
+
+/** The stud range a tier covers. `landmark` is open-ended upward and says so with Infinity. */
+export function tierRange(tier: ScaleTier): { min: number; max: number } {
+  const i = TIER_ORDER.indexOf(tier);
+  const min = i <= 0 ? 0 : SCALE_TIERS[i - 1]!.maxRatio * PLAYER_HEIGHT_STUDS;
+  const max = SCALE_TIERS[i]!.maxRatio * PLAYER_HEIGHT_STUDS;
+  return { min, max };
+}
+
+/** What tier each kind of thing is SUPPOSED to occupy. Resolved by longest substring, like scaleRuleFor. */
+export const INTENT_TIERS: Readonly<Record<string, ScaleTier>> = {
+  pebble: 'underfoot', flower: 'underfoot', mushroom: 'underfoot', litter: 'underfoot', grass: 'underfoot',
+  crate: 'waist', barrel: 'waist', bush: 'waist', shrub: 'waist', rock: 'waist', boulder: 'waist',
+  chair: 'waist', stool: 'waist', bench: 'waist', table: 'waist', lantern: 'waist', chest: 'waist',
+  fence: 'player', door: 'player', sign: 'player', npc: 'player', character: 'player', post: 'player',
+  banner: 'player', gate: 'player', barrier: 'player',
+  tree: 'canopy', lamp: 'canopy', column: 'canopy', pillar: 'canopy', statue: 'canopy', arch: 'canopy',
+  fountain: 'canopy', crystal: 'canopy',
+  building: 'landmark', house: 'landmark', tower: 'landmark', castle: 'landmark', monument: 'landmark',
+};
+
+export function expectedTier(intent: string | undefined): { key: string; tier: ScaleTier } {
+  if (typeof intent !== 'string' || !intent.length) return { key: 'prop', tier: 'waist' };
+  const text = intent.toLowerCase();
+  const exact = INTENT_TIERS[text];
+  if (exact) return { key: text, tier: exact };
+  let bestKey: string | null = null;
+  let best: ScaleTier | null = null;
+  for (const [key, tier] of Object.entries(INTENT_TIERS)) {
+    if (text.includes(key) && (bestKey === null || key.length > bestKey.length)) { bestKey = key; best = tier; }
+  }
+  return bestKey && best ? { key: bestKey, tier: best } : { key: 'prop', tier: 'waist' };
+}
+
+/**
+ * Things whose COLOUR IS THEIR IDENTITY. A crate can be any colour; a tree's canopy green is what
+ * makes it read as a tree. That distinction is the whole reason a lime bush in the snow is a
+ * removal and a grey fence in the meadow is a retint: repainting the bush white does not fix the
+ * bush, it makes it a different object that no longer reads as foliage.
+ */
+const IDENTITY_COLOURED = /\b(?:tree|bush|shrub|foliage|plant|leaf|leaves|canopy|hedge|grass|flower|fern|palm|vine|moss)\b/i;
+
+// --- the palette context ------------------------------------------------------------------------
+
+/** An asset already accepted into the map. The gate's context is built out of these. */
+export interface CoherenceMember {
+  assetId?: number | null;
+  name?: string | null;
+  triangles?: number | null;
+  hasTexture?: boolean | null;
+  dominantColours?: readonly RGB[];
+  boundsStuds?: readonly [number, number, number] | null;
+  intent?: string;
+}
+
+/** A candidate is a member plus the two facts that only matter for the transform decision. */
+export interface CoherenceCandidate extends CoherenceMember {
+  /** True when the texture map can be cleared in place (a MeshPart TextureID, not baked-in vertex colour). */
+  textureRemovable?: boolean | null;
+}
+
+export interface PaletteContext {
+  biome: Biome;
+  /** How many accepted assets this was derived from. 0 means the biome profile IS the context. */
+  sampleSize: number;
+  /** Biome palette PLUS every colour already accepted. This is what "in palette" now means. */
+  approvedColours: RGB[];
+  paletteTolerance: number;
+  /** Saturation the accepted set actually runs at — not the spec floor, the observed level. */
+  meanSaturation: number;
+  /** Median triangles across the accepted set, or null when nothing measurable was accepted. */
+  medianTriangles: number | null;
+  /** Median detail density (triangles per cubic stud) across the accepted set. */
+  medianDensity: number | null;
+  /** Fraction of the accepted set carrying a texture map. */
+  texturedFraction: number;
+  /** True when the accepted set is untextured: a textured newcomer cannot be recoloured to match. */
+  flatShaded: boolean;
+  target: StyleTarget;
+  /** How the numbers above were derived, in plain words. */
+  notes: string[];
+}
+
+function median(ns: readonly number[]): number | null {
+  if (!ns.length) return null;
+  const s = [...ns].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
+}
+
+function densityOf(m: CoherenceMember): number | null {
+  const tris = typeof m.triangles === 'number' && Number.isFinite(m.triangles) ? m.triangles : null;
+  if (tris === null || !m.boundsStuds) return null;
+  const volume = Math.max(1, m.boundsStuds[0] * m.boundsStuds[1] * m.boundsStuds[2]);
+  return tris / volume;
+}
+
+/**
+ * Derive the context from what has already been accepted.
+ *
+ * The accepted set WIDENS the palette (a colour that is already standing in the map is approved by
+ * the fact that it is standing there) but it does not widen the contamination bands, which come
+ * from the biome and are not up for negotiation by precedent. That asymmetry is deliberate: it is
+ * how a map drifts one asset at a time, and refusing to let it drift is the point of the gate.
+ */
+export function buildPaletteContext(
+  biome: Biome,
+  accepted: readonly CoherenceMember[] = [],
+  target: StyleTarget = BRIGHT_SIMULATOR,
+): PaletteContext {
+  const profile = BIOME_PROFILES[biome];
+  const members = accepted.filter((m) => m && typeof m === 'object');
+  const notes: string[] = [`biome '${biome}': ${profile.description}`];
+
+  const acceptedColours: RGB[] = [];
+  for (const m of members) for (const c of m.dominantColours ?? []) if (Array.isArray(c) && c.length === 3) acceptedColours.push(c);
+  const approvedColours = [...profile.palette, ...acceptedColours];
+  notes.push(`${profile.palette.length} colour(s) from the biome profile + ${acceptedColours.length} measured off ${members.length} accepted asset(s)`);
+
+  const sats = acceptedColours.map((c) => saturationValue(c).s);
+  const meanSaturation = sats.length ? sats.reduce((a, x) => a + x, 0) / sats.length : target.minSaturation;
+  notes.push(sats.length ? `accepted set runs at ${meanSaturation.toFixed(2)} saturation` : `nothing accepted yet, so the ${target.minSaturation} spec floor stands in for the observed level`);
+
+  const tris = members.map((m) => m.triangles).filter((t): t is number => typeof t === 'number' && Number.isFinite(t));
+  const medianTriangles = median(tris);
+  const densities = members.map(densityOf).filter((d): d is number => d !== null);
+  const medianDensity = median(densities);
+  if (medianTriangles !== null) notes.push(`median accepted asset is ${medianTriangles} triangles${medianDensity !== null ? ` at ${medianDensity.toFixed(1)} tri/stud³` : ''}`);
+
+  const textureKnown = members.filter((m) => m.hasTexture === true || m.hasTexture === false);
+  const texturedFraction = textureKnown.length ? textureKnown.filter((m) => m.hasTexture === true).length / textureKnown.length : 0;
+  const flatShaded = textureKnown.length ? texturedFraction <= 0.2 : target.flatShaded;
+  notes.push(flatShaded ? 'the accepted set is flat-shaded and untextured' : `${Math.round(texturedFraction * 100)}% of the accepted set carries a texture map`);
+
+  return {
+    biome,
+    sampleSize: members.length,
+    approvedColours,
+    paletteTolerance: target.paletteTolerance,
+    meanSaturation,
+    medianTriangles,
+    medianDensity,
+    texturedFraction,
+    flatShaded,
+    target,
+    notes,
+  };
+}
+
+// --- transforms ----------------------------------------------------------------------------------
+
+export const TRANSFORM_KINDS = ['retint', 'rescale', 'drop_texture'] as const;
+export type TransformKind = (typeof TRANSFORM_KINDS)[number];
+
+export interface AssetTransform {
+  kind: TransformKind;
+  /** One line, actionable: what to change and to what. */
+  instruction: string;
+  /** RETINT: the approved colour to move the asset's dominant colours onto. */
+  colour?: RGB;
+  /** RESCALE: multiply the model by this. */
+  scale?: number;
+  /** Which axes this is expected to repair. */
+  repairs: CoherenceAxis[];
+  /** The coherence total the gate PROJECTS once it is applied — recomputed, not guessed. */
+  projectedTotal: number;
+}
+
+export const COHERENCE_AXES = ['palette', 'silhouette', 'saturation', 'texture', 'scale_tier', 'biome'] as const;
+export type CoherenceAxis = (typeof COHERENCE_AXES)[number];
+
+/**
+ * Palette and silhouette lead because they are the two the owner's eye caught from a player-eye
+ * camera: the colour that does not belong, and the object that is too detailed for its neighbours.
+ */
+const COHERENCE_WEIGHTS: Readonly<Record<CoherenceAxis, number>> = {
+  palette: 0.24,
+  silhouette: 0.2,
+  saturation: 0.16,
+  texture: 0.16,
+  scale_tier: 0.14,
+  biome: 0.1,
+};
+
+/** Weighted total at or above which a candidate reads as belonging. */
+export const COHERENCE_FLOOR = 68;
+
+export interface CoherenceAxisScore {
+  axis: CoherenceAxis;
+  score: number;
+  weight: number;
+  reason: string;
+  measured: boolean;
+}
+
+export interface CoherenceVerdict {
+  biome: Biome;
+  /** 0..100, weighted. */
+  total: number;
+  /**
+   * - `coherent`   — it belongs; keep it as it is.
+   * - `transform`  — it does not belong YET, and one named change would fix it.
+   * - `incoherent` — no single change fixes it. Cull it.
+   */
+  verdict: 'coherent' | 'transform' | 'incoherent';
+  axes: CoherenceAxisScore[];
+  /** Everything wrong with it, transformable or not. Empty when it is coherent. */
+  reasons: string[];
+  /** The subset no transform can repair. Non-empty forces `incoherent`. */
+  blockers: string[];
+  transform: AssetTransform | null;
+  /** True when it carries a texture map into a flat-shaded set: it can never be recoloured to match. */
+  unrecolourable: boolean;
+  /** How much of this rests on measured facts, 0..1. */
+  confidence: number;
+  /** True when too little was measured to judge. The gate then abstains rather than refusing. */
+  abstained: boolean;
+  /** How many accepted assets the context was built from. */
+  contextSize: number;
+}
+
+/**
+ * Pick the colour to retint towards: the approved colour nearest in HUE that actually clears the
+ * saturation floor.
+ *
+ * Nearest-by-RGB is the obvious implementation and it is wrong — it maps a grey fence onto the
+ * approved grey stone, which is a no-op that leaves the fence exactly as unstyled as it was. Hue
+ * is the axis a retint can move along without changing what the object is.
+ */
+export function chooseRetint(colours: readonly RGB[], ctx: PaletteContext): RGB | null {
+  const floor = Math.max(ctx.target.minSaturation, ctx.meanSaturation * 0.8);
+  const usable = ctx.approvedColours.filter((c) => {
+    const { s, v } = saturationValue(c);
+    return s >= floor && v >= ctx.target.minValue;
+  });
+  const pool = usable.length ? usable : ctx.approvedColours.slice();
+  if (!pool.length) return null;
+  const source = colours.find((c) => saturationValue(c).s > 0.15);
+  if (source) {
+    const h = hueOf(source);
+    return pool.reduce((best, c) => {
+      const d = Math.min(Math.abs(hueOf(c) - h), 360 - Math.abs(hueOf(c) - h));
+      const bd = Math.min(Math.abs(hueOf(best) - h), 360 - Math.abs(hueOf(best) - h));
+      return d < bd ? c : best;
+    });
+  }
+  // A neutral has no hue to preserve, so match brightness instead and let the palette pick the hue.
+  const v = colours.length ? saturationValue(colours[0]!).v : 0.6;
+  return pool.reduce((best, c) => (Math.abs(saturationValue(c).v - v) < Math.abs(saturationValue(best).v - v) ? c : best));
+}
+
+/**
+ * Score a candidate against a palette context, and say what — if anything — would fix it.
+ *
+ * `depth` is internal: the projected total of a transform is computed by re-running this function
+ * on the transformed candidate, so a suggested transform is one the gate has actually checked
+ * rather than one it hopes about.
+ */
+export function scoreAssetCoherence(cand: CoherenceCandidate, ctx: PaletteContext, depth = 0): CoherenceVerdict {
+  const axes: CoherenceAxisScore[] = [];
+  const reasons: string[] = [];
+  const blockers: string[] = [];
+  /** Failures a transform of this kind would repair. */
+  const repairable: { kind: TransformKind; axis: CoherenceAxis; why: string }[] = [];
+  const push = (axis: CoherenceAxis, score: number, reason: string, measured: boolean) => {
+    axes.push({ axis, score: clamp01(score), weight: COHERENCE_WEIGHTS[axis], reason, measured });
+  };
+
+  const profile = BIOME_PROFILES[ctx.biome];
+  const colours = (cand.dominantColours ?? []).filter((c) => Array.isArray(c) && c.length === 3);
+  const tris = typeof cand.triangles === 'number' && Number.isFinite(cand.triangles) ? cand.triangles : null;
+  const hasTexture = cand.hasTexture ?? null;
+  const identity = IDENTITY_COLOURED.test(`${cand.intent ?? ''} ${cand.name ?? ''}`);
+
+  // 1. Biome contamination -----------------------------------------------------------------------
+  //    Run FIRST because its outcome changes what the palette axis is allowed to suggest: an
+  //    identity-coloured contaminant cannot be retinted out of the problem.
+  let contaminated: HueBand | null = null;
+  {
+    if (!colours.length) {
+      push('biome', 0.5, `no colours were measured, so contamination against '${ctx.biome}' is unknown`, false);
+    } else {
+      const hits = profile.forbidden.filter((b) => colours.some((c) => inBand(c, b)));
+      if (hits.length) {
+        contaminated = hits[0]!;
+        const band = hits[0]!;
+        const why = `palette contamination: ${band.name} inside the '${ctx.biome}' biome — ${band.why}`;
+        push('biome', 0, why, true);
+        reasons.push(why);
+        if (identity) {
+          blockers.push(`${why}; and ${band.name} is this object's identity colour, so retinting it would not fix it — it would make it a different object`);
+        } else {
+          repairable.push({ kind: 'retint', axis: 'biome', why });
+        }
+      } else {
+        push('biome', 1, `no forbidden hue for '${ctx.biome}' appears in its dominant colours`, true);
+      }
+    }
+  }
+
+  // 2. Palette distance --------------------------------------------------------------------------
+  //    `alreadyApproved` is the tighter of two tests and exists to protect the deliberate neutral.
+  //    "Within tolerance of an approved colour" is loose enough to cover default part grey, which
+  //    is the thing the saturation axis below is FOR; "sitting on an approved colour" is not. So a
+  //    stone that is painted the scene's stone colour is exempt from the grey-prop rule, and a
+  //    fence left on factory grey is not, even though both are neutral.
+  let alreadyApproved = false;
+  {
+    if (!colours.length) {
+      push('palette', 0.5, 'no dominant colours were measured', false);
+    } else {
+      const nearest = colours.map((c) => Math.min(...ctx.approvedColours.map((p) => rgbDistance(c, p))));
+      alreadyApproved = nearest.every((d) => d <= ctx.paletteTolerance / 2);
+      const worst = Math.max(...nearest);
+      const inPalette = nearest.filter((d) => d <= ctx.paletteTolerance).length / nearest.length;
+      const score = clamp01(inPalette * 0.7 + clamp01(1 - worst / (ctx.paletteTolerance * 2.5)) * 0.3);
+      const reason = `${Math.round(inPalette * 100)}% of dominant colours sit inside the ${ctx.approvedColours.length}-colour approved set (worst is ${worst.toFixed(2)} away, tolerance ${ctx.paletteTolerance})`;
+      push('palette', score, reason, true);
+      if (score < 0.5 && !contaminated) {
+        const why = `off the approved palette for '${ctx.biome}': ${reason}`;
+        reasons.push(why);
+        repairable.push({ kind: 'retint', axis: 'palette', why });
+      }
+    }
+  }
+
+  // 3. Saturation distance from the ACCEPTED SET (not from the spec floor) -------------------------
+  {
+    if (!colours.length) {
+      push('saturation', 0.5, 'no dominant colours were measured', false);
+    } else {
+      const sats = colours.map((c) => saturationValue(c).s);
+      const mean = sats.reduce((a, x) => a + x, 0) / sats.length;
+      const drift = Math.abs(mean - ctx.meanSaturation);
+      const score = clamp01(1 - drift / 0.45);
+      const reason = `saturation ${mean.toFixed(2)} against the accepted set's ${ctx.meanSaturation.toFixed(2)} (drift ${drift.toFixed(2)})${alreadyApproved ? ' — but it is painted a colour the set has already approved, so the drift is deliberate' : ''}`;
+      push('saturation', alreadyApproved ? Math.max(score, 0.8) : score, reason, true);
+      if (score < 0.5 && !alreadyApproved) {
+        const why = mean < ctx.meanSaturation
+          ? `reads grey/unstyled beside the accepted set: ${reason}`
+          : `far louder than everything already accepted: ${reason}`;
+        reasons.push(why);
+        if (!contaminated) repairable.push({ kind: 'retint', axis: 'saturation', why });
+      }
+    }
+  }
+
+  // 4. Silhouette complexity vs the accepted set ---------------------------------------------------
+  //    THE 40k-TRIANGLE ROCK. Both are rocks, both pass the absolute triangle budget when the budget
+  //    is generous, and side by side one of them is from a different game. Detail density is the
+  //    measurable form of that, and it is not transformable: nothing here can decimate a mesh, so a
+  //    gross mismatch is a cull, not a fix.
+  {
+    const density = densityOf(cand);
+    if (tris === null || ctx.medianTriangles === null) {
+      push('silhouette', 0.5, 'silhouette needs both a measured triangle count and an accepted set to compare against', false);
+    } else {
+      const triRatio = tris / Math.max(1, ctx.medianTriangles);
+      const densRatio = density !== null && ctx.medianDensity !== null && ctx.medianDensity > 0 ? density / ctx.medianDensity : null;
+      // The GEOMETRIC MEAN of the two, not the max. Raw triangle count alone forgives a fussy
+      // pebble; density alone condemns any small object, because density is triangles over volume
+      // and volume is cubic. Taking the mean means a candidate has to be out of line on both counts
+      // before it is called incoherent, which is the case the eye actually notices.
+      const ratio = densRatio === null ? triRatio : Math.sqrt(Math.max(1, triRatio) * Math.max(1, densRatio));
+      const score = clamp01(1 - Math.log2(Math.max(1, ratio)) / 5);
+      const reason = `${tris} triangles is ${triRatio.toFixed(1)}x the accepted median of ${ctx.medianTriangles}${densRatio !== null ? `, detail density ${densRatio.toFixed(1)}x` : ''} (combined ${ratio.toFixed(1)}x)`;
+      push('silhouette', score, reason, true);
+      if (ratio > 8) {
+        const why = `detail density is incoherent with the accepted set — ${reason}. Nothing available here decimates a mesh, so this cannot be brought into line`;
+        reasons.push(why);
+        blockers.push(why);
+      } else if (ratio > 3) {
+        reasons.push(`busier than its neighbours (${reason}), but inside what the silhouette tolerates`);
+      }
+    }
+  }
+
+  // 5. Texture presence vs a flat-shaded set --------------------------------------------------------
+  //    The owner's sentence, and it is exactly right: a textured mesh among untextured ones cannot be
+  //    recoloured and will always read foreign. Every other repair here works by changing colour; a
+  //    baked texture is the one thing that puts the asset beyond colour's reach.
+  let unrecolourable = false;
+  {
+    if (hasTexture === null) {
+      push('texture', 0.5, 'texture presence unknown', false);
+    } else if (!ctx.flatShaded) {
+      push('texture', hasTexture ? 1 : 0.7, hasTexture ? 'textured, matching a textured accepted set' : 'untextured among a mostly textured set — flatter than its neighbours but not foreign', true);
+    } else if (!hasTexture) {
+      push('texture', 1, 'untextured, like every asset already accepted — colour can still do the work', true);
+    } else {
+      unrecolourable = true;
+      const why = `carries a texture map into a flat-shaded, untextured set (${Math.round(ctx.texturedFraction * 100)}% textured) — an unrecolourable asset: no retint can reach a baked texture, so it will always read foreign`;
+      push('texture', 0.05, why, true);
+      reasons.push(why);
+      if (cand.textureRemovable === true) repairable.push({ kind: 'drop_texture', axis: 'texture', why });
+      else blockers.push(why);
+    }
+  }
+
+  // 6. Scale tier, player-relative --------------------------------------------------------------------
+  {
+    const want = expectedTier(cand.intent ?? cand.name ?? undefined);
+    if (!cand.boundsStuds) {
+      push('scale_tier', 0.5, `no height was measured, so its tier against '${want.key}' (${want.tier}) is unknown`, false);
+    } else {
+      const height = cand.boundsStuds[1];
+      const got = tierForHeight(height);
+      const gap = Math.abs(TIER_ORDER.indexOf(got) - TIER_ORDER.indexOf(want.tier));
+      const score = gap === 0 ? 1 : gap === 1 ? 0.45 : 0.1;
+      const range = tierRange(want.tier);
+      const reason = `${height.toFixed(1)} studs is ${(height / PLAYER_HEIGHT_STUDS).toFixed(2)} players tall — tier '${got}', but a '${want.key}' belongs in '${want.tier}' (${range.min.toFixed(1)}-${Number.isFinite(range.max) ? range.max.toFixed(1) : '∞'} studs)`;
+      push('scale_tier', score, reason, true);
+      if (gap >= 1) {
+        const mid = Number.isFinite(range.max) ? (range.min + range.max) / 2 : range.min * 1.5;
+        const factor = height > 0 ? mid / height : 1;
+        const why = `wrong scale tier beside its neighbours: ${reason}`;
+        reasons.push(why);
+        // ONE tier out is a mis-set import scale and a rescale fixes it. TWO tiers out is not: a
+        // uniform scale keeps the triangle count while the volume moves cubically, so blowing up a
+        // 4-stud "tree" to canopy height gives canopy-sized geometry with pebble-sized detail. That
+        // is the same incoherence the silhouette axis exists to catch, arrived at by another route,
+        // so it is a cull rather than a patch.
+        if (gap === 1 && factor >= 0.1 && factor <= 10) repairable.push({ kind: 'rescale', axis: 'scale_tier', why });
+        else blockers.push(`${why}; ${gap} tiers out means it was not authored for this role at all — a ${factor.toFixed(2)}x uniform scale would carry its detail density with it and read wrong`);
+      }
+    }
+  }
+
+  const measuredCount = axes.filter((a) => a.measured).length;
+  const confidence = axes.length ? measuredCount / axes.length : 0;
+  const total = axes.reduce((a, x) => a + x.score * x.weight, 0) * 100;
+  const abstained = measuredCount < 2;
+
+  // --- verdict ---------------------------------------------------------------------------------
+  // Order matters. A blocker wins over a transform, and a transform wins over a bare total, because
+  // "it scored 71 but it is textured" is not a pass.
+  let verdict: CoherenceVerdict['verdict'];
+  let transform: AssetTransform | null = null;
+
+  if (blockers.length) {
+    verdict = 'incoherent';
+  } else if (abstained) {
+    verdict = 'coherent';
+    reasons.push(`abstained: only ${measuredCount} of ${axes.length} axes were measured, which is too little to refuse anything on`);
+  } else if (repairable.length) {
+    const kinds = [...new Set(repairable.map((r) => r.kind))];
+    if (kinds.length > 1) {
+      verdict = 'incoherent';
+      blockers.push(`needs ${kinds.length} different corrections (${kinds.join(' + ')}) — a smaller coherent palette beats a larger patched one, so this is a cull`);
+    } else if (depth > 0) {
+      // Inside a projection. Do not recurse again; report the state as it stands.
+      verdict = 'transform';
+    } else {
+      transform = planTransform(kinds[0]!, repairable, cand, ctx, colours);
+      verdict = transform ? 'transform' : 'incoherent';
+      if (!transform) blockers.push(`a ${kinds[0]} would have been the fix, but the context offers nothing to ${kinds[0] === 'retint' ? 'retint towards' : 'rescale to'}`);
+    }
+  } else {
+    verdict = total >= COHERENCE_FLOOR ? 'coherent' : 'incoherent';
+    if (verdict === 'incoherent') {
+      const worst = [...axes].sort((a, b) => a.score * a.weight - b.score * b.weight)[0];
+      reasons.push(`no single axis failed outright, but the weighted total ${total.toFixed(0)} is under the ${COHERENCE_FLOOR} floor — worst axis '${worst?.axis}': ${worst?.reason}`);
+    }
+  }
+
+  return {
+    biome: ctx.biome,
+    total,
+    verdict,
+    axes,
+    reasons,
+    blockers,
+    transform,
+    unrecolourable,
+    confidence,
+    abstained,
+    contextSize: ctx.sampleSize,
+  };
+}
+
+/** Build the transform and PROJECT its result by re-scoring the transformed candidate. */
+function planTransform(
+  kind: TransformKind,
+  repairable: readonly { kind: TransformKind; axis: CoherenceAxis; why: string }[],
+  cand: CoherenceCandidate,
+  ctx: PaletteContext,
+  colours: readonly RGB[],
+): AssetTransform | null {
+  const repairs = [...new Set(repairable.filter((r) => r.kind === kind).map((r) => r.axis))];
+  let after: CoherenceCandidate;
+  let instruction: string;
+  let colour: RGB | undefined;
+  let scale: number | undefined;
+
+  if (kind === 'retint') {
+    const to = chooseRetint(colours, ctx);
+    if (!to) return null;
+    colour = to;
+    after = { ...cand, dominantColours: [to] };
+    instruction = `retint every part to the approved colour rgb(${to.map((n) => Math.round(n * 255)).join(', ')}) — it is on the '${ctx.biome}' palette and clears the saturation the accepted set runs at`;
+  } else if (kind === 'rescale') {
+    const want = expectedTier(cand.intent ?? cand.name ?? undefined);
+    const range = tierRange(want.tier);
+    const height = cand.boundsStuds?.[1] ?? 0;
+    if (!height) return null;
+    const mid = Number.isFinite(range.max) ? (range.min + range.max) / 2 : range.min * 1.5;
+    scale = mid / height;
+    if (!(scale >= 0.1 && scale <= 10)) return null;
+    after = {
+      ...cand,
+      boundsStuds: cand.boundsStuds ? [cand.boundsStuds[0] * scale, cand.boundsStuds[1] * scale, cand.boundsStuds[2] * scale] : null,
+    };
+    instruction = `rescale by ${scale.toFixed(2)}x to ${mid.toFixed(1)} studs, which puts a '${want.key}' back in the '${want.tier}' tier alongside its neighbours`;
+  } else {
+    after = { ...cand, hasTexture: false };
+    instruction = 'clear the TextureID on every MeshPart so the asset is flat-shaded like the rest of the set, then retint it if it reads grey afterwards';
+  }
+
+  const projected = scoreAssetCoherence(after, ctx, 1);
+  return { kind, instruction, colour, scale, repairs, projectedTotal: projected.total };
+}
+
+/**
+ * "A smaller coherent asset palette is better than a larger incoherent one. Cull aggressively."
+ *
+ * Runs the gate across a whole accepted set and sorts it into what stays, what is fixed, and what
+ * goes. The context is built from the members that come back coherent WITHOUT a transform, so the
+ * standard is set by the assets that already belong rather than by the average of everything
+ * present — an average that a junk drawer drags down until nothing looks out of place in it.
+ */
+export function cullPalette(
+  members: readonly CoherenceCandidate[],
+  biome: Biome,
+  target: StyleTarget = BRIGHT_SIMULATOR,
+): { keep: { member: CoherenceCandidate; verdict: CoherenceVerdict }[]; transform: { member: CoherenceCandidate; verdict: CoherenceVerdict }[]; drop: { member: CoherenceCandidate; verdict: CoherenceVerdict }[]; context: PaletteContext } {
+  // Pass 1: judge everything against the biome profile alone, so no member can vouch for itself.
+  const seedCtx = buildPaletteContext(biome, [], target);
+  const seed = members.filter((m) => scoreAssetCoherence(m, seedCtx).verdict === 'coherent');
+  // Pass 2: the context is the seed set — the assets that belong here on the biome's own terms.
+  const context = buildPaletteContext(biome, seed.length ? seed : members, target);
+  const keep: { member: CoherenceCandidate; verdict: CoherenceVerdict }[] = [];
+  const transform: typeof keep = [];
+  const drop: typeof keep = [];
+  for (const m of members) {
+    const verdict = scoreAssetCoherence(m, context);
+    (verdict.verdict === 'coherent' ? keep : verdict.verdict === 'transform' ? transform : drop).push({ member: m, verdict });
+  }
+  return { keep, transform, drop, context };
+}
+
+/**
+ * Emit the Luau that APPLIES a transform. Same fail-closed discipline as `buildNormaliseLuau`: an
+ * unsafe path or an out-of-range number yields null, never best-effort code.
+ */
+export function buildTransformLuau(path: string, transform: AssetTransform): string | null {
+  if (!isSafeLuauPath(path)) return null;
+  const head = `
+local ok, target = pcall(function() return ${path} end)
+if not ok or typeof(target) ~= "Instance" then return '{"error":"target not found"}' end
+local touched = 0
+`;
+  if (transform.kind === 'retint') {
+    const c = transform.colour;
+    if (!c || !c.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) return null;
+    return `${head}
+local tint = Color3.new(${c[0].toFixed(4)}, ${c[1].toFixed(4)}, ${c[2].toFixed(4)})
+local function paint(p)
+  if p:IsA("BasePart") then p.Color = tint touched += 1 end
+end
+paint(target)
+for _, d in ipairs(target:GetDescendants()) do paint(d) end
+return string.format('{"kind":"retint","touched":%d}', touched)
+`;
+  }
+  if (transform.kind === 'drop_texture') {
+    return `${head}
+local function strip(p)
+  if p:IsA("MeshPart") then pcall(function() p.TextureID = "" end) touched += 1
+  elseif p:IsA("Decal") or p:IsA("Texture") then p:Destroy() touched += 1 end
+end
+strip(target)
+for _, d in ipairs(target:GetDescendants()) do strip(d) end
+return string.format('{"kind":"drop_texture","touched":%d}', touched)
+`;
+  }
+  const s = transform.scale;
+  if (typeof s !== 'number' || !Number.isFinite(s) || s < 0.1 || s > 10) return null;
+  return `${head}
+if target:IsA("Model") then
+  if pcall(function() target:ScaleTo(${s.toFixed(4)}) end) then touched = 1 end
+end
+return string.format('{"kind":"rescale","touched":%d}', touched)
+`;
+}
+
+/** One-screen rendering of a coherence verdict, for a log line or a tool result. */
+export function coherenceToText(v: CoherenceVerdict): string {
+  const lines = [`${v.verdict.toUpperCase()} ${v.total.toFixed(0)}/100 in '${v.biome}' against ${v.contextSize} accepted asset(s) (confidence ${(v.confidence * 100).toFixed(0)}%)`];
+  for (const a of v.axes) lines.push(`  ${a.axis} ${(a.score * 100).toFixed(0)} (w${a.weight}): ${a.reason}`);
+  for (const b of v.blockers) lines.push(`  BLOCKER: ${b}`);
+  if (v.transform) lines.push(`  TRANSFORM ${v.transform.kind}: ${v.transform.instruction} (projected ${v.transform.projectedTotal.toFixed(0)}/100)`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------------------------
 // The Creator Store broker — the whole pipeline, in one auditable function
 //
 //   describe -> search -> rank -> inspect metadata -> inspect creator -> select -> insert
 //            -> inspect inserted hierarchy -> scan scripts -> remove suspicious -> normalise
-//            -> place -> verify
+//            -> coherence -> place -> verify
 //
 // Two things make this worth having as one function rather than as thirteen tools a model calls in
 // whatever order it fancies:
@@ -1984,6 +2756,7 @@ export const BROKER_STEPS = [
   'scan_scripts',
   'remove_suspicious',
   'normalise',
+  'coherence',
   'place',
   'verify',
 ] as const;
@@ -2014,6 +2787,14 @@ export interface AssetRequest {
 export interface BrokerOptions extends SearchOptions, VerifyOptions {
   /** Art direction to rank against. Defaults to the calibrated bright-simulator target. */
   target?: StyleTarget;
+  /**
+   * The palette this asset is joining. Supplying it turns the post-insertion coherence gate from an
+   * abstention into a real refusal, so a caller building a map should always pass it — rebuilt from
+   * the assets already placed, not cached from the start of the run.
+   */
+  palette?: PaletteContext;
+  /** Apply the gate's transform (retint/rescale/drop texture) rather than only reporting it. */
+  applyTransform?: boolean;
   /** Candidates taken past ranking into the (network-bound) metadata gate. */
   maxCandidates?: number;
   /** Weighted style score a candidate must reach to be selected. */
@@ -2036,6 +2817,10 @@ export interface BrokerResult {
   scan: HierarchyScan | null;
   removed: string[];
   normalisation: NormaliseOutcome | null;
+  /** The post-insertion coherence verdict: does this belong with what is already here? */
+  coherence: CoherenceVerdict | null;
+  /** The transform the gate applied in place, if any. */
+  transformApplied: AssetTransform | null;
   /** Populated when the run stopped early: the step that refused, and why. */
   aborted: { step: BrokerStep; reason: string } | null;
   /** One-screen rendering of the whole run. */
@@ -2178,11 +2963,27 @@ export function buildNormaliseLuau(plan: NormalisePlan): string | null {
 local ok, target = pcall(function() return ${plan.path} end)
 if not ok or typeof(target) ~= "Instance" then return '{"error":"target not found"}' end
 local anchored = 0
+-- Colour is sampled here, in the pass that is already walking every part, because the coherence
+-- gate downstream is worthless without it: unmeasured colour scores 0.5 and can never refuse the
+-- grey unstyled prop it exists to catch. Weighted by volume so a big painted body outranks a bolt.
+local swatch = {}
+local swatchOrder = {}
 local function fix(p)
-  if p:IsA("BasePart") then p.Anchored = true anchored += 1 end
+  if p:IsA("BasePart") then
+    p.Anchored = true
+    anchored += 1
+    local c = p.Color
+    local key = string.format("%.3f,%.3f,%.3f", c.R, c.G, c.B)
+    if swatch[key] == nil then swatch[key] = 0 table.insert(swatchOrder, key) end
+    swatch[key] = swatch[key] + math.max(p.Size.X * p.Size.Y * p.Size.Z, 0.001)
+  end
 end
 fix(target)
 for _, d in ipairs(target:GetDescendants()) do fix(d) end
+table.sort(swatchOrder, function(a, b) return swatch[a] > swatch[b] end)
+local swatches = {}
+for i = 1, math.min(3, #swatchOrder) do table.insert(swatches, "[" .. swatchOrder[i] .. "]") end
+local colours = "[" .. table.concat(swatches, ",") .. "]"
 local scaled = 0
 if target:IsA("Model") and ${scale} ~= 1 then
   if pcall(function() target:ScaleTo(${scale}) end) then scaled = ${scale} end
@@ -2196,8 +2997,8 @@ elseif target:IsA("BasePart") then
 else
   return '{"error":"target is not spatial"}'
 end
-return string.format('{"anchored":%d,"scaled":%.4f,"size":[%.3f,%.3f,%.3f],"pos":[%.3f,%.3f,%.3f]}',
-  anchored, scaled, size.X, size.Y, size.Z, cf.Position.X, cf.Position.Y, cf.Position.Z)
+return string.format('{"anchored":%d,"scaled":%.4f,"size":[%.3f,%.3f,%.3f],"pos":[%.3f,%.3f,%.3f],"colours":%s}',
+  anchored, scaled, size.X, size.Y, size.Z, cf.Position.X, cf.Position.Y, cf.Position.Z, colours)
 `;
 }
 
@@ -2207,12 +3008,14 @@ export interface NormaliseOutcome {
   scaled: number;
   size: [number, number, number] | null;
   position: [number, number, number] | null;
+  /** Dominant part colours, volume-weighted, as measured in the place. Empty when none was read. */
+  colours: RGB[];
   plan: NormalisePlan;
   note: string;
 }
 
 /** Read the normalisation report back out of whatever wrapper `run_code` returned it in. */
-export function parseNormaliseResult(raw: unknown): { anchored: number; scaled: number; size: [number, number, number] | null; position: [number, number, number] | null } | null {
+export function parseNormaliseResult(raw: unknown): { anchored: number; scaled: number; size: [number, number, number] | null; position: [number, number, number] | null; colours: RGB[] } | null {
   let value: unknown = raw;
   for (let i = 0; i < 6; i++) {
     if (!value || typeof value !== 'object') break;
@@ -2231,7 +3034,8 @@ export function parseNormaliseResult(raw: unknown): { anchored: number; scaled: 
     Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number') ? [v[0] as number, v[1] as number, v[2] as number] : null;
   const anchored = num(o.anchored);
   if (anchored === null) return null;
-  return { anchored, scaled: num(o.scaled) ?? 0, size: triple(o.size), position: triple(o.pos) };
+  const colours = (Array.isArray(o.colours) ? o.colours : []).map(triple).filter((c): c is [number, number, number] => c !== null);
+  return { anchored, scaled: num(o.scaled) ?? 0, size: triple(o.size), position: triple(o.pos), colours };
 }
 
 // --- hierarchy reading -------------------------------------------------------------------------
@@ -2327,6 +3131,8 @@ export async function brokerAsset(env: AssetEnv, request: AssetRequest, bridge: 
     scan: null,
     removed: [],
     normalisation: null,
+    coherence: null,
+    transformApplied: null,
     aborted: null,
     summary: '',
   };
@@ -2489,15 +3295,53 @@ export async function brokerAsset(env: AssetEnv, request: AssetRequest, bridge: 
   };
   const luau = buildNormaliseLuau(plan);
   if (!luau) {
-    result.normalisation = { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, plan, note: `the inserted path is not safe to interpolate into Luau (${primary}), so normalisation was not applied` };
+    result.normalisation = { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, colours: [], plan, note: `the inserted path is not safe to interpolate into Luau (${primary}), so normalisation was not applied` };
     step('normalise', false, result.normalisation.note);
   } else {
     const ran = await bridge.execStudioOp({ op: 'run_code', code: luau }, 20_000);
     const parsed = ran.ok ? parseNormaliseResult(ran.data) : null;
     result.normalisation = parsed
-      ? { applied: true, anchored: parsed.anchored, scaled: parsed.scaled, size: parsed.size, position: parsed.position, plan, note: plan.reasons.join('; ') }
-      : { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, plan, note: ran.error ?? 'the normalisation snippet returned nothing readable' };
+      ? { applied: true, anchored: parsed.anchored, scaled: parsed.scaled, size: parsed.size, position: parsed.position, colours: parsed.colours, plan, note: plan.reasons.join('; ') }
+      : { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, colours: [], plan, note: ran.error ?? 'the normalisation snippet returned nothing readable' };
     step('normalise', result.normalisation.applied, result.normalisation.applied ? `anchored ${result.normalisation.anchored} part(s), scale ${plan.scale.toFixed(2)}` : result.normalisation.note);
+  }
+
+  // --- coherence ----------------------------------------------------------------------------------
+  // The gate the rejected map did not have. Everything above proved this asset is SAFE and that it
+  // matches the style spec in the abstract; this asks the only question a player-eye camera actually
+  // answers, which is whether it belongs beside the things already standing here. It runs after
+  // normalisation because that is the first moment the asset's real colours and real size are known.
+  {
+    const measuredSize = result.normalisation?.size ?? treeBounds;
+    const ctx = opts.palette ?? buildPaletteContext('meadow', [], target);
+    const coherence = scoreAssetCoherence(
+      {
+        assetId: chosen.assetId,
+        name: chosen.name,
+        triangles: chosen.verdict.triangles,
+        hasTexture: chosen.verdict.assetType === 'Image' || chosen.verdict.assetType === 'Decal' ? true : null,
+        dominantColours: result.normalisation?.colours ?? [],
+        boundsStuds: measuredSize,
+        intent: desc.intent,
+      },
+      ctx,
+    );
+    result.coherence = coherence;
+    if (coherence.verdict === 'incoherent') {
+      return discard(`the coherence gate refused it: ${coherence.blockers[0] ?? coherence.reasons[0] ?? 'it does not belong with the assets already accepted'}`, 'coherence');
+    }
+    if (coherence.verdict === 'transform' && coherence.transform && opts.applyTransform) {
+      const code = buildTransformLuau(primary, coherence.transform);
+      const ran = code ? await bridge.execStudioOp({ op: 'run_code', code }, 20_000) : { ok: false, error: 'the transform could not be expressed as safe Luau' };
+      if (ran.ok) result.transformApplied = coherence.transform;
+      step('coherence', ran.ok, ran.ok
+        ? `${coherence.total.toFixed(0)}/100 — applied ${coherence.transform.kind}: ${coherence.transform.instruction} (projected ${coherence.transform.projectedTotal.toFixed(0)}/100)`
+        : `${coherence.total.toFixed(0)}/100 — the ${coherence.transform.kind} was NOT applied (${ran.error ?? 'run_code failed'}); the asset stands as inserted`);
+    } else {
+      step('coherence', true, coherence.verdict === 'transform' && coherence.transform
+        ? `${coherence.total.toFixed(0)}/100 — needs a ${coherence.transform.kind}: ${coherence.transform.instruction}`
+        : `${coherence.total.toFixed(0)}/100 in '${ctx.biome}' against ${ctx.sampleSize} accepted asset(s)${coherence.abstained ? ' — abstained, too little measured to refuse on' : ''}`);
+    }
   }
 
   // --- place -------------------------------------------------------------------------------------
@@ -2533,5 +3377,6 @@ export function brokerSummary(r: BrokerResult): string {
   const lines = [head];
   for (const s of r.steps) lines.push(`  ${s.ok ? 'ok  ' : 'FAIL'} ${s.step}: ${s.detail}`);
   if (r.scan) lines.push(scanToText(r.scan));
+  if (r.coherence) lines.push(coherenceToText(r.coherence));
   return lines.join('\n');
 }
