@@ -101,6 +101,22 @@ local ACTION_MAX_W = 240
 local GRID_CELL = Vector2.new(220, 250)
 local GRID_GAP = 16
 
+--[[ How long the CODES panel waits for the server's verdict before admitting it
+	 has not arrived.
+
+	 There are no RemoteFunctions in this game, so a redeem answer comes back as
+	 a `Notify` — and every refusal on the server funnels through `Net.reject`,
+	 which throttles to one Notify per player per second. A second bad code
+	 inside that window therefore produces NO verdict at all, and the result line
+	 would sit on "CHECKING..." for the rest of the session.
+
+	 The wait is deliberately longer than that 1s throttle so a verdict that is
+	 merely slow still wins the race. What it falls back to claims neither
+	 success nor failure, because the client genuinely does not know which
+	 happened — inventing either would be worse than the hang it replaces. ]]
+local REDEEM_TIMEOUT = 3
+local REDEEM_NO_ANSWER = "NO ANSWER YET — TRY AGAIN"
+
 local deps: any = nil
 local Theme: any = nil
 local layer: Frame? = nil
@@ -128,6 +144,44 @@ local function send(name: string, ...: any)
 		remoteCache[name] = ev
 	end
 	ev:FireServer(...)
+end
+
+-- Server verdicts ---------------------------------------------------------
+
+--[[ There is exactly ONE `Notify` subscription on this client and it belongs to
+	 `Effects`. This file used to open a second one inside `buildCodes` so the
+	 codes panel could show the redeem verdict inline, which meant every verdict
+	 rendered twice — once as a toast, once in the panel — and the two
+	 classified the kind separately, so the same event could come out green here
+	 and cyan there. `Effects.onNotify` is the routed replacement.
+
+	 Effects is taken from `deps` when the host supplies it, and otherwise found
+	 as a sibling module. The boot script requires every client module before it
+	 inits any of them, so by the time `Panels.init` runs this resolves without
+	 yielding, and `require` on an already-required ModuleScript returns the same
+	 cached table rather than re-running it.
+
+	 When it cannot be resolved at all, the codes panel simply has no verdict
+	 path and the redeem timeout clears the line. That is the deliberate
+	 outcome: the alternative — falling back to our own `Notify` connection — is
+	 the duplicate subscription this whole routing exists to remove. ]]
+local function resolveEffects(): any?
+	local supplied = if deps then (deps.Effects or deps.effects) else nil
+	if type(supplied) == "table" and type(supplied.onNotify) == "function" then
+		return supplied
+	end
+
+	local parent = script.Parent
+	local sibling = if parent then parent:FindFirstChild("Effects") else nil
+	if not sibling or not sibling:IsA("ModuleScript") then
+		return nil
+	end
+
+	local ok, module = pcall(require, sibling)
+	if ok and type(module) == "table" and type(module.onNotify) == "function" then
+		return module
+	end
+	return nil
 end
 
 -- Small construction helpers ----------------------------------------------
@@ -177,6 +231,19 @@ local function text(
 	return label
 end
 
+--[[ The box every glyph below is drawn in. It is a DESIGN size, not the size
+	 the tile ends up: `rowCard` resizes the tile to HERO_ICON (104) for the
+	 shop's featured medallion and back down to ROW_ICON (72) when the card
+	 reflows to the stacked layout, and the shop grid draws it at 84.
+
+	 So interiors are authored in these design pixels and converted to SCALE, so
+	 a resized tile carries its drawing with it. They used to be sized in flat
+	 offsets while being positioned in scale, which meant a 104px tile showed
+	 72px of art whose parts had drifted apart from each other — the two speed
+	 chevrons, positioned at 0.36/0.64 of a wider tile but still 8px wide,
+	 separate visibly. Undersized art floating in an oversized tile. ]]
+local GLYPH_DESIGN = 72
+
 --[[ Functional icons drawn from primitives. The style spec allows emoji only as
 	 ornamental section decoration, never as a working icon, so the shop tiles
 	 are built out of frames. The tile carries the mandatory outline; the shapes
@@ -186,19 +253,24 @@ local function glyph(parent: Instance, kind: string, tint: Color3): Frame
 	local tile = Instance.new("Frame")
 	tile.Name = "Glyph"
 	tile.BackgroundColor3 = tint
-	tile.Size = UDim2.fromOffset(72, 72)
+	tile.Size = UDim2.fromOffset(GLYPH_DESIGN, GLYPH_DESIGN)
 	tile.Parent = parent
 	corner(tile, Palette.Radius.Card)
 	Palette.stroke(tile, Palette.Outline.Icon)
 
 	local ink = Palette.UI.TextLight
 
-	local function part(size: UDim2, pos: UDim2, rot: number?, radius: UDim?): Frame
+	--[[ Design pixels in, tile-relative scale out. `radius` stays an offset:
+		 UICorner's scale form is a percentage of the shape's SMALLER dimension,
+		 which for a 44x10 bar is a different curve than for a 34x34 square, so
+		 scaling it would distort the drawing rather than preserve it. A corner
+		 that stays 3px while the shape grows is the cheap, correct trade. ]]
+	local function part(w: number, h: number, pos: UDim2, rot: number?, radius: UDim?): Frame
 		local f = Instance.new("Frame")
 		f.BackgroundColor3 = ink
 		f.BorderSizePixel = 0
 		f.AnchorPoint = Vector2.new(0.5, 0.5)
-		f.Size = size
+		f.Size = UDim2.fromScale(w / GLYPH_DESIGN, h / GLYPH_DESIGN)
 		f.Position = pos
 		f.Rotation = rot or 0
 		f.Parent = tile
@@ -208,24 +280,37 @@ local function glyph(parent: Instance, kind: string, tint: Color3): Frame
 
 	if kind == "pack" then
 		-- A satchel: body, flap, strap.
-		part(UDim2.fromOffset(40, 30), UDim2.fromScale(0.5, 0.62), 0, UDim.new(0, 6))
-		part(UDim2.fromOffset(44, 10), UDim2.fromScale(0.5, 0.4), 0, UDim.new(0, 4))
-		part(UDim2.fromOffset(8, 18), UDim2.fromScale(0.5, 0.3), 0, UDim.new(0, 4))
+		part(40, 30, UDim2.fromScale(0.5, 0.62), 0, UDim.new(0, 6))
+		part(44, 10, UDim2.fromScale(0.5, 0.4), 0, UDim.new(0, 4))
+		part(8, 18, UDim2.fromScale(0.5, 0.3), 0, UDim.new(0, 4))
 	elseif kind == "speed" then
 		-- Two chevrons, each a pair of bars meeting at a point.
 		for i = 0, 1 do
 			local x = 0.36 + i * 0.28
-			part(UDim2.fromOffset(8, 22), UDim2.fromScale(x, 0.38), 32)
-			part(UDim2.fromOffset(8, 22), UDim2.fromScale(x, 0.62), -32)
+			part(8, 22, UDim2.fromScale(x, 0.38), 32)
+			part(8, 22, UDim2.fromScale(x, 0.62), -32)
 		end
 	elseif kind == "magnet" then
-		-- A horseshoe: a ring, its lower third masked back to the tile colour,
-		-- and two poles hanging off the cut ends.
+		--[[ A horseshoe: a ring, its lower third masked back to the tile colour,
+			 and two poles hanging off the cut ends.
+
+			 ZIndex is explicit on all three because the ScreenGui runs
+			 `ZIndexBehavior.Sibling`, under which these siblings are ordered by
+			 their own ZIndex and ties fall back to child order. The mask used to
+			 be the only one that set it (2) while the poles took the default 1,
+			 so the mask — which is 30 design-px wide against poles centred 0.15
+			 of the tile from the middle — painted over ~97% of both of them. The
+			 icon rendered as a gapped ring with no poles at all.
+
+			 The order that works is the one `Hud.pictogram` uses for the same
+			 punch-out trick: the shape, the punch above it, then anything that
+			 must survive the punch above that. ]]
 		local ring = Instance.new("Frame")
 		ring.BackgroundTransparency = 1
 		ring.AnchorPoint = Vector2.new(0.5, 0.5)
-		ring.Size = UDim2.fromOffset(44, 44)
+		ring.Size = UDim2.fromScale(44 / GLYPH_DESIGN, 44 / GLYPH_DESIGN)
 		ring.Position = UDim2.fromScale(0.5, 0.42)
+		ring.ZIndex = 1
 		ring.Parent = tile
 		corner(ring, Palette.Radius.Pill)
 		local ringStroke = Instance.new("UIStroke")
@@ -237,21 +322,39 @@ local function glyph(parent: Instance, kind: string, tint: Color3): Frame
 		mask.BackgroundColor3 = tint
 		mask.BorderSizePixel = 0
 		mask.AnchorPoint = Vector2.new(0.5, 0)
-		mask.Size = UDim2.fromOffset(30, 26)
+		mask.Size = UDim2.fromScale(30 / GLYPH_DESIGN, 26 / GLYPH_DESIGN)
 		mask.Position = UDim2.fromScale(0.5, 0.56)
 		mask.ZIndex = 2
 		mask.Parent = tile
 
-		part(UDim2.fromOffset(9, 20), UDim2.fromScale(0.35, 0.72))
-		part(UDim2.fromOffset(9, 20), UDim2.fromScale(0.65, 0.72))
+		local leftPole = part(9, 20, UDim2.fromScale(0.35, 0.72))
+		leftPole.ZIndex = 3
+		local rightPole = part(9, 20, UDim2.fromScale(0.65, 0.72))
+		rightPole.ZIndex = 3
+
+		--[[ UIStroke.Thickness has no scale form, so the horseshoe's weight is
+			 the one measurement in this drawing that cannot be expressed
+			 relative to the tile. Track the tile's measured size instead, or the
+			 104px hero magnet is a 44%-oversized ring drawn in a 72px-tile line
+			 weight. AbsoluteSize is 0 until the first layout pass, hence the
+			 guard and the signal. ]]
+		local function syncRingWeight()
+			local measured = tile.AbsoluteSize.X
+			if measured < 1 then
+				return
+			end
+			ringStroke.Thickness = 9 * (measured / GLYPH_DESIGN)
+		end
+		syncRingWeight()
+		tile:GetPropertyChangedSignal("AbsoluteSize"):Connect(syncRingWeight)
 	elseif kind == "crystal" then
 		-- A shard: a rotated square with a lighter facet down one side.
-		local body = part(UDim2.fromOffset(34, 34), UDim2.fromScale(0.5, 0.5), 45, UDim.new(0, 5))
+		local body = part(34, 34, UDim2.fromScale(0.5, 0.5), 45, UDim.new(0, 5))
 		body.BackgroundColor3 = ink
-		local facet = part(UDim2.fromOffset(12, 34), UDim2.fromScale(0.58, 0.5), 45, UDim.new(0, 5))
+		local facet = part(12, 34, UDim2.fromScale(0.58, 0.5), 45, UDim.new(0, 5))
 		facet.BackgroundColor3 = Palette.shade(ink, 0.18)
 	else
-		part(UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 45, UDim.new(0, 5))
+		part(30, 30, UDim2.fromScale(0.5, 0.5), 45, UDim.new(0, 5))
 	end
 
 	return tile
@@ -909,11 +1012,20 @@ local function buildCodes(): PanelDef
 	result.LayoutOrder = 4
 	result.TextXAlignment = Enum.TextXAlignment.Center
 
+	--[[ At most one redeem is outstanding at a time, identified by a generation
+		 number. Every submit takes the next one; a verdict or a panel reset puts
+		 it back to 0. A timeout only writes if its own generation is still the
+		 outstanding one, so a late timer can never overwrite a verdict that did
+		 arrive, and a second submit invalidates the first submit's timer. ]]
+	local pendingRedeem = 0
+
 	local submit: TextButton = Theme.button(form, "REDEEM", Palette.UI.Buy, UDim2.new(1, 0, 0, 64))
 	submit.LayoutOrder = 3
 	submit.Activated:Connect(function()
 		local code = normalise()
 		if code == "" then
+			-- Answered locally, so nothing is outstanding and no timer is armed.
+			pendingRedeem = 0
 			result.TextColor3 = Palette.UI.Close
 			result.Text = "TYPE A CODE FIRST"
 			return
@@ -921,29 +1033,48 @@ local function buildCodes(): PanelDef
 		result.TextColor3 = Palette.UI.TextMuted
 		result.Text = "CHECKING..."
 		send("Redeem", code)
+
+		pendingRedeem += 1
+		local generation = pendingRedeem
+		task.delay(REDEEM_TIMEOUT, function()
+			if pendingRedeem ~= generation then
+				return -- a verdict landed, or a newer submit owns the line now
+			end
+			pendingRedeem = 0
+			result.TextColor3 = Palette.UI.TextMuted
+			result.Text = REDEEM_NO_ANSWER
+		end)
 	end)
 
-	--[[ There are no RemoteFunctions in this game, so the redeem verdict comes
-		 back as a `Notify` rather than a return value. We only claim a Notify
-		 while this panel is the open one — otherwise an unrelated toast (a
-		 refused sell, say) would appear in the codes result line and read as an
-		 answer to a code the player never typed. ]]
-	Remotes.get("Notify").OnClientEvent:Connect(function(payload: any)
-		if openId ~= "codes" then
-			return
-		end
-		local message = if type(payload) == "table" then payload.text else payload
-		if type(message) ~= "string" then
-			return
-		end
-		local kind = if type(payload) == "table" then payload.kind else nil
-		result.TextColor3 = if kind == "error"
-				or kind == "bad"
-				or kind == "deny"
-			then Palette.UI.Close
-			else Palette.UI.Buy
-		result.Text = string.upper(message)
-	end)
+	--[[ The redeem verdict, routed through Effects rather than a second
+		 subscription to `Notify` (see `resolveEffects`). If Effects could not be
+		 resolved there is no listener at all and the timeout above is what
+		 resolves the line.
+
+		 The line is claimed only while a redeem is actually outstanding AND this
+		 panel is the open one. Without the first test an unrelated toast — a
+		 refused sell, PACK FULL — would land in the result line and read as an
+		 answer to a code the player never typed; the old handler tested only the
+		 second. What is left is a ~3s window in which an unrelated toast can
+		 still be mistaken for the verdict, which is as narrow as this can get
+		 without a correlation id on the remote. ]]
+	local effects = resolveEffects()
+	if effects then
+		effects.onNotify(function(_kind: string, message: string, accent: Color3)
+			if pendingRedeem == 0 or openId ~= "codes" then
+				return
+			end
+			pendingRedeem = 0 -- a real verdict; the timeout must not overwrite it
+
+			--[[ `accent` is the colour Effects resolved for this kind, so the
+				 line and the toast cannot disagree about severity. Shaded because
+				 this is body copy on a WHITE card, where the toast's accent
+				 colours (chosen against a near-black pill) run light — and §9.10
+				 fails anything on screen that reads as thin or washed out. ]]
+			result.TextColor3 = Palette.shade(accent, 0.22)
+			result.Text = string.upper(message)
+		end)
+	end
 
 	return {
 		id = "codes",
@@ -951,6 +1082,9 @@ local function buildCodes(): PanelDef
 		body = body,
 		refresh = function() end,
 		onOpen = function()
+			-- Reopening abandons anything still in flight, so a verdict for the
+			-- previous session of this panel cannot land on a fresh blank line.
+			pendingRedeem = 0
 			result.Text = ""
 			result.TextColor3 = Palette.UI.TextMuted
 		end,

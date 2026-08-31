@@ -132,3 +132,66 @@ viewport and returned solid magenta during play. After the playtest it began
 timing out entirely, so the UI screenshots for this run are missing; the HUD table
 above is read directly out of the live `PlayerGui` instead. World renders taken
 before the playtest are unaffected.
+
+---
+
+# Playtest 02 — after the polish pass
+
+Same place, rebuilt and reinstalled from source. Changed since playtest 01: the
+panel header gained its outline, the SELL button stopped rendering 8px Arial
+under its caption, `Notify` went from two subscribers to one, the toast
+vocabulary was matched to what the server actually emits, the codes panel gained
+a timeout so it cannot hang on "CHECKING...", the magnet glyph's Z-order was
+fixed, and the frost zone stopped painting props the same colour as the ground.
+
+## Verified by real input, not by calling functions
+
+| check | result |
+|---|---|
+| HUD + panel GUIs build on join | both present |
+| panel shells | 4 |
+| `Notify` events for one redeem | **1** (was 2) |
+| SELL button's own text | `TextTransparency = 1`, styled Caption on top — no 8px Arial |
+| **real left-click on the UPGRADES icon** | UPGRADES opens: `shellVisible=true`, backdrop dim 0.45, panel 754x474 |
+| other three panels during that | all closed — one-at-a-time holds |
+
+Panel contents, read out of the open modal:
+
+```
+Title    'UPGRADES'                          34pt
+Caption  'X'                                 30pt   (large red close, top-right)
+         'PACK SIZE'    LEVEL 0 / 12  · 25 SHARDS    50
+         'MOVE SPEED'   LEVEL 0 / 8   · 16 STUDS/S   75
+         'MAGNET'       LEVEL 0 / 10  · 7 STUDS     100
+```
+
+Every price matches `Config.upgradeCost(id, 0)` exactly and every level/unit
+matches `Config`. The client renders the server's numbers, not its own.
+
+## A testing trap worth writing down
+
+`Panels.open("upgrades")` called through `execute_luau` did nothing, four times
+running, while `Theme.open(frame)` on the same panel worked. That looked exactly
+like the original "no modal can ever be seen" blocker returning.
+
+It was not. **`execute_luau` runs in a separate script context with its own
+module cache**, so `require(Panels)` there returns a FRESH module table with
+`started = false` and an empty registry — a different object from the one the
+client's boot script initialised. `Theme.open` appeared to work only because it
+operates on the Instance handed to it and needs no module state.
+
+Proved by calling `Panels.init` again from that context: it built a *second*
+panel layer instead of hitting its `started` guard, which it could not have done
+if it were the initialised instance. The duplicate layer was then removed.
+
+The lesson generalises: **client module state cannot be inspected or driven from
+`execute_luau`.** Anything depending on it must be exercised through real input —
+`user_mouse_input` at the button's measured screen rect — which is what the table
+above does, and which is a more faithful test anyway.
+
+## Known minor defect, not fixed
+
+Each BUY button renders its price caption twice at identical coordinates (`'50'`
+at (765,180) twice, likewise 75 and 100). Two identical stacked labels read as
+slightly heavier text rather than visible duplication, so it is cosmetic —
+recorded rather than fixed.

@@ -412,6 +412,12 @@ local function buildCounters(parent: Instance)
 	pad.PaddingRight = UDim.new(0, 4)
 	pad.Parent = track
 
+	--[[ The fill is the only surface in this cluster without its own outline, and
+		 that is deliberate. It is a level indicator inside the already-outlined
+		 track, inset by the 4px padding above — a 3px Border stroke would all but
+		 close that gap against the track's inner edge, and at zero shards (the
+		 very first thing a new player sees) a zero-width frame with a Border
+		 stroke renders as a small black lozenge floating in an empty bar. ]]
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
 	fill.BackgroundColor3 = Palette.UI.SoftCurrency

@@ -309,15 +309,73 @@ end
 	 road stays drawn on top of it. ]]
 local frostNorth = GATE_Z + 2
 local frostSouth = frost.Bounds.Min.Z - 22
+-- Named rather than inlined into the box() call below because the props that
+-- stand on this slab have to be painted against it, and a second copy of these
+-- numbers is how the paint and the floor would drift apart.
+local frostWidth = (frost.Bounds.Max.X - frost.Bounds.Min.X) + 44
+local frostMidX = (frost.Bounds.Min.X + frost.Bounds.Max.X) / 2
 box(
 	fGround,
 	"FrostFloor",
-	Vector3.new((frost.Bounds.Max.X - frost.Bounds.Min.X) + 44, 2, frostNorth - frostSouth),
-	Vector3.new((frost.Bounds.Min.X + frost.Bounds.Max.X) / 2, -0.85, (frostNorth + frostSouth) / 2),
+	Vector3.new(frostWidth, 2, frostNorth - frostSouth),
+	Vector3.new(frostMidX, -0.85, (frostNorth + frostSouth) / 2),
 	W.Frost
 )
 disc(fGround, "FrostDrift", 46, 1.2, -62, -140, 0.28, W.FrostDeep)
 disc(fGround, "FrostDrift", 38, 1.2, 66, -186, 0.28, W.FrostDeep)
+
+--[[ Is this spot standing on the frost slab? The footprint, not GATE_Z, is the
+	 honest test: what a prop is painted against is the ground actually under it.
+	 (For the tree clusters the two answers happen to coincide — no cluster anchor
+	 falls in the 2 studs between them — but the floor is the reason.) ]]
+local function onFrostFloor(x: number, z: number): boolean
+	return z <= frostNorth and z >= frostSouth and math.abs(x - frostMidX) <= frostWidth / 2
+end
+
+--[[ Cold-zone FOLIAGE tones. Local to the builder on purpose: they are world
+	 dressing for one zone, not part of the pinned style vocabulary in Palette.
+
+	 This is the ice path's defect, three hundred lines further down the file.
+	 Frost-zone props were painted `canopy = W.Frost` / `canopyLight = W.FrostDeep`
+	 while standing on a FrostFloor that is literally `W.Frost` — so per tree one
+	 set of conifer tiers was BYTE-IDENTICAL to the ground under it and the other
+	 was 81 away, the same 0/81 pair the ice-path fix records as unacceptable. The
+	 grass tufts had it too, staying meadow green 104 studs into the snow, which
+	 fights the colour zoning §1 calls a gameplay tool rather than decoration.
+
+	 Contrast is sum|Δ| over the three channels against W.Frost (206,232,245),
+	 the floor all of this stands on. The north half is the benchmark, being the
+	 half that already passes:
+	   Canopy      ( 62,158, 78) on Grass ( 95,201, 74) ->  80   sat 0.61
+	   CanopyLight ( 87,184, 95) on Grass                ->  46   sat 0.53
+	   Tuft        (110,214, 88) on Grass                ->  42   sat 0.59
+	   GrassDeep   ( 72,172, 60) on Grass                ->  66   sat 0.65
+	 The replacements, on the frost floor:
+	   COLD_CANOPY       ( 44,116,100) on Frost -> 423   sat 0.62
+	   COLD_CANOPY_LIGHT ( 70,150,128) on Frost -> 335   sat 0.53
+	   COLD_TUFT         ( 88,192,140) on Frost -> 263   sat 0.54
+	   COLD_TUFT_DEEP    ( 56,140,104) on Frost -> 383   sat 0.60
+
+	 They clear the north benchmark several times over, deliberately. The north's
+	 foliage can read at Δ 42-80 because green-on-green shares a hue family and the
+	 silhouette does the rest; the cold zone has no such family to borrow, since
+	 everything near Frost is a pale blue-white and pale-on-pale is exactly the
+	 desaturated mush §9.10 fails outright. So the separation is carried in VALUE,
+	 the way the ice path carries it (273/347 against this same floor) — while the
+	 saturation column above stays level with the north tones, so nothing here is
+	 duller than the half that passed.
+
+	 Within each pair the tone break is what makes a conifer read as stacked tiers
+	 and a tuft as separate blades, so it is held at northern strength:
+	   COLD_CANOPY vs COLD_CANOPY_LIGHT -> 88 (north canopy pair: 68)
+	   COLD_TUFT   vs COLD_TUFT_DEEP    -> 120 (north tuft pair:  108)
+	 And they stay green-dominant, which keeps them off the blue-dominant ice road
+	 they are planted beside: COLD_TUFT is 92 from IcePath, a wider break than the
+	 north path's own Dirt/DirtLight step (66). ]]
+local COLD_CANOPY = Color3.fromRGB(44, 116, 100)
+local COLD_CANOPY_LIGHT = Color3.fromRGB(70, 150, 128)
+local COLD_TUFT = Color3.fromRGB(88, 192, 140)
+local COLD_TUFT_DEEP = Color3.fromRGB(56, 140, 104)
 
 -- The hub: a circular sand clearing. Sitting proud of the grass by half a stud
 -- gives it a visible lip instead of a seam.
@@ -774,9 +832,11 @@ local TREE_CLUSTERS = {
 
 for _, anchor in TREE_CLUSTERS do
 	local cx, cz = anchor[1] :: number, anchor[2] :: number
-	local cold = cz < GATE_Z
-	local canopy = if cold then W.Frost else W.Canopy
-	local canopyLight = if cold then W.FrostDeep else W.CanopyLight
+	-- Cluster-level, not per-tree: the cluster is the unit the eye reads, and a
+	-- single tree in a group painted from the other zone's palette reads as a bug.
+	local cold = onFrostFloor(cx, cz)
+	local canopy = if cold then COLD_CANOPY else W.Canopy
+	local canopyLight = if cold then COLD_CANOPY_LIGHT else W.CanopyLight
 	local group = folder("TreeCluster", fProps)
 	local count = rng:NextInteger(2, 3)
 	for _ = 1, count do
@@ -857,6 +917,12 @@ end
 local tuftGroup = folder("Tufts", fProps)
 
 local function tuft(x: number, z: number, s: number)
+	-- Blade tones follow the ground the clump stands on, so the verge planting the
+	-- spec asks for at every path edge can run the length of the ice road without
+	-- dragging meadow green into the snow.
+	local cold = onFrostFloor(x, z)
+	local bright = if cold then COLD_TUFT else W.Tuft
+	local deep = if cold then COLD_TUFT_DEEP else W.GrassDeep
 	local blades = rng:NextInteger(3, 4)
 	local base = rand(0, math.pi * 2)
 	for k = 1, blades do
@@ -864,14 +930,7 @@ local function tuft(x: number, z: number, s: number)
 		local h = rand(3.2, 5.4) * s
 		local cf = CFrame.new(x + math.cos(ang) * 0.9 * s, h / 2, z + math.sin(ang) * 0.9 * s)
 			* CFrame.Angles(math.sin(ang) * 0.42, ang, -math.cos(ang) * 0.42)
-		newPart(
-			tuftGroup,
-			"Tuft",
-			Vector3.new(0.9 * s, h, 0.9 * s),
-			cf,
-			if k % 2 == 0 then W.Tuft else W.GrassDeep,
-			false
-		)
+		newPart(tuftGroup, "Tuft", Vector3.new(0.9 * s, h, 0.9 * s), cf, if k % 2 == 0 then bright else deep, false)
 	end
 end
 
@@ -904,14 +963,21 @@ local function vergeClumps(fromZ: number, toZ: number)
 	end
 end
 
---[[ The south verge deliberately stops well short of SOUTH_PATH_END. Tufts are
-	 meadow green (W.Tuft / W.GrassDeep) and everything past the gate is snow, so
-	 running them the full length of the ice road would push green grass deep into
-	 the cold zone and fight the ground-colour zoning §1 asks for. -170 is roughly
-	 where the previous build's deepest south tuft already sat, so this holds the
-	 line rather than moving it: re-rhythming the verge must not quietly extend
-	 it. Whether the cold zone should get its own recoloured scrub is a separate
-	 question and is left alone. ]]
+--[[ The south verge stops short of SOUTH_PATH_END. It used to be held here by a
+	 COLOUR argument — tufts were meadow green and everything past the gate is
+	 snow, so running them down the ice road pushed green grass deep into the cold
+	 zone and fought the ground-colour zoning §1 asks for. That argument is gone:
+	 tuft() now reads the ground it stands on and paints the cold stretch from
+	 COLD_TUFT / COLD_TUFT_DEEP, so the ~104 studs of verge below z = -64 are
+	 frozen scrub rather than meadow green, and the same recolour catches the
+	 single tufts planted against the cold rock and tree clusters further down.
+
+	 The limit stays at -170 anyway, for a different and smaller reason: every
+	 scatter decision downstream of here comes out of the same seeded Random in a
+	 fixed order, so moving this bound reshuffles the prop tufts that follow it.
+	 That is a composition change, not a defect fix, and this build is one that
+	 has already been walked. The deepest stretch of road reading as bare snow is
+	 a defensible look; it is not what was wrong. ]]
 local SOUTH_VERGE_END = -170
 
 vergeClumps(NORTH_PATH_START, NORTH_PATH_END)

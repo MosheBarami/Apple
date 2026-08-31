@@ -49,6 +49,15 @@ local Theme = {}
 local EDGE_BUTTON = 6 -- §3 hard bottom edge, in pixels
 local EDGE_PRESSED = 2 -- the edge a button sinks to while held
 local HEADER_HEIGHT = 62
+
+--[[ §5's construction diagram draws a black rule between the saturated header
+	 bar and the white body, and §2 wants the header outlined like every other
+	 surface. Both come from one Border-mode UIStroke on the header — see the
+	 note in Theme.panel — and a Border stroke is drawn entirely OUTSIDE its
+	 object, so the body has to start this many pixels further down or it would
+	 simply cover the rule. Keep this equal to the header's stroke thickness. ]]
+local HEADER_RULE = Palette.Outline.Panel
+
 local BODY_PADDING = 18
 local BACKDROP_DIM = 0.45
 
@@ -89,7 +98,11 @@ end
 
 --[[ §3 Depth is a hard bottom edge, not a soft shadow: a darker band of the
 	 same hue along the lower edge. `host` must clip, or the band's square ends
-	 will punch through the rounded corners. ]]
+	 will punch through the rounded corners.
+
+	 This is deliberately NOT stroked, and an outline audit should not add one:
+	 the band is shading *within* the host's silhouette, not a surface of its
+	 own. The host already carries the outline that encloses both. ]]
 local function hardEdge(host: GuiObject, fill: Color3, thickness: number): Frame
 	local edge = Instance.new("Frame")
 	edge.Name = "Edge"
@@ -128,7 +141,26 @@ end
 
 --[[ The caption described in decision (1) at the top of this file. ]]
 local function caption(btn: TextButton, textSize: number, bottomPad: number): TextLabel
-	-- The native text stays as the API surface but is never drawn.
+	--[[ The native text stays as the API surface but is never drawn.
+
+		 It is also dragged onto the category's own font and size instead of being
+		 left on the TextButton defaults (LegacyArial at 8px). Two reasons:
+
+		   • A style audit that reads properties rather than pixels — which is how
+		     the live playtest reported `Button 'SELL SHARDS' font=LegacyArial
+		     size=8` sitting under `Caption 'SELL SHARDS' FredokaOne 22` — sees a
+		     thin, non-category font on a control, and §9.10 fails that outright.
+		   • More importantly it is one stray write from being true: any code that
+		     cleared TextTransparency would surface hairline Arial underneath the
+		     styled caption. Matching the caption means the worst case is a
+		     doubled correct glyph, not a category failure.
+
+		 Clearing `btn.Text` instead is not an option: it is the documented public
+		 API (decision 1 at the top of this file) and Panels drives caption changes
+		 through it. ]]
+	btn.Font = Palette.Font.Display
+	btn.TextSize = textSize
+	btn.TextColor3 = Palette.UI.TextLight
 	btn.TextTransparency = 1
 	btn.TextStrokeTransparency = 1
 
@@ -151,6 +183,10 @@ local function caption(btn: TextButton, textSize: number, bottomPad: number): Te
 
 	btn:GetPropertyChangedSignal("Text"):Connect(function()
 		label.Text = btn.Text
+		-- Re-assert invisibility alongside the one write a caller is expected to
+		-- make. A caller that swaps a caption (Panels does, BUY -> MAX) must not
+		-- be able to leave the native glyph showing through the styled one.
+		btn.TextTransparency = 1
 	end)
 
 	return label
@@ -463,6 +499,8 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 	backdrop.BorderSizePixel = 0
 	backdrop.ZIndex = Z_BACKDROP
 	backdrop.Visible = false
+	-- A dimming scrim, not a surface — it has no edge of its own to outline, and
+	-- a black rule around the whole viewport would read as a letterbox.
 	-- Active makes the backdrop swallow input, so a click aimed at the dimmed
 	-- area cannot reach the HUD buttons or the world behind the modal.
 	backdrop.Active = true
@@ -494,8 +532,32 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 	gradient(header, headerColor)
 	hardEdge(header, headerColor, EDGE_BUTTON)
 
+	--[[ §2/§9.1: the header is a surface, so it carries the outline too. Without
+		 it this was the one surface in the game meeting the white body on a bare
+		 seam, and §5's diagram puts a black rule exactly there.
+
+		 The geometry is worth understanding before touching it, because a naive
+		 stroke here would read as two stacked pills with a doubled line:
+
+		   • The stroke is ApplyStrokeMode.Border, so it is drawn wholly OUTSIDE
+		     the header. The header is full-bleed — it spans the panel's whole
+		     width and starts at its top — so the left, right and top bands land
+		     exactly where the panel's own stroke already is, outside the panel
+		     rect. `panel.ClipsDescendants` (set above, and it respects the
+		     UICorner) trims them away. One outline, not two, and the header's
+		     square top corners inherit the panel's radius from the same clip.
+		   • Only the bottom band survives, inside the panel: the seam rule.
+		     `body` is offset down by HEADER_RULE so it cannot cover it — header
+		     and body share a ZIndex, and the later sibling would otherwise win.
+
+		 So the visible result is one outlined panel with an outlined header band,
+		 which is what §5 asks for. ]]
+	Palette.stroke(header, Palette.Outline.Panel)
+
 	-- §3 headers often add a diagonal sheen band. Rotated, so it reads as a
 	-- highlight sweep rather than a stripe; the panel's clip trims the overhang.
+	-- Like the hard edge, it is shading rather than a surface: outlining it would
+	-- draw a black diagonal stripe across the header, so it stays unstroked.
 	local sheen = Instance.new("Frame")
 	sheen.Name = "Sheen"
 	sheen.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -545,8 +607,12 @@ function Theme.panel(parent: Instance, titleText: string, headerColor: Color3, s
 
 	local body = Instance.new("Frame")
 	body.Name = "Body"
-	body.Size = UDim2.new(1, 0, 1, -HEADER_HEIGHT)
-	body.Position = UDim2.fromOffset(0, HEADER_HEIGHT)
+	-- Starts below the header's outline, not below the header (see HEADER_RULE).
+	-- The body is deliberately NOT stroked: it is flush with the panel on three
+	-- sides and the same white, so an outline here would only redraw the panel's
+	-- own on those sides and double the seam rule on the fourth.
+	body.Size = UDim2.new(1, 0, 1, -(HEADER_HEIGHT + HEADER_RULE))
+	body.Position = UDim2.fromOffset(0, HEADER_HEIGHT + HEADER_RULE)
 	body.BackgroundColor3 = Palette.UI.Body
 	body.BorderSizePixel = 0
 	body.ZIndex = panel.ZIndex + 1

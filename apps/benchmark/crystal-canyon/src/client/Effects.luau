@@ -79,13 +79,82 @@ local CUES: { [string]: { pitch: number, volume: number } } = {
 	error = { pitch = 0.55, volume = 0.5 },
 }
 
+--[[ The server's toast vocabulary, in full — and nothing else.
+
+	 Grep the server for `kind =` and you get exactly three strings:
+	 `Zones.unlock` and the redeem-success branch of `Net` send "success",
+	 `Collect.notifyPackFull` sends "warn", and every refusal funnelled through
+	 `Net.reject` sends "error".
+
+	 This table used to hold good/reward/info/bad/error, not one of which any
+	 server module has ever emitted. "success" and "warn" therefore missed and
+	 fell through to the neutral cyan default below, so the zone-unlock toast
+	 was not green and PACK FULL was not coloured as a warning at all. Keys that
+	 nothing fires are worse than useless here: they read as coverage.
+
+	 `warn` is amber rather than red on purpose. §3's accent bar is the toast's
+	 severity code, and a pack that filled up because the player is collecting
+	 well is not the same event as a refused purchase. ]]
 local KIND_COLOR: { [string]: Color3 } = {
-	good = Palette.UI.Buy,
-	reward = Palette.UI.Premium,
-	info = Palette.UI.HeaderCyan,
-	bad = Palette.UI.Close,
+	success = Palette.UI.Buy,
+	warn = Palette.UI.Premium,
 	error = Palette.UI.Close,
 }
+
+--[[ An unknown kind — a future server build, or a payload with no `kind` at
+	 all — draws neutral rather than guessing at a severity. ]]
+local KIND_DEFAULT = Palette.UI.HeaderCyan
+
+--[[ Subscribers to the server's toast verdicts.
+
+	 There is exactly ONE `Notify` subscription on this client: the one in
+	 `Effects.init` below. The codes panel needs the same verdict to draw it
+	 inline, and the obvious way to get it — a second `OnClientEvent` connection
+	 in `Panels.buildCodes` — is what used to happen. Every redeem answer then
+	 rendered twice, and because the two call sites classified the kind
+	 separately they could disagree: the same event came out green in the panel
+	 and cyan in the toast. Panels registers here instead.
+
+	 Listeners are keyed by id rather than appended to an array so unsubscribing
+	 is O(1) and cannot shift indices out from under a fan-out in progress. ]]
+--[[ The variadic return is not decoration: Luau types `pcall(f, ...)` as
+	 returning `(boolean, R...)`, so a listener declared `-> ()` makes
+	 `local ok, err = pcall(fn, ...)` a type error and costs the fan-out below
+	 its error message. A listener may still return nothing; the return value is
+	 ignored either way. ]]
+type NotifyListener = (kind: string, text: string, accent: Color3) -> ...any
+
+local notifyListeners: { [number]: NotifyListener } = {}
+local nextListenerId = 0
+
+--[[ Register a listener for server toasts; returns its disconnect function.
+
+	 Safe to call before `Effects.init` — the registry is module state, and the
+	 boot script inits Panels before Effects. `accent` is the colour this module
+	 resolved for the kind, handed over so a subscriber renders the same
+	 severity the toast does instead of keeping a second copy of the vocabulary
+	 that can drift from this one. ]]
+function Effects.onNotify(fn: NotifyListener): () -> ()
+	assert(type(fn) == "function", "Effects.onNotify expects a function")
+	nextListenerId += 1
+	local id = nextListenerId
+	notifyListeners[id] = fn
+	return function()
+		notifyListeners[id] = nil
+	end
+end
+
+--[[ A listener that throws must not stop the others from being told, and must
+	 never take down the toast path it is riding on — hence a pcall each. ]]
+local function fanOutNotify(kind: string, text: string)
+	local accent = KIND_COLOR[kind] or KIND_DEFAULT
+	for _, fn in notifyListeners do
+		local ok, err = pcall(fn, kind, text, accent)
+		if not ok then
+			warn(`[CrystalCanyon] a Notify subscriber errored: {err}`)
+		end
+	end
+end
 
 type PopEntry = {
 	attachment: Attachment,
@@ -358,7 +427,7 @@ local function showToast(kind: string, text: string)
 		return
 	end
 
-	local accent = KIND_COLOR[kind] or Palette.UI.HeaderCyan
+	local accent = KIND_COLOR[kind] or KIND_DEFAULT
 	local slot = #activeToasts + 1
 
 	local frame = Instance.new("Frame")
@@ -435,7 +504,10 @@ function Effects.notify(kind: string, text: string)
 	while #toastQueue > TOAST_QUEUE_MAX do
 		table.remove(toastQueue, 1)
 	end
-	if kind == "bad" or kind == "error" then
+	--[[ Both of the server's negative kinds get the low cue. "warn" earns it as
+		 much as "error" does: PACK FULL is the moment collection silently stops
+		 paying, and §8 is explicit that silence there reads as breakage. ]]
+	if kind == "error" or kind == "warn" then
 		Effects.playCue("error")
 	end
 	pumpToasts()
@@ -604,6 +676,10 @@ function Effects.init(mountPoint: Instance)
 		end
 		local kind = type(payload.kind) == "string" and payload.kind or "info"
 		Effects.notify(kind, payload.text)
+		--[[ Subscribers are told AFTER the toast is queued, so a slow or
+			 throwing subscriber can never delay or swallow the feedback the
+			 player is owed. ]]
+		fanOutNotify(kind, payload.text)
 	end)
 
 	Remotes.get("Unlocked").OnClientEvent:Connect(function(payload: any)

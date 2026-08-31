@@ -36,8 +36,20 @@ local Objective = {}
 local CHIP_HEIGHT = 48
 local CHIP_TOP = 12
 local HOME = UDim2.new(0.5, 0, 0, CHIP_TOP)
-local OFF_LEFT = UDim2.new(-0.35, 0, 0, CHIP_TOP)
-local OFF_RIGHT = UDim2.new(1.35, 0, 0, CHIP_TOP)
+
+--[[ How far past the viewport edge the chip parks while it is "off", in screen
+	 pixels. Non-zero for two reasons: a slide that stops exactly on the edge can
+	 leave a sliver of outline behind on a fractional-scale display, and the chip
+	 sits off-screen for one frame with the NEXT step's text already in it, which
+	 is a different width. 40px absorbs both — it is travel nobody can see, so
+	 there is nothing to spend by being generous. ]]
+local EXIT_MARGIN = 40
+
+--[[ Last resort, for the case where there is nothing to measure against at all:
+	 no camera, or the chip somehow unparented. Wide enough to clear any viewport
+	 this game is realistically played on. A missing width alone does NOT land
+	 here — that is handled with a real number below. ]]
+local FALLBACK_SLIDE = 2400
 
 local TICK_HOLD = 0.5 -- how long the green "done" state is held before moving on
 local SLIDE_OUT = 0.22
@@ -269,6 +281,78 @@ local function paint(step: Step)
 	frame.Visible = true
 end
 
+--[[ The chip is NOT mounted in a full-screen frame. Hud parents it inside the
+	 objective cluster, which is only clamp(viewport * 0.34, 300, 480) px wide, so
+	 a slide expressed as a fraction of the parent — the old
+	 UDim2.new(-0.35, ...) / UDim2.new(1.35, ...) — barely moves it: on a 1920px
+	 client the chip stopped at x ~ 552, still fully on screen, blanked there, and
+	 re-entered from x ~ 1368, also on screen. The player saw it jump sideways and
+	 pop in and out over the playfield, which is exactly the centre-of-screen
+	 furniture §6 exists to prevent.
+
+	 So the travel is measured in PIXELS, off the chip's own AbsoluteSize and the
+	 mount's absolute centre, and converted back into the parent's offset units.
+	 That makes the distance independent of how wide the mount happens to be: at
+	 390px and at 1920px the chip leaves the viewport either way. ]]
+
+--[[ An offset inside a UIScale'd cluster renders at `scale * offset`, so a shift
+	 of N screen pixels is N / scale in the units Position.Offset speaks. Hud puts
+	 a UIScale on the mount and drives it from the viewport; walk the chain and
+	 read it rather than importing Hud's number, so the two cannot drift apart.
+	 Starts at the PARENT: a UIScale on the chip itself would scale the chip's
+	 contents, not the space its own Position is expressed in. ]]
+local function localScale(frame: GuiObject): number
+	local total = 1
+	local node: Instance? = frame.Parent
+	while node and not node:IsA("LayerCollector") do
+		if node:IsA("GuiObject") then
+			local scale = node:FindFirstChildOfClass("UIScale") :: UIScale?
+			if scale then
+				total *= scale.Scale
+			end
+		end
+		node = node.Parent
+	end
+	-- A zero scale would turn the slide into infinity. Hud never sets one, but a
+	-- divide by it would strand the chip permanently, so refuse it here.
+	return if total > 0.05 then total else 1
+end
+
+local function homeAt(offsetX: number): UDim2
+	return UDim2.new(0.5, offsetX, 0, CHIP_TOP)
+end
+
+--[[ Returns (exitLeft, enterRight): the two Position offsets, in the chip's own
+	 units, that park it fully outside the left and right edges of the viewport.
+
+	 The chip's home centre is the mount's centre — that is what AnchorPoint 0.5
+	 plus Position 0.5 means — so both distances can be derived without the chip
+	 having to be sitting at HOME when we measure, which matters because the
+	 incoming distance is measured after the NEXT step's text has changed the
+	 width. ]]
+local function exitOffsets(frame: Frame): (number, number)
+	local camera = workspace.CurrentCamera
+	local parent = frame.Parent
+	if not camera or not parent or not parent:IsA("GuiObject") then
+		return -FALLBACK_SLIDE, FALLBACK_SLIDE
+	end
+
+	local viewport = camera.ViewportSize.X
+	if viewport <= 0 then
+		return -FALLBACK_SLIDE, FALLBACK_SLIDE
+	end
+
+	--[[ AutomaticSize can report 0 for a frame that has not been laid out yet.
+		 The mount's width is the right stand-in: the chip is normally near it, and
+		 over-travelling is harmless where under-travelling is the whole bug. ]]
+	local width = math.max(frame.AbsoluteSize.X, parent.AbsoluteSize.X)
+	local centre = parent.AbsolutePosition.X + parent.AbsoluteSize.X / 2
+	local scale = localScale(frame)
+	-- Out to the left: the chip's RIGHT edge has to pass x = 0.
+	-- In from the right: the chip's LEFT edge has to start past x = viewport.
+	return -(centre + width / 2 + EXIT_MARGIN) / scale, (viewport - centre + width / 2 + EXIT_MARGIN) / scale
+end
+
 local apply -- forward declared; the transition tail re-enters it with `pending`
 
 local function releaseAndReplay()
@@ -305,10 +389,13 @@ local function transition(nextStep: Step)
 
 		task.wait(TICK_HOLD)
 
+		-- Measured now, while the finished step is still the thing on screen: this
+		-- distance has to clear the width the player is actually looking at.
+		local exitLeft = exitOffsets(frame)
 		local out = TweenService:Create(
 			frame,
 			TweenInfo.new(SLIDE_OUT, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{ Position = OFF_LEFT }
+			{ Position = homeAt(exitLeft) }
 		)
 		out:Play()
 		out.Completed:Wait()
@@ -327,7 +414,13 @@ local function transition(nextStep: Step)
 		end
 
 		paint(nextStep)
-		frame.Position = OFF_RIGHT
+		--[[ The new step's text is a different width, and AutomaticSize only
+			 resolves on the next layout pass, so yield one frame before measuring
+			 the entry distance. The chip is off-screen left for that frame, so the
+			 wait costs the player nothing. ]]
+		task.wait()
+		local _, enterRight = exitOffsets(frame)
+		frame.Position = homeAt(enterRight)
 		local incoming = TweenService:Create(
 			frame,
 			TweenInfo.new(SLIDE_IN, Enum.EasingStyle.Back, Enum.EasingDirection.Out),

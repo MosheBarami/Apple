@@ -310,6 +310,13 @@ end)
 
 --[[ Pop / Notify / Unlocked are subscribed by `Effects.init`, and ONLY there.
 
+	 The codes panel also needs the server's redeem verdict, and used to get it by
+	 opening a SECOND connection to `Notify` — so every verdict rendered twice and
+	 the panel and the toast classified severity independently. It now registers
+	 through `Effects.onNotify`, which fans each notification out to subscribers
+	 after queueing the toast and hands them Effects' own resolved accent colour.
+	 One subscription, one classification, two surfaces that cannot disagree.
+
 	 This script used to also forward those three, which was wrong twice over.
 	 It called `Effects.pop(payload)` — binding the whole `{position, text,
 	 color}` table to the `position` parameter — and `Effects.unlocked`, which
