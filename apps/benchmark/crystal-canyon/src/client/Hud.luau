@@ -646,7 +646,10 @@ local function capsule(parent: GuiObject, name: string, caption: string, tint: C
 	--[[ The well behind the number. Built before the two labels so it cannot
 		 cover them, and stopping well short of the pill's right end so the
 		 currency's colour is still the first thing read. ]]
-	Theme.well(pill, UDim2.new(1, -(textLeft + 4), 0, 30), UDim2.new(0, textLeft - 6, 0, 20), 0.2)
+	-- Starts 2px inside the number's own origin rather than at the medallion's
+	-- right edge: the medallion carries a 3px Border stroke drawn OUTSIDE itself,
+	-- and a well tucked under that stroke reads as a smudge against the coin.
+	Theme.well(pill, UDim2.new(1, -(textLeft + 6), 0, 30), UDim2.new(0, textLeft - 2, 0, 20), 0.2)
 
 	local title = inkLabel(pill, "Label", 13, Palette.shade(tint, 0.68), Palette.lift(tint, 0.55))
 	title.AnchorPoint = Vector2.new(0, 0)

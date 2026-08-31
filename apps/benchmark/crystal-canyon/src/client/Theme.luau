@@ -1147,7 +1147,7 @@ function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (
 	-- Centred on the number's own centre line rather than on the pill's, and
 	-- sized in offset, so it stays registered with the type at both the 46px
 	-- height the HUD builds and the 42px one Panels resizes to.
-	Theme.well(pill, UDim2.new(1, -50, 0, 26), UDim2.new(0, 42, 0.5, -14), 0.2)
+	Theme.well(pill, UDim2.new(1, -54, 0, 26), UDim2.new(0, 46, 0.5, -14), 0.2)
 
 	--[[ The medallion. Three concentric parts rather than one flat disc — rim,
 		 face, gloss — because a single coloured circle is exactly the "basic icon
