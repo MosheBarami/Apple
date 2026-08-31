@@ -118,6 +118,7 @@ Recommendations, not changes: `apps/worker/src/composition.ts` is owned by anoth
 | B: verticalDominance floor 1.25 -> 1.05 | 33.3% / 6.7% | 40.0% / 10.0% | 40.0% / 0.0% | 20.0% / 10.0% |
 | C: colourfulness floor 12 -> 8 | 36.7% / 6.7% | 40.0% / 10.0% | 40.0% / 0.0% | 30.0% / 10.0% |
 | A+C | 6.7% / 26.7% | 0.0% / 40.0% | 10.0% / 0.0% | 10.0% / 40.0% |
+| D: skip the landmark rules whenever the enclosure metric says the scene is enclosed | 26.7% / 20.0% | 40.0% / 20.0% | 40.0% / 0.0% | 0.0% / 40.0% |
 
 ## Camera sensitivity
 

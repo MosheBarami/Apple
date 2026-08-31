@@ -1363,6 +1363,80 @@
         "falsePassRate": 0.4,
         "accuracy": 0.75
       }
+    },
+    {
+      "name": "D: skip the landmark rules whenever the enclosure metric says the scene is enclosed",
+      "why": "the principled version of A — it asks the same question the interior/exterior gate asks, via semantic.ts enclosure() rather than inferring an enclosure from a part-clustering artefact. IMPLEMENTED IN PRODUCTION AND REVERTED on 2026-08-31 after measuring it here: false-reject fell 36.7% -> 26.7% but false-pass rose 6.7% -> 20.0% and overall accuracy FELL 78.3% -> 76.7%. It trades the two errors ~1:1 exactly as A does, and it trades toward the WORSE error — a false pass ships an ugly interior, a false reject only costs a rebuild. Scoping alone cannot work because nothing replaces the removed rules: the pixel half still cannot see inside a roofed scene. This needs an interior camera in the render contract FIRST. Do not ship this variant on its own.",
+      "all": {
+        "good": 30,
+        "bad": 30,
+        "falseRejects": [
+          "horror-corridor/good/v0",
+          "horror-corridor/good/v1",
+          "lobby/good/v0",
+          "lobby/good/v1",
+          "cave/good/v0",
+          "cave/good/v1",
+          "small-house/good/v0",
+          "small-house/good/v1"
+        ],
+        "falsePasses": [
+          "interior/bad/v0",
+          "interior/bad/v1",
+          "tavern/bad/v0",
+          "tavern/bad/v1",
+          "fantasy-area/bad/v0",
+          "fantasy-area/bad/v1"
+        ],
+        "falseRejectRate": 0.267,
+        "falsePassRate": 0.2,
+        "accuracy": 0.767
+      },
+      "CALIBRATION": {
+        "good": 10,
+        "bad": 10,
+        "falseRejects": [
+          "cave/good/v0",
+          "cave/good/v1",
+          "small-house/good/v0",
+          "small-house/good/v1"
+        ],
+        "falsePasses": [
+          "tavern/bad/v0",
+          "tavern/bad/v1"
+        ],
+        "falseRejectRate": 0.4,
+        "falsePassRate": 0.2,
+        "accuracy": 0.7
+      },
+      "VALIDATION": {
+        "good": 10,
+        "bad": 10,
+        "falseRejects": [
+          "horror-corridor/good/v0",
+          "horror-corridor/good/v1",
+          "lobby/good/v0",
+          "lobby/good/v1"
+        ],
+        "falsePasses": [],
+        "falseRejectRate": 0.4,
+        "falsePassRate": 0,
+        "accuracy": 0.8
+      },
+      "REGRESSION": {
+        "good": 10,
+        "bad": 10,
+        "falseRejects": [],
+        "falsePasses": [
+          "interior/bad/v0",
+          "interior/bad/v1",
+          "fantasy-area/bad/v0",
+          "fantasy-area/bad/v1"
+        ],
+        "falseRejectRate": 0,
+        "falsePassRate": 0.4,
+        "accuracy": 0.8
+      }
     }
   ],
   "cameraSensitivity": {

@@ -36,6 +36,32 @@ import { renderScene } from './render-scene.mjs';
 import { buildFamilies, DESIGNED_HARD_CASES, ENCLOSED_FAMILIES } from './composition-families.mjs';
 import { buildSplits, disjointnessProof, SET_NAMES } from './composition-splits.mjs';
 import { loadCompositionModule, auc, spearman, DIRECTION, contactSheet, encodePng } from './composition-calibration.mjs';
+import { execFileSync } from 'node:child_process';
+import { rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+/**
+ * The real enclosure metric, bundled from apps/worker/src/semantic.ts.
+ *
+ * Deliberately bundled rather than reimplemented. The gate now scopes its
+ * landmark rules away from enclosed scenes, and this harness measures whether
+ * that helped — so it has to ask the SAME question the production gate asks. A
+ * mirrored copy here could drift and quietly turn this measurement into
+ * fiction.
+ */
+async function loadSemanticModule() {
+  const REPO_ROOT = join(HERE, '..', '..', '..');
+  const src = join(REPO_ROOT, 'apps', 'worker', 'src', 'semantic.ts');
+  const bin = join(REPO_ROOT, 'apps', 'worker', 'node_modules', '.bin', 'esbuild');
+  const dest = join(tmpdir(), `golem-semantic-${process.pid}-${process.hrtime.bigint()}.mjs`);
+  execFileSync(bin, [src, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
+    stdio: 'pipe',
+    cwd: join(REPO_ROOT, 'apps', 'worker'),
+  });
+  const mod = await import(`file://${dest}`);
+  try { rmSync(dest, { force: true }); } catch { /* best effort */ }
+  return mod;
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const OUT_DIR = join(HERE, '..', 'tasks-visual', 'composition', 'generalization');
@@ -118,6 +144,7 @@ const LIVE = (p) => p.size[0] <= 600 && p.size[2] <= 600;
 /** Render + measure every synthetic fixture once. Everything downstream reads this. */
 export async function measureAll({ width = RENDER_W, height = RENDER_H, C = null, keepRgb = false } = {}) {
   const mod = C ?? (await loadCompositionModule());
+  const sem = await loadSemanticModule();
   const fixtures = buildFamilies();
   const splits = buildSplits(fixtures);
 
@@ -133,6 +160,9 @@ export async function measureAll({ width = RENDER_W, height = RENDER_H, C = null
       ...(keepRgb && v.name === 'hero' ? { rgbBuffer: v.rgb } : {}),
     }));
     const structure = mod.structureFromLayout(f.layout.parts);
+    // The same measured signal the worker uses at the call site in tools.ts.
+    const enclosed =
+      sem.enclosure(f.layout.parts).coveredFloorRatio >= sem.ENCLOSURE_GATES.interiorMin;
     const live = f.scene.parts.filter(LIVE);
     const controls = {
       'control.partCount': live.length,
@@ -152,6 +182,7 @@ export async function measureAll({ width = RENDER_W, height = RENDER_H, C = null
       variant: f.variant,
       intent: f.intent,
       set: splits.assignment[f.family],
+      enclosed,
       structure,
       views,
       values,
@@ -286,6 +317,7 @@ export const PRODUCTION_RULES = {
   heightHierarchy: 2.0,
   maskedColorfulness: 12,
   skipDominanceWhenSingleElement: false,
+  skipLandmarkWhenEnclosed: false,
 };
 
 export function gateVariant(r, opts = PRODUCTION_RULES) {
@@ -293,6 +325,8 @@ export function gateVariant(r, opts = PRODUCTION_RULES) {
   const s = r.structure;
   if (s.parts > 0 && s.verticalElements === 0) {
     fails.push('nothing-stands-up');
+  } else if (opts.skipLandmarkWhenEnclosed && r.enclosed) {
+    // scoped out entirely: see counterfactual D
   } else if (opts.skipDominanceWhenSingleElement && s.verticalElements === 1) {
     // one fused mass: an enclosure, not a landmark contest. No tier is measurable either way.
   } else if (s.verticalDominance < opts.verticalDominance) {
@@ -331,6 +365,20 @@ export const COUNTERFACTUALS = [
     opts: { ...PRODUCTION_RULES, maskedColorfulness: 8 },
   },
   { name: 'A+C', opts: { ...PRODUCTION_RULES, skipDominanceWhenSingleElement: true, maskedColorfulness: 8 } },
+  {
+    name: 'D: skip the landmark rules whenever the enclosure metric says the scene is enclosed',
+    why:
+      'the principled version of A — it asks the same question the interior/exterior gate asks, ' +
+      'via semantic.ts enclosure() rather than inferring an enclosure from a part-clustering ' +
+      'artefact. IMPLEMENTED IN PRODUCTION AND REVERTED on 2026-08-31 after measuring it here: ' +
+      'false-reject fell 36.7% -> 26.7% but false-pass rose 6.7% -> 20.0% and overall accuracy ' +
+      'FELL 78.3% -> 76.7%. It trades the two errors ~1:1 exactly as A does, and it trades toward ' +
+      'the WORSE error — a false pass ships an ugly interior, a false reject only costs a rebuild. ' +
+      'Scoping alone cannot work because nothing replaces the removed rules: the pixel half still ' +
+      'cannot see inside a roofed scene. This needs an interior camera in the render contract ' +
+      'FIRST. Do not ship this variant on its own.',
+    opts: { ...PRODUCTION_RULES, skipLandmarkWhenEnclosed: true },
+  },
 ];
 
 /** The whole numeric report. Pure function of `measureAll`'s output. */
