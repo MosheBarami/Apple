@@ -146,3 +146,21 @@ An unpublished place has no universe, and both features need one.
 and persistence testing together.** Until then the five empty families are
 covered by authored geometry rather than generated assets, and no claim is made
 that Cube works.
+
+## Camera note added 2026-08-31 — how these shots are actually taken
+
+`workspace.CurrentCamera.CFrame` set from a Studio plugin is **partly ignored
+unless `CameraType` is first set to `Scriptable`**: the position is applied and
+the *rotation is silently discarded*, leaving whatever the Edit viewport was
+already facing.
+
+This is not a footnote. Every shot in this file's first two rounds looked toward
+**+Z**, which is what the viewport happened to be holding, so every camera that
+wanted +Z appeared to work and the one that wanted −Z quietly returned a picture
+of something else entirely. Two "the frost hollow is blocked by geometry"
+readings were that bug and not the world. Set `Scriptable`, then set the CFrame,
+then read `LookVector` back and assert the drift is zero before capturing.
+
+The frost camera in the table above — `[0, 26, -78]` → `[0, 4, -200]` — is
+correct and is retained. It sits 4 studs behind the gate's near face, so the
+gate frames the shot; that is the zone entrance and it is the intended read.

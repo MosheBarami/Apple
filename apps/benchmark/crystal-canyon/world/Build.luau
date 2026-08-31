@@ -8,6 +8,79 @@
 	the number successive revisions of this file are measured against.
 
 	=========================================================================
+	WHAT CHANGED, AND WHY — REVISION 4, THE GENERATED-GEOMETRY PASS
+	=========================================================================
+
+	Revision 3 (the style-coherence pass, documented in full below) was reviewed
+	and two failures survived it. Both are failures of GEOMETRY rather than of
+	palette or placement, and both were unfixable with the vocabulary revision 3
+	had, which was `box`, `wedge` and a curated shelf of third-party props:
+
+	  E. THE PRIMARY LANDMARK. "tall rectangular crystal columns + stacked
+	     rectangular pedestal … still resembles a primitive blockout. It is the
+	     PRIMARY landmark and needs the highest visual quality in the map."
+	  C. THE CANYON WALLS. "visibly constructed from repeated rectangular blocks
+	     … still reads as prototype terrain. Do NOT solve by merely adding more
+	     bricks."
+
+	E is answered with a mesh this project GENERATED — Roblox GenerationService
+	(Cube), prompted for this world. C is answered with curated rock meshes,
+	AFTER the generated answer to it was rejected in-world.
+
+	That split is the finding of this revision, and it is worth stating plainly:
+	generation is not the constraint, STYLE COHERENCE is. Six of nine Cube
+	generations were rejected in total — three on their own render, three more
+	once they were seen standing in the world. A Cube mesh arrives textured, and
+	a textured mesh cannot be tinted into a flat-shaded palette, so it either
+	happens to already be in the world's language or it cannot be made to be.
+	The geode happens to be. The mesas were not. See § "THE CUBE FAMILIES".
+
+	  E. The crown of the monument is the accepted giant crystal geode — one
+	     silhouette, every shard growing from one rocky base. The dais underneath
+	     stays, because a stepped octagonal drum of radial ashlar is a plinth and
+	     that half of the criticism was already answered. The collar of authored
+	     box shards around it becomes the cyan Cube collectible. The monument is
+	     still the tallest thing in the map by a clear margin, and the summary now
+	     MEASURES that ratio off the built geometry instead of asserting it.
+	  C. The large masses along the canyon wall are BOULDER MASSES: two or three
+	     curated low-poly rock meshes at a new `cliff` scale tier, standing
+	     against the outward face with the tallest carrying the silhouette. Such
+	     a segment spends FEWER authored parts than a plain one, not more: the
+	     slabs are demoted to sealing the ring at ground level and connecting one
+	     mass to the next, which is what they are actually good at.
+
+	     THIS WAS CUBE CLIFF MODULES FIRST, AND THEY WERE REJECTED IN-WORLD.
+	     Three generated mesas were accepted on their own renders and failed the
+	     moment they stood in the canyon: strata banding that reads as geology at
+	     asset scale reads as a candy stripe against flat-shaded vertex-coloured
+	     rock, and a barber-pole tower on a block wall answers "reads as
+	     prototype terrain" worse than the wall did. A textured mesh also cannot
+	     take the biome tint, which is why that version had to be meadow-only and
+	     left the frost wall untouched. The rock mesh is untextured, so it tints,
+	     so BOTH walls get the relief. See CUBE_FAMILIES for the full rejection.
+
+	  Also: the upgrade pad finally has an upgrade KIOSK, which was one of the
+	  five families the Creator Store search came back empty on.
+
+	Two rules govern every Cube placement, and both follow from the fact that a
+	generated mesh is TEXTURED and so cannot be tinted:
+
+	  * THEY GO WHERE THEIR OWN COLOURS ALREADY BELONG. The geode and the cyan
+	    crystal read as crystal accents and are correct in either half of the
+	    map. Nothing else generated survived this rule: it is what disqualified
+	    the rust mesas, which could only ever have been canyon-only, and it is
+	    the reason a Cube asset can be right for a landmark and wrong for a
+	    hundred metres of wall. Contamination is prevented by placement here
+	    rather than by paint, because paint is not available.
+	  * THEY ARE NOT ON THE CURATED ALLOWLIST AND MUST NOT BE. `CURATED` decides
+	    which results of a keyword search may stand in this world; these were
+	    commissioned for it and vetted by rendering. Worse, `curatedFor` reads a
+	    name's trailing digits as a Creator Store asset id, and these are named
+	    `<family>_cube_1..3` — they would match ids 1, 2 and 3, be culled, and be
+	    reported as unvetted acquisitions. The allowlist is untouched and still
+	    governs the eight third-party families.
+
+	=========================================================================
 	WHAT CHANGED, AND WHY — REVISION 3, THE STYLE-COHERENCE PASS
 	=========================================================================
 
@@ -94,6 +167,16 @@
 	   The biome substitution happens before the draw and does not change the
 	   draw count. So the LAYOUT is identical whether or not the palette folder
 	   exists — only the geometry standing at each point differs.
+
+	   THE CUBE PLACEMENTS KEEP THE SAME CONTRACT. Every one of them consumes
+	   either zero rng (the monument, its collar, the kiosk, the outcrop
+	   crystals) or a fixed number of draws taken BEFORE availability is tested
+	   (the seven per cliff segment). A missing GolemPalette therefore still
+	   produces the same world with the authored geometry standing in: the
+	   rejected faceted spire returns to the plinth, the wall's module segments
+	   build as shorter two-course masses that still seal the ring, and the
+	   upgrade pad keeps the dressing it had. The summary warns loudly when that
+	   has happened.
 
 	Everything positional is derived from Config.Zones[].Bounds, so the world and
 	the crystal spawner cannot disagree about where a zone is. Every authored
@@ -519,6 +602,199 @@ end
 	 curated in. ]]
 pools.fence_panel = pools.fence
 tintablePools.fence_panel = tintablePools.fence
+--[[ The cliff wall's boulder masses draw from the same curated rock shelf as
+	 the scenery rocks — same meshes, same allowlist, same acquisition record —
+	 and differ only in the biome ROLE they tint through and the tier they are
+	 scaled to. Aliased rather than declared as its own family so a rock added to
+	 the palette is available to the wall on the same commit. ]]
+pools.cliff_rock = pools.rock
+tintablePools.cliff_rock = tintablePools.rock
+
+-- =========================================================================
+-- THE CUBE FAMILIES — GOLEM-ORIGINATED, NOT CREATOR STORE
+-- =========================================================================
+--[[ ServerStorage.GolemPalette also carries meshes this project GENERATED
+	 through Roblox's GenerationService (Cube), recorded in assets/palette.json
+	 under `cubeGenerated`. They are a different KIND of asset from the eight
+	 Creator Store families above and they load on a different path:
+
+	 1. NO ALLOWLIST, AND NOT MERELY BECAUSE IT IS UNNECESSARY. `CURATED` exists
+	    to decide which results of a keyword search may stand in this world. A
+	    Cube mesh was commissioned for this world by prompt and then accepted or
+	    rejected by RENDERING it — three of nine were rejected after rendering,
+	    including a landmark. That curation already happened, upstream, against
+	    the right question.
+
+	    Running these through `curatedFor` would also be actively wrong rather
+	    than redundant: it reads the trailing digits of an instance name as a
+	    Creator Store ASSET ID, and these instances are named `<family>_cube_1`
+	    ..`_cube_3`. They would match ids 1, 2 and 3 — ids no curated entry
+	    holds — so every one of them would be silently culled AND reported as an
+	    unvetted acquisition. The allowlist is untouched and still governs the
+	    third-party families; these simply are not third-party.
+
+	 2. NO TINT, EVER. Every Cube mesh carries a texture, so `Color` has no
+	    effect on it — the same mechanism `isTintable` measures. They are
+	    therefore placed only where their OWN colours already belong, which is a
+	    placement rule rather than a paint rule. The geode and the cyan crystal
+	    read as crystal accents and are allowed in either half. Nothing else
+	    passed: rust mesas could only ever have gone in the canyon, and a rust
+	    mesa behind a snowfield is the exact contamination the biome bibles exist
+	    to prevent. Note which way that cuts — a family that can only live in
+	    half the map is a family the tint system would have handled for free.
+
+	 3. NO PRIMITIVE FALLBACK OF THEIR OWN, because they do not need one: the
+	    authored geometry each of them replaces still builds when the mesh is
+	    absent — the faceted spire under the geode, the pad's old dressing under
+	    the kiosk. Every placement below therefore consumes either ZERO rng or
+	    a FIXED number of draws taken BEFORE availability is tested, so the world
+	    lays out identically with or without GolemPalette and only the geometry
+	    standing at each point differs. That is the same contract `prop()` keeps.
+]]
+
+--[[ `cliff_module` is deliberately NOT in this list, and the three meshes are
+	 still in ServerStorage.GolemPalette so the rejection can be re-checked.
+
+	 They generated successfully, they were accepted on their own thumbnails, and
+	 they FAILED the moment they were rendered standing in this world: the strata
+	 banding that reads as geology at asset scale reads as a candy stripe against
+	 flat-shaded vertex-coloured rock, and a barber-pole tower on a red block wall
+	 is a worse answer to "reads as prototype terrain" than the wall was. That is
+	 a style-coherence failure, which is the gate this pass was asked to add, and
+	 it is not fixable downstream: a Cube mesh carries a texture, so it cannot be
+	 tinted into the biome the way every other prop here is.
+
+	 The general rule, already written into assets/palette.json: generating is not
+	 accepting, and rendering an asset ALONE is not rendering it IN CONTEXT. Three
+	 of nine were rejected on their own render; these three needed the world. ]]
+local CUBE_FAMILIES = { "landmark", "kiosk", "crystal_cube" }
+
+local cubePools: { [string]: { any } } = {}
+local cubeByFamily: { [string]: number } = {}
+local cubeCount = 0
+local cubeTotal = 0
+
+for _, family in CUBE_FAMILIES do
+	local found: { any } = {}
+	local sub = if paletteRoot then paletteRoot:FindFirstChild(family) else nil
+	if sub then
+		for _, child in sub:GetChildren() do
+			--[[ GenerationService hands back `Model -> MeshPart`. A one-part
+				 Model is a wrapper, not a composition, so it is unwrapped to the
+				 part: `Model:ScaleTo` is uniform-only, and the monument below
+				 needs a bounded non-uniform fit. Unwrapping also keeps the part
+				 accounting exact rather than "at least one". ]]
+			if child:IsA("Model") then
+				local parts: { any } = {}
+				for _, d in child:GetDescendants() do
+					if d:IsA("BasePart") then
+						table.insert(parts, d)
+					end
+				end
+				table.insert(found, if #parts == 1 then parts[1] else child)
+			elseif child:IsA("BasePart") then
+				table.insert(found, child)
+			end
+		end
+		-- Same stability rule as the curated pools: GetChildren order is not
+		-- contractual and this build's whole value is that two runs are equal.
+		table.sort(found, function(a, b)
+			return sortKey(a) < sortKey(b)
+		end)
+	end
+	cubePools[family] = found
+	cubeByFamily[family] = 0
+	cubeTotal += #found
+end
+
+--[[ Draw a member deterministically. `u` is a number in [0, 1): a stream draw
+	 where the caller already owns one, or a fixed authored fraction where the
+	 placement must consume no rng at all. ]]
+local function cubeDraw(family: string, u: number): any?
+	local pool = cubePools[family]
+	if not pool or #pool == 0 then
+		return nil
+	end
+	return pool[math.min(#pool, math.floor(u * #pool) + 1)]:Clone()
+end
+
+--[[ How a Cube mesh is allowed to depart from uniform scale. Only the monument
+	 passes one; see the landmark section for why a footprint cap plus a bounded
+	 vertical stretch is the honest way to make a mesh dominate a skyline. ]]
+type CubeFit = { maxW: number, maxStretch: number }
+
+--[[ Stand a Cube mesh with its BASE on `baseY`, centred on (x, z), scaled to
+	 `targetH` studs of finished height and rotated by `rot`.
+
+	 `rot` is a rotation-only CFrame rather than a yaw so a caller that needs a
+	 mesh aimed at something — the kiosk faces its pad — can hand in a
+	 `CFrame.lookAt` directly instead of decomposing it back into a yaw.
+
+	 No tint is applied and none is possible — see the header above. Material is
+	 still forced to SmoothPlastic, because §9.10 fails a realistic material and
+	 the texture survives it. ]]
+local function cubePlace(
+	parent: Instance,
+	clone: any,
+	family: string,
+	x: number,
+	z: number,
+	baseY: number,
+	targetH: number,
+	rot: CFrame,
+	collide: boolean,
+	fit: CubeFit?
+): number
+	local ext = extentsOf(clone)
+	local scale = targetH / math.max(0.1, ext.Y)
+	--[[ `Model:ScaleTo` is uniform-only, so a fit is only honoured on a single
+		 part. A multi-part Cube model has never come back from the service; if
+		 one ever does it takes the uniform scale and the monument reports short
+		 in the DOMINANCE line rather than being met by distorting an assembly. ]]
+	local stretch = 1
+	if fit and not clone:IsA("Model") then
+		local wide = math.max(ext.X, ext.Z)
+		local capped = fit.maxW / math.max(0.1, wide)
+		if capped < scale then
+			stretch = math.min(fit.maxStretch, scale / capped)
+			scale = capped
+		end
+	end
+	local h = ext.Y * scale * stretch
+	local cf = CFrame.new(x, baseY + h / 2, z) * rot
+
+	local n = 0
+	local function dress(p: BasePart)
+		p.Anchored = true
+		p.CanCollide = collide
+		p.CanTouch = false
+		p.Material = Enum.Material.SmoothPlastic
+		n += 1
+	end
+
+	if clone:IsA("Model") then
+		clone:ScaleTo(scale)
+		clone.Parent = parent
+		clone:PivotTo(cf)
+		for _, d in clone:GetDescendants() do
+			if d:IsA("BasePart") then
+				dress(d)
+			end
+		end
+		n = math.max(1, n)
+	else
+		clone.Size = Vector3.new(ext.X * scale, h, ext.Z * scale)
+		clone.CFrame = cf
+		dress(clone)
+		clone.Parent = parent
+	end
+
+	partCount += n
+	cubeCount += n
+	cubeByFamily[family] += n
+	track(Vector3.new(x, baseY + h / 2, z), Vector3.new(ext.X * scale, h, ext.Z * scale))
+	return h
+end
 
 local paletteOK = paletteTotal > 0
 if not paletteOK then
@@ -658,7 +934,21 @@ local BIOME_MEADOW: Biome = {
 	Tint = {
 		foliage = Color3.fromRGB(74, 168, 82), -- warm green
 		wood = Color3.fromRGB(146, 104, 62), -- warm brown, cream-lit
-		stone = Color3.fromRGB(178, 152, 126), -- WARM neutral: pale meshes warmed here
+		--[[ Sandstone, not a pale neutral. The previous (178,152,126) was chosen to
+			 warm pale meshes and it did, but a 13-stud boulder painted that light
+			 sits in a saturated green meadow under a rust wall reading as an
+			 unpainted import — the "raw grey/white … unstyled imported meshes"
+			 note, one step further along. Darker and more saturated puts scenery
+			 rock in the same family as the canyon without making it cliff, which
+			 is what `cliff` is for. ]]
+		stone = Color3.fromRGB(176, 140, 104),
+		--[[ A separate role from `stone`, and the reason `cliff_rock` exists as a
+			 family at all. A boulder MASS is part of the canyon wall, so it takes
+			 the wall's own middle tone; a boulder PROP is scenery lying on the
+			 ground and takes warm neutral. Painting the masses `stone` put a pale
+			 sand dome against a rust wall, and the biggest object in the frame
+			 read as a separate imported thing rather than as the cliff. ]]
+		cliff = W.CliffB,
 		crystal = meadow.CrystalColor,
 		accent = P.Arrow,
 		--[[ Road paint is measured against the ROAD, not against the biome's
@@ -673,6 +963,7 @@ local BIOME_MEADOW: Biome = {
 		tree_round = { role = "foliage", tintable = false },
 		bush = { role = "foliage", tintable = false },
 		rock = { role = "stone", tintable = true },
+		cliff_rock = { role = "cliff", tintable = true },
 		crystal = { role = "crystal", tintable = true },
 		fence = { role = "wood", tintable = true },
 		fence_panel = { role = "wood", tintable = true },
@@ -691,6 +982,9 @@ local BIOME_FROST: Biome = {
 		foliage = Color3.fromRGB(62, 104, 96), -- deep pine / desaturated blue-green
 		wood = Color3.fromRGB(104, 116, 134),
 		stone = Color3.fromRGB(146, 170, 188),
+		-- The middle of this biome's own Cliff triple, for the same reason as in
+		-- the canyon: a boulder mass is wall, not scenery.
+		cliff = Color3.fromRGB(112, 130, 150),
 		crystal = frost.CrystalColor,
 		accent = Color3.fromRGB(96, 214, 236),
 		--[[ The frost accent is NOT reused as road paint. Measured against the ice
@@ -707,6 +1001,7 @@ local BIOME_FROST: Biome = {
 		tree_round = { role = "foliage", tintable = true, substitute = "tree_pine" },
 		bush = { role = "foliage", tintable = true },
 		rock = { role = "stone", tintable = true },
+		cliff_rock = { role = "cliff", tintable = true },
 		crystal = { role = "crystal", tintable = true },
 		fence = { role = "wood", tintable = true },
 		fence_panel = { role = "wood", tintable = true },
@@ -753,6 +1048,14 @@ local TIERS: { [string]: { number } } = {
 	large = { 9.0, 12.0 }, -- boulders, big crystals, undergrowth trees
 	sapling = { 14.0, 20.0 }, -- between a large prop and a tree
 	tree = { 26.0, 34.0 }, -- canopy
+	--[[ Cliff MASSES, not props: the boulder masses that break the canyon wall's
+		 silhouette. It is a tier rather than a raw scale for the same reason
+		 everything else is — three rock meshes of different source dimensions
+		 asking for one band come out one band tall. Deliberately butted against
+		 `landmark` at 50 rather than overlapping it: the wall is allowed to be
+		 the second tallest thing in the map and is not allowed to reach the
+		 monument. ]]
+	cliff = { 30.0, 50.0 },
 	landmark = { 50.0, 92.0 }, -- only the two landmarks and the monument
 }
 
@@ -765,6 +1068,7 @@ local NOMINAL: { [string]: number } = {
 	tree_round = 30,
 	bush = 6,
 	rock = 5,
+	cliff_rock = 5,
 	crystal = 8,
 	fence = 7,
 	fence_panel = 7,
@@ -775,7 +1079,7 @@ local NOMINAL: { [string]: number } = {
 --[[ Tiers in order, so a placement can ask for a RANGE of tiers — "somewhere
 	 between a small prop and a large one" — without that turning back into a
 	 continuous scale factor by the back door. ]]
-local TIER_ORDER = { "micro", "small", "player", "large", "sapling", "tree", "landmark" }
+local TIER_ORDER = { "micro", "small", "player", "large", "sapling", "tree", "cliff", "landmark" }
 local TIER_INDEX: { [string]: number } = {}
 for i, name in TIER_ORDER do
 	TIER_INDEX[name] = i
@@ -1320,7 +1624,7 @@ local function fallbackProp(
 		local r = 3 * scale
 		blob(parent, "Bush", Vector3.new(r * 2.1, r * 2, r * 1.9), Vector3.new(x, y + r, z), foliage)
 		height = 6 * scale
-	elseif family == "rock" then
+	elseif family == "rock" or family == "cliff_rock" then
 		local s = 5 * scale
 		newPart(
 			parent,
@@ -1403,6 +1707,18 @@ type PropCfg = {
 	collide: boolean?,
 	groundY: number?,
 	anywhere: boolean?, -- bypass the soft keep-out test, for deliberate placement
+	--[[ A hard cap on finished FOOTPRINT, in studs. Not a scale factor and not a
+		 second tier: it only ever shrinks a placement, never grows one, and the
+		 tier still decides the height it is shrinking from.
+
+		 It exists because a tier states HEIGHT and a mesh's width follows its own
+		 aspect. The curated rock shelf runs up to about 2:1 wide, so a 42-stud
+		 cliff mass came out EIGHTY-FOUR studs across and one of them landed in
+		 the frost approach as a mountain the canonical camera was standing
+		 inside. Height is the right thing for a tier to control and width is the
+		 wrong thing to leave unbounded; this bounds it at the one call site that
+		 asks for cliff-scale geometry. ]]
+	maxW: number?,
 }
 
 --[[ RNG ORDER IS PART OF THE CONTRACT: yaw, size, tiltX, tiltZ, family index.
@@ -1442,10 +1758,23 @@ local function prop(parent: Instance, family: string, x: number, z: number, cfg:
 	local collide = if cfg.collide ~= nil then cfg.collide else (targetH >= 9)
 
 	if clone then
-		local scale = targetH / math.max(0.1, extentsOf(clone).Y)
+		local ext = extentsOf(clone)
+		local scale = targetH / math.max(0.1, ext.Y)
+		if cfg.maxW then
+			local wide = math.max(ext.X, ext.Z) * scale
+			if wide > cfg.maxW then
+				scale *= cfg.maxW / wide
+			end
+		end
 		return place(parent, clone, resolved, x, z, y, scale, yaw, tiltX, tiltZ, collide)
 	end
-	return fallbackProp(parent, resolved, x, z, y, targetH / NOMINAL[resolved], yaw, tiltX, tiltZ, collide)
+	--[[ The fallback body is built roughly as wide as it is tall, so capping its
+		 HEIGHT at maxW caps its footprint at the same number. Applied here for the
+		 same reason every other fallback matches the asset build: the two must
+		 have the same skyline or the comparison the fallback exists to support is
+		 worthless. ]]
+	local fallbackH = if cfg.maxW then math.min(targetH, cfg.maxW) else targetH
+	return fallbackProp(parent, resolved, x, z, y, fallbackH / NOMINAL[resolved], yaw, tiltX, tiltZ, collide)
 end
 
 -- =========================================================================
@@ -1487,6 +1816,34 @@ end
 	 7. THE FOOT IS PLANTED. Talus rock and biome vegetation at the base, so the
 	    wall never meets the ground along a straight seam.
 
+	 8. AND NOW: THE LARGE MASSES ARE MESHES. The review came back on this wall a
+	    second time — "visibly constructed from repeated rectangular blocks …
+	    still reads as prototype terrain. Do NOT solve by merely adding more
+	    bricks" — and points 1-7 above are the limit of what a box can do about
+	    it. Two or three CURATED ROCK MESHES at the `cliff` tier now stand
+	    against the outward face of most masses, the tallest carrying the
+	    silhouette and the flankers spanning `tree`-to-`cliff` so the group has a
+	    peak rather than three equal lumps.
+
+	    Such a segment SPENDS FEWER AUTHORED PARTS than a plain one, which is the
+	    whole point: two courses instead of three or four, no broken crest, no
+	    ledge boulder, and mesh mass doing the silhouette work those parts were
+	    failing to do. The authored slabs that remain are demoted to what they
+	    are genuinely good at — course 1 seals the ring at ground level, course 2
+	    runs the full width of the segment so the gap between two masses is
+	    filled mass rather than sky, and the ramp cap keeps a flat lid off the
+	    connective stack. The ring encloses on course 1 alone, exactly as before,
+	    so no gap opens whether or not a single mesh loads.
+
+	    THE FIRST ANSWER HERE WAS THREE CUBE-GENERATED MESAS AND IT WAS WRONG.
+	    They rendered well alone and read as candy stripe in the world — see
+	    CUBE_FAMILIES. They were also necessarily MEADOW ONLY, because a textured
+	    mesh cannot be tinted and rust is wrong on a snowfield, so half the wall
+	    kept its plain slabs. The rock mesh is untextured and takes `biome.Tint`
+	    like every other prop, so the frost wall gets the same relief in its own
+	    cool stone. The colour constraint did not have to be honoured; it had to
+	    be designed out.
+
 	 Tones come from the BIOME under each mass, not from a global rust triple, so
 	 the south wall is cool stone rather than rust with a cold-tinted talus pile
 	 in front of it. ]]
@@ -1495,7 +1852,17 @@ type CliffOpts = {
 	talus: boolean?,
 	planting: boolean?,
 	saddles: boolean?,
+	modules: boolean?, -- boulder masses as the large masses (default on)
 }
+
+--[[ The widest a boulder mass may finish, in studs. The curated rock shelf runs
+	 to about 2:1 wide-to-tall, so the `cliff` tier's 30-50 studs of HEIGHT was
+	 producing masses 60-84 studs ACROSS — at which size one is not relief on a
+	 wall, it is a hill, and the frost approach ended up with a camera standing
+	 inside one. 46 is a little under the 48-stud segment stride, so two adjacent
+	 masses can still touch and read as one massif without either of them
+	 becoming the run. ]]
+local CLIFF_MASS_MAX_W = 46
 
 local function cliffRun(
 	from: Vector3,
@@ -1535,8 +1902,52 @@ local function cliffRun(
 		-- Deliberate erosion. A saddle is short and wide; it breaks the skyline
 		-- without opening the ring.
 		local saddle = (o.saddles ~= false) and chance(0.2)
+
+		--[[ THE BOULDER-MASS DECISION, AND ALL SEVEN OF ITS DRAWS, TAKEN
+			 UNCONDITIONALLY SO THE RUN CONSUMES THE SAME STREAM EITHER WAY.
+
+			 The named hard fail is "visibly constructed from repeated rectangular
+			 blocks … do NOT solve by merely adding more bricks". This answers it by
+			 spending FEWER authored parts on such a segment than on a plain one —
+			 two courses instead of three or four, and no broken crest — and standing
+			 two or three CURATED ROCK MESHES at cliff scale against the face, so the
+			 silhouette is broken by boulder mass rather than by another slab.
+
+			 It was a Cube-generated mesa mesh first. That version is in the git
+			 history and it was rejected on sight in-world: see CUBE_FAMILIES. The
+			 replacement is deliberately an asset this world ALREADY uses — the same
+			 low-poly rock family that dresses the talus — because it is flat-shaded
+			 and untextured, and therefore takes the biome tint like everything else.
+			 Coherence here is a property of the asset choice, not of the placement.
+
+			 Two rules decide where a boulder mass may stand:
+
+			   * NOT ON A SADDLE. A saddle is a deliberate low break in the run;
+			     filling one with mass removes the erosion it exists to express.
+			   * NOT ON THE INNER SPURS. Their clearance from the crystal spawn
+			     bounds is about a stud, and a mass stands inward of its courses. ]]
+		local modRoll = rng:NextNumber()
+		local modU = rng:NextNumber()
+		local modT = rng:NextNumber()
+		local modYaw = rand(-22, 22) + (if chance(0.5) then 180 else 0)
+		local modLat = rand(-0.20, 0.20)
+		--[[ How far the module steps INWARD of its courses. Small on purpose: it
+			 only has to stand in front of the sealing slab, and every stud of it
+			 is a stud of cliff moving into the play area. ]]
+		local modInset = rand(0.04, 0.20)
+		--[[ Unlike the Cube modules this replaces, a boulder mass is NOT
+			 meadow-only. The rock mesh is untextured and takes `biome.Tint`, so
+			 the frost hollow gets the same silhouette relief in its own cool
+			 stone instead of keeping a wall of plain slabs because the only
+			 available geometry was the wrong colour. That was the honest limit
+			 of the textured version and it is gone with it. ]]
+		--[[ `height` is not in scope yet, so the run's own size is tested at the
+			 placement below rather than here: this decision must be made from the
+			 draws already taken so the stream is consumed identically either way. ]]
+		local useModule = (o.modules ~= false) and not saddle and modRoll < 0.62
+
 		local height = baseHeight * (if saddle then rand(0.34, 0.5) else rand(0.88, 1.5))
-		local courses = if saddle then 2 else rng:NextInteger(3, 4)
+		local courses = if saddle then 2 elseif useModule then 2 else rng:NextInteger(3, 4)
 		local toneOffset = rng:NextInteger(0, 2)
 		local depthMul = rand(0.78, 1.38)
 		--[[ Sink the stack slightly. Every stack starting at y = 0 put every
@@ -1544,9 +1955,13 @@ local function cliffRun(
 			 horizontal line is what the eye reads as a step. Downward only:
 			 lifting a stack would leave daylight under it. ]]
 		local y = -rand(0.4, 3.0)
+		local sink = y -- the run's ground line, kept for the module's own base
 		local setback = 0
 		local topY, topCentre, topWidth, topDepth = 0, anchor, segWidth, depth
-		local courseFraction = if saddle then { 0.62, 0.42 } else { 0.46, 0.30, 0.22, 0.16 }
+		local courseFraction = if saddle
+			then { 0.62, 0.42 }
+			elseif useModule then { 0.46, 0.34 }
+			else { 0.46, 0.30, 0.22, 0.16 }
 
 		for k = 1, courses do
 			local h = height * courseFraction[k] * rand(0.78, 1.28)
@@ -1560,6 +1975,17 @@ local function cliffRun(
 				w = segWidth + 9
 				lateral = 0
 				dd = depth * depthMul
+			elseif useModule then
+				--[[ THE CONNECTIVE COURSE. Under a module the upper courses stop
+					 trying to be the silhouette — the mesh is the silhouette — and
+					 do the job the authored geometry is genuinely better at:
+					 running the full width of the segment so that the gap BETWEEN
+					 two modules is filled mass rather than sky. Nearly no lateral
+					 shift, for the same reason. ]]
+				w = segWidth * rand(0.94, 1.02)
+				lateral = rand(-0.05, 0.05) * segWidth
+				dd = depth * depthMul * rand(0.6, 0.82)
+				setback += depth * depthMul * rand(0.10, 0.20)
 			else
 				-- Everything above it is free to be irregular: strong width
 				-- variation and an independent lateral shift per course is what
@@ -1595,8 +2021,10 @@ local function cliffRun(
 		)
 
 		-- A broken summit on the tall masses: two smaller slabs at their own yaw,
-		-- so the top is a shattered crest instead of one ridge line.
-		if not saddle and chance(0.55) then
+		-- so the top is a shattered crest instead of one ridge line. Not under a
+		-- module: two extra slabs behind a mesa is the "more bricks" answer, and
+		-- the mesa already has a broken summit modelled into it.
+		if not saddle and not useModule and chance(0.55) then
 			for k = 1, 2 do
 				local sw = topWidth * rand(0.18, 0.34)
 				local sh = height * rand(0.10, 0.22)
@@ -1636,14 +2064,71 @@ local function cliffRun(
 			)
 		end
 
-		-- Talus at the foot, on the inward face: mesh rock, not more slabs.
+		--[[ THE BOULDER MASS ITSELF.
+
+			 Two or three curated rock meshes standing against the outward face, at
+			 the `cliff` tier so they are cliff-scale rather than scenery-scale, and
+			 clamped to this run's own mass height so a 22-stud inner spur cannot be
+			 handed a 50-stud boulder.
+
+			 They step INWARD of their courses by `modInset` — small on purpose,
+			 because every stud of it is a stud of cliff moving into the play area —
+			 and they are spread along the run from `modLat` so the mass reads as one
+			 shouldered outcrop rather than three separate rocks in a row.
+
+			 `anywhere = true` because this stands ON the cliff footprint, which the
+			 placement blocker owns; `collide = true` because a cliff mass is walked
+			 into, not through. Tint comes from the biome like every other prop —
+			 which is the whole reason this is a rock mesh and not a textured one. ]]
+		if useModule then
+			local masses = if modT < 0.45 then 2 else 3
+			for k = 1, masses do
+				--[[ Deterministic offsets from the draws already taken, not new ones:
+					 the segment's stream consumption must not depend on how many
+					 masses it happened to want. ]]
+				local spread = (k - (masses + 1) / 2) / masses
+				local along = (modLat + spread * 0.72) * segWidth
+				local at = anchor + dir * along + inward * (depth * depthMul * modInset)
+				--[[ The first mass carries the silhouette at the full `cliff` tier
+					 and the flankers span `tree`-to-`cliff`, so the group has a peak
+					 instead of being three equal lumps. Expressed as named tiers
+					 rather than a scale factor because PropCfg deliberately has no
+					 scale factor — see the note on the type. ]]
+				--[[ Scale is bound to THIS RUN's mass, not to the tier's top. The
+					 `cliff` tier is 30-50 studs and the perimeter runs are not all
+					 that tall, so a peak taken from the top of the tier on a short
+					 run stands a boulder taller than the wall it is supposed to
+					 belong to — which is how a mass stops reading as cliff and
+					 starts reading as a dropped prop. A tall run gets the full
+					 tier; anything shorter spans up into it from `tree` instead. ]]
+				local tall = height >= 44
+				prop(fCliffs, "cliff_rock", at.X, at.Z, {
+					tier = if tall and k == 1 then "cliff" else "tree",
+					tierTo = if tall and k == 1 then nil else "cliff",
+					tilt = 7,
+					anywhere = true,
+					collide = true,
+					groundY = sink,
+					maxW = CLIFF_MASS_MAX_W,
+				})
+			end
+		end
+
+		--[[ Talus at the foot, on the inward face: mesh rock, not more slabs.
+
+			 `cliff_rock`, not `rock`. Talus is debris that came off the wall two
+			 studs behind it, so it takes the wall's tone; painted `stone` it came
+			 out warm-neutral pale and a pair of near-white lumps against rust
+			 read as two imported props parked at the cliff rather than as its
+			 own rubble. Same meshes, same allowlist — only the biome role and the
+			 tier differ, which is exactly the distinction the family encodes. ]]
 		if o.talus ~= false then
 			local n = rng:NextInteger(2, 3)
 			for _ = 1, n do
 				local along = rand(-segWidth * 0.46, segWidth * 0.46)
 				local out = rand(0.18, 0.8) * depth
 				local at = anchor + dir * along + inward * out
-				prop(fRocks, "rock", at.X, at.Z, {
+				prop(fRocks, "cliff_rock", at.X, at.Z, {
 					tier = "small",
 					tierTo = "large",
 					tilt = 18,
@@ -1669,8 +2154,9 @@ local function cliffRun(
 		end
 
 		-- A boulder on a mid ledge, breaking the course seam from above. This is
-		-- where the old build put a painted ball; it is a rock mesh now.
-		if not saddle and chance(0.42) then
+		-- where the old build put a painted ball; it is a rock mesh now. Skipped
+		-- under a module, whose mass occupies that ledge.
+		if not saddle and not useModule and chance(0.42) then
 			local at = topCentre + inward * (topDepth * rand(0.1, 0.3))
 			prop(fRocks, "rock", at.X, at.Z, {
 				tier = "player",
@@ -1706,9 +2192,18 @@ cliffRun(Vector3.new(-WORLD_X, 0, WORLD_Z_S), Vector3.new(-WORLD_X, 0, WORLD_Z_N
 
 --[[ Inner spurs hug the hub so the clearing is enclosed rather than open on
 	 four sides. Saddles are off here: a dip in a 72-stud spur beside the hub is
-	 not read as erosion, it is read as a missing piece. ]]
-cliffRun(Vector3.new(64, 0, -56), Vector3.new(64, 0, 16), Vector3.new(1, 0, 0), 40, 22, 20, { saddles = false })
-cliffRun(Vector3.new(-64, 0, -56), Vector3.new(-64, 0, 16), Vector3.new(-1, 0, 0), 40, 22, 20, { saddles = false })
+	 not read as erosion, it is read as a missing piece.
+
+	 Boulder masses are off for the same class of reason, and it was measured
+	 rather than assumed: a rock mesh is scaled by HEIGHT and its width follows
+	 its own aspect, so a 30-stud mass off this shelf comes out 45-60 studs
+	 across. Against the outer wall that is a shouldered outcrop; on a spur 64
+	 studs from the monument it is a boulder standing in the approach, and the
+	 hub camera came back with the landmark framed between two rust domes. The
+	 enclosure here is the wall's job. Same rule as BUTTE below. ]]
+local SPUR: CliffOpts = { saddles = false, modules = false }
+cliffRun(Vector3.new(64, 0, -56), Vector3.new(64, 0, 16), Vector3.new(1, 0, 0), 40, 22, 20, SPUR)
+cliffRun(Vector3.new(-64, 0, -56), Vector3.new(-64, 0, 16), Vector3.new(-1, 0, 0), 40, 22, 20, SPUR)
 cliffRun(
 	Vector3.new(-56, 0, -64),
 	Vector3.new(-PATH_HALF - 8, 0, -64),
@@ -1728,12 +2223,19 @@ cliffRun(
 	{ saddles = false }
 )
 
--- Free-standing buttes give each half a horizon of its own. They sit outside
--- the crystal bounds (x ±96) so they never swallow a spawn point.
-cliffRun(Vector3.new(-112, 0, 150), Vector3.new(-112, 0, 190), Vector3.new(-1, 0, 0), 44, 28, 24, { saddles = false })
-cliffRun(Vector3.new(114, 0, 100), Vector3.new(114, 0, 138), Vector3.new(1, 0, 0), 44, 26, 24, { saddles = false })
-cliffRun(Vector3.new(-116, 0, -158), Vector3.new(-116, 0, -198), Vector3.new(-1, 0, 0), 44, 27, 24, { saddles = false })
-cliffRun(Vector3.new(112, 0, -104), Vector3.new(112, 0, -140), Vector3.new(1, 0, 0), 44, 25, 24, { saddles = false })
+--[[ Free-standing buttes give each half a horizon of its own. They sit outside
+	 the crystal bounds (x ±96) so they never swallow a spawn point, and that
+	 clearance is TIGHT — the authored courses reach about x -95 at their
+	 deepest. Cube modules are therefore off here: a module stands a few studs
+	 inward of its courses and is as deep again, which is exactly enough to put a
+	 mesa on top of a crystal spawn point. This is the invariant the comment
+	 above has always claimed, and it is cheaper to keep it than to re-derive the
+	 spawn field around a mesh. ]]
+local BUTTE: CliffOpts = { saddles = false, modules = false }
+cliffRun(Vector3.new(-112, 0, 150), Vector3.new(-112, 0, 190), Vector3.new(-1, 0, 0), 44, 28, 24, BUTTE)
+cliffRun(Vector3.new(114, 0, 100), Vector3.new(114, 0, 138), Vector3.new(1, 0, 0), 44, 26, 24, BUTTE)
+cliffRun(Vector3.new(-116, 0, -158), Vector3.new(-116, 0, -198), Vector3.new(-1, 0, 0), 44, 27, 24, BUTTE)
+cliffRun(Vector3.new(112, 0, -104), Vector3.new(112, 0, -140), Vector3.new(1, 0, 0), 44, 25, 24, BUTTE)
 
 -- =========================================================================
 -- 5. PRIMARY LANDMARK
@@ -1841,95 +2343,254 @@ local plinthTop = stoneDais(
 	LANDMARK.X,
 	LANDMARK.Z,
 	1.0,
-	{ { 27, 5.4 }, { 21, 4.8 }, { 15.5, 4.2 } },
+	--[[ The upper two tiers were 21 and 15.5, which put a 31-stud crown under a
+		 48-stud mesh: the monument read as a mushroom, cap overhanging stem, in
+		 the one shot the whole map is composed around. Widened so the crown is
+		 wider than the crown MESH; the base stays at 27 because the crystal
+		 collar stands at r = 30 and the dais must not reach it. ]]
+	--[[ TALLER AS WELL AS WIDER-CROWNED, and the two go together.
+
+		 The crown was 15.5 in radius under a 48-stud mesh, so the monument read
+		 as a mushroom — wide cap, narrow stem — in the one shot the whole map is
+		 composed around. Widening the crown alone was not enough, because the
+		 mesh's own rocky base is a broad smooth dome and any of it left standing
+		 proud of the plinth reads as the cap.
+
+		 So the plinth is tall enough to SWALLOW that dome: 21 studs of masonry
+		 against the previous 14.4, with the geode bedded 16 into it (below). Only
+		 the crystals rise out of the stone, which is the silhouette the asset was
+		 prompted for. The base stays at 27 in radius because the crystal collar
+		 stands at r = 30 and the dais must not reach it. ]]
+	{ { 27, 8.0 }, { 23.5, 7.0 }, { 20.5, 6.0 } },
 	{ W.CliffC, W.CliffB, W.CliffA }
 )
 
---[[ The tapering, twisting spire. Three facets per level so flat shading gives
-	 each face a constant tone; the tone index walks with the level so the shaft
-	 also bands vertically, which is what a cut crystal does and a painted box
-	 does not. ]]
-local spireTones = { crystalHue, Palette.lift(crystalHue, 0.20), Palette.shade(crystalHue, 0.22) }
-local SPIRE_LEVELS = 7
-local SPIRE_H = 54
-local levelH = SPIRE_H / SPIRE_LEVELS
-for level = 1, SPIRE_LEVELS do
-	local t = (level - 1) / (SPIRE_LEVELS - 1)
-	local w = 12.0 + (3.6 - 12.0) * t
-	local yc = plinthTop + (level - 1) * levelH + levelH / 2
+--[[ =====================  THE CROWN IS A MESH  =====================
+
+	 THE NAMED HARD FAIL: "tall rectangular crystal columns + stacked rectangular
+	 pedestal … still resembles a primitive blockout. It is the PRIMARY landmark
+	 and needs the highest visual quality in the map."
+
+	 The previous answer gave the shaft a taper and a 9-degree twist per level.
+	 That made it a better-shaped stack of boxes, and it was still a stack of
+	 boxes, because `box` was the only vocabulary available to it. The pedestal
+	 was rebuilt properly at the same time — a stepped octagonal drum of radial
+	 ashlar with a chamfer course — and that half of the criticism is answered:
+	 it reads as masonry from every elevation, so the dais STAYS. A monument
+	 stands on a plinth.
+
+	 The crown does not stay. It is replaced by the accepted `landmark` Cube
+	 generation: ONE giant crystal geode, every shard growing from a single rocky
+	 base. That single-silhouette property is exactly what the REJECTED spire
+	 generation lacked — three pieces that did not cohere, a grey block, a
+	 floating diamond and a separate purple cluster — and it is why this one was
+	 re-prompted and this one was accepted.
+
+	 =====================  HEIGHT DISCIPLINE  =====================
+
+	 The monument must stay the tallest thing in the map by a clear margin: the
+	 composition gate measures verticalDominance (tallest ÷ second tallest) and
+	 fails below 1.25, and docs/COMPOSITION.md records a live run scoring exactly
+	 1.000. Everything else is held down for it — cliffs and their boulder masses top
+	 out around 50 (which is why the `cliff` tier stops there), tall pines at 34,
+	 the secondary landmarks around 52.
+
+	 A mesh cannot simply be told to be 68 studs tall, because its FOOTPRINT
+	 scales with it, and the source geode is roughly as wide as it is high: at 68
+	 studs of uniform scale it would be about 90 studs across, swallowing the
+	 dais it stands on, the crystal apron around it and part of the spawn
+	 approach. So the fit is stated as BOTH numbers — the footprint is capped at
+	 the dais's own diameter, and only the height left over is made up by a
+	 bounded vertical stretch.
+
+	 That stretch is a licence granted to exactly one asset. A crystal extended
+	 along its growth axis reads as longer shards, which is a thing crystals do;
+	 the same stretch on a kiosk or a rock would read as a modelling error. It is
+	 a parameter here and is passed nowhere else in this file.
+
+	 The achieved top and the live dominance ratio are printed in the summary, so
+	 this is a measured claim rather than an intended one. ]]
+
+local GEODE_TARGET_H = 74 -- studs of finished height, inside the `landmark` tier
+--[[ How far the mesh sinks into the plinth. Raised with the plinth's own height
+	 so the two move together: the monument's TOP is `plinthTop - GEODE_BED +
+	 GEODE_TARGET_H`, and the build prints the achieved figure and the live
+	 dominance ratio, so getting this pair wrong is loud rather than silent. ]]
+local GEODE_BED = 16
+--[[ Measured against the tier the mesh actually STANDS ON, which is the crown,
+	 not the base. This was 48 and it was checked against the bottom tier's 27
+	 radius; the crown is a different number and the render showed it — a 48-wide
+	 cap on a 31-wide top step is a mushroom, and it was the primary landmark in
+	 the primary shot.
+
+	 40 across is 20 in radius, inside the widened crown's 20.5, so every
+	 elevation shows plinth wider than crown. It also keeps the bounding box well
+	 clear of z = 44 where the north road begins — the road's SIGHTLINE, not
+	 walkability: the geode's underside sits 14 studs up and a player passes
+	 beneath it.
+
+	 The narrower cap is paid for in vertical stretch, 1.29 to 1.55, still inside
+	 the 1.7 licence. It buys a 68 x 40 monument instead of a 68 x 48 one, which
+	 is a better proportion for a spire-shaped thing on its own account. ]]
+local GEODE_MAX_W = 40
+local GEODE_MAX_STRETCH = 1.7
+assert(
+	GEODE_TARGET_H >= TIERS.landmark[1] and GEODE_TARGET_H <= TIERS.landmark[2],
+	"[Crystal Canyon] the monument must be sized inside the landmark tier"
+)
+
+-- Fixed fraction, not a draw: the palette-missing build must lay out identically.
+local geode = cubeDraw("landmark", 0.5)
+if geode then
+	--[[ Bedded 16 studs — nearly the whole depth of the plinth — rather than
+		 balanced on it. At 3 the geode's rocky base stood proud of the masonry
+		 and the monument read as a mushroom; buried to here, the stone carries
+		 the mass and the crystals grow out of it. The dais core is solid, so what
+		 is bedded is simply inside opaque geometry. ]]
+	cubePlace(
+		fLandmark,
+		geode,
+		"landmark",
+		LANDMARK.X,
+		LANDMARK.Z,
+		plinthTop - GEODE_BED,
+		GEODE_TARGET_H,
+		CFrame.Angles(0, math.rad(22), 0),
+		true,
+		{ maxW = GEODE_MAX_W, maxStretch = GEODE_MAX_STRETCH }
+	)
+else
+	--[[ THE AUTHORED SPIRE, kept as the palette-missing fallback and nothing
+		 else. It is the rejected crown; it stands only when the world is already
+		 the degraded build the summary warns about, and it is better than an
+		 empty plinth. Consumes no rng, so the layout is unchanged either way. ]]
+	local spireTones = { crystalHue, Palette.lift(crystalHue, 0.20), Palette.shade(crystalHue, 0.22) }
+	local SPIRE_LEVELS = 7
+	local SPIRE_H = 54
+	local levelH = SPIRE_H / SPIRE_LEVELS
+	for level = 1, SPIRE_LEVELS do
+		local t = (level - 1) / (SPIRE_LEVELS - 1)
+		local w = 12.0 + (3.6 - 12.0) * t
+		local yc = plinthTop + (level - 1) * levelH + levelH / 2
+		for i = 1, 3 do
+			box(
+				fLandmark,
+				"SpireFacet",
+				Vector3.new(w, levelH * 1.04, w),
+				Vector3.new(LANDMARK.X, yc, LANDMARK.Z),
+				spireTones[(level + i) % 3 + 1],
+				(i - 1) * 60 + (level - 1) * 9
+			)
+		end
+	end
+	-- The point. Narrow, and taller than a level, so the shaft resolves rather
+	-- than stopping.
+	local TIP_H = 14
+	local tipBase = plinthTop + SPIRE_H - 2
 	for i = 1, 3 do
 		box(
 			fLandmark,
-			"SpireFacet",
-			Vector3.new(w, levelH * 1.04, w),
-			Vector3.new(LANDMARK.X, yc, LANDMARK.Z),
-			spireTones[(level + i) % 3 + 1],
-			(i - 1) * 60 + (level - 1) * 9
+			"SpireTip",
+			Vector3.new(2.9, TIP_H, 2.9),
+			Vector3.new(LANDMARK.X, tipBase + TIP_H / 2, LANDMARK.Z),
+			spireTones[i],
+			(i - 1) * 60 + 30
 		)
 	end
 end
--- The point. Narrow, and taller than a level, so the shaft resolves rather than
--- stopping.
-local TIP_H = 14
-local tipBase = plinthTop + SPIRE_H - 2
-for i = 1, 3 do
-	box(
-		fLandmark,
-		"SpireTip",
-		Vector3.new(2.9, TIP_H, 2.9),
-		Vector3.new(LANDMARK.X, tipBase + TIP_H / 2, LANDMARK.Z),
-		spireTones[i],
-		(i - 1) * 60 + 30
-	)
-end
 
---[[ A ring of tapered shards leaning outward off the dais. Two boxes each — a
-	 wide base and a narrower head at a further lean — so a shard is a spike
-	 rather than a leaning brick. Alternating the two zone crystal colours makes
-	 the monument a legend for the map: cyan is the meadow, violet is the frost.
-	 This is authored geometry, not a placed prop, which is why it is allowed to
-	 carry the other biome's hue when nothing else in the meadow may. ]]
+--[[ THE COLLAR: six crystals leaning outward off the dais foot.
+
+	 They were twelve authored boxes — a wide base and a narrower head at a
+	 further lean — and at eye level a leaning box beside a blockout crown is
+	 part of the same read the owner rejected. They are the cyan Cube collectible
+	 mesh now, which is the same crystal the player picks up in this zone, so the
+	 monument states what the game is about instead of describing it.
+
+	 The radius moved out from 15 to 30. The geode's footprint is capped at 48
+	 studs across; a collar at 15 would be standing inside it.
+
+	 What is lost, and it is worth naming: the old ring alternated the two zone
+	 hues, cyan for the meadow and violet for the frost, which made the monument
+	 a legend for the map. A Cube mesh is textured and cannot be tinted violet,
+	 so that read goes. The geode itself carries cyan and violet in its own art,
+	 which is a weaker version of the same idea; the trade is a mesh crown and a
+	 mesh collar against a two-colour key, and the rejection was about geometry.
+
+	 Sizes and angles are AUTHORED per index rather than drawn. Nothing in this
+	 block touches the rng, so the palette-missing build below lays out exactly
+	 as this one does. ]]
+local COLLAR_H = { 17, 12, 15, 11, 18, 13 }
+local collarPlaced = 0
 for i = 1, 6 do
 	local ang = (i / 6) * math.pi * 2
-	local r = 15
-	local h = 20 + (i % 3) * 7
-	local x = LANDMARK.X + math.cos(ang) * r
-	local z = LANDMARK.Z + math.sin(ang) * r
-	local hue = if i % 2 == 0 then frostHue else crystalHue
-	local lean = CFrame.Angles(math.sin(ang) * 0.20, ang, -math.cos(ang) * 0.20)
-	local leanMore = CFrame.Angles(math.sin(ang) * 0.34, ang, -math.cos(ang) * 0.34)
-	newPart(
-		fLandmark,
-		"Shard",
-		Vector3.new(5.4, h * 0.62, 5.4),
-		CFrame.new(x, plinthTop - 3 + h * 0.31, z) * lean,
-		hue,
-		true
-	)
-	newPart(
-		fLandmark,
-		"ShardHead",
-		Vector3.new(3.1, h * 0.55, 3.1),
-		CFrame.new(x, plinthTop - 3 + h * 0.72, z) * leanMore * CFrame.Angles(0, math.rad(30), 0),
-		Palette.shade(hue, 0.18),
-		true
-	)
+	local r = 30
+	local shard = cubeDraw("crystal_cube", (i - 0.5) / 6)
+	if shard then
+		cubePlace(
+			fLandmark,
+			shard,
+			"crystal_cube",
+			LANDMARK.X + math.cos(ang) * r,
+			LANDMARK.Z + math.sin(ang) * r,
+			-- Ground, not plinth: r = 30 is outside the bottom tier's 27, so
+			-- there is no masonry under these. Sunk half a stud below the hub
+			-- sand so they break OUT of the ground rather than stand on it.
+			0.0,
+			COLLAR_H[i],
+			CFrame.Angles(math.sin(ang) * 0.24, ang, -math.cos(ang) * 0.24),
+			true
+		)
+		collarPlaced += 1
+	end
 end
 
--- Six motes orbiting the spire, well above eye line. Small on purpose: the
+if collarPlaced == 0 then
+	-- Fallback collar: the authored two-box shards, at the old radius and with
+	-- the two-hue legend they always carried.
+	for i = 1, 6 do
+		local ang = (i / 6) * math.pi * 2
+		local r = 15
+		local h = 20 + (i % 3) * 7
+		local x = LANDMARK.X + math.cos(ang) * r
+		local z = LANDMARK.Z + math.sin(ang) * r
+		local hue = if i % 2 == 0 then frostHue else crystalHue
+		local lean = CFrame.Angles(math.sin(ang) * 0.20, ang, -math.cos(ang) * 0.20)
+		local leanMore = CFrame.Angles(math.sin(ang) * 0.34, ang, -math.cos(ang) * 0.34)
+		newPart(
+			fLandmark,
+			"Shard",
+			Vector3.new(5.4, h * 0.62, 5.4),
+			CFrame.new(x, plinthTop - 3 + h * 0.31, z) * lean,
+			hue,
+			true
+		)
+		newPart(
+			fLandmark,
+			"ShardHead",
+			Vector3.new(3.1, h * 0.55, 3.1),
+			CFrame.new(x, plinthTop - 3 + h * 0.72, z) * leanMore * CFrame.Angles(0, math.rad(30), 0),
+			Palette.shade(hue, 0.18),
+			true
+		)
+	end
+end
+
+-- Six motes orbiting the monument, well above eye line. Small on purpose: the
 -- review's floating-geometry complaint is about things that block a player-eye
--- view, and these sit at y ~50 around the one object the composition is built
--- to draw the eye to.
+-- view, and these sit high around the one object the composition is built to
+-- draw the eye to. The orbit moved out from 19 to 36 and up: the geode's
+-- footprint is capped at 52 studs across, so the old radius is inside the mesh.
 for i = 1, 6 do
 	local ang = (i / 6) * math.pi * 2
-	local r = 19
+	local r = 36
 	box(
 		fLandmark,
 		"Mote",
 		Vector3.new(2.8, 2.8, 2.8),
 		Vector3.new(
 			LANDMARK.X + math.cos(ang) * r,
-			plinthTop + 32 + math.sin(ang * 2) * 5,
+			plinthTop + 44 + math.sin(ang * 2) * 6,
 			LANDMARK.Z + math.sin(ang) * r
 		),
 		P.Sell,
@@ -1940,10 +2601,12 @@ end
 
 -- The palette apron: raw crystal and rock breaking out of the dais foot, so the
 -- monument looks like it emerged from the ground rather than being dropped on
--- it. Small and low, never taller than the bottom tier.
+-- it. Small and low, never taller than the bottom tier. The inner radius moved
+-- out from 24 for two reasons: the geode overhangs the dais to a 24-stud radius
+-- and anything closer stands inside it, and the crystal collar now occupies 30.
 for i = 1, 10 do
 	local ang = rand(0, math.pi * 2)
-	local r = rand(24, 33)
+	local r = rand(33, 42)
 	local x = LANDMARK.X + math.cos(ang) * r
 	local z = LANDMARK.Z + math.sin(ang) * r
 	if i % 3 == 0 then
@@ -2228,10 +2891,31 @@ end
 
 local tuftGroup = folder("Tufts", fFlora)
 
+--[[ GRASS IS GROUND CLUTTER AND HAS TO MEASURE LIKE IT.
+
+	 The previous blade was `rand(3.2, 5.4) * s` studs tall with `s` up to 1.7 —
+	 so up to NINE studs, against a Roblox character of about five. Standing on
+	 the main road at eye height, the nearest tufts filled a third of the frame
+	 and read as pale crystal shards flanking the path; nothing about them said
+	 grass. That is the same "props disagree strongly in scale" failure the tier
+	 table exists to prevent, in the one system that predates it and never got
+	 converted.
+
+	 The blade is now sized from the `small` tier — ground clutter you step over —
+	 which is what grass is, and it is capped so no multiplier a caller passes can
+	 push it back to player height.
+
+	 The pale variant was also lifted 0.42 toward white, which on the canyon's
+	 foliage green produced a near-white sage that shared no hue with the ground
+	 it grows out of. Highlight and shadow are now both derived from the biome
+	 foliage at much smaller separation, so a clump reads as one plant with light
+	 on it rather than as two different materials interleaved. ]]
+local TUFT_TIER = TIERS.small
+
 local function tuft(x: number, z: number, s: number)
 	local biome = biomeAt(x, z)
-	local bright = Palette.lift(biome.Tint.foliage, if biome.Snow then 0.30 else 0.42)
-	local deep = Palette.shade(biome.Tint.foliage, 0.18)
+	local bright = Palette.lift(biome.Tint.foliage, if biome.Snow then 0.16 else 0.20)
+	local deep = Palette.shade(biome.Tint.foliage, 0.20)
 	local y = groundTop(x, z)
 	local blades = rng:NextInteger(3, 4)
 	local base = rand(0, math.pi * 2)
@@ -2239,10 +2923,13 @@ local function tuft(x: number, z: number, s: number)
 	currentBucket = "detail"
 	for k = 1, blades do
 		local ang = base + (k / blades) * math.pi * 2
-		local h = rand(3.2, 5.4) * s
-		local cf = CFrame.new(x + math.cos(ang) * 0.9 * s, y + h / 2, z + math.sin(ang) * 0.9 * s)
+		-- `s` still varies a clump against its neighbours; the clamp is what stops
+		-- it from varying grass into scenery.
+		local h = math.clamp(rand(TUFT_TIER[1], TUFT_TIER[2]) * s, TUFT_TIER[1] * 0.7, TUFT_TIER[2])
+		local w = 0.62 * s
+		local cf = CFrame.new(x + math.cos(ang) * w, y + h / 2, z + math.sin(ang) * w)
 			* CFrame.Angles(math.sin(ang) * 0.42, ang, -math.cos(ang) * 0.42)
-		newPart(tuftGroup, "Tuft", Vector3.new(0.9 * s, h, 0.9 * s), cf, if k % 2 == 0 then bright else deep, false)
+		newPart(tuftGroup, "Tuft", Vector3.new(w, h, w), cf, if k % 2 == 0 then bright else deep, false)
 	end
 	currentBucket = prev
 end
@@ -2559,6 +3246,36 @@ for i = 1, 6 do
 		anywhere = true,
 	})
 end
+--[[ Three Cube collectibles set into the head of the fan. The outcrop is the
+	 meadow's resource formation and the cyan Cube crystal is the meadow's
+	 collectible, so this is the one place the two can be the same object. Warm
+	 canyon light on a cyan mesh is the biome its own colours belong to, which is
+	 why the same mesh is NOT used in the frost veins, where the zone's crystal
+	 is violet and cannot be painted onto a texture.
+
+	 Authored heights and angles, no rng: a Cube family that fails to load must
+	 not shift the tufts below it. ]]
+for i, spot in { { -6, 4, 11 }, { 3, 7, 14 }, { 9, -2, 9 } } do
+	local dx, dz, h = spot[1] :: number, spot[2] :: number, spot[3] :: number
+	local shard = cubeDraw("crystal_cube", (i - 0.5) / 3)
+	if shard then
+		cubePlace(
+			outcrop,
+			shard,
+			"crystal_cube",
+			OUT_X + dx,
+			OUT_Z + dz,
+			5.0 + i * 0.6,
+			h,
+			CFrame.Angles(math.rad(9 * i), math.rad(37 * i), math.rad(-7 * i)),
+			-- Collides, like the fan crystals beside them: this file's rule is
+			-- that anything finishing at 9 studs or more is walked into, and
+			-- these are 9 to 14.
+			true
+		)
+	end
+end
+
 for _ = 1, 3 do
 	tuft(OUT_X + rand(-26, 26), OUT_Z + rand(-24, 24), rand(1.1, 1.6))
 end
@@ -2703,21 +3420,61 @@ do
 	prop(post, "rock", px + 27, pz - 14, { tier = "small", tierTo = "player", tilt = 18, anywhere = true })
 end
 
--- The upgrade kiosk. Same grammar, smaller, so the two pads read as the same
--- civilisation without being a copy-paste.
+--[[ THE UPGRADE KIOSK, AND IT IS NOW AN ACTUAL KIOSK.
+
+	 The pad has always been described in this file as "a kiosk you walk past"
+	 (§8) and there has never been a kiosk: there was a signpost, two crates and
+	 a fence standing in for one, because the palette had no stall in it and
+	 `kiosk` was one of the five families the Creator Store search came back
+	 empty on. The accepted Cube generation — wooden stall, striped awning,
+	 counter — is that missing family, and this is the one place in the map where
+	 a shop counter is the literal correct object.
+
+	 It stands BEHIND the pad on the axis away from the road, so the player walks
+	 up to the disc with the stall facing them and nothing between. The rest of
+	 the dressing moved outward to clear its footprint rather than being deleted:
+	 a stall with a crate stack and a fence behind it is a business, a stall on
+	 bare grass is a prop.
+
+	 Zero rng: position, facing and height are all authored, so the layout is
+	 identical when GolemPalette is missing and the pad simply keeps the dressing
+	 it had before. ]]
 local kiosk = folder("UpgradeKiosk", fStory)
 do
 	local px, pz = UPGRADE_PAD.X, UPGRADE_PAD.Y
-	prop(kiosk, "sign", px - 13, pz + 4, { tier = "player", anywhere = true })
-	local h1 = prop(kiosk, "crate", px - 18, pz - 6, { tier = "small", tierTo = "player", anywhere = true })
-	prop(kiosk, "crate", px - 18.5, pz - 5.4, {
+	local KX, KZ = px - 18, pz
+
+	local stall = cubeDraw("kiosk", 0.5)
+	if stall then
+		--[[ `lookAt` aims the mesh's LookVector at the pad, which is the same
+			 convention the SpawnLocation uses to face the monument. If the
+			 generation turns out to have been authored counter-to-+Z rather than
+			 counter-to-LookVector, the correction is one term on this line and
+			 nothing else in the build moves. 10.5 studs is roughly two players:
+			 a market stall you walk up to, not a building. ]]
+		cubePlace(
+			kiosk,
+			stall,
+			"kiosk",
+			KX,
+			KZ,
+			groundTop(KX, KZ),
+			10.5,
+			CFrame.lookAt(Vector3.zero, Vector3.new(px - KX, 0, pz - KZ).Unit),
+			true
+		)
+	end
+
+	prop(kiosk, "sign", px - 5, pz + 16, { tier = "player", anywhere = true })
+	local h1 = prop(kiosk, "crate", px - 21, pz - 14, { tier = "small", tierTo = "player", anywhere = true })
+	prop(kiosk, "crate", px - 21.5, pz - 13.4, {
 		tier = "small",
-		groundY = groundTop(px - 18, pz - 6) + h1,
+		groundY = groundTop(px - 21, pz - 14) + h1,
 		anywhere = true,
 	})
-	fenceRun(kiosk, px - 24, pz + 14, 4, -22, 2)
-	prop(kiosk, "bush", px - 10, pz + 18, { tier = "player", collide = false, anywhere = true })
-	prop(kiosk, "rock", px - 24, pz + 2, { tier = "small", tierTo = "player", tilt = 18, anywhere = true })
+	fenceRun(kiosk, px - 32, pz + 16, 4, -26, 2)
+	prop(kiosk, "bush", px - 8, pz + 20, { tier = "player", collide = false, anywhere = true })
+	prop(kiosk, "rock", px - 27, pz + 10, { tier = "small", tierTo = "player", tilt = 18, anywhere = true })
 end
 
 -- Flanking the spawn: two signs and a low crate, so the first thing a player
@@ -2901,7 +3658,36 @@ end
 	 "unrelated assets" failure expressed in authored geometry; one masonry
 	 language in two materials is a world.
 
-	 ~52 studs against the monument's ~84. ]]
+	 ~52 studs against the monument's ~84.
+
+	 =====  WHY THE CUBE GEODE IS NOT USED HERE, DELIBERATELY  =====
+
+	 The obvious move, once the monument's crown became the generated geode, is
+	 to put the same geode here at 60% scale in ice tones. It is not done, for
+	 two reasons and the second is the real one:
+
+	   1. IT CANNOT BE PUT IN ICE TONES. The geode is textured, so `Color` has no
+	      effect on it — the same mechanism that culled a textured pine from the
+	      frost biome. Its own cyan and violet are at least defensible in snow,
+	      so this alone would not settle it.
+	   2. THERE IS EXACTLY ONE `landmark` MEMBER. Dropping it here uniformly
+	      scaled makes the map's two landmarks the same sculpture at two sizes.
+	      This section already refuses that move in its own authored geometry —
+	      the core is two stout levels against the monument's seven "so the
+	      silhouette is a different shape, not a smaller copy" — and reaching for
+	      a mesh is not a reason to stop meaning it. One asset used as both the
+	      primary and the secondary landmark IS the "unrelated free assets placed
+	      into one map" complaint, inverted into its other failure mode.
+
+	 So the frost payoff keeps its authored core, and what it gains from this
+	 pass is the wall behind it: the boulder masses are untextured rock, so they
+	 take this biome's cool stone and break the south wall's silhouette exactly
+	 as they break the canyon's. (The rejected Cube mesas could not have: warm
+	 rust cannot be tinted, so they would have left this half in plain slabs.
+	 That asymmetry is most of why they lost.) If a second landmark generation is
+	 ever accepted — an
+	 ice-toned one, prompted for this position — it drops in exactly where the
+	 monument's does, and the note above is the acceptance test it has to pass. ]]
 local heart = folder("GlacierHeart", fSecondary)
 local GH_X, GH_Z = GLACIER.X, GLACIER.Y
 
@@ -3095,21 +3881,57 @@ pcall(function()
 	game:GetService("ChangeHistoryService"):SetWaypoint("Crystal Canyon world build")
 end)
 
-local propTotal = assetCount + buckets.fallback
-local assetShare = if propTotal > 0 then (assetCount / propTotal) * 100 else 0
+--[[ THE MONUMENT'S DOMINANCE, MEASURED RATHER THAN INTENDED.
+
+	 The composition gate fails below 1.25 (tallest vertical ÷ second tallest),
+	 and this revision changed both halves of that ratio at once: the monument's
+	 crown became a mesh whose height depends on the source mesh's proportions,
+	 and the canyon wall gained mesas up to the top of the `cliff` tier. Neither
+	 is a number this file can assert from a comment any more, so both are read
+	 back off the geometry that actually got built. Rotation is ignored, the same
+	 approximation `track()` makes: this is a sanity check on a skyline, not a
+	 physics-accurate AABB. ]]
+local function topOf(root: Instance): number
+	local m = -math.huge
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") then
+			m = math.max(m, d.Position.Y + d.Size.Y / 2)
+		end
+	end
+	return m
+end
+
+local landmarkTop = topOf(fLandmark)
+local rivalTop = -math.huge
+local rivalName = "nothing"
+for _, f in canyon:GetChildren() do
+	if f:IsA("Folder") and f ~= fLandmark then
+		local t = topOf(f)
+		if t > rivalTop then
+			rivalTop, rivalName = t, f.Name
+		end
+	end
+end
+local dominance = if rivalTop > 0 then landmarkTop / rivalTop else math.huge
+
+local cubePropCount = cubeByFamily.crystal_cube
+local propTotal = assetCount + cubePropCount + buckets.fallback
+local assetShare = if propTotal > 0 then ((assetCount + cubePropCount) / propTotal) * 100 else 0
 local primitiveTotal = buckets.fallback + buckets.detail + buckets.authored
 local extent = maxB - minB
 
 print(
 	string.format(
 		"[Crystal Canyon] world rebuilt — %d parts, seed %d, bounds %.0f x %.0f x %.0f studs (x/y/z)\n"
-			.. "  palette clones (mesh assets)   %4d   [%s]\n"
+			.. "  palette clones (Creator Store) %4d   [%s]\n"
+			.. "  CUBE meshes (Golem-generated)  %4d   [landmark %d, kiosk %d, crystal_cube %d]\n"
 			.. "  primitive prop FALLBACKS       %4d   [no palette %d (must be 0) / off palette %d (texture policy)]\n"
 			.. "  primitive detail               %4d   [grass tufts, snow caps, fire ring]\n"
 			.. "  authored terrain/architecture  %4d   [ground, paths, cliffs, landmarks, pads, gate, guidance]\n"
-			.. "  PROPS      primitive:asset = %d:%d  (%.0f%% of props are curated assets)\n"
+			.. "  PROPS      primitive:asset = %d:%d  (%.0f%% of props are mesh assets)\n"
 			.. "  PRIMITIVES %d total, against 608 (blockout) and 471 (previous art pass)\n"
-			.. "  PALETTE    %d loaded, %d curated in, %d culled out, %d untintable",
+			.. "  PALETTE    %d loaded, %d curated in, %d culled out, %d untintable; %d Cube members\n"
+			.. "  DOMINANCE  monument top %.1f vs %s %.1f = %.2f  (composition gate fails below 1.25)",
 		partCount,
 		SEED,
 		extent.X,
@@ -3117,21 +3939,57 @@ print(
 		extent.Z,
 		assetCount,
 		if paletteOK then string.format("%d curated members loaded", paletteTotal) else "PALETTE MISSING",
+		cubeCount,
+		cubeByFamily.landmark,
+		cubeByFamily.kiosk,
+		cubeByFamily.crystal_cube,
 		buckets.fallback,
 		pickNoPalette,
 		pickOffPalette,
 		buckets.detail,
 		buckets.authored,
 		buckets.fallback,
-		assetCount,
+		assetCount + cubePropCount,
 		assetShare,
 		primitiveTotal,
 		loadedTotal,
 		paletteTotal,
 		#culledNames,
-		#texturedNames
+		#texturedNames,
+		cubeTotal,
+		landmarkTop,
+		rivalName,
+		rivalTop,
+		dominance
 	)
 )
+
+if dominance < 1.25 then
+	warn(
+		string.format(
+			"[Crystal Canyon] VERTICAL DOMINANCE %.2f — below the composition gate's 1.25. The monument "
+				.. "is no longer clearly the tallest thing in the map: %s reaches %.1f against its %.1f. "
+				.. "Raise GEODE_TARGET_H / GEODE_MAX_W, or lower the TIERS.cliff band, before capturing "
+				.. "evidence.",
+			dominance,
+			rivalName,
+			rivalTop,
+			landmarkTop
+		)
+	)
+end
+
+if cubeTotal == 0 then
+	warn(
+		"[Crystal Canyon] no Cube-generated members found under ServerStorage."
+			.. PALETTE_ROOT_NAME
+			.. " (expected sub-folders: "
+			.. table.concat(CUBE_FAMILIES, ", ")
+			.. "). The monument fell back to the REJECTED authored spire, the canyon wall's large "
+			.. "masses are authored courses again, and the upgrade pad has no kiosk. The world still "
+			.. "builds and still encloses — but it is the blockout landmark the review named."
+	)
+end
 
 --[[ WHERE THE PRIMITIVES WENT. The total is up from the previous art pass (471
 	 -> 558) and a total on its own cannot be argued with, so it is broken down by

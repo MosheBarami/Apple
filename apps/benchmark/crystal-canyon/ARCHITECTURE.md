@@ -172,15 +172,17 @@ without an outline.
 - `Theme.card(parent, size): Frame` — white, outlined, rounded (§5.4).
 - `Theme.counter(parent, iconColor, position): (Frame, TextLabel)` — dark
   rounded currency pill with a big comma-separated number (§6).
-- `Theme.iconButton(parent, label, fillColor, position): TextButton` — circular
-  HUD icon button (§6 left edge).
+  There is deliberately no circular `iconButton`: §6 asks for one, the pixel
+  review rejected the shape ("unrelated coloured circles"), and `Hud.buildNav`
+  now builds the rail from `Theme.button` with a square silhouette instead.
 - `Theme.sectionLabel(parent, text): TextLabel`
 
 ### Hud
 Screen-edge only. **The centre stays empty** (§6, called out as a hard rule and
 a common way first attempts fail).
 - top-left: Shards and Coins counters
-- left edge: circular icon buttons — Shop, Upgrades, Codes, Zones
+- left edge: a single stone rail — Shop, Upgrades, Codes, Zones as square tiles
+  seated in one well, each with a caption plate shaded from its own tile hue
 - right edge: wide pill — SELL SHARDS
 - top-centre: the current objective chip
 - bottom-left: version string

@@ -935,8 +935,8 @@ local function wireFeedback(btn: TextButton, fill: Color3, parts: SurfaceParts, 
 end
 
 --[[ The one place a button is actually constructed. Theme.button, the panel
-	 close button and Theme.iconButton all come through here so none of them can
-	 drift from the others on outline weight, depth or press behaviour. ]]
+	 close button and the Hud's nav tiles all come through here so none of them
+	 can drift from the others on outline weight, depth or press behaviour. ]]
 local function makeButton(
 	parent: Instance,
 	text: string,
@@ -1212,33 +1212,21 @@ function Theme.counter(parent: Instance, iconColor: Color3, position: UDim2?): (
 	return pill, number
 end
 
---[[ §6 Left-edge circular icon button. `label` is the short word inside it —
-	 emoji are ornamental only in this category (§4), never functional icons, so
-	 these carry heavy type instead, and the Hud passes an empty string because it
-	 draws vector pictograms into the circle and puts the word underneath.
+--[[ There is no `Theme.iconButton`.
 
-	 The highlight is scale-width rather than inset-width so it stays a correct
-	 arc of the circle after the Hud shrinks these from 70px to 62px. ]]
-function Theme.iconButton(parent: Instance, label: string, fillColor: Color3, position: UDim2?): TextButton
-	local btn = makeButton(
-		parent,
-		label,
-		fillColor,
-		UDim2.fromOffset(Theme.Metrics.IconButton, Theme.Metrics.IconButton),
-		position or UDim2.fromOffset(0, 0),
-		Theme.Radius.Icon, -- full circle
-		Theme.Type.Small,
-		Theme.Edge.Rest,
-		0.56,
-		0,
-		-- Tighter than a pill's: the Hud stacks these 14px apart with a word
-		-- underneath each, and the standard offset would put a wedge of shadow
-		-- behind the top of that caption.
-		Vector2.new(4, 5)
-	)
-	btn.Name = "IconButton"
-	return btn
-end
+	 §6 asks for left-edge circular icon buttons and this module used to export
+	 one. The owner's pixel review rejected the shape — "side navigation feels
+	 like unrelated coloured circles" — so `Hud.buildNav` builds the rail out of
+	 `Theme.button` with the silhouette overridden to a rounded square, seats the
+	 tiles in a `Theme.well` on a `Theme.groupPlate`, and hangs the caption on a
+	 plate shaded from the tile's own hue.
+
+	 The circular version was left behind with no call sites, and it was broken:
+	 `makeButton` sets ClipsDescendants on the disc, so a caption plate parented
+	 BELOW it was clipped away entirely and the button rendered wordless. Keeping
+	 a rejected shape in the design system as dead, broken code is how a later
+	 pass reintroduces the thing that was rejected, so it is gone rather than
+	 fixed. The rail in Hud.luau is the only nav control. ]]
 
 --[[ §5.3 Sections are labelled, centred, outlined. Flanked by real rules — two
 	 stubby dark bars with a diamond cap — rather than by em-dashes inside the
