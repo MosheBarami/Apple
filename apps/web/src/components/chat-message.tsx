@@ -77,6 +77,9 @@ export function ChatMessage({ item, agentPhase = null, onOpenTool }: ChatMessage
         {item.streaming && parsed.rest && <span className="stream-caret" aria-hidden="true" />}
         {item.stopReason === 'stopped' && <p className="msg-note">Stopped by you.</p>}
         {item.stopReason === 'quota' && <p className="msg-note msg-note-warn">Ran out of Sparks mid-task.</p>}
+        {item.stopReason === 'incomplete' && (
+          <p className="msg-note msg-note-warn">Nothing was changed — this run did not complete the request.</p>
+        )}
         {item.stopReason === 'error' && (
           <p className="msg-note msg-note-error">{item.error || 'Something went wrong — try again.'}</p>
         )}

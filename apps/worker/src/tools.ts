@@ -7,6 +7,7 @@ import { searchDocs } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { chooseAssetSource, verifyCreatorStoreAsset, findVerifiedAssets, type AssetNeed, type AssetKind } from './assets';
 import { searchAssetLibrary } from './asset-library';
+import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { compositionHardFails, structureFromLayout, structureLine } from './composition';
 
 export interface AgentCtx {
@@ -14,6 +15,8 @@ export interface AgentCtx {
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
+  /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
+  restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
   addMemoryFact(fact: string): Promise<void>;
   /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
   lastRender?: RenderViewResult;
@@ -159,18 +162,79 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_and_check',
       description:
-        'Playtest verification: starts Run mode (server simulation), waits, collects console output/errors, stops. Returns the logs. Use after building to verify nothing errors.',
+        'Playtest verification: starts Run mode (server simulation), waits, collects console output/errors, stops. Returns the logs. Use AFTER building, to verify nothing errors. Run mode is NOT a sandbox — it executes your server scripts against the real place and Studio does not undo what they destroy — so this takes a protective checkpoint first, and restores automatically if the playtest destroys anything.',
       parameters: S({ seconds: { type: 'number', description: '2-15, default 5' } }),
     },
     studio: true,
     run: async (ctx, a) => {
       const secs = Math.min(15, Math.max(2, Number(a.seconds) || 5));
+
+      // Census BEFORE. RunService:Run() executes server scripts against the EDIT DataModel and Stop
+      // does not revert them, so anything a startup script destroys is destroyed for real.
+      // Reproduced in live Studio — the transcript is in apps/worker/src/playtest.ts.
+      const beforeRaw = await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000);
+      const before = beforeRaw.ok ? parseCensus(beforeRaw.data) : null;
+
+      // Protective checkpoint. If there is real work here and it cannot be protected, REFUSE — an
+      // unprotected playtest is precisely the hazard, and declining costs the user nothing.
+      let checkpointId: string | null = null;
+      if (needsProtection(before)) {
+        const cp = await ctx.createCheckpoint('before playtest', 'auto');
+        if ('error' in cp) {
+          return {
+            error:
+              `refused to playtest: could not take a protective checkpoint first (${cp.error}). ` +
+              'Run mode executes server scripts against the real place and Studio does not undo what they destroy, ' +
+              'so this would risk the build. Fix the checkpoint problem, or verify without a playtest.',
+          };
+        }
+        checkpointId = cp.id;
+      }
+
       const start = await ctx.execStudioOp({ op: 'run_mode', action: 'start' }, 20_000);
       if (!start.ok) return { error: `could not start run mode: ${start.error}` };
       await new Promise((r) => setTimeout(r, secs * 1000));
       const logs = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 15_000);
       const stop = await ctx.execStudioOp({ op: 'run_mode', action: 'stop' }, 20_000);
-      return { ranSeconds: secs, logs: logs.ok ? logs.data : { error: logs.error }, stopped: stop.ok };
+
+      // Census AFTER, and restore if the playtest ate anything.
+      const afterRaw = await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000);
+      const after = afterRaw.ok ? parseCensus(afterRaw.data) : null;
+      const lost = before && after ? destructiveDelta(before, after) : [];
+
+      let restored: string | undefined;
+      if (lost.length && checkpointId && ctx.restoreCheckpoint) {
+        const res = await ctx.restoreCheckpoint(checkpointId);
+        // The restore is VERIFIED, never assumed: re-census and confirm the losses are actually back.
+        const checkRaw = res.ok ? await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000) : null;
+        const check = checkRaw?.ok ? parseCensus(checkRaw.data) : null;
+        const stillLost = before && check ? destructiveDelta(before, check) : ['the restore could not be verified'];
+        restored =
+          res.ok && stillLost.length === 0
+            ? 'the project was restored from the pre-playtest checkpoint, and the restore was verified by re-counting'
+            : `THE RESTORE DID NOT FULLY SUCCEED (${res.error ?? stillLost.join('; ')}) — checkpoint ${checkpointId} still holds the pre-playtest state`;
+      }
+
+      // Safety fields come FIRST. Tool results are truncated at MAX_RESULT_CHARS and the console log
+      // is easily thousands of characters, so putting the destruction warning after it means the
+      // agent never sees the one thing it must not miss.
+      return {
+        ...(lost.length
+          ? {
+              destroyedByPlaytest: lost,
+              restored,
+              warning:
+                'A script destroyed committed work when the simulation started. Run mode is not a sandbox — it runs ' +
+                'your scripts against the real place. Find the script that deletes instances on startup and guard it ' +
+                'before playtesting again.',
+            }
+          : {}),
+        ...(checkpointId ? { protectedByCheckpoint: checkpointId } : {}),
+        ...(before && after ? {} : { censusUnavailable: true }),
+        ranSeconds: secs,
+        stopped: stop.ok,
+        logs: logs.ok ? logs.data : { error: logs.error },
+      };
     },
   },
   get_output_logs: {

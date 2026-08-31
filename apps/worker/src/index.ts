@@ -515,6 +515,15 @@ app.get('/api/admin/session-messages/:id', async (c) => {
   return c.json(await res.json());
 });
 
+/** Admin-only: invoke a single agent tool against a live session. Used to prove tool behaviour. */
+app.post('/api/admin/run-tool/:id', async (c) => {
+  const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/run-tool', {
+    method: 'POST',
+    body: JSON.stringify(await c.req.json()),
+  });
+  return c.json(await res.json(), res.status as 200);
+});
+
 app.post('/api/admin/studio-op/:id', async (c) => {
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/studio-op', {
     method: 'POST',

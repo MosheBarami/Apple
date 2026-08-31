@@ -37,7 +37,7 @@ export interface ChatItem {
   content: string;
   tools: ToolEvent[];
   streaming: boolean;
-  stopReason?: 'done' | 'stopped' | 'error' | 'quota';
+  stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
   error?: string;
   createdAt: number;
 }

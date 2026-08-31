@@ -289,6 +289,15 @@ export class SessionDO extends DurableObject<Env> {
     // Run one Studio op directly, with no agent loop and no inference. The visual eval harness
     // uses this to capture renders as evidence: paying a model to ask for a screenshot would make
     // every eval run cost money and would confound what is being measured.
+    // Admin-only: run one agent TOOL directly, so a tool's real behaviour can be exercised against
+    // live Studio without paying for a whole agent run to reach it. Added to prove the playtest
+    // restore end to end; unreachable without the admin key.
+    if (path === '/run-tool' && req.method === 'POST') {
+      const { tool, args } = (await req.json()) as { tool: string; args?: unknown };
+      const out = await runTool(this.agentCtx(), tool, JSON.stringify(args ?? {}));
+      return json(out);
+    }
+
     if (path === '/studio-op' && req.method === 'POST') {
       const { op, timeoutMs } = (await req.json()) as { op: StudioOp; timeoutMs?: number };
       if (!(await this.pluginConnected())) return json({ ok: false, error: 'Studio is not connected' }, 409);
@@ -655,7 +664,16 @@ export class SessionDO extends DurableObject<Env> {
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
       }
-      await this.finishRun(agent, 'done');
+      // A run that still owes work has FAILED, and must not be reported as success.
+      //
+      // MEASURED, 2026-08-31: asked to build a town plaza, the agent called a tool that does not
+      // exist, ran a playtest against an empty Workspace, then spent the rest of its steps on asset
+      // searches — ten tool calls, not one of them mutating — and the user was told "Done."
+      // The nudge above had already fired MAX_NUDGES times; when it gives up, control fell straight
+      // through to finishRun(agent, 'done'), which prints the model's own optimistic prose.
+      //
+      // Nothing about that is recoverable by a user, because the reply says the work happened.
+      await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
     }
 
@@ -724,9 +742,22 @@ export class SessionDO extends DurableObject<Env> {
     await this.ctx.storage.setAlarm(Date.now() + 10);
   }
 
-  private async finishRun(agent: AgentState, reason: 'done' | 'stopped' | 'error' | 'quota', error?: string) {
+  private async finishRun(
+    agent: AgentState,
+    reason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete',
+    error?: string,
+  ) {
     agent.status = 'idle';
-    const content = agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.');
+    // 'incomplete' OVERRIDES the model's own text rather than appending to it, which is the whole
+    // point: on the run this was written for, that text was the single word "Done." A reply that
+    // reports work which did not happen is worse than an error, because the user has no reason to
+    // check. The tool trace is still attached, so the timeline shows exactly what was attempted.
+    const content =
+      reason === 'incomplete'
+        ? 'I did not change anything in your project. I looked around but never made the edit you ' +
+          'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
+          'there is nothing to undo — ask me again and I will build it.'
+        : agent.finalText || (reason === 'stopped' ? 'Stopped.' : 'Done.');
     if (content !== agent.streamedText) {
       // make sure fallback/step-limit text reaches clients that saw no delta for it
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: agent.streamedText ? '\n' + content : content });
@@ -809,6 +840,7 @@ export class SessionDO extends DurableObject<Env> {
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),
+      restoreCheckpoint: (id: string) => this.restoreCheckpoint(id),
       addMemoryFact: async (fact) => {
         const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
         memory.facts = [...memory.facts.filter((f) => f !== fact), fact].slice(-24);
@@ -883,9 +915,25 @@ export class SessionDO extends DurableObject<Env> {
 
     // long-poll: if agent is running and no ops queued, wait briefly for new ops
     const agent = await this.ctx.storage.get<AgentState>('agent');
-    if (!this.opQueue.length && agent?.status === 'running') {
+    // Long-poll whenever there is nothing to hand over, not only mid-run.
+    //
+    // This replaces a 2,500 ms idle re-poll, and then replaces the 20,000 ms backoff that was tried
+    // instead of it. That backoff was justified by an ESTIMATE of Durable Object residency cost and
+    // was refuted by MEASUREMENT: with no browser attached, ops took 6.5-10.4 s to be picked up
+    // where they had taken under 2.5 s. Agent work is exactly the case with no browser attached.
+    //
+    // Holding the request open instead gives both halves: `pollWaiter` fires the moment an op is
+    // queued, so latency is near zero, and an idle plugin makes one request per ~13 s rather than
+    // one per 2.5 s. It forfeits most of the residency saving, because an open request keeps the DO
+    // alive — but that saving was never measured and this latency was.
+    // 6s, not 12s: `pluginConnected()` treats the plugin as gone after 8s without a poll, and a
+    // 12s hold made every op fail with "Studio is not connected" between polls. The hold must stay
+    // comfortably inside that window — changing both at once would trade one silent failure for
+    // another.
+    const holdMs = agent?.status === 'running' ? 4000 : 6000;
+    if (!this.opQueue.length) {
       await new Promise<void>((resolve) => {
-        const t = setTimeout(resolve, 4000);
+        const t = setTimeout(resolve, holdMs);
         this.pollWaiter = () => {
           clearTimeout(t);
           this.pollWaiter = null;
@@ -897,20 +945,7 @@ export class SessionDO extends DurableObject<Env> {
     const ops = this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
     const running = agent?.status === 'running';
-    // Idle poll cadence is a COMPUTE cost, not an AI cost, and it is the one the $10.06 model does
-    // not contain. When nothing is running this handler returns immediately, so a 2,500 ms cadence
-    // is 34,560 requests/day per connected plugin, each arriving well inside the Durable Object's
-    // eviction window — so the DO is never evicted and bills wall-clock duration around the clock.
-    //
-    // The cadence only has to be quick when someone might start a run in the next moment. A run can
-    // only start from an attached browser, so when no client WebSocket is open there is nothing to
-    // be quick for: back off hard. With a browser attached the cadence is unchanged, so the latency
-    // a user can actually perceive is unchanged.
-    //
-    // ESTIMATE, not a measurement: the eviction threshold is not published and the GB-s saving here
-    // is inferred, not observed. The change is safe regardless of whether the estimate is right.
-    const idleBackoff = this.ctx.getWebSockets('client').length > 0 ? 2500 : 20_000;
-    const res: PluginPollResponse = { ops, waitMs: running ? 400 : idleBackoff };
+    const res: PluginPollResponse = { ops, waitMs: running ? 400 : 1000 };
     return json(res);
   }
 

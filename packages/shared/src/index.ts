@@ -270,7 +270,10 @@ export type ServerMsg =
   | { type: 'delta'; msgId: string; text: string }
   | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
   | { type: 'tool_end'; msgId: string; toolId: string; ok: boolean; summary: string; detail?: unknown }
-  | { type: 'msg_end'; msgId: string; stopReason: 'done' | 'stopped' | 'error' | 'quota'; error?: string }
+  // 'incomplete' means the run ended having changed nothing. It is deliberately distinct from
+  // 'error': nothing failed loudly, the agent simply never did the work and would otherwise have
+  // reported success. See finishRun in do/session.ts.
+  | { type: 'msg_end'; msgId: string; stopReason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete'; error?: string }
   | { type: 'agent_status'; phase: string; step?: number; totalSteps?: number }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
