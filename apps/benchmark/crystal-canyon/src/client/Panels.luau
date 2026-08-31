@@ -82,6 +82,13 @@ local Palette = require(Shared:WaitForChild("Palette"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Util = require(Shared:WaitForChild("Util"))
 
+--[[ The shared pictogram family. Panels used to draw its own glyphs from its own
+	 design grid, which meant two icon sets in one game — the HUD's and this one —
+	 that could only ever drift apart. `Icons` is the one set, drawn entirely in
+	 scale units off a 32-unit grid, and it resolves a hole's colour from the
+	 surface behind it by itself. Sibling require, as Hud does. ]]
+local Icons = require(script.Parent:WaitForChild("Icons"))
+
 local Panels = {}
 
 -- Deliberately loose: the Sync snapshot is authored by the server modules, and
@@ -152,7 +159,6 @@ local TICKET_H = 292
 local BOOTH_H = TRAY_CHROME + TICKET_H
 local WELL_PAD = 12
 local LIST_GAP = 14
-local SECTION_H = 42
 local PIP_H = 12
 local METER_H = 28
 
@@ -271,21 +277,23 @@ end
 
 --[[ Theme's `bodyGradient` multiplies a surface's fill by `lift(fill, 0.22)` at
 	 the top, by the fill itself at 0.52 and by `shade(fill, 0.16)` at the bottom.
-	 Multiplied — so a saturated tile does not RENDER at its token colour anywhere
-	 except where that ramp happens to be white.
+	 Multiplied — so a saturated surface does not RENDER at its token colour
+	 anywhere except where that ramp happens to be white.
 
-	 That matters exactly once, and it matters a lot: the punch-out trick. A gap in
-	 the magnet's horseshoe, the padlock's keyhole and the ticket's notches are all
-	 shapes painted in the surrounding colour so they read as holes. Painted with
-	 the raw token they come out dramatically BRIGHTER than the metal around them —
-	 a cyan tile renders near fill² in its middle — and the hole reads as a raised
-	 boss instead. This returns the colour the surface actually renders at a given
-	 height, which is what a hole has to be painted.
+	 That matters for the punch-out trick: a shape painted in the surrounding
+	 colour so it reads as a hole. Painted with the raw token it comes out
+	 dramatically BRIGHTER than the material around it — a green tray renders near
+	 fill² in its middle — and the hole reads as a raised boss instead. This
+	 returns the colour a surface actually renders at a given height, which is what
+	 a hole has to be painted.
+
+	 `Icons` solves the same problem for pictograms by resolving a cut from the
+	 surface behind it, so the only caller left here is the codes ticket's notches,
+	 which are this file's own construction.
 
 	 It is a copy of Theme's ramp, and it has to be: Theme applies the gradient to
 	 the host, and a UIGradient does not reach the host's children, so there is no
-	 instance to ask. The two are kept honest by this comment and by the fact that
-	 a drift shows up immediately as visibly wrong icons. ]]
+	 instance to ask. ]]
 local function renderedTint(fill: Color3, y: number): Color3
 	local top = Palette.lift(fill, 0.22)
 	local bottom = Palette.shade(fill, 0.16)
@@ -367,163 +375,6 @@ end
 
 -- Icons -------------------------------------------------------------------
 
---[[ The box every glyph below is drawn in. It is a DESIGN size, not the size
-	 the tile ends up: a tile is drawn at 76 in a row, 84 in the shop grid and
-	 104 as the featured medallion.
-
-	 So interiors are authored in these design pixels and converted to SCALE, so
-	 a resized tile carries its drawing with it. They used to be sized in flat
-	 offsets while being positioned in scale, which meant a 104px tile showed
-	 76px of art whose parts had drifted apart from each other — the two speed
-	 chevrons, positioned at 0.36/0.64 of a wider tile but still 8px wide,
-	 separate visibly. Undersized art floating in an oversized tile. ]]
-local GLYPH_DESIGN = 72
-
---[[ Functional icons drawn from primitives. The style spec allows emoji only as
-	 ornamental section decoration, never as a working icon, so every tile in
-	 this file is built out of frames. The tile carries the mandatory outline;
-	 the shapes inside it read against the tile fill and would only turn to mud
-	 if each got its own 3px stroke at this size. ]]
-local function glyph(tile: Frame, kind: string, tint: Color3, ink: Color3)
-	--[[ The colour a "punch" is filled with — the trick that gives the magnet its
-		 gap, the padlock its keyhole and the ticket its notches without a second
-		 stroke on each.
-
-		 It is NOT the tile's own `tint`. A UIGradient shades the object it is
-		 parented to and NOT that object's children, so a punch filled with the raw
-		 token renders at full brightness against a tile that the gradient has
-		 already darkened by roughly 6% wherever the art sits. The result is a
-		 visibly lighter patch in the shape of the hole — the exact opposite of a
-		 hole. Every punch below is drawn a matching step down, and every punch is
-		 positioned above the gradient's hard band (0.78) so one constant is
-		 enough. ]]
-	local function punchAt(y: number): Color3
-		return renderedTint(tint, y)
-	end
-
-	--[[ Design pixels in, tile-relative scale out. `radius` stays an offset:
-		 UICorner's scale form is a percentage of the shape's SMALLER dimension,
-		 which for a 44x10 bar is a different curve than for a 34x34 square, so
-		 scaling it would distort the drawing rather than preserve it. A corner
-		 that stays 3px while the shape grows is the cheap, correct trade. ]]
-	local function part(w: number, h: number, pos: UDim2, rot: number?, radius: UDim?, fill: Color3?): Frame
-		local f = Instance.new("Frame")
-		f.BackgroundColor3 = fill or ink
-		f.BorderSizePixel = 0
-		f.AnchorPoint = Vector2.new(0.5, 0.5)
-		f.Size = UDim2.fromScale(w / GLYPH_DESIGN, h / GLYPH_DESIGN)
-		f.Position = pos
-		f.Rotation = rot or 0
-		f.ZIndex = tile.ZIndex + 2
-		f.Parent = tile
-		corner(f, radius or UDim.new(0, 3))
-		return f
-	end
-
-	--[[ A ring drawn as a stroke, with its line weight tracked against the tile's
-		 measured size. UIStroke.Thickness has no scale form, so it is the one
-		 measurement in these drawings that cannot be expressed relative to the
-		 tile — without the tracking, a 104px hero magnet is an oversized ring
-		 drawn in a 72px-tile line weight. AbsoluteSize is 0 until the first
-		 layout pass, hence the guard and the signal. ]]
-	local function ring(d: number, pos: UDim2, weight: number, z: number): Frame
-		local r = Instance.new("Frame")
-		r.BackgroundTransparency = 1
-		r.AnchorPoint = Vector2.new(0.5, 0.5)
-		r.Size = UDim2.fromScale(d / GLYPH_DESIGN, d / GLYPH_DESIGN)
-		r.Position = pos
-		r.ZIndex = z
-		r.Parent = tile
-		corner(r, Theme.Radius.Pill)
-
-		local line = Instance.new("UIStroke")
-		line.Color = ink
-		line.Thickness = weight
-		line.Parent = r
-
-		local function sync()
-			local measured = tile.AbsoluteSize.X
-			if measured < 1 then
-				return
-			end
-			line.Thickness = weight * (measured / GLYPH_DESIGN)
-		end
-		sync()
-		tile:GetPropertyChangedSignal("AbsoluteSize"):Connect(sync)
-		return r
-	end
-
-	if kind == "pack" then
-		-- A satchel: body, flap, strap.
-		part(40, 30, UDim2.fromScale(0.5, 0.62), 0, UDim.new(0, 6))
-		part(44, 10, UDim2.fromScale(0.5, 0.4), 0, UDim.new(0, 4))
-		part(8, 18, UDim2.fromScale(0.5, 0.3), 0, UDim.new(0, 4))
-	elseif kind == "speed" then
-		-- Two chevrons, each a pair of bars meeting at a point.
-		for i = 0, 1 do
-			local x = 0.36 + i * 0.28
-			part(8, 22, UDim2.fromScale(x, 0.38), 32)
-			part(8, 22, UDim2.fromScale(x, 0.62), -32)
-		end
-	elseif kind == "magnet" then
-		--[[ A horseshoe: a ring, its lower third masked back to the tile colour,
-			 and two poles hanging off the cut ends.
-
-			 ZIndex is explicit on all three because the ScreenGui runs
-			 `ZIndexBehavior.Sibling`, under which these siblings are ordered by
-			 their own ZIndex and ties fall back to child order. The mask used to
-			 be the only one that set it while the poles took the default, so the
-			 mask — 30 design-px wide against poles centred 0.15 of the tile from
-			 the middle — painted over ~97% of both of them, and the icon rendered
-			 as a gapped ring with no poles at all. The order that works is: the
-			 shape, the punch above it, then anything that must survive the punch
-			 above that. ]]
-		ring(44, UDim2.fromScale(0.5, 0.38), 9, tile.ZIndex + 1)
-		local mask = part(30, 22, UDim2.fromScale(0.5, 0.6), 0, UDim.new(0, 0), punchAt(0.6))
-		mask.ZIndex = tile.ZIndex + 2
-		local leftPole = part(9, 20, UDim2.fromScale(0.35, 0.66))
-		leftPole.ZIndex = tile.ZIndex + 3
-		local rightPole = part(9, 20, UDim2.fromScale(0.65, 0.66))
-		rightPole.ZIndex = tile.ZIndex + 3
-	elseif kind == "crystal" then
-		-- A shard: a rotated square with a lighter facet down one side.
-		part(34, 34, UDim2.fromScale(0.5, 0.5), 45, UDim.new(0, 5))
-		part(12, 34, UDim2.fromScale(0.58, 0.5), 45, UDim.new(0, 5), Palette.shade(ink, 0.22))
-	elseif kind == "lock" then
-		-- A padlock: shackle above, body below, keyhole punched out of the body.
-		ring(30, UDim2.fromScale(0.5, 0.36), 8, tile.ZIndex + 1)
-		local cut = part(34, 18, UDim2.fromScale(0.5, 0.56), 0, UDim.new(0, 0), punchAt(0.56))
-		cut.ZIndex = tile.ZIndex + 2
-		local bodyPart = part(44, 32, UDim2.fromScale(0.5, 0.64), 0, UDim.new(0, 6))
-		bodyPart.ZIndex = tile.ZIndex + 3
-		local hole = part(8, 12, UDim2.fromScale(0.5, 0.64), 0, UDim.new(0, 4), punchAt(0.64))
-		hole.ZIndex = tile.ZIndex + 4
-	elseif kind == "coin" then
-		-- A coin seen face on: disc, rim, and a struck mark.
-		part(46, 46, UDim2.fromScale(0.5, 0.5), 0, Theme.Radius.Pill)
-		local rim = part(34, 34, UDim2.fromScale(0.5, 0.5), 0, Theme.Radius.Pill, punchAt(0.5))
-		rim.ZIndex = tile.ZIndex + 3
-		local mark = part(10, 22, UDim2.fromScale(0.5, 0.5), 0, UDim.new(0, 3))
-		mark.ZIndex = tile.ZIndex + 4
-	elseif kind == "ticket" then
-		-- A stub: body, two punched notches, a perforation.
-		part(50, 34, UDim2.fromScale(0.5, 0.5), 0, UDim.new(0, 6))
-		local left = part(12, 12, UDim2.fromScale(0.15, 0.5), 0, Theme.Radius.Pill, punchAt(0.5))
-		left.ZIndex = tile.ZIndex + 3
-		local right = part(12, 12, UDim2.fromScale(0.85, 0.5), 0, Theme.Radius.Pill, punchAt(0.5))
-		right.ZIndex = tile.ZIndex + 3
-		for i = 0, 2 do
-			local dash = part(4, 6, UDim2.fromScale(0.62, 0.36 + i * 0.14), 0, UDim.new(0, 2), punchAt(0.36 + i * 0.14))
-			dash.ZIndex = tile.ZIndex + 3
-		end
-	else
-		-- "spark": an eight-point burst, the generic ornament.
-		part(34, 34, UDim2.fromScale(0.5, 0.5), 45, UDim.new(0, 5))
-		part(10, 46, UDim2.fromScale(0.5, 0.5), 0, UDim.new(0, 4))
-		part(46, 10, UDim2.fromScale(0.5, 0.5), 0, UDim.new(0, 4))
-	end
-end
-
 --[[ An icon tile: a moulded saturated square with vector art in it.
 
 	 The tile itself is `Theme.surface`, which is the whole point — it gets the
@@ -535,6 +386,10 @@ end
 
 	 The shadow is skipped for tiles inside a layout, which Theme decides for
 	 itself and this file does not have to care about. ]]
+--[[ How much of the tile the pictogram occupies. Enough margin that the icon's
+	 own outline never crowds the tile's, at every size a tile is drawn at. ]]
+local ICON_INSET = 0.64
+
 local function iconTile(parent: Instance, kind: string, tint: Color3, size: number): Frame
 	local tile = Theme.surface(parent, {
 		Fill = tint,
@@ -565,7 +420,15 @@ local function iconTile(parent: Instance, kind: string, tint: Color3, size: numb
 	veil.Active = false
 	veil.Parent = tile
 
-	glyph(tile, kind, tint, Palette.UI.TextLight)
+	--[[ `Icons` resolves a "cut" (a hole in the drawing) from the colour of the
+		 surface behind it, which is this tile — so the padlock's keyhole and the
+		 magnet's gap come out right without this file knowing anything about how
+		 they are drawn. ]]
+	Icons.draw(tile, kind, {
+		size = UDim2.fromScale(ICON_INSET, ICON_INSET),
+		fill = Palette.UI.TextLight,
+		zIndex = tile.ZIndex + 2,
+	})
 	return tile
 end
 
@@ -1202,19 +1065,24 @@ type Row = {
 	icon: Frame,
 }
 
+--[[ Named rather than written inline at the parameter, so `options or {}` has a
+	 type to land on. Inline, Luau widens the fallback to a bare `{}` and then
+	 reports every optional key as missing from one arm of the union. ]]
+type RowOptions = {
+	wash: Color3?,
+	coin: boolean?,
+	onResize: ((height: number) -> ())?,
+}
+
 local function rowCard(
 	parent: Instance,
 	iconKind: string,
 	tint: Color3,
 	iconSize: number,
 	onAction: () -> (),
-	options: {
-		wash: Color3?,
-		coin: boolean?,
-		onResize: ((height: number) -> ())?,
-	}?
+	options: RowOptions?
 ): Row
-	local opts = options or {}
+	local opts: RowOptions = options or {}
 	local handle = card(parent, iconSize + CARD_PAD_Y * 2)
 	-- `Theme.card` carries its own padding, so the card IS the content box.
 	local content = handle.root
@@ -1734,12 +1602,17 @@ local function buildCodes(): PanelDef
 		 are filled with the TRAY's colour, which is the same punch-out trick the
 		 pictograms use: a shape in the background's own colour reads as a hole.
 		 Unstroked for the same reason — an outlined circle would read as a button
-		 stuck to the side of the card rather than as a bite taken out of it. ]]
+		 stuck to the side of the card rather than as a bite taken out of it.
+
+		 The offset cancels `Theme.card`'s padding, exactly as the flash overlay
+		 does. Without it a notch lands 14px inside the card and reads as a floating
+		 green dot; with it, it straddles the edge and the card's own clip turns it
+		 into the half-circle bite it is supposed to be. ]]
 	local function notch(x: number)
 		local hole = Instance.new("Frame")
 		hole.Name = "Notch"
 		hole.AnchorPoint = Vector2.new(0.5, 0.5)
-		hole.Position = UDim2.new(x, 0, 0.5, 0)
+		hole.Position = UDim2.new(x, if x == 0 then -CARD_PAD_X else CARD_PAD_X, 0.5, 0)
 		hole.Size = UDim2.fromOffset(26, 26)
 		--[[ The colour the TRAY renders at the notch's own height, not the green
 			 token — see `renderedTint`. Painted with the token these would be two
@@ -1943,7 +1816,7 @@ local function buildCodes(): PanelDef
 		chip.root.Size = UDim2.fromScale(1, 1)
 		chip.root.LayoutOrder = index
 
-		local tile = iconTile(chip.root, "ticket", Palette.UI.HeaderGreen, 40)
+		local tile = iconTile(chip.root, "codes", Palette.UI.HeaderGreen, 40)
 		tile.AnchorPoint = Vector2.new(0, 0.5)
 		tile.Position = UDim2.new(0, 0, 0.5, 0)
 
@@ -2016,9 +1889,11 @@ local function buildZones(): PanelDef
 		rail.ZIndex = entry.ZIndex
 		rail.Parent = entry
 
-		--[[ The connector runs past the bottom of this entry by the list's own gap
-			 so it meets the next node instead of stopping short. The last zone has
-			 no next node, so its line stops under its own. ]]
+		--[[ The connector. It runs from this node's centre to the NEXT node's
+			 centre, which is this entry's height plus the list's own gap — hence the
+			 `LIST_GAP` overshoot, without which the line would stop short and the
+			 route would read as broken. The last zone has nothing to connect to, so
+			 it has no line at all. ]]
 		local line = Instance.new("Frame")
 		line.Name = "Line"
 		line.AnchorPoint = Vector2.new(0.5, 0)
@@ -2056,7 +1931,7 @@ local function buildZones(): PanelDef
 		holder.ZIndex = entry.ZIndex + 1
 		holder.Parent = entry
 
-		local row = rowCard(holder, "crystal", zone.CrystalColor, ROW_ICON, function()
+		local row = rowCard(holder, "shard", zone.CrystalColor, ROW_ICON, function()
 			local unlocked, _, afford = readZone(latest, zone)
 			if unlocked or not afford then
 				return

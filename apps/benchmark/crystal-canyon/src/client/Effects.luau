@@ -63,6 +63,14 @@ local Palette = require(Shared:WaitForChild("Palette"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Util = require(Shared:WaitForChild("Util"))
 
+--[[ Feedback is UI, so it is built from the same design system as the rest of
+	 the UI. A toast assembled out of hand-rolled frames was a large part of why
+	 the previous pass read as "too many plain black pill-shaped surfaces": it was
+	 a plain black pill, drawn by a file that had never heard of the moulding
+	 every other surface in the game carries. Sibling require, exactly as Hud
+	 reaches for it. ]]
+local Theme = require(script.Parent:WaitForChild("Theme"))
+
 local Effects = {}
 
 -- Number pops ------------------------------------------------------------
@@ -245,37 +253,15 @@ local function corner(inst: GuiObject, radius: UDim): UICorner
 	return c
 end
 
---[[ §3 Slight vertical gradient on fills: lighter top, deeper bottom. ]]
-local function gradient(inst: GuiObject, fill: Color3): UIGradient
-	local g = Instance.new("UIGradient")
-	g.Rotation = 90
-	g.Color = ColorSequence.new(Palette.lift(fill), Palette.shade(fill, 0.12))
-	g.Parent = inst
-	return g
-end
+--[[ A white bar inside a 32x32 box — the same design grid `Icons` uses — for the
+	 three toast cap pictograms.
 
---[[ §3 Depth is a hard bottom edge, not a soft shadow. `host` must clip, or the
-	 band's square ends punch through the rounded corners. Deliberately NOT
-	 stroked: it is shading inside the host's silhouette, and the host already
-	 carries the outline that encloses both. ]]
-local function hardEdge(host: GuiObject, fill: Color3, thickness: number): Frame
-	local edge = Instance.new("Frame")
-	edge.Name = "Edge"
-	edge.AnchorPoint = Vector2.new(0.5, 1)
-	edge.Position = UDim2.fromScale(0.5, 1)
-	edge.Size = UDim2.new(1, 0, 0, thickness)
-	edge.BackgroundColor3 = Palette.shade(fill)
-	edge.BorderSizePixel = 0
-	edge.ZIndex = host.ZIndex
-	edge.Parent = host
-	return edge
-end
-
---[[ A white bar inside a 32x32 box, positioned in that box's own coordinates.
-	 Used for the toast cap pictograms, which are the only vector art this module
-	 draws. Panels and Hud each own their own icon sets; three small drawings in
-	 three files is cheaper than a shared icon module none of them would agree on
-	 the sizing rules for. ]]
+	 Deliberately NOT taken from `Icons`, even though a tick is in that set. The
+	 severity marks are tick / bang / cross, and the shared family has only the
+	 tick; drawing one of the three from the icon module and the other two here
+	 would give the same component two hands. Three shapes drawn together on the
+	 shared grid is the more consistent answer, and if a bang and a cross are ever
+	 added to `Icons` this whole block should go. ]]
 local GLYPH_BOX = 32
 
 local function bar(parent: Instance, w: number, h: number, x: number, y: number, rot: number?, z: number?): Frame
@@ -695,47 +681,68 @@ local function showToast(kind: string, text: string)
 	local accent = KIND_COLOR[kind] or KIND_DEFAULT
 	local slot = #activeToasts + 1
 
-	local frame = Instance.new("Frame")
+	--[[ The body is dark, as §6 asks — but MIXED toward the severity colour, the
+		 same trick `Theme.counter` uses to keep a currency pill from being a black
+		 lozenge. A refusal reads as deep red-black and a reward as deep green-black
+		 before a single word has been parsed. ]]
+	local frame = Theme.surface(parent, {
+		Fill = Theme.mix(Palette.UI.CounterFill, Palette.shade(accent, 0.62), 0.5),
+		Radius = Theme.Radius.Card,
+		Stroke = Palette.Outline.Card,
+		Edge = Theme.Edge.Card,
+		HighlightInset = 20,
+		HighlightThickness = 4,
+		HighlightTransparency = 0.76,
+		Shadow = Theme.Shadow.Offset,
+	}, UDim2.fromOffset(TOAST_WIDTH, TOAST_HEIGHT), UDim2.new(1, TOAST_WIDTH + TOAST_MARGIN, 0, TOAST_MARGIN))
 	frame.Name = "Toast"
 	frame.AnchorPoint = Vector2.new(1, 0)
-	frame.Size = UDim2.fromOffset(TOAST_WIDTH, TOAST_HEIGHT)
-	frame.Position = UDim2.new(1, TOAST_WIDTH + TOAST_MARGIN, 0, TOAST_MARGIN)
-	frame.BackgroundColor3 = Palette.UI.CounterFill
-	frame.BorderSizePixel = 0
-	-- Required by the cap's corner trick and by the hard edge below.
-	frame.ClipsDescendants = true
 	frame.ZIndex = 40
-	frame.Parent = parent
+	--[[ Theme built the toast's moulding before that ZIndex was raised, so the
+		 hard edge and the lit rim are still sitting on the default. Bring them with
+		 it — the same normalisation `Theme.panel` does after re-stacking its close
+		 button — or the cap, at ZIndex+1, would draw over the rim it is supposed to
+		 sit beside. ]]
+	for _, layerName in { "Edge", "Highlight" } do
+		local child = frame:FindFirstChild(layerName)
+		if child and child:IsA("Frame") then
+			child.ZIndex = frame.ZIndex
+		end
+	end
 
-	corner(frame, Palette.Radius.Card)
-	gradient(frame, Palette.UI.CounterFill)
-	Palette.stroke(frame, Palette.Outline.Card)
-	hardEdge(frame, Palette.UI.CounterFill, 5)
-
-	local cap = Instance.new("Frame")
+	local cap = Theme.surface(frame, {
+		Fill = accent,
+		Radius = Theme.Radius.Card,
+		Stroke = 0,
+		Edge = 0,
+		HighlightInset = 14,
+		HighlightThickness = 4,
+		HighlightTransparency = 0.62,
+	}, UDim2.new(0, TOAST_CAP, 1, 0))
 	cap.Name = "Cap"
-	cap.Size = UDim2.new(0, TOAST_CAP, 1, 0)
-	cap.BackgroundColor3 = accent
-	cap.BorderSizePixel = 0
 	cap.ZIndex = frame.ZIndex + 1
-	cap.Parent = frame
-	corner(cap, Palette.Radius.Card)
-	gradient(cap, accent)
 
 	--[[ The cap's UICorner rounds all four of its corners; this squares the two
-		 that meet the message. Filling the patch with the cap's own colour is the
-		 same punch-out trick the pictograms use, and it costs one frame rather
-		 than a second clipping container. ]]
-	local square = Instance.new("Frame")
+		 that meet the message, so the cap reads as a block butted against the body
+		 rather than as a pill floating inside it.
+
+		 It goes through `Theme.surface` for one specific reason: the patch has to
+		 be indistinguishable from the cap it is patching, and a UIGradient shades
+		 the object it is parented to but not that object's children. A flat fill
+		 here would be a visibly brighter rectangle down the cap's right-hand third.
+		 Built as a surface it gets the SAME ramp over the SAME full height, so the
+		 two match at every pixel. No stroke and no edge: it is shading inside a
+		 surface whose outline already encloses it. ]]
+	local square = Theme.surface(cap, {
+		Fill = accent,
+		Radius = UDim.new(0, 0),
+		Stroke = 0,
+		Edge = 0,
+		Highlight = false,
+	}, UDim2.new(0, 16, 1, 0), UDim2.new(1, 0, 0.5, 0))
 	square.Name = "SquareOff"
 	square.AnchorPoint = Vector2.new(1, 0.5)
-	square.Position = UDim2.new(1, 0, 0.5, 0)
-	square.Size = UDim2.new(0, 16, 1, 0)
-	square.BackgroundColor3 = accent
-	square.BorderSizePixel = 0
 	square.ZIndex = cap.ZIndex
-	square.Parent = cap
-	gradient(square, accent)
 
 	--[[ The black rule between the cap and the message. §5's construction diagram
 		 puts one exactly here, between the saturated block and the neutral one. ]]
@@ -754,13 +761,13 @@ local function showToast(kind: string, text: string)
 	local label = Instance.new("TextLabel")
 	label.Name = "Text"
 	label.Position = UDim2.fromOffset(TOAST_CAP + 14, 0)
-	label.Size = UDim2.new(1, -(TOAST_CAP + 26), 1, -6)
+	label.Size = UDim2.new(1, -(TOAST_CAP + 26), 1, -Theme.Edge.Card)
 	label.BackgroundTransparency = 1
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextWrapped = true
 	label.ZIndex = frame.ZIndex + 2
 	label.Text = string.upper(text)
-	Palette.styleText(label, Palette.TextSize.Small + 2)
+	Palette.styleText(label, Theme.Type.Small + 2)
 	label.Parent = frame
 
 	local toast: Toast = { frame = frame, slot = slot }
@@ -870,7 +877,7 @@ local function shockwave(accent: Color3)
 	ring.BorderSizePixel = 0
 	ring.ZIndex = 57
 	ring.Parent = parent
-	corner(ring, Palette.Radius.Pill)
+	corner(ring, Theme.Radius.Pill)
 	Debris:AddItem(ring, SHOCKWAVE_LIFE + 0.4)
 
 	local edge = Instance.new("UIStroke")
@@ -939,21 +946,21 @@ local function banner(text: string, accent: Color3)
 
 	TweenService:Create(rays, TweenInfo.new(BANNER_LIFE + 0.6, Enum.EasingStyle.Linear), { Rotation = 26 }):Play()
 
-	local frame = Instance.new("Frame")
+	local frame = Theme.surface(stage, {
+		Fill = accent,
+		Radius = Theme.Radius.Panel,
+		Stroke = Palette.Outline.Panel,
+		Edge = BANNER_EDGE,
+		HighlightInset = 24,
+		HighlightThickness = 6,
+		HighlightTransparency = 0.6,
+		Sheen = 26,
+		Shadow = Theme.Shadow.PanelOffset,
+		ShadowTransparency = Theme.Shadow.PanelTransparency,
+	}, UDim2.new(BANNER_WIDTH_SCALE, 0, 0, 0), UDim2.fromScale(0.5, 0.5))
 	frame.Name = "UnlockBanner"
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.fromScale(0.5, 0.5)
-	frame.Size = UDim2.new(BANNER_WIDTH_SCALE, 0, 0, 0)
-	frame.BackgroundColor3 = accent
-	frame.BorderSizePixel = 0
-	frame.ClipsDescendants = true -- required by the hard edge and the sheen
 	frame.ZIndex = stage.ZIndex + 2
-	frame.Parent = stage
-
-	corner(frame, Palette.Radius.Panel)
-	gradient(frame, accent)
-	Palette.stroke(frame, Palette.Outline.Panel)
-	hardEdge(frame, accent, BANNER_EDGE)
 
 	--[[ The cap that makes the scale safe: MaxSize keeps the desktop banner at
 		 the intended size, and the width scale is what shrinks on a phone.
@@ -964,32 +971,19 @@ local function banner(text: string, accent: Color3)
 	limit.MaxSize = BANNER_MAX
 	limit.Parent = frame
 
-	-- §3 headers often add a diagonal sheen band; the clip trims the overhang.
-	local sheen = Instance.new("Frame")
-	sheen.Name = "Sheen"
-	sheen.AnchorPoint = Vector2.new(0.5, 0.5)
-	sheen.Position = UDim2.fromScale(0.5, 0.26)
-	sheen.Size = UDim2.new(1.6, 0, 0, 26)
-	sheen.Rotation = -8
-	sheen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	sheen.BackgroundTransparency = 0.86
-	sheen.BorderSizePixel = 0
-	sheen.ZIndex = frame.ZIndex
-	sheen.Parent = frame
-
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1, 0, 1, -BANNER_EDGE)
 	label.BackgroundTransparency = 1
 	label.ZIndex = frame.ZIndex + 1
 	label.Text = text
-	Palette.styleText(label, Palette.TextSize.Title)
+	Palette.styleText(label, Theme.Type.Title)
 	--[[ Zone names are authored, not user text, but the banner is narrower on a
 		 phone than the size the title was measured against. Scaling down to a
 		 floor keeps "FROST HOLLOW UNLOCKED!" on one line instead of clipping it;
 		 the max keeps it from growing past the display size §4 asks for. ]]
 	label.TextScaled = true
 	local textLimit = Instance.new("UITextSizeConstraint")
-	textLimit.MaxTextSize = Palette.TextSize.Title
+	textLimit.MaxTextSize = Theme.Type.Title
 	textLimit.MinTextSize = 16
 	textLimit.Parent = label
 	local pad = Instance.new("UIPadding")

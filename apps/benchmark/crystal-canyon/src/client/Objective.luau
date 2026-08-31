@@ -25,13 +25,18 @@
 	   off-screen. See `travel` for why the distance it slides is measured the way
 	   it is.
 
-	2. THE LAYOUT CONTRACT. The chip is one auto-sized pill laid out by a
-	   UIListLayout, and a UIListLayout lays out EVERY visible child — there is no
-	   opt-out. So the chip has exactly three children (step badge, title,
-	   progress capsule) and no free-floating decoration: the §3 hard bottom edge
-	   is drawn by the gradient's own keypoints rather than by an extra frame that
-	   the layout would have pushed into the row. Anything that wants to float
-	   goes inside one of the three children, where the layout cannot reach it.
+	2. THE LAYOUT CONTRACT, AND WHY THE CHIP ITSELF IS NOT A `Theme.surface`.
+	   The chip has to grow with its own text, so it is auto-sized and its three
+	   contents are placed by a UIListLayout — and a UIListLayout lays out EVERY
+	   visible child, with no opt-out. `Theme.surface` builds its moulding out of
+	   real child frames (a hard bottom edge, a lit top rim), so applying it to the
+	   chip would hand the layout two extra cells and shove the title sideways.
+
+	   So the chip's own shell is built by hand and takes §3's hard bottom edge
+	   from its GRADIENT instead — a near-vertical step in the ramp, which is the
+	   same band of the same hue two shades down, drawn with no instance at all.
+	   Everything INSIDE the chip is a proper Theme surface, because the layout
+	   only sees the three children and never their contents.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -42,9 +47,18 @@ local Config = require(Shared:WaitForChild("Config"))
 local Palette = require(Shared:WaitForChild("Palette"))
 local Util = require(Shared:WaitForChild("Util"))
 
+-- Sibling require, exactly as Hud reaches for it. The chip is a HUD surface and
+-- has to be made of the same material as the rest of them.
+local Theme = require(script.Parent:WaitForChild("Theme"))
+
 local Objective = {}
 
 local CHIP_HEIGHT = 52
+--[[ The chip is a dark HUD pill (§6) — but mixed toward the objective's own gold,
+	 the same treatment `Theme.counter` gives a currency pill. "Too many plain
+	 black pill-shaped surfaces" was a named defect, and a black lozenge parked in
+	 the top band was one of them. ]]
+local CHIP_FILL = Theme.mix(Palette.UI.CounterFill, Palette.shade(Palette.UI.Premium, 0.62), 0.52)
 local CHIP_TOP = 12
 local HOME = UDim2.new(0.5, 0, 0, CHIP_TOP)
 
@@ -175,18 +189,16 @@ end
 	 more plain dark pill — §1's grammar is a saturated block against a neutral
 	 body, at every scale. ]]
 local function buildBadge(parent: Frame): (Frame, TextLabel, Frame)
-	local badge = Instance.new("Frame")
+	local badge = Theme.surface(parent, {
+		Fill = Palette.UI.Premium,
+		Radius = Theme.Radius.Button,
+		Stroke = Palette.Outline.Icon,
+		Edge = 4,
+		HighlightInset = 8,
+		HighlightThickness = 3,
+	}, UDim2.fromOffset(BADGE, BADGE)) :: Frame
 	badge.Name = "Step"
-	badge.Size = UDim2.fromOffset(BADGE, BADGE)
-	badge.BackgroundColor3 = Palette.UI.Premium
-	badge.BorderSizePixel = 0
-	badge.ClipsDescendants = true
 	badge.LayoutOrder = 0
-	badge.ZIndex = parent.ZIndex + 1
-	badge.Parent = parent
-	corner(badge, Palette.Radius.Button)
-	faceGradient(badge, 0.74)
-	Palette.stroke(badge, Palette.Outline.Icon)
 
 	local number = Instance.new("TextLabel")
 	number.Name = "Number"
@@ -206,17 +218,17 @@ end
 	 it, and putting the count INSIDE the bar is also what keeps the chip to three
 	 laid-out children instead of four. ]]
 local function buildCapsule(parent: Frame): (Frame, Frame, TextLabel)
-	local track = Instance.new("Frame")
+	local track = Theme.surface(parent, {
+		Fill = Palette.shade(Palette.UI.CounterFill, 0.35),
+		Radius = Theme.Radius.Pill,
+		Stroke = Palette.Outline.Card,
+		Edge = 0,
+		HighlightInset = 10,
+		HighlightThickness = 3,
+		HighlightTransparency = 0.84,
+	}, UDim2.fromOffset(CAPSULE_W, CAPSULE_H)) :: Frame
 	track.Name = "Progress"
-	track.Size = UDim2.fromOffset(CAPSULE_W, CAPSULE_H)
-	track.BackgroundColor3 = Palette.shade(Palette.UI.CounterFill, 0.35)
-	track.BorderSizePixel = 0
-	track.ClipsDescendants = true
 	track.LayoutOrder = 2
-	track.ZIndex = parent.ZIndex + 1
-	track.Parent = parent
-	corner(track, Palette.Radius.Pill)
-	Palette.stroke(track, Palette.Outline.Card)
 
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
@@ -225,7 +237,7 @@ local function buildCapsule(parent: Frame): (Frame, Frame, TextLabel)
 	fill.BorderSizePixel = 0
 	fill.ZIndex = track.ZIndex + 1
 	fill.Parent = track
-	corner(fill, Palette.Radius.Pill)
+	corner(fill, Theme.Radius.Pill)
 	faceGradient(fill, 0.7)
 
 	local label = Instance.new("TextLabel")
@@ -233,7 +245,7 @@ local function buildCapsule(parent: Frame): (Frame, Frame, TextLabel)
 	label.Size = UDim2.fromScale(1, 1)
 	label.ZIndex = track.ZIndex + 2
 	label.Text = ""
-	Palette.styleText(label, Palette.TextSize.Small + 1)
+	Palette.styleText(label, Theme.Type.Small + 1)
 	label.Parent = track
 
 	return track, fill, label
@@ -254,13 +266,13 @@ function Objective.init(mountPoint: Instance)
 	frame.Position = HOME
 	frame.Size = UDim2.fromOffset(0, CHIP_HEIGHT)
 	frame.AutomaticSize = Enum.AutomaticSize.X
-	frame.BackgroundColor3 = Palette.UI.CounterFill
+	frame.BackgroundColor3 = CHIP_FILL
 	frame.BorderSizePixel = 0
 	frame.Visible = false
 	frame.ZIndex = 10
 	frame.Parent = mountPoint
 
-	corner(frame, Palette.Radius.Pill)
+	corner(frame, Theme.Radius.Pill)
 	faceGradient(frame)
 	Palette.stroke(frame, Palette.Outline.Panel)
 
@@ -286,7 +298,7 @@ function Objective.init(mountPoint: Instance)
 	title.LayoutOrder = 1
 	title.ZIndex = frame.ZIndex + 1
 	title.Text = ""
-	Palette.styleText(title, Palette.TextSize.Section)
+	Palette.styleText(title, Theme.Type.Section)
 	title.Parent = frame
 
 	local track, fill, count = buildCapsule(frame)
@@ -541,11 +553,32 @@ local function transition(nextStep: Step)
 		number.Visible = false
 		tick.Visible = true
 		track.Visible = false
-		--[[ Colour is tweened, never re-styled: `Palette.styleText` attaches a NEW
-			 UIStroke on every call, so calling it from a per-transition path would
-			 leak one stroke per completed objective onto the same label. ]]
-		local quick = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-		TweenService:Create(badge, quick, { BackgroundColor3 = Palette.UI.Buy }):Play()
+
+		--[[ A punch on the badge as the tick lands: the moment a step is satisfied
+			 should be felt rather than merely rendered. The UIScale is found before
+			 it is created, so a player who finishes all three steps does not end up
+			 with three of them stacked on one badge — the same rule `Effects.pulse`
+			 follows for the currency counters. ]]
+		local punch = badge:FindFirstChildOfClass("UIScale")
+		if not punch then
+			punch = Instance.new("UIScale")
+			punch.Parent = badge
+		end
+		local scale = punch :: UIScale
+		scale.Scale = 0.72
+		TweenService:Create(scale, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+			:Play()
+
+		--[[ Only the CHIP goes green, never the badge — and colour is TWEENED,
+			 never re-styled (`Palette.styleText` attaches a new UIStroke on every
+			 call, so calling it from a per-transition path would leak one stroke per
+			 completed objective).
+
+			 The chip's gradient is a neutral grey ramp, so recolouring it shades the
+			 new hue correctly. The badge is a `Theme.surface` whose gradient is
+			 built from its own gold, and a UIGradient multiplies — so tweening the
+			 badge to green would render it a muddy olive. The tick swapping in is
+			 what marks the badge done. ]]
 		TweenService:Create(frame, TweenInfo.new(0.18), { BackgroundColor3 = Palette.UI.Buy }):Play()
 
 		task.wait(TICK_HOLD)
@@ -563,8 +596,7 @@ local function transition(nextStep: Step)
 
 		tick.Visible = false
 		number.Visible = true
-		badge.BackgroundColor3 = Palette.UI.Premium
-		frame.BackgroundColor3 = Palette.UI.CounterFill
+		frame.BackgroundColor3 = CHIP_FILL
 		shownIndex = nextStep.index
 
 		if nextStep.complete then
