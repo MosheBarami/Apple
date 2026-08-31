@@ -5,7 +5,22 @@ import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResu
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocs } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
-import { chooseAssetSource, verifyCreatorStoreAsset, findVerifiedAssets, type AssetNeed, type AssetKind } from './assets';
+import {
+  chooseAssetSource,
+  verifyCreatorStoreAsset,
+  findVerifiedAssets,
+  scanInsertedHierarchy,
+  summariseTree,
+  ACCEPTABLE_ASSET_TYPES,
+  SCAN_LIMITS,
+  type AssetNeed,
+  type AssetKind,
+  type AssetProvenanceSource,
+  type AssetVerdict,
+  type FetchLike,
+  type HttpResponseLike,
+  type ScannedScriptInput,
+} from './assets';
 import { searchAssetLibrary } from './asset-library';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
@@ -35,8 +50,19 @@ export interface AgentCtx {
   /**
    * Asset ids that came out of a verified search in THIS session. The only ids insert_asset will
    * accept: an id that only ever appeared in model output is never inserted.
+   *
+   * Membership records PROVENANCE and nothing else. It used to double as a skip — an id in this
+   * set went to Studio without ever being resolved — which meant one bad row in the curated library
+   * could put an unverified Model into a customer's place. It never skips anything now.
    */
   discoveredAssetIds?: Set<number>;
+  /**
+   * The subset of the above that came out of `asset_library` rather than the Creator Store.
+   *
+   * Held separately because it changes which assertions may be waived (see `securityBlockers`),
+   * never whether the gate runs.
+   */
+  libraryAssetIds?: Set<number>;
 }
 
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
@@ -88,6 +114,215 @@ async function renderViews(ctx: AgentCtx, target: string | undefined, view: stri
     }
   }
   return data;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Untrusted-asset brokerage — the half of the gate that only the customer's place can answer
+//
+// assets.ts builds the whole apparatus and states the one order that is safe. `insert_asset` used
+// none of it past the metadata gate: it resolved an id and handed the asset to Studio. That solves
+// the half of the problem that can be solved without touching a place — but `hasScripts` is a
+// third-party CLAIM about a third-party asset, made by an undocumented endpoint, about contents
+// that can change after they were inspected. Whether the thing that LANDED carries Luau is a
+// different question, and only the place can answer it.
+//
+// So every insertion now runs the broker's post-insertion sequence, and the ORDER is the security
+// property (assets.ts, `brokerAsset`):
+//
+//   insert -> enumerate the hierarchy -> read every script out of the place -> scan
+//          -> delete what the scan condemns -> RE-LIST to prove nothing survived
+//
+// Reordering any of it defeats it: an agent that inserts and then decides it is happy has already
+// run the attacker's code, and "we deleted the scripts we knew about" is bookkeeping, not proof.
+// Anything that cannot be proven clean is deleted WHOLE and the tool refuses.
+// ---------------------------------------------------------------------------------------------
+
+function rec(v: unknown): Record<string, unknown> {
+  return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+}
+
+function strOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v.length ? v : null;
+}
+
+/** Pull `{ scripts: [{ path, class }] }` out of a `list_scripts` result, defensively. */
+function scriptRows(data: unknown): { path: string; className: string }[] {
+  const rows = rec(data).scripts;
+  if (!Array.isArray(rows)) return [];
+  const out: { path: string; className: string }[] = [];
+  for (const r of rows) {
+    const path = strOrNull(rec(r).path);
+    if (path) out.push({ path, className: strOrNull(rec(r).class) ?? 'Script' });
+  }
+  return out;
+}
+
+/** The one endpoint whose payload the metadata gate believes, wrapped so absence can be seen. */
+const DETAILS_PATH = '/toolbox-service/v1/items/details';
+
+export interface DetailsIntegrity {
+  /** Fields the details response failed to report. Non-empty means the gate ran on a guess. */
+  missing: string[];
+}
+
+/**
+ * Wrap the details fetch so a MISSING field fails closed.
+ *
+ * `judgeAssetDetails` reads `asset.hasScripts === true`. That is correct against a documented
+ * schema and wrong against this one: `toolbox-service/v1/items/details` is undocumented, so a
+ * rename, a schema change or a partial response all arrive as "the field is not there" — and
+ * `undefined === true` is `false`, which reads as "this asset carries no scripts" and passes the
+ * single most important assertion in the system without a sound.
+ *
+ * The fix belongs at the trust boundary rather than inside the judge, which is pure and has no way
+ * to tell absent from false. Absence is recorded here and the entry is rewritten to
+ * `hasScripts: true`, so a silent schema change takes exactly the path a script-bearing asset takes.
+ * The caller reads `missing` and reports what actually happened, so the refusal is never dressed up
+ * as a script nobody saw.
+ */
+export function strictDetailsFetch(seen: DetailsIntegrity, base?: FetchLike): FetchLike {
+  const inner: FetchLike = base ?? ((url, init) => fetch(url, init as RequestInit) as unknown as Promise<HttpResponseLike>);
+  return async (url, init) => {
+    const res = await inner(url, init);
+    if (!url.includes(DETAILS_PATH) || !res.ok) return res;
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch (e) {
+      // A details response that will not parse is a refusal, not an empty one — hand the parse
+      // failure straight back so `verifyCreatorStoreAsset` records it as fail_network.
+      return { ok: res.ok, status: res.status, json: () => Promise.reject(e instanceof Error ? e : new Error(String(e))) };
+    }
+    const rows = rec(body).data;
+    if (Array.isArray(rows)) {
+      for (const row of rows) {
+        const asset = rec(row).asset;
+        // An absent `asset` is a not-found, which the judge already fails on. Only a present asset
+        // that declines to say anything about scripts is the silent-pass case this exists for.
+        if (typeof asset !== 'object' || asset === null) continue;
+        const a = asset as Record<string, unknown>;
+        if (typeof a.hasScripts !== 'boolean') {
+          seen.missing.push('hasScripts');
+          a.hasScripts = true;
+        }
+      }
+    }
+    return { ok: res.ok, status: res.status, json: async () => body };
+  };
+}
+
+/**
+ * The assertions no source of an id may waive, re-read off the verdict's own fields.
+ *
+ * `AssetVerdict.verdict` names only the FIRST failure. That is fine to branch on today because
+ * `judgeAssetDetails` evaluates security-first — but "fine because of the evaluation order inside
+ * another module" is not a property worth depending on for this, so the four facts that actually
+ * matter are asserted here directly.
+ */
+function securityBlockers(v: AssetVerdict): string[] {
+  const blocked: string[] = [];
+  if (!v.exists) blocked.push(`asset ${v.assetId} did not resolve to anything (${v.verdict})`);
+  if (v.hasScripts || v.scriptCount > 0) blocked.push('the Creator Store itself reports that this asset carries Luau');
+  if (v.shouldSandbox) blocked.push('Roblox flags this asset shouldSandbox');
+  if (v.assetTypeId === null || !ACCEPTABLE_ASSET_TYPES[v.assetTypeId]) {
+    blocked.push(`typeId ${v.assetTypeId ?? 'unknown'} is not insertable — a Model is refused because it is the container type that can carry scripts`);
+  }
+  if (v.visibilityStatus !== null && v.visibilityStatus !== 1) blocked.push(`visibilityStatus ${v.visibilityStatus} — not publicly visible`);
+  return blocked;
+}
+
+/**
+ * Insert one verified id and prove the place clean afterwards, or leave the place as it was found.
+ *
+ * Returns a tool result: small, and free of any line of the source it removed. An attacker's Luau
+ * belongs in the audit trail, not in the model's transcript where it becomes an instruction.
+ */
+async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: string): Promise<unknown> {
+  const inserted = await ctx.execStudioOp({ op: 'insert_asset', assetId, parent }, 45_000);
+  if (!inserted.ok) return { error: inserted.error ?? 'insert_asset failed' };
+  const raw = rec(inserted.data).inserted;
+  const paths = (Array.isArray(raw) ? raw : []).filter((p): p is string => typeof p === 'string');
+  if (!paths.length) return { error: `asset ${assetId} inserted nothing — nothing was added to the place` };
+
+  /** Remove the whole asset and refuse. Never leaves the place in the state the scan objected to. */
+  const discard = async (why: string): Promise<unknown> => {
+    const del = await ctx.execStudioOp({ op: 'delete_instances', paths }, 20_000);
+    return {
+      error: `asset ${assetId} was inserted, refused and removed: ${why}`,
+      ...(del.ok
+        ? { removedWholeAsset: paths }
+        : { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths }),
+    };
+  };
+
+  // 1. Enumerate. A subtree that cannot be walked is a subtree whose contents are unknown, and
+  //    unknown is never scored as empty.
+  const classes: string[] = [];
+  let enumerationFailed = false;
+  for (const p of paths) {
+    const tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: 12, maxNodes: 400 }, 20_000);
+    if (!tree.ok) {
+      enumerationFailed = true;
+      continue;
+    }
+    const sum = summariseTree(tree.data);
+    classes.push(...sum.classes);
+    if (sum.truncated) enumerationFailed = true;
+  }
+
+  // 2. Read the Luau back OUT OF THE PLACE. This is the whole point: the metadata said there was
+  //    none, and this is the only reading of that claim that is not the claimant's own.
+  const rows: { path: string; className: string }[] = [];
+  for (const p of paths) {
+    const listed = await ctx.execStudioOp({ op: 'list_scripts', root: p }, 20_000);
+    if (!listed.ok) {
+      enumerationFailed = true;
+      continue;
+    }
+    rows.push(...scriptRows(listed.data));
+  }
+  if (rows.length > SCAN_LIMITS.maxScripts) {
+    return discard(`${rows.length} scripts in one asset, over the ${SCAN_LIMITS.maxScripts} scan cap — refused on count alone rather than partially cleared`);
+  }
+  const scripts: ScannedScriptInput[] = [];
+  for (const s of rows) {
+    const read = await ctx.execStudioOp({ op: 'read_script', path: s.path }, 20_000);
+    // null, never '': a source that could not be read is the worst case, not the empty one.
+    scripts.push({ path: s.path, className: s.className, source: read.ok ? strOrNull(rec(read.data).source) : null });
+  }
+
+  // 3. Judge.
+  const scan = scanInsertedHierarchy({ rootPath: paths[0] as string, scripts, instanceClasses: classes, enumerationFailed });
+  if (scan.verdict === 'reject') return discard(scan.reasons[0] ?? 'the safety scan rejected this asset');
+
+  // 4. Strip what the scan condemned. A failed delete is a discard, not a warning.
+  if (scan.removePaths.length) {
+    const del = await ctx.execStudioOp({ op: 'delete_instances', paths: scan.removePaths }, 20_000);
+    if (!del.ok) return discard(`${scan.removePaths.length} condemned script(s) could not be deleted (${del.error ?? 'delete failed'})`);
+  }
+
+  // 5. PROVE it. Re-listing is the only step that says anything about the place rather than about
+  //    our own bookkeeping, so a listing that fails here is a refusal like any other.
+  const leftover: string[] = [];
+  for (const p of paths) {
+    const listed = await ctx.execStudioOp({ op: 'list_scripts', root: p }, 20_000);
+    if (!listed.ok) return discard('the post-removal script listing failed, so the place cannot be proven clean');
+    leftover.push(...scriptRows(listed.data).map((s) => s.path));
+  }
+  if (leftover.length) return discard(`${leftover.length} script(s) survived removal: ${leftover.slice(0, 6).join(', ')}`);
+
+  return {
+    assetId,
+    inserted: paths,
+    scan: scan.verdict,
+    // Codes and one-line reasons only. An excerpt of the removed Luau would put the attacker's text
+    // into the transcript, where the model reads it as prose.
+    stripped: scan.scripts
+      .filter((s) => s.action === 'remove')
+      .map((s) => ({ path: s.path, class: s.className, severity: s.severity, why: [...new Set(s.findings.map((f) => f.code))].join(', ') })),
+    ...(scan.findings.length ? { notes: scan.findings.slice(0, 6).map((f) => `${f.severity} ${f.code}: ${f.message}`) } : {}),
+    proven: `re-listed after removal: zero scripts remain under ${paths.join(', ')}`,
+  };
 }
 
 export const TOOLS: Record<string, ToolImpl> = {
@@ -393,7 +628,13 @@ export const TOOLS: Record<string, ToolImpl> = {
         insertableOnly: true,
         k: 8,
       });
-      for (const h of hits) if (h.robloxAssetId !== null) (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
+      // Recorded as provenance, on both sets. A library hit is still resolved and gated before it
+      // may be inserted — the library says an id is LICENSED, not that it is safe.
+      for (const h of hits) {
+        if (h.robloxAssetId === null) continue;
+        (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
+        (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
+      }
       return hits.map((h) => ({ assetId: h.robloxAssetId, name: h.name, kind: h.kind, triangles: h.triangles, boundsStuds: h.boundsStuds, tags: h.tags }));
     },
   },
@@ -406,15 +647,20 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const integrity: DetailsIntegrity = { missing: [] };
       const res = await findVerifiedAssets(ctx.env, String(a.query ?? ''), {
         category: 'mesh',
         robloxOnly: a.robloxOnly === true,
         maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
         want: 3,
+        fetchImpl: strictDetailsFetch(integrity),
       });
       for (const v of res.passed) (ctx.discoveredAssetIds ??= new Set()).add(v.assetId);
       return {
         note: res.search.note,
+        ...(integrity.missing.length
+          ? { schemaWarning: `the details endpoint stopped reporting ${[...new Set(integrity.missing)].join(', ')} for one or more candidates; those were refused rather than assumed script-free` }
+          : {}),
         passed: res.passed.map((v) => ({ assetId: v.assetId, name: v.name, type: v.assetType, triangles: v.triangles })),
         rejected: res.rejected.map((v) => ({ assetId: v.assetId, verdict: v.verdict, reasons: v.reasons })),
       };
@@ -424,20 +670,46 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. The id MUST have come from search_asset_library or find_verified_asset in this conversation — an id from anywhere else is refused, because guessed ids fail or insert something random, and unverified models can carry backdoor scripts. To create objects, build them from Parts with create_instances instead.',
+        'Insert an asset by numeric assetId. The id MUST have come from search_asset_library or find_verified_asset in this conversation — an id from anywhere else is refused, because guessed ids fail or insert something random, and unverified models can carry backdoor scripts. Every insertion is scanned INSIDE the place afterwards: any Luau that arrives with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
     run: async (ctx, a) => {
       const assetId = Number(a.assetId);
-      if (!ctx.discoveredAssetIds?.has(assetId)) {
-        const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance: 'user_supplied' });
-        if (!verdict.ok) {
-          return { error: `asset ${assetId} was not verified: ${verdict.verdict}. ${verdict.reasons.join(' ')}` };
-        }
-        ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      if (!Number.isInteger(assetId) || assetId <= 0) return { error: `${String(a.assetId)} is not a valid asset id` };
+      const parent = String(a.parent ?? 'game.Workspace');
+
+      // WHERE an id came from decides which assertions may be waived. It never decides whether the
+      // gate runs — a membership test is not a verification, and treating it as one is how a bad
+      // library row would have reached a place unresolved and unscanned.
+      const fromLibrary = ctx.libraryAssetIds?.has(assetId) === true;
+      const provenance: AssetProvenanceSource = fromLibrary ? 'library' : ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
+
+      const integrity: DetailsIntegrity = { missing: [] };
+      const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance, fetchImpl: strictDetailsFetch(integrity) });
+      if (integrity.missing.length) {
+        return {
+          error:
+            `asset ${assetId} was refused: the asset details response did not report ${[...new Set(integrity.missing)].join(', ')}, ` +
+            'so whether it carries scripts could not be checked. A field that is absent is treated as the worst case, never as false.',
+        };
       }
-      return op(ctx, { op: 'insert_asset', assetId, parent: String(a.parent ?? 'game.Workspace') }, 45_000);
+
+      // A curated-library id is an asset an operator ingested with a recorded licence, source URL
+      // and sha256, and uploaded under Golem's own account. It therefore has no marketplace price,
+      // no votes and no verified-creator badge by construction, and failing it on those three would
+      // refuse every asset in the library. Those three, and ONLY those three, are waived — the
+      // script, sandbox, type and moderation assertions are re-read field by field in
+      // `securityBlockers`, and the waiver is reported back so nobody has to infer it.
+      const blockers = fromLibrary ? securityBlockers(verdict) : verdict.ok ? [] : [`${verdict.verdict}. ${verdict.reasons.join(' ')}`];
+      if (blockers.length) return { error: `asset ${assetId} was not verified: ${blockers.join(' ')}` };
+
+      ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      const placed = await insertAndProveClean(ctx, assetId, parent);
+      if (typeof placed === 'object' && placed !== null && !('error' in placed) && fromLibrary && !verdict.ok) {
+        return { ...placed, waivedForLibraryAsset: verdict.reasons };
+      }
+      return placed;
     },
   },
   generate_model: {

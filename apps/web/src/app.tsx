@@ -10,6 +10,7 @@ import { AppLayout } from './components/layout';
 import { LoginPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
 import { WorkspacePage } from './routes/workspace';
+import { RoadmapPage } from './routes/roadmap';
 import { UsagePage } from './routes/usage';
 import { SettingsPage } from './routes/settings';
 import { AdminPage } from './routes/admin';
@@ -60,6 +61,9 @@ export function App() {
                   >
                     <Route index element={<DashboardPage />} />
                     <Route path="/projects/:id" element={<WorkspacePage />} />
+                    {/* The plan for one project. Scoped under the project
+                        because a roadmap without one has nothing to describe. */}
+                    <Route path="/projects/:id/roadmap" element={<RoadmapPage />} />
                     <Route path="/usage" element={<UsagePage />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/admin" element={<AdminPage />} />

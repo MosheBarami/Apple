@@ -8,7 +8,8 @@ import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
-import type { RenderViewResult } from '@golem/shared';
+import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
+import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -195,6 +196,106 @@ app.post('/api/projects/:id/pairing', async (c) => {
     method: 'POST',
     body: JSON.stringify({ projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name }),
   });
+});
+
+// ---------------------------------------------------------------- game roadmap (manifest §30-§33)
+/**
+ * The roadmap is READ FROM THE PROJECT, so every route here needs Studio attached.
+ *
+ * That is a real constraint and it is stated rather than worked around: with no plugin connected
+ * there is no place file to inspect, and the only thing that could be returned is the generic
+ * template §31 exists to forbid. So these routes 409 with the reason instead of guessing.
+ *
+ * Ownership is checked by `withOwnedProject` exactly as it is for messages and checkpoints; the
+ * DO's /studio-op path is reached only after that check passes.
+ */
+function studioProbeFor(stub: DurableObjectStub): StudioProbe {
+  return async (op: StudioOp, timeoutMs?: number): Promise<OpResult> => {
+    const res = await stub.fetch('https://do/studio-op', {
+      method: 'POST',
+      body: JSON.stringify({ op, timeoutMs: timeoutMs ?? 30_000 }),
+    });
+    return (await res.json()) as OpResult;
+  };
+}
+
+app.get('/api/projects/:id/roadmap', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const out = await roadmapForProject(studioProbeFor(ctx.stub));
+  if (!out.ok) return c.json({ error: out.error }, 409);
+  void count(c.env, 'roadmap_read');
+
+  // The deterministic roadmap is the product (§39). The model pass is opt-in, costs a Spark, and
+  // can only reorder and rephrase what the scan already decided — so every failure below leaves a
+  // complete roadmap on the wire, with `polished: false` saying plainly that it did not run.
+  if (c.req.query('polish') !== '1') return c.json({ projectId: ctx.project.id, ...out.roadmap, shape: publicShape(out.shape) });
+  const user = c.get('user');
+  const spend = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
+    method: 'POST',
+    body: JSON.stringify({ sparks: 1, kind: 'roadmap_rank' }),
+  });
+  const { ok } = (await spend.json()) as { ok: boolean };
+  if (!ok) {
+    return c.json({
+      projectId: ctx.project.id,
+      ...out.roadmap,
+      shape: publicShape(out.shape),
+      notes: [...out.roadmap.notes, 'Daily Sparks are used up, so this is the unranked roadmap.'],
+    });
+  }
+  const chat: RoadmapChat = async ({ system, user: prompt }) => {
+    const res = await llmChat(
+      c.env,
+      { model: 'clay', messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], maxTokens: 700 },
+      { kind: 'roadmap:rank', cacheTtl: 300 },
+    );
+    return res.text;
+  };
+  const ranked = await polishRoadmap(out.roadmap, out.shape, chat);
+  return c.json({
+    projectId: ctx.project.id,
+    ...ranked,
+    shape: publicShape(out.shape),
+    notes: ranked.polished ? ranked.notes : [...ranked.notes, 'The ranking pass did not run; this is the roadmap read straight from the project.'],
+  });
+});
+
+/** §32: the small contextual set, for a UI that wants the next steps and not the whole timeline. */
+app.get('/api/projects/:id/roadmap/next', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const out = await roadmapForProject(studioProbeFor(ctx.stub));
+  if (!out.ok) return c.json({ error: out.error }, 409);
+  return c.json({
+    projectId: ctx.project.id,
+    genre: out.roadmap.genre,
+    genreLabel: out.roadmap.genreLabel,
+    genreConfidence: out.roadmap.genreConfidence,
+    next: out.roadmap.next,
+    notes: out.roadmap.notes,
+  });
+});
+
+/**
+ * §33: turn a milestone into something Plan or Agent can actually build.
+ *
+ * The brief is regenerated from a fresh scan rather than from a roadmap the client sends back:
+ * a client-supplied brief would let any caller hand the builder arbitrary instructions attributed
+ * to Golem's own roadmap. Only the milestone id crosses the wire.
+ */
+app.post('/api/projects/:id/roadmap/brief', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const body = await c.req.json<{ milestoneId?: string }>().catch(() => null);
+  const milestoneId = (body?.milestoneId ?? '').slice(0, 64);
+  if (!milestoneId) return c.json({ error: 'milestoneId required' }, 400);
+  const out = await roadmapForProject(studioProbeFor(ctx.stub));
+  if (!out.ok) return c.json({ error: out.error }, 409);
+  const brief = executionBrief(out.shape, out.roadmap, milestoneId);
+  if (!brief) return c.json({ error: 'no such milestone for this project' }, 404);
+  void count(c.env, 'roadmap_brief');
+  return c.json(brief);
 });
 
 // ---------------------------------------------------------------- studio plugin endpoints (token auth, not JWT)

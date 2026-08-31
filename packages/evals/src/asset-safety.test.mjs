@@ -12,9 +12,15 @@
 // through `brokerAsset` against a fake Studio, so the policy is proven at the unit AND at the
 // pipeline level.
 //
-// NO NETWORK. Every function under test takes an injected `fetchImpl` or an injected bridge. A
-// dedicated test asserts that a full broker run with no fetch stub configured never reaches
-// apis.roblox.com — the fake fetch records every URL it is asked for.
+// §6 IS THE ONE THAT WOULD HAVE CAUGHT THE GAP. Everything above proved the scanner works; none of
+// it proved the scanner RUNS. The scanner shipped with 47 passing tests and zero call sites, while
+// the live `insert_asset` inserted on the metadata gate alone and never read the place back. So §6
+// drives the real tool through the real dispatcher: a green §1-§5 with a rewired §6 is the exact
+// state this file used to be in, and now it fails.
+//
+// NO NETWORK. Every function under test takes an injected `fetchImpl` or an injected bridge, and
+// §6 replaces `globalThis.fetch` at module scope for the tool path. Two dedicated tests assert that
+// nothing reached apis.roblox.com for real — the fakes record every URL they are asked for.
 //
 // Run: node --test packages/evals/src/asset-safety.test.mjs
 import test from 'node:test';
@@ -33,6 +39,13 @@ const out = join(dir, 'assets.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'assets.ts'), '--format=esm', '--outfile=' + out], { stdio: 'pipe', cwd: WORKER });
 
 const A = await import(out);
+// tools.ts is the LIVE call site. The scanner above is only worth testing because something calls
+// it, so §6 drives the real `insert_asset` through the real dispatcher rather than re-testing the
+// primitives it composes. This needs --bundle; assets.ts above does not, and that difference is the
+// whole reason the two are built separately.
+const toolsOut = join(dir, 'tools.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + toolsOut], { stdio: 'pipe', cwd: WORKER });
+const T = await import(toolsOut);
 const {
   scanScriptSource,
   scanInsertedHierarchy,
@@ -610,4 +623,294 @@ test('the broker never throws — a Studio that fails every op is a refusal with
   assert.equal(r.aborted.step, 'insert');
   assert.ok(r.steps.length >= 6, 'the trail up to the failure must survive');
   assert.match(r.summary, /REFUSED at insert/);
+});
+
+// ==============================================================================================
+// 6. The LIVE call site: tools.insert_asset
+//
+// Everything above proves the scanner works. None of it proved the scanner RUNS. Until this
+// section existed, `brokerAsset` and `scanInsertedHierarchy` had zero call sites and `insert_asset`
+// inserted on the metadata gate alone — so a hostile asset whose metadata lied was inserted, kept,
+// and never read back. These tests drive the real dispatcher, so they fail the day the wiring is
+// removed rather than the day the scanner is.
+//
+// NO NETWORK: `globalThis.fetch` is replaced at module scope, before the first test, and the
+// closing test pins every host it was asked for.
+// ==============================================================================================
+
+/** Every URL the worker asked for, for the whole section. Never reset. */
+const fetched = [];
+let respond = () => {
+  throw new Error('a test made a request without configuring a stub');
+};
+globalThis.fetch = async (url) => {
+  fetched.push(String(url));
+  return respond(String(url));
+};
+
+/**
+ * A details payload the metadata gate accepts, with every group overridable and any field
+ * removable — `omit` is how the "the endpoint stopped reporting hasScripts" case is expressed,
+ * because setting it to `undefined` is not the same shape as never sending it.
+ */
+function detailsFor(id, { asset = {}, creator = {}, voting = {}, fiatProduct = {}, omit = [] } = {}) {
+  const a = {
+    id,
+    name: 'Low Poly Crate',
+    typeId: 40,
+    hasScripts: false,
+    scriptCount: 0,
+    visibilityStatus: 1,
+    capabilities: {},
+    modelTechnicalDetails: { objectMeshSummary: { triangles: 800, vertices: 500 } },
+    ...asset,
+  };
+  for (const key of omit) delete a[key];
+  return {
+    data: [
+      {
+        asset: a,
+        creator: { id: 1, name: 'Roblox', isVerifiedCreator: true, ...creator },
+        voting: { upVotePercent: 96, voteCount: 400, ...voting },
+        fiatProduct: { isFree: true, purchasable: true, ...fiatProduct },
+      },
+    ],
+  };
+}
+
+/** Answer every details lookup with one body, and record nothing else. */
+function serveDetails(body) {
+  respond = () => ({ ok: true, status: 200, json: async () => body });
+}
+
+/** An AgentCtx over the fake Studio above. `library` is what search_asset_library would have added. */
+function toolCtx(studio, { discovered = [], library = [] } = {}) {
+  return {
+    env: {},
+    studioConnected: () => true,
+    execStudioOp: (op, timeoutMs) => studio.bridge.execStudioOp(op, timeoutMs),
+    createCheckpoint: async () => ({ error: 'checkpoints are not part of this path' }),
+    addMemoryFact: async () => {},
+    discoveredAssetIds: new Set(discovered),
+    libraryAssetIds: new Set(library),
+  };
+}
+
+const insert = async (ctx, assetId, parent = 'game.Workspace') => {
+  const out = await T.runTool(ctx, 'insert_asset', JSON.stringify({ assetId, parent }));
+  return { ...out, result: JSON.parse(out.resultForLlm) };
+};
+
+test('A BACKDOORED ASSET THAT REACHES insert_asset IS REMOVED WHOLE AND THE TOOL REFUSES', async () => {
+  // The metadata swears there are no scripts. There is a `require(3163717554)` in the place.
+  serveDetails(detailsFor(101));
+  const studio = fakeStudio({
+    scripts: [{ path: 'game.Workspace.Crate.Main', className: 'Script', source: REQUIRE_BACKDOOR }],
+    classes: ['Model', 'MeshPart', 'Script'],
+  });
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+
+  assert.equal(out.ok, false, 'a backdoored asset must be a tool failure, not a warning');
+  assert.match(out.result.error, /refused and removed/);
+  assert.deepEqual(out.result.removedWholeAsset, ['game.Workspace.Crate'], 'the whole asset goes, not just the script');
+  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate']);
+  // The order is the security property: the place is read only after the insert, and the delete
+  // only after the read.
+  const calls = studio.state.calls;
+  assert.ok(calls.indexOf('insert_asset') < calls.indexOf('list_scripts'));
+  assert.ok(calls.indexOf('read_script') < calls.indexOf('delete_instances'));
+  // The attacker's own Luau must not ride into the transcript.
+  const blob = JSON.stringify(out);
+  assert.equal(/require\(3163717554\)/.test(blob), false, 'no line of the removed source may reach the model');
+  assert.equal(/a\.load\(game/.test(blob), false);
+});
+
+test('A PLAIN-SCRIPT ASSET IS STRIPPED AND THEN PROVEN CLEAN BY RE-LISTING THE PLACE', async () => {
+  serveDetails(detailsFor(101));
+  const studio = fakeStudio({
+    scripts: [{ path: 'game.Workspace.Crate.Spin', className: 'Script', source: PLAIN_SCRIPT }],
+    classes: ['Model', 'MeshPart', 'Script'],
+  });
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+
+  assert.equal(out.ok, true, out.resultForLlm);
+  assert.equal(out.result.scan, 'stripped');
+  assert.deepEqual(out.result.inserted, ['game.Workspace.Crate']);
+  assert.equal(out.result.stripped.length, 1);
+  assert.equal(out.result.stripped[0].path, 'game.Workspace.Crate.Spin');
+  assert.match(out.result.stripped[0].why, /script_present/);
+  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate.Spin'], 'only the script goes — nothing malicious happened');
+  // PROOF, not bookkeeping: the second listing is a real re-read of a place the fake actually
+  // mutated, so removing the delete from the fake would fail this test.
+  assert.equal(studio.state.calls.filter((c) => c === 'list_scripts').length, 2);
+  assert.match(out.result.proven, /zero scripts remain/);
+});
+
+test('the clean case still runs the whole sequence — a clean asset is PROVEN clean, not assumed', async () => {
+  serveDetails(detailsFor(101));
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+  assert.equal(out.ok, true, out.resultForLlm);
+  assert.equal(out.result.scan, 'clean');
+  assert.deepEqual(out.result.stripped, []);
+  assert.deepEqual(studio.state.deleted, []);
+  for (const required of ['insert_asset', 'get_tree', 'list_scripts']) {
+    assert.ok(studio.state.calls.includes(required), `${required} must run even for a clean asset`);
+  }
+});
+
+test('A LIBRARY-DISCOVERED ID IS STILL VERIFIED — membership is provenance, never a skip', async () => {
+  // The recorded bypass, exactly: a library row pointing at a Model id. Under the old code this id
+  // was in discoveredAssetIds, so it went straight to Studio unresolved and unscanned.
+  serveDetails(detailsFor(777, { asset: { typeId: 10, name: 'Free Admin Model' } }));
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio, { discovered: [777], library: [777] }), 777);
+
+  assert.equal(out.ok, false);
+  assert.match(out.result.error, /was not verified/);
+  assert.match(out.result.error, /Model is refused|typeId 10/);
+  assert.equal(studio.state.calls.length, 0, 'nothing may touch the place when the gate refuses');
+  assert.ok(fetched.some((u) => u.includes('assetIds=777')), 'the id must actually have been resolved');
+});
+
+test('a library id carrying scripts is refused on the SAME field the Creator Store path uses', async () => {
+  serveDetails(detailsFor(778, { asset: { hasScripts: true, scriptCount: 3 } }));
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio, { discovered: [778], library: [778] }), 778);
+  assert.equal(out.ok, false);
+  assert.match(out.result.error, /carries Luau/);
+  assert.equal(studio.state.calls.length, 0);
+});
+
+test('the library waiver is NARROW: price, votes and creator badge are waived, and they are named', async () => {
+  // A Golem-uploaded Open Use mesh: no marketplace price, no votes, no verified badge. Refusing it
+  // on those would refuse the entire library, so they are waived — and the waiver is reported.
+  serveDetails(
+    detailsFor(779, {
+      creator: { id: 4242, name: 'Golem', isVerifiedCreator: false },
+      voting: { upVotePercent: 0, voteCount: 0 },
+      fiatProduct: { isFree: false },
+    }),
+  );
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio, { discovered: [779], library: [779] }), 779);
+  assert.equal(out.ok, true, out.resultForLlm);
+  assert.ok(Array.isArray(out.result.waivedForLibraryAsset) && out.result.waivedForLibraryAsset.length > 0, 'a waiver that is not reported is a waiver nobody can audit');
+
+  // The same asset from the Creator Store gets no such waiver.
+  serveDetails(
+    detailsFor(779, {
+      creator: { id: 4242, name: 'Someone', isVerifiedCreator: false },
+      voting: { upVotePercent: 0, voteCount: 0 },
+      fiatProduct: { isFree: false },
+    }),
+  );
+  const store = fakeStudio();
+  const fromStore = await insert(toolCtx(store, { discovered: [779] }), 779);
+  assert.equal(fromStore.ok, false, 'only a curated-library id may waive anything');
+  assert.equal(store.state.calls.length, 0);
+});
+
+test('A DETAILS RESPONSE WITH hasScripts ABSENT IS REFUSED, NOT PASSED', async () => {
+  // The undocumented endpoint renames or drops the field. `undefined === true` is false, which used
+  // to read as "this asset carries no scripts" and pass the most important assertion in silence.
+  serveDetails(detailsFor(101, { omit: ['hasScripts'] }));
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+
+  assert.equal(out.ok, false, 'an absent field must fail closed');
+  assert.match(out.result.error, /hasScripts/);
+  assert.match(out.result.error, /never as false/);
+  assert.equal(studio.state.calls.length, 0, 'the place is never touched on an unanswerable question');
+  // Non-vacuity: the SAME fixture with the field present inserts fine, so the refusal is caused by
+  // the absence and by nothing else in the payload.
+  serveDetails(detailsFor(101));
+  const ok = await insert(toolCtx(fakeStudio(), { discovered: [101] }), 101);
+  assert.equal(ok.ok, true, ok.resultForLlm);
+});
+
+test('a non-boolean hasScripts is absence, not a value — "false" the string does not clear the gate', async () => {
+  for (const bogus of ['false', 0, null, {}]) {
+    serveDetails(detailsFor(101, { asset: { hasScripts: bogus } }));
+    const studio = fakeStudio();
+    const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+    assert.equal(out.ok, false, `hasScripts=${JSON.stringify(bogus)} should have failed closed`);
+    assert.equal(studio.state.calls.length, 0);
+  }
+});
+
+test('an id nobody discovered is still resolved before anything is inserted', async () => {
+  serveDetails(detailsFor(999, { asset: { typeId: 10 } }));
+  const studio = fakeStudio();
+  const out = await insert(toolCtx(studio), 999);
+  assert.equal(out.ok, false);
+  assert.equal(studio.state.calls.length, 0);
+  assert.equal(out.result.assetId, undefined);
+});
+
+test('a garbage assetId is refused without a request and without touching the place', async () => {
+  const before = fetched.length;
+  for (const bad of [0, -1, 1.5, 'abc']) {
+    const studio = fakeStudio();
+    const out = await insert(toolCtx(studio, { discovered: [0] }), bad);
+    assert.equal(out.ok, false, String(bad));
+    assert.equal(studio.state.calls.length, 0);
+  }
+  assert.equal(fetched.length, before, 'an invalid id must not reach the network');
+});
+
+test('an insert that fails half way leaves nothing behind: a failed strip discards the whole asset', async () => {
+  serveDetails(detailsFor(101));
+  // list_scripts works, read_script works, delete_instances does not.
+  const studio = fakeStudio({ scripts: [{ path: 'game.Workspace.Crate.Spin', className: 'Script', source: PLAIN_SCRIPT }], failOn: 'delete_instances' });
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+  assert.equal(out.ok, false);
+  assert.match(out.result.error, /could not be deleted/);
+  // The discard itself also failed, so the tool says so instead of claiming the place is clean.
+  assert.deepEqual(out.result.manualCleanupRequired, ['game.Workspace.Crate']);
+});
+
+test('a script that survives removal is a refusal — the re-list is trusted over our own bookkeeping', async () => {
+  serveDetails(detailsFor(101));
+  const studio = fakeStudio({ scripts: [{ path: 'game.Workspace.Crate.Spin', className: 'Script', source: PLAIN_SCRIPT }] });
+  // A Studio that reports success on the delete and quietly keeps the script.
+  const realOp = studio.bridge.execStudioOp;
+  studio.bridge.execStudioOp = async (op, ms) => (op.op === 'delete_instances' && !op.paths.includes('game.Workspace.Crate') ? { ok: true, data: {} } : realOp(op, ms));
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+  assert.equal(out.ok, false);
+  assert.match(out.result.error, /survived removal/);
+  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate'], 'the whole asset goes when it cannot be proven clean');
+});
+
+test('an unenumerable subtree is discarded — a tree that cannot be walked is not an empty one', async () => {
+  serveDetails(detailsFor(101));
+  const studio = fakeStudio({ failOn: 'get_tree' });
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+  assert.equal(out.ok, false);
+  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate']);
+});
+
+test('more scripts than the scan cap is refused on count alone, at the tool boundary too', async () => {
+  serveDetails(detailsFor(101));
+  const many = Array.from({ length: SCAN_LIMITS.maxScripts + 3 }, (_, i) => ({ path: `game.Workspace.Crate.S${i}`, className: 'Script', source: PLAIN_SCRIPT }));
+  const studio = fakeStudio({ scripts: many });
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+  assert.equal(out.ok, false);
+  assert.match(out.result.error, /scan cap/);
+  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate']);
+  assert.equal(studio.state.calls.filter((c) => c === 'read_script').length, 0, 'refused on count before a single source was read');
+});
+
+test('the tool result stays small enough to be worth re-sending on every later step', async () => {
+  serveDetails(detailsFor(101));
+  const studio = fakeStudio({
+    scripts: Array.from({ length: 6 }, (_, i) => ({ path: `game.Workspace.Crate.S${i}`, className: 'Script', source: HTTP_SCRIPT.replace('https://', 'http://') })),
+  });
+  const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
+  assert.ok(out.resultForLlm.length < 1500, `a tool result of ${out.resultForLlm.length} chars is too much context to re-send`);
+});
+
+test('NO NETWORK: every request this section made went to the injected stub, and only to Roblox', () => {
+  assert.ok(fetched.length > 5, 'the recorder should have seen the metadata gate work');
+  for (const u of fetched) assert.match(u, /^https:\/\/apis\.roblox\.com\//, u);
 });

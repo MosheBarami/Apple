@@ -27,10 +27,21 @@ import { Icon, PATH, Popover } from './primitives';
  * by weight of colour rather than by shouting. Order comes from PRODUCT_MODES
  * so the menu can never disagree with the shared vocabulary.
  */
+/*
+ * The real accent tokens, not literals. These were hardcoded mid-tones with a
+ * comment claiming they were "the existing charcoal-stone accents" — they were
+ * not: none of the three appears anywhere else in the repo. Being literals they
+ * also could not flip with the theme, so the same three colours were painted on
+ * both the light and the dark surface.
+ *
+ * The variables keep their internal --acc-clay/stone/rune names because that is
+ * what styles.css defines; the mapping from product mode to specialist accent
+ * lives here, at the one place a mode becomes a colour.
+ */
 const TONE: Record<ProductMode, string> = {
-  plan: '#9c8f7c',
-  agent: '#6f8fa3',
-  super: '#8b74c4',
+  plan: 'var(--acc-clay)',
+  agent: 'var(--acc-stone)',
+  super: 'var(--acc-rune)',
 };
 
 const PLACEHOLDER = 'Ask anything about your project...';
