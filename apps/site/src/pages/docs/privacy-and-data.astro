@@ -39,8 +39,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>
     The plugin only ever acts on the place you explicitly paired, and only sends what a request
     needs: relevant scripts, tree structure, properties, output logs. It cannot read files on
-    your computer, other places, or anything about your Roblox account beyond the open place. The
-    plugin is a readable <code>.rbxm</code> — open it and check.
+    your computer, other places, or anything about your Roblox account beyond the open place — the
+    exact boundary is listed on <a href="/docs/plugin">Install the plugin</a>. And it does none of
+    it until Studio's own per-plugin network permission prompt is accepted, which you can revoke at
+    any time from Studio's plugin management window.
   </p>
 
   <h2>What inference sees</h2>

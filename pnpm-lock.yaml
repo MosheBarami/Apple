@@ -11,6 +11,9 @@ importers:
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.62.1
+      wrangler:
+        specifier: ^4.127.1
+        version: 4.127.1(@cloudflare/workers-types@5.20260830.1)
 
   apps/site:
     dependencies:

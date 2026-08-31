@@ -79,7 +79,9 @@ endpoint (AI binding) so no raw CF API token is ever needed locally.
 
 ## ADR-010 — What shipped, and what the evidence was
 Deployed: worker `golem` (API + D1-backed static hosting of both frontends), Astro marketing site,
-React SPA at /app, Luau plugin at /plugin.rbxm, 8,326-chunk RAG corpus, 30-user load validation,
+React SPA at /app, Luau plugin at /plugin.rbxm (distribution superseded by ADR-017 — the plugin now
+ships from the Creator Store and the public .rbxm download is retired), 8,326-chunk RAG corpus,
+30-user load validation,
 adversarial security audit with 12 fixes verified live.
 
 Model choice is evidence-backed (`docs/evals/FINDINGS.md`): gpt-oss-120b scored 97.6 overall on 56
@@ -248,3 +250,66 @@ across nine domains with two independent adversarial verdicts each, and conclude
 adapt nothing, adopt nothing. Two of the owner's four tests fail outright — no legal dataset exists
 and no suitable model is reachable from Cloudflare Workers AI — and Workers AI BYO-LoRA is closed on
 rank, size and base-model grounds. What was actually missing was never a model. It was numbers.
+
+## ADR-017 — Distribution: the Creator Store is the install path, and the .rbxm download is retired
+
+**Context.** ADR-010 recorded shipping the "Luau plugin at `/plugin.rbxm`" — a file the user
+downloaded and dropped into Studio's local Plugins folder by hand. That path was right for getting
+to a working product and wrong for having one. A hand-placed file is never updated, is not listed in
+Studio's plugin management window, and gives us no way to ship a fix to anyone who already has it.
+
+The plugin is now uploaded to Roblox as asset `132128477945417` (AssetTypeId 38, Plugin, owner user
+11279664020). **Uploading is not distributing.** Roblox's own documentation ends the upload flow at
+"Your plugin is now available to you in the Toolbox under the **Inventory** and **Creations** tabs";
+publishing is a separate human toggle — Creator Hub → Development Items → Configure → Distribution →
+**Distribute on Creator Store** → **Save Changes**, after which "the asset becomes public". No
+moderation gate is documented anywhere in that flow. Waiting will not change anything; a person has
+to flip the switch.
+
+**Liveness is measurable, and only one signal works.** Measured 2026-08-31 against two known-listed
+controls:
+
+| probe | Rojo `6415005344` | Moon Animator `4725618216` | Golem |
+|---|---|---|---|
+| `economy/v2/assets/{id}/details` | 200 | 200 | **200** |
+| `develop/v1/plugins?pluginIds={id}` | 200 | 200 | **200** |
+| `assetdelivery/v1/asset?id={id}` | 302 | **401** | 401 |
+| `toolbox-service/v1/items/details?assetIds={id}` | **200** | **200** | **404** |
+
+`economy` and `develop` return 200 for our *unlisted* asset, so neither can gate anything.
+`assetdelivery` returns 401 for Moon Animator, which is fully listed — it tracks free/public-domain,
+not store listing. **`toolbox-service` is the only discriminator: 200 = distributable, 404 = not.**
+
+**Decision.**
+1. The Creator Store is the only user-facing install path. The public `/plugin.rbxm` download is
+   retired from every user-facing surface.
+2. The asset id has exactly one definition, `STUDIO_PLUGIN_ASSET_ID` in `packages/shared`; the store
+   URL and the liveness probe URL derive from it. A mirrored id would be free to drift.
+3. Copy degrades honestly. `/docs/plugin` carries a single `storeLive` constant, false until the
+   probe returns 200, and states plainly that the asset is not published yet rather than shipping a
+   link that 404s.
+4. Manual/local install survives only at `/docs/build-from-source`, labelled as a development and
+   debugging path and explicitly not an install path.
+5. The reproducible build stays exactly as it was. CI's **Build Studio plugin** job still runs
+   `rojo build apps/plugin/default.project.json` and publishes the artifact. Removing a download
+   button is not removing a build.
+
+**Consequences we are choosing to accept.**
+
+*No CI publishing, ever, on current APIs.* Open Cloud's asset API supports "Audio, Decals, Images,
+Models, Meshes, and Videos" — Plugin is not on the list — and even for supported types "you can only
+update the asset content for `.fbx` files". `PATCH develop/v1/plugins/{id}` takes only `name`,
+`description`, `commentsEnabled` and is cookie-authenticated, so it is neither sufficient nor safe
+from CI. Every release is a human in Studio: **Publish as Plugin → Overwrite an existing asset**.
+Keep the asset user-owned; group-owned plugin overwrite has a standing unresolved bug report.
+
+*Permanent version fragmentation.* Studio does not auto-update plugins. Roblox staff confirmed
+2026-04-27 that the bulk **Update all Plugins** button was broken and that per-plugin **Update**
+buttons still work — i.e. updating is an explicit user click, and always has been. The worker must
+keep serving old clients indefinitely.
+
+*The plugin cannot discover its own version.* Neither `Plugin` nor `StudioService` exposes the
+plugin's version or asset id; the full member lists were enumerated to confirm it. The build-time
+`VERSION` constant in `apps/plugin/src/init.server.luau`, already sent as `pluginVersion` on every
+poll, is the only mechanism available — and it cannot be retrofitted onto installs that already
+exist, which is why it ships before distribution rather than after.

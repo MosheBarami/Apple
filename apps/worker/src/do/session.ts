@@ -30,6 +30,19 @@ import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, 
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import { trimTranscript } from '../transcript';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
+import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
+
+/**
+ * The poll response, plus the one field the shared contract does not carry yet.
+ *
+ * `PluginPollResponse` lives in packages/shared, which another workstream owns, so
+ * this intersects rather than edits it: the shared type stays authoritative for
+ * `ops` and `waitMs`, and `client` is declared here. Additive and backward
+ * compatible in both directions — a plugin that never reads `client` sees the
+ * response it has always seen. Fold this into the shared interface when that file
+ * is free to change; the exact addition is written out in the handover notes.
+ */
+type PollResponse = PluginPollResponse & { client?: PluginCompatibility };
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -296,9 +309,13 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/plugin/register' && req.method === 'POST') {
-      const { tokenHash } = (await req.json()) as { tokenHash: string };
+      const body = (await req.json()) as { tokenHash: string; pluginVersion?: string; pluginProtocol?: string };
       // a fresh pairing supersedes any previous plugin token for this project
-      await this.ctx.storage.put({ pluginTokenHash: tokenHash, pluginTokenIssuedAt: Date.now() });
+      await this.ctx.storage.put({ pluginTokenHash: body.tokenHash, pluginTokenIssuedAt: Date.now() });
+      // Record what paired, at the moment it paired, so the server knows what it is
+      // talking to before the first poll rather than after it. A plugin that reports
+      // nothing simply leaves this unknown, which every consumer already handles.
+      await this.recordPluginClient(sanitizeVersion(body.pluginVersion), parseProtocol(body.pluginProtocol));
       return json({ ok: true });
     }
 
@@ -313,8 +330,9 @@ export class SessionDO extends DurableObject<Env> {
       }
       if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS) return json({ error: 'token expired' }, 401);
       if (!(await timingSafeEqual(await sha256hex(token), expect))) return json({ error: 'invalid token' }, 401);
+      const reported = readPluginHeaders(req.headers);
       const body = (await req.json()) as PluginPollRequest;
-      return this.handlePluginPoll(body);
+      return this.handlePluginPoll(body, reported);
     }
 
     if (path === '/messages' && req.method === 'GET') {
@@ -1111,8 +1129,35 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private lastSeenWrittenAt = 0;
+  private lastClientWrittenAt = 0;
 
-  private async handlePluginPoll(body: PluginPollRequest): Promise<Response> {
+  /**
+   * Remember which plugin build is on the other end.
+   *
+   * Written on pairing, and thereafter only when the reported identity actually
+   * CHANGES or the record is stale by a minute. The plugin polls every few
+   * seconds and its version cannot change mid-session without a Studio restart,
+   * so persisting it every poll would be pure write amplification for a value
+   * that is constant — the same reasoning that already governs `pluginLastSeen`.
+   */
+  private async recordPluginClient(version: string | null, protocol: number | null): Promise<void> {
+    const now = Date.now();
+    const prev = await this.ctx.storage.get<PluginClientInfo>('pluginClient');
+    const changed = !prev || prev.version !== version || prev.protocol !== protocol;
+    if (!changed && now - this.lastClientWrittenAt < 60_000) return;
+    this.lastClientWrittenAt = now;
+    await this.ctx.storage.put<PluginClientInfo>('pluginClient', {
+      version,
+      protocol,
+      firstSeenAt: changed ? now : (prev?.firstSeenAt ?? now),
+      lastSeenAt: now,
+    });
+  }
+
+  private async handlePluginPoll(
+    body: PluginPollRequest,
+    reported: { version: string | null; protocol: number | null } = { version: null, protocol: null },
+  ): Promise<Response> {
     const wasConnected = await this.pluginConnected();
     // the plugin polls every ~0.4-2.5s; persisting the heartbeat every time is pure write
     // amplification. Keep it in memory and only checkpoint it to storage every few seconds.
@@ -1121,6 +1166,20 @@ export class SessionDO extends DurableObject<Env> {
     if (now - this.lastSeenWrittenAt > 4000) {
       this.lastSeenWrittenAt = now;
       await this.ctx.storage.put('pluginLastSeen', now);
+    }
+
+    await this.recordPluginClient(reported.version, reported.protocol);
+    const notice = clientNotice(reported);
+
+    // A client we cannot serve is told so and handed nothing. Draining the queue into
+    // it would burn the user's queued ops against a plugin that cannot execute them,
+    // turning a fixable "please update" into a run of mysterious failures. It keeps
+    // polling — the queue is left intact for whenever the user does update — and it is
+    // answered promptly rather than being held open for the usual long-poll window,
+    // because there is nothing to wait for.
+    if (notice && !notice.compatible) {
+      const blocked: PollResponse = { ops: [], waitMs: 5000, client: notice };
+      return json(blocked);
     }
 
     if (body.state) {
@@ -1172,7 +1231,10 @@ export class SessionDO extends DurableObject<Env> {
     const ops = this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
     const running = agent?.status === 'running';
-    const res: PluginPollResponse = { ops, waitMs: running ? 400 : 1000 };
+    const res: PollResponse = { ops, waitMs: running ? 400 : 1000 };
+    // Omitted entirely when there is nothing to say, which is the common case. An
+    // older plugin that does not read this field is unaffected either way.
+    if (notice) res.client = notice;
     return json(res);
   }
 

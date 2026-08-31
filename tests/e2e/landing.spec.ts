@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+// The asset id has exactly one definition in this repository. Asserting the
+// rendered href against the constant — rather than against a pasted URL — is
+// what stops the landing and the shared package drifting apart.
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../packages/shared/src/index';
 
 /**
  * The landing page's invariants.
@@ -67,7 +71,7 @@ test('holds the approved composition', async ({ page }) => {
 
   // Two calls to action, not one.
   await expect(page.getByRole('link', { name: 'Start building — free' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Install Studio plugin' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Install for Studio' })).toBeVisible();
 
   // The mono micro-line under them.
   await expect(page.locator('.micro')).toContainText('Free to start');
@@ -114,7 +118,9 @@ test('every nav destination is a real route, never an anchor', async ({ page }) 
     expect(href.includes('/#'), `${label} must not be a scroll anchor`).toBe(false);
   }
 
-  // Both routes the spec names explicitly, plus the second CTA's target.
+  // Both routes the spec names explicitly, plus the plugin guide the docs and
+  // footer still link to. (The second CTA now leaves the site for the Creator
+  // Store, so it is asserted separately rather than fetched here.)
   for (const route of ['/docs/getting-started', '/docs/modes', '/docs/plugin']) {
     const res = await page.request.get(route);
     expect(res.status(), `${route} should resolve`).toBe(200);
@@ -156,11 +162,58 @@ test('the primary call to action reaches the app', async ({ page }) => {
   await expect(cta).toHaveAttribute('href', '/app');
 });
 
-test('the secondary call to action reaches the plugin doc', async ({ page }) => {
+test('the secondary call to action reaches the honest install destination', async ({ page }) => {
+  // The install destination is whatever the shared config says it is, and while
+  // the asset is not distributable that is /docs/plugin rather than the store —
+  // a store page with nothing to get is exactly the dead link ADR-017 decision 3
+  // forbids. When STUDIO_PLUGIN_STORE_LIVE flips, this test follows it: the href
+  // becomes the store URL and the external-link attributes become required.
   await page.goto('/');
-  const cta = page.getByRole('link', { name: 'Install Studio plugin' });
+  const cta = page.getByRole('link', { name: 'Install for Studio' });
   await expect(cta).toBeVisible();
-  await expect(cta).toHaveAttribute('href', '/docs/plugin');
+  await expect(cta).toHaveAttribute('href', STUDIO_PLUGIN_INSTALL_HREF);
+
+  if (STUDIO_PLUGIN_STORE_LIVE) {
+    await expect(cta).toHaveAttribute('target', '_blank');
+    const rel = (await cta.getAttribute('rel')) ?? '';
+    expect(rel.split(/\s+/)).toEqual(expect.arrayContaining(['noopener', 'noreferrer']));
+  } else {
+    // Same-origin: a new tab here would be a lie about where the reader is going.
+    await expect(cta).not.toHaveAttribute('target', '_blank');
+  }
+});
+
+test('the landing never links straight to an undistributable store page', async ({ page }) => {
+  // The failure this guards is subtle and was live once: the CTA label stays
+  // honest, no banned phrase appears, and the button still dead-ends because its
+  // href skipped the storeLive gate. Assert the absence of the raw store URL
+  // anywhere on the page, not just on the CTA.
+  test.skip(STUDIO_PLUGIN_STORE_LIVE, 'the store is live; linking it is correct');
+  await page.goto('/');
+  const hrefs = await page.locator('a[href]').evaluateAll((as) =>
+    as.map((a) => a.getAttribute('href') ?? ''),
+  );
+  expect(hrefs.filter((h) => h.includes('create.roblox.com/store/asset'))).toEqual([]);
+});
+
+test('no copy on the landing promises the plugin is installable today', async ({ page }) => {
+  // The asset is uploaded but NOT distributed: toolbox-service returns 404 for
+  // it, so a "Get Plugin" button may not be there when a reader arrives. The
+  // button may point at the store; the page may not claim the trip will work.
+  await page.goto('/');
+  const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
+  for (const claim of [
+    'available now',
+    'now on the creator store',
+    'available on the creator store',
+    'get it now',
+    'one click',
+    'one-click',
+    'already installed',
+    'plugin installed',
+  ]) {
+    expect(text, `landing must not claim "${claim}"`).not.toContain(claim);
+  }
 });
 
 test('"How it works" is a real route, not a dead anchor', async ({ page }) => {

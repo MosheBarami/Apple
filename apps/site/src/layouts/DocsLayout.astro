@@ -9,13 +9,18 @@ interface Props {
 
 const { title, description, heading } = Astro.props;
 
+// Every docs route appears here exactly once. A page absent from this list is
+// reachable only by typing its URL, so adding a page under src/pages/docs/ and
+// not adding it here ships an orphan — which is what happened to /docs/connect,
+// /docs/updating, /docs/troubleshooting and /docs/build-from-source.
 const sections = [
   {
     label: 'Start here',
     links: [
       { href: '/docs', label: 'Overview' },
       { href: '/docs/getting-started', label: 'Getting started' },
-      { href: '/docs/plugin', label: 'Studio plugin' },
+      { href: '/docs/plugin', label: 'Install the plugin' },
+      { href: '/docs/connect', label: 'Connect a project' },
     ],
   },
   {
@@ -26,11 +31,22 @@ const sections = [
     ],
   },
   {
+    label: 'Keeping it working',
+    links: [
+      { href: '/docs/updating', label: 'Updating the plugin' },
+      { href: '/docs/troubleshooting', label: 'Troubleshooting' },
+    ],
+  },
+  {
     label: 'Trust',
     links: [
       { href: '/docs/privacy-and-data', label: 'Privacy & data' },
       { href: '/docs/faq', label: 'FAQ' },
     ],
+  },
+  {
+    label: 'Developer',
+    links: [{ href: '/docs/build-from-source', label: 'Build from source' }],
   },
 ];
 

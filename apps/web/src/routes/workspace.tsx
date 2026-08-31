@@ -14,6 +14,7 @@ import { shortRelative } from '../lib/format';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
+import { studioConnection } from '../lib/studio-connection';
 import { fetchProviders } from '../lib/api';
 import { useToast } from '../components/toast';
 import { PairingDialog } from '../components/pairing-dialog';
@@ -21,6 +22,7 @@ import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
+import { ConnectStudio } from '../components/ws/connect-studio';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -93,6 +95,15 @@ export function WorkspacePage() {
     restoreCheckpoint,
     reloadHistory,
   } = useProjectSocket(projectId, onServerError);
+
+  /**
+   * The one place Studio's state is named. Four values, each backed by a real
+   * signal on the wire (see lib/studio-connection.ts); "installed" is not one
+   * of them, and cannot be, because nothing in the browser can observe it.
+   * Derived on every render from live socket state, so the connect prompt
+   * below cannot linger after Studio attaches or reappear while it is attached.
+   */
+  const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
 
   // Toast when Studio comes online, once per transition.
   const wasConnected = useRef(false);
@@ -170,15 +181,21 @@ export function WorkspacePage() {
         )}
 
         <div className="gx-top__actions">
-          {studio.connected ? (
+          {studioStatus === 'connected' ? (
             <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
               {studio.state?.placeName ?? 'Studio'}
             </span>
+          ) : studioStatus === 'connecting' ? (
+            // No answer from the worker yet. Not a claim either way.
+            <span className="gx-pill" title="Waiting for the workspace connection">
+              <span className="gx-dot" aria-hidden="true" />
+              Checking Studio…
+            </span>
           ) : (
             <button type="button" className="gx-pill" onClick={() => setShowPairing(true)}>
               <span className="gx-dot" aria-hidden="true" />
-              Connect Studio
+              {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
 
@@ -230,6 +247,12 @@ export function WorkspacePage() {
           {messages.map((item) => (
             <Turn key={item.id} item={item} status={agentStatus} isLast={item.id === lastAssistantId} />
           ))}
+
+          {/* The connect prompt sits at the foot of the conversation — where
+              the eye already is before typing — and vanishes the instant
+              Studio attaches. It is a pure function of studioStatus, so there
+              is no dismissal state to get stuck. */}
+          <ConnectStudio status={studioStatus} onPair={() => setShowPairing(true)} />
 
           {/* Renders forwarded from Studio during this session. Pinned below
               the conversation so a long build does not push them out of sight. */}

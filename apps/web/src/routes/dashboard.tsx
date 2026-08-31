@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -294,8 +295,17 @@ export function DashboardPage() {
             <strong>Connect</strong> to pair the two.
           </p>
           <div className="page-foot-links">
-            <a href="/plugin.rbxm" download>
-              Download the plugin (.rbxm)
+            {/* Destination comes from @golem/shared and is the store page only
+                once the asset is actually distributable; until then it is
+                /docs/plugin, which says so. Same-origin while not live, so the
+                new tab and its rel are conditional too. */}
+            <a
+              href={STUDIO_PLUGIN_INSTALL_HREF}
+              target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
+              rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
+            >
+              Install Golem for Studio{' '}
+              {STUDIO_PLUGIN_STORE_LIVE && <span aria-hidden="true">↗</span>}
             </a>
             <a href="/docs" target="_blank" rel="noopener noreferrer">
               Read the docs <span aria-hidden="true">↗</span>

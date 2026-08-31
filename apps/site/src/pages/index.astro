@@ -20,6 +20,7 @@
  */
 import Landing from '../layouts/Landing.astro';
 import GolemMark from '../components/GolemMark.astro';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 /** Nav destinations. Every one of these is a real page. No anchors. */
 const navLinks = [
@@ -164,8 +165,21 @@ const icons: Record<string, string> = {
               stroke-linejoin="round"></path>
           </svg>
         </a>
-        <a href="/docs/plugin" class="btn btn--outline btn--lg">
-          Install Studio plugin
+        {/* Destination comes from packages/shared, never retyped, and it is
+            deliberately NOT the bare store URL: the asset is uploaded but not
+            distributable (toolbox-service 404s for it), so sending a reader
+            straight to the store hands them a page with nothing to get and no
+            explanation. While STUDIO_PLUGIN_STORE_LIVE is false this points at
+            /docs/plugin, which says plainly that it is not published yet
+            (ADR-017 decision 3). It becomes the store link, in a new tab, the
+            moment that constant flips — hence the conditional target. */}
+        <a
+          href={STUDIO_PLUGIN_INSTALL_HREF}
+          class="btn btn--outline btn--lg"
+          target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
+          rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
+        >
+          Install for Studio
         </a>
       </div>
 

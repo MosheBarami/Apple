@@ -1,0 +1,322 @@
+name: Plugin release
+
+# ===========================================================================
+# TWO WORKFLOWS SHARE THE WORD "BUILD". THEY ARE NOT THE SAME THING.
+#
+#   DEVELOPMENT (us, this file, and one irreducible human step)
+#       source -> rojo build -> .rbxm -> tests + secret inspection
+#         -> [HUMAN, in Roblox Studio] publish/update the Creator Store asset
+#
+#   USER (them, entirely inside Roblox)
+#       Creator Store -> install -> pair with a code -> build a game
+#
+# This workflow implements the first line and stops dead at the human step. It
+# produces a verified artifact and never touches Roblox.
+#
+# ---------------------------------------------------------------------------
+# WHY PUBLISHING IS NOT AUTOMATED. THIS IS NOT AN OMISSION.
+#
+# Open Cloud cannot update a Plugin asset. Two independent blockers, either one
+# fatal on its own:
+#
+#   1. Plugin is not a supported asset type. The Open Cloud assets reference
+#      states verbatim: "Supported asset types include Audio, Decals, Images,
+#      Models, Meshes, and Videos." Plugin (asset type 38) is absent, and the
+#      "Supported asset types and limits" table lists exactly Animation, Audio,
+#      Decal/Image, Mesh, Model, Video. No Plugin row.
+#
+#   2. Even for supported types, content updates barely exist. The PATCH
+#      reference: "Currently can only update the content body for Models." The
+#      usage guide: "you can only update the asset content for .fbx files."
+#
+# A false lead to head off, because someone will find it: the OpenAPI spec's
+# AssetQuota.assetType enum does contain PLUGIN. That is the QUOTA-LOOKUP API,
+# not create/update. Open Cloud's own Asset.assetType is declared as an
+# unenumerated string. The quota enum is not evidence that CI publishing works.
+#
+# Nor is there a back door. PATCH develop.roblox.com/v1/plugins/{id} exists and
+# is documented as "Updates a plugin", but its request model accepts only name,
+# description and commentsEnabled — metadata, no content — and it authenticates
+# with a .ROBLOSECURITY cookie. Shipping a session cookie to CI to update a
+# plugin's DESCRIPTION would trade the account for nothing. Do not do it.
+#
+# So every version bump requires a human in Roblox Studio:
+#   Plugins -> Publish as Plugin -> "Overwrite an existing asset" -> Golem
+# Keep the asset under a USER account. Group-owned plugin overwrite is a known
+# broken path (DevForum 587851, acknowledged by staff, never resolved).
+#
+# One more thing the human must do ONCE, and has not done yet: the asset is
+# uploaded but not distributable. apis.roblox.com/toolbox-service/v1/items/
+# details?assetIds=132128477945417 returns 404 while known-public plugins
+# return 200. That is not moderation — the Creator Store flow has no documented
+# review gate; uploading merely makes a plugin private to you, "available to you
+# in the Toolbox under the Inventory and Creations tabs". It becomes public only
+# when someone toggles it: Creator Dashboard -> Development Items -> Golem ->
+# Configure -> Distribution -> "Distribute on Creator Store" -> Save Changes.
+# Until then, nothing here is installable by anyone, and no copy anywhere should
+# claim otherwise.
+#
+# ---------------------------------------------------------------------------
+# NO SECRETS, BY CONSTRUCTION.
+#
+# This job is given no repository secrets, matching ci.yml. A workflow with no
+# credentials cannot leak them and cannot publish anything, which is exactly the
+# property we want for a job whose output is a public artifact. Rojo is fetched
+# from a pinned upstream release rather than a third-party action, for the same
+# reason as in ci.yml: one fewer supply chain to trust.
+# ===========================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'What is this build for? (recorded in the summary)'
+        required: false
+        default: 'manual release candidate'
+
+# Never on push, never on a tag, never on a schedule. A release artifact is
+# produced when a human asks for one, so that the artifact list stays a record
+# of intended releases rather than a log of every commit.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '11.13.0'
+  ROJO_VERSION: '7.7.0'
+  LUAU_VERSION: '0.663'
+
+jobs:
+  release:
+    name: Build, verify and record the plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # ------------------------------------------------------------ version --
+      - name: Read the version the plugin declares about itself
+        # The plugin cannot discover its own version at runtime — no member of
+        # Plugin or StudioService exposes it — so this constant is the only
+        # identity the artifact will ever have. Read it from the source rather
+        # than from a workflow input, so the recorded version cannot disagree
+        # with the bytes that ship.
+        id: version
+        run: |
+          set -euo pipefail
+          SRC=apps/plugin/src/Version.luau
+          VERSION=$(grep -oE 'VERSION = "[^"]+"' "$SRC" | head -1 | sed -E 's/.*"(.*)"/\1/')
+          PROTOCOL=$(grep -oE 'PROTOCOL = [0-9]+' "$SRC" | head -1 | grep -oE '[0-9]+')
+          if [ -z "$VERSION" ] || [ -z "$PROTOCOL" ]; then
+            echo "::error::could not parse VERSION/PROTOCOL out of $SRC"
+            exit 1
+          fi
+          # These values reach shell commands and a JSON manifest below, so they are
+          # constrained to a charset that cannot carry quoting or substitution. A
+          # version string is not a place for shell metacharacters.
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$'; then
+            echo "::error::VERSION '$VERSION' is not a plain version string"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "protocol=$PROTOCOL" >> "$GITHUB_OUTPUT"
+          echo "plugin version $VERSION, wire protocol $PROTOCOL"
+
+      # ------------------------------------------------------ static checks --
+      - name: Install Luau analyzer
+        run: |
+          set -euo pipefail
+          curl -fsSL -o luau.zip \
+            "https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}/luau-ubuntu.zip"
+          unzip -q luau.zip -d "$RUNNER_TEMP/luau"
+          chmod +x "$RUNNER_TEMP/luau/luau-analyze"
+          echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
+
+      - name: Parse every plugin source
+        # Keyed on SyntaxError, not on exit code. Measured on this repo's
+        # toolchain: valid Roblox code still exits non-zero with "Unknown global
+        # 'game'" because no definitions file is loaded, so exit code is not a
+        # usable signal and treating it as one would fail every green build.
+        # Same convention as packages/evals/src/luau.mjs.
+        run: |
+          set -uo pipefail
+          fail=0
+          for f in apps/plugin/src/*.luau; do
+            out=$(luau-analyze "$f" 2>&1 || true)
+            if echo "$out" | grep -q "SyntaxError"; then
+              echo "::error file=$f::does not parse"
+              echo "$out" | grep "SyntaxError" | head -5
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] && echo "all plugin sources parse"
+          exit "$fail"
+
+      - name: Secret-inspection rules self-test
+        # Run the scanner's own rules against known-positive and known-negative
+        # fixtures BEFORE trusting its verdict on the artifact. A scanner whose
+        # patterns have silently stopped matching reports every build as clean.
+        run: python3 scripts/inspect-plugin-build.py --self-test
+
+      - name: Typecheck and test the worker contract
+        # The plugin and the worker agree on a protocol number and a version
+        # string across two files in two languages, and nothing but this suite
+        # enforces that they still match.
+        run: |
+          pnpm --filter @golem/worker typecheck
+          pnpm --filter @golem/evals test
+
+      # ------------------------------------------------------------- build --
+      - name: Install Rojo
+        run: |
+          set -euo pipefail
+          curl -fsSL -o rojo.zip \
+            "https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/rojo-${ROJO_VERSION}-linux-x86_64.zip"
+          unzip -q rojo.zip -d "$RUNNER_TEMP/rojo"
+          chmod +x "$RUNNER_TEMP/rojo/rojo"
+          echo "$RUNNER_TEMP/rojo" >> "$GITHUB_PATH"
+
+      - name: Rojo version
+        run: rojo --version
+
+      - name: Build plugin
+        run: rojo build apps/plugin/default.project.json --output golem-plugin.rbxm
+
+      # ------------------------------------------------- refuse to ship junk --
+      - name: Inspect the built artifact for secrets
+        # THE GATE. Runs against the .rbxm, not against the source, because the
+        # source is not what ships. The scanner decompresses every chunk first:
+        # .rbxm payloads are LZ4-compressed, so `strings | grep` finds none of
+        # the script text and would certify a poisoned build as clean.
+        #
+        # --expect-version closes the loop between what we are about to record
+        # and what is actually inside the bytes.
+        env:
+          EXPECT_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 scripts/inspect-plugin-build.py golem-plugin.rbxm \
+            --expect-version "$EXPECT_VERSION"
+
+      # ------------------------------------------------------------ record --
+      - name: Record version and checksum
+        id: record
+        # Values reach the shell as environment variables rather than as template
+        # expansions, so nothing that lands in them can be executed.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PROTOCOL: ${{ steps.version.outputs.protocol }}
+          COMMIT: ${{ github.sha }}
+          ROJO: ${{ env.ROJO_VERSION }}
+        run: |
+          set -euo pipefail
+          SHA=$(sha256sum golem-plugin.rbxm | cut -d' ' -f1)
+          SIZE=$(stat -c%s golem-plugin.rbxm)
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          # Built with jq so the values are JSON-encoded rather than string-pasted.
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson protocol "$PROTOCOL" \
+            --arg sha256 "$SHA" \
+            --argjson bytes "$SIZE" \
+            --arg commit "$COMMIT" \
+            --arg builtAt "$BUILT_AT" \
+            --arg rojo "$ROJO" \
+            '{$version, $protocol, $sha256, $bytes, $commit, $builtAt, $rojo,
+              published: false,
+              publishNote: "Publishing is a human step in Roblox Studio. Open Cloud cannot update a Plugin asset."}' \
+            > golem-plugin.manifest.json
+          cat golem-plugin.manifest.json
+
+      - name: Upload plugin build
+        uses: actions/upload-artifact@v4
+        with:
+          name: golem-plugin-${{ steps.version.outputs.version }}
+          path: |
+            golem-plugin.rbxm
+            golem-plugin.manifest.json
+          retention-days: 90
+
+      # ------------------------------------------- hand off to the human ----
+      - name: Publishing instructions
+        # The workflow's last act is to tell a person what only a person can do.
+        #
+        # `reason` is free text supplied by whoever pressed the button, so it is
+        # passed as an environment variable and never expanded into the script
+        # body. A template expansion here would be a shell injection with a
+        # convenient text box attached.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PROTOCOL: ${{ steps.version.outputs.protocol }}
+          SHA256: ${{ steps.record.outputs.sha256 }}
+          COMMIT: ${{ github.sha }}
+          REASON: ${{ github.event.inputs.reason }}
+        run: |
+          {
+            echo "## Golem plugin $VERSION"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| version | \`$VERSION\` |"
+            echo "| wire protocol | \`$PROTOCOL\` |"
+            echo "| sha256 | \`$SHA256\` |"
+            echo "| commit | \`$COMMIT\` |"
+            echo "| reason | $REASON |"
+            echo "| published to Roblox | **no — see below** |"
+            echo ""
+            echo "### This build is NOT published. It cannot be, from here."
+            echo ""
+            echo "Open Cloud does not support Plugin assets: the assets API lists"
+            echo "Audio, Decals, Images, Models, Meshes and Videos, and content"
+            echo "updates are restricted to Models/.fbx even for those. The"
+            echo "\`develop/v1/plugins\` PATCH endpoint updates metadata only and"
+            echo "needs a session cookie. There is no supported automated path."
+            echo ""
+            echo "### To release it (human, in Roblox Studio)"
+            echo ""
+            echo "1. Download the \`golem-plugin-$VERSION\` artifact."
+            echo "2. Put \`golem-plugin.rbxm\` in your local Plugins folder and restart Studio."
+            echo "3. Smoke-test it: pair with a code, run one build."
+            echo "4. Right-click the plugin in Explorer -> **Publish as Plugin**."
+            echo "5. Choose **Overwrite an existing asset** and select **Golem** (asset 132128477945417)."
+            echo "   Creator must be **Me**, not a group — group overwrite is broken (DevForum 587851)."
+            echo "6. Record the sha256 above against the published version."
+            echo ""
+            echo "### One-time, still outstanding"
+            echo ""
+            echo "The asset is uploaded but **not distributable**. toolbox-service returns"
+            echo "404 for it while public plugins return 200. Fix by toggling it on:"
+            echo "Creator Dashboard -> Development Items -> Golem -> Configure ->"
+            echo "Distribution -> **Distribute on Creator Store** -> Save Changes."
+            echo "Then re-check:"
+            echo ""
+            echo "    curl -s -o /dev/null -w '%{http_code}' \\"
+            echo "      'https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=132128477945417'"
+            echo ""
+            echo "200 means live. 404 means still not installable by anyone, and no"
+            echo "copy anywhere should say otherwise."
+            echo ""
+            echo "### After users have it"
+            echo ""
+            echo "Updates are **manual**: Studio's Manage Plugins window has per-plugin"
+            echo "Update buttons a user must click. There is no push channel and no"
+            echo "auto-update. Assume a permanent long tail on old versions, and keep"
+            echo "the worker serving them — see apps/worker/src/plugin-version.ts."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,87 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Updating the plugin — Golem Docs"
+  description="Roblox never updates Studio plugins for you. How Golem tells you an update exists, how to apply it, and why running an old build is normal rather than broken."
+  heading="Updating the plugin"
+>
+  <p>
+    Roblox does not update Studio plugins automatically. There is no silent background update and
+    nothing happens on restart — a person has to press a button. That is platform behaviour, not a
+    Golem choice, and it is why this page exists at all.
+  </p>
+
+  <h2>How to update</h2>
+  <ol>
+    <li>
+      In Studio, open the plugin management window — Roblox's documentation calls it
+      <strong>Plugin Management</strong>; the <strong>Plugins</strong> tab opens it via
+      <strong>Manage Plugins</strong>.
+    </li>
+    <li>Find <strong>Golem</strong> and press its <strong>Update</strong> button.</li>
+  </ol>
+  <p>
+    There is also an <strong>Update all Plugins</strong> button. Roblox staff confirmed in April
+    2026 that the bulk button was broken and a fix was coming, and that the individual
+    <strong>Update</strong> buttons still work. If the bulk button does nothing, use the per-plugin
+    one.
+  </p>
+
+  <h2>How you'll know</h2>
+  <p>
+    You do not have to check. The plugin tells the server which build it is on every time it polls,
+    and the server answers.
+  </p>
+  <ul>
+    <li>
+      <strong>An amber line in the panel</strong> when a newer build is published — for example
+      <em>“Golem 0.2.0 is available. Update it in Studio → Plugins → Manage Plugins → Update.”</em>
+      It is also written to Studio's Output window <em>once</em> per message, not on every poll.
+    </li>
+    <li>
+      <strong>A red line</strong> in the rare case where a build is genuinely too old for the server
+      to work with. That one blocks builds and is not advisory.
+    </li>
+    <li>
+      <strong>Silence</strong> the rest of the time, which is the normal state.
+    </li>
+  </ul>
+
+  <h2>Which build am I on?</h2>
+  <p>
+    The Golem panel prints it at the bottom, as <code>Golem v0.2.0 · protocol 1</code>. The web
+    workspace shows the same version under <strong>Studio</strong> in the project rail once the
+    plugin has reported in. What changed between builds is on the
+    <a href="/changelog">changelog</a>.
+  </p>
+  <p>
+    Two numbers, because they answer different questions. <strong>Version</strong> is the build you
+    have, and it moves on every release including cosmetic ones. <strong>Protocol</strong> is the
+    contract the plugin and the server speak, and it almost never moves.
+  </p>
+
+  <h2>Running an old build is fine</h2>
+  <p>
+    Golem's server decides whether to talk to a plugin by <em>protocol</em>, never by version. A
+    plugin several releases behind is served normally as long as it still speaks a contract the
+    server supports — and today the server supports every protocol that has ever shipped, so nothing
+    in the wild is refused.
+  </p>
+  <p>
+    This is deliberate. Because updates require you to notice a message and click a button in a
+    different window, a server that refused old clients would strand people with no self-service way
+    out. Version skew is the expected steady state here, not an error to be stamped out. What you
+    miss by staying behind is new capability and fixes, not access.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>If an update drops the connection.</strong> Your project link lives in the plugin's
+      own saved settings rather than in the build, so it normally survives an update. If the panel
+      comes back as <strong>Not connected</strong>, nothing is wrong and nothing is lost —
+      <a href="/docs/connect">connect again</a> with a new code.
+    </p>
+  </div>
+</DocsLayout>

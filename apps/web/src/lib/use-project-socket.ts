@@ -87,7 +87,14 @@ export interface ProjectSocket {
   conn: ConnState;
   messages: ChatItem[];
   historyState: 'loading' | 'ready' | 'error';
-  studio: { connected: boolean; state: StudioEventState | null };
+  /**
+   * `connected` is the worker's latest word. `everConnected` records whether it
+   * has ever been true on this socket's lifetime — that is what separates
+   * "Studio dropped" from "Studio was never here", and the two deserve
+   * different copy. Neither says anything about the plugin being installed;
+   * there is no signal for that. See lib/studio-connection.ts.
+   */
+  studio: { connected: boolean; state: StudioEventState | null; everConnected: boolean };
   quota: QuotaState | null;
   agentStatus: AgentStatus | null;
   running: boolean;
@@ -160,9 +167,14 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const [conn, setConn] = useState<ConnState>('connecting');
   const [messages, setMessages] = useState<ChatItem[]>([]);
   const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [studio, setStudio] = useState<{ connected: boolean; state: StudioEventState | null }>({
+  const [studio, setStudio] = useState<{
+    connected: boolean;
+    state: StudioEventState | null;
+    everConnected: boolean;
+  }>({
     connected: false,
     state: null,
+    everConnected: false,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
@@ -186,7 +198,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState });
+      setStudio({ connected: true, state: mockStudioState, everConnected: true });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -258,10 +270,18 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     switch (msg.type) {
       case 'hello':
         setQuota(msg.quota);
-        setStudio((s) => ({ ...s, connected: msg.studioConnected }));
+        setStudio((s) => ({
+          ...s,
+          connected: msg.studioConnected,
+          everConnected: s.everConnected || msg.studioConnected,
+        }));
         break;
       case 'studio_status':
-        setStudio({ connected: msg.connected, state: msg.state ?? null });
+        setStudio((s) => ({
+          connected: msg.connected,
+          state: msg.state ?? null,
+          everConnected: s.everConnected || msg.connected,
+        }));
         break;
       case 'msg_start':
         setRunning(true);

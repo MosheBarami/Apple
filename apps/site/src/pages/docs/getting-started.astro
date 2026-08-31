@@ -31,22 +31,30 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     project — the per-project memory works much better that way.
   </p>
 
-  <h2>3. Connect Roblox Studio</h2>
+  <h2>3. Install the Studio plugin</h2>
   <p>
-    Golem changes your place through the <strong>Golem for Studio</strong> plugin. If you have not
-    installed it yet, follow the <a href="/docs/plugin">plugin guide</a> — it is a one-file install.
-  </p>
-  <ol>
-    <li>Open your place in Roblox Studio.</li>
-    <li>In the Golem web workspace, click <strong>Connect Studio</strong>. You get a short pairing code like <code>GLM-7F3K2Q</code>.</li>
-    <li>In Studio, open the Golem plugin panel and enter the code.</li>
-  </ol>
-  <p>
-    The workspace header flips to <strong>Studio connected</strong> and shows your place name.
-    Pairing codes expire after 10 minutes; if yours does, just generate a new one.
+    Golem changes your place through the <strong>Golem for Studio</strong> plugin, installed from
+    the Roblox Creator Store. Acquiring it on the web adds it to your inventory; the install itself
+    happens inside Studio's Toolbox. Full steps — and the current availability of the plugin — are
+    on <a href="/docs/plugin">Install the plugin</a>.
   </p>
 
-  <h2>4. Ask for your first build</h2>
+  <h2>4. Connect it to your project</h2>
+  <ol>
+    <li>Open your place in Roblox Studio and click <strong>Golem</strong> in the Plugins tab.</li>
+    <li>
+      In the Golem web workspace, open the project and press <strong>Enter pairing code</strong> in
+      the <strong>Connect Roblox Studio</strong> block. You get a six-character code like
+      <code>K7M3QP</code>.
+    </li>
+    <li>Type the code into the Golem panel in Studio and press <strong>Connect</strong>.</li>
+  </ol>
+  <p>
+    The workspace shows your place name and the panel turns green. Codes expire after 10 minutes; if
+    yours does, generate another. More detail on <a href="/docs/connect">Connect a project</a>.
+  </p>
+
+  <h2>5. Ask for your first build</h2>
   <p>Pick a mode (start with <strong>Stone</strong> for a real build) and describe what you want:</p>
   <ul>
     <li>“make a lobby with a spinning obby door”</li>
@@ -59,7 +67,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     try them.
   </p>
 
-  <h2>5. Iterate like you mean it</h2>
+  <h2>6. Iterate like you mean it</h2>
   <p>
     The first result is a first draft. React to it the way you would with a collaborator: “make
     the door slower”, “the door should only open for players with the key”. Golem keeps the
@@ -78,6 +86,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <ul>
     <li><a href="/docs/modes">Modes</a> — when to use Clay, Stone or Rune.</li>
     <li><a href="/docs/sparks-and-limits">Sparks &amp; limits</a> — how far 60 Sparks goes.</li>
-    <li><a href="/docs/plugin">Plugin guide</a> — install paths and troubleshooting.</li>
+    <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
+    <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>
   </ul>
 </DocsLayout>

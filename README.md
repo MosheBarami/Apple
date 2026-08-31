@@ -4,7 +4,9 @@
 experience, through one assistant that lives in a web workspace and inside Roblox Studio.
 
 - **Live**: https://golem.moshe-barami111.workers.dev
-- App: `/app` · Docs: `/docs` · Status: `/status` · Plugin: `/plugin.rbxm`
+- App: `/app` · Docs: `/docs` · Status: `/status`
+- Studio plugin: installed from the Roblox Creator Store (see ADR-017). The legacy
+  `/plugin.rbxm` download is retired and is no longer a supported install path.
 
 ## How it works
 

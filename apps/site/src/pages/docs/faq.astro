@@ -4,6 +4,14 @@ import FAQ from '../../components/FAQ.astro';
 
 const general = [
   {
+    q: 'Where do I get the Golem plugin?',
+    a: `<p>From the Roblox Creator Store, and only from there — see <a href="/docs/plugin">Install the plugin</a>, which also states plainly whether it is published yet. Roblox splits this into two steps: you acquire the plugin on the web, then install it from inside Studio's Toolbox. There is no one-click install from a web page; Roblox provides no such hand-off.</p>`,
+  },
+  {
+    q: 'There used to be a .rbxm download. Where did it go?',
+    a: `<p>Retired. A file you drop into a folder by hand never updates, is not signed by anything, and gets no help from Studio's plugin management window. The Creator Store install is the supported path. Building the plugin yourself is still possible and documented under <a href="/docs/build-from-source">Build the plugin from source</a>, but that is a development path, not an install path.</p>`,
+  },
+  {
     q: 'Do I need to know how to script?',
     a: `<p>No, but it helps. Golem writes the Luau for you and explains anything it wrote in plain language (ask in Clay mode — 1 spark). Creators who can read a little code iterate faster, and plenty of people have learned scripting <em>from</em> Golem's explanations of its own work.</p>`,
   },
@@ -40,7 +48,7 @@ const general = [
 
 <DocsLayout
   title="FAQ — Golem Docs"
-  description="Quick answers about scripting knowledge, Studio versions, publishing, Team Create, interrupted builds, undo and rollback, and reporting bugs."
+  description="Quick answers about getting the plugin, scripting knowledge, Studio versions, publishing, Team Create, interrupted builds, undo and rollback, and reporting bugs."
   heading="Frequently asked questions"
 >
   <p>

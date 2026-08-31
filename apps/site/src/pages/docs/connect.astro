@@ -1,0 +1,94 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Connect a project — Golem Docs"
+  description="Pair the Golem Studio plugin with one Golem project using a short-lived code, and understand what the connection covers and how long it lasts."
+  heading="Connect a project"
+>
+  <p>
+    Connecting links the Golem panel in <em>this</em> Studio window to <em>one</em> Golem project.
+    Until you do it, the plugin is inert: the panel reads <strong>Not connected</strong> and Golem
+    cannot see or change anything.
+  </p>
+  <p>
+    The link is made with a short-lived code, so you never copy a token and nothing sensitive ever
+    sits on your clipboard.
+  </p>
+
+  <h2>Connecting</h2>
+  <ol>
+    <li>Open the place you want Golem to work on in Roblox Studio.</li>
+    <li>
+      In Studio's <strong>Plugins</strong> tab, click <strong>Golem</strong>. The panel docks and
+      shows <strong>Not connected</strong>.
+    </li>
+    <li>
+      In the Golem web workspace, open the project. Until Studio is linked, the conversation ends
+      with a <strong>Connect Roblox Studio</strong> block — press <strong>Enter pairing code</strong>
+      on its last step. (The <strong>Connect</strong> button in the project's <strong>Studio</strong>
+      panel opens the same thing.) You get a six-character code — something like <code>K7M3QP</code>
+      — with a countdown.
+    </li>
+    <li>
+      Type that code into the plugin panel and press <strong>Connect</strong>.
+    </li>
+  </ol>
+  <p>
+    The panel turns green and reads <strong>Connected</strong> followed by the project name; the
+    button becomes <strong>Disconnect</strong>. The web workspace stops saying it is waiting for
+    Studio and shows the place you have open. Golem can now act on this place when this project's
+    chat asks it to.
+  </p>
+
+  <h2>About the code</h2>
+  <ul>
+    <li><strong>It expires after 10 minutes</strong> and works once. Expired or already used, it is dead — generate a new one.</li>
+    <li>
+      It is six characters drawn from an alphabet with no confusable letters — no O, I, L or 1 —
+      so there is nothing to squint at.
+    </li>
+    <li>
+      Case does not matter and punctuation is ignored, so <code>k7m3qp</code> and
+      <code>K7M-3QP</code> both work.
+    </li>
+    <li>You can have up to five unused codes alive at once, across all your projects.</li>
+  </ul>
+
+  <h2>What the connection covers</h2>
+  <ul>
+    <li>
+      <strong>One Studio window, one project.</strong> Opening a different place, or a second
+      Studio window, does not carry the connection with it — connect that window too.
+    </li>
+    <li>
+      <strong>It survives restarts.</strong> The plugin remembers the session, so reopening Studio
+      reconnects without a new code.
+    </li>
+    <li>
+      <strong>It expires after 30 days.</strong> When it does, the panel says
+      <em>Session ended — reconnect with a new code</em>. Generate a fresh code and connect again.
+    </li>
+  </ul>
+
+  <h2>Disconnecting</h2>
+  <p>
+    Press <strong>Disconnect</strong> in the plugin panel, or disconnect from the web workspace.
+    Either one stops Golem acting on the place immediately, whether or not the plugin stays
+    installed. Nothing Golem already built is undone — use Studio's undo or a checkpoint for that.
+  </p>
+
+  <div class="callout">
+    <p>
+      <strong>Team Create:</strong> the connection belongs to your Studio window, and Golem's edits
+      reach your teammates the same way your own edits do. Teammates who want their own Golem chat
+      should connect their own Studio window to their own project.
+    </p>
+  </div>
+
+  <p>
+    Something not lining up? <a href="/docs/troubleshooting">Troubleshooting</a> lists the exact
+    messages the panel can show and what each one means.
+  </p>
+</DocsLayout>

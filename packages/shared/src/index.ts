@@ -594,3 +594,86 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; sparksP
 };
 
 export const PROTOCOL_VERSION = 1;
+
+// ---------------------------------------------------------------------------
+// Studio plugin distribution
+//
+// THE SINGLE SOURCE OF TRUTH FOR THE PLUGIN ASSET. The id below is the only
+// place this number appears as a literal in the repository; every URL that
+// needs it is derived here and imported from here. apps/site cannot depend on
+// this package through pnpm, so it re-exports these two constants through
+// apps/site/src/lib/studio-plugin.ts rather than restating the id.
+//
+// Measured against the live Roblox APIs on 2026-08-31:
+//   economy.roblox.com/v2/assets/<id>/details       -> 200 (AssetTypeId 38, "Golem")
+//   roblox.com/library/<id>                         -> 307 -> create.roblox.com/store/asset/<id>
+//   apis.roblox.com/toolbox-service/.../<id>        -> 404
+// The 307 is why STUDIO_PLUGIN_URL uses create.roblox.com/store/asset: Roblox
+// itself redirects the old library URL there.
+//
+// The 404 is the important one. Measured against two known-public plugins
+// (Rojo 6415005344, Moon Animator 4725618216) toolbox-service returns 200; for
+// this asset it returns 404, which means the asset is NOT yet distributable on
+// the Creator Store. Nothing in this repo may state or imply that a user can
+// install it today. Uploading a plugin makes it private to its owner; making it
+// public is a separate human step in the Creator Dashboard
+// (Development Items -> Configure -> Distribution -> Distribute on Creator Store).
+// ---------------------------------------------------------------------------
+
+/** The Golem Studio plugin's Roblox asset id. The one literal; derive, never retype. */
+export const STUDIO_PLUGIN_ASSET_ID = '132128477945417';
+
+/**
+ * The plugin's canonical Creator Store page. This page loads; whether it offers
+ * a working "Get Plugin" button depends on the distribution toggle above, so
+ * link to it without promising the install will succeed.
+ */
+export const STUDIO_PLUGIN_URL = `https://create.roblox.com/store/asset/${STUDIO_PLUGIN_ASSET_ID}`;
+
+/**
+ * The ONLY reliable liveness probe for "is this plugin actually distributable".
+ * HTTP 200 means listed, 404 means not listed. Do not substitute
+ * `economy.roblox.com` or `develop.roblox.com/v1/plugins` (both return 200 for
+ * an unlisted asset) or `assetdelivery` (Moon Animator is fully listed and
+ * still returns 401 unauthenticated).
+ */
+export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=${STUDIO_PLUGIN_ASSET_ID}`;
+
+/**
+ * Whether the asset is actually DISTRIBUTABLE on the Creator Store — the one
+ * definition of that fact in the repository.
+ *
+ * This is a separate fact from "the asset exists", and it is the one every
+ * user-facing install affordance has to obey. Uploading a plugin only places it
+ * in its owner's own Inventory; a human toggles Creator Dashboard -> Development
+ * Items -> Configure -> Distribution -> "Distribute on Creator Store" before
+ * anyone else can get it.
+ *
+ * Re-probe, then flip this one constant — nothing else needs to change:
+ *   curl -s -o /dev/null -w '%{http_code}\n' "$STUDIO_PLUGIN_LIVENESS_PROBE_URL"
+ * 200 = listed, 404 = not. Last checked 2026-08-31: 404 for this asset, against
+ * 200 for a known-listed control (Rojo, 6415005344).
+ *
+ * Typed `boolean` rather than the literal `false` on purpose: consumers branch
+ * on it, and a literal type would make the live branch look unreachable.
+ */
+export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
+
+/**
+ * Where an "install" affordance may actually send someone TODAY.
+ *
+ * ADR-017 decision 3 says copy degrades honestly rather than "shipping a link
+ * that 404s". A button pointing straight at the store while the asset is not
+ * distributable does exactly that: the reader arrives at a page with nothing to
+ * get and no explanation. So until the probe returns 200, every install
+ * affordance goes to `/docs/plugin`, which states plainly that the plugin is not
+ * published yet and becomes a working install guide the moment it is.
+ *
+ * When STUDIO_PLUGIN_STORE_LIVE flips, this becomes the store URL everywhere at
+ * once. Use STUDIO_PLUGIN_STORE_LIVE to decide whether the link is external
+ * (target=_blank + rel=noopener noreferrer); while it is false the destination
+ * is same-origin and must not open a new tab.
+ */
+export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
+  ? STUDIO_PLUGIN_URL
+  : '/docs/plugin';

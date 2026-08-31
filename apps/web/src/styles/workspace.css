@@ -647,6 +647,9 @@
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  /* Some of these are anchors, and the global `a:hover` rule underlines them.
+     A button that grows an underline on hover reads as a link, not a button. */
+  text-decoration: none;
   transition:
     background-color var(--gx-t-hover) var(--gx-ease),
     border-color var(--gx-t-hover) var(--gx-ease),
@@ -657,6 +660,7 @@
 .gx-btn:hover {
   color: var(--gx-ink);
   background: rgba(245, 242, 236, 0.05);
+  text-decoration: none;
 }
 
 .gx-btn:active {
@@ -1459,6 +1463,103 @@
   color: var(--gx-ink-3);
   font-size: 0.86rem;
   line-height: 1.6;
+}
+
+/* --------------------------------------------------------------------------
+   11b. Connect Roblox Studio — the contextual connection prompt
+
+   Compact on purpose. It is a note in the conversation, not a setup screen:
+   one heading, one line, three short steps with their actions on the right.
+   It only ever renders while Studio is NOT attached (see
+   components/ws/connect-studio.tsx), so it costs nothing once you are paired.
+   -------------------------------------------------------------------------- */
+
+.gx-connect {
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-lg);
+  background: var(--gx-raise);
+  padding: 0.95rem 1.05rem;
+}
+
+.gx-connect__title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--gx-ink);
+  letter-spacing: -0.01em;
+}
+
+.gx-connect__lede {
+  margin: 0.2rem 0 0.75rem;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--gx-ink-2);
+}
+
+/* Still a real <ol>, so the order is in the document and not only in the
+   paint. The number is drawn from a counter rather than ::marker because a
+   list item that is `display: flex` no longer generates a marker. */
+.gx-connect__steps {
+  counter-reset: gx-step;
+  margin: 0;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  list-style: none;
+}
+
+.gx-connect__step {
+  counter-increment: gx-step;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 34px;
+}
+
+.gx-connect__step::before {
+  content: counter(gx-step);
+  flex: none;
+  width: 1.15rem;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-connect__what {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.86rem;
+  color: var(--gx-ink);
+}
+
+/* The "we don't know yet" state: one quiet line, never the steps. */
+.gx-connect--quiet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.4rem 0;
+  background: transparent;
+  border: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 560px) {
+  .gx-connect__step {
+    display: grid;
+    grid-template-columns: 1.15rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.3rem 0.6rem;
+  }
+
+  /* Action drops to its own line, under the label, not under the number. */
+  .gx-connect__step > .gx-btn {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 .gx-memory {

@@ -1,0 +1,126 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Troubleshooting — Golem Docs"
+  description="Every message the Golem Studio panel can show, what it means, and the shortest fix — plus the panel that never appeared and the build that stalled."
+  heading="Troubleshooting"
+>
+  <p>
+    Grouped by what you can actually see. If the panel is showing you a message, start with
+    <a href="#messages">what the panel says</a>.
+  </p>
+
+  <h2 id="messages">What the panel says</h2>
+
+  <h3>“Invalid or expired code”</h3>
+  <p>
+    Codes last 10 minutes and work once. Generate a fresh one in the web workspace
+    (<a href="/docs/connect">Connect a project</a>) and type it in promptly. Case and dashes do not
+    matter, so mistyping those is not the cause — a stale code almost always is.
+  </p>
+
+  <h3>“Could not reach Golem — check your internet”</h3>
+  <p>
+    The plugin's HTTPS request never landed. In order of likelihood:
+  </p>
+  <ul>
+    <li>
+      <strong>Studio's permission prompt was declined.</strong> Roblox asks once, per plugin, per
+      web address. Re-allow it in Studio's <strong>Plugin Management</strong> window, where these
+      permissions can be accepted, denied and revoked.
+    </li>
+    <li><strong>The network blocks it.</strong> School and workplace networks often block outbound HTTPS from Studio. Another network settles it in a minute.</li>
+    <li><strong>Golem is actually down.</strong> The <a href="/status">status page</a> checks the live API from your own browser and answers that in a second.</li>
+  </ul>
+
+  <h3>“Session ended — reconnect with a new code”</h3>
+  <p>
+    A Studio connection is good for 30 days, then it expires by design.
+    <a href="/docs/connect">Connect again</a>; nothing in the project is lost.
+  </p>
+
+  <h3>“This Golem build is too old for the server”</h3>
+  <p>
+    Shown in red, and it does block builds. Update the plugin —
+    <a href="/docs/updating">Updating the plugin</a> has the two-click version. This is rare by
+    design: Golem admits every plugin build whose wire protocol it still supports, and today it
+    supports all of them, so you should not see this yet.
+  </p>
+
+  <h3>An amber line about a newer version</h3>
+  <p>
+    Advisory only. A newer Golem has been published and you are still on an older one — everything
+    keeps working. Update when convenient. It is written to Studio's Output window once, not
+    repeatedly.
+  </p>
+
+  <h3>“Connection hiccup — retrying…”</h3>
+  <p>
+    One request failed and the plugin is already retrying. It clears itself. If it never clears,
+    treat it as “Could not reach Golem” above.
+  </p>
+
+  <h2>The Golem button isn't in the Plugins tab</h2>
+  <ul>
+    <li>
+      Acquiring the plugin on the web only puts it in your inventory. The install happens inside
+      Studio, in the <strong>Toolbox</strong> — see <a href="/docs/plugin">Install</a>.
+    </li>
+    <li>Check Studio's plugin management window: if Golem is listed but disabled, enable it.</li>
+    <li>Restart Studio once. Plugins are loaded at launch.</li>
+  </ul>
+
+  <h2>The panel says Connected, the web app says it isn't</h2>
+  <ul>
+    <li>
+      <strong>A connection belongs to one Studio window.</strong> If you opened a second window or
+      a different place, that one is not connected — connect it too.
+    </li>
+    <li>
+      <strong>Check you are looking at the same project.</strong> The panel names the project it is
+      connected to, right next to <strong>Connected</strong>. If that is not the project open in
+      your browser, that is the whole answer.
+    </li>
+  </ul>
+
+  <h2>Golem stopped mid-build</h2>
+  <ul>
+    <li>
+      <strong>Studio was closed or the place was switched.</strong> Golem loses its hands and pauses
+      with a message. Reopen the place, reconnect if needed, and ask it to continue — the plan and
+      history are still in the project.
+    </li>
+    <li>
+      <strong>Very large places are slow to read.</strong> The first tree read in a session can take
+      noticeably longer than the rest. Give it a moment before retrying.
+    </li>
+    <li>
+      <strong>Sparks ran out.</strong> The chat says so explicitly. See
+      <a href="/docs/sparks-and-limits">Sparks &amp; limits</a>.
+    </li>
+  </ul>
+
+  <h2>Golem changed something I didn't want</h2>
+  <p>Three exits, smallest first:</p>
+  <ol>
+    <li>Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (<kbd>⌘Z</kbd> on macOS) in Studio. Each batch of Golem changes is one native undo step.</li>
+    <li>Restore the checkpoint Golem took before the run, from the project's sidebar.</li>
+    <li>Say what is wrong in the chat. Fixing a wrong turn is usually faster than rolling back.</li>
+  </ol>
+
+  <h2>Stop Golem now</h2>
+  <p>
+    Press <strong>Disconnect</strong> in the plugin panel, or disconnect from the web workspace.
+    Either one ends Golem's access to the place immediately, without uninstalling anything. To
+    remove the plugin entirely, uninstall it from Studio's plugin management window.
+  </p>
+
+  <div class="callout">
+    <p>
+      Still stuck? Email <a href="mailto:golem.labs.app@gmail.com">golem.labs.app@gmail.com</a> with
+      the project name, roughly when it happened, and what the panel said. A human reads it.
+    </p>
+  </div>
+</DocsLayout>

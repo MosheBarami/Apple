@@ -7,8 +7,10 @@ local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
 
 local Ops = require(script.Ops)
+local Version = require(script.Version)
 
-local VERSION = "0.1.0"
+local VERSION = Version.VERSION
+local PROTOCOL = Version.PROTOCOL
 local DEFAULT_API = "https://golem.moshe-barami111.workers.dev"
 
 -- Only drive the session from the edit DataModel (Play Solo spawns a second copy).
@@ -54,6 +56,12 @@ local function stateEvent(): any
 	}
 end
 
+-- Identity travels on the headers of EVERY request, pairing included, rather than
+-- inside the JSON body. Two reasons. The server needs to know what it is talking to
+-- before it parses a body — and at /api/studio/claim there is no body field to put it
+-- in. And an older plugin that never sends these simply omits two headers, which is
+-- indistinguishable at the HTTP layer from any other client; nothing on either side
+-- has to special-case it.
 local function post(url: string, body: any, token: string?): (boolean, any, number)
 	local ok, res = pcall(function()
 		return HttpService:RequestAsync({
@@ -62,6 +70,8 @@ local function post(url: string, body: any, token: string?): (boolean, any, numb
 			Headers = {
 				["Content-Type"] = "application/json",
 				["X-Golem-Token"] = token or "",
+				["X-Golem-Plugin-Version"] = VERSION,
+				["X-Golem-Plugin-Protocol"] = tostring(PROTOCOL),
 			} :: { [string]: string },
 			Body = HttpService:JSONEncode(body),
 		})
@@ -173,6 +183,18 @@ activityLabel.Font = Enum.Font.Code
 local hint = label("Get a code from your project page at Golem → Connect Studio.", 12, COLORS.muted, 7)
 hint.Font = Enum.Font.Gotham
 
+-- Diagnostics. When a user reports "Golem is broken", the first question is always
+-- which build they are on, and they have no other way to find out: Studio's plugin
+-- manager shows the asset, not the version string this code was compiled with.
+local versionLabel = label("Golem v" .. VERSION .. " · protocol " .. tostring(PROTOCOL), 11, COLORS.muted, 8)
+versionLabel.Font = Enum.Font.Code
+
+-- Populated only when the server has something to say about this build. Hidden the
+-- rest of the time, which is the overwhelmingly common case.
+local noticeLabel = label("", 12, COLORS.amber, 9)
+noticeLabel.Font = Enum.Font.Gotham
+noticeLabel.Visible = false
+
 button.Click:Connect(function()
 	widget.Enabled = not widget.Enabled
 end)
@@ -186,6 +208,39 @@ local function pushActivity(line: string)
 	table.insert(recentOps, 1, line)
 	if #recentOps > 7 then table.remove(recentOps) end
 	activityLabel.Text = table.concat(recentOps, "\n")
+end
+
+-- The server's verdict on this build, rendered honestly.
+--
+-- `compatible == false` is the only state that actually blocks work, and it is the
+-- only one painted red. Everything else is advisory: a newer build exists, which is
+-- worth mentioning once and then leaving alone. Roblox has no automatic plugin
+-- updating — Studio has per-plugin Update buttons the user must click, confirmed by
+-- Roblox staff as recently as 2026-04 — so the message names that exact mechanism
+-- instead of vaguely telling someone to "update".
+local function applyClientNotice(client: any)
+	if type(client) ~= "table" then return end
+	local message = type(client.message) == "string" and client.message or nil
+	if client.compatible == false then
+		noticeLabel.Text = message or "This Golem build is too old for the server. Update it in Studio: Plugins → Manage Plugins → Update."
+		noticeLabel.TextColor3 = COLORS.red
+		noticeLabel.Visible = true
+		return
+	end
+	if not message then
+		noticeLabel.Visible = false
+		return
+	end
+	noticeLabel.Text = message
+	noticeLabel.TextColor3 = COLORS.amber
+	noticeLabel.Visible = true
+	-- The label is passive and can sit there indefinitely, but writing to the Output
+	-- window every few seconds would be genuine nagging. Do that once per distinct
+	-- message, per machine.
+	if plugin:GetSetting("golem_notice_seen") ~= message then
+		plugin:SetSetting("golem_notice_seen", message)
+		warn("[Golem] " .. message)
+	end
 end
 
 -- ---------------------------------------------------------------- poll loop
@@ -214,6 +269,9 @@ local function pollLoop()
 		if status == 401 then
 			disconnectSession("Session ended — reconnect with a new code")
 			break
+		end
+		if ok and type(data) == "table" then
+			applyClientNotice(data.client)
 		end
 		if ok and type(data) == "table" and data.ops then
 			for _, pending in (data.ops :: { any }) do

@@ -213,7 +213,18 @@ app.post('/api/studio/claim', async (c) => {
     method: 'POST',
     body: JSON.stringify({ projectId: pairing.projectId, projectName: pairing.projectName, ownerId: pairing.userId }),
   });
-  await stub.fetch('https://do/plugin/register', { method: 'POST', body: JSON.stringify({ tokenHash: await sha256hex(token) }) });
+  // Carry the plugin's self-report into the session at pairing time. It travels on
+  // headers rather than in the claim body so that a plugin predating version
+  // reporting sends an ordinary request with two fewer headers, and needs no
+  // special case anywhere.
+  await stub.fetch('https://do/plugin/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      tokenHash: await sha256hex(token),
+      pluginVersion: c.req.header('X-Golem-Plugin-Version') ?? null,
+      pluginProtocol: c.req.header('X-Golem-Plugin-Protocol') ?? null,
+    }),
+  });
   void count(c.env, 'studio_paired');
   return c.json({ token, projectId: pairing.projectId, projectName: pairing.projectName });
 });
@@ -230,6 +241,13 @@ app.post('/api/studio/poll', async (c) => {
   if (ipLimited(`poll:${ip}`, 400)) return c.json({ error: 'slow down' }, 429);
   const stub = sessionStub(c.env, projectId);
   const headers = new Headers({ 'X-Golem-Token': token, 'Content-Type': 'application/json' });
+  // Forward the plugin's self-report. This route rebuilds the header set rather than
+  // passing the request through, so anything the DO needs has to be copied explicitly
+  // — and only these two are, deliberately: nothing else the client sends is trusted.
+  for (const h of ['X-Golem-Plugin-Version', 'X-Golem-Plugin-Protocol']) {
+    const v = c.req.header(h);
+    if (v) headers.set(h, v);
+  }
   return stub.fetch('https://do/plugin/poll', { method: 'POST', headers, body: await c.req.raw.text() });
 });
 
