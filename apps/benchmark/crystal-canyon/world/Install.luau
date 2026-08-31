@@ -50,14 +50,24 @@ local MANIFEST = {
 	{ "src/client/Objective.luau", "client", "Objective", "ModuleScript" },
 }
 
+--[[ MEASURED TRAP, do not "optimise" this back to reuse-in-place.
+
+	 `require()` caches per ModuleScript INSTANCE for the life of the DataModel,
+	 and rewriting `.Source` does NOT invalidate that cache. Reinstalling over a
+	 module that has already been required therefore leaves the OLD table live,
+	 and the new source is silently ignored.
+
+	 This bit during development: Palette gained two colour tokens, the installer
+	 reported "installed 19/19", and the world build then failed with
+	 `Color3 expected, got nil` — the freshly written token was missing from the
+	 cached table. Destroying and recreating gives each module a new identity and
+	 therefore a fresh require.
+
+	 The cost is that every install is a full replace. That is the right trade:
+	 a stale module is a silent wrong answer, and this is a build step. ]]
 local function ensure(parent: Instance, name: string, className: string): Instance
 	local existing = parent:FindFirstChild(name)
 	if existing then
-		if existing.ClassName == className then
-			return existing
-		end
-		-- Class changed (e.g. Script -> LocalScript). Replacing is correct;
-		-- keeping a wrong-class instance would fail silently at runtime.
 		existing:Destroy()
 	end
 	local inst = Instance.new(className)

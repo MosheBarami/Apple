@@ -387,6 +387,14 @@ local function bindResponsive(panel: Frame, fixed: UDim2?)
 	local constraint = Instance.new("UISizeConstraint")
 	constraint.Parent = panel
 
+	--[[ Seed a legal base size before anything is measured. A fresh Frame's Size
+		 is zero, and `Theme.open` animates *to* `ThemeBaseSize` — so a panel
+		 opened before the camera had reported a viewport (the early-return in
+		 `apply` below) would scale up to nothing and read as a broken modal. ]]
+	local seed = fixed or PANEL_SCALE_WIDE
+	panel:SetAttribute("ThemeBaseSize", seed)
+	panel.Size = seed
+
 	local function apply()
 		local camera = workspace.CurrentCamera
 		local vp = camera and camera.ViewportSize or Vector2.new(1280, 720)

@@ -56,6 +56,13 @@ local TOAST_QUEUE_MAX = 8
 
 -- Celebration ------------------------------------------------------------
 local BANNER_LIFE = 2.2
+--[[ The banner is sized by SCALE, capped by a UISizeConstraint — not by a flat
+	 520px offset. A fixed 520 overflowed a 390pt phone viewport by 65px on each
+	 side, so the celebration for unlocking a zone was the one moment the UI ran
+	 off the screen. 0.86 of the width keeps the same generous desktop look
+	 (clamped to 520 well before 1080p) and stays inside the smallest phone. ]]
+local BANNER_WIDTH_SCALE = 0.86
+local BANNER_MAX = Vector2.new(520, 96)
 local BURST_PARTS = 20
 local BURST_LIFE = 1.8
 
@@ -216,14 +223,10 @@ local function acquirePop(): PopEntry?
 	return entry
 end
 
---[[ A world-space number at `position`. Safe to call at collection rate. ]]
-function Effects.pop(position: Vector3, text: string, color: Color3?)
-	local entry = acquirePop()
-	if not entry then
-		return
-	end
-	entry.busy = true
-
+--[[ Draw one pop into an already-acquired entry. Split out from Effects.pop so
+	 the whole body — every property write and every tween — sits inside one
+	 pcall at the call site, with a single release path. ]]
+local function drawPop(entry: PopEntry, position: Vector3, text: string, color: Color3?)
 	entry.attachment.WorldPosition = position
 	entry.gui.StudsOffset = Vector3.new(rng:NextNumber(-0.6, 0.6), 0, 0)
 	entry.gui.Enabled = true
@@ -253,14 +256,55 @@ function Effects.pop(position: Vector3, text: string, color: Color3?)
 	if entry.stroke then
 		TweenService:Create(entry.stroke, drift, { Transparency = 1 }):Play()
 	end
+end
+
+local function releasePop(entry: PopEntry)
+	entry.gui.Enabled = false
+	entry.busy = false
+end
+
+--[[ A world-space number at `position`. Safe to call at collection rate.
+
+	 The pool is the fragile part, so the ordering here is deliberate:
+
+	 1. Arguments are validated BEFORE anything is acquired. `busy` used to be
+		set first and the property writes done after, which meant one bad
+		argument (a table where a Vector3 was expected, say) threw between the
+		two and permanently removed a slot from a 24-entry pool. Twenty-four of
+		those and `acquirePop` returns nil forever — every number pop in the
+		session gone, from a caller that merely passed the wrong shape.
+	 2. Acquisition and release are paired around one pcall, so *any* throw
+		inside the draw releases the entry rather than stranding it. On success
+		the timer below is the sole release; on failure the catch is. Exactly
+		one of the two runs. ]]
+function Effects.pop(position: Vector3, text: string, color: Color3?)
+	if typeof(position) ~= "Vector3" or type(text) ~= "string" then
+		warn(
+			`[CrystalCanyon] Effects.pop ignored a malformed call: position={typeof(position)} text={typeof(text)}`
+		)
+		return
+	end
+	local tint = typeof(color) == "Color3" and color or nil
+
+	local entry = acquirePop()
+	if not entry then
+		return
+	end
+	entry.busy = true
+
+	local ok, err = pcall(drawPop, entry, position, text, tint)
+	if not ok then
+		releasePop(entry)
+		warn(`[CrystalCanyon] Effects.pop failed to draw; pool slot released: {err}`)
+		return
+	end
 
 	--[[ Release on a timer rather than a tween Completed signal: three tweens
 		 finish here and only one owns the lifetime. The timer is the single
 		 authority, so a cancelled or overridden tween cannot strand the entry
 		 as permanently busy. ]]
 	task.delay(POP_DURATION, function()
-		entry.gui.Enabled = false
-		entry.busy = false
+		releasePop(entry)
 	end)
 end
 
@@ -441,6 +485,15 @@ local function banner(text: string, accent: Color3)
 	corner.Parent = frame
 	Palette.stroke(frame, Palette.Outline.Panel)
 
+	--[[ The cap that makes the scale safe: MaxSize keeps the desktop banner at
+		 the intended 520x96, and the width scale below it is what shrinks on a
+		 phone. MaxSize only — a MinSize is enforced every frame, so it would be
+		 applied to the (w,0) start and end sizes too and flatten both halves of
+		 the grow/collapse animation. ]]
+	local limit = Instance.new("UISizeConstraint")
+	limit.MaxSize = BANNER_MAX
+	limit.Parent = frame
+
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
 	gradient.Color = ColorSequence.new(Palette.lift(accent), Palette.shade(accent, 0.18))
@@ -452,17 +505,36 @@ local function banner(text: string, accent: Color3)
 	label.ZIndex = 61
 	label.Text = text
 	Palette.styleText(label, Palette.TextSize.Title)
+	--[[ Zone names are authored, not user text, but the banner is now narrower on
+		 a phone than the 520px the 34pt title was measured against. Scaling down
+		 to a floor keeps "FROST HOLLOW UNLOCKED!" on one line instead of clipping;
+		 the max keeps it from growing past the display size §4 asks for. ]]
+	label.TextScaled = true
+	local textLimit = Instance.new("UITextSizeConstraint")
+	textLimit.MaxTextSize = Palette.TextSize.Title
+	textLimit.MinTextSize = 16
+	textLimit.Parent = label
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 18)
+	pad.PaddingRight = UDim.new(0, 18)
+	pad.Parent = label
 	label.Parent = frame
+
+	--[[ Width is a scale so it tracks the viewport; the constraint above clamps
+		 it. Height stays an offset — 96px is a fixed bar height, not a share of
+		 the screen. ]]
+	local grown = UDim2.new(BANNER_WIDTH_SCALE, 0, 0, BANNER_MAX.Y)
+	local collapsed = UDim2.new(BANNER_WIDTH_SCALE, 0, 0, 0)
 
 	TweenService
 		:Create(frame, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			Size = UDim2.fromOffset(520, 96),
+			Size = grown,
 		})
 		:Play()
 
 	task.delay(BANNER_LIFE, function()
 		local out = TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Size = UDim2.fromOffset(520, 0),
+			Size = collapsed,
 		})
 		out.Completed:Connect(function()
 			frame:Destroy()
@@ -499,6 +571,19 @@ function Effects.init(mountPoint: Instance)
 	if mount then
 		return -- init is idempotent; a second boot must not double-bind remotes
 	end
+
+	--[[ Fail HERE, loudly, on a bad mount.
+
+		 A caller once passed the client's context TABLE instead of the ScreenGui.
+		 Nothing complained: `mount` accepted it, and the failure surfaced minutes
+		 later as `frame.Parent = <table>` inside the first toast — a stack trace
+		 pointing at `showToast`, from a mistake made at boot. An assert costs one
+		 line and moves that error back to the line that caused it. ]]
+	assert(
+		typeof(mountPoint) == "Instance",
+		`Effects.init requires the ScreenGui (or a frame inside it) to parent toasts into, got {typeof(mountPoint)}`
+	)
+
 	mount = mountPoint
 
 	Remotes.get("Pop").OnClientEvent:Connect(function(payload: any)

@@ -35,13 +35,45 @@ local Theme = require(script.Parent:WaitForChild("Theme"))
 
 local Hud = {}
 
+--[[ One entry of `Sync.upgrades`, exactly as `Economy.push` builds it.
+
+	 This is NOT a bare level. The previous annotation said `{[string]: number}`,
+	 so `tonumber(upgrades[id])` returned nil against the real payload and every
+	 upgrade was priced as though it were level 0 — which lit the red "you can
+	 afford something" dot for a maxed PACK the server would refuse to sell.
+
+	 `nextCost` is absent (not nil-valued) at max level: a nil field does not
+	 survive the remote boundary, so the server documents that absence as its MAX
+	 signal. Every reader below treats "no nextCost on a record that has a level"
+	 as max level, never as "look the price up yourself". ]]
+export type UpgradeEntry = {
+	level: number?,
+	maxLevel: number?,
+	value: number?,
+	nextCost: number?,
+}
+
+--[[ `objective` is a SINGLE record describing the current step, not a map of
+	 every objective. Hud does not render it — Objective.luau does — but it is
+	 declared here because Hud.render receives the whole snapshot and a wrong
+	 shape in this type is exactly what caused the objective bug. ]]
+export type ObjectiveState = {
+	index: number?,
+	id: string?,
+	text: string?,
+	progress: number?,
+	target: number?,
+	complete: boolean?,
+}
+
 export type HudState = {
 	coins: number?,
 	shards: number?,
 	packCapacity: number?,
-	upgrades: { [string]: number }?,
+	upgrades: { [string]: UpgradeEntry }?,
 	zones: { [string]: boolean }?,
-	objective: number?,
+	objective: ObjectiveState?,
+	stats: { collected: number?, sold: number?, playtime: number? }?,
 }
 
 export type Deps = {
@@ -276,6 +308,46 @@ local function badge(button: TextButton): Frame
 	return dot
 end
 
+-- Snapshot readers ----------------------------------------------------------
+-- Both take the raw `upgrades` table as `any`: it arrives across a remote and
+-- may be from an older build, so its shape is checked here rather than trusted.
+
+--[[ The level of one upgrade out of the snapshot. Reads `.level` off the record
+	 the server actually sends; the bare-number branch is only a courtesy to a
+	 snapshot from a build that predates the record shape. ]]
+local function upgradeLevel(upgrades: any, id: string): number
+	local entry = upgrades[id]
+	local raw = if typeof(entry) == "table" then tonumber(entry.level) else tonumber(entry)
+	if not raw or raw ~= raw then -- nil or NaN
+		return 0
+	end
+	return math.max(0, math.floor(raw))
+end
+
+--[[ Price to buy the next level, or nil if there is no next level.
+
+	 The server's `nextCost` wins when it is present, because it is the number
+	 the purchase will actually be charged against. Its ABSENCE on a record that
+	 has a level is the max-level signal and must return nil — falling back to
+	 `Config.upgradeCost` there would be harmless today (Config returns nil at
+	 max too) but would silently re-price the upgrade from stale client tables
+	 the moment the two disagree, which is the whole failure this file exists to
+	 avoid. Config is consulted only when there is no record at all, i.e. before
+	 the first Sync lands. ]]
+local function upgradeNextCost(upgrades: any, id: string): number?
+	local entry = upgrades[id]
+	if typeof(entry) == "table" then
+		local cost = tonumber(entry.nextCost)
+		if cost and cost == cost then
+			return cost
+		end
+		if tonumber(entry.level) then
+			return nil -- record present, no nextCost -> max level
+		end
+	end
+	return Config.upgradeCost(id, upgradeLevel(upgrades, id))
+end
+
 --[[ Reward feedback has to be visible or it reads as breakage (§8). A short
 	 overshoot on the pill whenever its number goes up is the cheapest honest
 	 signal that the server credited something. ]]
@@ -450,18 +522,38 @@ local function buildSell(parent: Instance, sellRemote: RemoteEvent)
 	local button =
 		Theme.button(box, "SELL SHARDS", Palette.UI.Buy, UDim2.new(1, 0, 0, M.SellHeight), UDim2.fromOffset(0, 0))
 
-	-- Padding shifts the button's centred caption clear of the leading icon
-	-- without the HUD having to know how Theme laid the text out.
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 40)
-	pad.Parent = button
+	--[[ The leading shard icon needs clear space at the left end of the button.
+		 That inset must NOT be a UIPadding on the button: UIPadding insets EVERY
+		 child, including two that must stay full-bleed.
+
+		   · Theme's `Edge` frame — the §3 hard bottom edge that reads as the
+		     button's thickness — would be drawn 40px narrow and shifted right,
+		     leaving the bottom-left corner visibly flat.
+		   · The disabled `Veil` below would inset the same way, so with 0 shards
+		     the leftmost 40px (the shard icon included) stayed fully saturated on
+		     a button the player cannot press.
+
+		 So the inset goes on the one child that actually wants it: Theme's
+		 centred caption. Theme owns the caption's vertical terms (they lift the
+		 text off the hard edge), so only the X terms are touched here. ]]
+	local ICON_INSET = 40
+	local captionLabel = button:FindFirstChild("Caption")
+	if captionLabel and captionLabel:IsA("TextLabel") then
+		local size = captionLabel.Size
+		-- Narrow by the full inset and shift the centre by half of it: the text
+		-- ends up optically centred in what is left, not sitting under the icon.
+		captionLabel.Position = UDim2.new(0.5, ICON_INSET / 2, 0, 0)
+		captionLabel.Size = UDim2.new(size.X.Scale, size.X.Offset - ICON_INSET, size.Y.Scale, size.Y.Offset)
+	end
 
 	local icon = Instance.new("Frame")
 	icon.Name = "Icon"
 	icon.BackgroundColor3 = Palette.UI.SoftCurrency
 	icon.BorderSizePixel = 0
 	icon.AnchorPoint = Vector2.new(0, 0.5)
-	icon.Position = UDim2.new(0, -26, 0.5, 0)
+	-- Absolute now that there is no padding to offset it. 14px keeps the rotated
+	-- 28px diamond's corners inside the button, which clips its descendants.
+	icon.Position = UDim2.new(0, 14, 0.5, 0)
 	icon.Size = UDim2.fromOffset(28, 28)
 	icon.Rotation = 45
 	icon.ZIndex = 4
@@ -611,14 +703,16 @@ function Hud.render(state: HudState?)
 
 	local shards = math.max(0, math.floor(tonumber(state.shards) or 0))
 	local coins = math.max(0, math.floor(tonumber(state.coins) or 0))
-	local upgrades = state.upgrades or {}
-	local zones = state.zones or {}
+	-- Typed `any` on purpose: these come off a remote, so their shape is read
+	-- through the guarded helpers above rather than asserted here.
+	local upgrades: any = state.upgrades or {}
+	local zones: any = state.zones or {}
 
 	-- Capacity comes from the snapshot when the server sends it, and otherwise
 	-- from the same Config table the server caps against — so the bar can never
 	-- advertise a capacity the economy does not enforce. The floor of 1 exists
 	-- purely so the ratio below can never divide by zero.
-	local packLevel = tonumber(upgrades.pack) or 0
+	local packLevel = upgradeLevel(upgrades, "pack")
 	local capacity = math.max(1, math.floor(tonumber(state.packCapacity) or Config.upgradeValue("pack", packLevel)))
 	local ratio = math.clamp(shards / capacity, 0, 1)
 	local full = shards >= capacity
@@ -663,11 +757,12 @@ function Hud.render(state: HudState?)
 		payoutLabel.Text = `+{Util.comma(shards * Config.Sell.CoinsPerShard)} COINS`
 	end
 
-	-- Affordability badges. Derived entirely from Config, so a lit dot always
-	-- corresponds to a purchase the server would actually accept.
+	-- Affordability badges. Priced from the server's own `nextCost`, so a lit dot
+	-- always corresponds to a purchase the server would actually accept — and a
+	-- maxed upgrade (no nextCost) can never light one.
 	local canUpgrade = false
 	for _, up in Config.Upgrades do
-		local cost = Config.upgradeCost(up.Id, tonumber(upgrades[up.Id]) or 0)
+		local cost = upgradeNextCost(upgrades, up.Id)
 		if cost and coins >= cost then
 			canUpgrade = true
 			break

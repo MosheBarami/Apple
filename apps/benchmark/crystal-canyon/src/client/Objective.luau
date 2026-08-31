@@ -9,8 +9,11 @@
 	vanishes the moment the chain is finished.
 
 	Everything here is derived from server state. The chip never counts anything
-	itself — it renders the `objectives` map out of `Sync` and nothing else, so
-	it cannot congratulate a player for progress the server did not record.
+	itself and never decides which step is current: it renders the single
+	`objective` record out of `Sync` — { index, id, text, progress, target,
+	complete } — and nothing else, so it cannot congratulate a player for
+	progress the server did not record, and it cannot disagree with the server
+	about which step is live.
 
 	The one piece of real machinery is the hand-off animation. Progress can jump
 	several steps in one `Sync` (a code redeem that completes two objectives at
@@ -166,59 +169,98 @@ end
 
 -- State reading -----------------------------------------------------------
 
---[[ Progress for one objective id out of the synced map, coerced hard. A
-	 missing, nil or non-numeric entry is 0 progress, never an error: a profile
-	 saved before an objective existed simply has no key for it. ]]
-local function progressOf(map: any, id: string): number
-	if typeof(map) ~= "table" then
-		return 0
-	end
-	local raw = tonumber(map[id])
-	if not raw or raw ~= raw then -- NaN never satisfies a target
-		return 0
-	end
-	return math.max(0, math.floor(raw))
-end
+-- The "chain complete" sentinel. Economy.push sends exactly this index, with
+-- complete = true, empty text and target 0, once every step is satisfied.
+local DONE_INDEX = #Config.Objectives + 1
 
---[[ The active objective is the first unmet one. `#Config.Objectives + 1` is
-	 the "chain complete" sentinel every caller below checks against.
+type Step = {
+	index: number,
+	text: string,
+	progress: number,
+	target: number,
+	complete: boolean,
+}
 
-	 If the server ever puts an explicit index on Sync we trust it, but the
-	 derived value is authoritative-equivalent: both read the same server facts,
-	 so the chip is correct whether or not that field exists. ]]
-local function activeIndex(state: any): number
-	local explicit = tonumber(state.objectiveIndex)
-	if explicit then
-		return math.clamp(math.floor(explicit), 1, #Config.Objectives + 1)
+--[[ Normalise the `objective` record out of a Sync snapshot.
+
+	 This module used to read `state.objectives` (a map of id -> progress) and
+	 `state.objectiveIndex`. The server sends NEITHER: `Economy.push` builds one
+	 record, `objective = { index, id, text, progress, target, complete }`. So
+	 `tonumber(state.objectiveIndex)` was always nil and the map lookups always
+	 missed, which made the derived index fall through to 1 every single time —
+	 a player who had collected 25 shards, sold, and bought an upgrade still read
+	 "COLLECT 25 SHARDS 0/25", the hand-off never ran, and the chip never left.
+
+	 Returns nil for a snapshot with no usable record. Callers leave the chip
+	 exactly as it is in that case: a malformed push is not evidence that the
+	 player's progress changed, so inventing a step would be worse than nothing.
+
+	 Config is consulted only as a fallback for `text` and `target`, because the
+	 server's own strings are what the player is being graded against. ]]
+local function readStep(state: any): Step?
+	local record = if typeof(state) == "table" then state.objective else nil
+	if typeof(record) ~= "table" then
+		return nil
 	end
-	for i, obj in Config.Objectives do
-		if progressOf(state.objectives, obj.Id) < obj.Target then
-			return i
-		end
+
+	local rawIndex = tonumber(record.index)
+	if not rawIndex or rawIndex ~= rawIndex then -- nil or NaN
+		return nil
 	end
-	return #Config.Objectives + 1
+	local index = math.clamp(math.floor(rawIndex), 1, DONE_INDEX)
+
+	-- Trust the server's flag, but treat the sentinel index as complete too so a
+	-- snapshot that carries one without the other still lands in the same state.
+	local complete = record.complete == true or index >= DONE_INDEX
+
+	local fallback = Config.Objectives[index]
+	local target = tonumber(record.target) or (fallback and fallback.Target) or 0
+	if target ~= target then -- NaN
+		target = 0
+	end
+	target = math.max(0, math.floor(target))
+
+	local progress = tonumber(record.progress) or 0
+	if progress ~= progress then
+		progress = 0
+	end
+	progress = math.clamp(math.floor(progress), 0, target)
+
+	local text = record.text
+	if typeof(text) ~= "string" or text == "" then
+		text = fallback and fallback.Text or ""
+	end
+
+	return {
+		index = index,
+		text = text :: string,
+		progress = progress,
+		target = target,
+		complete = complete,
+	}
 end
 
 -- Drawing -----------------------------------------------------------------
 
-local function paint(index: number, state: any)
+local function paint(step: Step)
 	local frame, title, count = chip, titleLabel, countLabel
 	if not (frame and title and count) then
 		return
 	end
 
-	local obj = Config.Objectives[index]
-	if not obj then
+	-- A finished chain has no chip. §6 keeps the centre of the screen empty, and
+	-- an empty pill parked at the top is exactly the kind of leftover furniture
+	-- that rule exists to prevent.
+	if step.complete then
 		frame.Visible = false
 		return
 	end
 
-	title.Text = obj.Text
+	title.Text = step.text
 	-- A "0/1" on a one-shot step ("SELL AT THE GOLD PAD") is noise, so the
 	-- counter only appears where counting is actually the instruction.
-	if obj.Target > 1 then
-		local done = math.min(progressOf(state.objectives, obj.Id), obj.Target)
-		count.Text = Util.comma(done) .. "/" .. Util.comma(obj.Target)
+	if step.target > 1 then
+		count.Text = Util.comma(step.progress) .. "/" .. Util.comma(step.target)
 		count.Visible = true
 	else
 		count.Text = ""
@@ -241,7 +283,7 @@ end
 --[[ Completion hand-off: flash the finished step green with a tick, slide it
 	 out to the left, then bring the next step in from the right. Runs on its own
 	 task because it yields; `busy` is what keeps a second one from starting. ]]
-local function transition(nextIndex: number, state: any)
+local function transition(nextStep: Step)
 	local frame, badge, title, count = chip, tickBadge, titleLabel, countLabel
 	if not (frame and badge and title and count) then
 		return
@@ -273,9 +315,9 @@ local function transition(nextIndex: number, state: any)
 
 		badge.Visible = false
 		frame.BackgroundColor3 = Palette.UI.CounterFill
-		shownIndex = nextIndex
+		shownIndex = nextStep.index
 
-		if nextIndex > #Config.Objectives then
+		if nextStep.complete then
 			-- Chain finished. The chip does not linger as an empty pill; the
 			-- centre of the screen goes back to the world.
 			frame.Visible = false
@@ -284,7 +326,7 @@ local function transition(nextIndex: number, state: any)
 			return
 		end
 
-		paint(nextIndex, state)
+		paint(nextStep)
 		frame.Position = OFF_RIGHT
 		local incoming = TweenService:Create(
 			frame,
@@ -304,30 +346,45 @@ function apply(state: any)
 		return
 	end
 
-	local index = activeIndex(state)
+	local step = readStep(state)
+	if not step then
+		-- No usable objective record. Leaving the chip untouched is the only
+		-- honest option: a malformed snapshot is not evidence of progress.
+		return
+	end
 
 	if shownIndex == 0 then
 		-- First paint of the session: land on the current step with no
 		-- celebration. A returning player must not be congratulated on load for
 		-- objectives they finished days ago.
-		shownIndex = index
-		if index > #Config.Objectives then
+		shownIndex = step.index
+		if step.complete then
 			frame.Visible = false
 		else
-			paint(index, state)
+			paint(step)
 			frame.Position = HOME
 		end
 		return
 	end
 
-	if index > shownIndex then
-		transition(index, state)
+	if step.index > shownIndex then
+		-- Advanced — including the advance to DONE_INDEX, which is why the
+		-- finish still gets its tick-and-slide before the chip goes away.
+		transition(step)
 		return
 	end
 
-	-- Same step, new progress. Cheap path, and the common one: this runs on
-	-- every Sync while the player is collecting.
-	paint(shownIndex, state)
+	-- Same step, new progress: the cheap path, and the common one, running on
+	-- every Sync while the player is collecting. A step that moved BACKWARDS
+	-- (an objective list shortened between sessions, or a hand-edited profile)
+	-- lands here too and is adopted silently — there is nothing to celebrate.
+	shownIndex = step.index
+	if step.complete then
+		frame.Visible = false
+		frame.Position = HOME
+		return
+	end
+	paint(step)
 end
 
 --[[ Called with the whole `Sync` snapshot. Safe to call at Sync frequency. ]]

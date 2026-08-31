@@ -56,6 +56,14 @@ Palette.UI = {
 	SoftCurrency = Color3.fromRGB(250, 205, 65), -- shards, yellow-gold
 	HardCurrency = Color3.fromRGB(90, 215, 130), -- coins, green
 
+	--[[ Body copy on a white card. NOT `Locked` — the style audit caught blurbs,
+		 prices and code results all rendered in the desaturated `Locked` grey,
+		 which §9.10 fails outright ("nothing on screen is thin, subtle,
+		 desaturated"). `Locked` means a control is unavailable; live copy that a
+		 player is meant to read uses this instead, which is dark enough to carry
+		 the category's contrast. ]]
+	TextMuted = Color3.fromRGB(88, 96, 104),
+
 	CounterFill = Color3.fromRGB(38, 42, 48), -- §6 currency counters are dark pills
 	TextLight = Color3.fromRGB(255, 255, 255),
 	TextDark = Color3.fromRGB(30, 34, 38),
@@ -118,6 +126,14 @@ Palette.World = {
 
 	Frost = Color3.fromRGB(206, 232, 245),
 	FrostDeep = Color3.fromRGB(168, 206, 228),
+
+	--[[ The frost zone's PATH, deliberately not a frost tone. The first build
+		 painted the southern path in Frost/FrostDeep on top of a FrostFloor that
+		 is literally `Frost` — so half the road was byte-identical to the ground
+		 under it and the route vanished. §9.5 wants the path to contrast hard
+		 with the ground, the way Dirt-on-Grass does in the north. ]]
+	IcePath = Color3.fromRGB(96, 141, 173),
+	IcePathDark = Color3.fromRGB(74, 116, 146),
 
 	Sky = Color3.fromRGB(127, 200, 240),
 }

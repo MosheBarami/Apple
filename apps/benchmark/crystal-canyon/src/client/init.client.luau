@@ -64,9 +64,14 @@ local Objective = loadModule("Objective")
 -- has to wait on the network mid-frame.
 
 local SyncRemote = Remotes.get("Sync")
-local NotifyRemote = Remotes.get("Notify")
-local PopRemote = Remotes.get("Pop")
-local UnlockedRemote = Remotes.get("Unlocked")
+
+--[[ Resolved but not bound to a name: Effects owns the Pop/Notify/Unlocked
+	 subscriptions (see below). Touching them here still pays the WaitForChild
+	 cost up front, so `Effects.init` — which calls `Remotes.get` for the same
+	 three — returns without yielding mid-boot. ]]
+Remotes.get("Notify")
+Remotes.get("Pop")
+Remotes.get("Unlocked")
 
 local PurchaseRemote = Remotes.get("Purchase")
 local SellRemote = Remotes.get("Sell")
@@ -163,6 +168,46 @@ function intent.closePanel()
 	pcall(Panels.close)
 end
 
+--[[ The four `c2s` remotes, keyed by the name Panels uses when it calls
+	 `deps.send("Purchase", id)`. Handing modules the remotes rather than letting
+	 them call `Remotes.get` themselves keeps the "one place talks to the
+	 network" rule in the header true. ]]
+local c2s: { [string]: RemoteEvent } = {
+	Purchase = PurchaseRemote,
+	Sell = SellRemote,
+	Redeem = RedeemRemote,
+	Unlock = UnlockRemote,
+}
+
+--[[ Panels' generic dispatcher. It routes through the typed `intent` functions
+	 above rather than firing `c2s[name]` directly, so the argument checks (and
+	 the empty-code guard) live in exactly one place and a panel cannot skip
+	 them by picking the generic path. ]]
+local function send(name: string, ...: any)
+	if name == "Purchase" then
+		intent.purchase(...)
+	elseif name == "Sell" then
+		intent.sell()
+	elseif name == "Redeem" then
+		intent.redeem(...)
+	elseif name == "Unlock" then
+		intent.unlock(...)
+	else
+		warn(`[CrystalCanyon] ignoring send to unknown remote "{name}"`)
+	end
+end
+
+--[[ The dependency table every module's `init` is handed.
+
+	 This is a SUPERSET of what any one surface declares, and each key below
+	 exists because a module asserts on it by that exact name — `Hud.init` wants
+	 `openPanel` and `remotes.Sell`, `Panels.init` wants `Theme`, `gui` and
+	 `send`. An earlier version of this file passed a table of generic context
+	 (Config/Palette/player/...) and nothing else, so both asserts fired, both
+	 pcalls swallowed the error, and a real client booted to an empty screen with
+	 no HUD and no modals. Adding a key here without a module that reads it is
+	 harmless; removing one that a module asserts on disables that whole
+	 surface silently. ]]
 ctx.Config = Config
 ctx.Palette = Palette
 ctx.Util = Util
@@ -170,6 +215,11 @@ ctx.Theme = Theme
 ctx.player = player
 ctx.playerGui = playerGui
 ctx.screen = screen
+ctx.gui = screen -- Panels.init: the ScreenGui its modal layer is parented to
+ctx.remotes = c2s -- Hud.init: reads remotes.Sell
+ctx.openPanel = intent.openPanel -- Hud.init: asserts this is a function
+ctx.closePanel = intent.closePanel
+ctx.send = send -- Panels: send("Purchase"|"Redeem"|"Unlock", ...)
 ctx.intent = intent
 ctx.getState = function()
 	return state
@@ -183,27 +233,48 @@ end
 	 every one of the ~10 Syncs a second that follow. ]]
 local surfaces: { { name: string, module: any } } = {}
 
-local function initModule(name: string, module: any)
+--[[ Returns whether the module is live. Callers need that answer: Objective's
+	 mount point only exists if Hud actually finished initialising. ]]
+local function initModule(name: string, module: any, arg: any): boolean
 	if not module then
-		return
+		return false
 	end
 	if type(module.init) == "function" then
-		local ok, err = pcall(module.init, ctx)
+		local ok, err = pcall(module.init, arg)
 		if not ok then
 			warn(`[CrystalCanyon] {name}.init failed, disabling that surface: {err}`)
-			return
+			return false
 		end
 	end
 	if type(module.render) == "function" then
 		table.insert(surfaces, { name = name, module = module })
 	end
+	return true
 end
 
-initModule("Theme", Theme)
-initModule("Hud", Hud)
-initModule("Panels", Panels)
-initModule("Objective", Objective)
-initModule("Effects", Effects)
+initModule("Theme", Theme, ctx)
+local hudReady = initModule("Hud", Hud, ctx)
+initModule("Panels", Panels, ctx)
+
+--[[ Objective.init and Effects.init take an INSTANCE to parent into, not a
+	 context table — they do `frame.Parent = mountPoint`. Hud owns the top-centre
+	 slot and exposes it as `Hud.objectiveMount()`; if the HUD failed to build we
+	 fall back to this script's ScreenGui so the chip still renders somewhere
+	 legible instead of vanishing with the HUD. ]]
+local objectiveMount: Instance = screen
+if hudReady and Hud and type(Hud.objectiveMount) == "function" then
+	local ok, mount = pcall(Hud.objectiveMount)
+	if ok and typeof(mount) == "Instance" then
+		objectiveMount = mount
+	else
+		warn(
+			`[CrystalCanyon] Hud.objectiveMount() unavailable, mounting the objective chip on the root ScreenGui: {mount}`
+		)
+	end
+end
+
+initModule("Objective", Objective, objectiveMount)
+initModule("Effects", Effects, screen)
 
 -- Render fan-out ----------------------------------------------------------
 
@@ -237,22 +308,20 @@ SyncRemote.OnClientEvent:Connect(function(snapshot: any)
 	render()
 end)
 
-local function forward(name: string, remote: RemoteEvent, method: string)
-	remote.OnClientEvent:Connect(function(payload: any)
-		if not Effects or type(Effects[method]) ~= "function" then
-			return
-		end
-		local ok, err = pcall(Effects[method], payload)
-		if not ok and not warned[name] then
-			warned[name] = true
-			warn(`[CrystalCanyon] Effects.{method} errored (further errors suppressed): {err}`)
-		end
-	end)
-end
+--[[ Pop / Notify / Unlocked are subscribed by `Effects.init`, and ONLY there.
 
-forward("pop", PopRemote, "pop")
-forward("notify", NotifyRemote, "notify")
-forward("unlocked", UnlockedRemote, "unlocked")
+	 This script used to also forward those three, which was wrong twice over.
+	 It called `Effects.pop(payload)` — binding the whole `{position, text,
+	 color}` table to the `position` parameter — and `Effects.unlocked`, which
+	 does not exist (the function is `Effects.celebrate`). The pop path was the
+	 damaging one: it threw *after* the pool entry was marked busy, so every
+	 collect stranded a slot until the pool was exhausted and number pops stopped
+	 for good, including for the correct handler.
+
+	 Effects owns them because that is where the payload shape is validated and
+	 the audio cue is fired; a second subscriber here could only ever duplicate
+	 or contradict it. `SyncRemote` above stays this script's, because `state` is
+	 this script's. ]]
 
 -- Character lifecycle -----------------------------------------------------
 

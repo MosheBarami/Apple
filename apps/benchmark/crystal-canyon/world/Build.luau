@@ -339,9 +339,27 @@ local function pathRun(fromZ: number, toZ: number, segments: number, warm: boole
 		if warm then
 			color = if light then W.DirtLight else W.Dirt
 		else
-			-- Past the gate the road is ice, not dirt: the path keeps its
-			-- signposting job while the colour hands off to the frost zone.
-			color = if light then W.Frost else W.FrostDeep
+			--[[ Past the gate the road is worn ice, not dirt. It must NOT be a
+				 frost tone: this run (z -66..-225) lies entirely on FrostFloor,
+				 which is painted `W.Frost`. The first build used
+				 `if light then W.Frost else W.FrostDeep`, so half the road was
+				 literally the same colour as the ground beneath it. Measured on the
+				 built geometry: 3 of the 6 segments came out at sum|Δ| = 0 against
+				 the floor and the other 3 at 81. The route did not read as a route.
+
+				 Contrast below is sum|Δ| over the three channels vs the ground.
+				 The north path is the benchmark the spec (§9.5) sets, since it is
+				 the half that already passes:
+				   Dirt      (201,138, 75) on Grass      ( 95,201, 74) -> 170
+				   DirtLight (224,164, 92) on Grass                    -> 184
+				 The replacement, on the frost floor:
+				   IcePath     ( 96,141,173) on Frost (206,232,245)    -> 273
+				   IcePathDark ( 74,116,146) on Frost                  -> 347
+				 Both ice tones clear the north benchmark by 1.5-2x. And the two ice
+				 tones are 74 apart from each other, against 66 for Dirt/DirtLight,
+				 so the segment-to-segment tone break still reads about as strongly
+				 as it does in the north. ]]
+			color = if light then W.IcePath else W.IcePathDark
 		end
 		box(
 			fPaths,
@@ -364,7 +382,12 @@ pathRun(GATE_Z, SOUTH_PATH_END, 6, false)
 	 (b) steps back toward the outside as it rises. Segment base heights are
 	 jittered so the skyline is ragged; a level top edge reads as a fence. ]]
 
-local CLIFF_TONES = { W.CliffA, W.CliffB, W.CliffC, W.CliffB }
+--[[ Three tones of the one rust hue, cycled. The first build's fixed
+	 {A, B, C, B} order meant the band that meets the ground was CliffA for every
+	 segment on the map, so the banding ran as one continuous stripe the length of
+	 each wall. `toneOffset` below rotates the starting tone per segment; cycling
+	 (rather than picking at random) still guarantees adjacent layers differ. ]]
+local CLIFF_TONES = { W.CliffA, W.CliffB, W.CliffC }
 local LAYER_FRACTION = { 0.46, 0.28, 0.20, 0.15 }
 
 local function cliffRun(from: Vector3, to: Vector3, outward: Vector3, segLen: number, baseHeight: number, depth: number)
@@ -379,21 +402,40 @@ local function cliffRun(from: Vector3, to: Vector3, outward: Vector3, segLen: nu
 
 	for i = 1, segments do
 		local anchor = from + dir * (segWidth * (i - 0.5))
-		local height = baseHeight * rand(0.76, 1.28)
+		-- Wider than the first build's 0.76-1.28. A ±12% spread on the total
+		-- height is a ripple; this is what makes the skyline ragged (§7).
+		local height = baseHeight * rand(0.66, 1.44)
 		local layers = rng:NextInteger(3, 4)
-		local y = 0
+		local toneOffset = rng:NextInteger(0, 2)
+		--[[ Sink the stack slightly. Every stack starting at y = 0 and splitting
+			 by the same LAYER_FRACTION put every segment's first band seam at
+			 roughly the same height — that shared horizontal line is what the eye
+			 reads as a step. Downward only: lifting a stack would leave daylight
+			 under it and the ring wall exists to stop the world leaking away.
+			 3.0 is comfortably under the shortest possible base layer
+			 (32 * 0.66 * 0.46 * 0.74 ≈ 7.2 studs), so no segment can sink flush. ]]
+		local y = -rand(0.4, 3.0)
+		local setback = 0
 		for k = 1, layers do
-			local h = height * LAYER_FRACTION[k] * rand(0.85, 1.18)
-			local w = (segWidth + 4) * (1 - 0.07 * (k - 1))
+			local h = height * LAYER_FRACTION[k] * rand(0.74, 1.30)
+			--[[ The step back toward the outside was a fixed (k-1) * depth * 0.17,
+				 identical on every segment, so tier k sat at exactly the same depth
+				 the whole way along the run and the tiers joined into one continuous
+				 terrace — the staircase. Randomising the step per layer per segment
+				 breaks that line while keeping the same mean (0.16), so the wall
+				 still leans back by the same amount overall. ]]
+			setback += depth * rand(0.06, 0.26)
+			--[[ 7 studs of overlap between neighbours rather than 4. That extra
+				 headroom is what pays for the larger along-run jitter below: at the
+				 worst case (one slab shifted -2.8, its neighbour +2.8) two adjacent
+				 base slabs still overlap ~1.4 studs, so the wall never opens a seam. ]]
+			local w = (segWidth + 7) * (1 - 0.07 * (k - 1))
 			local d = depth * (1 - 0.17 * (k - 1))
-			local centre = anchor
-				+ outward * ((k - 1) * depth * 0.17)
-				+ dir * rand(-1.8, 1.8)
-				+ Vector3.new(0, y + h / 2, 0)
+			local centre = anchor + outward * setback + dir * rand(-2.8, 2.8) + Vector3.new(0, y + h / 2, 0)
 			-- lookAt puts the slab's Z along `outward`, so Size reads
 			-- (width along the run, height, depth into the wall).
-			local cf = CFrame.lookAt(centre, centre + outward) * CFrame.Angles(0, math.rad(rand(-3.5, 3.5)), 0)
-			newPart(fCliffs, "CliffSlab", Vector3.new(w, h, d), cf, CLIFF_TONES[k], true)
+			local cf = CFrame.lookAt(centre, centre + outward) * CFrame.Angles(0, math.rad(rand(-5, 5)), 0)
+			newPart(fCliffs, "CliffSlab", Vector3.new(w, h, d), cf, CLIFF_TONES[(toneOffset + k - 1) % 3 + 1], true)
 			y += h * 0.95
 		end
 	end
@@ -833,18 +875,51 @@ local function tuft(x: number, z: number, s: number)
 	end
 end
 
--- Path edges: alternating sides so the verge is broken, not piped.
-for i = 0, 5 do
-	local z = NORTH_PATH_START + 14 + i * 28
-	tuft(PATH_HALF + rand(2.5, 6), z, rand(1.0, 1.6))
-	tuft(-PATH_HALF - rand(2.5, 6), z + rand(-8, 8), rand(1.0, 1.6))
+--[[ Verge planting. The first build claimed in a comment to alternate sides but
+	 actually placed one tuft on BOTH verges every 28 studs, all the way down both
+	 paths — a symmetric double row at a fixed pitch, which is the uniform field
+	 §7 rules out, not a cluster.
+
+	 Instead: clumps of 2-3 tufts, at an irregular pitch, on ONE side, crossing to
+	 the far side only sometimes. The bare verge between clumps is the "clear
+	 ground between clusters" half of the rule. ]]
+local function tuftClump(x: number, z: number, spread: number, scaleMin: number, scaleMax: number)
+	local n = rng:NextInteger(2, 3)
+	for _ = 1, n do
+		tuft(x + rand(-spread, spread), z + rand(-spread, spread), rand(scaleMin, scaleMax))
+	end
 end
-for i = 0, 3 do
-	local z = SOUTH_PATH_START - 16 - i * 34
-	tuft(PATH_HALF + rand(2.5, 6), z, rand(1.0, 1.5))
-	tuft(-PATH_HALF - rand(2.5, 6), z + rand(-8, 8), rand(1.0, 1.5))
+
+local function vergeClumps(fromZ: number, toZ: number)
+	-- Works for the south path too, where toZ < fromZ.
+	local step = if toZ > fromZ then 1 else -1
+	local z = fromZ + step * rand(10, 20)
+	while (toZ - z) * step > 12 do
+		local side = if rng:NextNumber() < 0.5 then 1 else -1
+		tuftClump(side * (PATH_HALF + rand(3, 7)), z, 4, 1.0, 1.6)
+		if rng:NextNumber() < 0.35 then
+			tuftClump(-side * (PATH_HALF + rand(3, 7)), z + rand(-12, 12), 4, 1.0, 1.5)
+		end
+		z += step * rand(36, 62)
+	end
 end
--- Against props: the spec's second placement rule for tufts.
+
+--[[ The south verge deliberately stops well short of SOUTH_PATH_END. Tufts are
+	 meadow green (W.Tuft / W.GrassDeep) and everything past the gate is snow, so
+	 running them the full length of the ice road would push green grass deep into
+	 the cold zone and fight the ground-colour zoning §1 asks for. -170 is roughly
+	 where the previous build's deepest south tuft already sat, so this holds the
+	 line rather than moving it: re-rhythming the verge must not quietly extend
+	 it. Whether the cold zone should get its own recoloured scrub is a separate
+	 question and is left alone. ]]
+local SOUTH_VERGE_END = -170
+
+vergeClumps(NORTH_PATH_START, NORTH_PATH_END)
+vergeClumps(SOUTH_PATH_START, SOUTH_VERGE_END)
+
+--[[ Against props: the spec's second placement rule for tufts. These stay single
+	 tufts on purpose — the rock or tree cluster IS the cluster the grass is read
+	 against, and doubling them up here would tip the density past "moderate". ]]
 for i = 1, #ROCK_CLUSTERS, 2 do
 	local anchor = ROCK_CLUSTERS[i]
 	tuft(anchor[1] + rand(-12, 12), anchor[2] + rand(-12, 12), rand(0.9, 1.4))
