@@ -269,6 +269,7 @@ local sellPlate: Frame? = nil
 local sellPulse: Tween? = nil
 local payoutLabel: TextLabel? = nil
 local objectiveMount: Frame? = nil
+local navMount: Frame? = nil
 local dots: { [string]: Frame } = {}
 
 local lastShards = -1
@@ -478,12 +479,43 @@ local function layoutObjective(s: number)
 	mount.Position = UDim2.new(0.5, 0, 0, y)
 end
 
+--[[ The nav rail is CENTRED on the left edge while the wallet is pinned to the
+	 TOP of it, and neither position refers to the other — so whether they collide
+	 is decided by viewport height alone. Measured in a live play session at 698px
+	 of usable height: the wallet runs y 16..205, the rail starts at y 132, and 73
+	 pixels of rail sit on top of the shard gauge. A taller viewport hides it
+	 entirely, which is why it survived review; a short landscape phone — the case
+	 `computeScale` above already names as the tightest — makes it worse.
+
+	 This is the same collision `layoutObjective` solves for the objective chip,
+	 so it gets the same answer: keep the centred intent where there is room, and
+	 step out of the column's way where there is not. ]]
+local function layoutNav(s: number)
+	local mount = navMount
+	if not mount then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	local vy = camera and camera.ViewportSize.Y or 1080
+	local railHeight = (#NAV * NAV_CELL + (#NAV - 1) * M.TileGap + M.RailPad + RAIL_BOTTOM) * s
+	-- The wallet's bottom edge, plus the same gap the rail uses between its tiles.
+	local floorY = M.Margin + WALLET_HEIGHT * s + M.TileGap * s
+	if vy / 2 - railHeight / 2 >= floorY then
+		mount.AnchorPoint = Vector2.new(0, 0.5)
+		mount.Position = UDim2.new(0, M.Margin, 0.5, 0)
+	else
+		mount.AnchorPoint = Vector2.new(0, 0)
+		mount.Position = UDim2.new(0, M.Margin, 0, floorY)
+	end
+end
+
 local function applyScale()
 	local s = computeScale()
 	for _, scale in scales do
 		scale.Scale = s
 	end
 	layoutObjective(s)
+	layoutNav(s)
 end
 
 -- Motion -------------------------------------------------------------------
@@ -848,6 +880,7 @@ local function buildNav(parent: Instance, openPanel: (string) -> ())
 		UDim2.new(0, M.Margin, 0.5, 0),
 		UDim2.fromOffset(NAV_WIDTH, railHeight)
 	)
+	navMount = box
 
 	--[[ The rail, and the answer to "side navigation feels like unrelated
 		 coloured circles". It is the SAME `Theme.groupPlate` the wallet and the

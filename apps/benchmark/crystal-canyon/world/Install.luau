@@ -44,6 +44,13 @@ local MANIFEST = {
 
 	{ "src/client/init.client.luau", "clientRoot", "CrystalCanyonClient", "LocalScript" },
 	{ "src/client/Theme.luau", "client", "Theme", "ModuleScript" },
+	--[[ Icons was written, committed, and never added to this list. Hud waits
+		 for it BOUNDED (5s) and degrades to "drawing without pictograms"; Panels
+		 waits for it UNBOUNDED, so every panel in the game — shop, upgrades,
+		 codes — has been silently dead in play since the module landed. The
+		 manifest-coverage test added alongside this entry is what stops the
+		 next module from going the same way. ]]
+	{ "src/client/Icons.luau", "client", "Icons", "ModuleScript" },
 	{ "src/client/Hud.luau", "client", "Hud", "ModuleScript" },
 	{ "src/client/Panels.luau", "client", "Panels", "ModuleScript" },
 	{ "src/client/Effects.luau", "client", "Effects", "ModuleScript" },
