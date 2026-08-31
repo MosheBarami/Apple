@@ -73,6 +73,26 @@ landscape phone makes it worse.
 **Caught by:** measuring `AbsolutePosition`/`AbsoluteSize` rather than judging the
 screenshot.
 
+### F-19 · Raising the cliff wall's mesh ratio improved every number and no pixels
+**Believed:** the canyon wall reads as stacked boxes because only 62% of masses get
+a rock-mesh silhouette; raise the threshold and the wall stops reading as prototype.
+**Tried:** `modRoll < 0.62` -> `0.85`.
+**The arithmetic all improved.** Cliffs 157 -> 136 primitives, cliff meshes 29 -> 41,
+world 497 -> 482 primitives — and a module segment genuinely spends fewer authored
+parts, so this was not even a "more bricks" answer.
+**The pixels did not.** The wall still reads as terraced boxes from every wide
+camera, because what the eye reads is the AUTHORED COURSES, and those are still
+large flat slabs whether or not a mesh stands in front of them.
+**And it cost something.** The curated rock shelf is THREE meshes, already placed
+172 times; 0.85 takes it to 177. §AK names extreme repetition as a hard failure, so
+15 primitives bought with five more copies of the same three rocks is a bad trade
+even before the render disagrees.
+**Verdict:** REVERTED to 0.62, with the measurement written into the source at the
+call site so a later pass starts from it rather than repeating it.
+**What this says about the remaining work:** the wall does not need a higher mesh
+RATIO. It needs either more distinct rock silhouettes in the palette, or authored
+courses that are not flat slabs.
+
 ### F-18 · Two probes that produced confident wrong answers about motion
 Recorded because both are re-runnable mistakes, not one-offs:
 1. **`require()` in the MCP command context returns a DIFFERENT module instance.**

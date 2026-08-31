@@ -2040,6 +2040,24 @@ local function cliffRun(
 		--[[ `height` is not in scope yet, so the run's own size is tested at the
 			 placement below rather than here: this decision must be made from the
 			 draws already taken so the stream is consumed identically either way. ]]
+		--[[ 0.62, and RAISING IT WAS TRIED AND REJECTED on 2026-09-01.
+			 At 0.85 the arithmetic all improves: Cliffs fall from 157 primitives to
+			 136, cliff meshes rise 29 -> 41, and the world drops 497 -> 482. The
+			 pixels do not. The wall still reads as terraced boxes from every wide
+			 camera, because what the eye is reading is the AUTHORED COURSES, and
+			 those are still large flat slabs whether or not a mesh stands in front
+			 of them.
+
+			 It also costs something real: the curated rock shelf is THREE meshes,
+			 already placed 172 times across the map, and 0.85 takes that to 177.
+			 Section AK names extreme repetition as a hard failure, so buying 15
+			 primitives with five more copies of the same three rocks is a bad
+			 trade even before the render disagrees.
+
+			 The lesson is where the remaining work is: this wall does not need a
+			 higher mesh RATIO, it needs either more distinct rock silhouettes in
+			 the palette or authored courses that are not flat slabs. Left at 0.62
+			 so a later pass starts from the measurement rather than repeating it. ]]
 		local useModule = (o.modules ~= false) and not saddle and modRoll < 0.62
 
 		local height = baseHeight * (if saddle then rand(0.34, 0.5) else rand(0.88, 1.5))
