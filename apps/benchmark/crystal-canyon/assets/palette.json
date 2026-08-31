@@ -1,0 +1,645 @@
+{
+  "generatedAt": "2026-08-31",
+  "source": "Roblox Creator Store (toolbox-service), free assets only",
+  "acquisition": "findVerifiedAssets -> name-relevance filter -> game:GetObjects -> script strip -> uniform normalise to family height",
+  "scriptsFound": 0,
+  "families": {
+    "crystal": [
+      {
+        "assetId": 8886132415,
+        "name": "gem",
+        "class": "MeshPart",
+        "normalisedSize": [
+          2.7,
+          8,
+          2.9
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 8886132415,
+          "url": "https://create.roblox.com/store/asset/8886132415",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 833341965,
+        "name": "Crystal Cluster",
+        "class": "MeshPart",
+        "normalisedSize": [
+          4.7,
+          8,
+          3.7
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 833341965,
+          "url": "https://create.roblox.com/store/asset/833341965",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 6031842433,
+        "name": "Power Crystal",
+        "class": "MeshPart",
+        "normalisedSize": [
+          3.3,
+          7.9,
+          3.4
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 6031842433,
+          "url": "https://create.roblox.com/store/asset/6031842433",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 447264636,
+        "name": "Quartz Crystal Cluster",
+        "class": "MeshPart",
+        "normalisedSize": [
+          6.7,
+          8,
+          4.4
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 447264636,
+          "url": "https://create.roblox.com/store/asset/447264636",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "rock": [
+      {
+        "assetId": 7081133535,
+        "name": "another low poly rock",
+        "class": "MeshPart",
+        "normalisedSize": [
+          9.9,
+          5,
+          9.1
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 7081133535,
+          "url": "https://create.roblox.com/store/asset/7081133535",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 12928177338,
+        "name": "Very Low-poly mountain rock thing",
+        "class": "MeshPart",
+        "normalisedSize": [
+          13.9,
+          5,
+          16.1
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 12928177338,
+          "url": "https://create.roblox.com/store/asset/12928177338",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 12098534165,
+        "name": "Low Poly Rock",
+        "class": "MeshPart",
+        "normalisedSize": [
+          6.2,
+          5,
+          6.3
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 12098534165,
+          "url": "https://create.roblox.com/store/asset/12098534165",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 7081132350,
+        "name": "low poly rock again again",
+        "class": "MeshPart",
+        "normalisedSize": [
+          7.2,
+          5,
+          6.1
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 7081132350,
+          "url": "https://create.roblox.com/store/asset/7081132350",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "tree_round": [
+      {
+        "assetId": 127399080507887,
+        "name": "tree",
+        "class": "MeshPart",
+        "normalisedSize": [
+          13.1,
+          30,
+          11
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 127399080507887,
+          "url": "https://create.roblox.com/store/asset/127399080507887",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 8317025917,
+        "name": "Tree",
+        "class": "MeshPart",
+        "normalisedSize": [
+          17,
+          30,
+          11.1
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 8317025917,
+          "url": "https://create.roblox.com/store/asset/8317025917",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 112984264031967,
+        "name": "low poly tree",
+        "class": "MeshPart",
+        "normalisedSize": [
+          12.3,
+          29.9,
+          20.2
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 112984264031967,
+          "url": "https://create.roblox.com/store/asset/112984264031967",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 9744297416,
+        "name": "Tree",
+        "class": "MeshPart",
+        "normalisedSize": [
+          29.8,
+          30,
+          26.7
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 9744297416,
+          "url": "https://create.roblox.com/store/asset/9744297416",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "crate": [
+      {
+        "assetId": 430288318,
+        "name": "Meshes/WoodenBox02",
+        "class": "MeshPart",
+        "normalisedSize": [
+          4,
+          4,
+          4
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 430288318,
+          "url": "https://create.roblox.com/store/asset/430288318",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 17307483378,
+        "name": "Crate",
+        "class": "MeshPart",
+        "normalisedSize": [
+          4,
+          4,
+          3.9
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 17307483378,
+          "url": "https://create.roblox.com/store/asset/17307483378",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 441464503,
+        "name": "Wood Crate (1x1x1)",
+        "class": "MeshPart",
+        "normalisedSize": [
+          4,
+          3.9,
+          4
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 441464503,
+          "url": "https://create.roblox.com/store/asset/441464503",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 5438150256,
+        "name": "LOWPOLYCRATE",
+        "class": "MeshPart",
+        "normalisedSize": [
+          9.7,
+          4,
+          7.8
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 5438150256,
+          "url": "https://create.roblox.com/store/asset/5438150256",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "sign": [
+      {
+        "assetId": 106870154249395,
+        "name": "Sign",
+        "class": "MeshPart",
+        "normalisedSize": [
+          6.6,
+          7.9,
+          0.6
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 106870154249395,
+          "url": "https://create.roblox.com/store/asset/106870154249395",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 921382938,
+        "name": "Wooden Sign",
+        "class": "MeshPart",
+        "normalisedSize": [
+          5.4,
+          8,
+          3.1
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 921382938,
+          "url": "https://create.roblox.com/store/asset/921382938",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "fence": [
+      {
+        "assetId": 1239333934,
+        "name": "Fence",
+        "class": "MeshPart",
+        "normalisedSize": [
+          11.6,
+          7,
+          0.2
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 1239333934,
+          "url": "https://create.roblox.com/store/asset/1239333934",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 9992267285,
+        "name": "fence.gate.open",
+        "class": "MeshPart",
+        "normalisedSize": [
+          15.3,
+          6.9,
+          7.4
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 9992267285,
+          "url": "https://create.roblox.com/store/asset/9992267285",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 105210942423223,
+        "name": "Meshes/fenceee2",
+        "class": "MeshPart",
+        "normalisedSize": [
+          44.8,
+          7,
+          64.7
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 105210942423223,
+          "url": "https://create.roblox.com/store/asset/105210942423223",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 6330585204,
+        "name": "Meshes/fence (1)",
+        "class": "MeshPart",
+        "normalisedSize": [
+          7.2,
+          7,
+          0.7
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 6330585204,
+          "url": "https://create.roblox.com/store/asset/6330585204",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "tree_pine": [
+      {
+        "assetId": 104234188430181,
+        "name": "pine tree low poly model",
+        "class": "MeshPart",
+        "normalisedSize": [
+          21.6,
+          34,
+          21.3
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 104234188430181,
+          "url": "https://create.roblox.com/store/asset/104234188430181",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 11986424816,
+        "name": "Pine-Tree-Tex",
+        "class": "MeshPart",
+        "normalisedSize": [
+          17.9,
+          34,
+          18.8
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 11986424816,
+          "url": "https://create.roblox.com/store/asset/11986424816",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 9926335346,
+        "name": "Low Poly PineTree",
+        "class": "MeshPart",
+        "normalisedSize": [
+          20.1,
+          34,
+          21
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 9926335346,
+          "url": "https://create.roblox.com/store/asset/9926335346",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      },
+      {
+        "assetId": 13109631737,
+        "name": "text.pine",
+        "class": "MeshPart",
+        "normalisedSize": [
+          32.4,
+          34,
+          32.1
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 13109631737,
+          "url": "https://create.roblox.com/store/asset/13109631737",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ],
+    "bush": [
+      {
+        "assetId": 8395227352,
+        "name": "Bush but subdivided",
+        "class": "MeshPart",
+        "normalisedSize": [
+          5.3,
+          6,
+          4.6
+        ],
+        "provenance": {
+          "source": "roblox_creator_store",
+          "assetId": 8395227352,
+          "url": "https://create.roblox.com/store/asset/8395227352",
+          "licence": "Roblox Creator Store free asset \u2014 usable within Roblox experiences under the Roblox Terms of Use",
+          "attributionRequired": false,
+          "commercialUseInRoblox": true,
+          "importedAt": "2026-08-31",
+          "modifications": [
+            "scripts stripped (none present)",
+            "uniform scale to family height"
+          ]
+        }
+      }
+    ]
+  }
+}

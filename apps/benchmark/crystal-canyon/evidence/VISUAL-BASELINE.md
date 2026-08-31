@@ -76,3 +76,73 @@ Copied from the review so they are checkable rather than remembered:
 7. improvement achieved primarily by increasing part count
 8. asset intelligence present in code but not actually used
 9. screenshots materially similar to this baseline
+
+---
+
+# Art pass — asset acquisition (first real use of the broker)
+
+## Creator Store: 27 assets acquired, 0 scripts found
+
+The pipeline the phase built has now actually been used, which was one of the
+review's explicit failure conditions ("asset intelligence exists in code but is
+not actually used").
+
+```
+search (findVerifiedAssets, free Models only)
+  -> deterministic NAME-RELEVANCE filter
+  -> game:GetObjects
+  -> enumerate descendants, strip every LuaSourceContainer
+  -> reject anything with zero parts
+  -> uniform scale to a per-family target height
+```
+
+Result: **27 kept, 0 rejected, 8 families, 0 scripts found.** Every one is a real
+`MeshPart` with a valid mesh id. Recorded with provenance in
+`assets/palette.json`.
+
+| family | count | family | count |
+|---|---|---|---|
+| tree_pine | 4 | fence | 4 |
+| tree_round | 4 | sign | 2 |
+| rock | 4 | crate | 4 |
+| crystal | 4 | bush | 1 |
+
+**The name-relevance filter mattered more than the security gate.** Roblox
+toolbox search is keyword-loose: a raw search for "low poly flowers" returned
+*Treecko Doll* and *pineco pokemon*, and "cartoon bush" returned *neon hair*.
+Inserting those to discover they are wrong is the expensive way to learn it, so
+the family's own vocabulary is asserted against the asset NAME before anything
+is loaded. That is a deterministic pre-filter in the §39 sense — it costs nothing
+and it removes most of the noise before a single round trip.
+
+Five families came back empty after filtering: **flower, lamp, chest, mushroom,
+barrel.** Those are the gap Cube generation was supposed to fill.
+
+## Cube / GenerationService: BLOCKED, with the reason measured
+
+Not skipped, and not "implemented but unverified" — attempted, and refused:
+
+```
+GenerationService:GenerateMeshAsync(intent, player, {...})
+  -> "Unable to trigger mesh generation"      (0.2s, a clean refusal)
+```
+
+Preconditions established first, because the earlier attempt failed for a
+different and less interesting reason: the API requires a live `Player`, so it
+cannot run in Edit mode at all. Retried inside a running playtest with a real
+player — same refusal.
+
+The cause is almost certainly the same one that disables DataStore in this place,
+and the server log states it plainly:
+
+```
+Reason: GetDataStore failed: You must publish this place to the web to access DataStore
+game.PlaceId = 0
+```
+
+An unpublished place has no universe, and both features need one.
+
+**Owner action: publishing the benchmark place unblocks Cube 3D/4D generation
+and persistence testing together.** Until then the five empty families are
+covered by authored geometry rather than generated assets, and no claim is made
+that Cube works.
