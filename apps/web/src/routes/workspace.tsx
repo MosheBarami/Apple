@@ -1,26 +1,23 @@
-// /projects/:id — the creation environment.
+// /projects/:id — a conversation with a capable collaborator.
 //
-// Three lanes: the conversation you drive, the work surface that shows what
-// Golem is producing, and the context rail holding the facts that persist
-// between turns. Below 1024px the three become tabs of one lane, because a
-// three-column tool on a phone is three unusable columns.
+// One lane, not three. The work surface and the context rail are gone as
+// permanent columns: what the agent produces now appears inline in the
+// conversation where it happened, and the two things that genuinely persist
+// between turns — checkpoints and project memory — are one click away in a
+// drawer rather than occupying a third of the screen forever.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useOutletContext, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { GolemMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
-import { useProjectSocket, type ToolEvent } from '../lib/use-project-socket';
-import { panelFromTool, type SurfacePanel } from '../lib/panels';
-import { runPhase } from '../lib/tool-meta';
+import { useProjectSocket } from '../lib/use-project-socket';
+import { fetchProviders } from '../lib/api';
 import { useToast } from '../components/toast';
-import { ChatMessage } from '../components/chat-message';
-import { Composer } from '../components/composer';
 import { PairingDialog } from '../components/pairing-dialog';
-import { ContextRail } from '../components/context-rail';
-import { WorkSurface, type SurfaceTab } from '../components/work-surface';
-import { Forge } from '../components/loading';
-import { ICONS, NavIcon, RunePulse } from '../components/glyphs';
+import { Composer, type ProviderOption } from '../components/ws/composer';
+import { Drawer, Icon, PATH } from '../components/ws/primitives';
+import { Turn } from '../components/ws/turn';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -39,34 +36,21 @@ const SUGGESTIONS = [
   'Look at the scene and tell me what reads as unfinished.',
 ];
 
-type MobileLane = 'chat' | 'surface' | 'rail';
-
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
   const { toast } = useToast();
+  const outlet = useOutletContext<{ openRail: () => void } | null>();
 
   const [showPairing, setShowPairing] = useState(false);
-  const [surfaceOpen, setSurfaceOpen] = useState(() => window.innerWidth >= 1024);
-  const [railOpen, setRailOpen] = useState(() => window.innerWidth >= 1280);
-  const [mobileLane, setMobileLane] = useState<MobileLane>('chat');
-  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 1024);
-  const [surfaceTab, setSurfaceTab] = useState<SurfaceTab>('activity');
-  const [pinned, setPinned] = useState<SurfacePanel | null>(null);
+  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory'>(null);
   const [mode, setMode] = useState<GolemMode>('stone');
+  const [providerId, setProviderId] = useState<string | 'auto'>('auto');
   const [seed, setSeed] = useState<string | undefined>(undefined);
-  const [restoring, setRestoring] = useState(false);
+  const [label, setLabel] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const stickToBottom = useRef(true);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)');
-    const onChange = () => setIsNarrow(mq.matches);
-    onChange();
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const stick = useRef(true);
 
   const project = useQuery({
     queryKey: ['project', projectId],
@@ -74,24 +58,25 @@ export function WorkspacePage() {
     enabled: projectId.length > 0,
   });
 
+  const providers = useQuery({
+    queryKey: ['providers'],
+    queryFn: fetchProviders,
+    staleTime: 300_000,
+    retry: 1,
+  });
+
   const onServerError = useCallback(
-    (code: string, message: string) => {
-      setRestoring(false);
-      toast(message || `Something went wrong (${code})`, 'error');
-    },
+    (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
     [toast],
   );
 
-  const socket = useProjectSocket(projectId, onServerError);
   const {
     conn,
     messages,
     historyState,
     studio,
-    quota,
     agentStatus,
     running,
-    logs,
     checkpoints,
     checkpointsState,
     sendChat,
@@ -99,283 +84,241 @@ export function WorkspacePage() {
     createCheckpoint,
     restoreCheckpoint,
     reloadHistory,
-    reloadCheckpoints,
-    reconnectNow,
-  } = socket;
+  } = useProjectSocket(projectId, onServerError);
 
   // Toast when Studio comes online, once per transition.
-  const prevConnected = useRef(false);
+  const wasConnected = useRef(false);
   useEffect(() => {
-    if (studio.connected && !prevConnected.current) {
+    if (studio.connected && !wasConnected.current) {
       toast(`Studio connected${studio.state?.placeName ? ` · ${studio.state.placeName}` : ''}`, 'success');
     }
-    prevConnected.current = studio.connected;
+    wasConnected.current = studio.connected;
   }, [studio.connected, studio.state, toast]);
-
-  // A restore is done when a fresh checkpoint list arrives or the run stops.
-  useEffect(() => {
-    if (!restoring) return;
-    const id = window.setTimeout(() => setRestoring(false), 12_000);
-    return () => window.clearTimeout(id);
-  }, [restoring]);
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
+    if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   const onScroll = () => {
     const el = scrollRef.current;
-    if (!el) return;
-    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
+    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
   };
 
-  const composerDisabledReason =
-    conn === 'open' ? null : conn === 'connecting' ? 'Connecting…' : conn === 'offline' ? 'Offline' : 'Reconnecting…';
-
-  const send = (text: string, chosen: GolemMode) => {
-    stickToBottom.current = true;
+  const send = (text: string) => {
+    stick.current = true;
     setSeed(undefined);
-    if (!sendChat(text, chosen)) toast('Not connected yet — hang on a moment.', 'error');
+    if (!sendChat(text, mode)) toast('Not connected yet — hang on a moment.', 'error');
   };
 
-  const openToolResult = useCallback((tool: ToolEvent) => {
-    const panel = panelFromTool('pinned', tool, Date.now());
-    if (!panel) return;
-    setPinned(panel);
-    setSurfaceTab('panels');
-    setSurfaceOpen(true);
-    setMobileLane('surface');
-  }, []);
-
-  const lastAssistant = useMemo(
-    () => [...messages].reverse().find((m) => m.role === 'assistant'),
+  const lastAssistantId = useMemo(
+    () => [...messages].reverse().find((m) => m.role === 'assistant')?.id,
     [messages],
   );
-  const livePhase = running ? runPhase(lastAssistant?.tools ?? [], agentStatus?.phase ?? null) : null;
+
+  const connNote =
+    conn === 'open'
+      ? null
+      : conn === 'connecting'
+        ? 'Connecting…'
+        : conn === 'offline'
+          ? 'Offline — check your connection'
+          : 'Reconnecting…';
 
   if (project.isSuccess && project.data === null) {
     return (
-      <div className="page">
-        <div className="empty-state">
-          <h2>Project not found</h2>
-          <p>It may have been deleted, or the link is wrong.</p>
-          <Link to="/" className="btn btn-primary">
-            Back to projects
+      <div className="gx-plain">
+        <div className="gx-empty">
+          <p>That project isn&rsquo;t here — it may have been removed.</p>
+          <Link to="/" className="gx-btn gx-btn--outline">
+            Back to your builds
           </Link>
         </div>
       </div>
     );
   }
 
-  const showChat = !isNarrow || mobileLane === 'chat';
-  const showSurface = isNarrow ? mobileLane === 'surface' : surfaceOpen;
-  const showRail = isNarrow ? mobileLane === 'rail' : railOpen;
-
   return (
-    <div className={`workspace is-${mode}`}>
-      {(conn === 'reconnecting' || conn === 'offline') && (
-        <div className="conn-banner" role="status">
-          <span className="pulse-dot" aria-hidden="true" />
-          {conn === 'offline' ? 'Connection lost.' : 'Reconnecting to Golem…'}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={reconnectNow}>
-            Retry now
-          </button>
-        </div>
-      )}
+    <div className="gx-ws">
+      {/* ------------------------------------------------------- topbar -- */}
+      <header className="gx-top">
+        <button
+          type="button"
+          className="gx-icon-btn gx-rail-toggle"
+          onClick={() => outlet?.openRail()}
+          aria-label="Open navigation"
+        >
+          <Icon d={PATH.menu} />
+        </button>
 
-      <header className="ws-head">
-        <div className="ws-title">
-          <Link to="/" className="back-link" aria-label="Back to projects">
-            <span aria-hidden="true">←</span>
-          </Link>
-          <h1>{project.data?.name ?? (project.isPending ? 'Loading…' : 'Project')}</h1>
-          {livePhase && (
-            <span className="chip chip--accent">
-              <span className="pill-dot" aria-hidden="true" /> {livePhase}
-            </span>
-          )}
-        </div>
+        <span className="gx-top__title">{project.data?.name ?? 'Build'}</span>
 
-        <div className="ws-head-actions">
+        <div className="gx-top__actions">
           {studio.connected ? (
-            <span className="pill pill-live" title={`Linked to ${studio.state?.placeName ?? 'your open place'}`}>
-              <span className="pill-dot" aria-hidden="true" />
-              <span className="pill-truncate">{studio.state?.placeName ?? 'Studio'}</span>
+            <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
+              <span className="gx-dot" aria-hidden="true" />
+              {studio.state?.placeName ?? 'Studio'}
             </span>
           ) : (
-            <span className="pill pill-off">
-              <span className="pill-dot" aria-hidden="true" />
-              Studio offline
-              <button type="button" className="pill-action" onClick={() => setShowPairing(true)}>
-                Connect
-              </button>
-            </span>
+            <button type="button" className="gx-pill" onClick={() => setShowPairing(true)}>
+              <span className="gx-dot" aria-hidden="true" />
+              Connect Studio
+            </button>
           )}
 
-          {quota && (
-            <span className={`ws-sparks${quota.sparksRemaining <= 5 ? ' is-low' : ''}`} title="Sparks left today">
-              <strong>{quota.sparksRemaining}</strong> Sparks
-            </span>
-          )}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('memory')}
+            aria-label="What Golem remembers about this project"
+            title="Project memory"
+          >
+            <Icon d={PATH.brain} />
+          </button>
 
-          {!isNarrow && (
-            <>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label={surfaceOpen ? 'Hide work surface' : 'Show work surface'}
-                aria-pressed={surfaceOpen}
-                title="Work surface"
-                onClick={() => setSurfaceOpen((v) => !v)}
-              >
-                <NavIcon d={ICONS.surface} size={18} />
-              </button>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label={railOpen ? 'Hide project context' : 'Show project context'}
-                aria-pressed={railOpen}
-                title="Project context"
-                onClick={() => setRailOpen((v) => !v)}
-              >
-                <NavIcon d={ICONS.rail} size={18} />
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('checkpoints')}
+            aria-label="Checkpoints and restore"
+            title="Checkpoints"
+          >
+            <Icon d={PATH.history} />
+          </button>
         </div>
       </header>
 
-      {isNarrow && (
-        <div className="ws-mobile-tabs" role="tablist" aria-label="Workspace lanes">
-          {(
-            [
-              ['chat', 'Chat'],
-              ['surface', 'Work'],
-              ['rail', 'Context'],
-            ] as [MobileLane, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={mobileLane === id}
-              className="ws-mobile-tab"
-              onClick={() => setMobileLane(id)}
-            >
-              {label}
-            </button>
+      {/* --------------------------------------------------- conversation */}
+      <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
+        <div className="gx-thread">
+          {historyState === 'error' && (
+            <div className="gx-empty">
+              <p>Couldn&rsquo;t load this conversation.</p>
+              <button type="button" className="gx-btn gx-btn--outline" onClick={reloadHistory}>
+                Try again
+              </button>
+            </div>
+          )}
+
+          {historyState === 'ready' && messages.length === 0 && (
+            <div className="gx-empty">
+              <p style={{ fontSize: '1rem', color: 'var(--gx-ink-2)' }}>
+                Tell me what you want to build and I&rsquo;ll make it in your place.
+              </p>
+              <div style={{ display: 'grid', gap: '0.4rem', marginTop: '1.1rem', textAlign: 'left' }}>
+                {SUGGESTIONS.map((s) => (
+                  <button key={s} type="button" className="gx-row" onClick={() => setSeed(s)} style={{ cursor: 'pointer' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {messages.map((item) => (
+            <Turn key={item.id} item={item} status={agentStatus} isLast={item.id === lastAssistantId} />
           ))}
         </div>
-      )}
-
-      <div
-        className={`ws-body${showSurface && !isNarrow ? ' has-surface' : ''}${showRail && !isNarrow ? ' has-rail' : ''}`}
-      >
-        <div className="ws-lane" hidden={!showChat}>
-          <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
-            <div className="chat-inner">
-              {historyState === 'loading' && <Forge kind="recalling" />}
-
-              {historyState === 'error' && (
-                <div className="chat-loading" role="alert">
-                  <p className="form-error">Couldn&rsquo;t load chat history.</p>
-                  <button type="button" className="btn btn-sm" onClick={reloadHistory}>
-                    Retry
-                  </button>
-                </div>
-              )}
-
-              {historyState === 'ready' && messages.length === 0 && (
-                <div className="chat-empty">
-                  <RunePulse size={26} />
-                  <h2>The golem awaits your words</h2>
-                  <p>Describe what your game should do. Golem writes the scripts and places the parts in Studio.</p>
-                  <div className="chat-suggestions">
-                    {SUGGESTIONS.map((s) => (
-                      <button key={s} type="button" className="suggestion" onClick={() => setSeed(s)}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                  {!studio.connected && (
-                    <button type="button" className="btn btn-primary" onClick={() => setShowPairing(true)}>
-                      Connect Studio first
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {messages.map((m) => (
-                <ChatMessage
-                  key={m.id}
-                  item={m}
-                  agentPhase={agentStatus?.phase ?? null}
-                  onOpenTool={openToolResult}
-                />
-              ))}
-
-              {agentStatus && running && (
-                <div className="agent-status" role="status">
-                  <span className="agent-status-rune" aria-hidden="true">
-                    <RunePulse size={15} />
-                  </span>
-                  Golem is {livePhase?.toLowerCase() ?? agentStatus.phase}
-                  {agentStatus.step !== undefined && agentStatus.totalSteps !== undefined && (
-                    <span className="muted">
-                      {' '}
-                      · step {agentStatus.step}/{agentStatus.totalSteps}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <Composer
-            disabledReason={composerDisabledReason}
-            running={running}
-            quota={quota}
-            onSend={send}
-            onStop={stop}
-            onModeChange={setMode}
-            seed={seed}
-          />
-        </div>
-
-        {showSurface && (
-          <WorkSurface
-            messages={messages}
-            running={running}
-            agentPhase={agentStatus?.phase ?? null}
-            pinned={pinned}
-            onClearPinned={() => setPinned(null)}
-            tab={surfaceTab}
-            onTabChange={setSurfaceTab}
-          />
-        )}
-
-        {showRail && (
-          <ContextRail
-            studioConnected={studio.connected}
-            studioState={studio.state}
-            onConnectStudio={() => setShowPairing(true)}
-            quota={quota}
-            checkpoints={checkpoints}
-            checkpointsState={checkpointsState}
-            onReloadCheckpoints={reloadCheckpoints}
-            onCreateCheckpoint={createCheckpoint}
-            onRestoreCheckpoint={(id) => {
-              setRestoring(true);
-              restoreCheckpoint(id);
-            }}
-            restoring={restoring}
-            logs={logs}
-            memorySummary={project.data?.memory_summary ?? null}
-            wsOpen={conn === 'open'}
-          />
-        )}
       </div>
+
+      {/* ------------------------------------------------------ composer -- */}
+      <div>
+        {connNote && (
+          <p style={{ textAlign: 'center', color: 'var(--gx-ink-3)', fontSize: '0.8rem', padding: '0.3rem 0 0' }} role="status">
+            {connNote}
+          </p>
+        )}
+        <Composer
+          onSend={send}
+          onStop={stop}
+          running={running}
+          disabled={conn !== 'open'}
+          mode={mode}
+          onModeChange={setMode}
+          providers={providers.data?.models ?? []}
+          providerId={providerId}
+          onProviderChange={setProviderId}
+          autoReasoning={providers.data?.auto.reasoning}
+          seed={seed}
+          placeholder={
+            studio.connected
+              ? 'Describe what you want to build…'
+              : 'Describe what you want — connect Studio when you are ready to build.'
+          }
+        />
+      </div>
+
+      {/* ------------------------------------------------------- drawers -- */}
+      <Drawer open={drawer === 'checkpoints'} onClose={() => setDrawer(null)} title="Checkpoints">
+        <form
+          style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem' }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!studio.connected) return;
+            createCheckpoint(label.trim() || 'manual checkpoint');
+            setLabel('');
+          }}
+        >
+          <input
+            className="gx-row"
+            style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Name this checkpoint"
+            aria-label="Checkpoint name"
+            disabled={!studio.connected}
+          />
+          <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
+            Save
+          </button>
+        </form>
+
+        {!studio.connected && (
+          <p className="gx-pop__note" style={{ padding: 0 }}>
+            Connect Studio to save or restore a checkpoint.
+          </p>
+        )}
+        {checkpointsState === 'loading' && <p className="gx-empty">Loading…</p>}
+        {checkpointsState === 'ready' && checkpoints.length === 0 && (
+          <p className="gx-empty">
+            No checkpoints yet. Golem takes one automatically before it changes anything.
+          </p>
+        )}
+
+        {checkpoints.map((c) => (
+          <div key={c.id} className="gx-row">
+            <span className="gx-row__main">
+              {c.label}
+              <span className="gx-row__meta">
+                {new Date(c.createdAt).toLocaleString()} · {c.instanceCount} objects · {c.scriptCount} scripts
+              </span>
+            </span>
+            <button
+              type="button"
+              className="gx-btn gx-btn--outline"
+              disabled={!studio.connected}
+              onClick={() => {
+                if (!window.confirm(`Restore "${c.label}"? This replaces what is in your place now.`)) return;
+                restoreCheckpoint(c.id);
+                setDrawer(null);
+              }}
+            >
+              Restore
+            </button>
+          </div>
+        ))}
+      </Drawer>
+
+      <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Golem remembers">
+        {project.data?.memory_summary ? (
+          <p className="gx-memory">{project.data.memory_summary}</p>
+        ) : (
+          <p className="gx-empty">
+            Nothing yet. As you build, Golem keeps a short note about how your project is put
+            together and uses it on later turns.
+          </p>
+        )}
+      </Drawer>
 
       {showPairing && (
         <PairingDialog

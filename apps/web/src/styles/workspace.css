@@ -86,8 +86,22 @@
 
 .gx-main {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   min-width: 0;
+  min-height: 0;
+}
+
+/* The workspace owns its own vertical rhythm — topbar, conversation, composer
+   — while other routes simply fill the main area and scroll themselves. */
+.gx-ws {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.gx-plain {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -474,6 +488,12 @@
 .gx-icon-btn:hover {
   background: rgba(242, 237, 226, 0.06);
   color: var(--gx-ink);
+}
+
+/* The rail is permanent at desktop width, so its toggle is not needed there.
+   Declared after .gx-icon-btn deliberately: same specificity, later wins. */
+.gx-icon-btn.gx-rail-toggle {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -1035,6 +1055,11 @@
 
   .gx-rail.is-open {
     transform: none;
+  }
+
+  /* Specificity has to beat .gx-icon-btn, which is declared later. */
+  .gx-icon-btn.gx-rail-toggle {
+    display: grid;
   }
 
   .gx-thread,

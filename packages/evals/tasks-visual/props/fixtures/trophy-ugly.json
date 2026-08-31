@@ -1,0 +1,76 @@
+{
+ "name": "trophy-ugly",
+ "lighting": {
+  "brightness": 3,
+  "clockTime": 14.5,
+  "ambient": [
+   0,
+   0,
+   0
+  ],
+  "lightInstances": 0,
+  "effects": []
+ },
+ "parts": [
+  {
+   "name": "Base",
+   "material": "Plastic",
+   "size": [
+    4,
+    1,
+    4
+   ],
+   "pos": [
+    0,
+    0.5,
+    0
+   ],
+   "color": [
+    163,
+    162,
+    165
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stem",
+   "material": "Plastic",
+   "size": [
+    1,
+    4,
+    1
+   ],
+   "pos": [
+    0,
+    3,
+    0
+   ],
+   "color": [
+    163,
+    162,
+    165
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Cup",
+   "material": "Plastic",
+   "size": [
+    3,
+    2,
+    3
+   ],
+   "pos": [
+    0,
+    6,
+    0
+   ],
+   "color": [
+    163,
+    162,
+    165
+   ],
+   "transparency": 0
+  }
+ ]
+}

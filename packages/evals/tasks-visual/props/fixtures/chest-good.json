@@ -1,0 +1,640 @@
+{
+ "name": "chest-good",
+ "lighting": {
+  "brightness": 2.4,
+  "clockTime": 16.2,
+  "ambient": [
+   42,
+   44,
+   52
+  ],
+  "lightInstances": 2,
+  "effects": [
+   "Atmosphere"
+  ]
+ },
+ "parts": [
+  {
+   "name": "Floor",
+   "material": "WoodPlanks",
+   "size": [
+    5.4,
+    0.35,
+    3.2
+   ],
+   "pos": [
+    0,
+    0.35,
+    0
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Front",
+   "material": "WoodPlanks",
+   "size": [
+    5.4,
+    2.1,
+    0.35
+   ],
+   "pos": [
+    0.013,
+    1.4,
+    -1.42
+   ],
+   "color": [
+    122,
+    84,
+    48
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Back",
+   "material": "WoodPlanks",
+   "size": [
+    5.4,
+    2.1,
+    0.35
+   ],
+   "pos": [
+    0.013,
+    1.4,
+    1.42
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Left",
+   "material": "WoodPlanks",
+   "size": [
+    0.35,
+    2.1,
+    3.2
+   ],
+   "pos": [
+    -2.52,
+    1.413,
+    0.013
+   ],
+   "color": [
+    122,
+    84,
+    48
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Right",
+   "material": "WoodPlanks",
+   "size": [
+    0.35,
+    2.1,
+    3.2
+   ],
+   "pos": [
+    2.52,
+    1.413,
+    0.013
+   ],
+   "color": [
+    122,
+    84,
+    48
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "LidBack",
+   "material": "Wood",
+   "size": [
+    5.5,
+    0.4,
+    1.4
+   ],
+   "pos": [
+    0,
+    2.6,
+    0.9
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "LidMid",
+   "material": "Wood",
+   "size": [
+    5.5,
+    0.4,
+    1.3
+   ],
+   "pos": [
+    0.013,
+    2.95,
+    0.05
+   ],
+   "color": [
+    122,
+    84,
+    48
+   ],
+   "transparency": 0,
+   "rot": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "LidFront",
+   "material": "Wood",
+   "size": [
+    5.5,
+    0.4,
+    1.2
+   ],
+   "pos": [
+    0,
+    2.72,
+    -0.85
+   ],
+   "color": [
+    122,
+    84,
+    48
+   ],
+   "transparency": 0,
+   "rot": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "LockPlate",
+   "material": "Foil",
+   "size": [
+    1.1,
+    1,
+    0.16
+   ],
+   "pos": [
+    0,
+    2.15,
+    -1.62
+   ],
+   "color": [
+    176,
+    148,
+    86
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Keyhole",
+   "material": "Metal",
+   "size": [
+    0.22,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    2.1,
+    -1.72
+   ],
+   "color": [
+    34,
+    32,
+    30
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Band-1.7",
+   "material": "Metal",
+   "size": [
+    0.34,
+    2.3,
+    3.4
+   ],
+   "pos": [
+    -1.7,
+    1.45,
+    0
+   ],
+   "color": [
+    78,
+    80,
+    86
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "BandLid-1.7",
+   "material": "Metal",
+   "size": [
+    0.34,
+    0.5,
+    3
+   ],
+   "pos": [
+    -1.7,
+    2.887,
+    0.087
+   ],
+   "color": [
+    78,
+    80,
+    86
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Band1.7",
+   "material": "Metal",
+   "size": [
+    0.34,
+    2.3,
+    3.4
+   ],
+   "pos": [
+    1.7,
+    1.45,
+    0
+   ],
+   "color": [
+    78,
+    80,
+    86
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "BandLid1.7",
+   "material": "Metal",
+   "size": [
+    0.34,
+    0.5,
+    3
+   ],
+   "pos": [
+    1.7,
+    2.887,
+    0.087
+   ],
+   "color": [
+    78,
+    80,
+    86
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Corner-2.5-1.4",
+   "material": "Metal",
+   "size": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "pos": [
+    -2.5,
+    0.5,
+    -1.4
+   ],
+   "color": [
+    96,
+    98,
+    104
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Foot-2.5-1.4",
+   "material": "Wood",
+   "size": [
+    0.6,
+    0.4,
+    0.6
+   ],
+   "pos": [
+    -2.15,
+    0.2,
+    -1.148
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Corner2.5-1.4",
+   "material": "Metal",
+   "size": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "pos": [
+    2.5,
+    0.5,
+    -1.4
+   ],
+   "color": [
+    96,
+    98,
+    104
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Foot2.5-1.4",
+   "material": "Wood",
+   "size": [
+    0.6,
+    0.4,
+    0.6
+   ],
+   "pos": [
+    2.15,
+    0.2,
+    -1.148
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Corner-2.51.4",
+   "material": "Metal",
+   "size": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "pos": [
+    -2.5,
+    0.5,
+    1.4
+   ],
+   "color": [
+    96,
+    98,
+    104
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Foot-2.51.4",
+   "material": "Wood",
+   "size": [
+    0.6,
+    0.4,
+    0.6
+   ],
+   "pos": [
+    -2.15,
+    0.2,
+    1.148
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Corner2.51.4",
+   "material": "Metal",
+   "size": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "pos": [
+    2.5,
+    0.5,
+    1.4
+   ],
+   "color": [
+    96,
+    98,
+    104
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Foot2.51.4",
+   "material": "Wood",
+   "size": [
+    0.6,
+    0.4,
+    0.6
+   ],
+   "pos": [
+    2.15,
+    0.2,
+    1.148
+   ],
+   "color": [
+    86,
+    58,
+    33
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rivet0",
+   "material": "Metal",
+   "size": [
+    0.2,
+    0.2,
+    0.14
+   ],
+   "pos": [
+    -1.7,
+    0.7,
+    -1.62
+   ],
+   "color": [
+    128,
+    130,
+    136
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rivet1",
+   "material": "Metal",
+   "size": [
+    0.2,
+    0.2,
+    0.14
+   ],
+   "pos": [
+    0,
+    0.7,
+    -1.62
+   ],
+   "color": [
+    128,
+    130,
+    136
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rivet2",
+   "material": "Metal",
+   "size": [
+    0.2,
+    0.2,
+    0.14
+   ],
+   "pos": [
+    1.7,
+    0.7,
+    -1.62
+   ],
+   "color": [
+    128,
+    130,
+    136
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rivet3",
+   "material": "Metal",
+   "size": [
+    0.2,
+    0.2,
+    0.14
+   ],
+   "pos": [
+    -1.7,
+    2.2,
+    -1.62
+   ],
+   "color": [
+    128,
+    130,
+    136
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rivet4",
+   "material": "Metal",
+   "size": [
+    0.2,
+    0.2,
+    0.14
+   ],
+   "pos": [
+    0,
+    2.2,
+    -1.62
+   ],
+   "color": [
+    128,
+    130,
+    136
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rivet5",
+   "material": "Metal",
+   "size": [
+    0.2,
+    0.2,
+    0.14
+   ],
+   "pos": [
+    1.7,
+    2.2,
+    -1.62
+   ],
+   "color": [
+    128,
+    130,
+    136
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Hinge-0.7",
+   "material": "Metal",
+   "size": [
+    0.5,
+    0.28,
+    0.5
+   ],
+   "pos": [
+    0.013,
+    2.517,
+    1.436
+   ],
+   "color": [
+    78,
+    80,
+    86
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Hinge0.7",
+   "material": "Metal",
+   "size": [
+    0.5,
+    0.28,
+    0.5
+   ],
+   "pos": [
+    0,
+    2.5,
+    1.464
+   ],
+   "color": [
+    78,
+    80,
+    86
+   ],
+   "transparency": 0
+  }
+ ]
+}

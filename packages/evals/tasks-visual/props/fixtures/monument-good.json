@@ -1,0 +1,806 @@
+{
+ "name": "monument-good",
+ "lighting": {
+  "brightness": 2.4,
+  "clockTime": 16.2,
+  "ambient": [
+   42,
+   44,
+   52
+  ],
+  "lightInstances": 2,
+  "effects": [
+   "Atmosphere"
+  ]
+ },
+ "parts": [
+  {
+   "name": "StepA",
+   "material": "Granite",
+   "size": [
+    7.4,
+    0.6,
+    7.4
+   ],
+   "pos": [
+    0,
+    0.3,
+    0
+   ],
+   "color": [
+    92,
+    90,
+    88
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "StepB",
+   "material": "Granite",
+   "size": [
+    6.2,
+    0.6,
+    6.2
+   ],
+   "pos": [
+    0,
+    0.9,
+    0
+   ],
+   "color": [
+    102,
+    100,
+    98
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plinth",
+   "material": "Marble",
+   "size": [
+    4.8,
+    1.8,
+    4.8
+   ],
+   "pos": [
+    0,
+    2.1,
+    0
+   ],
+   "color": [
+    204,
+    200,
+    192
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "PlinthCap",
+   "material": "Marble",
+   "size": [
+    5.2,
+    0.35,
+    5.2
+   ],
+   "pos": [
+    0,
+    3.17,
+    0
+   ],
+   "color": [
+    216,
+    212,
+    204
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "ShaftA",
+   "material": "Limestone",
+   "size": [
+    3,
+    4,
+    3
+   ],
+   "pos": [
+    0,
+    5.35,
+    0
+   ],
+   "color": [
+    212,
+    206,
+    190
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "ShaftB",
+   "material": "Limestone",
+   "size": [
+    2.5,
+    4,
+    2.5
+   ],
+   "pos": [
+    0,
+    9.35,
+    0
+   ],
+   "color": [
+    206,
+    200,
+    184
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "ShaftC",
+   "material": "Limestone",
+   "size": [
+    2,
+    3.6,
+    2
+   ],
+   "pos": [
+    0,
+    13.15,
+    0
+   ],
+   "color": [
+    200,
+    194,
+    178
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Capstone",
+   "material": "Foil",
+   "size": [
+    1.7,
+    1.5,
+    1.7
+   ],
+   "pos": [
+    0,
+    15.7,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Tip",
+   "material": "Neon",
+   "size": [
+    0.7,
+    0.8,
+    0.7
+   ],
+   "pos": [
+    0,
+    16.85,
+    0
+   ],
+   "color": [
+    255,
+    236,
+    176
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plaque0",
+   "material": "Foil",
+   "size": [
+    2,
+    1,
+    0.14
+   ],
+   "pos": [
+    2.46,
+    2.2,
+    0
+   ],
+   "color": [
+    178,
+    152,
+    96
+   ],
+   "transparency": 0,
+   "rot": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "Band0",
+   "material": "Marble",
+   "size": [
+    3.2,
+    0.26,
+    3.2
+   ],
+   "pos": [
+    0,
+    7.4,
+    0
+   ],
+   "color": [
+    222,
+    218,
+    206
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plaque1",
+   "material": "Foil",
+   "size": [
+    2,
+    1,
+    0.14
+   ],
+   "pos": [
+    0,
+    2.2,
+    2.46
+   ],
+   "color": [
+    178,
+    152,
+    96
+   ],
+   "transparency": 0,
+   "rot": [
+    6.123233995736766e-17,
+    0,
+    1,
+    0,
+    1,
+    0,
+    -1,
+    0,
+    6.123233995736766e-17
+   ]
+  },
+  {
+   "name": "Band1",
+   "material": "Marble",
+   "size": [
+    3.2,
+    0.26,
+    3.2
+   ],
+   "pos": [
+    0,
+    10,
+    0
+   ],
+   "color": [
+    222,
+    218,
+    206
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plaque2",
+   "material": "Foil",
+   "size": [
+    2,
+    1,
+    0.14
+   ],
+   "pos": [
+    -2.46,
+    2.2,
+    0
+   ],
+   "color": [
+    178,
+    152,
+    96
+   ],
+   "transparency": 0,
+   "rot": [
+    -1,
+    0,
+    1.2246467991473532e-16,
+    0,
+    1,
+    0,
+    -1.2246467991473532e-16,
+    0,
+    -1
+   ]
+  },
+  {
+   "name": "Band2",
+   "material": "Marble",
+   "size": [
+    3.2,
+    0.26,
+    3.2
+   ],
+   "pos": [
+    0,
+    12.6,
+    0
+   ],
+   "color": [
+    222,
+    218,
+    206
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plaque3",
+   "material": "Foil",
+   "size": [
+    2,
+    1,
+    0.14
+   ],
+   "pos": [
+    0,
+    2.2,
+    -2.46
+   ],
+   "color": [
+    178,
+    152,
+    96
+   ],
+   "transparency": 0,
+   "rot": [
+    -1.8369701987210297e-16,
+    0,
+    -1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    -1.8369701987210297e-16
+   ]
+  },
+  {
+   "name": "Band3",
+   "material": "Marble",
+   "size": [
+    3.2,
+    0.26,
+    3.2
+   ],
+   "pos": [
+    0,
+    15.2,
+    0
+   ],
+   "color": [
+    222,
+    218,
+    206
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Urn0",
+   "material": "Granite",
+   "size": [
+    0.8,
+    1,
+    0.8
+   ],
+   "pos": [
+    3.1,
+    1.4,
+    0
+   ],
+   "color": [
+    110,
+    106,
+    102
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Urn1",
+   "material": "Granite",
+   "size": [
+    0.8,
+    1,
+    0.8
+   ],
+   "pos": [
+    0,
+    1.4,
+    3.1
+   ],
+   "color": [
+    110,
+    106,
+    102
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Urn2",
+   "material": "Granite",
+   "size": [
+    0.8,
+    1,
+    0.8
+   ],
+   "pos": [
+    -3.1,
+    1.4,
+    0
+   ],
+   "color": [
+    110,
+    106,
+    102
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Urn3",
+   "material": "Granite",
+   "size": [
+    0.8,
+    1,
+    0.8
+   ],
+   "pos": [
+    0,
+    1.4,
+    -3.1
+   ],
+   "color": [
+    110,
+    106,
+    102
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Bollard0",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    3.625,
+    0.75,
+    0
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard1",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    2.563,
+    0.75,
+    2.563
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard2",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    0,
+    0.75,
+    3.625
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard3",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    -2.563,
+    0.75,
+    2.563
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard4",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    -3.625,
+    0.75,
+    0
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard5",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    -2.563,
+    0.75,
+    -2.563
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard6",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    0,
+    0.75,
+    -3.625
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Bollard7",
+   "material": "Basalt",
+   "size": [
+    0.4,
+    0.5,
+    0.4
+   ],
+   "pos": [
+    2.563,
+    0.75,
+    -2.563
+   ],
+   "color": [
+    70,
+    68,
+    66
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Glyph0",
+   "material": "Limestone",
+   "size": [
+    0.34,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    5,
+    -1.55
+   ],
+   "color": [
+    176,
+    170,
+    156
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Glyph1",
+   "material": "Limestone",
+   "size": [
+    0.34,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    6.3,
+    -1.55
+   ],
+   "color": [
+    176,
+    170,
+    156
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Glyph2",
+   "material": "Limestone",
+   "size": [
+    0.34,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    7.6,
+    -1.563
+   ],
+   "color": [
+    176,
+    170,
+    156
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Glyph3",
+   "material": "Limestone",
+   "size": [
+    0.34,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    8.9,
+    -1.55
+   ],
+   "color": [
+    176,
+    170,
+    156
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Glyph4",
+   "material": "Limestone",
+   "size": [
+    0.34,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    10.2,
+    -1.563
+   ],
+   "color": [
+    176,
+    170,
+    156
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Glyph5",
+   "material": "Limestone",
+   "size": [
+    0.34,
+    0.34,
+    0.1
+   ],
+   "pos": [
+    0,
+    11.5,
+    -1.55
+   ],
+   "color": [
+    176,
+    170,
+    156
+   ],
+   "transparency": 0
+  }
+ ]
+}

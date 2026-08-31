@@ -4,9 +4,25 @@
     {
       "name": "site",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["astro", "dev", "--port", "4321"],
+      "runtimeArgs": [
+        "astro",
+        "dev",
+        "--port",
+        "4321"
+      ],
       "cwd": "apps/site",
       "port": 4321
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5173"
+      ],
+      "cwd": "apps/web",
+      "port": 5173
     }
   ]
 }

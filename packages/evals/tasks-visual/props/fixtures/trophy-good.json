@@ -1,0 +1,782 @@
+{
+ "name": "trophy-good",
+ "lighting": {
+  "brightness": 2.4,
+  "clockTime": 16.2,
+  "ambient": [
+   42,
+   44,
+   52
+  ],
+  "lightInstances": 2,
+  "effects": [
+   "Atmosphere"
+  ]
+ },
+ "parts": [
+  {
+   "name": "Plinth1",
+   "material": "Granite",
+   "size": [
+    5.2,
+    0.8,
+    5.2
+   ],
+   "pos": [
+    0,
+    0.4,
+    0
+   ],
+   "color": [
+    66,
+    63,
+    60
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plinth2",
+   "material": "Marble",
+   "size": [
+    4.4,
+    0.7,
+    4.4
+   ],
+   "pos": [
+    0,
+    1.15,
+    0
+   ],
+   "color": [
+    222,
+    218,
+    208
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Plinth3",
+   "material": "Marble",
+   "size": [
+    3.7,
+    0.6,
+    3.7
+   ],
+   "pos": [
+    0,
+    1.8,
+    0
+   ],
+   "color": [
+    206,
+    201,
+    190
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Nameplate",
+   "material": "Foil",
+   "size": [
+    2.6,
+    0.7,
+    0.16
+   ],
+   "pos": [
+    0,
+    1.163,
+    2.24
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "StemA",
+   "material": "Metal",
+   "size": [
+    1.3,
+    1.1,
+    1.3
+   ],
+   "pos": [
+    0,
+    2.65,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "StemB",
+   "material": "Metal",
+   "size": [
+    1,
+    1.2,
+    1
+   ],
+   "pos": [
+    0,
+    3.8,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "StemC",
+   "material": "Metal",
+   "size": [
+    0.8,
+    1.2,
+    0.8
+   ],
+   "pos": [
+    0,
+    5,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Knop",
+   "material": "Foil",
+   "size": [
+    1.5,
+    0.45,
+    1.5
+   ],
+   "pos": [
+    0,
+    5.83,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "BowlA",
+   "material": "Foil",
+   "size": [
+    2.1,
+    0.8,
+    2.1
+   ],
+   "pos": [
+    0,
+    6.45,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "BowlB",
+   "material": "Foil",
+   "size": [
+    2.7,
+    0.9,
+    2.7
+   ],
+   "pos": [
+    0,
+    7.3,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "BowlC",
+   "material": "Foil",
+   "size": [
+    3.1,
+    0.8,
+    3.1
+   ],
+   "pos": [
+    0,
+    8.15,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Rim",
+   "material": "Metal",
+   "size": [
+    3.35,
+    0.3,
+    3.35
+   ],
+   "pos": [
+    0,
+    8.7,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleUp-1",
+   "material": "Metal",
+   "size": [
+    0.32,
+    2.1,
+    0.32
+   ],
+   "pos": [
+    -1.95,
+    7.4,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleTop-1",
+   "material": "Metal",
+   "size": [
+    0.75,
+    0.3,
+    0.32
+   ],
+   "pos": [
+    -1.72,
+    8.413,
+    0.013
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleBot-1",
+   "material": "Metal",
+   "size": [
+    0.75,
+    0.3,
+    0.32
+   ],
+   "pos": [
+    -1.6,
+    6.487,
+    0.017
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleCurl-1",
+   "material": "Foil",
+   "size": [
+    0.34,
+    0.34,
+    0.34
+   ],
+   "pos": [
+    -2.05,
+    6.35,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleUp1",
+   "material": "Metal",
+   "size": [
+    0.32,
+    2.1,
+    0.32
+   ],
+   "pos": [
+    1.95,
+    7.4,
+    0
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleTop1",
+   "material": "Metal",
+   "size": [
+    0.75,
+    0.3,
+    0.32
+   ],
+   "pos": [
+    1.72,
+    8.413,
+    0.013
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleBot1",
+   "material": "Metal",
+   "size": [
+    0.75,
+    0.3,
+    0.32
+   ],
+   "pos": [
+    1.6,
+    6.487,
+    0.017
+   ],
+   "color": [
+    212,
+    175,
+    55
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "HandleCurl1",
+   "material": "Foil",
+   "size": [
+    0.34,
+    0.34,
+    0.34
+   ],
+   "pos": [
+    2.05,
+    6.35,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud0",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    1.5,
+    8.9,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud1",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    1.299,
+    8.9,
+    0.75
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud2",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    0.75,
+    8.9,
+    1.299
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud3",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    0,
+    8.9,
+    1.5
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud4",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    -0.75,
+    8.9,
+    1.299
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud5",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    -1.299,
+    8.9,
+    0.75
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud6",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    -1.5,
+    8.9,
+    0
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud7",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    -1.299,
+    8.9,
+    -0.75
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud8",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    -0.75,
+    8.9,
+    -1.299
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud9",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    0,
+    8.9,
+    -1.5
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud10",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    0.75,
+    8.9,
+    -1.299
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Stud11",
+   "material": "Foil",
+   "size": [
+    0.3,
+    0.22,
+    0.3
+   ],
+   "pos": [
+    1.299,
+    8.9,
+    -0.75
+   ],
+   "color": [
+    238,
+    208,
+    110
+   ],
+   "transparency": 0
+  },
+  {
+   "name": "Pip0",
+   "material": "Granite",
+   "size": [
+    0.45,
+    0.35,
+    0.45
+   ],
+   "pos": [
+    2.3,
+    0.95,
+    0
+   ],
+   "color": [
+    92,
+    88,
+    84
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Pip1",
+   "material": "Granite",
+   "size": [
+    0.45,
+    0.35,
+    0.45
+   ],
+   "pos": [
+    0,
+    0.95,
+    2.3
+   ],
+   "color": [
+    92,
+    88,
+    84
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Pip2",
+   "material": "Granite",
+   "size": [
+    0.45,
+    0.35,
+    0.45
+   ],
+   "pos": [
+    -2.3,
+    0.95,
+    0
+   ],
+   "color": [
+    92,
+    88,
+    84
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  },
+  {
+   "name": "Pip3",
+   "material": "Granite",
+   "size": [
+    0.45,
+    0.35,
+    0.45
+   ],
+   "pos": [
+    0,
+    0.95,
+    -2.3
+   ],
+   "color": [
+    92,
+    88,
+    84
+   ],
+   "transparency": 0,
+   "rot": [
+    0.7071067811865476,
+    0,
+    0.7071067811865475,
+    0,
+    1,
+    0,
+    -0.7071067811865475,
+    0,
+    0.7071067811865476
+   ]
+  }
+ ]
+}

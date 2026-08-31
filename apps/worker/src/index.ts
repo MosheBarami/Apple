@@ -4,6 +4,7 @@ import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, BudgetError } from './gateway';
+import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
@@ -197,6 +198,38 @@ app.post('/api/studio/poll', async (c) => {
 });
 
 // ---------------------------------------------------------------- me
+/**
+ * The model providers this deployment can actually reach.
+ *
+ * Availability is computed from the environment on every request, never
+ * cached and never hardcoded, so the picker in the composer cannot show a
+ * provider as usable when no credential for it exists. A provider that is
+ * unavailable is still listed — with the reason — because silently hiding it
+ * would leave the user wondering why the product advertises four models and
+ * offers one.
+ */
+app.get('/api/providers', async (c) => {
+  const rows = capabilityTable(c.env);
+  const auto = selectProvider(c.env, {});
+  return c.json({
+    models: rows.map((r) => ({
+      id: r.id,
+      provider: r.provider,
+      label: r.displayName,
+      available: r.available,
+      reason: r.available ? null : r.availabilityDetail,
+      unsupportedModelKeys: r.unsupportedModelKeys ?? [],
+      supportsTools: r.supportsTools,
+      supportsVision: r.supportsVision,
+      inputCostPer1M: r.inputCostPer1M,
+      outputCostPer1M: r.outputCostPer1M,
+      unverifiedFields: r.unverifiedFields ?? [],
+    })),
+    auto: auto.ok ? { model: auto.model.id, reasoning: auto.reasoning } : { model: null, reasoning: auto.reasoning },
+    health: providerHealth(),
+  });
+});
+
 app.get('/api/me', async (c) => {
   const user = c.get('user');
   const [profile, quotaRes] = await Promise.all([
