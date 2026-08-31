@@ -1163,3 +1163,55 @@
   min-width: 2.4em;
   text-align: center;
 }
+
+/* --------------------------------------------------------------------------
+   15. Toast placement
+   -------------------------------------------------------------------------- */
+
+/* The toast is anchored to the bottom of the viewport, which on a phone puts
+   it directly on top of the composer's mode and provider chips. Lift it clear
+   of the composer rather than letting a transient message cover a control. */
+@media (max-width: 860px) {
+  .toast-stack,
+  .toasts {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 9.5rem) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   16. Generative-UI panels, in the workspace material
+
+   The typed component registry predates this design layer and carries the
+   older stylesheet's chrome. Rather than restyle every one of its components,
+   remap the handful of surface tokens they read so a render, a diff or a
+   critique sits in the conversation as the same material as everything else.
+   -------------------------------------------------------------------------- */
+
+.gx-assistant .gu-doc,
+.gx-assistant .gu-panel,
+.gx-assistant .gu-block {
+  --surface: var(--gx-raise);
+  --surface-2: var(--gx-raise-2);
+  --paper: var(--gx-ground);
+  --paper-2: var(--gx-rail);
+  --ink: var(--gx-ink);
+  --muted: var(--gx-ink-2);
+  --faint: var(--gx-ink-3);
+  --line: var(--gx-line);
+  --line-strong: var(--gx-line-2);
+  --accent: var(--gx-ember);
+  --good: var(--gx-good);
+  --bad: var(--gx-bad);
+  --warn: var(--gx-warn);
+  --r-lg: var(--gx-r);
+  --r-md: var(--gx-r);
+  --r-sm: var(--gx-r-sm);
+  /* The conversation supplies the vertical rhythm; the panel should not add
+     a second, competing one. */
+  margin-block: 0 1.1rem;
+}
+
+/* One border weight in the conversation, not two. */
+.gx-assistant .gu-doc {
+  box-shadow: none;
+}
