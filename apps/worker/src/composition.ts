@@ -451,6 +451,55 @@ export function structureLine(s: StructureMetrics): string {
 }
 
 /**
+ * Capture the layout with run_code instead of relying on the render to carry it.
+ *
+ * MEASURED 2026-08-31: the plugin installed in the owner's Studio returns render_view as
+ * {views, boundsSize, subject, lighting} — with NO `layout` field. Render.layoutSummary exists in
+ * this repo but not in the .rbxm that is actually installed, and the plugin is installed by hand, so
+ * every consumer of result.layout has been silently inert in production: analyseLayout, the
+ * structural half of the composition gate, and the semantic gate all received undefined and did
+ * nothing. check_composition answered "no geometry to judge" against a place with geometry in it.
+ *
+ * Rather than require every user to reinstall before any of it works, the geometry is fetched with
+ * run_code, which every installed plugin understands. It is also cheaper than the render path it
+ * replaces: no rasterisation, no image payload, one round trip.
+ */
+export const LAYOUT_LUAU = `
+local root = game.Workspace
+local out, n = {}, 0
+for _, d in ipairs(root:GetDescendants()) do
+  if d:IsA("BasePart") and d.Transparency < 0.95 then
+    n += 1
+    if n <= 1500 then
+      local _, ry = d.CFrame:ToEulerAnglesYXZ()
+      out[#out + 1] = string.format("[%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f]",
+        d.Position.X, d.Position.Y, d.Position.Z, d.Size.X, d.Size.Y, d.Size.Z, math.deg(ry))
+    end
+  end
+end
+return "[" .. table.concat(out, ",") .. "]"
+`;
+
+/** Read the tuple array back out of whatever wrapper run_code returned it in. */
+export function parseLayout(raw: unknown): number[][] | null {
+  let value: unknown = raw;
+  for (let i = 0; i < 6; i++) {
+    if (!value || typeof value !== 'object') break;
+    const o = value as Record<string, unknown>;
+    if ('result' in o) { value = o.result; continue; }
+    if ('t' in o && 'v' in o) { value = o.v; continue; }
+    if ('data' in o) { value = o.data; continue; }
+    break;
+  }
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value); } catch { return null; }
+  }
+  if (!Array.isArray(value)) return null;
+  const parts = value.filter((p): p is number[] => Array.isArray(p) && p.length >= 6 && p.every((n) => typeof n === 'number'));
+  return parts.length ? parts : null;
+}
+
+/**
  * Structure from the compact capture the plugin already sends. SceneLayout.parts is
  * [x, y, z, sx, sy, sz, yawDeg] per part, so this costs nothing extra on the wire — the geometry
  * needed to judge macro composition is already in the request that asks for a critique.

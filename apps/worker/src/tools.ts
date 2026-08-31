@@ -8,7 +8,8 @@ import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { chooseAssetSource, verifyCreatorStoreAsset, findVerifiedAssets, type AssetNeed, type AssetKind } from './assets';
 import { searchAssetLibrary } from './asset-library';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
-import { compositionHardFails, structureFromLayout, structureLine } from './composition';
+import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
+import { semanticCheck, semanticLine } from './semantic';
 
 export interface AgentCtx {
   env: Env;
@@ -266,10 +267,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'check_composition',
       description:
-        'Check the MACRO COMPOSITION of what you have built — landmark dominance, vertical hierarchy and massing — without rendering images or spending a critique. Call this on your BLOCKOUT, before adding any detail. If it fails, adding parts cannot fix it: change the layout and check again.',
+        'Check your BLOCKOUT before adding any detail: whether you are building the thing that was actually requested, and whether the macro composition works. Costs nothing — no images, no critique. If it fails, adding parts cannot fix it; change the layout and check again.',
       parameters: S({
         target: { type: 'string', description: 'instance path to check, e.g. game.Workspace.Plaza. Omit for the whole workspace.' },
         subject: { type: 'string', enum: ['scene', 'prop'], description: 'a prop has no landmark tier; defaults to scene' },
+        intent: { type: 'string', description: "the user's request in their own words — used to check you are building the right KIND of thing" },
       }),
     },
     studio: true,
@@ -278,19 +280,33 @@ export const TOOLS: Record<string, ToolImpl> = {
       // arithmetic. No vision model call and no image tokens, where inspect_visually costs a full
       // critique. That difference is what makes "reject the blockout and rebuild it" affordable
       // enough to do early, which is the only point at which rejecting it is cheap.
-      const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'top');
-      if ('error' in res) return res;
-      const structure = structureFromLayout(res.layout?.parts);
+      // Geometry comes from run_code, not from a render. MEASURED: the plugin installed in the
+      // owner's Studio returns render_view WITHOUT a `layout` field, so reading it there made this
+      // whole gate inert in production — it answered "no geometry to judge" against a place full of
+      // geometry. run_code is understood by every installed plugin, and it is cheaper than the
+      // render it replaces: no rasterisation and no image payload.
+      const raw = await ctx.execStudioOp({ op: 'run_code', code: LAYOUT_LUAU }, 30_000);
+      if (!raw.ok) return { error: `could not read the scene: ${raw.error}` };
+      const parts = parseLayout(raw.data);
+      const structure = structureFromLayout(parts ?? undefined);
       if (!structure) return { error: 'no geometry to judge — build the blockout first' };
       const subject = a.subject === 'prop' ? 'prop' : 'scene';
-      const failures = compositionHardFails(structure, [], subject);
+      // SEMANTIC FIRST. Composition asks "is this well arranged"; semantics asks "is this the thing
+      // that was asked for". The cottage built for a tavern-interior brief had a real vertical
+      // hierarchy and was still completely wrong, so the second question has to be answered first —
+      // and answered before any detail is paid for.
+      const semantic = a.intent ? semanticCheck(String(a.intent), parts ?? undefined) : null;
+      const failures = [...(semantic?.failures ?? []), ...compositionHardFails(structure, [], subject)];
       return {
         structure: structureLine(structure),
+        ...(semantic ? { intentMatch: semanticLine(semantic) } : {}),
         passed: failures.length === 0,
         failures,
-        guidance: failures.length
-          ? 'These are structural. More parts, more materials and more props will not move any of them — that was measured. Change the LAYOUT: give one element clear dominance in height and mass and let everything else step down beneath it.'
-          : 'Macro composition is sound. Build detail on top of it.',
+        guidance: semantic?.failures.length
+          ? 'STOP. You are not building the thing that was requested. Do not add detail and do not correct this in place — the layout itself is the wrong shape. Clear what you built and lay out the right kind of space.'
+          : failures.length
+            ? 'These are structural. More parts, more materials and more props will not move any of them — that was measured. Change the LAYOUT: give one element clear dominance in height and mass and let everything else step down beneath it.'
+            : 'Blockout is sound and it is the right kind of thing. Build detail on top of it.',
       };
     },
   },

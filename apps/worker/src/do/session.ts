@@ -27,6 +27,7 @@ import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { trimTranscript } from '../transcript';
+import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
@@ -66,6 +67,10 @@ interface AgentState {
   request?: string;
   /** the visual gate has already run once this run — it is charged once, never in a loop */
   autoCritiqued?: boolean;
+  /** one record per visual correction pass, so "patched forever" can be detected rather than felt */
+  passes?: PassRecord[];
+  /** a rebuild has already been ordered this run; ordering it twice would loop */
+  rebuildOrdered?: boolean;
 }
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
@@ -639,11 +644,33 @@ export class SessionDO extends DurableObject<Env> {
         const critique = ctx2.lastCritique;
         if (critique && !critique.passed && !critique.unavailable) {
           agent.visualDefectsFound = true;
+
+          // REBUILD OR PATCH. Until now this always said "Do not start over", which is the wrong
+          // instruction exactly when it matters most: b4-interior was handed its own critique and
+          // returned a scene with the same part, material and light counts and the same defects,
+          // one for one. Patching had already failed and nothing could notice.
+          const layout = ctx2.lastRender?.layout?.parts;
+          agent.passes = [
+            ...(agent.passes ?? []),
+            { signature: sceneSignature(layout), score: critique.score, parts: layout?.length ?? 0 },
+          ];
+          const semantic = agent.request ? semanticCheck(agent.request, layout) : null;
+          const verdict = shouldRebuild(agent.passes, semantic?.failures.length ?? 0);
+          const rebuild = verdict.rebuild && !agent.rebuildOrdered;
+          if (rebuild) agent.rebuildOrdered = true;
+
           agent.llm.push({
             role: 'user',
-            content:
-              `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
-              'Fix the blocking and major defects in what you already built. Do not start over.',
+            content: rebuild
+              ? `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
+                (semantic?.failures.length ? `${semantic.failures.join('\n')}\n\n` : '') +
+                `STOP PATCHING — ${verdict.reason}.\n` +
+                'Do not correct this in place and do not add more parts: that was measured and it does not work. ' +
+                'Create a checkpoint, delete the failed layout, and lay out a fundamentally different macro ' +
+                'composition from scratch. Keep any individual props that were good and reuse them. ' +
+                'Then call check_composition on the new blockout BEFORE adding any detail.'
+              : `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
+                'Fix the blocking and major defects in what you already built. Do not start over.',
           });
           await this.ctx.storage.put('agent', agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
