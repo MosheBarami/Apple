@@ -259,3 +259,62 @@ the accounting already prices cached input.
 measured Roblox eval (98.9 vs 96.8) and the model is the product's quality floor. Trading that for an
 input-cost discount is the wrong trade, and it is recorded here so the option is not rediscovered as
 if it were new.
+
+---
+
+## Addendum — 2026-08-31: the largest cost lever is the false-reject rate
+
+This phase did **not** reduce the measured per-build neuron cost. A normal
+quality-gated Stone build still costs roughly what it did (~2,300 neurons by
+the estimate above), against a Free daily allowance of 1,800 neurons
+(60 Sparks x 30). **1,800 was not reached, and no accounting change was made to
+make it look closer.**
+
+What the phase did find is where the money actually goes, and it is not prompt
+size.
+
+### The finding
+
+The composition generalization study (`packages/evals/tasks-visual/composition/
+generalization/REPORT.md`) measured the gate against 15 independent scene
+families rather than the single plaza it was calibrated on:
+
+| scene type | false-reject rate |
+|---|---|
+| open / exterior | 0.0% |
+| enclosed / roofed | **68.8%** |
+
+Five families reject every exemplar, good and bad.
+
+A false reject is not a cheap event. It is the most expensive one in a run: the
+gate tells the agent the layout itself is wrong, and the agent clears and
+rebuilds. A rebuild re-runs blockout and build — on the order of a full build
+again — so an interior request that trips this pays roughly twice.
+
+That makes the expected cost of an interior build substantially higher than the
+headline figure, and it is invisible in a per-call cost breakdown because every
+individual call is correctly priced. The waterfall was never going to show it.
+
+### What follows
+
+1. **Scope the landmark rules away from enclosed subjects**, the way they are
+   already scoped away from `prop`. The study shows every threshold
+   counterfactual trades false rejects for false passes about 1:1, so moving a
+   number is not the fix — the rule is measuring the wrong quantity indoors.
+2. **The render contract needs an interior camera.** The framing camera orbits
+   the bounding box, so a roofed scene renders as a lid and the pixel half of
+   the gate never sees the interior at all.
+3. Two metrics are falsified on independent families and should not be trusted
+   outside exteriors: `verticalElements` (AUC 0.431) and `interiorEdgeDensity`
+   (0.398) — both below chance.
+
+### Already banked
+
+The intent extractor added this phase derives the requested-elements checklist
+deterministically, in ~0.2ms and **0 neurons**. Previously that list only
+existed after a full build plus a visual critique produced it in prose. That is
+a real structural saving on gated builds, though it is nowhere near large
+enough on its own to close a 500-neuron gap.
+
+**Honest conclusion: the Free-tier target is not met, and closing it depends on
+fixing the interior false-reject rate first. Compression will not get there.**
