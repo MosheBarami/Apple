@@ -1,7 +1,7 @@
 // Asset strategy brain: WHERE a piece of a scene should come from, and whether a Creator Store
 // asset id is safe to touch.
 //
-// Two jobs, both of which exist because the naive answer is wrong:
+// Five jobs, all of which exist because the naive answer is wrong:
 //
 //   1. chooseAssetSource() — the decision table from docs/research/asset-strategy.md §E1.
 //      The default instinct ("search the toolbox for a tree") is the worst option in almost
@@ -11,6 +11,16 @@
 //   2. verifyCreatorStoreAsset() — the "never guess asset IDs" gate. A free Roblox model is the
 //      classic backdoor-script vector, so an asset carrying ANY script is refused outright, and
 //      an id that did not come out of a search response is refused before a request is even made.
+//
+//   3. scanInsertedHierarchy() — the same question asked again, of the thing that actually landed.
+//      The gate above trusts a third party's metadata about a third party's asset; this reads the
+//      Luau back out of the customer's place and refuses on what is really there.
+//
+//   4. scoreAssetStyle() / rankAssetsByStyle() — safe is not the same as right. A photoreal PBR
+//      chair passes every security assertion and still ruins a bright simulator, so style is
+//      ranked separately and deterministically, before anything a model would have to judge.
+//
+//   5. brokerAsset() — the two above in the one order that is safe, with an audit trail.
 //
 // Everything network-facing takes an injectable fetch so the gate is testable off-network, and
 // nothing here throws: a verification that crashes is a verification that gets skipped.
@@ -925,4 +935,1568 @@ export async function findVerifiedAssets(
     else rejected.push(verdict);
   }
   return { search, passed, rejected };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Script safety scanner — the layer that treats every external model as hostile
+//
+// `verifyCreatorStoreAsset()` above refuses a script-bearing asset from METADATA. That metadata is
+// a third-party claim about a third-party asset: `hasScripts` is whatever the toolbox service says
+// it is, on an undocumented endpoint, for an asset whose contents can change after it was
+// inspected. So once anything is actually inserted into a customer's place, the hierarchy is read
+// back and scanned for real. Metadata decides whether to try; this decides whether to keep.
+//
+// The policy, stated once so no call site has to re-derive it:
+//
+//   - A script is never *allowed*. It is removed, or the whole asset is discarded.
+//   - Anything ambiguous is a refusal. `require(v)` where `v` cannot be resolved statically is
+//     treated as hostile, because the alternative is to guess in the attacker's favour.
+//   - A source that could not be read is the worst case, not the empty case.
+//
+// Everything here is pure and synchronous: it is fed strings a caller has already fetched, so it
+// can be driven from a fixture and can never itself reach the network.
+// ---------------------------------------------------------------------------------------------
+
+/** The three classes that can hold Luau. A fourth would be a Roblox change, not a config change. */
+export const SCRIPT_CLASSES = ['Script', 'LocalScript', 'ModuleScript'] as const;
+export type ScriptClass = (typeof SCRIPT_CLASSES)[number];
+
+export type RiskSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+const SEVERITY_ORDER: Readonly<Record<RiskSeverity, number>> = { low: 1, medium: 2, high: 3, critical: 4 };
+
+/** Worse of two severities. Used to roll findings up to a script, and scripts up to a hierarchy. */
+export function worseSeverity(a: RiskSeverity, b: RiskSeverity): RiskSeverity {
+  return SEVERITY_ORDER[a] >= SEVERITY_ORDER[b] ? a : b;
+}
+
+export type ScriptRiskCode =
+  /** A script exists at all. Emitted for every script, so "clean" always means "no Luau". */
+  | 'script_present'
+  /** `require(1234567)` — a module pulled off the marketplace at runtime. The classic backdoor. */
+  | 'require_asset_id'
+  /** `require(x)` where x is not statically resolvable. Ambiguous, therefore refused. */
+  | 'require_dynamic'
+  | 'http_service'
+  | 'url_literal'
+  /** loadstring / getfenv / setfenv / debug upvalue access — code that writes code. */
+  | 'dynamic_code'
+  | 'obfuscation'
+  | 'remote_traffic'
+  /** Reads or writes ServerScriptService / ServerStorage — where a backdoor installs itself. */
+  | 'server_container'
+  | 'reparent_self'
+  | 'marketplace_prompt'
+  /** TeleportService / Player:Kick — takes the player somewhere the place did not choose. */
+  | 'player_redirect'
+  /** The source could not be read. Worse than an empty script, never better. */
+  | 'unreadable';
+
+export interface ScriptFinding {
+  code: ScriptRiskCode;
+  severity: RiskSeverity;
+  /** Written for a human reading an audit log: what was found and why it matters. */
+  message: string;
+  /** 1-based line, or null for a whole-file signal like an escaped-character ratio. */
+  line: number | null;
+  /** The offending text: control characters stripped, trimmed, capped. Safe to display. */
+  excerpt: string;
+}
+
+/** Caps, so a hostile 5 MB single-line script cannot turn the scanner into the denial of service. */
+export const SCAN_LIMITS = {
+  /** Source past this is not examined; the truncation itself is a critical finding. */
+  maxSourceChars: 200_000,
+  /** Per script. Beyond this the script is already condemned; more detail buys nothing. */
+  maxFindingsPerScript: 12,
+  /** Scripts examined in one hierarchy. A model with more than this is refused on count alone. */
+  maxScripts: 60,
+  excerptChars: 160,
+  /** Kept on the record so a human can read what was removed without a second round trip. */
+  sourcePreviewChars: 600,
+  /** A line longer than this is not source anyone wrote by hand. */
+  longLine: 400,
+  /** A line longer than THIS is a packed payload, not a long line. */
+  packedLine: 2000,
+  /** `\xNN`-style escapes covering this fraction of the source is encoding, not text. */
+  escapeRatio: 0.15,
+  minEscapes: 20,
+  /** `..` concatenations on one line. Ten is a chain nobody types deliberately. */
+  concatChain: 10,
+  base64Run: 160,
+  /** Consecutive numeric entries in a table literal — a bytecode array, not data. */
+  numericTableRun: 200,
+  /** string.char() calls before the source is considered reassembled rather than written. */
+  charChain: 5,
+} as const;
+
+function excerptOf(text: string): string {
+  return text
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .trim()
+    .slice(0, SCAN_LIMITS.excerptChars);
+}
+
+interface LineRule {
+  code: ScriptRiskCode;
+  severity: RiskSeverity;
+  pattern: RegExp;
+  why: string;
+}
+
+/**
+ * Per-line detectors. Deliberately over-broad: `:GetAsync(` also matches a DataStore call, and that
+ * is fine — a decorative mesh has no business calling either, and an ambiguous hit is a refusal by
+ * policy rather than something to disambiguate cleverly.
+ */
+const LINE_RULES: readonly LineRule[] = [
+  {
+    code: 'http_service',
+    severity: 'critical',
+    pattern: /\bHttpService\b|GetService\s*\(\s*["']Http/i,
+    why: 'uses HttpService — an inserted decoration has no reason to talk to the internet, and this is how data leaves a place',
+  },
+  {
+    code: 'http_service',
+    severity: 'high',
+    pattern: /:\s*(?:GetAsync|PostAsync|RequestAsync|UrlEncode)\s*\(|\bHttpGet\b|\bHttpPost\b/,
+    why: 'performs a remote request (GetAsync/PostAsync/RequestAsync) — outbound traffic from an asset that should be inert',
+  },
+  {
+    code: 'url_literal',
+    severity: 'critical',
+    pattern: /discord\.gg|discordapp\.com|\/api\/webhooks\//i,
+    why: 'contains a webhook or invite URL — the standard exfiltration endpoint in Roblox backdoors',
+  },
+  {
+    code: 'url_literal',
+    severity: 'high',
+    pattern: /\bhttps?:\/\/[^\s"'`)]+/i,
+    why: 'contains a hard-coded URL',
+  },
+  {
+    code: 'dynamic_code',
+    severity: 'critical',
+    pattern: /\bloadstring\s*\(|\bgetfenv\s*\(|\bsetfenv\s*\(|\bdebug\s*\.\s*(?:setupvalue|getupvalue|setconstant)\s*\(/,
+    why: 'builds and runs code at runtime (loadstring/getfenv/setfenv) — nothing legitimate in a static asset does this',
+  },
+  {
+    code: 'dynamic_code',
+    severity: 'high',
+    pattern: /(?:^|[^:.\w])load\s*\(/,
+    why: 'calls load() — the same code-from-data vector as loadstring',
+  },
+  {
+    code: 'server_container',
+    severity: 'critical',
+    pattern: /ServerScriptService|ServerStorage/,
+    why: 'references ServerScriptService/ServerStorage — an asset reaching for the server script container is installing itself, not decorating',
+  },
+  {
+    code: 'reparent_self',
+    severity: 'high',
+    pattern: /\bscript\s*\.\s*Parent\s*=|\bscript\s*:\s*Clone\s*\(/,
+    why: 'moves or clones itself — a script that relocates survives the deletion of the model it arrived in',
+  },
+  {
+    code: 'remote_traffic',
+    severity: 'high',
+    pattern:
+      /Instance\.new\s*\(\s*["'](?:RemoteEvent|RemoteFunction|BindableFunction)["']|:\s*(?:FireServer|InvokeServer|FireAllClients|FireClient|InvokeClient)\s*\(/,
+    why: 'creates or drives a Remote — an unexpected client/server channel inside an inserted asset',
+  },
+  {
+    code: 'marketplace_prompt',
+    severity: 'high',
+    pattern: /MarketplaceService|Prompt(?:Product|GamePass|ThirdParty|Subscription)?Purchase/,
+    why: "prompts a purchase — an inserted asset that can ask the player for money is monetising someone else's place",
+  },
+  {
+    code: 'player_redirect',
+    severity: 'high',
+    pattern: /TeleportService|:\s*Kick\s*\(/,
+    why: 'teleports or kicks players — moves the player somewhere the place did not choose',
+  },
+];
+
+/**
+ * `require(...)` deserves its own pass rather than a row in the table above, because the *argument*
+ * is the whole question. `require(script.Parent.Config)` is ordinary; `require(1234567)` is the
+ * single most common Roblox backdoor there is; `require(v)` cannot be answered statically at all,
+ * and an unanswerable question is a refusal.
+ */
+function scanRequires(line: string, lineNo: number): ScriptFinding[] {
+  const out: ScriptFinding[] = [];
+  const re = /\brequire\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    // Naive paren balance from the opening paren, capped — enough to read one call's argument.
+    let depth = 1;
+    const start = m.index + m[0].length;
+    let i = start;
+    for (; i < line.length && i - start < 200 && depth > 0; i++) {
+      if (line[i] === '(') depth++;
+      else if (line[i] === ')') depth--;
+    }
+    const arg = line.slice(start, depth === 0 ? i - 1 : i).trim();
+    if (/^(?:tonumber\s*\(\s*)?["']?\d{3,}/.test(arg)) {
+      out.push({
+        code: 'require_asset_id',
+        severity: 'critical',
+        message: `require(${excerptOf(arg)}) loads a module by ASSET ID at runtime — the classic Roblox backdoor. What that id serves can change after this asset was inspected, so nothing about it can be verified.`,
+        line: lineNo,
+        excerpt: excerptOf(line),
+      });
+    } else if (/^(?:script|game|workspace|Workspace|self)\b/.test(arg)) {
+      // A path-shaped require inside the asset's own tree. Still Luau, still removed by policy —
+      // reported through `script_present` rather than duplicated as a separate risk.
+    } else if (arg.length === 0) {
+      out.push({
+        code: 'require_dynamic',
+        severity: 'high',
+        message: 'require() with an argument that could not be read — treated as hostile because it cannot be resolved.',
+        line: lineNo,
+        excerpt: excerptOf(line),
+      });
+    } else {
+      out.push({
+        code: 'require_dynamic',
+        severity: /\.\.|tonumber|getfenv|\[/.test(arg) ? 'critical' : 'high',
+        message: `require(${excerptOf(arg)}) cannot be resolved statically. An unresolvable require is refused rather than guessed at — it is how an asset-id require is hidden behind one variable.`,
+        line: lineNo,
+        excerpt: excerptOf(line),
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Whole-source signals. These are shape, not vocabulary: obfuscated Luau does not contain a keyword
+ * that says so, but it is reliably one enormous line, or mostly escapes, or a base64 blob, or a
+ * numeric table that is really bytecode.
+ */
+function scanShape(source: string): ScriptFinding[] {
+  const out: ScriptFinding[] = [];
+  const lines = source.split('\n');
+
+  let longestIdx = 0;
+  for (let i = 1; i < lines.length; i++) if ((lines[i] ?? '').length > (lines[longestIdx] ?? '').length) longestIdx = i;
+  const longest = lines[longestIdx] ?? '';
+  if (longest.length >= SCAN_LIMITS.packedLine) {
+    out.push({
+      code: 'obfuscation',
+      severity: 'critical',
+      message: `line ${longestIdx + 1} is ${longest.length} characters — that is a packed payload, not source anyone wrote`,
+      line: longestIdx + 1,
+      excerpt: excerptOf(longest),
+    });
+  } else if (longest.length >= SCAN_LIMITS.longLine) {
+    out.push({
+      code: 'obfuscation',
+      severity: 'high',
+      message: `line ${longestIdx + 1} is ${longest.length} characters long, well past anything hand-written`,
+      line: longestIdx + 1,
+      excerpt: excerptOf(longest),
+    });
+  }
+
+  const escapes = source.match(/\\x[0-9a-fA-F]{2}|\\u\{[0-9a-fA-F]+\}|\\\d{1,3}/g);
+  if (escapes && escapes.length >= SCAN_LIMITS.minEscapes) {
+    const covered = escapes.join('').length / Math.max(1, source.length);
+    if (covered >= SCAN_LIMITS.escapeRatio) {
+      out.push({
+        code: 'obfuscation',
+        severity: 'critical',
+        message: `${escapes.length} character escapes cover ${(covered * 100).toFixed(0)}% of the source — the text is encoded, which is done to hide it from exactly this check`,
+        line: null,
+        excerpt: excerptOf(escapes.slice(0, 24).join('')),
+      });
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const concats = ((lines[i] ?? '').match(/\.\./g) ?? []).length;
+    if (concats >= SCAN_LIMITS.concatChain) {
+      out.push({
+        code: 'obfuscation',
+        severity: 'high',
+        message: `line ${i + 1} chains ${concats} string concatenations — a name assembled at runtime so it cannot be grepped for`,
+        line: i + 1,
+        excerpt: excerptOf(lines[i] ?? ''),
+      });
+      break;
+    }
+  }
+
+  const blob = new RegExp(`[A-Za-z0-9+/]{${SCAN_LIMITS.base64Run},}={0,2}`).exec(source);
+  if (blob) {
+    out.push({
+      code: 'obfuscation',
+      severity: 'high',
+      message: `contains a ${blob[0].length}-character unbroken alphanumeric blob — base64-shaped data embedded in source`,
+      line: null,
+      excerpt: excerptOf(blob[0]),
+    });
+  }
+
+  const numericTable = new RegExp(`\\{\\s*(?:\\d{1,6}\\s*,\\s*){${SCAN_LIMITS.numericTableRun},}`).exec(source);
+  if (numericTable) {
+    out.push({
+      code: 'obfuscation',
+      severity: 'critical',
+      message: 'contains a table literal of hundreds of consecutive numbers — a bytecode or character array waiting to be turned back into code',
+      line: null,
+      excerpt: excerptOf(numericTable[0]),
+    });
+  }
+
+  const charChains = (source.match(/string\s*\.\s*char\s*\(/g) ?? []).length;
+  if (charChains >= SCAN_LIMITS.charChain) {
+    out.push({
+      code: 'obfuscation',
+      severity: 'high',
+      message: `calls string.char() ${charChains} times — text reassembled from character codes to defeat inspection`,
+      line: null,
+      excerpt: 'string.char(...)',
+    });
+  }
+
+  return out;
+}
+
+export interface ScannedScript {
+  path: string;
+  className: string;
+  lineCount: number;
+  sourceLength: number;
+  /** The head of the source, so a human can see what was removed without a second round trip. */
+  sourcePreview: string;
+  findings: ScriptFinding[];
+  /** Worst finding. Never below 'medium': the presence of a script is itself a medium finding. */
+  severity: RiskSeverity;
+  /** Always 'remove' under today's policy; derived from severity so a change is one constant. */
+  action: 'remove' | 'review';
+}
+
+/** At and above this, a script is deleted rather than surfaced for a human decision. */
+const REMOVE_AT: RiskSeverity = 'medium';
+
+/**
+ * Scan one script's source.
+ *
+ * `source === null` means it could not be read, and that is the WORST case, not the empty one: an
+ * asset carrying code nobody can display is more dangerous than one whose code is merely nasty.
+ */
+export function scanScriptSource(path: string, className: string, source: string | null): ScannedScript {
+  const findings: ScriptFinding[] = [];
+
+  if (source === null) {
+    findings.push({
+      code: 'unreadable',
+      severity: 'critical',
+      message: 'the source of this script could not be read — an asset carrying code nobody can see is refused outright',
+      line: null,
+      excerpt: '',
+    });
+    return { path, className, lineCount: 0, sourceLength: 0, sourcePreview: '', findings, severity: 'critical', action: 'remove' };
+  }
+
+  const truncated = source.length > SCAN_LIMITS.maxSourceChars;
+  const body = truncated ? source.slice(0, SCAN_LIMITS.maxSourceChars) : source;
+  const lines = body.split('\n');
+
+  findings.push({
+    code: 'script_present',
+    severity: 'medium',
+    message: `${className} at ${path} carries ${lines.length} line(s) of Luau. Golem never auto-inserts an asset containing code, whatever the code says.`,
+    line: lines.length ? 1 : null,
+    excerpt: excerptOf(lines.find((l) => l.trim().length) ?? ''),
+  });
+
+  if (truncated) {
+    findings.push({
+      code: 'obfuscation',
+      severity: 'critical',
+      message: `source is ${source.length} characters; only the first ${SCAN_LIMITS.maxSourceChars} were scanned. An asset this large is refused rather than partially cleared.`,
+      line: null,
+      excerpt: '',
+    });
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? '';
+    if (!line.trim()) continue;
+    for (const rule of LINE_RULES) {
+      if (rule.pattern.test(line)) {
+        findings.push({ code: rule.code, severity: rule.severity, message: rule.why, line: i + 1, excerpt: excerptOf(line) });
+      }
+    }
+    findings.push(...scanRequires(line, i + 1));
+    if (findings.length >= SCAN_LIMITS.maxFindingsPerScript) break;
+  }
+
+  findings.push(...scanShape(body));
+
+  const capped = findings.slice(0, SCAN_LIMITS.maxFindingsPerScript);
+  const severity = capped.reduce<RiskSeverity>((acc, f) => worseSeverity(acc, f.severity), 'low');
+  return {
+    path,
+    className,
+    lineCount: lines.length,
+    sourceLength: source.length,
+    sourcePreview: body.slice(0, SCAN_LIMITS.sourcePreviewChars),
+    findings: capped,
+    severity,
+    action: SEVERITY_ORDER[severity] >= SEVERITY_ORDER[REMOVE_AT] ? 'remove' : 'review',
+  };
+}
+
+/**
+ * Instance classes that are suspicious on their own, with no script anywhere in the model. A mesh
+ * of a chair does not ship a RemoteEvent; if one is present, something was meant to talk to it.
+ */
+const SUSPICIOUS_CLASSES: Readonly<Record<string, { code: ScriptRiskCode; severity: RiskSeverity; why: string }>> = {
+  RemoteEvent: { code: 'remote_traffic', severity: 'high', why: 'a RemoteEvent inside an inserted asset is a client/server channel nobody asked for' },
+  RemoteFunction: { code: 'remote_traffic', severity: 'high', why: 'a RemoteFunction inside an inserted asset is a client/server channel nobody asked for' },
+  BindableFunction: { code: 'remote_traffic', severity: 'medium', why: 'a BindableFunction is a call target left behind for code that is meant to arrive later' },
+  Script: { code: 'script_present', severity: 'high', why: 'a server Script runs the moment the asset is inserted' },
+  LocalScript: { code: 'script_present', severity: 'high', why: 'a LocalScript runs on every client' },
+  ModuleScript: { code: 'script_present', severity: 'medium', why: 'a ModuleScript is Luau waiting to be required' },
+};
+
+export interface ScannedScriptInput {
+  path: string;
+  className: string;
+  /** null when the read FAILED. Do not substitute an empty string; the two mean opposite things. */
+  source: string | null;
+}
+
+export interface HierarchyScanInput {
+  /** Where the asset landed, for the audit record. */
+  rootPath: string;
+  scripts: readonly ScannedScriptInput[];
+  /** Every ClassName seen in the subtree, so class-level risk is caught even with zero scripts. */
+  instanceClasses?: readonly string[];
+  /** True when the subtree could not be enumerated. Unknown contents are never 'clean'. */
+  enumerationFailed?: boolean;
+}
+
+export interface HierarchyScan {
+  rootPath: string;
+  /**
+   * - `clean`    — no Luau, no unexpected class. The only value that may be auto-inserted.
+   * - `stripped` — safe *after* `removePaths` are deleted, and only then.
+   * - `reject`   — discard the whole asset; nothing here is made safe by deleting a script.
+   */
+  verdict: 'clean' | 'stripped' | 'reject';
+  scriptCount: number;
+  scripts: ScannedScript[];
+  /** Paths to delete before the asset may be used at all. */
+  removePaths: string[];
+  /** Findings not attached to a script — class-level and enumeration risks. */
+  findings: ScriptFinding[];
+  severity: RiskSeverity | 'none';
+  reasons: string[];
+  /** The one field a call site should branch on. Never true when any script was found. */
+  autoInsertable: boolean;
+}
+
+/**
+ * Judge an inserted hierarchy.
+ *
+ * REJECT is reached by more routes than acceptance: an unreadable script, a failed enumeration,
+ * more scripts than the scan cap, or any critical finding all end there. The only path to `clean`
+ * is "there is provably nothing to remove".
+ */
+export function scanInsertedHierarchy(input: HierarchyScanInput): HierarchyScan {
+  const scripts = input.scripts.slice(0, SCAN_LIMITS.maxScripts).map((s) => scanScriptSource(s.path, s.className, s.source));
+  const findings: ScriptFinding[] = [];
+  const reasons: string[] = [];
+
+  if (input.scripts.length > SCAN_LIMITS.maxScripts) {
+    findings.push({
+      code: 'obfuscation',
+      severity: 'critical',
+      message: `${input.scripts.length} scripts in one asset, over the ${SCAN_LIMITS.maxScripts} scan cap — refused on count alone rather than partially cleared`,
+      line: null,
+      excerpt: '',
+    });
+  }
+
+  if (input.enumerationFailed) {
+    findings.push({
+      code: 'unreadable',
+      severity: 'critical',
+      message: 'the inserted hierarchy could not be enumerated, so its contents are unknown. Unknown is never treated as empty.',
+      line: null,
+      excerpt: '',
+    });
+  }
+
+  const scannedAny = scripts.length > 0;
+  const seen = new Set<string>();
+  for (const cls of input.instanceClasses ?? []) {
+    const rule = SUSPICIOUS_CLASSES[cls];
+    if (!rule || seen.has(cls)) continue;
+    // A script class that DID arrive for scanning is already reported per-script; flagging it here
+    // as well would double-count. A script class that did not arrive is the interesting case.
+    if ((SCRIPT_CLASSES as readonly string[]).includes(cls) && scannedAny) continue;
+    seen.add(cls);
+    findings.push({ code: rule.code, severity: rule.severity, message: `${cls}: ${rule.why}`, line: null, excerpt: cls });
+  }
+
+  const rollUp = (acc: RiskSeverity | 'none', s: RiskSeverity): RiskSeverity => (acc === 'none' ? s : worseSeverity(acc, s));
+  let severity: RiskSeverity | 'none' = 'none';
+  for (const s of scripts) severity = rollUp(severity, s.severity);
+  for (const f of findings) severity = rollUp(severity, f.severity);
+
+  const removePaths = scripts.filter((s) => s.action === 'remove').map((s) => s.path);
+  const critical = scripts.some((s) => s.severity === 'critical') || findings.some((f) => f.severity === 'critical');
+
+  let verdict: HierarchyScan['verdict'];
+  if (critical) {
+    verdict = 'reject';
+    reasons.push('a critical finding is not fixed by deleting a script — the whole asset is discarded');
+  } else if (scripts.length || findings.length) {
+    verdict = 'stripped';
+    reasons.push(`${scripts.length} script(s) must be removed before this asset is usable; it is not auto-insertable`);
+  } else {
+    verdict = 'clean';
+    reasons.push('no Luau and no unexpected instance class in the inserted subtree');
+  }
+
+  for (const s of scripts) {
+    for (const f of s.findings) if (f.code !== 'script_present') reasons.push(`${s.path}: ${f.message}`);
+  }
+  for (const f of findings) reasons.push(f.message);
+
+  return {
+    rootPath: input.rootPath,
+    verdict,
+    scriptCount: scripts.length,
+    scripts,
+    removePaths,
+    findings,
+    severity,
+    reasons,
+    autoInsertable: verdict === 'clean',
+  };
+}
+
+/** One-screen rendering of a scan, for a log line or a tool result. Never includes full sources. */
+export function scanToText(scan: HierarchyScan): string {
+  const lines = [`${scan.verdict.toUpperCase()} — ${scan.rootPath}: ${scan.scriptCount} script(s), worst severity ${scan.severity}`];
+  for (const s of scan.scripts) {
+    lines.push(`  ${s.className} ${s.path} [${s.severity}] -> ${s.action}`);
+    for (const f of s.findings) {
+      lines.push(`    ${f.severity} ${f.code}${f.line === null ? '' : ` (line ${f.line})`}: ${f.message}`);
+      if (f.excerpt) lines.push(`      | ${f.excerpt}`);
+    }
+  }
+  for (const f of scan.findings) lines.push(`  ${f.severity} ${f.code}: ${f.message}`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------------------------
+// Style ranker — a technically valid asset can still be the wrong asset
+//
+// The verification gate above answers "is this safe and free?". It does not answer "does this
+// belong in THIS game", and those are different questions with different failure modes. A
+// photoreal PBR chair from a verified creator passes every security assertion and still ruins a
+// bright simulator, because docs/ROBLOX-STYLE-SPEC.md §9 says a realistic material is an automatic
+// fail. So a second, independent ranking runs on style.
+//
+// Every axis below is computed from a DETERMINISTIC signal — triangle count, texture presence,
+// material enum, the saturation of the dominant colours, bounding box against the scale envelope.
+// None of it costs a model call. That ordering is deliberate: a deterministic check that can reject
+// a candidate must run before a critic that costs money and can be argued with, so `hardFails`
+// exists to short-circuit the expensive path entirely.
+//
+// The honest limitation, stated here rather than discovered later: before an asset is inserted the
+// only signals available are its NAME, its TAGS and whatever the details endpoint reported. Those
+// are weak. `rankAssetsByStyle()` is therefore a cheap prefilter over search hits, and the real
+// score is the one computed after insertion when triangles, materials and colours are measurable.
+// ---------------------------------------------------------------------------------------------
+
+/** Linear RGB channels in 0..1, matching Roblox's `Color3` and the rest of this repo. */
+export type RGB = readonly [number, number, number];
+
+export const STYLE_AXES = ['cartoon', 'poly_density', 'colour', 'scale', 'material', 'silhouette', 'performance', 'readability'] as const;
+export type StyleAxis = (typeof STYLE_AXES)[number];
+
+/**
+ * Axis weights. Cartoon compatibility and polygon density carry the most because they are the two
+ * that a wrong asset fails hardest and most visibly; silhouette and readability carry least because
+ * they are computed from proxies rather than measured directly.
+ */
+const AXIS_WEIGHTS: Readonly<Record<StyleAxis, number>> = {
+  cartoon: 0.2,
+  poly_density: 0.15,
+  colour: 0.15,
+  material: 0.13,
+  scale: 0.12,
+  performance: 0.09,
+  silhouette: 0.08,
+  readability: 0.08,
+};
+
+export interface StyleTarget {
+  id: string;
+  /** What this target encodes, in one line, for a model that reads it in a prompt. */
+  description: string;
+  /** True when the category is flat-shaded and untextured (§7). A texture map is then a defect. */
+  flatShaded: boolean;
+  /** Triangles a single prop may cost before it is over budget. */
+  triangleBudget: number;
+  /** Triangles a good prop in this style actually costs. Far below this is also wrong. */
+  triangleIdeal: number;
+  /** Enum.Material names the style permits. */
+  allowedMaterials: readonly string[];
+  /** Materials that are an automatic style fail. §9: "a realistic material ... is an automatic fail". */
+  bannedMaterials: readonly string[];
+  /** HSV saturation floor for the dominant colours. §1: "no muted palettes, no tasteful neutrals". */
+  minSaturation: number;
+  /** HSV value floor. §1: "no dark mode". */
+  minValue: number;
+  /** The scene's colour zoning. A candidate near one of these reads as belonging. */
+  palette: readonly RGB[];
+  /** RGB distance at which a colour still counts as "in palette". */
+  paletteTolerance: number;
+  /** §7: props are oversized relative to the player. Realistic scale reads as empty. */
+  oversizedProps: boolean;
+}
+
+function hex(h: string): RGB {
+  const n = parseInt(h.replace('#', ''), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+/**
+ * The one calibrated target: the bright simulator category described by docs/ROBLOX-STYLE-SPEC.md.
+ * The palette is that document's §1 environment table, verbatim, so the two cannot drift by
+ * paraphrase. Callers with a different art direction pass their own `StyleTarget`.
+ */
+export const BRIGHT_SIMULATOR: StyleTarget = {
+  id: 'bright_simulator',
+  description:
+    'Bright, saturated, flat-shaded low-poly. Colour zones the space and does the work; nothing is thin, subtle, desaturated or realistic (ROBLOX-STYLE-SPEC §1, §7, §9).',
+  flatShaded: true,
+  triangleBudget: 4000,
+  triangleIdeal: 900,
+  allowedMaterials: ['Plastic', 'SmoothPlastic', 'Neon', 'ForceField', 'Grass', 'Sand', 'Slate', 'Ground'],
+  bannedMaterials: ['Glass', 'Marble', 'Granite', 'CorrodedMetal', 'DiamondPlate', 'Foil', 'Concrete', 'Brick', 'Cobblestone', 'Pebble', 'Asphalt', 'Basalt', 'CrackedLava', 'Limestone', 'Rock', 'Salt', 'Sandstone'],
+  minSaturation: 0.35,
+  minValue: 0.45,
+  palette: [
+    hex('5FC94A'), // grass
+    hex('7ED957'),
+    hex('C98A4B'), // dirt path
+    hex('E0A45C'),
+    hex('B8BFC4'), // stone path
+    hex('B5533A'), // cliff
+    hex('3E9E4E'), // canopy
+    hex('57B85F'),
+    hex('7A5230'), // trunk
+    hex('7FC8F0'), // sky
+    hex('E8D3A9'), // plaza floor
+  ],
+  paletteTolerance: 0.34,
+  oversizedProps: true,
+};
+
+/**
+ * What is known about a candidate. Every field is optional because the two call sites know very
+ * different amounts: a search hit has a name and nothing else, while an inserted model has been
+ * measured. Unknown is scored as 0.5 and SAID so, never silently treated as good.
+ */
+export interface StyleCandidate {
+  assetId?: number | null;
+  name?: string | null;
+  tags?: readonly string[];
+  triangles?: number | null;
+  vertices?: number | null;
+  /** A texture map is a defect in a flat-shaded target, so this is a first-class signal. */
+  hasTexture?: boolean | null;
+  textureResolution?: number | null;
+  /** Enum.Material names actually present on the geometry. */
+  materials?: readonly string[];
+  /** Dominant colours as Color3-style 0..1 triples. */
+  dominantColours?: readonly RGB[];
+  boundsStuds?: readonly [number, number, number] | null;
+  partCount?: number | null;
+  /** What it is meant to be, e.g. "chair". Drives the scale envelope. */
+  intent?: string;
+}
+
+export interface StyleAxisScore {
+  axis: StyleAxis;
+  /** 0..1. */
+  score: number;
+  weight: number;
+  /** Why it scored that. Written to be shown to a user or fed back to a model. */
+  reason: string;
+}
+
+export interface StyleScore {
+  targetId: string;
+  /** 0..100, weighted. */
+  total: number;
+  /**
+   * - `strong`     — use it.
+   * - `acceptable` — usable, with the named compromise.
+   * - `off_style`  — it will look wrong; prefer anything else.
+   * - `reject`     — a hard fail; do not use it at all.
+   */
+  verdict: 'strong' | 'acceptable' | 'off_style' | 'reject';
+  axes: StyleAxisScore[];
+  /** Deterministic hard fails. Non-empty means REJECT, and means no model critic needs to run. */
+  hardFails: string[];
+  /** How much of the score rests on measured facts rather than on unknowns, 0..1. */
+  confidence: number;
+}
+
+/** HSV saturation and value of an RGB triple, tolerating a 0..255 input by normalising it. */
+function saturationValue(c: RGB): { s: number; v: number } {
+  const scale = Math.max(c[0], c[1], c[2]) > 1.0001 ? 1 / 255 : 1;
+  const r = c[0] * scale;
+  const g = c[1] * scale;
+  const b = c[2] * scale;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  return { s: max === 0 ? 0 : (max - min) / max, v: max };
+}
+
+function rgbDistance(a: RGB, b: RGB): number {
+  const scale = Math.max(a[0], a[1], a[2]) > 1.0001 ? 1 / 255 : 1;
+  return Math.sqrt((a[0] * scale - b[0]) ** 2 + (a[1] * scale - b[1]) ** 2 + (a[2] * scale - b[2]) ** 2);
+}
+
+/** Text signals. Weak on their own, but free, deterministic, and available before insertion. */
+const REALISM_WORDS = /\b(?:pbr|photoreal(?:istic)?|realistic|scan(?:ned)?|hd|4k|8k|hi-?res|hyper-?real|ray-?trac|substance|megascan)\b/i;
+const CARTOON_WORDS = /\b(?:low-?poly|lowpoly|cartoon|stylis[ez]ed|flat(?:-shaded)?|toon|simple|blocky|chibi|kenney|quaternius)\b/i;
+
+function textSignal(cand: StyleCandidate): { realism: boolean; cartoon: boolean } {
+  const text = [cand.name ?? '', ...(cand.tags ?? [])].join(' ');
+  return { realism: REALISM_WORDS.test(text), cartoon: CARTOON_WORDS.test(text) };
+}
+
+function clamp01(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+/**
+ * Score a candidate against a target.
+ *
+ * `hardFails` is the part that matters operationally: it is populated only from signals that were
+ * actually measured (never from an unknown), and any entry in it forces `reject`. That is the
+ * deterministic gate a caller runs BEFORE spending anything on a model critic.
+ */
+export function scoreAssetStyle(cand: StyleCandidate, target: StyleTarget = BRIGHT_SIMULATOR): StyleScore {
+  const axes: StyleAxisScore[] = [];
+  const hardFails: string[] = [];
+  let known = 0;
+  let knowable = 0;
+  const push = (axis: StyleAxis, score: number, reason: string, measured: boolean) => {
+    axes.push({ axis, score: clamp01(score), weight: AXIS_WEIGHTS[axis], reason });
+    knowable += 1;
+    if (measured) known += 1;
+  };
+
+  const text = textSignal(cand);
+  const tris = typeof cand.triangles === 'number' && Number.isFinite(cand.triangles) ? cand.triangles : null;
+  const materials = (cand.materials ?? []).filter((m) => typeof m === 'string' && m.length);
+  const colours = (cand.dominantColours ?? []).filter((c) => Array.isArray(c) && c.length === 3);
+  const hasTexture = cand.hasTexture ?? (typeof cand.textureResolution === 'number' ? cand.textureResolution > 0 : null);
+
+  // 1. Cartoon compatibility --------------------------------------------------------------------
+  {
+    let score = 0.5;
+    const why: string[] = [];
+    if (hasTexture === true && target.flatShaded) {
+      score = 0.1;
+      why.push('carries a texture map, and this style is flat-shaded and untextured');
+      hardFails.push('textured asset in a flat-shaded, untextured style (ROBLOX-STYLE-SPEC §7)');
+    } else if (hasTexture === false && target.flatShaded) {
+      score = 0.95;
+      why.push('untextured, so colour does the work as the style requires');
+    } else {
+      why.push('texture presence unknown');
+    }
+    if (text.realism) {
+      score = Math.min(score, 0.15);
+      why.push('name or tags advertise realism (pbr/photoreal/scanned), which is the opposite of this category');
+    }
+    if (text.cartoon) {
+      score = Math.max(score, 0.75);
+      why.push('name or tags read as low-poly/stylised');
+    }
+    push('cartoon', score, why.join('; '), hasTexture !== null || text.realism || text.cartoon);
+  }
+
+  // 2. Polygon density --------------------------------------------------------------------------
+  {
+    if (tris === null) {
+      push('poly_density', 0.5, 'triangle count unknown — the details endpoint reports it only for meshes it can measure', false);
+    } else if (tris > target.triangleBudget * 3) {
+      hardFails.push(`${tris} triangles is more than 3x the ${target.triangleBudget} budget for one prop`);
+      push('poly_density', 0, `${tris} triangles, far past the ${target.triangleBudget} budget — this is a film asset, not a prop`, true);
+    } else if (tris > target.triangleBudget) {
+      push('poly_density', clamp01(1 - (tris - target.triangleBudget) / (target.triangleBudget * 2)), `${tris} triangles is over the ${target.triangleBudget} budget`, true);
+    } else if (tris < target.triangleIdeal / 12) {
+      push('poly_density', 0.45, `${tris} triangles is below the ${Math.round(target.triangleIdeal / 12)} floor — too coarse to read as the object it claims to be`, true);
+    } else {
+      push('poly_density', 1 - Math.abs(tris - target.triangleIdeal) / (target.triangleBudget * 2), `${tris} triangles sits inside the budget (ideal ~${target.triangleIdeal})`, true);
+    }
+  }
+
+  // 3. Colour language --------------------------------------------------------------------------
+  {
+    if (!colours.length) {
+      push('colour', 0.5, 'no dominant colours were measured', false);
+    } else {
+      const sv = colours.map(saturationValue);
+      const meanS = sv.reduce((a, x) => a + x.s, 0) / sv.length;
+      const meanV = sv.reduce((a, x) => a + x.v, 0) / sv.length;
+      const nearest = colours.map((c) => Math.min(...target.palette.map((p) => rgbDistance(c, p))));
+      const inPalette = nearest.filter((d) => d <= target.paletteTolerance).length / nearest.length;
+      let score = clamp01(0.45 * clamp01(meanS / Math.max(0.01, target.minSaturation)) + 0.2 * clamp01(meanV / Math.max(0.01, target.minValue)) + 0.35 * inPalette);
+      const why = [`mean saturation ${meanS.toFixed(2)} (floor ${target.minSaturation}), value ${meanV.toFixed(2)} (floor ${target.minValue}), ${Math.round(inPalette * 100)}% of dominant colours inside the scene palette`];
+      if (meanS < target.minSaturation * 0.5) {
+        hardFails.push(`dominant colours average ${meanS.toFixed(2)} saturation, less than half the ${target.minSaturation} floor — desaturated is an automatic fail in this category`);
+        score = Math.min(score, 0.1);
+        why.push('desaturated');
+      }
+      if (meanV < target.minValue * 0.6) {
+        hardFails.push(`dominant colours average ${meanV.toFixed(2)} brightness, well under the ${target.minValue} floor — this category has no dark mode`);
+        score = Math.min(score, 0.1);
+        why.push('too dark');
+      }
+      push('colour', score, why.join('; '), true);
+    }
+  }
+
+  // 4. Scale ------------------------------------------------------------------------------------
+  {
+    if (!cand.boundsStuds) {
+      push('scale', 0.5, 'no bounding box was measured', false);
+    } else {
+      const check = checkScale(cand.intent ?? cand.name ?? undefined, [cand.boundsStuds[0], cand.boundsStuds[1], cand.boundsStuds[2]]);
+      if (check.lyingDown) {
+        hardFails.push(`a '${check.ruleKey}' this shape is lying on its side, not standing`);
+        push('scale', 0, check.reasons.join('; '), true);
+      } else if (check.ok) {
+        push('scale', 1, `plausible dimensions for a '${check.ruleKey}'`, true);
+      } else {
+        push('scale', clamp01(1 - check.reasons.length * 0.4), check.reasons.join('; '), true);
+      }
+    }
+  }
+
+  // 5. Material style ---------------------------------------------------------------------------
+  {
+    if (!materials.length) {
+      push('material', 0.5, 'no materials were reported', false);
+    } else {
+      const banned = materials.filter((m) => target.bannedMaterials.includes(m));
+      const allowed = materials.filter((m) => target.allowedMaterials.includes(m));
+      if (banned.length) {
+        hardFails.push(`uses ${banned.join(', ')} — a realistic material is an automatic style fail (ROBLOX-STYLE-SPEC §9)`);
+        push('material', 0, `realistic materials present: ${banned.join(', ')}`, true);
+      } else {
+        push('material', clamp01(allowed.length / materials.length), `${allowed.length}/${materials.length} materials are on the style's allowlist`, true);
+      }
+    }
+  }
+
+  // 6. Silhouette -------------------------------------------------------------------------------
+  //    A proxy, and labelled as one: detail-per-volume. A shape that reads at a glance carries its
+  //    information in the outline, so a high triangle count packed into a small box is a fussy
+  //    silhouette even when the triangle budget itself is satisfied.
+  {
+    if (tris === null || !cand.boundsStuds) {
+      push('silhouette', 0.5, 'silhouette proxy needs both a triangle count and a bounding box', false);
+    } else {
+      const volume = Math.max(1, cand.boundsStuds[0] * cand.boundsStuds[1] * cand.boundsStuds[2]);
+      const density = tris / volume;
+      push('silhouette', clamp01(1 - density / 400), `${density.toFixed(0)} triangles per cubic stud (proxy for how fussy the outline is; flat-shaded forms sit low)`, true);
+    }
+  }
+
+  // 7. Performance ------------------------------------------------------------------------------
+  {
+    const parts = typeof cand.partCount === 'number' ? cand.partCount : null;
+    if (tris === null && parts === null && !cand.textureResolution) {
+      push('performance', 0.5, 'no cost signals were measured', false);
+    } else {
+      const triCost = tris === null ? 0.5 : clamp01(1 - tris / (target.triangleBudget * 4));
+      const texCost = cand.textureResolution ? clamp01(1 - cand.textureResolution / 4096) : 1;
+      const partCost = parts === null ? 0.7 : clamp01(1 - parts / QC_THRESHOLDS.softPartWarn);
+      push('performance', triCost * 0.5 + texCost * 0.25 + partCost * 0.25, `triangles ${tris ?? 'unknown'}, texture ${cand.textureResolution ?? 'none'}px, parts ${parts ?? 'unknown'}`, tris !== null || parts !== null);
+    }
+  }
+
+  // 8. Gameplay readability ---------------------------------------------------------------------
+  //    §7: props are oversized relative to the player, and colour zoning is how a player reads
+  //    where to go. An in-palette prop at realistic scale is the specific failure this catches.
+  {
+    const why: string[] = [];
+    let score = 0.5;
+    let measured = false;
+    if (cand.boundsStuds) {
+      measured = true;
+      const height = cand.boundsStuds[1];
+      const { rule } = scaleRuleFor(cand.intent ?? cand.name ?? undefined);
+      const mid = (rule.minHeight + rule.maxHeight) / 2;
+      score = target.oversizedProps ? clamp01(height / mid) : clamp01(1 - Math.abs(height - mid) / mid);
+      why.push(`${height} studs tall against a ${mid.toFixed(1)}-stud midpoint for its class${target.oversizedProps ? ' (this style wants props oversized, not realistic)' : ''}`);
+    } else {
+      why.push('no height measured');
+    }
+    if (colours.length) {
+      measured = true;
+      const contrast = Math.max(...colours.map((c) => Math.min(...target.palette.map((p) => rgbDistance(c, p)))));
+      score = score * 0.75 + clamp01(contrast / 0.5) * 0.25;
+      why.push(`separates from the ground palette by ${contrast.toFixed(2)}`);
+    }
+    push('readability', score, why.join('; '), measured);
+  }
+
+  const total = axes.reduce((a, x) => a + x.score * x.weight, 0) * 100;
+  const verdict: StyleScore['verdict'] = hardFails.length ? 'reject' : total >= 75 ? 'strong' : total >= 55 ? 'acceptable' : 'off_style';
+  return {
+    targetId: target.id,
+    total: hardFails.length ? Math.min(total, 25) : total,
+    verdict,
+    axes,
+    hardFails,
+    confidence: knowable ? known / knowable : 0,
+  };
+}
+
+export interface RankedCandidate {
+  candidate: StyleCandidate;
+  score: StyleScore;
+}
+
+/**
+ * Rank candidates best-first. Hard-failed candidates always sort last regardless of their weighted
+ * total, because "it scored 60 but uses Marble" is still an automatic fail, not a near miss.
+ */
+export function rankAssetsByStyle(candidates: readonly StyleCandidate[], target: StyleTarget = BRIGHT_SIMULATOR): RankedCandidate[] {
+  return candidates
+    .map((candidate) => ({ candidate, score: scoreAssetStyle(candidate, target) }))
+    .sort((a, b) => {
+      const aFail = a.score.hardFails.length > 0;
+      const bFail = b.score.hardFails.length > 0;
+      if (aFail !== bFail) return aFail ? 1 : -1;
+      return b.score.total - a.score.total;
+    });
+}
+
+/**
+ * The deterministic style gate (§39): does this candidate fail on measured facts alone?
+ *
+ * A caller runs this BEFORE any model-based critic. When it returns a non-empty list, the critic is
+ * not worth its cost — the answer is already known and it is no.
+ */
+export function styleGateBlocks(score: StyleScore): string[] {
+  return score.hardFails.slice();
+}
+
+/** One-screen rendering of a style score, for a log line or a tool result. */
+export function styleToText(score: StyleScore): string {
+  const lines = [`${score.verdict.toUpperCase()} ${score.total.toFixed(0)}/100 against '${score.targetId}' (confidence ${(score.confidence * 100).toFixed(0)}%)`];
+  for (const a of score.axes) lines.push(`  ${a.axis} ${(a.score * 100).toFixed(0)} (w${a.weight}): ${a.reason}`);
+  for (const f of score.hardFails) lines.push(`  HARD FAIL: ${f}`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------------------------
+// The Creator Store broker — the whole pipeline, in one auditable function
+//
+//   describe -> search -> rank -> inspect metadata -> inspect creator -> select -> insert
+//            -> inspect inserted hierarchy -> scan scripts -> remove suspicious -> normalise
+//            -> place -> verify
+//
+// Two things make this worth having as one function rather than as thirteen tools a model calls in
+// whatever order it fancies:
+//
+//   1. The order is the security property. "Scan the hierarchy" after "insert" is not a suggestion;
+//      an agent that inserts and then decides it is happy has already run the attacker's code. The
+//      sequence is encoded here so it cannot be reordered by a prompt.
+//   2. Every step records what it did, so a refusal is explainable. `BrokerResult.steps` is the
+//      audit trail, and it is populated even when the run aborts on step 2.
+//
+// Studio is reached through an injected bridge with exactly the shape `AgentCtx` already has, so
+// this composes with the existing tool dispatcher and is drivable from a fake in a test.
+// ---------------------------------------------------------------------------------------------
+
+/** Structural mirror of the op executor the agent context already exposes. */
+export interface StudioBridge {
+  execStudioOp(op: { op: string; [k: string]: unknown }, timeoutMs?: number): Promise<{ ok: boolean; data?: unknown; error?: string }>;
+}
+
+export const BROKER_STEPS = [
+  'describe',
+  'search',
+  'rank',
+  'inspect_metadata',
+  'inspect_creator',
+  'select',
+  'insert',
+  'inspect_hierarchy',
+  'scan_scripts',
+  'remove_suspicious',
+  'normalise',
+  'place',
+  'verify',
+] as const;
+export type BrokerStep = (typeof BROKER_STEPS)[number];
+
+export interface BrokerStepRecord {
+  step: BrokerStep;
+  ok: boolean;
+  /** One line, safe to show a user. Never contains a key, a URL with credentials, or a raw source. */
+  detail: string;
+}
+
+export interface AssetRequest {
+  /** Free text: what the scene needs, in the user's words. */
+  description: string;
+  /** Which row of the decision table this is. Inferred from the description when omitted. */
+  need?: AssetNeed;
+  /** What the thing is meant to BE, e.g. "chair". Drives the scale envelope and the style score. */
+  intent?: string;
+  /** Where it goes. Defaults to game.Workspace. */
+  parent?: string;
+  /** Where to stand it, in studs. Applied as a pivot during normalisation. */
+  position?: readonly [number, number, number];
+  /** Remaining triangle budget for the scene. */
+  maxTriangles?: number;
+}
+
+export interface BrokerOptions extends SearchOptions, VerifyOptions {
+  /** Art direction to rank against. Defaults to the calibrated bright-simulator target. */
+  target?: StyleTarget;
+  /** Candidates taken past ranking into the (network-bound) metadata gate. */
+  maxCandidates?: number;
+  /** Weighted style score a candidate must reach to be selected. */
+  minStyleTotal?: number;
+  /** Stop after `select`. Used to exercise the choosing half without touching a place. */
+  dryRun?: boolean;
+}
+
+export interface BrokerResult {
+  ok: boolean;
+  query: string;
+  need: AssetNeed;
+  intent: string;
+  steps: BrokerStepRecord[];
+  /** Every candidate that reached the metadata gate, with both verdicts. */
+  considered: { assetId: number; name: string | null; verdict: AssetVerdictCode; style: StyleScore | null }[];
+  chosen: { assetId: number; name: string | null; verdict: AssetVerdict; style: StyleScore } | null;
+  creator: CreatorInspection | null;
+  insertedPaths: string[];
+  scan: HierarchyScan | null;
+  removed: string[];
+  normalisation: NormaliseOutcome | null;
+  /** Populated when the run stopped early: the step that refused, and why. */
+  aborted: { step: BrokerStep; reason: string } | null;
+  /** One-screen rendering of the whole run. */
+  summary: string;
+}
+
+// --- creator inspection ------------------------------------------------------------------------
+
+export type CreatorTrust = 'roblox' | 'verified' | 'endorsed' | 'untrusted';
+
+export interface CreatorInspection {
+  id: number | null;
+  name: string | null;
+  trust: CreatorTrust;
+  /** Whether this creator may supply an auto-inserted asset at all. */
+  acceptable: boolean;
+  reasons: string[];
+}
+
+/**
+ * Judge the creator, from the details response already fetched.
+ *
+ * Deliberately NOT a second network call: Roblox exposes no endpoint that answers "is this creator
+ * trustworthy", and the three facts that are actually load-bearing — is it Roblox itself, is the
+ * creator verified, is the asset endorsed — all arrive with the asset. An extra request would buy
+ * a follower count, which is not evidence of anything.
+ */
+export function inspectCreator(verdict: AssetVerdict): CreatorInspection {
+  const { id, name, isVerifiedCreator } = verdict.creator;
+  const reasons: string[] = [];
+  let trust: CreatorTrust;
+  if (id === 1) {
+    trust = 'roblox';
+    reasons.push('authored by Roblox itself — the only creator that is trusted by construction');
+  } else if (isVerifiedCreator) {
+    trust = 'verified';
+    reasons.push(`creator ${name ?? id ?? 'unknown'} carries Roblox's verified badge`);
+  } else if (verdict.isEndorsed) {
+    trust = 'endorsed';
+    reasons.push('asset is endorsed by Roblox even though its creator is not verified');
+  } else {
+    trust = 'untrusted';
+    reasons.push(`creator ${name ?? id ?? 'unknown'} is neither verified nor endorsed — refused for auto-insertion`);
+  }
+  if (trust !== 'roblox' && (verdict.voteCount ?? 0) > 0) {
+    reasons.push(`community signal: ${verdict.upVotePercent ?? 0}% approval across ${verdict.voteCount ?? 0} votes`);
+  }
+  return { id, name, trust, acceptable: trust !== 'untrusted', reasons };
+}
+
+// --- describe ----------------------------------------------------------------------------------
+
+const FILLER = new Set([
+  'a', 'an', 'the', 'some', 'any', 'please', 'can', 'you', 'i', 'we', 'need', 'want', 'get', 'find', 'me', 'for', 'my', 'our',
+  'with', 'and', 'or', 'that', 'this', 'it', 'is', 'are', 'to', 'of', 'in', 'on', 'add', 'put', 'make', 'build', 'nice', 'good',
+]);
+
+/** Keyword → decision-table row. Only the rows a Creator Store search can plausibly serve. */
+const NEED_WORDS: readonly (readonly [RegExp, AssetNeed])[] = [
+  [/\b(tree|trees|bush|shrub|foliage|plant|grass|fern|palm)\b/i, 'foliage'],
+  [/\b(car|truck|vehicle|bike|boat|plane)\b/i, 'vehicle'],
+  [/\b(npc|character|avatar|person|villager)\b/i, 'character'],
+  [/\b(house|building|shop|tower|castle|hut)\b/i, 'building'],
+  [/\b(icon|button|badge|ui)\b/i, 'ui_icon'],
+  [/\b(texture|material|surface)\b/i, 'texture'],
+  [/\b(ground|terrain|floor|path)\b/i, 'ground'],
+  [/\b(particle|smoke|fire|spark)\b/i, 'particle'],
+];
+
+export interface AssetDescription {
+  /** The search term, filler removed. */
+  query: string;
+  need: AssetNeed;
+  intent: string;
+  /** Which search category the need maps onto. */
+  category: SearchCategory;
+}
+
+/**
+ * Turn a request in the user's words into the three things the rest of the pipeline needs. Pure and
+ * deterministic — a model is not asked to invent a search term, because a model asked for a search
+ * term will happily invent an asset id alongside it.
+ */
+export function describeAssetRequest(req: AssetRequest): AssetDescription {
+  const words = req.description
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 1 && !FILLER.has(w));
+  const query = (words.join(' ') || req.description.trim()).slice(0, 80);
+  const need = req.need ?? NEED_WORDS.find(([re]) => re.test(req.description))?.[1] ?? 'prop';
+  const intent = req.intent ?? scaleRuleFor(words[0] ?? req.description).key;
+  return { query, need, intent, category: need === 'ui_icon' || need === 'texture' || need === 'particle' ? 'decal' : 'mesh' };
+}
+
+// --- normalisation -----------------------------------------------------------------------------
+
+/**
+ * Paths safe to interpolate into Luau source.
+ *
+ * The path comes from the plugin's own `Paths.fullPath()`, not from a model — but it travels
+ * through a model's transcript on the way here, and this string is pasted into code that runs in
+ * the user's Studio. So it is validated against a shape that cannot escape an expression: bare
+ * identifiers, or bracketed names with no quote, backslash, bracket or newline in them. Anything
+ * else fails closed and normalisation is reported as not applied.
+ */
+const SAFE_LUAU_PATH = /^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\["[A-Za-z0-9 _'()-]+"\])*$/;
+
+export function isSafeLuauPath(path: string): boolean {
+  return path.length > 0 && path.length <= 400 && SAFE_LUAU_PATH.test(path);
+}
+
+export interface NormalisePlan {
+  path: string;
+  /** Uniform scale to apply. 1 when the asset is already the right size. */
+  scale: number;
+  /** Pivot target in studs, or null to leave it where it landed. */
+  position: readonly [number, number, number] | null;
+  /** Why the scale is what it is — the scale-envelope reasons, so the number is never bare. */
+  reasons: string[];
+}
+
+/**
+ * Emit the Luau that normalises one inserted asset: anchor every part, apply a uniform scale, pivot
+ * it into place, and report the resulting bounding box. One `run_code` round trip rather than a
+ * `set_props` per part, matching how `LAYOUT_LUAU` and `CENSUS_LUAU` already talk to the plugin.
+ *
+ * Returns null when the path is not safe to interpolate — fail closed, never "best effort".
+ */
+export function buildNormaliseLuau(plan: NormalisePlan): string | null {
+  if (!isSafeLuauPath(plan.path)) return null;
+  if (!Number.isFinite(plan.scale) || plan.scale <= 0 || plan.scale > 100) return null;
+  const pos = plan.position;
+  if (pos && !pos.every((n) => Number.isFinite(n) && Math.abs(n) < 1e6)) return null;
+  const scale = plan.scale.toFixed(4);
+  const pivot = pos
+    ? `if target:IsA("PVInstance") then pcall(function() target:PivotTo(CFrame.new(${pos[0].toFixed(3)}, ${pos[1].toFixed(3)}, ${pos[2].toFixed(3)})) end) end`
+    : '';
+  return `
+local ok, target = pcall(function() return ${plan.path} end)
+if not ok or typeof(target) ~= "Instance" then return '{"error":"target not found"}' end
+local anchored = 0
+local function fix(p)
+  if p:IsA("BasePart") then p.Anchored = true anchored += 1 end
+end
+fix(target)
+for _, d in ipairs(target:GetDescendants()) do fix(d) end
+local scaled = 0
+if target:IsA("Model") and ${scale} ~= 1 then
+  if pcall(function() target:ScaleTo(${scale}) end) then scaled = ${scale} end
+end
+${pivot}
+local cf, size
+if target:IsA("Model") then
+  cf, size = target:GetBoundingBox()
+elseif target:IsA("BasePart") then
+  cf, size = target.CFrame, target.Size
+else
+  return '{"error":"target is not spatial"}'
+end
+return string.format('{"anchored":%d,"scaled":%.4f,"size":[%.3f,%.3f,%.3f],"pos":[%.3f,%.3f,%.3f]}',
+  anchored, scaled, size.X, size.Y, size.Z, cf.Position.X, cf.Position.Y, cf.Position.Z)
+`;
+}
+
+export interface NormaliseOutcome {
+  applied: boolean;
+  anchored: number;
+  scaled: number;
+  size: [number, number, number] | null;
+  position: [number, number, number] | null;
+  plan: NormalisePlan;
+  note: string;
+}
+
+/** Read the normalisation report back out of whatever wrapper `run_code` returned it in. */
+export function parseNormaliseResult(raw: unknown): { anchored: number; scaled: number; size: [number, number, number] | null; position: [number, number, number] | null } | null {
+  let value: unknown = raw;
+  for (let i = 0; i < 6; i++) {
+    if (!value || typeof value !== 'object') break;
+    const o = value as Record<string, unknown>;
+    if ('result' in o) { value = o.result; continue; }
+    if ('t' in o && 'v' in o) { value = o.v; continue; }
+    if ('data' in o) { value = o.data; continue; }
+    break;
+  }
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value); } catch { return null; }
+  }
+  const o = obj(value);
+  if (typeof o.error === 'string') return null;
+  const triple = (v: unknown): [number, number, number] | null =>
+    Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number') ? [v[0] as number, v[1] as number, v[2] as number] : null;
+  const anchored = num(o.anchored);
+  if (anchored === null) return null;
+  return { anchored, scaled: num(o.scaled) ?? 0, size: triple(o.size), position: triple(o.pos) };
+}
+
+// --- hierarchy reading -------------------------------------------------------------------------
+
+interface TreeSummary {
+  classes: string[];
+  /** Bounding box across every BasePart the tree reported, or null when none carried geometry. */
+  bounds: [number, number, number] | null;
+  nodeCount: number;
+  truncated: boolean;
+}
+
+/**
+ * Flatten a `get_tree` payload into the two things the safety and style layers need: every class
+ * name present, and the overall bounding box. `truncated` matters — a tree that hit its node cap is
+ * a tree whose remaining contents are unknown, and unknown contents are never scored as clean.
+ */
+export function summariseTree(data: unknown): TreeSummary {
+  const classes: string[] = [];
+  let truncated = false;
+  let nodeCount = 0;
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+  const visit = (node: unknown, depth: number): void => {
+    if (depth > 32) { truncated = true; return; }
+    const n = obj(node);
+    const cls = str(n.class);
+    if (cls) classes.push(cls);
+    nodeCount += 1;
+    if (n.truncated === true || num(n.moreChildren) !== null) truncated = true;
+    const pos = Array.isArray(n.pos) ? (n.pos as unknown[]) : null;
+    const size = Array.isArray(n.size) ? (n.size as unknown[]) : null;
+    if (pos && size && pos.length === 3 && size.length === 3) {
+      const p = pos.map((v) => (typeof v === 'number' ? v : 0));
+      const s = size.map((v) => (typeof v === 'number' ? v : 0));
+      minX = Math.min(minX, p[0]! - s[0]! / 2); maxX = Math.max(maxX, p[0]! + s[0]! / 2);
+      minY = Math.min(minY, p[1]! - s[1]! / 2); maxY = Math.max(maxY, p[1]! + s[1]! / 2);
+      minZ = Math.min(minZ, p[2]! - s[2]! / 2); maxZ = Math.max(maxZ, p[2]! + s[2]! / 2);
+    }
+    const kids = n.children;
+    if (Array.isArray(kids)) for (const k of kids) visit(k, depth + 1);
+  };
+
+  const root = obj(data);
+  if (root.root !== undefined) visit(root.root, 0);
+  else if (Array.isArray(root.services)) for (const s of root.services) visit(s, 0);
+  else visit(data, 0);
+
+  const bounds: [number, number, number] | null =
+    Number.isFinite(minX) && Number.isFinite(maxX) ? [Math.max(0, maxX - minX), Math.max(0, maxY - minY), Math.max(0, maxZ - minZ)] : null;
+  return { classes, bounds, nodeCount, truncated };
+}
+
+/** Pull `{ scripts: [{ path, class }] }` out of a `list_scripts` result, defensively. */
+function scriptsFrom(data: unknown): { path: string; className: string }[] {
+  const rows = obj(data).scripts;
+  if (!Array.isArray(rows)) return [];
+  const out: { path: string; className: string }[] = [];
+  for (const r of rows) {
+    const o = obj(r);
+    const path = str(o.path);
+    if (path) out.push({ path, className: str(o.class) ?? 'Script' });
+  }
+  return out;
+}
+
+// --- the pipeline ------------------------------------------------------------------------------
+
+/**
+ * Run the whole broker. Never throws: every failure is a recorded, explained refusal, because a
+ * broker that throws is a broker whose audit trail stops at the interesting moment.
+ */
+export async function brokerAsset(env: AssetEnv, request: AssetRequest, bridge: StudioBridge, opts: BrokerOptions = {}): Promise<BrokerResult> {
+  const target = opts.target ?? BRIGHT_SIMULATOR;
+  const maxCandidates = Math.max(1, Math.min(8, opts.maxCandidates ?? 4));
+  const minStyleTotal = opts.minStyleTotal ?? 55;
+  const parent = request.parent ?? 'game.Workspace';
+
+  const desc = describeAssetRequest(request);
+  const steps: BrokerStepRecord[] = [];
+  const considered: BrokerResult['considered'] = [];
+  const result: BrokerResult = {
+    ok: false,
+    query: desc.query,
+    need: desc.need,
+    intent: desc.intent,
+    steps,
+    considered,
+    chosen: null,
+    creator: null,
+    insertedPaths: [],
+    scan: null,
+    removed: [],
+    normalisation: null,
+    aborted: null,
+    summary: '',
+  };
+  const step = (s: BrokerStep, ok: boolean, detail: string) => { steps.push({ step: s, ok, detail }); };
+  const abort = (s: BrokerStep, reason: string): BrokerResult => {
+    step(s, false, reason);
+    result.aborted = { step: s, reason };
+    result.summary = brokerSummary(result);
+    return result;
+  };
+
+  step('describe', true, `'${request.description}' -> need=${desc.need}, intent=${desc.intent}, query='${desc.query}'`);
+
+  // The decision table gets the last word on whether the Creator Store is even an option for this
+  // need. Buildings and characters are absent from it on purpose; going anyway would silently undo
+  // the reasoning in DECISION_TABLE.
+  const sources = chooseAssetSource(desc.need).map((c) => c.source);
+  if (!sources.includes('creator_store')) {
+    return abort('describe', `the decision table does not list creator_store for '${desc.need}' — prefer ${sources[0]} (${chooseAssetSource(desc.need)[0]?.rationale ?? ''})`);
+  }
+
+  const search = await searchCreatorStore(env, desc.query, {
+    ...opts,
+    category: desc.category,
+    limit: Math.max(maxCandidates * 3, 12),
+    robloxOnly: desc.need === 'foliage' ? true : opts.robloxOnly,
+  });
+  if (!search.results.length) {
+    return abort('search', search.error ? `${search.note} ${search.error}` : search.note);
+  }
+  step('search', true, `${search.results.length} hit(s) via the ${search.endpoint} endpoint. ${search.note}`);
+
+  // Ranking here is a PREFILTER on name and tags alone — nothing else is known before the metadata
+  // call. It exists to order the (network-bound, rate-limited) gate, not to pick a winner.
+  const ranked = rankAssetsByStyle(
+    search.results.map((h) => ({ assetId: h.assetId, name: h.name, intent: desc.intent })),
+    target,
+  );
+  step('rank', true, `ordered ${ranked.length} candidate(s) on name/tag signals only; real scoring happens after the metadata call`);
+
+  let chosen: BrokerResult['chosen'] = null;
+  let creator: CreatorInspection | null = null;
+  for (const r of ranked.slice(0, maxCandidates)) {
+    const assetId = r.candidate.assetId;
+    if (typeof assetId !== 'number') continue;
+    const verdict = await verifyCreatorStoreAsset(env, assetId, {
+      ...opts,
+      provenance: 'search_result',
+      maxTriangles: request.maxTriangles ?? opts.maxTriangles,
+    });
+    if (!verdict.ok) {
+      considered.push({ assetId, name: verdict.name, verdict: verdict.verdict, style: null });
+      continue;
+    }
+    const inspection = inspectCreator(verdict);
+    if (!inspection.acceptable) {
+      considered.push({ assetId, name: verdict.name, verdict: 'fail_unverified_creator', style: null });
+      continue;
+    }
+    // Now the style score means something: triangles are measured, and the type is known.
+    const style = scoreAssetStyle(
+      {
+        assetId,
+        name: verdict.name,
+        triangles: verdict.triangles,
+        vertices: verdict.vertices,
+        hasTexture: verdict.assetType === 'Image' || verdict.assetType === 'Decal' ? true : null,
+        intent: desc.intent,
+      },
+      target,
+    );
+    considered.push({ assetId, name: verdict.name, verdict: verdict.verdict, style });
+    if (styleGateBlocks(style).length || style.total < minStyleTotal) continue;
+    chosen = { assetId, name: verdict.name, verdict, style };
+    creator = inspection;
+    break;
+  }
+
+  step('inspect_metadata', considered.length > 0, `${considered.length} candidate(s) went through the full verification gate`);
+  if (!chosen || !creator) {
+    const why = considered.map((c) => `${c.assetId}: ${c.verdict}${c.style ? ` / style ${c.style.total.toFixed(0)}${c.style.hardFails.length ? ` (${c.style.hardFails[0]})` : ''}` : ''}`);
+    return abort('select', `no candidate passed both the safety gate and the style gate. ${why.join('; ')}`);
+  }
+  result.chosen = chosen;
+  result.creator = creator;
+  step('inspect_creator', true, `${creator.trust}: ${creator.reasons.join('; ')}`);
+  step('select', true, `asset ${chosen.assetId} (${chosen.name ?? 'unnamed'}), style ${chosen.style.total.toFixed(0)}/100 — ${chosen.style.verdict}`);
+
+  if (opts.dryRun) {
+    result.ok = true;
+    result.summary = brokerSummary(result);
+    return result;
+  }
+
+  // --- insert ---------------------------------------------------------------------------------
+  const inserted = await bridge.execStudioOp({ op: 'insert_asset', assetId: chosen.assetId, parent }, 45_000);
+  if (!inserted.ok) return abort('insert', inserted.error ?? 'insert_asset failed');
+  const paths = (Array.isArray(obj(inserted.data).inserted) ? (obj(inserted.data).inserted as unknown[]) : []).filter((p): p is string => typeof p === 'string');
+  if (!paths.length) return abort('insert', 'the asset inserted nothing — GetObjects returned an empty array');
+  result.insertedPaths = paths;
+  step('insert', true, `inserted at ${paths.join(', ')}`);
+
+  const discard = async (why: string, s: BrokerStep): Promise<BrokerResult> => {
+    const del = await bridge.execStudioOp({ op: 'delete_instances', paths }, 20_000);
+    return abort(s, `${why} — the asset was ${del.ok ? 'deleted' : `NOT deleted (${del.error ?? 'delete failed'}); remove ${paths.join(', ')} by hand`}`);
+  };
+
+  // --- inspect the inserted hierarchy ----------------------------------------------------------
+  const classes: string[] = [];
+  let treeBounds: [number, number, number] | null = null;
+  let enumerationFailed = false;
+  for (const p of paths) {
+    const tree = await bridge.execStudioOp({ op: 'get_tree', root: p, maxDepth: 12, maxNodes: 400 }, 20_000);
+    if (!tree.ok) { enumerationFailed = true; continue; }
+    const sum = summariseTree(tree.data);
+    classes.push(...sum.classes);
+    if (sum.truncated) enumerationFailed = true;
+    if (sum.bounds && !treeBounds) treeBounds = sum.bounds;
+  }
+  step('inspect_hierarchy', !enumerationFailed, enumerationFailed ? 'the subtree could not be fully enumerated — its contents are unknown' : `${classes.length} instance(s), classes: ${[...new Set(classes)].slice(0, 12).join(', ')}`);
+
+  // --- scan scripts ----------------------------------------------------------------------------
+  const scriptInputs: ScannedScriptInput[] = [];
+  for (const p of paths) {
+    const listed = await bridge.execStudioOp({ op: 'list_scripts', root: p }, 20_000);
+    if (!listed.ok) { enumerationFailed = true; continue; }
+    for (const s of scriptsFrom(listed.data)) {
+      if (scriptInputs.length >= SCAN_LIMITS.maxScripts) break;
+      const read = await bridge.execStudioOp({ op: 'read_script', path: s.path }, 20_000);
+      const source = read.ok ? str(obj(read.data).source) : null;
+      scriptInputs.push({ path: s.path, className: s.className, source });
+    }
+  }
+  const scan = scanInsertedHierarchy({ rootPath: paths[0]!, scripts: scriptInputs, instanceClasses: classes, enumerationFailed });
+  result.scan = scan;
+  step('scan_scripts', scan.verdict !== 'reject', `${scan.verdict}: ${scan.scriptCount} script(s), worst severity ${scan.severity}`);
+
+  if (scan.verdict === 'reject') {
+    return discard(`the safety scan rejected this asset (${scan.reasons[0] ?? 'critical finding'})`, 'scan_scripts');
+  }
+
+  // --- remove suspicious ------------------------------------------------------------------------
+  if (scan.removePaths.length) {
+    const del = await bridge.execStudioOp({ op: 'delete_instances', paths: scan.removePaths }, 20_000);
+    if (!del.ok) return discard(`could not delete ${scan.removePaths.length} script(s) the scan condemned`, 'remove_suspicious');
+    result.removed = scan.removePaths.slice();
+    step('remove_suspicious', true, `deleted ${scan.removePaths.length} script(s): ${scan.removePaths.join(', ')}`);
+  } else {
+    step('remove_suspicious', true, 'nothing to remove');
+  }
+
+  // --- normalise --------------------------------------------------------------------------------
+  const primary = paths[0]!;
+  const scaleCheck = treeBounds ? checkScale(desc.intent, treeBounds) : null;
+  const plan: NormalisePlan = {
+    path: primary,
+    scale: scaleCheck && !scaleCheck.ok ? scaleCheck.suggestedScale : 1,
+    position: request.position ?? null,
+    reasons: scaleCheck?.reasons ?? ['no bounding box was measured, so the asset is left at its authored scale'],
+  };
+  const luau = buildNormaliseLuau(plan);
+  if (!luau) {
+    result.normalisation = { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, plan, note: `the inserted path is not safe to interpolate into Luau (${primary}), so normalisation was not applied` };
+    step('normalise', false, result.normalisation.note);
+  } else {
+    const ran = await bridge.execStudioOp({ op: 'run_code', code: luau }, 20_000);
+    const parsed = ran.ok ? parseNormaliseResult(ran.data) : null;
+    result.normalisation = parsed
+      ? { applied: true, anchored: parsed.anchored, scaled: parsed.scaled, size: parsed.size, position: parsed.position, plan, note: plan.reasons.join('; ') }
+      : { applied: false, anchored: 0, scaled: 0, size: treeBounds, position: null, plan, note: ran.error ?? 'the normalisation snippet returned nothing readable' };
+    step('normalise', result.normalisation.applied, result.normalisation.applied ? `anchored ${result.normalisation.anchored} part(s), scale ${plan.scale.toFixed(2)}` : result.normalisation.note);
+  }
+
+  // --- place -------------------------------------------------------------------------------------
+  const misplaced = paths.filter((p) => !p.startsWith(parent));
+  step('place', misplaced.length === 0, misplaced.length ? `inserted outside the requested parent: ${misplaced.join(', ')}` : `sits under ${parent}${request.position ? ` at ${request.position.join(', ')}` : ''}`);
+
+  // --- verify -------------------------------------------------------------------------------------
+  // Re-read the scripts rather than trusting the delete. This is the only step that can prove the
+  // place is clean, and it is proof about the place, not about our own bookkeeping.
+  const leftover: string[] = [];
+  for (const p of paths) {
+    const listed = await bridge.execStudioOp({ op: 'list_scripts', root: p }, 20_000);
+    if (!listed.ok) return discard('the post-removal script listing failed, so the place cannot be proven clean', 'verify');
+    leftover.push(...scriptsFrom(listed.data).map((s) => s.path));
+  }
+  if (leftover.length) {
+    return discard(`${leftover.length} script(s) survived removal: ${leftover.join(', ')}`, 'verify');
+  }
+  const finalSize = result.normalisation?.size ?? treeBounds;
+  const finalScale = finalSize ? checkScale(desc.intent, finalSize) : null;
+  step('verify', true, `zero scripts remain under ${paths.join(', ')}${finalScale ? `; scale ${finalScale.ok ? 'plausible' : `still off (${finalScale.reasons[0]})`} for a '${finalScale.ruleKey}'` : ''}`);
+
+  result.ok = true;
+  result.summary = brokerSummary(result);
+  return result;
+}
+
+/** One-screen rendering of a broker run, for a log line or a tool result. */
+export function brokerSummary(r: BrokerResult): string {
+  const head = r.ok
+    ? `OK — asset ${r.chosen?.assetId ?? '?'} (${r.chosen?.name ?? 'unnamed'}) placed for '${r.query}'`
+    : `REFUSED at ${r.aborted?.step ?? 'unknown'} — ${r.aborted?.reason ?? 'no reason recorded'}`;
+  const lines = [head];
+  for (const s of r.steps) lines.push(`  ${s.ok ? 'ok  ' : 'FAIL'} ${s.step}: ${s.detail}`);
+  if (r.scan) lines.push(scanToText(r.scan));
+  return lines.join('\n');
 }

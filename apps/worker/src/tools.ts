@@ -10,6 +10,7 @@ import { searchAssetLibrary } from './asset-library';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
 import { semanticCheck, semanticLine } from './semantic';
+import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
 
 export interface AgentCtx {
   env: Env;
@@ -480,6 +481,66 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'inspect_model', path: String(a.path ?? ''), intent: a.intent ? String(a.intent) : undefined }, 45_000),
   },
+  generate_image: {
+    def: {
+      name: 'generate_image',
+      description:
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The pixels are parked under `imageKey` for an hour; there is NOT yet a path that uploads them to Roblox or applies them to a Decal, so never tell the user the image has been placed.",
+      parameters: S(
+        {
+          subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
+          target: { type: 'string', enum: ['ui_icon', 'decal', 'texture', 'thumbnail', 'concept'] },
+          palette: {
+            type: 'array',
+            description: 'Palette roles from the style spec, e.g. ["currency_soft"] for a coin or ["grass","dirt"] for ground.',
+            items: { type: 'string', enum: ['grass', 'dirt', 'stone', 'cliff', 'foliage', 'wood', 'sky', 'sand', 'accent', 'positive', 'danger', 'premium', 'currency_soft', 'currency_hard', 'locked'] },
+          },
+          outline: { type: 'string', enum: ['heavy', 'very_heavy'], description: 'default heavy; the style never uses a thin outline' },
+          lowPoly: { type: 'string', enum: ['flat_vector', 'chunky_low_poly', 'blocky'] },
+          lighting: { type: 'string', enum: ['flat', 'high_key', 'clear_daylight'] },
+          camera: { type: 'string', enum: ['straight_on', 'three_quarter', 'isometric', 'top_down'] },
+          background: { type: 'string', enum: ['flat_solid', 'soft_vignette_free', 'sky', 'plain_white'] },
+          aspect: { type: 'string', enum: ['1:1', '4:3', '3:4', '16:9', '9:16'], description: 'composition hint; the canvas itself is square' },
+          steps: { type: 'number', description: '1-8, default 4' },
+          seed: { type: 'number' },
+        },
+        ['subject', 'target'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const req: ImageRequest = {
+        subject: String(a.subject ?? ''),
+        target: (a.target as ImageRequest['target']) ?? 'ui_icon',
+        palette: Array.isArray(a.palette) ? (a.palette as PaletteRole[]) : undefined,
+        outline: a.outline as ImageRequest['outline'],
+        lowPoly: a.lowPoly as ImageRequest['lowPoly'],
+        lighting: a.lighting as ImageRequest['lighting'],
+        camera: a.camera as ImageRequest['camera'],
+        background: a.background as ImageRequest['background'],
+        aspect: a.aspect as ImageRequest['aspect'],
+        steps: a.steps ? Number(a.steps) : undefined,
+        seed: a.seed ? Number(a.seed) : undefined,
+      };
+      const res = await generateImage(ctx.env, req);
+      // A refusal is a result, not a crash: the model gets told what to do instead.
+      if ('refused' in res) return { error: res.message, reason: res.reason, offending: res.offending };
+      // The pixels never enter the transcript — a base64 PNG is ~230k characters of nothing the
+      // model can read. They go to KV under a key, exactly as render_view keeps frames out.
+      const imageKey = await storeImage(ctx.env, res.pngBase64);
+      return {
+        imageKey,
+        width: res.width,
+        height: res.height,
+        bytes: res.bytes,
+        steps: res.steps,
+        flatness: res.flatness.verdict,
+        flatnessNote: res.flatness.note,
+        aspectHonoured: res.aspectHonoured,
+        prompt: res.prompt,
+      };
+    },
+  },
   search_docs: {
     def: {
       name: 'search_docs',
@@ -583,8 +644,43 @@ export async function runTool(
     return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed, detail: detailForUi(result) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return { summary: `${name} failed: ${msg.slice(0, 80)}`, resultForLlm: JSON.stringify({ error: msg }), ok: false };
+    /* §1: provider and model identity are implementation details and must not
+       reach a normal user. This catch used to put the RAW exception into the
+       summary, which is broadcast as `tool_end.summary` and rendered verbatim in
+       the Thinking card — so a Workers AI failure surfaced to anyone with an
+       ordinary account as:
+
+         generate_image failed: AiError: 3040: Request failed for model
+         @cf/black-forest-labs/flux-1-schnell on ...
+
+       naming both the model and the provider. The raw text still goes to the
+       server log, where admin/diagnostics can read it; what crosses the boundary
+       to the user and to the model is scrubbed. */
+    console.error(`[tool:${name}] ${msg}`);
+    return { summary: `✗ ${name}`, resultForLlm: JSON.stringify({ error: scrubEngineIdentity(msg) }), ok: false };
   }
+}
+
+/**
+ * Strip anything that names the engine behind Golem.
+ *
+ * Deliberately a denylist of shapes rather than an allowlist of safe text. An
+ * allowlist would also drop the actionable half of an error — "Studio
+ * disconnected", "asset not found" — and make the model worse at recovering from
+ * a failure it could otherwise handle. The shapes below cover every id this
+ * worker can emit: Workers AI model paths are always `@cf/vendor/model`, and the
+ * token-billed providers have fixed names.
+ *
+ * Adding a provider means adding it here. The security suite asserts that a tool
+ * error carrying a model id does not survive this function.
+ */
+export function scrubEngineIdentity(msg: string): string {
+  return msg
+    .replace(/@cf\/[\w.-]+\/[\w.-]+/g, 'the engine')
+    .replace(/\bfor model\s+\S+/gi, 'for the engine')
+    .replace(/\b(?:workers-ai|openai|google|deepseek|anthropic|gemini|gpt-[\w.-]+|glm-[\w.-]+)\b/gi, 'the engine')
+    .replace(/\bAiError\b/g, 'EngineError')
+    .slice(0, 300);
 }
 
 function summarize(name: string, args: Record<string, unknown>, failed: boolean): string {

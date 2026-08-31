@@ -640,6 +640,7 @@ const TOOL_ARGS = {
   insert_asset: { assetId: 424242, parent: 'game.Workspace' },
   generate_model: { prompt: 'a lamp post', intent: 'lamp post' },
   inspect_model: { path: 'game.Workspace.Lamp', intent: 'lamp post' },
+  generate_image: { subject: 'a gold coin', target: 'ui_icon', palette: ['currency_soft'] },
   search_docs: { query: 'BasePart' },
   remember: { fact: 'the user prefers stone' },
   create_checkpoint: { label: 'manual' },
@@ -666,6 +667,53 @@ test('A2 no tool can put a credential, a JWT or a pairing token into tool_end.de
   }
   // Non-vacuity: if every tool errored, the loop above would prove nothing.
   assert.ok(withDetail >= 10, `only ${withDetail} tools produced a detail payload — the egress test is not exercising the channel`);
+});
+
+test('A1 a thrown tool error names no model and no provider — §1 across the tool boundary', async () => {
+  reset();
+  const env = makeEnv();
+
+  // The exact shape Workers AI produces when a model call fails. Before the fix
+  // this string reached `tool_end.summary` verbatim and was rendered in the
+  // Thinking card, naming both the model and the provider to an ordinary user.
+  const RAW = 'AiError: 3040: Request failed for model @cf/black-forest-labs/flux-1-schnell on provider workers-ai';
+  const { ctx } = studioCtx(env, {
+    execStudioOp: async () => {
+      throw new Error(RAW);
+    },
+  });
+
+  const out = await T.runTool(ctx, 'get_project_tree', '{}');
+  assert.equal(out.ok, false);
+
+  const blob = JSON.stringify({ summary: out.summary, resultForLlm: out.resultForLlm, detail: out.detail ?? null });
+  // Nothing that names the engine may cross the boundary — not to the browser,
+  // and not back into the model's own context where it could be echoed.
+  assert.equal(/@cf\//.test(blob), false, 'a tool error leaked a Workers AI model path');
+  assert.equal(/flux-1-schnell/.test(blob), false, 'a tool error leaked a model name');
+  for (const id of ['workers-ai', 'openai', 'google', 'deepseek', 'anthropic']) {
+    assert.equal(new RegExp(id, 'i').test(blob), false, `a tool error leaked the provider ${id}`);
+  }
+  assert.equal(/AiError/.test(blob), false, 'a tool error leaked a provider-specific error class');
+
+  // Non-vacuity: the error still has to be reported, just not with identity.
+  assert.match(out.summary, /get_project_tree/, 'the summary must still say which tool failed');
+});
+
+test('A1 scrubEngineIdentity survives every id shape this worker can emit', () => {
+  const cases = [
+    ['@cf/black-forest-labs/flux-1-schnell exploded', /@cf\//],
+    ['Request failed for model gpt-5.6-luna', /gpt-5/],
+    ['glm-5.3-flash timed out', /glm-5/],
+    ['upstream openai returned 500', /openai/i],
+    ['gemini refused', /gemini/i],
+  ];
+  for (const [raw, forbidden] of cases) {
+    const safe = T.scrubEngineIdentity(raw);
+    assert.equal(forbidden.test(safe), false, `scrubEngineIdentity left an identity in: ${safe}`);
+  }
+  // It must not swallow the actionable half of an error.
+  assert.match(T.scrubEngineIdentity('Studio is not connected'), /Studio is not connected/);
 });
 
 test('A2 detail is withheld for errors and for bare strings', async () => {
@@ -1299,10 +1347,24 @@ test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metere
     found.sort(),
     // gateway.ts twice: embed() and rawProbe(). Neither goes through an adapter — an embedding and
     // a raw-shape probe have no normalised form by definition — so each carries its own
-    // reserve/settle/release gate, asserted below. NOTHING outside the gateway may hold the binding.
-    ['gateway.ts', 'gateway.ts', 'providers/workers-ai.ts'],
+    // reserve/settle/release gate, asserted below.
+    //
+    // imagegen.ts is the third exception and the newest: an image model is billed per tile and per
+    // step, so it has neither a normalised chat shape nor a token count, and gateway.chat() cannot
+    // carry it. Admitting a file to this list is only safe if the gate comes with it, so the same
+    // reserve-before-run / settle-after-run / release-on-failure ordering is asserted for it below.
+    ['gateway.ts', 'gateway.ts', 'imagegen.ts', 'providers/workers-ai.ts'],
     'a new direct env.AI.run call site bypasses the provider layer — route it through gateway.chat()',
   );
+  // imagegen.ts: same gate, same singleton ledger, same order.
+  const img = readCode('imagegen.ts');
+  const imgReserveAt = img.indexOf('const reserved = await reserve(env, spec.id, neurons)');
+  const imgRunAt = img.indexOf('env.AI.run(');
+  assert.ok(imgReserveAt > 0, 'generateImage() must take a reservation');
+  assert.ok(imgReserveAt < imgRunAt, 'generateImage() must reserve BEFORE it runs the model');
+  assert.ok(img.indexOf('await settle(env, reserved,') > imgRunAt, 'generateImage() must settle AFTER the model returns');
+  assert.ok(img.includes('await release(env, reserved)'), 'generateImage() must release its reservation when the call fails');
+  assert.match(img, /BUDGET_DO\.idFromName\('singleton'\)/, 'imagegen must charge the one global ledger, not a ledger of its own');
   // WAS A FINDING (admin-only): index.ts::/api/admin/raw-probe called env.AI.run itself and so spent
   // neurons with NO BudgetDO reservation — the one unmetered model call in the product. It now
   // delegates to gateway.rawProbe(). Pinned here so the binding cannot creep back into a route.
