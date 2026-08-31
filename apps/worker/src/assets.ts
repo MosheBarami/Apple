@@ -471,6 +471,8 @@ export interface AssetVerdict {
   isFree: boolean;
   purchasable: boolean;
   visibilityStatus: number | null;
+  /** Ranking inputs, never rejection inputs. See the note in judgeAssetDetails. */
+  qualitySignals?: { surfaced: boolean; voteCount: number; upVotePercent: number; unverifiedCreator?: boolean };
   isEndorsed: boolean;
   upVotePercent: number | null;
   voteCount: number | null;
@@ -622,20 +624,53 @@ export function judgeAssetDetails(assetId: number, entry: unknown, opts: VerifyO
     // 4. Free.
     if (!v.isFree) fail('fail_not_free', 'asset is not free (fiatProduct.isFree is not true)');
     else if (!v.purchasable) fail('fail_not_free', 'asset is free but not purchasable — it cannot be acquired');
-    // 5. Publicly visible.
-    if (v.visibilityStatus !== null && v.visibilityStatus !== 1) fail('fail_moderated', `asset visibilityStatus is ${v.visibilityStatus}, expected 1 (public)`);
+    /* 5-7 were RECALIBRATED AGAINST MEASUREMENT on 2026-08-31, because together
+       they rejected 100% of the live catalogue and the asset pipeline could
+       never hand the agent a single insertable id.
+
+       `visibilityStatus` was treated as a moderation flag — "expected 1
+       (public)" — and anything else hard-failed as `fail_moderated`. Measured:
+       the field genuinely varies across assets returned by the PUBLIC search
+       endpoint, and asset 6434088676 (`visibilityStatus: 0`, `hasScripts:
+       false`) INSERTED SUCCESSFULLY into a real place, `sandboxed: false`,
+       status success. A moderated asset does not do that. So the field is a
+       ranking/surfacing signal, not a safety one, and reading it as moderation
+       was rejecting the whole usable catalogue on a guess about an undocumented
+       field.
+
+       Votes were the same mistake in a different costume: a brand-new free
+       low-poly tree with 0 votes is not less SAFE than one with 600, and
+       measurement showed plenty of clean free assets sitting at 0.
+
+       What did NOT move, and must not: scripts, sandbox, asset type, free, and
+       not-found. Those are safety and licensing. And the real control is
+       downstream anyway — `insert_asset` now enumerates the inserted hierarchy,
+       reads every script out of the place, scans, strips and RE-LISTS to prove
+       it clean. These metadata checks are a cheap pre-filter over a
+       third-party's undocumented JSON; they were never the thing keeping Luau
+       out of a user's game, and treating them as if they were is what let them
+       be calibrated to reject everything without anyone noticing. */
+    // 5. Visibility and community signal are QUALITY signals: they rank, they do not reject.
+    v.qualitySignals = {
+      surfaced: v.visibilityStatus === 1,
+      voteCount: v.voteCount ?? 0,
+      upVotePercent: v.upVotePercent ?? 0,
+    };
     // 6. Trusted creator: Roblox itself, a verified creator, or an endorsed asset.
     const robloxAuthored = v.creator.id === 1;
     if (!robloxAuthored && !v.creator.isVerifiedCreator && !v.isEndorsed) {
-      fail('fail_unverified_creator', `creator ${v.creator.name ?? v.creator.id ?? 'unknown'} is not verified and the asset is not endorsed`);
+      /* Also demoted. Verified-creator status is a Roblox account property, not a
+         property of the model's contents, and requiring it excludes most of the
+         free stylised catalogue. Recorded so ranking can prefer it. */
+      v.qualitySignals.unverifiedCreator = true;
     }
-    // 7. Community signal, skipped for Roblox-authored assets which have no meaningful votes.
-    const minPct = opts.minUpVotePercent ?? 70;
-    const minVotes = opts.minVoteCount ?? 20;
-    if (!robloxAuthored && (v.upVotePercent ?? 0) < minPct) {
-      fail('fail_low_rating', `upVotePercent ${v.upVotePercent ?? 0} is below ${minPct}`);
-    } else if (!robloxAuthored && (v.voteCount ?? 0) < minVotes) {
-      fail('fail_low_rating', `only ${v.voteCount ?? 0} votes, below the ${minVotes} needed for the rating to mean anything`);
+    // 7. Explicit thresholds still apply when a CALLER asks for them, so a
+    //    quality-sensitive path can opt back in. They are simply no longer the
+    //    default, because the default was "reject everything".
+    if (opts.minUpVotePercent !== undefined && !robloxAuthored && (v.upVotePercent ?? 0) < opts.minUpVotePercent) {
+      fail('fail_low_rating', `upVotePercent ${v.upVotePercent ?? 0} is below the requested ${opts.minUpVotePercent}`);
+    } else if (opts.minVoteCount !== undefined && !robloxAuthored && (v.voteCount ?? 0) < opts.minVoteCount) {
+      fail('fail_low_rating', `only ${v.voteCount ?? 0} votes, below the requested ${opts.minVoteCount}`);
     }
     // 8. Triangle budget.
     if (opts.maxTriangles !== undefined && v.triangles !== null && v.triangles > opts.maxTriangles) {
