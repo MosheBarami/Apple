@@ -50,7 +50,7 @@ INFORMATION, or only COLOUR?**
 |---|---|---|
 | `crystal` | yes | texture is flat colour over faceted geometry |
 | `crystal_cube` | yes | same; frees the accepted silhouette for both biomes |
-| `cliff_module` | yes | the texture *is* the candy-stripe banding that got it rejected |
+| `cliff_module` | **no** | stripping *does* remove the candy stripe, and leaves a smooth column — tried and rejected, see the follow-up below |
 | `sign` | **no** | glyphs |
 | `crate` | **no** | painted panel detail |
 | `tree_pine` / `tree_round` | **no** | green canopy over brown trunk |
@@ -123,3 +123,30 @@ Recorded here rather than left for the next review to rediscover:
 - Coins are untextured floating cubes.
 - The Glacier Heart is legible but does not yet read as a *payoff* from the gate —
   it is a modest cluster in the middle distance.
+
+---
+
+## Follow-up: `cliff_module` was tried on this path and rejected again
+
+Stripping the texture from the three generated mesas does remove the candy-stripe
+banding that got them rejected in `f4d7ad0`. It does not make them usable.
+
+Stood against the real canyon wall at the `cliff` tier, scaled to 42 studs and
+capped at the same 46-stud footprint the previous pass had to add, in the meadow's
+own rust: **a de-textured mesa reads as a smooth featureless column.** The
+underlying geometry is soft — the banding had been doing all of the geological
+work. A curated rock mesh standing in the same frame is sharply faceted and reads
+as rock.
+
+**The sharpened rule this gives the DETEXTURE list:** de-texturing only helps where
+the *geometry* already carries the form. A crystal's facets survive the strip; a
+mesa's do not exist. Generating successfully, rendering well alone, tinting
+correctly, and even fixing the originally-cited defect are all still not acceptance.
+
+`cliff_module` is therefore off the list rather than on-it-and-unused — a rejected
+thing kept as dead configuration is how a later pass reintroduces it. The three
+meshes stay in `ServerStorage.GolemPalette` so the reading can be re-taken.
+
+Running total on this family: **7 of 9 generations rejected** — 3 on their own
+render, 3 in context, and now the same 3 again on a second, differently-motivated
+attempt.

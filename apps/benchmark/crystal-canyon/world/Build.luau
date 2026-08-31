@@ -542,7 +542,9 @@ end
 
 	 So the policy is per family and turns on ONE question: does the texture carry
 	 INFORMATION, or only COLOUR?
-	   crystal, crystal_cube, cliff_module -> colour only. Stripped.
+	   crystal, crystal_cube -> colour only, over geometry that is already
+	   faceted. Stripped. (`cliff_module` failed the second half of that test —
+	   see the note on DETEXTURE itself.)
 	   sign (glyphs), crate (painted panels), tree_* (canopy over trunk),
 	   kiosk (striped awning), landmark (the accepted hero gradient) -> the
 	   texture IS the art, and blanking it really would yield a white blob.
@@ -550,10 +552,26 @@ end
 	 Stripping happens on the CLONE, never on the ServerStorage original, so the
 	 acquired palette stays byte-for-byte as downloaded and the whole decision is
 	 reversible by editing this one table. ]]
+--[[ `cliff_module` WAS on this list and was taken off it by a render.
+
+	 The reasoning was that stripping the texture removes the candy-stripe banding
+	 that got the three mesas rejected, which is true, and that this would make
+	 them usable as tinted cliff mass, which is false. Stood against the real
+	 canyon wall at the `cliff` tier in the biome's own rust, a de-textured mesa
+	 reads as a SMOOTH FEATURELESS COLUMN: the underlying geometry is soft, and
+	 the banding had been doing all of the geological work. The curated rock mesh
+	 standing beside it in the same shot is sharply faceted and reads as rock.
+
+	 The sharpened rule, which is what this list is really keyed on: de-texturing
+	 only helps where the GEOMETRY already carries the form. A crystal's facets
+	 survive the strip. A mesa's do not exist. Generating successfully, rendering
+	 well alone, and even tinting correctly are all still not acceptance.
+
+	 Left off rather than left in-and-unused: a rejected thing kept as dead
+	 configuration is how a later pass reintroduces it. ]]
 local DETEXTURE: { [string]: boolean } = {
 	crystal = true,
 	crystal_cube = true,
-	cliff_module = true,
 }
 
 local function detexture(inst: any)
@@ -690,10 +708,15 @@ tintablePools.cliff_rock = tintablePools.rock
 
 	    So a Cube family now declares which side of that line it sits on. The
 	    geode and the kiosk keep their textures, because their baked gradient and
-	    striped awning ARE the authored art. `crystal_cube` and `cliff_module` are
-	    stripped and tinted, because their textures only ever carried colour —
-	    and in the mesas' case, carried the candy-stripe banding that got them
-	    rejected in the first place.
+	    striped awning ARE the authored art. `crystal_cube` is stripped and tinted,
+	    because its texture only ever carried colour over geometry that is already
+	    faceted.
+
+	    `cliff_module` was tried on that same path and rejected a second time —
+	    see the note on DETEXTURE. Stripping it does remove the candy stripe, and
+	    what is left underneath is a smooth column with no facets at all. It stays
+	    out of this list, and the three meshes stay in ServerStorage so the reading
+	    can be re-taken.
 
 	 3. NO PRIMITIVE FALLBACK OF THEIR OWN, because they do not need one: the
 	    authored geometry each of them replaces still builds when the mesh is
