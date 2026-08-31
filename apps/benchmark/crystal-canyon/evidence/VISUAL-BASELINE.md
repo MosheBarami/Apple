@@ -164,3 +164,55 @@ then read `LookVector` back and assert the drift is zero before capturing.
 The frost camera in the table above — `[0, 26, -78]` → `[0, 4, -200]` — is
 correct and is retained. It sits 4 studs behind the gate's near face, so the
 gate frames the shot; that is the zone entrance and it is the intended read.
+
+---
+
+## Correction, 2026-09-01 — the "unpublished place" blocker above is WRONG
+
+The section above records `game.PlaceId = 0`, concludes that an unpublished place
+has no universe, and asks the owner to publish in order to unblock Cube generation
+and persistence together. **All three parts of that are now false**, and the note is
+left in place rather than deleted because the reasoning is a good example of a
+correct inference from a stale reading.
+
+Measured in this place on 2026-09-01:
+
+```
+PlaceId      = 116648235878426
+GameId       = 10764643912
+PlaceVersion = 2
+DataStore write + read -> OK, API services are enabled
+```
+
+Consequences:
+
+- **Persistence is proven, not blocked.** 11 shards earned through the server's own
+  10 Hz proximity sweep, stopped, read straight out of `CrystalCanyon_Profile_v1` /
+  `plr_<uid>` from Edit mode, restarted, HUD reads 11. Session lock released,
+  schema stamped `version = 1`. See `../../../docs/evidence/2026-09-01-persistence-roundtrip.md`.
+- **Cube generation works** and has for two passes — the palette carries 13 Cube
+  meshes and the geode is the accepted monument crown. The family's honest record
+  is 7 of 9 candidates rejected, which is the gate working, not the API failing.
+
+Whatever produced `PlaceId = 0` at the time, it was not this place being
+unpublished. **No owner action is required for either capability.**
+
+## World state at this correction
+
+| metric | rejected blockout | previous pass | now |
+|---|---|---|---|
+| primitives | 608 | 591 | **497** |
+| mesh assets | — | 339 | **380** |
+| textured meshes | — | 339 | **32** |
+| crystal meshes in Frost Hollow | 0 | **0** | **22** |
+
+The two landmarks both changed shape. The Glacier Heart's core is a blunt radial
+crystal burst instead of seven boxes, and `stoneDais` — which builds the pedestal
+under **both** landmarks — was laying its ashlar blocks radially instead of
+tangentially, so both daises were pinwheels of spokes rather than octagonal drums.
+See `../../../docs/evidence/2026-09-01-detexture-ab.md`.
+
+**Still failing at this camera set:** `Cliffs` spends 157 primitives and both walls
+still read as terraced boxes in every wide shot. Raising the cliff masses' mesh
+ratio was tried and rejected — it improved every number and no pixels, and pushed
+three rock meshes to 177 placements. Recorded as F-19 in `../../../docs/FAILURES.md`.
