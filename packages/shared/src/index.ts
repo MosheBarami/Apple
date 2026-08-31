@@ -593,6 +593,88 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; sparksP
   rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', sparksPerRequest: 3, typicalSparks: '10-30' },
 };
 
+// ---------------------------------------------------------------------------
+// Product modes — the only mode concept the product surfaces
+//
+// Users pick Plan / Agent / Super Agent. They never pick a specialist, and they
+// never pick a provider or a foundation model: which engine answers is an
+// implementation detail of the routing layer, visible only in admin and
+// diagnostics surfaces.
+//
+// The internal specialist axis (GolemMode: clay/stone/rune) is deliberately
+// preserved exactly as it is, on the wire and in storage. `ClientMsg.chat`
+// still carries `mode: GolemMode`, the session DO still persists it, and the
+// Sparks ledger still accounts against it — so sessions written before this
+// mapping existed keep replaying correctly and no budget record changes meaning.
+// Clay, Stone and Rune are internal specialist identities, not user-facing
+// brands: nothing in normal product UI should name them.
+//
+// Translate at the edge (product mode in, specialist out) and nothing below the
+// edge has to know the product ever gained a new vocabulary.
+// ---------------------------------------------------------------------------
+
+/** What the user picks. This is the only mode concept the product surfaces. */
+export type ProductMode = 'plan' | 'agent' | 'super';
+
+/** The three product modes in the order they are offered. */
+export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent', 'super'];
+
+/**
+ * Product mode -> internal specialist. Plan is inspection and design, and is
+ * the cheapest work we do, so it maps to Clay. Agent is the normal bounded
+ * builder, which is Stone. Super Agent is long-horizon autonomy, which is Rune.
+ *
+ * Do not "improve" this mapping: it is what keeps a stored session's
+ * `mode: GolemMode` meaning the same thing it meant when it was written.
+ */
+export const PRODUCT_MODE_TO_SPECIALIST: Record<ProductMode, GolemMode> = {
+  plan: 'clay',
+  agent: 'stone',
+  super: 'rune',
+};
+
+/** Internal specialist -> the product mode that selects it. The exact inverse. */
+export const SPECIALIST_TO_PRODUCT_MODE: Record<GolemMode, ProductMode> = {
+  clay: 'plan',
+  stone: 'agent',
+  rune: 'super',
+};
+
+/**
+ * User-facing copy and cost for each product mode.
+ *
+ * The Spark figures are NOT restated here — they are read out of MODE_INFO
+ * through the mapping above, because `sparksPerRequest` is the balance a client
+ * must hold before it may send, and the ledger charges the specialist. A
+ * product-mode number that drifted above its specialist's would lock users out
+ * of sends the worker would have served; one that drifted below would promise a
+ * send the quota then refuses. Change a price in MODE_INFO or nowhere.
+ */
+export const PRODUCT_MODE_INFO: Record<
+  ProductMode,
+  { name: string; blurb: string; sparksPerRequest: number; typicalSparks: string }
+> = {
+  plan: {
+    name: 'Plan',
+    blurb: 'Inspects your project and designs the work. Proposes; does not change anything.',
+    sparksPerRequest: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].sparksPerRequest,
+    typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].typicalSparks,
+  },
+  agent: {
+    name: 'Agent',
+    blurb: 'Builds, tests and repairs. The normal way to work.',
+    sparksPerRequest: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].sparksPerRequest,
+    typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].typicalSparks,
+  },
+  super: {
+    name: 'Super Agent',
+    blurb:
+      'Long-horizon autonomous creation. Decomposes, builds, playtests, critiques and iterates through many stages without asking routine questions.',
+    sparksPerRequest: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].sparksPerRequest,
+    typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].typicalSparks,
+  },
+};
+
 export const PROTOCOL_VERSION = 1;
 
 // ---------------------------------------------------------------------------

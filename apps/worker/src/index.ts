@@ -253,50 +253,45 @@ app.post('/api/studio/poll', async (c) => {
 
 // ---------------------------------------------------------------- me
 /**
- * The model providers this deployment can actually reach.
+ * Service reachability for the signed-in app. Deliberately says nothing about
+ * WHICH model or provider serves a request.
  *
- * Availability is computed from the environment on every request, never
- * cached and never hardcoded, so the picker in the composer cannot show a
- * provider as usable when no credential for it exists. A provider that is
- * unavailable is still listed — with the reason — because silently hiding it
- * would leave the user wondering why the product advertises four models and
- * offers one.
+ * ==========================================================================
+ * DECISION (worker owner) — read this before changing the web client.
+ * ==========================================================================
+ * Manifest §1: users must never choose a foundation model, and provider
+ * identity is an implementation detail that must not appear in normal product
+ * UX. This route used to return model ids, provider names, per-model token
+ * costs and per-provider health to every signed-in user, and the web app
+ * rendered it as a model picker. That is precisely the payload §1 forbids.
+ *
+ * WHAT I CHOSE: the path is KEPT and still returns 200 to any authenticated
+ * user, but the payload is now minimal and non-provider-identifying. The full
+ * capability table, costs, auto-routing rationale and provider health moved
+ * verbatim to `GET /api/admin/model-routing`, behind the ADMIN_KEY — §1
+ * explicitly wants the routing layer kept for admin/diagnostics.
+ *
+ * WHY KEPT AND NOT DELETED:
+ *   - Deleting it would 404 every browser still running a cached bundle. A
+ *     200 with an empty model list degrades to "there is nothing to pick",
+ *     which is the correct end state anyway.
+ *   - `infra/smoke.mjs` probes this path as a liveness check.
+ *   - The product genuinely needs ONE bit here that is not provider identity:
+ *     whether this deployment can serve inference at all. That is `ready`.
+ *
+ * FOR THE WEB CLIENT AGENT: stop calling this for anything picker-shaped.
+ * `models` and `auto` are deprecated tombstones kept only so an unmigrated
+ * bundle degrades instead of throwing on `providers.models.filter(...)`;
+ * they are always empty/null and will be deleted once no client reads them.
+ * Read `ready` if you want to disable the composer when the service cannot
+ * serve. Everything else you may have been rendering is now admin-only.
  */
 app.get('/api/providers', async (c) => {
-  const rows = capabilityTable(c.env);
-  const auto = selectProvider(c.env, {});
-  return c.json({
-    models: rows.map((r) => ({
-      id: r.id,
-      provider: r.provider,
-      label: r.displayName,
-      available: r.available,
-      reason: r.available ? null : r.availabilityDetail,
-      unsupportedModelKeys: r.unsupportedModelKeys ?? [],
-      supportsTools: r.supportsTools,
-      supportsVision: r.supportsVision,
-      inputCostPer1M: r.inputCostPer1M,
-      outputCostPer1M: r.outputCostPer1M,
-      unverifiedFields: r.unverifiedFields ?? [],
-    })),
-    auto: auto.ok ? { model: auto.model.id, reasoning: auto.reasoning } : { model: null, reasoning: auto.reasoning },
-    // Only the error KIND and when it happened. `lastError.message` is the
-    // upstream provider's own string, verbatim and length-uncapped — an
-    // authentication failure from a provider can quote the key it rejected.
-    // Harmless while the only credentialed provider is the key-less Workers AI
-    // binding; a credential leak to every signed-in user the day a provider
-    // secret is added. This route is new, so this egress path is new too.
-    health: providerHealth().map((h) => ({
-      provider: h.provider,
-      calls: h.calls,
-      ok: h.ok,
-      failed: h.failed,
-      lastLatencyMs: h.lastLatencyMs,
-      medianLatencyMs: h.medianLatencyMs,
-      lastAt: h.lastAt,
-      lastError: h.lastError ? { kind: h.lastError.kind, at: h.lastError.at } : null,
-    })),
-  });
+  // `selectProvider` is a pure function of `env` — no network, no cache. Its
+  // `reasoning` string names providers and is therefore NOT returned; only
+  // the boolean survives.
+  const ready = selectProvider(c.env, {}).ok;
+  return c.json({ ready, models: [], auto: { model: null, reasoning: '' } });
 });
 
 app.get('/api/me', async (c) => {
@@ -378,6 +373,70 @@ app.post('/api/admin/model-test', async (c) => {
 });
 
 app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
+
+/**
+ * The routing layer, in full — ADMIN ONLY.
+ *
+ * This is where `GET /api/providers` used to publish model ids, provider
+ * names, per-1M token costs, auto-selection rationale and provider health to
+ * every signed-in user. Manifest §1 keeps that information for
+ * admin/diagnostics and takes it out of normal product UX, so it lives here,
+ * behind ADMIN_KEY, and nowhere else.
+ *
+ * Named `model-routing` rather than `providers` on purpose: `/api/providers`
+ * still exists as a user route, and two paths differing only by an `/admin/`
+ * segment is exactly the kind of pair that gets mixed up in a client.
+ *
+ * Availability is computed from `env` on every request — never cached, never
+ * hardcoded — so this cannot report a provider as usable when no credential
+ * for it exists. Fields are whitelisted one by one rather than spread: a
+ * future field on CapabilityRow must be reviewed before it can egress, even
+ * to an admin.
+ *
+ * `lastError.message` is STILL withheld, admin surface or not. It is the
+ * upstream provider's own string, verbatim and length-uncapped, and a
+ * provider's 401 body can quote the key it rejected. Moving this behind the
+ * admin key was not a licence to start echoing credentials into a response
+ * body; `kind` plus `at` is what diagnostics actually needs, and
+ * /api/admin/raw-probe already exists for reproducing a specific failure.
+ */
+app.get('/api/admin/model-routing', async (c) => {
+  const rows = capabilityTable(c.env);
+  const auto = selectProvider(c.env, {});
+  return c.json({
+    models: rows.map((r) => ({
+      id: r.id,
+      provider: r.provider,
+      label: r.displayName,
+      available: r.available,
+      // both halves of availability: the machine-readable reason and the
+      // human detail. Admins are the audience that needs to know WHY.
+      unavailableReason: r.available ? null : r.unavailableReason,
+      reason: r.available ? null : r.availabilityDetail,
+      unsupportedModelKeys: r.unsupportedModelKeys ?? [],
+      supportsTools: r.supportsTools,
+      supportsVision: r.supportsVision,
+      contextWindow: r.contextWindow,
+      maxOutput: r.maxOutput,
+      inputCostPer1M: r.inputCostPer1M,
+      outputCostPer1M: r.outputCostPer1M,
+      unverifiedFields: r.unverifiedFields ?? [],
+    })),
+    auto: auto.ok
+      ? { model: auto.model.id, provider: auto.provider, reasoning: auto.reasoning, rejected: auto.rejected }
+      : { model: null, provider: null, reasoning: auto.reasoning, rejected: auto.rejected },
+    health: providerHealth().map((h) => ({
+      provider: h.provider,
+      calls: h.calls,
+      ok: h.ok,
+      failed: h.failed,
+      lastLatencyMs: h.lastLatencyMs,
+      medianLatencyMs: h.medianLatencyMs,
+      lastAt: h.lastAt,
+      lastError: h.lastError ? { kind: h.lastError.kind, at: h.lastError.at } : null,
+    })),
+  });
+});
 
 /**
  * Raw provider response, for adapting the normalizer to a new model's shape.

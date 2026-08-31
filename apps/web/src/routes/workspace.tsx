@@ -8,14 +8,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { GolemMode } from '@golem/shared';
+import { PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
-import { fetchProviders } from '../lib/api';
 import { useToast } from '../components/toast';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
@@ -49,8 +48,7 @@ export function WorkspacePage() {
 
   const [showPairing, setShowPairing] = useState(false);
   const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory'>(null);
-  const [mode, setMode] = useState<GolemMode>('stone');
-  const [providerId, setProviderId] = useState<string | 'auto'>('auto');
+  const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
 
@@ -65,13 +63,6 @@ export function WorkspacePage() {
     queryKey: ['project', projectId],
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
-  });
-
-  const providers = useQuery({
-    queryKey: ['providers'],
-    queryFn: fetchProviders,
-    staleTime: 300_000,
-    retry: 1,
   });
 
   const onServerError = useCallback(
@@ -127,7 +118,12 @@ export function WorkspacePage() {
   const send = (text: string) => {
     stick.current = true;
     setSeed(undefined);
-    if (!sendChat(text, mode)) toast('Not connected yet — hang on a moment.', 'error');
+    // The product mode the user picked becomes the internal specialist here,
+    // at the one point a message is built. Everything downstream — the wire
+    // protocol, stored sessions, budget accounting — still speaks GolemMode.
+    if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode])) {
+      toast('Not connected yet — hang on a moment.', 'error');
+    }
   };
 
   const lastAssistantId = useMemo(
@@ -274,10 +270,6 @@ export function WorkspacePage() {
           disabled={conn !== 'open'}
           mode={mode}
           onModeChange={setMode}
-          providers={providers.data?.models ?? []}
-          providerId={providerId}
-          onProviderChange={setProviderId}
-          autoReasoning={providers.data?.auto.reasoning}
           seed={seed}
         />
       </div>

@@ -2,10 +2,16 @@
 // hint. Sparks numbers come from @golem/shared and the live quota — nothing is
 // hard-coded here, because a run is billed from the compute it actually uses.
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { MODE_INFO, type GolemMode, type QuotaState } from '@golem/shared';
+import {
+  PRODUCT_MODE_INFO,
+  PRODUCT_MODE_TO_SPECIALIST,
+  type GolemMode,
+  type ProductMode,
+  type QuotaState,
+} from '@golem/shared';
 import { countdownTo } from '../lib/format';
 
-const MODES: GolemMode[] = ['clay', 'stone', 'rune'];
+const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 
 interface ComposerProps {
   disabledReason: string | null;
@@ -34,7 +40,7 @@ function useCountdown(iso: string | null): string | null {
 
 export function Composer({ disabledReason, running, quota, onSend, onStop, onModeChange, seed }: ComposerProps) {
   const [text, setText] = useState('');
-  const [mode, setMode] = useState<GolemMode>('stone');
+  const [mode, setMode] = useState<ProductMode>('agent');
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
   const autoGrow = () => {
@@ -54,7 +60,7 @@ export function Composer({ disabledReason, running, quota, onSend, onStop, onMod
     }
   }, [seed]);
 
-  const info = MODE_INFO[mode];
+  const info = PRODUCT_MODE_INFO[mode];
   const cost = info.sparksPerRequest;
   const quotaExhausted = quota !== null && quota.sparksRemaining < cost;
   const resetIn = useCountdown(quotaExhausted && quota ? quota.resetsAtIso : null);
@@ -66,7 +72,7 @@ export function Composer({ disabledReason, running, quota, onSend, onStop, onMod
   const send = () => {
     const trimmed = text.trim();
     if (!trimmed || blocked) return;
-    onSend(trimmed, mode);
+    onSend(trimmed, PRODUCT_MODE_TO_SPECIALIST[mode]);
     setText('');
     if (areaRef.current) areaRef.current.style.height = 'auto';
   };
@@ -78,18 +84,18 @@ export function Composer({ disabledReason, running, quota, onSend, onStop, onMod
     }
   };
 
-  const pickMode = (m: GolemMode) => {
+  const pickMode = (m: ProductMode) => {
     setMode(m);
-    onModeChange?.(m);
+    onModeChange?.(PRODUCT_MODE_TO_SPECIALIST[m]);
   };
 
   return (
     <div className={`composer is-${mode}`}>
       <div className="composer-inner">
         <div className="composer-toolbar">
-          <div className="mode-select" role="radiogroup" aria-label="Golem mode">
+          <div className="mode-select" role="radiogroup" aria-label="Mode">
             {MODES.map((m) => {
-              const meta = MODE_INFO[m];
+              const meta = PRODUCT_MODE_INFO[m];
               return (
                 <button
                   key={m}

@@ -199,18 +199,21 @@
   }
 }
 
-/* mode scopes — the accent follows the mode you are working in */
-.is-clay {
+/* Mode scopes — the accent follows the mode you are working in.
+   The class names are the product modes the user sees (Plan / Agent / Super
+   Agent); the --acc-* tokens they read keep their original quarry names
+   because they are internal palette entries, not labels. */
+.is-plan {
   --accent: var(--acc-clay);
   --accent-soft: var(--acc-clay-soft);
   --accent-ink: var(--acc-clay-ink);
 }
-.is-stone {
+.is-agent {
   --accent: var(--acc-stone);
   --accent-soft: var(--acc-stone-soft);
   --accent-ink: var(--acc-stone-ink);
 }
-.is-rune {
+.is-super {
   --accent: var(--acc-rune);
   --accent-soft: var(--acc-rune-soft);
   --accent-ink: var(--acc-rune-ink);
@@ -2172,13 +2175,13 @@ textarea {
   rotate: 45deg;
 }
 
-.mode-dot-clay {
+.mode-dot-plan {
   background: var(--acc-clay);
 }
-.mode-dot-stone {
+.mode-dot-agent {
   background: var(--acc-stone);
 }
-.mode-dot-rune {
+.mode-dot-super {
   background: var(--acc-rune);
 }
 

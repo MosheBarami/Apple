@@ -338,11 +338,35 @@ async function call(path, { method = 'GET', jwt, adminKey, headers = {}, body, e
 // The highest-priority check. Every response-shaping path is driven with all seven credentials set
 // to findable sentinels, and every byte the worker hands back is searched for them.
 
-test('A1 /api/providers returns no credential value, with every provider credentialed', async () => {
+// WHERE THE CAPABILITY TABLE LIVES NOW. `GET /api/providers` used to publish model ids, provider
+// names, per-1M costs and provider health to every signed-in user. Manifest §1 forbids exactly that
+// payload in normal product UX, so it moved verbatim to `GET /api/admin/model-routing` behind
+// ADMIN_KEY. These checks follow the payload: the credential invariants are unchanged, they are
+// just asserted where the fields actually egress now — plus a new one saying the user route no
+// longer carries them at all.
+const ROUTING = '/api/admin/model-routing';
+
+test('A1 /api/providers returns no credential value, and no provider identity at all', async () => {
   reset();
   const res = await call('/api/providers', { jwt: OWNER_JWT });
   assert.equal(res.status, 200);
   assertNoSecret(res.text, 'GET /api/providers');
+  // §1: the user-facing route says only whether the service can serve. No model rows, no provider
+  // names, no costs, no health.
+  assert.equal(typeof res.json.ready, 'boolean');
+  assert.deepEqual(res.json.models, [], '/api/providers must not publish a model list to users');
+  assert.equal(res.json.auto?.model ?? null, null);
+  assert.equal(res.json.health, undefined, '/api/providers must not publish provider health to users');
+  for (const id of ['workers-ai', 'openai', 'google', 'deepseek']) {
+    assert.equal(res.text.includes(id), false, `/api/providers must not name the provider ${id}`);
+  }
+});
+
+test(`A1 ${ROUTING} returns no credential value, with every provider credentialed`, async () => {
+  reset();
+  const res = await call(ROUTING, { adminKey: SECRETS.ADMIN_KEY });
+  assert.equal(res.status, 200);
+  assertNoSecret(res.text, `GET ${ROUTING}`);
   // With the sentinels in place all four providers report available — which is exactly the
   // dangerous case, because it is the branch that renders the "is set" detail strings.
   const byProvider = Object.fromEntries(res.json.models.map((m) => [m.provider, m]));
@@ -352,35 +376,40 @@ test('A1 /api/providers returns no credential value, with every provider credent
   assert.match(byProvider.openai.reason ?? '', /^$|null/, 'an available provider carries no reason');
 });
 
-test('A1 /api/providers exposes exactly one whitelisted field set — no row spread', () => {
+test(`A1 ${ROUTING} exposes exactly one whitelisted field set — no row spread`, () => {
   reset();
   const src = read('index.ts');
-  const route = src.slice(src.indexOf("app.get('/api/providers'"), src.indexOf("app.get('/api/me'"));
-  assert.ok(route.length > 100, 'the /api/providers route was not found in index.ts');
+  const route = src.slice(src.indexOf(`app.get('${ROUTING}'`), src.indexOf("app.post('/api/admin/raw-probe'"));
+  assert.ok(route.length > 100, `the ${ROUTING} route was not found in index.ts`);
+  // And the user route it replaced must not have quietly grown the table back.
+  const userRoute = src.slice(src.indexOf("app.get('/api/providers'"), src.indexOf("app.get('/api/me'"));
+  assert.equal(/capabilityTable|providerHealth/.test(userRoute), false,
+    '/api/providers must not read the capability table or provider health');
   // STATIC CHECK. `capabilityTable` rows are proven clean below, but a future `...r` spread would
   // forward whatever field is added to CapabilityRow next — including one that reads a secret.
-  assert.equal(/\.\.\.\s*r\b/.test(route), false, '/api/providers must not spread the capability row into the response');
-  assert.equal(/env\.[A-Z_]*KEY/.test(route), false, '/api/providers must not read a credential binding');
+  assert.equal(/\.\.\.\s*r\b/.test(route), false, `${ROUTING} must not spread the capability row into the response`);
+  assert.equal(/env\.[A-Z_]*KEY/.test(route), false, `${ROUTING} must not read a credential binding`);
   const fields = [...route.matchAll(/^\s{6}(\w+):/gm)].map((m) => m[1]);
   assert.deepEqual(
     new Set(fields),
     new Set([
       // model rows
-      'id', 'provider', 'label', 'available', 'reason', 'unsupportedModelKeys',
-      'supportsTools', 'supportsVision', 'inputCostPer1M', 'outputCostPer1M', 'unverifiedFields',
+      'id', 'provider', 'label', 'available', 'unavailableReason', 'reason', 'unsupportedModelKeys',
+      'supportsTools', 'supportsVision', 'contextWindow', 'maxOutput',
+      'inputCostPer1M', 'outputCostPer1M', 'unverifiedFields',
       // health rows — reviewed 2026-08-31. Counters, latencies and a timestamp.
       // `lastError` is projected to { kind, at } ONLY: the upstream provider's
       // own message string is deliberately dropped, because an auth failure can
       // quote the key it rejected.
       'calls', 'ok', 'failed', 'lastLatencyMs', 'medianLatencyMs', 'lastAt', 'lastError',
     ]),
-    'the /api/providers field whitelist changed — re-review it for credential exposure',
+    `the ${ROUTING} field whitelist changed — re-review it for credential exposure`,
   );
   // The projection above is the whole point: assert the raw message cannot come back.
   assert.equal(
     /lastError:\s*h\.lastError\b(?!\s*\?)/.test(route),
     false,
-    '/api/providers must not forward lastError wholesale — project { kind, at }',
+    `${ROUTING} must not forward lastError wholesale — project { kind, at }`,
   );
 });
 
@@ -433,10 +462,10 @@ test('A1 selectProvider reasoning names providers and prices, never credentials'
   assertNoSecret(P.selectProvider({}, { modelKey: 'vision' }), 'selectProvider with no credentials');
 });
 
-test('A1 provider health — which /api/providers publishes — leaks no credential on a failed call', async () => {
+test(`A1 provider health — which ${ROUTING} publishes — leaks no credential on a failed call`, async () => {
   reset();
   // The health ring is per-isolate and per-module, so the failure has to be driven through the
-  // WORKER ITSELF for /api/providers to be reading the same ring. A non-retryable message keeps it
+  // WORKER ITSELF for the route to be reading the same ring. A non-retryable message keeps it
   // to one attempt.
   const env = makeEnv({ aiThrows: new Error('upstream returned 500 while serving this model') });
   const probe = await call('/api/admin/model-test', {
@@ -445,9 +474,15 @@ test('A1 provider health — which /api/providers publishes — leaks no credent
   assert.equal(probe.status, 500, 'the failing inference should surface as a 500, not a silent success');
   assertNoSecret(probe.text, 'POST /api/admin/model-test failure body');
 
-  const res = await call('/api/providers', { jwt: OWNER_JWT, env });
+  // The user route must not carry the failure out either, now that health is admin-only.
+  const user = await call('/api/providers', { jwt: OWNER_JWT, env });
+  assert.equal(user.status, 200);
+  assertNoSecret(user.text, 'GET /api/providers after a failed inference');
+  assert.equal(user.json.health, undefined, 'provider health must not reach a non-admin user');
+
+  const res = await call(ROUTING, { adminKey: SECRETS.ADMIN_KEY, env });
   assert.equal(res.status, 200);
-  assertNoSecret(res.text, 'GET /api/providers health after a failed inference');
+  assertNoSecret(res.text, `GET ${ROUTING} health after a failed inference`);
   // The failure was recorded — otherwise this test would pass vacuously.
   const wai = res.json.health.find((h) => h.provider === 'workers-ai');
   assert.ok(wai && wai.failed >= 1, 'the failed call should have been recorded in the health ring');
@@ -488,30 +523,32 @@ test('A1 the disabled adapters refuse before the network, so no credential is ev
   }
 });
 
-test('A1 FINDING — /api/providers republishes raw provider error text to every signed-in user', async () => {
-  // WHAT THIS PINS. The route publishes `providerHealth()`, whose `lastError.message` is the
-  // provider's own error string, verbatim and length-uncapped. That is a NEW egress path created by
-  // this work: before the route existed, provider failure text never left the worker.
-  //
-  // The invariant asserted here is the one that must hold whatever is decided about redaction:
-  // nothing the worker holds in `env` may appear. It does not, because the worker never puts a
-  // credential into an error message — it names the variable instead.
-  //
-  // The residual risk, and the proposed redaction, are written up in the workstream report: an
-  // upstream 401 body can quote the offending key, and this republishes it to any authenticated
-  // user. It is latent today (no provider but the key-less Workers AI binding is credentialed) and
-  // becomes live the day a provider secret is configured.
+test('A1 raw provider error text reaches NO ONE — not the user route, not the admin route', async () => {
+  // WHAT THIS PINS. `providerHealth()` holds `lastError.message`: the provider's own error string,
+  // verbatim and length-uncapped. An upstream 401 body can quote the key it rejected, so that
+  // string must not travel down any published channel. Two things now stand between it and a
+  // browser: the user route publishes no health at all, and the admin route projects `lastError`
+  // to `{ kind, at }`. Both are asserted, with a 401-shaped failure driven through the real ring.
   reset();
   const env = makeEnv({ aiThrows: new Error('provider HTTP 401: {"error":{"message":"bad credentials"}}') });
   await call('/api/admin/model-test', { method: 'POST', env, adminKey: SECRETS.ADMIN_KEY, body: { model: 'memory', prompt: 'hi' } });
-  const res = await call('/api/providers', { jwt: OWNER_JWT, env });
+
+  const user = await call('/api/providers', { jwt: OWNER_JWT, env });
+  assert.equal(user.status, 200);
+  assert.equal(user.json.health, undefined, 'the user route must publish no provider health');
+  assert.equal(user.text.includes('bad credentials'), false, 'upstream error text must not reach a user');
+
+  const res = await call(ROUTING, { adminKey: SECRETS.ADMIN_KEY, env });
   assert.equal(res.status, 200);
-  const errors = res.json.health.flatMap((h) => (h.lastError ? [h.lastError.message] : []));
-  assert.ok(errors.length >= 1, 'the channel exists — this test is about what may travel down it');
-  for (const m of errors) {
-    assertNoSecret(m, 'providerHealth lastError.message');
-    assert.equal(JWT_RE.test(m), false, 'a bearer token must never appear in a published error');
-    assert.equal(PAIRING_TOKEN_RE.test(m), false, 'a pairing token must never appear in a published error');
+  const lastErrors = res.json.health.flatMap((h) => (h.lastError ? [h.lastError] : []));
+  assert.ok(lastErrors.length >= 1, 'the channel exists — this test is about what may travel down it');
+  for (const e of lastErrors) {
+    assert.deepEqual(Object.keys(e).sort(), ['at', 'kind'], 'lastError must be projected to { kind, at }');
+    assertNoSecret(e, 'providerHealth lastError');
+    const blob = JSON.stringify(e);
+    assert.equal(blob.includes('bad credentials'), false, 'the upstream message must be dropped, not forwarded');
+    assert.equal(JWT_RE.test(blob), false, 'a bearer token must never appear in a published error');
+    assert.equal(PAIRING_TOKEN_RE.test(blob), false, 'a pairing token must never appear in a published error');
   }
 });
 

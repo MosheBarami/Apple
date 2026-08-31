@@ -20,7 +20,7 @@ import type {
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
-import type { MeResponse, ProvidersDto, UsageDay } from './api';
+import type { MeResponse, UsageDay } from './api';
 import type { ProfileRow, ProjectRow } from './supabase';
 
 const FLAG = import.meta.env.VITE_GOLEM_MOCK === '1';
@@ -68,10 +68,16 @@ export function mockSpend() {
     },
     maxMonthlyUsd: 6.6,
     days,
+    // The `model` field carries a placeholder, not a real model id. §1 of the
+    // access manifest keeps provider and model identity out of normal product
+    // UX; /usage renders modes and sparks and never reads this field. Seeding a
+    // real id here would mean the day someone does render the breakdown, the
+    // product starts naming its engine by accident. Admin diagnostics is where
+    // real model ids belong.
     breakdown: [
-      { day: days[0]?.day ?? '', model: 'workers-ai/glm-5.3-flash', kind: 'agent', neurons: 4120, calls: 18, usd: 0 },
-      { day: days[0]?.day ?? '', model: 'workers-ai/glm-5.3-flash', kind: 'critique', neurons: 1810, calls: 6, usd: 0 },
-      { day: days[0]?.day ?? '', model: 'workers-ai/bge-m3', kind: 'embedding', neurons: 90, calls: 41, usd: 0 },
+      { day: days[0]?.day ?? '', model: 'engine', kind: 'agent', neurons: 4120, calls: 18, usd: 0 },
+      { day: days[0]?.day ?? '', model: 'engine', kind: 'critique', neurons: 1810, calls: 6, usd: 0 },
+      { day: days[0]?.day ?? '', model: 'embedding', kind: 'embedding', neurons: 90, calls: 41, usd: 0 },
     ],
   };
 }
@@ -216,59 +222,6 @@ export const mockMe: MeResponse = {
   email: 'builder@example.com',
   profile: { id: 'mock-user', plan: 'free', is_admin: true, display_name: 'Quarry' },
   quota: mockQuota,
-};
-
-/**
- * A stand-in for `GET /api/providers`.
- *
- * In the real product availability is computed server-side from the
- * credentials the deployment holds; the fixture keeps that shape faithfully,
- * including a backend that is NOT available with the reason attached, so the
- * picker's disabled state is exercised during design review.
- */
-export const mockProviders: ProvidersDto = {
-  models: [
-    {
-      id: 'workers-ai/glm-5.3-flash',
-      provider: 'workers-ai',
-      label: 'GLM 5.3 Flash',
-      available: true,
-      reason: null,
-      supportsTools: true,
-      supportsVision: false,
-      inputCostPer1M: 0,
-      outputCostPer1M: 0,
-      unverifiedFields: [],
-    },
-    {
-      id: 'google/gemini-2.5-flash',
-      provider: 'google',
-      label: 'Gemini 2.5 Flash',
-      available: true,
-      reason: null,
-      supportsTools: true,
-      supportsVision: true,
-      inputCostPer1M: 0.3,
-      outputCostPer1M: 2.5,
-      unverifiedFields: [],
-    },
-    {
-      id: 'deepseek/deepseek-v3',
-      provider: 'deepseek',
-      label: 'DeepSeek V3',
-      available: false,
-      reason: 'No API key configured for this deployment',
-      supportsTools: true,
-      supportsVision: false,
-      inputCostPer1M: 0.27,
-      outputCostPer1M: 1.1,
-      unverifiedFields: [],
-    },
-  ],
-  auto: {
-    model: 'workers-ai/glm-5.3-flash',
-    reasoning: 'Picks the cheapest model that can do the job, and escalates only when it cannot.',
-  },
 };
 
 export function mockUsageDays(): UsageDay[] {

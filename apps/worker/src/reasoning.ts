@@ -82,9 +82,18 @@ export function classifyRequest(
 }
 
 /**
- * Baseline effort per mode, before escalation.
- *   Clay  — quick questions and single edits. Low: on trivial work `high` answers more tersely
- *           and buys nothing, and Clay's promise to the user is that it is instant.
+ * Baseline effort per mode, before escalation. (Clay is what the user picks as Plan, stone as
+ * Agent, rune as Super Agent.)
+ *   Clay  — Plan: inspection, architecture reasoning and proposals, with no mutating tools. Low is
+ *           the BASELINE, not the ceiling: a planning request that needs real judgement —
+ *           architecture, layout, an under-specified ask — escalates to `high` through the signals
+ *           below, and those signals fire on exactly the language such requests use. What the
+ *           baseline actually governs is the rest: "what does this script do", "where is X
+ *           defined". On lookups `high` has nothing to think about and buys nothing.
+ *           Note the older rationale here — that low keeps Plan feeling instant — does not survive
+ *           the table above: on the trivial probe `high` was FASTER (1.3s against 17.6s). Latency
+ *           is not the argument; having nothing to deliberate about is.
+ *           `irreversibleChange` never fires in this mode, because the mode cannot make one.
  *   Stone — the default builder. High: this is where design judgement happens, and on the design
  *           probe `high` cost 40.8 neurons against `low`'s 39.7 for a better answer. That is the
  *           whole argument — good judgement here is essentially free.

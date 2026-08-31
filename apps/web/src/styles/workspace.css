@@ -512,8 +512,8 @@
   color: var(--gx-ink);
 }
 
-/* A provider that cannot actually be reached is shown, but never as if it
-   were available. */
+/* An item that exists but cannot be chosen right now is shown, but never as
+   if it were available. */
 .gx-pop__item[aria-disabled='true'] {
   opacity: 0.55;
   cursor: not-allowed;
@@ -522,6 +522,20 @@
 .gx-pop__item[aria-disabled='true']:hover {
   background: transparent;
   color: var(--gx-ink-2);
+}
+
+/* The mode menu is a decision surface, not a list of shortcuts: each option
+   carries a sentence about what it will do on its own, and Super Agent needs
+   the room. Top-align so the swatch sits on the name's line instead of
+   floating in the middle of a wrapped paragraph. */
+.gx-pop__item--stack {
+  align-items: flex-start;
+  padding-top: 0.55rem;
+  padding-bottom: 0.6rem;
+}
+
+.gx-pop__item--stack .gx-chip__swatch {
+  margin-top: 0.34rem;
 }
 
 .gx-pop__sep {

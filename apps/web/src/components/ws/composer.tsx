@@ -1,36 +1,37 @@
-// The composer: the message box, the model chip, the mode chip and send.
+// The composer: the message box, the mode chip and send.
 //
-// The reference renders the left-hand chip as a model name. In this product
-// that control is the PROVIDER picker, whose availability is computed
-// server-side from the credentials this deployment actually holds — so the form
-// is the reference's, and the meaning is this product's. A backend with no
-// credential is listed and disabled with the server's own reason; it is never
-// shown as usable, and if the selected one stops being reachable the chip falls
-// back to Auto rather than lying about what will run.
+// ONE user-facing axis, not two. The reference renders a chip on the left of
+// the bar that names a model; this product deliberately has no such control.
+// Which foundation model answers is an implementation detail of the routing
+// layer — it changes with availability, cost and task, and a user who pinned a
+// named backend would be choosing a thing we reserve the right to move. The
+// user sees "Golem". So the only choice offered here is how much autonomy and
+// budget a request gets:
 //
-// Mode and provider are DIFFERENT AXES and stay two separate controls. Clay /
-// Stone / Rune are product modes — how much autonomy and budget a request gets.
-// The providers are model backends. Collapsing them into one menu would make
-// "Stone" and "Gemini" look like alternatives to each other, which they are not.
+//   Plan        inspects, reasons and proposes — no project edits by default
+//   Agent       the normal bounded builder
+//   Super Agent long-horizon autonomous work
+//
+// Those three are the *product* modes. Internally each maps to a named
+// specialist on the wire (see PRODUCT_MODE_TO_SPECIALIST in @golem/shared);
+// that mapping happens where the chat message is built, not here, so the
+// protocol, the stored sessions and budget accounting are untouched by this
+// vocabulary. Nothing in this file may name a provider or a model id.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import type { GolemMode } from '@golem/shared';
-import { GolemGlyph } from '../glyphs';
+import { PRODUCT_MODES, PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { Icon, PATH, Popover } from './primitives';
 
-export interface ProviderOption {
-  id: string;
-  provider: string;
-  label: string;
-  available: boolean;
-  reason: string | null;
-  supportsVision: boolean;
-}
-
-const MODES: { id: GolemMode; label: string; blurb: string; sparks: string; tone: string }[] = [
-  { id: 'clay', label: 'Clay', blurb: 'Questions and small edits', sparks: '1 spark', tone: '#9c8f7c' },
-  { id: 'stone', label: 'Stone', blurb: 'Builds a feature end to end', sparks: '4 sparks', tone: '#6f8fa3' },
-  { id: 'rune', label: 'Rune', blurb: 'Plans, builds, tests and fixes', sparks: '10 sparks', tone: '#8b74c4' },
-];
+/**
+ * The swatch each mode carries. These are the existing charcoal-stone
+ * accents — sand, slate, violet — so Super Agent reads as the heaviest option
+ * by weight of colour rather than by shouting. Order comes from PRODUCT_MODES
+ * so the menu can never disagree with the shared vocabulary.
+ */
+const TONE: Record<ProductMode, string> = {
+  plan: '#9c8f7c',
+  agent: '#6f8fa3',
+  super: '#8b74c4',
+};
 
 const PLACEHOLDER = 'Ask anything about your project...';
 
@@ -39,12 +40,8 @@ interface Props {
   onStop: () => void;
   running: boolean;
   disabled?: boolean;
-  mode: GolemMode;
-  onModeChange: (m: GolemMode) => void;
-  providers: ProviderOption[];
-  providerId: string | 'auto';
-  onProviderChange: (id: string | 'auto') => void;
-  autoReasoning?: string;
+  mode: ProductMode;
+  onModeChange: (m: ProductMode) => void;
   seed?: string;
   placeholder?: string;
 }
@@ -56,16 +53,11 @@ export function Composer({
   disabled,
   mode,
   onModeChange,
-  providers,
-  providerId,
-  onProviderChange,
-  autoReasoning,
   seed,
   placeholder,
 }: Props) {
   const [text, setText] = useState('');
   const [modeOpen, setModeOpen] = useState(false);
-  const [provOpen, setProvOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -83,15 +75,6 @@ export function Composer({
     el.style.height = `${el.scrollHeight}px`;
   }, [text]);
 
-  // If the picked backend stops being reachable, drop back to Auto instead of
-  // displaying a model that cannot run. Only acts on a loaded list, so a
-  // pending fetch never clears a valid choice.
-  useEffect(() => {
-    if (providerId === 'auto' || providers.length === 0) return;
-    const chosen = providers.find((p) => p.id === providerId);
-    if (!chosen || !chosen.available) onProviderChange('auto');
-  }, [providers, providerId, onProviderChange]);
-
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
     const value = text.trim();
@@ -108,9 +91,7 @@ export function Composer({
     }
   };
 
-  const activeMode = MODES.find((m) => m.id === mode) ?? MODES[1]!;
-  const chosenProvider = providers.find((p) => p.id === providerId);
-  const providerLabel = providerId === 'auto' || !chosenProvider?.available ? 'Auto' : chosenProvider.label;
+  const activeMode = PRODUCT_MODE_INFO[mode];
 
   return (
     <div className="gx-composer">
@@ -130,80 +111,6 @@ export function Composer({
         />
 
         <div className="gx-composer__bar">
-          {/* ------------------------------------------------- model ---- */}
-          <div className="gx-pop-wrap">
-            <button
-              type="button"
-              className="gx-chip gx-chip--model"
-              aria-haspopup="menu"
-              aria-expanded={provOpen}
-              aria-label={`Model backend: ${providerLabel}`}
-              onClick={() => {
-                setModeOpen(false);
-                setProvOpen((v) => !v);
-              }}
-            >
-              <span className="gx-chip__mark" aria-hidden="true">
-                <GolemGlyph size={13} />
-              </span>
-              {providerLabel}
-              <span className="gx-chip__caret" aria-hidden="true">
-                <Icon d={PATH.chevronDown} size={11} />
-              </span>
-            </button>
-            <Popover open={provOpen} onClose={() => setProvOpen(false)} label="Model backend">
-              <button
-                type="button"
-                role="menuitemradio"
-                aria-checked={providerId === 'auto'}
-                className="gx-pop__item"
-                onClick={() => {
-                  onProviderChange('auto');
-                  setProvOpen(false);
-                }}
-              >
-                <span className="gx-pop__main">
-                  Auto
-                  <span className="gx-pop__sub">
-                    {autoReasoning ?? 'Picks the best available model for the task'}
-                  </span>
-                </span>
-              </button>
-
-              <div className="gx-pop__sep" />
-
-              {providers.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={p.id === providerId}
-                  aria-disabled={!p.available}
-                  className="gx-pop__item"
-                  onClick={() => {
-                    if (!p.available) return;
-                    onProviderChange(p.id);
-                    setProvOpen(false);
-                  }}
-                >
-                  {/* Text labels, not logos. No official, licensed brand asset
-                      could be obtained for these providers, and inventing or
-                      scraping one would be worse than a clean word. */}
-                  <span className="gx-pop__main">
-                    {p.label}
-                    <span className="gx-pop__sub">
-                      {p.available ? 'Available' : (p.reason ?? 'Unavailable')}
-                    </span>
-                  </span>
-                </button>
-              ))}
-
-              {providers.length === 0 && (
-                <p className="gx-pop__note">Couldn&rsquo;t load the model list. Auto still works.</p>
-              )}
-            </Popover>
-          </div>
-
           {/* -------------------------------------------------- mode ---- */}
           <div className="gx-pop-wrap">
             <button
@@ -211,40 +118,40 @@ export function Composer({
               className="gx-chip"
               aria-haspopup="menu"
               aria-expanded={modeOpen}
-              aria-label={`Mode: ${activeMode.label}`}
-              onClick={() => {
-                setProvOpen(false);
-                setModeOpen((v) => !v);
-              }}
+              aria-label={`Mode: ${activeMode.name}`}
+              onClick={() => setModeOpen((v) => !v)}
             >
-              <span className="gx-chip__swatch" style={{ background: activeMode.tone }} aria-hidden="true" />
-              {activeMode.label}
+              <span className="gx-chip__swatch" style={{ background: TONE[mode] }} aria-hidden="true" />
+              {activeMode.name}
               <span className="gx-chip__caret" aria-hidden="true">
                 <Icon d={PATH.chevronDown} size={11} />
               </span>
             </button>
             <Popover open={modeOpen} onClose={() => setModeOpen(false)} label="Mode">
-              {MODES.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={m.id === mode}
-                  className="gx-pop__item"
-                  onClick={() => {
-                    onModeChange(m.id);
-                    setModeOpen(false);
-                  }}
-                >
-                  <span className="gx-chip__swatch" style={{ background: m.tone }} aria-hidden="true" />
-                  <span className="gx-pop__main">
-                    {m.label}
-                    <span className="gx-pop__sub">
-                      {m.blurb} · {m.sparks}
+              {PRODUCT_MODES.map((id) => {
+                const info = PRODUCT_MODE_INFO[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={id === mode}
+                    className="gx-pop__item gx-pop__item--stack"
+                    onClick={() => {
+                      onModeChange(id);
+                      setModeOpen(false);
+                    }}
+                  >
+                    <span className="gx-chip__swatch" style={{ background: TONE[id] }} aria-hidden="true" />
+                    <span className="gx-pop__main">
+                      {info.name}
+                      <span className="gx-pop__sub">
+                        {info.blurb} Typically {info.typicalSparks} Sparks.
+                      </span>
                     </span>
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </Popover>
           </div>
 

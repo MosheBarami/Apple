@@ -1,7 +1,7 @@
 // Typed fetch helpers for the Golem worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
-import { MOCK_MODE, mockCounters, mockMe, mockProviders, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -64,31 +64,11 @@ export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
 
 // ---------------------------------------------------------------- project session
 
-export interface ProviderModelDto {
-  id: string;
-  provider: string;
-  label: string;
-  available: boolean;
-  reason: string | null;
-  supportsTools: boolean;
-  supportsVision: boolean;
-  inputCostPer1M: number;
-  outputCostPer1M: number;
-  unverifiedFields: string[];
-}
-
-export interface ProvidersDto {
-  models: ProviderModelDto[];
-  auto: { model: string | null; reasoning: string };
-}
-
-/**
- * The model backends this deployment can actually reach. Availability is
- * computed server-side from the environment on every request, so the picker
- * cannot show a provider as usable when no credential for it exists.
- */
-export const fetchProviders = (): Promise<ProvidersDto> =>
-  MOCK_MODE ? Promise.resolve(mockProviders) : request<ProvidersDto>('/api/providers');
+// There is deliberately NO fetch for the model/provider roster here. Which
+// foundation model serves a request is chosen by the routing layer, not by the
+// user, so the product UI has nothing to render it with. The worker still
+// exposes that roster for ADMIN diagnostics; if it is ever needed on screen it
+// belongs behind /admin, never in the normal product surface.
 
 export const fetchMessages = (projectId: string, limit = 100) =>
   request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
