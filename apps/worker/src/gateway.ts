@@ -24,6 +24,7 @@ import {
   modelById,
   neuronsForModelTokens,
   recordProviderCall,
+  workersAiAdapter,
 } from './providers';
 
 export { providerHealth, capabilityTable, providerAvailability, selectProvider } from './providers';
@@ -370,6 +371,102 @@ export async function embed(env: Env, texts: string[], kind = 'embed'): Promise<
     await release(env, reserved);
     throw e;
   }
+}
+
+// ---------------------------------------------------------------------------
+// operator raw probe
+// ---------------------------------------------------------------------------
+
+export interface RawProbeRequest {
+  /** A PROVIDER model id (`@cf/zai-org/glm-5.3-flash`), not a DEFAULT_MODELS key. */
+  model: string;
+  prompt: string;
+  /** optional system message, so the real production prompt can be reproduced exactly */
+  system?: string;
+  /** optional tool definitions, so tool-calling behaviour can be probed, not just prose */
+  tools?: { name: string; description: string; parameters: unknown }[];
+  maxTokens?: number;
+  reasoning?: string;
+  /**
+   * Workers AI prefix-caching affinity key. Sending the same value on consecutive probes is what
+   * lets the shared prefix be reused; omitting it is the old behaviour, under which cached_tokens
+   * was always 0. Present so the two can be compared in one experiment rather than argued about.
+   */
+  sessionId?: string;
+}
+
+export interface RawProbeResult {
+  /** exactly what the provider returned, unnormalised — the entire point of a probe */
+  raw: unknown;
+  /** what the global neuron ledger was charged for it */
+  neurons: number;
+}
+
+/**
+ * One un-normalised model call, for an operator adapting the normalizer to a new model's shape.
+ *
+ * WHY IT LIVES HERE. It cannot go through `chat()` — `chat()`'s whole job is to normalise away the
+ * raw shape this exists to reveal (including `usage.prompt_tokens_details.cached_tokens`). But
+ * before this function existed, `/api/admin/raw-probe` did the obvious thing and called
+ * `env.AI.run` itself, which made it the ONE path in the product that could spend model tokens
+ * with no reservation: the kill switch and the daily/monthly neuron caps never saw it, so an
+ * operator tool could quietly drain the day's allocation while every guard read "fine". The file
+ * header's claim that "there is no way to spend money by forgetting a check" is only true if a
+ * call like this one is metered here rather than at the route. So it is: reserve -> run -> settle,
+ * release on failure, exactly like `embed()`.
+ *
+ * ONLY THE GLOBAL LEDGER IS CHARGED. No user Sparks are spent and QuotaDO is never touched —
+ * Sparks are the per-user quota, and no user should be billed for an operator's diagnostic.
+ */
+export async function rawProbe(env: Env, req: RawProbeRequest, kind = 'admin:raw-probe'): Promise<RawProbeResult> {
+  const maxTokens = req.maxTokens ?? 200;
+  const messages = [
+    ...(req.system ? [{ role: 'system', content: req.system }] : []),
+    { role: 'user', content: req.prompt },
+  ];
+  const payload: Record<string, unknown> = { messages, max_tokens: maxTokens };
+  if (req.tools?.length) {
+    payload.tools = req.tools.map((t) => ({
+      type: 'function',
+      function: { name: t.name, description: t.description, parameters: t.parameters },
+    }));
+  }
+  if (req.reasoning) payload.reasoning = { effort: req.reasoning };
+
+  // Same pessimistic pre-flight as chat(): count the characters actually going on the wire and
+  // assume every allowed output token is spent.
+  const promptChars = messages.reduce((n, m) => n + m.content.length, 0) + JSON.stringify(payload.tools ?? '').length;
+  const priced = modelById(req.model);
+  const estimate = priced
+    ? estimateNeuronsForModel(priced, promptChars, maxTokens)
+    : estimateNeurons(req.model, promptChars, maxTokens);
+  if (estimate > MAX_NEURONS_PER_REQUEST) {
+    throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
+  }
+
+  // ---- spend gate: nothing below this line runs without a reservation ----
+  // reserve() throws BudgetError when the kill switch is on or a cap is exhausted, so those
+  // refusals happen BEFORE any token is spent, which is the whole point.
+  const reserved = await reserve(env, req.model, estimate);
+  let raw: unknown;
+  try {
+    // No retries, for the same reason chat() has none: a failed inference was still billed.
+    raw = await env.AI.run(req.model as never, payload as never, gatewayOpts(env, kind, 0, req.sessionId) as never);
+  } catch (e) {
+    // Nothing ran, so hand the reservation back.
+    await release(env, reserved);
+    throw e;
+  }
+  // Past this line the model HAS run and the tokens ARE spent, so the reservation must be settled
+  // and must never be released — an accounting failure here has to fail towards over-billing the
+  // ledger, never towards a spend the caps cannot see.
+  const usage = workersAiAdapter.decode(raw, promptChars, req.model).usage;
+  const computed = priced
+    ? neuronsForModelTokens(priced, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens)
+    : neuronsFor(req.model, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
+  const actual = Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
+  await settle(env, reserved, actual, req.model, kind);
+  return { raw, neurons: actual };
 }
 
 export async function budgetState(env: Env): Promise<unknown> {

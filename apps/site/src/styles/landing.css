@@ -1,12 +1,15 @@
 /* ==========================================================================
    GOLEM — landing surface.
 
-   One viewport. No scroll. The whole proposition in a single held frame.
+   One viewport. No scroll. The whole proposition held in a single frame,
+   CENTRED — the composition is symmetrical about the vertical axis, from the
+   eyebrow down to the peak of the stage behind it.
 
-   The material is quarried stone lit from one side: a deep charcoal ground,
-   large matte planes that overlap without announcing themselves, hairline
-   architectural rules, and warm ivory type. The only warmth that emits is a
-   single ember, spent once, on the thing you are meant to press.
+   The material is warm-neutral charcoal, never blue-black. Large matte planes
+   form a prism rising from the bottom centre; a single warm amber glow sits
+   behind its peak; long thin diagonals sweep the upper corners. The amber
+   appears exactly twice on the whole page: the dash before the eyebrow, and
+   that glow. Nothing else emits.
 
    Deliberately dark-committed. This surface is a designed image rather than a
    reading environment, so it does not follow the theme toggle; docs, pricing
@@ -15,6 +18,8 @@
    This file is the ENTIRE stylesheet for the root route. It does not import
    global.css. Keep it that way — the landing's payload discipline depends on
    it.
+
+   See docs/DESIGN-SPEC.md §0 and §1. That document is the source of truth.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -22,50 +27,47 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  /* --- material ---------------------------------------------------------
-     A single warm-neutral ramp. Every value is a desaturated brown-black,
-     never a blue-black — the whole surface has to read as stone, not screen. */
-  --ground: #0d0c0a; /* the page itself: near-black basalt */
-  --plane-1: #131210; /* first plane off the ground */
-  --plane-2: #191714; /* second plane, where it overlaps */
-  --plane-3: #201d19; /* raised edge / chip face */
+  /* --- material --------------------------------------------------------- */
+  --ground: #0b0a09; /* page base */
+  --surface: #121110; /* raised card face */
+  --surface-2: #171614; /* second raise, chips */
 
-  --ivory: #f4efe4; /* primary type: warm, unbleached */
-  --stone: #a49a89; /* secondary type: restrained */
-  --stone-dim: #8b8274; /* tertiary: legal, meta */
+  --ink: #f5f2ec; /* primary type, headline line 1 */
+  --ink-warm: #c9c0b2; /* headline line 2, warm secondary */
+  --muted: #9a938a; /* body copy */
 
-  --rule: rgba(244, 239, 228, 0.09); /* architectural hairline */
-  --rule-bright: rgba(244, 239, 228, 0.17); /* where a line should be read */
+  /* The spec's --faint is #6E6862. Measured against --ground that is 3.58:1,
+     which is below the 4.5:1 this page has to clear for 12px type — and every
+     use of --faint here IS 12–13px type (the CTA micro-line, the strip
+     subtitles). Warmed until it passes with headroom: 5.8:1 on the ground, and
+     still 4.8:1 standing on the brightest part of the amber glow, which the
+     micro-line does. If the tone ever goes back down, the type has to get
+     bigger first. */
+  --faint: #918b82;
 
-  --cream: #f6f2e9; /* CTA fill */
-  --cream-ink: #16140f; /* type on the CTA */
+  --line: rgba(245, 242, 236, 0.08); /* hairline */
+  --line-2: rgba(245, 242, 236, 0.14); /* readable border */
 
-  /* The single emitting colour. Used at low alpha for illumination and at
-     full strength for exactly one dot. */
-  --ember: #c96a2e;
-  --ember-glow: rgba(201, 106, 46, 0.13);
+  --cream: #e6decf; /* primary CTA fill */
+  --cream-ink: #14120f; /* type on cream */
 
-  /* --- type ------------------------------------------------------------- */
-  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino,
-    Georgia, serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  --amber: #c98a3c; /* the single accent */
+
+  /* --- type -------------------------------------------------------------
+     A tight grotesque at 600, not a serif. The earlier Fraunces display
+     treatment is superseded. Mono is the platform's own — nothing on this
+     page justifies a third webfont request. */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Helvetica, Arial, sans-serif;
-  /* Sharp Scotch-Roman cut at high optical size: no wonk, no softness. */
-  --display-vf: 'SOFT' 0, 'WONK' 0, 'opsz' 144;
-
-  /* Aliases so the shared GolemMark component, which is written against the
-     themed token names, drops into this surface unchanged. */
-  --ink: var(--ivory);
-  --accent: var(--ember);
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
 
   /* --- geometry --------------------------------------------------------- */
   --gutter: clamp(1.25rem, 4.5vw, 4rem);
-  --measure: 46ch;
 
   /* --- motion ----------------------------------------------------------- */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-fast: 140ms;
-  --dur: 280ms;
 }
 
 /* --------------------------------------------------------------------------
@@ -85,28 +87,15 @@ html {
 body,
 h1,
 h2,
-p,
-ul,
-li,
-figure {
+p {
   margin: 0;
   padding: 0;
-}
-
-ul {
-  list-style: none;
 }
 
 img,
 svg {
   display: block;
   max-width: 100%;
-}
-
-button,
-input {
-  font: inherit;
-  color: inherit;
 }
 
 /* --------------------------------------------------------------------------
@@ -120,8 +109,8 @@ body {
 
 body {
   background: var(--ground);
-  color: var(--ivory);
-  font-family: var(--font-body);
+  color: var(--ink);
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -129,12 +118,11 @@ body {
   font-synthesis-weight: none;
 }
 
-/* The frame is a three-row grid at exactly one viewport tall. The middle row
-   is the only one that flexes, so the hero always sits optically centred and
-   the supporting strip is always pinned to the bottom edge without any
-   overflow trickery.
+/* Three rows at exactly one viewport tall. The middle row is the only one that
+   flexes, so the hero sits optically centred and the strip is pinned to the
+   bottom edge without any overflow trickery.
 
-   min-height rather than height, and no overflow clipping, so that a user who
+   min-height rather than height, and no overflow clipping, so a reader who
    enlarges text to 200% gets a page that grows and scrolls normally instead of
    having its content cut off. The one-screen promise is a design target at
    supported sizes, not a cage. */
@@ -148,11 +136,11 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   4. Stage — the depth, built from planes and light
+   4. The stage — a prism rising from bottom centre
    -------------------------------------------------------------------------- */
 
-/* Everything here is decorative and non-interactive. It is CSS and one inline
-   SVG: no images, no canvas, no 3D. */
+/* Everything here is decorative and non-interactive: CSS planes, one inline
+   SVG line drawing, one noise tile. No images, no canvas, no 3D, no script. */
 .stage {
   position: fixed;
   inset: 0;
@@ -161,103 +149,92 @@ body {
   pointer-events: none;
 }
 
-/* Soft key light, upper left, as if a single lamp were hung off frame. */
-.stage__key {
+/* The warm glow, centred on the summit. Drawn after the far ridge and before
+   the near facets — see the note in index.astro; painted first it is simply
+   invisible, because the ridge is opaque and covers everything below 60vh.
+
+   Its core is sunk well BELOW the summit, where the prism occludes it. That is
+   not a compromise, it is the shape of the problem: the CTA micro-line sits a
+   couple of vh above the summit, so a core centred there put 12px type on the
+   brightest pixel of the gradient and dropped it to 4.29:1. Sinking the centre
+   keeps the bloom hugging the peak — where it is wanted and where nothing is
+   written — while the falloff does the work above it. Measured 4.9:1 under the
+   micro-line. Raise the alphas or lift the centre and that is the number that
+   breaks first. */
+.stage__glow {
   position: absolute;
-  top: -30vh;
-  left: -14vw;
-  width: 92vw;
-  height: 118vh;
+  left: 50%;
+  /* Sunk further than it looks like it needs to be. The core is placed in vh,
+     so at 1440x900 and 1366x768 it rides higher relative to the CTA block than
+     it does on a tall phone — which is exactly where the contrast check caught
+     it at 4.36:1 on desktop and laptop while mobile passed. Anchoring lower and
+     easing the core keeps the bloom hugging the peak, where nothing is written. */
+  bottom: 6vh;
+  transform: translate(-50%, 50%);
+  width: min(1180px, 86vw);
+  height: min(660px, 58vh);
   background: radial-gradient(
-    58% 50% at 32% 34%,
-    var(--ember-glow) 0%,
-    rgba(201, 106, 46, 0.045) 38%,
-    transparent 72%
+    50% 50% at 50% 50%,
+    rgba(201, 138, 60, 0.15) 0%,
+    rgba(201, 138, 60, 0.095) 30%,
+    rgba(201, 138, 60, 0.035) 54%,
+    transparent 76%
   );
 }
 
-/* Cold fill from the opposite corner, so the planes have two sides. */
-.stage__fill {
+/* The planes. A broad ridge set back and off-centre for mass, then the near
+   prism split into a lit left facet and a shadowed right one. The seam where
+   those two meet is the crest, and it lands directly under the CTA row. */
+.prism {
   position: absolute;
-  right: -20vw;
-  bottom: -34vh;
-  width: 78vw;
-  height: 96vh;
-  background: radial-gradient(
-    50% 50% at 62% 62%,
-    rgba(150, 168, 184, 0.05) 0%,
-    transparent 70%
-  );
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
 }
 
-/* Large matte planes. Two overlapping slabs, rotated a hair off true, with a
-   lit leading edge. They read as mass rather than as cards. */
-.plane {
-  position: absolute;
-  border-radius: 2px;
+.prism--far {
+  width: 128vw;
+  height: 40vh;
+  /* Kept dark at its own summit: the glow is composited on top of this plane,
+     so a lighter ridge here shows up directly as lost contrast on the type
+     standing in front of it. */
+  background: linear-gradient(172deg, #121110 0%, #0e0d0b 100%);
+  /* Apex off-centre so the far ridge and the near peak read as two separate
+     masses rather than one symmetrical arrow. */
+  clip-path: polygon(38% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 -1px 0 rgba(245, 242, 236, 0.05));
 }
 
-/* The far slab. Larger, flatter, further back. Its leading edge catches a
-   little of the key light, which is the only thing that separates it from the
-   ground — mass described by one lit edge rather than by a border. */
-.plane--a {
-  top: -6%;
-  right: -16%;
-  width: 66vw;
-  height: 122vh;
-  background: linear-gradient(
-    148deg,
-    #17150f 0%,
-    #131210 46%,
-    #0f0e0c 100%
-  );
-  transform: rotate(-9deg);
-  box-shadow:
-    inset 1px 0 0 rgba(244, 239, 228, 0.055),
-    -28px 0 70px -30px rgba(0, 0, 0, 0.9);
+/* Both near facets share a box, so their apexes land on exactly the same pixel
+   and the crest is a single clean line rather than a notch. Narrow enough that
+   the slope reads as a prism and not as a horizon. */
+.prism--left,
+.prism--right {
+  width: 52vw;
+  height: 22vh;
 }
 
-/* The near slab, overlapping the far one. Slightly lighter face and a brighter
-   leading edge, so the overlap reads as two distinct planes rather than one
-   gradient. */
-.plane--b {
-  top: 22%;
-  right: -2%;
-  width: 46vw;
-  height: 104vh;
-  background: linear-gradient(
-    162deg,
-    #1c1a15 0%,
-    #161410 58%,
-    #100f0c 100%
-  );
-  transform: rotate(6.5deg);
-  box-shadow:
-    inset 1px 0 0 rgba(244, 239, 228, 0.085),
-    -34px 0 80px -34px rgba(0, 0, 0, 0.95);
+/* Both facets stay darker than the light behind them, so the summit reads as a
+   silhouette. The left one still catches enough to separate the two planes. */
+.prism--left {
+  background: linear-gradient(198deg, #1e1b16 0%, #121110 100%);
+  clip-path: polygon(50% 0, 50% 100%, 0 100%);
+  /* Lights the clipped edge — i.e. the crest — without a second element. */
+  filter: drop-shadow(1px 0 0 rgba(245, 242, 236, 0.11));
 }
 
-/* A third, small chip of stone catching the most light. It gives the eye a
-   near point to read the depth against. */
-.plane--c {
-  top: 58%;
-  right: 12%;
-  width: 15vw;
-  height: 34vh;
-  background: linear-gradient(155deg, #221f19 0%, #191713 100%);
-  transform: rotate(-3deg);
-  box-shadow:
-    inset 1px 1px 0 rgba(244, 239, 228, 0.1),
-    -20px 10px 50px -26px rgba(0, 0, 0, 0.9);
+.prism--right {
+  background: linear-gradient(162deg, #0e0d0b 0%, #070706 100%);
+  clip-path: polygon(50% 0, 100% 100%, 50% 100%);
 }
 
-/* Thin architectural rules — a drawing sheet under the stone. */
-.stage__lines {
+/* Long thin diagonals sweeping the upper corners. They live in the outer
+   sixths and stop well short of the headline. */
+.stage__rules {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.55;
 }
 
 /* Fine material grain. Kept very low so it is felt, not seen. */
@@ -270,45 +247,46 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   5. Navigation — sparse by instruction
+   5. Navigation
    -------------------------------------------------------------------------- */
 
 .nav {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 3vw, 2.5rem);
-  padding: clamp(1rem, 2vh, 1.5rem) var(--gutter);
-  border-bottom: 1px solid var(--rule);
+  gap: clamp(1rem, 3vw, 2.25rem);
+  padding: clamp(0.7rem, 2.6vh, 1.9rem) var(--gutter);
+  border-bottom: 1px solid var(--line);
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  color: var(--ivory);
+  gap: 0.62rem;
+  color: var(--ink);
   text-decoration: none;
-  letter-spacing: -0.015em;
-  font-weight: 500;
-  font-size: 0.98rem;
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: -0.02em;
 }
 
 .nav__links {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 2.4vw, 2rem);
+  gap: clamp(1rem, 2.2vw, 1.85rem);
   margin-left: auto;
 }
 
 .nav__links a {
-  color: var(--stone);
+  color: var(--muted);
   text-decoration: none;
-  font-size: 0.88rem;
-  letter-spacing: 0.005em;
+  font-size: 0.94rem;
+  /* 44px of hit area without 44px of visual weight. */
+  padding: 0.65rem 0;
   transition: color var(--dur-fast) var(--ease);
 }
 
 .nav__links a:hover {
-  color: var(--ivory);
+  color: var(--ink);
 }
 
 /* --------------------------------------------------------------------------
@@ -320,14 +298,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  /* 44px minimum target on every pointer type. */
   min-height: 44px;
-  padding: 0 1.35rem;
-  border-radius: 6px;
+  padding: 0 1.15rem;
+  border-radius: 10px;
   border: 1px solid transparent;
   font-size: 0.92rem;
-  font-weight: 500;
-  letter-spacing: 0.005em;
+  font-weight: 550;
+  letter-spacing: -0.005em;
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
@@ -341,155 +318,177 @@ body {
 .btn--cream {
   background: var(--cream);
   color: var(--cream-ink);
-  font-weight: 550;
 }
 
 .btn--cream:hover {
-  background: #fffdf7;
+  background: #f2ecdf;
 }
 
-.btn--quiet {
-  color: var(--ivory);
-  border-color: var(--rule-bright);
+.btn--outline {
+  color: var(--ink);
+  border-color: var(--line-2);
   background: transparent;
 }
 
-.btn--quiet:hover {
-  border-color: rgba(244, 239, 228, 0.3);
-  background: rgba(244, 239, 228, 0.035);
+.btn--outline:hover {
+  border-color: rgba(245, 242, 236, 0.28);
+  background: rgba(245, 242, 236, 0.04);
 }
 
 .btn:active {
   transform: translateY(0.5px);
 }
 
-.btn--sm {
-  min-height: 38px;
-  padding: 0 1rem;
-  font-size: 0.86rem;
+/* The two hero calls to action are taller and set a shade larger. */
+.btn--lg {
+  min-height: 52px;
+  padding: 0 1.5rem;
+  font-size: 0.98rem;
+}
+
+.btn__arrow {
+  flex: none;
+  opacity: 0.85;
 }
 
 /* --------------------------------------------------------------------------
-   7. Hero
+   7. Hero — centred
    -------------------------------------------------------------------------- */
 
 .hero {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: clamp(1.5rem, 5vh, 4rem) var(--gutter);
+  text-align: center;
+  padding: clamp(1rem, 3vh, 2.5rem) var(--gutter);
 }
 
-.hero__inner {
-  max-width: 1180px;
-  width: 100%;
-  margin: 0 auto;
-}
-
+/* An amber dash, a gap, then the line in mono caps. Centred as a unit. */
 .eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  color: var(--stone);
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
+  gap: 0.85rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  line-height: 1;
   text-transform: uppercase;
-  margin-bottom: clamp(1rem, 2.4vh, 1.75rem);
 }
 
-/* The one emitting dot on the page. */
-.eyebrow__dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ember);
-  box-shadow: 0 0 12px 1px rgba(201, 106, 46, 0.55);
+.eyebrow__dash {
+  width: 28px;
+  height: 1.5px;
+  background: var(--amber);
+  border-radius: 1px;
 }
 
-.hero__title {
-  font-family: var(--font-display);
-  font-variation-settings: var(--display-vf);
-  font-weight: 400;
-  /* Sized to hold two lines inside the smallest supported desktop height. */
-  font-size: clamp(2.7rem, 7vw, 6.1rem);
-  line-height: 0.97;
-  letter-spacing: -0.028em;
-  color: var(--ivory);
+.title {
+  margin-top: clamp(0.9rem, 2.4vh, 1.6rem);
+  /* Capped against the viewport HEIGHT as well as its width: at 768px tall the
+     width-derived size would push the strip off the bottom edge. */
+  font-size: clamp(3rem, min(7.5vw, 12vh), 6.5rem);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  color: var(--ink);
   text-wrap: balance;
 }
 
-/* Second line steps back so the pair reads as a statement and a consequence
-   rather than as one shouted phrase. */
-.hero__title em {
+/* Line two steps into the warm secondary so the pair reads as a statement and
+   its consequence rather than one shouted phrase. */
+.title em {
   display: block;
   font-style: normal;
-  color: var(--stone);
+  color: var(--ink-warm);
 }
 
-.hero__lede {
-  max-width: var(--measure);
-  margin-top: clamp(1.1rem, 2.6vh, 1.9rem);
-  color: var(--stone);
-  font-size: clamp(1rem, 1.15vw, 1.14rem);
+.lede {
+  max-width: 52ch;
+  margin-top: clamp(1rem, 2.6vh, 1.75rem);
+  color: var(--muted);
+  font-size: clamp(1rem, 1.05vw, 1.13rem);
   line-height: 1.6;
   text-wrap: pretty;
 }
 
-.hero__lede strong {
-  color: var(--ivory);
+.lede strong {
+  color: var(--ink);
   font-weight: 500;
 }
 
-.hero__actions {
+.actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: clamp(1.4rem, 3.4vh, 2.4rem);
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: clamp(1.2rem, 3.2vh, 2.3rem);
+}
+
+.micro {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 0.85rem;
+  margin-top: clamp(0.9rem, 2.4vh, 1.6rem);
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+}
+
+/* The middots are punctuation, not claims, but they are still rendered text —
+   so they hold the same passing tone rather than being dimmed decoratively. */
+.micro span {
+  color: inherit;
 }
 
 /* --------------------------------------------------------------------------
-   8. Supporting strip — the minimum that earns its place
+   8. Bottom strip — three cells, hairline dividers
    -------------------------------------------------------------------------- */
 
-.support {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: clamp(0.75rem, 2.6vw, 2.25rem);
-  padding: clamp(0.9rem, 1.8vh, 1.35rem) var(--gutter);
-  border-top: 1px solid var(--rule);
-  color: var(--stone-dim);
-  font-size: 0.8rem;
+.strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
 }
 
-.support__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.strip__cell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0 0.7rem;
+  padding: clamp(0.75rem, 1.9vh, 1.3rem) var(--gutter);
+  min-width: 0;
 }
 
-.support__tick {
-  color: var(--stone);
+.strip__cell + .strip__cell {
+  border-left: 1px solid var(--line);
+}
+
+.strip__icon {
+  grid-row: 1 / span 2;
+  margin-top: 0.15rem;
+  color: var(--muted);
   flex: none;
 }
 
-.support__legal {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 1.1rem;
+.strip__title {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
 }
 
-.support__legal a {
-  color: var(--stone-dim);
-  text-decoration: none;
-  transition: color var(--dur-fast) var(--ease);
-}
-
-.support__legal a:hover {
-  color: var(--ivory);
+.strip__sub {
+  color: var(--faint);
+  font-size: 0.79rem;
+  line-height: 1.4;
 }
 
 /* --------------------------------------------------------------------------
@@ -504,7 +503,7 @@ body {
   padding: 0.7rem 1.1rem;
   background: var(--cream);
   color: var(--cream-ink);
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 10px 0;
   font-size: 0.9rem;
 }
 
@@ -513,29 +512,16 @@ body {
 }
 
 /* One visible focus treatment for every interactive element. Never removed. */
-a:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--ember);
+a:focus-visible {
+  outline: 2px solid var(--amber);
   outline-offset: 3px;
-  border-radius: 4px;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+  border-radius: 6px;
 }
 
 /* --------------------------------------------------------------------------
    10. Entrance — one settle, then still
    -------------------------------------------------------------------------- */
 
-/* The page arrives once and then stops moving. Nothing here loops. */
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
     animation: settle 620ms var(--ease) both;
@@ -552,6 +538,9 @@ button:focus-visible {
   }
   .reveal-4 {
     animation-delay: 250ms;
+  }
+  .reveal-5 {
+    animation-delay: 320ms;
   }
 
   @keyframes settle {
@@ -570,108 +559,112 @@ button:focus-visible {
    11. Responsive — reflow, never clip
    -------------------------------------------------------------------------- */
 
-/* Tablet portrait and below: the nav sheds its middle links (they remain
-   reachable from the supporting strip, which is always on screen). */
-@media (max-width: 720px) {
-  .nav__links a:not(.nav__cta) {
+/* Narrow desktop / tablet landscape: the nav sheds its middle links. They stay
+   reachable from the docs nav on every other route. */
+@media (max-width: 900px) {
+  .nav__links {
     display: none;
   }
 
-  .hero__title {
-    font-size: clamp(2.5rem, 11.5vw, 3.6rem);
+  .nav__cta {
+    margin-left: auto;
   }
+}
 
-  .hero__lede {
+/* Portrait: the strip stacks, and its dividers turn horizontal. */
+@media (max-width: 720px) {
+  .lede {
     font-size: 0.98rem;
   }
 
-  .support {
-    gap: 0.5rem 1.1rem;
-    font-size: 0.76rem;
+  .actions {
+    flex-direction: column;
+    align-self: stretch;
+    gap: 0.6rem;
   }
 
-  .support__legal {
-    margin-left: 0;
+  .actions .btn {
     width: 100%;
-    padding-top: 0.35rem;
   }
 
-  .plane--a,
-  .plane--b {
-    opacity: 0.6;
+  .strip {
+    grid-template-columns: 1fr;
   }
 
-  /* The near chip has nowhere to sit once the type fills the width. */
-  .plane--c {
-    display: none;
+  .strip__cell {
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .strip__cell + .strip__cell {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  /* The strip stacks into three rows here, so it climbs to roughly where the
+     glow's core sits on a wide screen — and its 12.6px subtitles then stand on
+     the brightest pixels of it. Lifting the centre above the strip puts them
+     back out on the falloff. */
+  .stage__glow {
+    bottom: 26vh;
+    width: min(560px, 96vw);
+    height: min(460px, 46vh);
+  }
+
+  /* The prism keeps its slope as the viewport narrows rather than flattening
+     into a horizon line. */
+  .prism--far {
+    width: 150vw;
+    height: 30vh;
+  }
+
+  .prism--left,
+  .prism--right {
+    width: 86vw;
+    height: 18vh;
   }
 }
 
-/* Short landscape (laptops at 768px tall, phones turned sideways): tighten the
-   vertical rhythm rather than shrink the type past readability. */
-@media (max-height: 780px) and (min-width: 721px) {
-  .hero__title {
-    font-size: clamp(2.6rem, 5.4vw, 4.4rem);
+/* Short landscape — laptops at 768px tall and phones turned sideways. Tighten
+   the vertical rhythm rather than shrink the type past readability. */
+@media (max-height: 700px) and (min-width: 721px) {
+  .title {
+    font-size: clamp(2.4rem, min(6vw, 13vh), 4.4rem);
   }
 
-  .hero__lede {
-    margin-top: 1rem;
+  .lede {
+    font-size: 1rem;
   }
 
-  .hero__actions {
-    margin-top: 1.3rem;
+  .btn--lg {
+    min-height: 46px;
   }
 }
 
-/* Very short landscape (a phone turned sideways, ~390px tall). Everything
-   still fits, but the rhythm is compressed hard and the supporting strip is
-   reduced to one fact. Nothing is hidden that carries the proposition: the
-   headline, the lede and both calls to action all survive. */
+/* Very short landscape (a phone turned sideways, ~390px tall). Everything that
+   carries the proposition survives — headline, lede, both calls to action —
+   and only the strip's subtitles step aside. */
 @media (max-height: 560px) {
-  .nav {
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
-  }
-
   .hero {
-    padding-top: 0.85rem;
-    padding-bottom: 0.85rem;
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
   }
 
-  .eyebrow {
-    margin-bottom: 0.55rem;
-    font-size: 0.66rem;
+  .title {
+    font-size: clamp(1.9rem, min(5vw, 14vh), 2.7rem);
   }
 
-  .hero__title {
-    font-size: clamp(1.9rem, 4.6vw, 2.6rem);
-  }
-
-  .hero__lede {
-    margin-top: 0.6rem;
-    font-size: 0.88rem;
+  .lede {
+    font-size: 0.92rem;
     line-height: 1.5;
-    max-width: 54ch;
   }
 
-  .hero__actions {
-    margin-top: 0.85rem;
+  .btn--lg {
+    min-height: 44px;
+    font-size: 0.92rem;
   }
 
-  .btn {
-    min-height: 40px;
-  }
-
-  .support {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    font-size: 0.72rem;
-  }
-
-  /* Two of the three facts step aside; the legal links stay, because they are
-     the only route to those documents from this page. */
-  .support__item:nth-child(2),
-  .support__item:nth-child(3) {
+  .strip__sub {
     display: none;
   }
 }

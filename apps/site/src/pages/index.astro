@@ -1,68 +1,95 @@
 ---
 /**
- * The landing page. One viewport, no scroll, nothing below the fold.
+ * The landing page. One viewport, no scroll, nothing below the fold, and
+ * ZERO JavaScript on the route.
  *
- * Everything that used to live under the hero — the how-it-works scroller,
- * the Studio proof strip, the bridge diagram, the mode lab, the spark meter,
- * the FAQ and the closing CTA — has been removed rather than hidden. Those
- * subjects now live on real routes (/docs, /pricing) where someone who wants
- * them can actually read them.
+ * The composition is CENTRED and symmetrical about the vertical axis: eyebrow,
+ * two-line headline, lede, two calls to action, a mono micro-line, and a
+ * three-cell strip pinned to the bottom edge. Behind it, a prism rises from
+ * bottom centre with a warm amber glow off its peak. All of that depth is CSS
+ * planes plus one inline SVG line drawing — no images, no canvas, no 3D.
  *
- * There is no mascot, no 3D stage and no canvas. All depth on this page is
- * CSS planes, one inline SVG line drawing, and light.
+ * Everything that used to live under the hero — the how-it-works scroller, the
+ * Studio proof strip, the bridge diagram, the mode lab, the spark meter, the
+ * FAQ and the closing CTA — was removed rather than hidden. Those subjects
+ * live on real routes (/docs, /pricing) where someone who wants them can
+ * actually read them. Which is also why the nav links here point at routes and
+ * never at a `/#anchor`: the sections those anchors named do not exist.
+ *
+ * See docs/DESIGN-SPEC.md §0 and §1.
  */
 import Landing from '../layouts/Landing.astro';
 import GolemMark from '../components/GolemMark.astro';
 
-/** Three facts, each independently true and independently checkable. */
-const facts = [
-  'Free every day. No card, no trial clock.',
-  'Native Studio undo on every change.',
-  'Works inside the place you already have.',
+/** Nav destinations. Every one of these is a real page. No anchors. */
+const navLinks = [
+  { href: '/docs/getting-started', label: 'How it works' },
+  { href: '/docs/modes', label: 'Modes' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/docs', label: 'Docs' },
+  { href: '/changelog', label: 'Changelog' },
 ];
+
+/** The bottom strip: icon, bold title, faint subtitle. Three cells. */
+const cells = [
+  {
+    icon: 'shield',
+    title: 'Built for creators',
+    sub: 'Trusted by builders',
+  },
+  {
+    icon: 'bolt',
+    title: 'Fast. Reliable. Consistent.',
+    sub: 'From idea to working prototype',
+  },
+  {
+    icon: 'people',
+    title: 'Loved by teams',
+    sub: 'Indie devs to studios',
+  },
+];
+
+/** 16px line icons, drawn here so the strip costs no extra request. */
+const icons: Record<string, string> = {
+  shield: 'M12 3.2 19 6v5.4c0 4-2.9 7.2-7 8.4-4.1-1.2-7-4.4-7-8.4V6z',
+  bolt: 'M13.4 3 6 13.2h4.6L10.6 21 18 10.8h-4.6z',
+  people:
+    'M9 11.4a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4M2.8 19.6c0-3 2.8-5 6.2-5s6.2 2 6.2 5M16 5.4a3 3 0 0 1 0 5.9M17.4 14.9c2.3.4 3.8 2.1 3.8 4.7',
+};
 ---
 
 <Landing
   title="Golem — Describe it. Golem builds it."
-  description="Golem is the AI builder for Roblox Studio. Describe what you want in plain language and Golem makes the change in your project — real scripts, real instances, native undo, verified by running your game."
+  description="Golem is the AI builder for Roblox. Describe what you want in plain language and Golem makes the change in your project — real scripts, real instances, native undo, verified by running your game."
 >
   <a href="#main" class="skip-link">Skip to content</a>
 
   {/* ---------------------------------------------------- the stage ------ */}
   <div class="stage" aria-hidden="true">
-    <div class="stage__key"></div>
-    <div class="stage__fill"></div>
-    <div class="plane plane--a"></div>
-    <div class="plane plane--b"></div>
-    <div class="plane plane--c"></div>
+    {/* Layer order is the whole picture. The far ridge is a dark mass; the
+        glow blooms in front of it; the near peak is drawn last so it
+        silhouettes crisply against the warm light rather than being washed
+        out by it. Putting the glow first instead hides it behind the ridge —
+        which is exactly what it did on the first pass. */}
+    <div class="prism prism--far"></div>
+    <div class="stage__glow"></div>
+    <div class="prism prism--left"></div>
+    <div class="prism prism--right"></div>
 
-    {/* Thin architectural rules: a drawing sheet beneath the stone. Drawn as
-        one inline SVG so it costs no request and scales with the viewport. */}
+    {/* Long thin diagonals sweeping the upper corners. They stay in the outer
+        sixths so no rule ever crosses the headline. */}
     <svg
-      class="stage__lines"
+      class="stage__rules"
       viewBox="0 0 1440 900"
       preserveAspectRatio="xMidYMid slice"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* The drawing lives in the right half, where the planes are. The left
-          half is left clear for type — no rule crosses the headline. The
-          horizon sits at 0.855 of the height so it clears the CTA row rather
-          than grazing it. */}
-      <g stroke="rgba(244,239,228,0.10)" stroke-width="1">
-        <line x1="900" y1="0" x2="900" y2="900"></line>
-        <line x1="820" y1="770" x2="1440" y2="770"></line>
-      </g>
-      <g stroke="rgba(244,239,228,0.055)" stroke-width="1">
-        <line x1="900" y1="770" x2="1330" y2="286"></line>
-        <line x1="1148" y1="0" x2="1148" y2="770"></line>
-        <line x1="900" y1="286" x2="1440" y2="286"></line>
-      </g>
-      {/* Dimension ticks at the intersections: the drafting detail that makes
-          the sheet read as measured rather than decorative. */}
-      <g stroke="rgba(244,239,228,0.20)" stroke-width="1">
-        <line x1="894" y1="770" x2="906" y2="770"></line>
-        <line x1="1142" y1="286" x2="1154" y2="286"></line>
+      <g stroke="rgba(245,242,236,0.07)" stroke-width="1">
+        <line x1="-120" y1="300" x2="340" y2="-120"></line>
+        <line x1="-120" y1="470" x2="500" y2="-60"></line>
+        <line x1="1560" y1="300" x2="1100" y2="-120"></line>
+        <line x1="1560" y1="470" x2="940" y2="-60"></line>
       </g>
     </svg>
 
@@ -73,88 +100,106 @@ const facts = [
   <div class="frame">
     <header class="nav">
       <a href="/" class="brand" aria-label="Golem — home">
-        <GolemMark size={26} alive={false} />
+        <GolemMark size={32} />
         <span>Golem</span>
       </a>
 
       <nav class="nav__links" aria-label="Primary">
-        <a href="/pricing">Pricing</a>
-        <a href="/docs">Docs</a>
-        <a href="/changelog">Changelog</a>
-        <a href="/app" class="btn btn--quiet btn--sm nav__cta">Open Golem</a>
+        {navLinks.map((l) => <a href={l.href}>{l.label}</a>)}
       </nav>
+
+      <a href="/app" class="btn btn--cream nav__cta">
+        Open Golem
+        <svg
+          class="btn__arrow"
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M7 17 17 7m0 0H8.5M17 7v8.5"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </a>
     </header>
 
     <main class="hero" id="main">
-      <div class="hero__inner">
-        <p class="eyebrow reveal reveal-1">
-          <span class="eyebrow__dot" aria-hidden="true"></span>
-          AI builder for Roblox Studio
-        </p>
+      <p class="eyebrow reveal reveal-1">
+        <span class="eyebrow__dash" aria-hidden="true"></span>
+        AI builder for Roblox
+      </p>
 
-        <h1 class="hero__title reveal reveal-2">
-          Describe it.
-          <em>Golem builds it.</em>
-        </h1>
+      <h1 class="title reveal reveal-2">
+        Describe it.
+        <em>Golem builds it.</em>
+      </h1>
 
-        <p class="hero__lede reveal reveal-3">
-          Say what you want in plain language. Golem makes the change inside
-          Roblox Studio — <strong>real scripts, real instances</strong> — then
-          runs your game to check its own work.
-        </p>
+      <p class="lede reveal reveal-3">
+        Go from an idea in your head to a working experience in
+        <strong>Roblox Studio</strong>. Golem reads your project, writes the
+        code, writes the instances — then presses Play to prove it works.
+      </p>
 
-        <div class="hero__actions reveal reveal-4">
-          <a href="/app" class="btn btn--cream">Start building</a>
-          <a href="/docs/getting-started" class="btn btn--quiet">
-            How it works
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M5 12h13m0 0-5-5m5 5-5 5"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"></path>
-            </svg>
-          </a>
-        </div>
+      <div class="actions reveal reveal-4">
+        <a href="/app" class="btn btn--cream btn--lg">
+          Start building — free
+          <svg
+            class="btn__arrow"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M7 17 17 7m0 0H8.5M17 7v8.5"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"></path>
+          </svg>
+        </a>
+        <a href="/docs/plugin" class="btn btn--outline btn--lg">
+          Install Studio plugin
+        </a>
       </div>
+
+      <p class="micro reveal reveal-5">
+        Free to start <span aria-hidden="true">·</span> No card required
+        <span aria-hidden="true">·</span> Works in your project
+      </p>
     </main>
 
-    <footer class="support">
+    <footer class="strip">
       {
-        facts.map((fact) => (
-          <span class="support__item">
+        cells.map((cell) => (
+          <div class="strip__cell">
             <svg
-              class="support__tick"
-              width="13"
-              height="13"
+              class="strip__icon"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               aria-hidden="true"
             >
               <path
-                d="M4 12.5 9.5 18 20 6.5"
+                d={icons[cell.icon]}
                 stroke="currentColor"
-                stroke-width="2"
+                stroke-width="1.6"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
             </svg>
-            {fact}
-          </span>
+            <span class="strip__title">{cell.title}</span>
+            <span class="strip__sub">{cell.sub}</span>
+          </div>
         ))
       }
-
-      <span class="support__legal">
-        <a href="/privacy">Privacy</a>
-        <a href="/terms">Terms</a>
-      </span>
     </footer>
   </div>
 </Landing>

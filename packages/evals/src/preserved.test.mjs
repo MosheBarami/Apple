@@ -726,3 +726,281 @@ test('B9 the provider abstraction did not change which model actually serves a r
   // …and an unknown id still falls back to the only transport this worker has.
   assert.match(read('providers/registry.ts'), /return workersAiAdapter;/, 'an unrecognised model id must fall back to the AI binding');
 });
+
+// ---------------------------------------------------------------------------
+// B10 — the Thinking card's Intent and Plan rows are REAL
+//
+// The card has four stages. Actions and Validation were already backed by real events. Intent and
+// Plan were backed by nothing, and the frontend is forbidden from inventing them, so they simply
+// did not render. The worker now emits them — derived from the user's own words, at zero model
+// cost, exactly once per run, and replayed on reconnect.
+//
+// These tests drive the REAL SessionDO. `startRun` is called on an instance built over a fake
+// storage map and a fake quota stub; everything between the request text and the broadcast frame
+// is production code. The one thing that is not real is the network, and that is the point: the
+// harness makes `globalThis.fetch` and the AI binding throw, so a model call anywhere on this
+// path fails the test rather than quietly costing money.
+// ---------------------------------------------------------------------------
+const { SessionDO } = await import(`file://${bundle(SRC('do', 'session.ts'), 'session')}`);
+
+/** The brief from the b4 failure, plus an exclusion and a hedge that must be read correctly. */
+const TAVERN_BRIEF =
+  'Build a cosy medieval tavern interior with stone walls, a doorway and windows, a wooden floor, ' +
+  'a bar counter with stools, tables and chairs, and a fireplace. No zombies. Maybe a second floor?';
+
+/**
+ * A SessionDO over an in-memory storage map. `store` is handed back so a second instance can be
+ * built over the SAME storage — which is what a reconnect actually is: the DO was evicted, the run
+ * kept going on its alarm, and a fresh instance has to rebuild the client's view from storage.
+ */
+function sessionHarness(store = new Map()) {
+  const sent = [];
+  const ws = { send: (d) => sent.push(JSON.parse(d)) };
+  store.set('bind', { projectId: 'p1', projectName: 'Preserved Place', ownerId: 'u1' });
+  const quota = {
+    sparksRemaining: 99, sparksDaily: 100, sparksMonthly: 1000,
+    sparksUsedToday: 1, sparksUsedThisMonth: 1, resetsAtIso: '', plan: 'free',
+  };
+  const ctx = {
+    storage: {
+      sql: { exec: () => ({ toArray: () => [] }) },
+      get: async (k) => store.get(k),
+      put: async (k, v) => {
+        if (typeof k === 'object') for (const [a, b] of Object.entries(k)) store.set(a, b);
+        else store.set(k, v);
+      },
+      setAlarm: async () => {},
+    },
+    blockConcurrencyWhile: async (fn) => await fn(),
+    getWebSockets: () => [ws],
+    acceptWebSocket: () => {},
+  };
+  const env = {
+    // Touching the model binding at all on this path is a failure, not a cost.
+    AI: { run: async () => { throw new Error('B10: the intent rows must never call a model'); } },
+    QUOTA_DO: {
+      idFromName: () => ({}),
+      get: () => ({ fetch: async () => new Response(JSON.stringify({ ok: true, state: quota })) }),
+    },
+  };
+  return { session: new SessionDO(ctx, env), sent, store, ws, bind: store.get('bind') };
+}
+
+const intentsIn = (sent) => sent.filter((m) => m.type === 'run_intent');
+
+test('B10 run_intent is emitted exactly once per run, and only after msg_start', async () => {
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  const order = h.sent.map((m) => m.type);
+  assert.equal(intentsIn(h.sent).length, 1, 'the Intent row is announced once per run, never repeatedly');
+  assert.ok(
+    order.indexOf('run_intent') > order.indexOf('msg_start'),
+    'run_intent must follow msg_start — the client needs a message to attach the card to',
+  );
+  assert.equal(intentsIn(h.sent)[0].msgId, h.sent.find((m) => m.type === 'msg_start').msgId, 'it must carry that run\'s msgId');
+
+  // A second run emits its own single intent, not a second copy of the first.
+  const first = intentsIn(h.sent)[0].msgId;
+  h.store.set('agent', { ...h.store.get('agent'), status: 'idle' });
+  await h.session.startRun(h.bind, 'Add a chimney to the tavern roof.', 'stone');
+  const all = intentsIn(h.sent);
+  assert.equal(all.length, 2);
+  assert.notEqual(all[1].msgId, first, 'each run gets its own Intent row');
+});
+
+test('B10 the Intent row is the user\'s own words and the Plan row is exactly what they named', async () => {
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  const { summary, checklist, questions } = intentsIn(h.sent)[0].intent;
+
+  // THE HONESTY PROOF. The summary is not a paraphrase and cannot become one: strip the ellipsis
+  // and what remains is a literal prefix of the request the user typed.
+  const flat = TAVERN_BRIEF.replace(/\s+/g, ' ').trim();
+  assert.ok(flat.startsWith(summary.replace(/…$/, '')), 'the summary must be the user\'s own words, not a restatement of them');
+  assert.ok(summary.length > 0 && summary.length <= 161);
+
+  // The Plan row is the enumerated things and nothing else. Every item was typed by the user.
+  assert.deepEqual(checklist, [
+    'stone walls', 'doorway', 'windows', 'wooden floor',
+    'bar counter', 'stools', 'tables', 'chairs', 'fireplace',
+  ]);
+  for (const item of checklist) {
+    assert.ok(flat.toLowerCase().includes(item), `"${item}" must appear verbatim in the request — nothing may be added`);
+  }
+  // "No zombies" is an exclusion. Reading it as a thing to build would be the worst possible bug.
+  assert.ok(!checklist.some((c) => /zombie/.test(c)), 'an excluded noun must never become a checklist item');
+  assert.ok(!checklist.some((c) => /lighting|atmosphere|detail|polish/.test(c)), 'no plausible-sounding extras');
+
+  // Exactly one place the request genuinely did not settle, and it quotes the request back.
+  assert.equal(questions.length, 1);
+  assert.match(questions[0], /second floor/, 'the question must name the actual hedge, not a generic doubt');
+});
+
+test('B10 a trivial request produces an EMPTY checklist rather than an invented one', async () => {
+  for (const text of ['what does this script do?', 'thanks!', 'can you explain the last change']) {
+    const h = sessionHarness();
+    await h.session.startRun(h.bind, text, 'clay');
+    const intent = intentsIn(h.sent)[0]?.intent;
+    assert.ok(intent, `"${text}" should still restate itself`);
+    assert.deepEqual(intent.checklist, [], `"${text}" names nothing to build — the Plan row must stay empty`);
+    assert.deepEqual(intent.questions, [], `"${text}" is not ambiguous — questions must not be invented to look thorough`);
+    assert.ok(text.replace(/\s+/g, ' ').trim().startsWith(intent.summary.replace(/…$/, '')));
+  }
+  // …and a request with no words at all produces no row at all, rather than a blank one.
+  const empty = sessionHarness();
+  await empty.session.startRun(empty.bind, '   \n  ', 'clay');
+  assert.equal(intentsIn(empty.sent).length, 0, 'an empty request must emit nothing, not an empty Intent card');
+});
+
+test('B10 the Intent and Plan rows survive a reconnect — replayed from storage, not from memory', async () => {
+  const store = new Map();
+  const a = sessionHarness(store);
+  await a.session.startRun(a.bind, TAVERN_BRIEF, 'stone');
+  const broadcast = intentsIn(a.sent)[0].intent;
+
+  // The browser refreshes and the DO is evicted: a brand-new instance over the same storage, with
+  // no memory of having broadcast anything. This is the real reconnect path — `resume`.
+  const b = sessionHarness(store);
+  assert.equal(intentsIn(b.sent).length, 0, 'the fresh instance has not re-broadcast anything');
+  await b.session.webSocketMessage(b.ws, JSON.stringify({ type: 'resume' }));
+  const state = b.sent.find((m) => m.type === 'run_state');
+  assert.ok(state?.run, 'a live run must still be reported after a reconnect');
+  assert.deepEqual(state.run.intent, broadcast, 'the Intent and Plan rows must come back byte-identical');
+  assert.equal(state.run.msgId, intentsIn(a.sent)[0].msgId);
+
+  // An older run persisted before this feature existed must still replay — just without the rows.
+  const legacy = sessionHarness(new Map());
+  await legacy.session.startRun(legacy.bind, TAVERN_BRIEF, 'stone');
+  const { intent: _dropped, ...older } = legacy.store.get('agent');
+  legacy.store.set('agent', older);
+  legacy.sent.length = 0;
+  await legacy.session.webSocketMessage(legacy.ws, JSON.stringify({ type: 'resume' }));
+  const legacyState = legacy.sent.find((m) => m.type === 'run_state');
+  assert.ok(legacyState.run, 'a run persisted by an older deployment must still replay');
+  assert.equal(legacyState.run.intent, undefined);
+});
+
+test('B10 producing the Intent and Plan rows costs ZERO model calls', async () => {
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (input, init) => {
+    calls.push(typeof input === 'string' ? input : input.url);
+    return realFetch(input, init);
+  };
+  try {
+    const h = sessionHarness(); // its env.AI.run throws if touched
+    await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+    assert.equal(intentsIn(h.sent).length, 1, 'the rows were produced…');
+    assert.deepEqual(calls, [], '…and not one network call was made to produce them');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  // Structural proof, so this cannot regress by someone wiring a model into the extractor later:
+  // semantic.ts has no imports at all and no route to a provider.
+  const sem = read('semantic.ts');
+  assert.equal(sem.match(/^\s*import[\s{]/gm), null, 'semantic.ts must stay import-free — that is what makes it free to run');
+  assert.equal(sem.match(/\bfetch\s*\(|\bllmChat\b|\bgateway\b|\bthis\.env\b/g), null, 'semantic.ts must have no path to a model provider');
+  assert.match(sem, /export function intentCheck\(request: string, parts\?: number\[\]\[\]\): IntentReport/);
+  // The seam for a model-assisted pass exists but is still unused, and still caps what it accepts.
+  assert.match(sem, /strength: 'soft',\n\s*confidence: Math\.min\(0\.5, e\.confidence \?\? 0\.5\),/);
+});
+
+test('B10 STATIC CHECK — the intent is derived once, persisted, and replayed', () => {
+  const session = read('do/session.ts');
+  assert.match(session, /import \{ sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord \} from '\.\.\/semantic';/);
+  // Derived at run start, on the same free/deterministic footing as the trait classifier.
+  assert.match(session, /const traits = classifyRequest\(text\);/);
+  assert.match(session, /const intent = runIntentFor\(text\);/, 'the intent must be derived at run start, from the request text');
+  // Persisted on AgentState, so the rows are not lost when nobody is listening.
+  assert.match(session, /intent: intent \?\? undefined,/, 'the intent must be written onto AgentState');
+  assert.match(session, /if \(intent\) this\.broadcast\(\{ type: 'run_intent', msgId, intent \}\);/, 'exactly one broadcast, guarded');
+  // Replayed by the reconnect snapshot.
+  assert.match(session, /intent: agent\.intent,/, 'runSnapshot must replay the intent');
+  // Nothing here may pad. The checklist and questions come straight off the extractor.
+  assert.match(session, /const checklist = report\.checklist\.slice\(0, MAX_INTENT_CHECKLIST\);/);
+  assert.match(session, /const questions = report\.questions\.slice\(0, MAX_INTENT_QUESTIONS\);/);
+  assert.match(session, /if \(!summary && !checklist\.length && !questions\.length\) return null;/, 'nothing to say must mean no row');
+});
+
+test('B10 a long request is truncated at a word boundary and stays verbatim', async () => {
+  const long =
+    'Build a huge medieval market square with cobblestone paving, market stalls selling bread and fish, ' +
+    'a stone well in the middle, hanging banners, wooden carts, crates and barrels stacked by the walls, ' +
+    'and a clock tower overlooking the whole square from the north side of the plaza.';
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, long, 'stone');
+  const { summary, checklist } = intentsIn(h.sent)[0].intent;
+  assert.ok(summary.endsWith('…'), 'an over-long request must be visibly cut, not silently shortened');
+  assert.ok(summary.length <= 161);
+  assert.ok(long.startsWith(summary.slice(0, -1)), 'the retained text must still be the user\'s literal words');
+  assert.ok(!/\s$/.test(summary.slice(0, -1)), 'the cut lands on a word boundary, with no dangling space');
+  assert.ok(checklist.length > 0 && checklist.length <= 16, 'the checklist is bounded but not padded');
+  for (const item of checklist) assert.ok(long.toLowerCase().includes(item), `"${item}" must be the user's own wording`);
+});
+
+// A GREETING IS NOT A THING TO BUILD.
+//
+// Found by driving startRun with the shapes real chat messages actually have. `extractObjects`
+// splits the request on '.' as an enumeration separator, so an opening pleasantry became its own
+// fragment and was published as a strong `object` constraint. "Hi. Build a tavern with tables and
+// chairs." produced the checklist ["hi", "tables", "chairs"] — a Plan row listing "hi" as
+// something to construct. That is fabricated UI data, which DESIGN-SPEC forbids outright, and
+// opening with a greeting is the common case rather than an edge case.
+//
+// The guard is a lexicon, so the risk is over-reach in the other direction: rejecting a fragment
+// that IS a real thing. "great hall", "good lighting" and "nice old-fashioned street lamp" are
+// pinned below for exactly that reason.
+test('B10 an opening greeting never becomes a Plan row item', async () => {
+  const cases = [
+    ['Hi. Build a tavern with tables and chairs.', ['tables', 'chairs']],
+    ['Hello there. Can you build a castle with towers?', ['towers']],
+    ['Hey! Ok. Build a small cabin with a door, windows and a chimney.', ['door', 'windows', 'chimney']],
+    ['Thanks. Build a shop with shelves and a counter.', ['shelves', 'counter']],
+    ['Good morning. Build a garden with flowers and a bench.', ['flowers', 'bench']],
+  ];
+  for (const [text, expected] of cases) {
+    const h = sessionHarness();
+    await h.session.startRun(h.bind, text, 'stone');
+    const { checklist } = intentsIn(h.sent)[0].intent;
+    assert.deepEqual(checklist, expected, `"${text}" — the greeting must not be enumerated as a thing to build`);
+  }
+
+  // …and the fix must not have eaten real nouns that merely start with a pleasant-sounding word.
+  const keep = sessionHarness();
+  await keep.session.startRun(keep.bind, 'Build a castle with a great hall, good lighting and a nice old-fashioned street lamp.', 'stone');
+  const kept = intentsIn(keep.sent)[0].intent.checklist;
+  for (const item of ['great hall', 'good lighting', 'nice old-fashioned street lamp']) {
+    assert.ok(kept.includes(item), `"${item}" is a real thing the user named — the greeting filter must not drop it`);
+  }
+});
+
+// THE REAL SUMMARY INVARIANT.
+//
+// The other B10 tests assert `request.startsWith(summary)`, which happens to hold for briefs that
+// open with their first full sentence — but `restate()` deliberately SKIPS a leading sentence of
+// fewer than three words, so "Hey! Ok. Build a cabin…" summarises to text that is NOT a prefix.
+// The property that is actually true of every input, and the one worth pinning, is that the
+// summary is a contiguous verbatim SUBSTRING of the user's own words. That still makes a
+// paraphrase impossible, and unlike the prefix claim it does not quietly depend on the fixture.
+test('B10 the summary is always a verbatim substring of the request, whatever shape it has', async () => {
+  const shapes = [
+    TAVERN_BRIEF,
+    'Hey! Ok. Build a small cabin with a door, windows and a chimney.',
+    'Hi. Build a tavern with tables and chairs.',
+    'what does this script do?',
+    'build me an enormous sprawling castle with towers and battlements and a moat and a drawbridge '
+      + 'and a great hall and a throne room and dungeons and a courtyard and stables and a chapel',
+    '🏰 Bâtir un château with stone walls and a tower. Peut-être un pont?',
+  ];
+  for (const text of shapes) {
+    const h = sessionHarness();
+    await h.session.startRun(h.bind, text, 'stone');
+    const intent = intentsIn(h.sent)[0]?.intent;
+    assert.ok(intent, `"${text.slice(0, 40)}…" should produce an Intent row`);
+    const flat = text.replace(/\s+/g, ' ').trim();
+    const bare = intent.summary.replace(/…$/, '');
+    assert.ok(bare.length > 0, 'an emitted Intent row must never carry an empty summary');
+    assert.ok(flat.includes(bare), 'the summary must be the user\'s literal words, never a paraphrase');
+  }
+});

@@ -396,8 +396,19 @@ const LEAD_STRIP =
   /^(?:no|without|avoid|any|a|an|the|some|other|of|for|too|much|many|lots of|kind of|sort of|type of|to|definitely|really|maybe|perhaps|possibly|ideally|probably|obviously|preferably|also|even|just)\s+/;
 const TRAIL_STRIP =
   /\s+(?:in|on|at|as|by|from|around|near|next to|beside|under|over|behind|between|inside|outside|anywhere|please|though|either|at all|whatsoever|of any kind)\b.*$/;
+// The second line is the GREETING FAMILY, and it is not cosmetic. `extractObjects` splits the
+// request on '.' as an enumeration separator, so an opening pleasantry becomes its own fragment:
+// "Hi. Build a tavern with tables and chairs." enumerates as ["Hi", "tables", "chairs"]. Before
+// these words were listed, "hi" survived cleanTerm and was published as a strong `object`
+// constraint — which is a checklist item, which is a Plan row on the Thinking card reading "hi"
+// as a thing to build. Opening a chat message with a greeting is the common case, not the edge
+// case, so this was fabricating a build item for a large share of real requests.
+//
+// Kept deliberately narrow: only words that can never head a build noun. NOT `good`, `great`,
+// `nice` or `cool` — "great hall", "good lighting" and the documented "nice old-fashioned street
+// lamp" are all real things a user asks for, so the multi-word greetings are spelled out instead.
 const NOT_A_THING =
-  /^(?:build|make|makes|made|add|adds|put|place|include|create|creates|give|use|uses|set|do|does|keep|leave|let|have|has|want|wants|need|needs|try|start|then|just|i|we|you|they|it|there|please|its|it's|really|very|too|more|sure|ok|okay|yes)\b/;
+  /^(?:build|make|makes|made|add|adds|put|place|include|create|creates|give|use|uses|set|do|does|keep|leave|let|have|has|want|wants|need|needs|try|start|then|just|i|we|you|they|it|there|please|its|it's|really|very|too|more|sure|ok|okay|yes)\b|^(?:hi|hiya|hey|heya|hello|hullo|howdy|yo|greetings|thanks|thank|thx|ty|cheers|welcome|bye|goodbye|nevermind|never mind|oh|um|uh|hmm|alright|good morning|good afternoon|good evening|good day)\b/;
 const FILLER_TERMS = new Set([
   'thing',
   'things',

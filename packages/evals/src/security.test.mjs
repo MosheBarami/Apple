@@ -22,7 +22,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -39,6 +39,24 @@ const readCode = (...p) =>
   read(...p)
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+/**
+ * EVERY TypeScript source file under apps/worker/src, as `src`-relative paths.
+ *
+ * Enumerated by walking the tree, never by a hand-written list: a call-site guard that checks a
+ * fixed list of files stops guarding the moment someone adds a file, which is exactly when it is
+ * needed. A new `apps/worker/src/routes/whatever.ts` holding the AI binding is the failure this
+ * has to catch on the day it is written.
+ */
+function workerSourceFiles(dir = '') {
+  const out = [];
+  for (const entry of readdirSync(SRC(dir)).sort()) {
+    const rel = dir ? `${dir}/${entry}` : entry;
+    if (statSync(SRC(rel)).isDirectory()) out.push(...workerSourceFiles(rel));
+    else if (/\.tsx?$/.test(entry)) out.push(rel);
+  }
+  return out;
+}
 
 /** Every `app.<verb>('<path>', …)` in index.ts, with the source that belongs to it. */
 function routeBodies(src) {
@@ -668,7 +686,17 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
   const fields = [...snapshot.matchAll(/^\s{6}(\w+):/gm)].map((m) => m[1]);
   assert.deepEqual(
     new Set(fields),
-    new Set(['msgId', 'mode', 'phase', 'step', 'totalSteps', 'text', 'tools', 'startedAt', 'effort', 'effortReason']),
+    new Set([
+      'msgId', 'mode', 'phase', 'step', 'totalSteps', 'text', 'tools', 'startedAt',
+      'effort', 'effortReason',
+      // `intent` reviewed 2026-08-31. RunIntent is { summary, checklist, questions },
+      // every field of which is derived by regex and lexicon from the user's OWN
+      // request text by intentCheck(). It restates what the user asked for — which
+      // the browser already rendered — and carries no prompt, no system message, no
+      // transcript and no model reasoning. Deriving from agent.request is not the
+      // same as replaying it, which is why `request` stays forbidden below.
+      'intent',
+    ]),
     'runSnapshot changed shape — re-review what the reconnect replay hands the browser',
   );
   // The whole AgentState is NOT handed over: it holds the transcript (`llm`) and the user id.
@@ -676,6 +704,16 @@ test('A2 STATIC CHECK — run_state replays only the whitelisted RunSnapshot fie
   for (const forbidden of ['llm', 'userId', 'seenCalls', 'request']) {
     assert.equal(fields.includes(forbidden), false, `runSnapshot must not replay AgentState.${forbidden}`);
   }
+  // The nested RunIntent needs the same discipline: whitelisting the parent field
+  // once would otherwise let anything be added inside it without review.
+  const shared = readFileSync(new URL('../../shared/src/index.ts', import.meta.url), 'utf8');
+  const decl = shared.slice(shared.indexOf('export interface RunIntent'), shared.indexOf('export interface RunSnapshot'));
+  const intentFields = [...decl.matchAll(/^\s{2}(\w+)[?]?:/gm)].map((m) => m[1]);
+  assert.deepEqual(
+    new Set(intentFields),
+    new Set(['summary', 'checklist', 'questions']),
+    'RunIntent grew a field — re-review it before it reaches the browser',
+  );
 });
 
 test('A2 agent_status carries a policy classification, never prompt or transcript text', () => {
@@ -895,13 +933,15 @@ test('A4 FINDING — a wrong admin key is never accepted, however many times it 
   assert.ok(userCodes.has(200), '…and it should let the early requests through');
 });
 
-test('A4 FINDING — /api/admin/raw-probe spends model tokens with no budget reservation', async () => {
-  // The gateway's stated invariant is "there is no way to spend money by forgetting a check".
-  // This route forgets it: it calls `env.AI.run` directly. Measured below, and written up with a
-  // proposed diff in the workstream report.
+test('A4 FIXED — /api/admin/raw-probe reserves and settles like every other model call', async () => {
+  // WAS A FINDING, NOW A REGRESSION TEST. The gateway's stated invariant is "there is no way to
+  // spend money by forgetting a check". This route used to forget it: it called `env.AI.run`
+  // itself, measured at one AI.run and zero BudgetDO calls, which made it the only path in the
+  // product that could spend model tokens without a reservation — invisible to the kill switch and
+  // to the daily/monthly neuron caps. It now goes through `rawProbe()` in the gateway.
   //
-  // THE INVARIANT ASSERTED: whatever it does with the budget, it must stay admin-gated, and it must
-  // not leak a credential. Both hold.
+  // THE INVARIANTS ASSERTED: it is metered on the global ledger, it stays admin-gated, it leaks no
+  // credential, and it still returns the raw shape an operator probes for.
   reset();
   const env = makeEnv();
   // 403 (wrong key) or 429 (this IP has burned through the failed-attempt
@@ -917,17 +957,117 @@ test('A4 FINDING — /api/admin/raw-probe spends model tokens with no budget res
   const probe = await call('/api/admin/raw-probe', {
     method: 'POST', env, adminKey: SECRETS.ADMIN_KEY, body: { model: '@cf/zai-org/glm-5.3-flash', prompt: 'hi' },
   });
+  assert.equal(probe.status, 200);
   assertNoSecret(probe.text, 'POST /api/admin/raw-probe');
   assert.equal(trace.order.includes('AI.run'), true, 'the probe does reach the model');
-  // Documenting the gap: no reserve, no settle. See the report.
-  assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO')), [],
-    'documenting current behaviour: raw-probe is the one model call that skips the BudgetDO ledger');
+  // THE FIX: reserved before the model ran, settled after it returned.
+  assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO') || o === 'AI.run'),
+    ['BUDGET_DO/reserve', 'AI.run', 'BUDGET_DO/settle'],
+    'raw-probe must reserve BEFORE spending and settle AFTER — the reservation is what the caps see');
+  // The settle is the ACTUAL cost, not the reservation: under-billing the ledger is how a bill
+  // escapes a cap that is watching the ledger.
+  const settled = trace.doCalls.find((d) => d.ns === 'BUDGET_DO' && d.path === '/settle');
+  assert.ok(settled, 'no settle body was recorded');
+  assert.equal(settled.body.model, '@cf/zai-org/glm-5.3-flash');
+  assert.equal(settled.body.kind, 'admin:raw-probe', 'probe spend must be attributable in the admin report');
+  assert.ok(settled.body.actual >= 1, 'the settled cost must be a real charge');
+  assert.ok(settled.body.reserved >= settled.body.actual, 'the reservation must be the pessimistic figure');
 
-  // …and the contrast, which is what the fix should look like.
+  // …and it still does its job: the raw keys and the usage block are what the probe exists for.
+  assert.deepEqual(probe.json.keys.sort(), ['choices', 'usage']);
+  assert.deepEqual(probe.json.usage, { prompt_tokens: 10, completion_tokens: 5 });
+  assert.ok(probe.json.shape, 'the raw shape dump must survive the fix');
+
+  // Parity with every other admin model call.
   reset();
   await call('/api/admin/model-test', { method: 'POST', env, adminKey: SECRETS.ADMIN_KEY, body: { model: 'memory', prompt: 'hi' } });
   assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO')), ['BUDGET_DO/reserve', 'BUDGET_DO/settle'],
     'every other admin model call is reserved and settled');
+
+  // STATIC GUARD. The behavioural checks above pass for any implementation that happens to call
+  // the ledger; this one is what stops the direct binding call coming back into the route.
+  const rawProbeRoute = routeBodies(readCode('index.ts')).find((r) => r.path === '/api/admin/raw-probe');
+  assert.ok(rawProbeRoute, 'the /api/admin/raw-probe route was not found in index.ts');
+  assert.equal(/\benv\.AI\.run\b/.test(rawProbeRoute.body), false,
+    'raw-probe must not call the AI binding directly — that is exactly the bypass that was closed');
+  assert.match(rawProbeRoute.body, /\brawProbe\(/, 'raw-probe must go through the gateway’s metered probe');
+});
+
+test('A4 FIXED — raw-probe is refused by the kill switch and by an exhausted cap, before any token is spent', async () => {
+  // The point of routing the probe through the gateway is that the SAME refusals apply. A refusal
+  // has to happen before `AI.run`, or the cap is being enforced after the money is gone, and it has
+  // to arrive as an HTTP error rather than an unhandled throw.
+  for (const [reason, message] of [
+    ['killed', 'AI generation is paused right now.'],
+    ['daily_cap', "Golem has reached today's shared building capacity. It resets at midnight UTC."],
+    ['monthly_cap', "Golem has reached this month's shared building capacity."],
+  ]) {
+    reset();
+    const env = makeEnv({ budget: { reserve: { ok: false, reason, message } } });
+    const res = await call('/api/admin/raw-probe', {
+      method: 'POST', env, adminKey: SECRETS.ADMIN_KEY, body: { model: '@cf/zai-org/glm-5.3-flash', prompt: 'hi' },
+    });
+    assert.equal(res.status, 429, `a ${reason} refusal must surface as 429, not a crash`);
+    assert.equal(res.json.reason, reason, 'the refusal must say which guard fired');
+    assert.equal(res.json.error, message);
+    assertNoSecret(res.text, `POST /api/admin/raw-probe (${reason})`);
+    assert.equal(trace.order.includes('AI.run'), false,
+      `a ${reason} refusal must land BEFORE the model runs — otherwise the tokens are already spent`);
+    assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO')), ['BUDGET_DO/reserve'],
+      'a refused reservation must not be settled or released');
+  }
+
+  // A request too large for a single step is refused by the same policy, and again spends nothing.
+  reset();
+  const env = makeEnv();
+  const huge = await call('/api/admin/raw-probe', {
+    method: 'POST', env, adminKey: SECRETS.ADMIN_KEY,
+    body: { model: '@cf/zai-org/glm-5.3-flash', prompt: 'x'.repeat(400_000), maxTokens: 6000 },
+  });
+  assert.equal(huge.status, 429);
+  assert.equal(huge.json.reason, 'request_too_large');
+  assert.equal(trace.order.includes('AI.run'), false, 'an oversized probe must never reach the model');
+  assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO')), [],
+    'the per-request ceiling is checked before anything is reserved');
+
+  // And when the model itself fails, the reservation is handed back rather than silently kept.
+  reset();
+  const failing = makeEnv({ aiThrows: new Error('inference exploded') });
+  const broke = await call('/api/admin/raw-probe', {
+    method: 'POST', env: failing, adminKey: SECRETS.ADMIN_KEY,
+    body: { model: '@cf/zai-org/glm-5.3-flash', prompt: 'hi' },
+  });
+  assert.equal(broke.status, 500, 'a provider failure is a 500, not a silent 200');
+  assertNoSecret(broke.text, 'POST /api/admin/raw-probe (provider failure)');
+  assert.deepEqual(trace.order.filter((o) => o.startsWith('BUDGET_DO') || o === 'AI.run'),
+    ['BUDGET_DO/reserve', 'AI.run', 'BUDGET_DO/release'],
+    'a failed probe must release its reservation, not hold the budget hostage');
+});
+
+test('A4 FIXED — raw-probe charges the global ledger only: no user Sparks, no QuotaDO', async () => {
+  // Sparks are the PER-USER quota, tracked in QuotaDO. raw-probe is an operator tool reached with a
+  // service-wide admin key and no user identity at all, so there is nobody to bill: charging Sparks
+  // would either invent a victim or silently spend a real user's allowance on an operator's
+  // diagnostic. Only the global neuron ledger applies.
+  reset();
+  const env = makeEnv();
+  const res = await call('/api/admin/raw-probe', {
+    method: 'POST', env, adminKey: SECRETS.ADMIN_KEY, body: { model: '@cf/zai-org/glm-5.3-flash', prompt: 'hi' },
+  });
+  assert.equal(res.status, 200);
+  assert.deepEqual(trace.doCalls.filter((d) => d.ns === 'QUOTA_DO'), [], 'raw-probe must not call QuotaDO');
+  assert.deepEqual(trace.addressed.filter((a) => a.ns === 'QUOTA_DO'), [],
+    'raw-probe must not even address a per-user quota DO — there is no user on this path');
+  assert.deepEqual([...new Set(trace.doCalls.map((d) => d.ns))].sort(), ['AI', 'BUDGET_DO'],
+    'the only things a probe touches are the model and the global neuron ledger');
+  assert.equal(/spark/i.test(res.text), false, 'the probe response must not report a Spark charge');
+
+  // STATIC GUARD, because the behavioural check would also pass for a QuotaDO call that merely
+  // failed to fire on this input: the gateway has no per-user quota concept at all, by design.
+  assert.equal(/QUOTA_DO/.test(readCode('gateway.ts')), false,
+    'gateway.ts must never touch QuotaDO — the gateway meters the GLOBAL ledger, Sparks are charged by the session DO');
+  const rawProbeRoute = routeBodies(readCode('index.ts')).find((r) => r.path === '/api/admin/raw-probe');
+  assert.equal(/QUOTA_DO|spark/i.test(rawProbeRoute.body), false, 'the raw-probe route must not charge Sparks');
 });
 
 test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass RLS', async () => {
@@ -1107,25 +1247,42 @@ test('A6 STATIC CHECK — the gateway has exactly one adapter invocation and it 
 });
 
 test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metered ones', () => {
-  const files = ['gateway.ts', 'index.ts', 'providers/workers-ai.ts', 'tools.ts', 'do/session.ts', 'vision.ts', 'rag.ts', 'assets.ts', 'asset-library.ts', 'semantic.ts', 'composition.ts', 'critic.ts'];
+  // EVERY worker source file, walked — not a hand-picked list, which would stop covering the
+  // product the moment a file is added. The pattern is `AI.run(` rather than `env.AI.run(` so a
+  // destructured binding (`const { AI } = env; AI.run(…)`) is caught too.
+  const files = workerSourceFiles();
+  assert.ok(files.length > 15 && files.includes('gateway.ts'), 'the worker source walk found nothing — the guard would be vacuous');
   const found = [];
   for (const f of files) {
     // Comments are stripped first: several of these files DESCRIBE the call in prose, and a
     // description is not a call site.
-    for (const _ of readCode(f).matchAll(/env\.AI\.run\(/g)) found.push(f);
+    for (const _ of readCode(f).matchAll(/\bAI\.run\(/g)) found.push(f);
   }
   assert.deepEqual(
     found.sort(),
-    ['gateway.ts', 'index.ts', 'providers/workers-ai.ts'],
+    // gateway.ts twice: embed() and rawProbe(). Neither goes through an adapter — an embedding and
+    // a raw-shape probe have no normalised form by definition — so each carries its own
+    // reserve/settle/release gate, asserted below. NOTHING outside the gateway may hold the binding.
+    ['gateway.ts', 'gateway.ts', 'providers/workers-ai.ts'],
     'a new direct env.AI.run call site bypasses the provider layer — route it through gateway.chat()',
   );
-  // FINDING (pre-existing, admin-only): index.ts::/api/admin/raw-probe calls env.AI.run directly and
-  // therefore spends neurons WITHOUT a BudgetDO reservation. Pinned here so it cannot spread.
-  const index = read('index.ts');
-  const rawProbe = index.slice(index.indexOf("app.post('/api/admin/raw-probe'"), index.indexOf("app.get('/api/admin/spend'"));
-  assert.match(rawProbe, /c\.env\.AI\.run\(/);
-  assert.equal(/reserve\(|settle\(|budgetStub/.test(rawProbe), false,
-    'documenting current behaviour: /api/admin/raw-probe is the one unmetered model call in the product');
+  // WAS A FINDING (admin-only): index.ts::/api/admin/raw-probe called env.AI.run itself and so spent
+  // neurons with NO BudgetDO reservation — the one unmetered model call in the product. It now
+  // delegates to gateway.rawProbe(). Pinned here so the binding cannot creep back into a route.
+  const index = readCode('index.ts');
+  const rawProbeRoute = index.slice(index.indexOf("app.post('/api/admin/raw-probe'"), index.indexOf("app.get('/api/admin/spend'"));
+  assert.ok(rawProbeRoute.length > 100, 'the /api/admin/raw-probe route was not found in index.ts');
+  assert.equal(/c\.env\.AI\.run\(/.test(rawProbeRoute), false,
+    '/api/admin/raw-probe must not hold the AI binding — that is the bypass that was closed');
+  assert.match(rawProbeRoute, /await rawProbe\(c\.env,/, 'the probe must go through the gateway');
+  // …and the gateway function it delegates to is wrapped in the spend gate, in the right order.
+  const probe = readCode('gateway.ts').slice(readCode('gateway.ts').indexOf('export async function rawProbe'));
+  const reserveAt = probe.indexOf('const reserved = await reserve(env, req.model, estimate)');
+  const runAt = probe.indexOf('env.AI.run(');
+  assert.ok(reserveAt > 0, 'rawProbe() must take a reservation');
+  assert.ok(reserveAt < runAt, 'rawProbe() must reserve BEFORE it runs the model');
+  assert.ok(probe.indexOf('await settle(env, reserved,') > runAt, 'rawProbe() must settle AFTER the model returns');
+  assert.ok(probe.includes('await release(env, reserved)'), 'rawProbe() must release its reservation when the call fails');
 });
 
 test('A6 an HTTP provider bills through the SAME neuron ledger — tokens are converted, not exempted', async () => {

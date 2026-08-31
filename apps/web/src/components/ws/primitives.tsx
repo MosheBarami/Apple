@@ -19,6 +19,20 @@ export function Icon({ d, size = 16 }: { d: string; size?: number }) {
 export const PATH = {
   plus: 'M12 5v14M5 12h14',
   chevronRight: 'M9 6l6 6-6 6',
+  chevronDown: 'M6 9l6 6 6-6',
+  /** Collapse / expand the rail. */
+  panelLeft: 'M4 5h16v14H4zM10 5v14',
+  /** New chat. */
+  compose: 'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z M13.5 6.5l4 4',
+  /** View all chats. */
+  listAll: 'M4 7h16M4 12h16M4 17h9',
+  /** Checkpoints — stacked project states. */
+  layers: 'M12 3l8 4.5-8 4.5-8-4.5zM4 12l8 4.5 8-4.5M4 16.5L12 21l8-4.5',
+  /** The Thinking card's mark. Amber, static. */
+  sparkle: 'M12 3.5l1.7 4.8 4.8 1.7-4.8 1.7L12 16.5l-1.7-4.8L5.5 10l4.8-1.7z',
+  attach:
+    'M20 11.5l-8.1 8.1a4.6 4.6 0 0 1-6.5-6.5l8.6-8.6a3.1 3.1 0 0 1 4.4 4.4l-8.6 8.6a1.6 1.6 0 0 1-2.2-2.2l7.9-7.9',
+  mic: 'M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5.4a2.8 2.8 0 0 1-5.6 0V6.3A2.8 2.8 0 0 1 12 3.5zM5.5 11.2a6.5 6.5 0 0 0 13 0M12 17.7V21',
   history: 'M3 12a9 9 0 1 0 3-6.7M3 4v4h4',
   brain: 'M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5.8V16a3 3 0 0 1-4 2.8M12 4v15',
   close: 'M6 6l12 12M18 6L6 18',

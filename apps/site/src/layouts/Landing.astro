@@ -7,9 +7,10 @@
  * one-viewport landing uses. Keeping this separate is what makes the landing's
  * payload small, so resist the urge to "tidy up" by merging them.
  *
- * Fonts: two families, three cuts. Fraunces for the display line only, Inter
- * for everything else. JetBrains Mono is not requested here — nothing on this
- * page is code.
+ * Fonts: ONE family, three cuts. The display line is a tight grotesque at 600,
+ * not a serif — the earlier Fraunces treatment is superseded (DESIGN-SPEC §0),
+ * so that request is gone. The eyebrow and the CTA micro-line are monospace,
+ * served by the platform's own mono; no third webfont is requested here.
  */
 import '../styles/landing.css';
 
@@ -47,14 +48,14 @@ const ogImage = new URL('/og.svg', site);
     <meta name="twitter:image" content={ogImage} />
 
     {/* This surface is dark-committed, so there is one colour, not a pair. */}
-    <meta name="theme-color" content="#0d0c0a" />
+    <meta name="theme-color" content="#0b0a09" />
     <meta name="color-scheme" content="dark" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400&family=Inter:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
     />
   </head>
   <body>

@@ -6,16 +6,18 @@
 // between turns — checkpoints and project memory — are one click away in a
 // drawer rather than occupying a third of the screen forever.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useOutletContext, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { GolemMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
+import { shortRelative } from '../lib/format';
+import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { fetchProviders } from '../lib/api';
 import { useToast } from '../components/toast';
 import { PairingDialog } from '../components/pairing-dialog';
-import { Composer, type ProviderOption } from '../components/ws/composer';
+import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
@@ -41,7 +43,7 @@ export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
   const { toast } = useToast();
-  const outlet = useOutletContext<{ openRail: () => void } | null>();
+  const { openRail } = useShell();
 
   const [showPairing, setShowPairing] = useState(false);
   const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory'>(null);
@@ -52,6 +54,10 @@ export function WorkspacePage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
+
+  // The rail's Checkpoints card opens this route's drawer.
+  const showCheckpoints = useCallback(() => setDrawer('checkpoints'), []);
+  useProvideCheckpoints(showCheckpoints);
 
   const project = useQuery({
     queryKey: ['project', projectId],
@@ -140,6 +146,9 @@ export function WorkspacePage() {
     );
   }
 
+  const activityAt = project.data?.last_activity_at ?? project.data?.updated_at ?? null;
+  const when = shortRelative(activityAt);
+
   return (
     <div className="gx-ws">
       {/* ------------------------------------------------------- topbar -- */}
@@ -147,13 +156,18 @@ export function WorkspacePage() {
         <button
           type="button"
           className="gx-icon-btn gx-rail-toggle"
-          onClick={() => outlet?.openRail()}
+          onClick={openRail}
           aria-label="Open navigation"
         >
           <Icon d={PATH.menu} />
         </button>
 
-        <span className="gx-top__title">{project.data?.name ?? 'Build'}</span>
+        <h1 className="gx-top__title">{project.data?.name ?? 'Build'}</h1>
+        {when && (
+          <span className="gx-top__when" title={activityAt ? new Date(activityAt).toLocaleString() : undefined}>
+            {when}
+          </span>
+        )}
 
         <div className="gx-top__actions">
           {studio.connected ? (
@@ -178,14 +192,10 @@ export function WorkspacePage() {
             <Icon d={PATH.brain} />
           </button>
 
-          <button
-            type="button"
-            className="gx-icon-btn"
-            onClick={() => setDrawer('checkpoints')}
-            aria-label="Checkpoints and restore"
-            title="Checkpoints"
-          >
-            <Icon d={PATH.history} />
+          <button type="button" className="gx-btn gx-btn--outline gx-top__cp" onClick={showCheckpoints}>
+            <Icon d={PATH.layers} size={15} />
+            <span className="gx-top__cp-label">Checkpoints</span>
+            <Icon d={PATH.chevronRight} size={13} />
           </button>
         </div>
       </header>
@@ -230,7 +240,7 @@ export function WorkspacePage() {
       {/* ------------------------------------------------------ composer -- */}
       <div>
         {connNote && (
-          <p style={{ textAlign: 'center', color: 'var(--gx-ink-3)', fontSize: '0.8rem', padding: '0.3rem 0 0' }} role="status">
+          <p className="gx-conn-note" role="status">
             {connNote}
           </p>
         )}
@@ -246,11 +256,6 @@ export function WorkspacePage() {
           onProviderChange={setProviderId}
           autoReasoning={providers.data?.auto.reasoning}
           seed={seed}
-          placeholder={
-            studio.connected
-              ? 'Describe what you want to build…'
-              : 'Describe what you want — connect Studio when you are ready to build.'
-          }
         />
       </div>
 

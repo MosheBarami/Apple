@@ -1,6 +1,19 @@
 // Inline SVG artwork. Everything uses currentColor or live theme tokens so the
 // marks follow light/dark without a second asset.
 
+/**
+ * The Golem mark: a hexagonal outline containing an isometric cube.
+ *
+ * Geometry only — not a monolith, not a face, not a character. The outer
+ * hexagon is never filled, the three interior lines are the classic "cube in
+ * hexagon" isometric read (a vertical from the top vertex to the centre, then
+ * out to the lower-left and lower-right vertices), and the whole thing inherits
+ * `currentColor`. There is deliberately no accent fill and no animation: a mark
+ * that blinks or reacts is a mascot, and the mascot direction is cancelled.
+ *
+ * Used at 32px beside the wordmark, ~28px in the workspace rail, and 22px as
+ * the assistant avatar in the conversation.
+ */
 export function GolemGlyph({ size = 28, className }: { size?: number; className?: string }) {
   return (
     <svg
@@ -13,10 +26,23 @@ export function GolemGlyph({ size = 28, className }: { size?: number; className?
       aria-hidden="true"
       focusable="false"
     >
-      <rect x="2" y="2" width="28" height="28" rx="7" fill="var(--surface)" stroke="var(--line)" />
-      <path d="M16 6.5l7.5 5v9l-7.5 5-7.5-5v-9z" stroke="var(--accent)" strokeWidth="1.7" strokeLinejoin="round" />
-      <path d="M16 6.5v19M8.5 11.5l15 9M23.5 11.5l-15 9" stroke="var(--accent)" strokeWidth="0.8" opacity="0.4" />
-      <circle cx="16" cy="16" r="2.5" fill="var(--accent)" />
+      {/* Regular hexagon, vertex at top and bottom, circumradius 13 about (16,16). */}
+      <path
+        d="M16 3 L27.26 9.5 L27.26 22.5 L16 29 L4.74 22.5 L4.74 9.5 Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* The cube's three visible faces, expressed as the three shared edges. */}
+      <path
+        d="M16 3 V16 M16 16 L4.74 22.5 M16 16 L27.26 22.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
     </svg>
   );
 }

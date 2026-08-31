@@ -15,11 +15,12 @@ import type {
   CheckpointMeta,
   MessageDto,
   QuotaState,
+  RunIntent,
   StudioEventLog,
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
-import type { MeResponse, UsageDay } from './api';
+import type { MeResponse, ProvidersDto, UsageDay } from './api';
 import type { ProfileRow, ProjectRow } from './supabase';
 
 const FLAG = import.meta.env.VITE_GOLEM_MOCK === '1';
@@ -217,6 +218,59 @@ export const mockMe: MeResponse = {
   quota: mockQuota,
 };
 
+/**
+ * A stand-in for `GET /api/providers`.
+ *
+ * In the real product availability is computed server-side from the
+ * credentials the deployment holds; the fixture keeps that shape faithfully,
+ * including a backend that is NOT available with the reason attached, so the
+ * picker's disabled state is exercised during design review.
+ */
+export const mockProviders: ProvidersDto = {
+  models: [
+    {
+      id: 'workers-ai/glm-5.3-flash',
+      provider: 'workers-ai',
+      label: 'GLM 5.3 Flash',
+      available: true,
+      reason: null,
+      supportsTools: true,
+      supportsVision: false,
+      inputCostPer1M: 0,
+      outputCostPer1M: 0,
+      unverifiedFields: [],
+    },
+    {
+      id: 'google/gemini-2.5-flash',
+      provider: 'google',
+      label: 'Gemini 2.5 Flash',
+      available: true,
+      reason: null,
+      supportsTools: true,
+      supportsVision: true,
+      inputCostPer1M: 0.3,
+      outputCostPer1M: 2.5,
+      unverifiedFields: [],
+    },
+    {
+      id: 'deepseek/deepseek-v3',
+      provider: 'deepseek',
+      label: 'DeepSeek V3',
+      available: false,
+      reason: 'No API key configured for this deployment',
+      supportsTools: true,
+      supportsVision: false,
+      inputCostPer1M: 0.27,
+      outputCostPer1M: 1.1,
+      unverifiedFields: [],
+    },
+  ],
+  auto: {
+    model: 'workers-ai/glm-5.3-flash',
+    reasoning: 'Picks the cheapest model that can do the job, and escalates only when it cannot.',
+  },
+};
+
 export function mockUsageDays(): UsageDay[] {
   const days: UsageDay[] = [];
   for (let i = 0; i < 30; i++) {
@@ -368,6 +422,40 @@ export interface MockToolDetail {
   detail?: unknown;
 }
 
+/**
+ * What a `run_intent` message carries: a deterministic restatement of the
+ * user's own words, the things the request named by hand, and the places it
+ * genuinely did not say. This is the ONLY source the Thinking card's Intent and
+ * Plan rows read from — without it those rows do not render at all.
+ */
+export const mockIntent: RunIntent = {
+  summary: 'Check the lobby floor visually and fix whatever the critique finds.',
+  checklist: ['lobby floor', 'visual critique pass', 'material variation'],
+  questions: ['Which tile size to use for the floor', 'Whether the seating cluster is wanted now or later'],
+};
+
+/**
+ * A plan the worker published mid-run with two steps still to come. Steps the
+ * worker marks `pending` are the only legitimate source of a hollow bullet in
+ * the Actions checklist.
+ */
+export function mockBuildPlanDetail() {
+  return {
+    v: 1,
+    blocks: [
+      {
+        type: 'build_plan',
+        title: 'Remaining work',
+        steps: [
+          { title: 'Retexture the floor into alternating tiles', status: 'done', tool: 'set_properties' },
+          { title: 'Lay out a seating cluster between the pillars', status: 'pending' },
+          { title: 'Re-render and re-run the visual gate', status: 'pending' },
+        ],
+      },
+    ],
+  };
+}
+
 /** The live (streaming) assistant turn, with a render + critique attached. */
 export function mockLiveTools(): MockToolDetail[] {
   return [
@@ -387,6 +475,13 @@ export function mockLiveTools(): MockToolDetail[] {
       detail: mockInspectDetail(),
     },
     { tool: 'set_properties', summary: 'Floor → Concrete, 3 tones of grey', ok: true, durationMs: 260 },
+    {
+      tool: 'check_composition',
+      summary: 'Published the remaining work',
+      ok: true,
+      durationMs: 140,
+      detail: mockBuildPlanDetail(),
+    },
   ];
 }
 

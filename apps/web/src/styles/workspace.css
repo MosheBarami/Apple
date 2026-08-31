@@ -1,48 +1,54 @@
 /* ==========================================================================
    GOLEM — workspace design system.
 
-   The product surface, in the same material as the landing: warm charcoal
-   stone, ivory type, one ember that only ever means "something is happening
-   right now".
+   The product surface, in the same material as the landing: warm-neutral
+   charcoal, ivory type, one amber accent that only ever means "something is
+   happening right now". Never blue-black.
 
-   Composition is conversation-first. A narrow calm rail on the left, the
-   conversation in the middle with room to breathe, a large composer at the
-   bottom. Everything else — checkpoints, memory, settings, usage, admin — is
-   reachable but not resident. Nothing is deleted; it is re-homed.
+   Composition is conversation-first. A 320px rail on the left, the conversation
+   in the middle with room to breathe, a large composer at the bottom.
+   Everything else — checkpoints, memory, settings, usage, admin — is reachable
+   but not resident. Nothing is deleted; it is re-homed.
 
-   All classes here are prefixed `gx-` so this layer can sit on top of the
-   older stylesheet without either one fighting the other. Old rules simply
-   stop being referenced as components move over.
+   All classes here are prefixed `gx-` so this layer can sit on top of the older
+   stylesheet without either one fighting the other.
    ========================================================================== */
 
 .gx {
   /* --- material ---------------------------------------------------------- */
-  --gx-ground: #0e0d0b;
+  --gx-ground: #0b0a09;
   --gx-rail: #121110;
-  --gx-raise: #171512;
-  --gx-raise-2: #1e1b17;
+  --gx-raise: #121110;
+  --gx-raise-2: #171614;
 
-  --gx-ink: #f2ede2;
-  --gx-ink-2: #a49a89;
-  --gx-ink-3: #8b8274;
+  --gx-ink: #f5f2ec;
+  --gx-ink-warm: #c9c0b2;
+  --gx-ink-2: #9a938a;
+  --gx-ink-3: #6e6862;
 
-  --gx-line: rgba(242, 237, 226, 0.09);
-  --gx-line-2: rgba(242, 237, 226, 0.15);
+  --gx-line: rgba(245, 242, 236, 0.08);
+  --gx-line-2: rgba(245, 242, 236, 0.14);
 
-  --gx-ember: #c96a2e;
-  --gx-ember-soft: rgba(201, 106, 46, 0.14);
+  /* The single accent. */
+  --gx-amber: #c98a3c;
+  --gx-ember: var(--gx-amber);
+  --gx-ember-soft: rgba(201, 138, 60, 0.14);
   --gx-good: #7dad6e;
   --gx-bad: #d27653;
   --gx-warn: #c2943f;
 
-  --gx-cream: #f5f1e8;
-  --gx-cream-ink: #16140f;
+  --gx-cream: #e6decf;
+  --gx-cream-ink: #14120f;
 
   /* --- geometry ---------------------------------------------------------- */
-  --gx-rail-w: 244px;
+  --gx-rail-w: 320px;
+  --gx-rail-min: 68px;
   --gx-measure: 68ch;
   --gx-r: 10px;
-  --gx-r-sm: 7px;
+  --gx-r-lg: 12px;
+  --gx-r-sm: 8px;
+
+  --gx-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
 
   /* --- motion -----------------------------------------------------------
      One easing curve and four durations for the whole product. Motion is fast,
@@ -58,14 +64,15 @@
   --gx-ground: #f4f1ea;
   --gx-rail: #efebe2;
   --gx-raise: #fbf9f4;
-  --gx-raise-2: #f6f2ea;
+  --gx-raise-2: #f5f1e9;
   --gx-ink: #191713;
+  --gx-ink-warm: #4b4438;
   --gx-ink-2: #5f584c;
-  --gx-ink-3: #6f6759;
+  --gx-ink-3: #7a7264;
   --gx-line: rgba(25, 23, 19, 0.12);
   --gx-line-2: rgba(25, 23, 19, 0.2);
-  --gx-ember: #a2450f;
-  --gx-ember-soft: rgba(162, 69, 15, 0.1);
+  --gx-amber: #9c621d;
+  --gx-ember-soft: rgba(156, 98, 29, 0.1);
   --gx-good: #3d6b33;
   --gx-bad: #a33f22;
   --gx-cream: #22201a;
@@ -105,7 +112,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   2. Left rail — logo, new build, recent. Nothing else lives here.
+   2. Left rail
    -------------------------------------------------------------------------- */
 
 .gx-rail {
@@ -119,27 +126,49 @@
 .gx-rail__head {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 1rem 0.9rem 0.75rem;
+  gap: 0.4rem;
+  padding: 0.75rem 0.7rem 0.5rem 0.85rem;
+}
+
+.gx-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 40px;
   color: var(--gx-ink);
   text-decoration: none;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.gx-wordmark__text {
+  white-space: nowrap;
+}
+
+.gx-rail__collapse {
+  margin-left: auto;
+}
+
+/* Only meaningful while the rail is an overlay. Two classes deep so it beats
+   `.gx-icon-btn { display: grid }`, which is declared further down. */
+.gx-icon-btn.gx-rail__close {
+  margin-left: auto;
+  display: none;
 }
 
 .gx-new {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  width: calc(100% - 1.4rem);
-  margin: 0 0.7rem 0.9rem;
-  min-height: 40px;
-  padding: 0 0.75rem;
-  border-radius: var(--gx-r-sm);
+  gap: 0.6rem;
+  margin: 0.15rem 0.7rem 0.85rem;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border-radius: var(--gx-r);
   border: 1px solid var(--gx-line-2);
   background: transparent;
   color: var(--gx-ink);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
@@ -149,107 +178,271 @@
 }
 
 .gx-new:hover {
-  background: rgba(242, 237, 226, 0.045);
+  background: rgba(245, 242, 236, 0.045);
 }
 
-.gx-rail__label {
-  padding: 0.4rem 0.95rem 0.35rem;
+.gx-new__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.gx-kbd {
+  flex: none;
+  padding: 0.08rem 0.34rem;
+  border: 1px solid var(--gx-line);
+  border-radius: 5px;
   color: var(--gx-ink-3);
+  font-family: var(--gx-mono);
   font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.gx-rail__list {
+.gx-rail__scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 0.5rem 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.gx-rail__label {
+  padding: 0.3rem 0.95rem 0.35rem;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.gx-rail__list {
   margin: 0;
+  padding: 0;
   list-style: none;
 }
 
+.gx-rail__none {
+  margin: 0;
+  padding: 0.5rem 0.95rem 0.35rem;
+  color: var(--gx-ink-3);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
 .gx-conv {
-  display: block;
-  padding: 0.5rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 40px;
+  margin: 0 0.5rem;
+  padding: 0.4rem 0.65rem;
   border-radius: var(--gx-r-sm);
   color: var(--gx-ink-2);
   text-decoration: none;
-  font-size: 0.87rem;
+  font-size: 0.88rem;
   line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   transition:
     background-color var(--gx-t-hover) var(--gx-ease),
     color var(--gx-t-hover) var(--gx-ease);
 }
 
+.gx-conv__name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gx-conv__time {
+  flex: none;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .gx-conv:hover {
-  background: rgba(242, 237, 226, 0.04);
+  background: rgba(245, 242, 236, 0.04);
   color: var(--gx-ink);
 }
 
 .gx-conv.is-active {
-  background: rgba(242, 237, 226, 0.07);
+  background: var(--gx-raise-2);
+  color: var(--gx-ink);
+}
+
+.gx-viewall {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 40px;
+  margin: 0.35rem 0.5rem 0;
+  padding: 0 0.65rem;
+  border-radius: var(--gx-r-sm);
+  color: var(--gx-ink-3);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition:
+    background-color var(--gx-t-hover) var(--gx-ease),
+    color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-viewall:hover {
+  background: rgba(245, 242, 236, 0.04);
   color: var(--gx-ink);
 }
 
 .gx-rail__foot {
-  border-top: 1px solid var(--gx-line);
+  display: grid;
+  gap: 0.5rem;
   padding: 0.6rem;
+  border-top: 1px solid var(--gx-line);
+}
+
+/* The Checkpoints card. A card, not a nav row — it is a thing you open, and
+   it is inert (and says so) when no conversation is on screen to own it. */
+.gx-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 58px;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--gx-r-lg);
+  border: 1px solid var(--gx-line);
+  background: var(--gx-raise-2);
+  color: var(--gx-ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--gx-t-hover) var(--gx-ease),
+    background-color var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-card-btn:hover:not(:disabled) {
+  border-color: var(--gx-line-2);
+}
+
+.gx-card-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gx-card-btn__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--gx-ink-2);
+}
+
+.gx-card-btn__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.gx-card-btn__title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.gx-card-btn__sub {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.gx-card-btn__chev {
+  flex: none;
+  color: var(--gx-ink-3);
 }
 
 /* --------------------------------------------------------------------------
-   3. Account menu — where Settings, Usage, Docs and Admin now live
+   3. The user card — where Settings, Usage, Docs and Admin now live
    -------------------------------------------------------------------------- */
 
-.gx-account {
+.gx-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border-radius: var(--gx-r-lg);
+  border: 1px solid var(--gx-line);
+  background: var(--gx-raise-2);
+}
+
+.gx-user-card__wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.gx-user-card__id {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   width: 100%;
-  min-height: 42px;
-  padding: 0 0.55rem;
+  min-height: 44px;
+  padding: 0 0.4rem;
   border: 0;
   border-radius: var(--gx-r-sm);
   background: transparent;
-  color: var(--gx-ink-2);
-  font-size: 0.85rem;
+  color: var(--gx-ink);
   cursor: pointer;
   text-align: left;
   transition: background-color var(--gx-t-hover) var(--gx-ease);
 }
 
-.gx-account:hover {
-  background: rgba(242, 237, 226, 0.05);
+.gx-user-card__id:hover {
+  background: rgba(245, 242, 236, 0.05);
 }
 
 .gx-avatar {
   display: grid;
   place-items: center;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--gx-raise-2);
+  background: var(--gx-ground);
   border: 1px solid var(--gx-line-2);
   color: var(--gx-ink);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
-.gx-account__email {
+.gx-user-card__names {
   flex: 1;
   min-width: 0;
+}
+
+.gx-user-card__name,
+.gx-user-card__email {
+  display: block;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.gx-user-card__name {
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.gx-user-card__email {
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+}
+
+.gx-user-card__caret {
+  flex: none;
+  color: var(--gx-ink-3);
+}
+
+.gx-user-card__gear {
+  flex: none;
+  text-decoration: none;
 }
 
 /* --------------------------------------------------------------------------
-   4. Popover — one primitive, used by the account menu, mode and provider
+   4. Popover — one primitive, used by the account menu, model and mode
    -------------------------------------------------------------------------- */
 
 .gx-pop-wrap {
@@ -259,11 +452,12 @@
 .gx-pop {
   position: absolute;
   z-index: 40;
-  min-width: 236px;
+  min-width: 250px;
+  max-width: min(320px, 86vw);
   padding: 0.35rem;
   border-radius: var(--gx-r);
   border: 1px solid var(--gx-line-2);
-  background: var(--gx-raise);
+  background: var(--gx-raise-2);
   box-shadow: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
   animation: gx-pop-in var(--gx-t-move) var(--gx-ease) both;
 }
@@ -294,7 +488,7 @@
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  min-height: 38px;
+  min-height: 40px;
   padding: 0.4rem 0.6rem;
   border: 0;
   border-radius: var(--gx-r-sm);
@@ -310,7 +504,7 @@
 }
 
 .gx-pop__item:hover {
-  background: rgba(242, 237, 226, 0.055);
+  background: rgba(245, 242, 236, 0.055);
   color: var(--gx-ink);
 }
 
@@ -357,24 +551,35 @@
 }
 
 /* --------------------------------------------------------------------------
-   5. Topbar
+   5. Conversation header
    -------------------------------------------------------------------------- */
 
 .gx-top {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  min-height: 52px;
-  padding: 0 0.9rem;
+  gap: 0.5rem;
+  min-height: 60px;
+  padding: 0 1.1rem;
   border-bottom: 1px solid var(--gx-line);
+  overflow: hidden;
 }
 
 .gx-top__title {
-  font-size: 0.92rem;
-  font-weight: 500;
+  margin: 0;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--gx-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.gx-top__when {
+  flex: none;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
 }
 
 .gx-top__actions {
@@ -382,6 +587,11 @@
   align-items: center;
   gap: 0.4rem;
   margin-left: auto;
+}
+
+.gx-top__cp {
+  gap: 0.4rem;
+  min-height: 36px;
 }
 
 /* --------------------------------------------------------------------------
@@ -392,14 +602,17 @@
   display: inline-flex;
   align-items: center;
   gap: 0.42rem;
-  min-height: 30px;
-  padding: 0 0.65rem;
+  min-height: 32px;
+  max-width: 42vw;
+  padding: 0 0.7rem;
   border-radius: 999px;
   border: 1px solid var(--gx-line);
   background: transparent;
   color: var(--gx-ink-2);
   font-size: 0.78rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gx-dot {
@@ -424,8 +637,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  min-height: 34px;
-  padding: 0 0.75rem;
+  min-height: 36px;
+  padding: 0 0.8rem;
   border-radius: var(--gx-r-sm);
   border: 1px solid transparent;
   background: transparent;
@@ -443,7 +656,7 @@
 
 .gx-btn:hover {
   color: var(--gx-ink);
-  background: rgba(242, 237, 226, 0.05);
+  background: rgba(245, 242, 236, 0.05);
 }
 
 .gx-btn:active {
@@ -473,8 +686,9 @@
 .gx-icon-btn {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  flex: none;
+  width: 36px;
+  height: 36px;
   border-radius: var(--gx-r-sm);
   border: 0;
   background: transparent;
@@ -485,9 +699,14 @@
     color var(--gx-t-hover) var(--gx-ease);
 }
 
-.gx-icon-btn:hover {
-  background: rgba(242, 237, 226, 0.06);
+.gx-icon-btn:hover:not(:disabled) {
+  background: rgba(245, 242, 236, 0.06);
   color: var(--gx-ink);
+}
+
+.gx-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* The rail is permanent at desktop width, so its toggle is not needed there.
@@ -508,19 +727,25 @@
 .gx-thread {
   max-width: var(--gx-measure);
   margin: 0 auto;
-  padding: 2rem 1.5rem 1rem;
+  padding: 2rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.9rem;
+  gap: 1.7rem;
 }
 
-/* The user's turn gets a restrained surface so the eye can find it when
-   scrolling back. It is the only thing in the thread that sits on a card. */
+/* The user's turn: right-aligned on a restrained surface, so the eye can find
+   it when scrolling back, with its own timestamp beneath. */
+.gx-turn--user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+
 .gx-user {
-  align-self: flex-end;
-  max-width: 82%;
+  max-width: 72%;
   padding: 0.7rem 0.95rem;
-  border-radius: var(--gx-r);
+  border-radius: var(--gx-r-lg);
   border: 1px solid var(--gx-line);
   background: var(--gx-raise);
   color: var(--gx-ink);
@@ -530,111 +755,176 @@
   overflow-wrap: anywhere;
 }
 
-/* The assistant flows directly on the canvas. No card, no border, no chrome —
-   just well-set text at a readable measure. */
-.gx-assistant {
+/* The assistant's turn: a mark on the left, prose on the canvas beside it. No
+   card, no border — wrapping every reply in a box turns a conversation into a
+   wall of boxes. */
+.gx-turn--agent {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.gx-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--gx-raise-2);
+  border: 1px solid var(--gx-line);
+  color: var(--gx-ink-2);
+}
+
+.gx-turn__body {
+  min-width: 0;
+}
+
+.gx-stamp {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-stamp--end {
+  text-align: right;
+}
+
+.gx-prose {
   font-size: 0.95rem;
   line-height: 1.72;
   color: var(--gx-ink);
   min-width: 0;
 }
 
-.gx-assistant p {
+.gx-prose p {
   margin: 0 0 0.85em;
 }
 
-.gx-assistant p:last-child {
+.gx-prose p:last-child {
   margin-bottom: 0;
 }
 
-.gx-assistant h1,
-.gx-assistant h2,
-.gx-assistant h3 {
+.gx-prose h1,
+.gx-prose h2,
+.gx-prose h3 {
   margin: 1.5em 0 0.5em;
   font-size: 1.02rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-.gx-assistant ul,
-.gx-assistant ol {
+.gx-prose ul,
+.gx-prose ol {
   margin: 0 0 0.9em;
   padding-left: 1.3em;
 }
 
-.gx-assistant li {
+.gx-prose li {
   margin-bottom: 0.3em;
 }
 
-.gx-assistant code {
+.gx-prose code {
   padding: 0.1em 0.35em;
   border-radius: 4px;
-  background: rgba(242, 237, 226, 0.07);
-  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  background: rgba(245, 242, 236, 0.07);
+  font-family: var(--gx-mono);
   font-size: 0.87em;
 }
 
-.gx-assistant pre {
+.gx-prose pre {
   margin: 0 0 1em;
   padding: 0.85rem 1rem;
   border-radius: var(--gx-r);
   border: 1px solid var(--gx-line);
-  background: var(--gx-raise);
+  background: var(--gx-raise-2);
   overflow-x: auto;
   font-size: 0.83rem;
   line-height: 1.6;
 }
 
-.gx-assistant pre code {
+.gx-prose pre code {
   padding: 0;
   background: none;
   font-size: inherit;
 }
 
+.gx-outcome {
+  margin: 0.6rem 0 0;
+  color: var(--gx-ink-3);
+  font-size: 0.87rem;
+}
+
+.gx-outcome.is-bad {
+  color: var(--gx-bad);
+}
+
 /* --------------------------------------------------------------------------
-   9. Thinking — the reasoning / action summary
+   9. The Thinking card
    -------------------------------------------------------------------------- */
 
 .gx-think {
-  border-left: 1px solid var(--gx-line);
-  padding-left: 0.95rem;
-  margin-bottom: 1.1rem;
+  margin: 0 0 1rem;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-lg);
+  background: var(--gx-raise);
+  overflow: hidden;
 }
 
-.gx-think__toggle {
+.gx-think.is-live {
+  border-color: rgba(201, 138, 60, 0.34);
+}
+
+.gx-think__head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   width: 100%;
-  padding: 0.15rem 0;
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
   border: 0;
   background: transparent;
-  color: var(--gx-ink-2);
-  font-size: 0.85rem;
-  font-weight: 500;
+  color: var(--gx-ink);
+  font-size: 0.87rem;
   cursor: pointer;
   text-align: left;
-  transition: color var(--gx-t-hover) var(--gx-ease);
 }
 
-.gx-think__toggle:hover {
-  color: var(--gx-ink);
+.gx-think__spark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--gx-amber);
+}
+
+.gx-think__word {
+  flex: none;
+  font-weight: 500;
+}
+
+.gx-think__hint {
+  min-width: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gx-think__chev {
   flex: none;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  color: var(--gx-ink-3);
   transition: transform var(--gx-t-move) var(--gx-ease);
 }
 
-.gx-think__toggle[aria-expanded='true'] .gx-think__chev {
-  transform: rotate(90deg);
-}
-
-.gx-think__count {
-  margin-left: auto;
-  color: var(--gx-ink-3);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
+.gx-think__head[aria-expanded='true'] .gx-think__chev {
+  transform: rotate(180deg);
 }
 
 /* Collapsed by default. Expanding animates a grid row from 0fr to 1fr, which
@@ -653,53 +943,157 @@
   overflow: hidden;
 }
 
-.gx-steps {
-  margin: 0.6rem 0 0;
+.gx-think__foot {
+  margin: 0;
+  padding: 0 1rem 0.85rem;
+  color: var(--gx-ink-3);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+/* --- the vertical timeline: Intent / Plan / Actions / Validation ---------- */
+
+.gx-timeline {
+  margin: 0;
+  padding: 0.85rem 1rem 0.9rem;
+  border-top: 1px solid var(--gx-line);
+  list-style: none;
+}
+
+.gx-stage-row {
+  position: relative;
+  padding: 0 0 0.95rem 1.55rem;
+}
+
+.gx-stage-row:last-child {
+  padding-bottom: 0;
+}
+
+/* The hairline that joins the stage bullets. */
+.gx-stage-row::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 17px;
+  bottom: 0;
+  width: 1px;
+  background: var(--gx-line-2);
+}
+
+.gx-stage-row:last-child::before {
+  display: none;
+}
+
+.gx-stage-row__bullet {
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--gx-ink-3);
+  background: var(--gx-raise);
+}
+
+.gx-stage-row.is-live .gx-stage-row__bullet {
+  border-color: var(--gx-amber);
+}
+
+.gx-stage-row__body {
+  min-width: 0;
+}
+
+.gx-stage-row__name {
+  display: block;
+  color: var(--gx-ink);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.gx-stage-row__text {
+  margin: 0.15rem 0 0;
+  color: var(--gx-ink-2);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.gx-plan {
+  margin: 0.25rem 0 0;
+  padding-left: 1.05rem;
+  color: var(--gx-ink-2);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.gx-open-qs {
+  margin-top: 0.45rem;
+  color: var(--gx-ink-3);
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+
+.gx-open-qs__label {
+  display: block;
+}
+
+.gx-open-qs ul {
+  margin: 0.1rem 0 0;
+  padding-left: 1.05rem;
+}
+
+/* --- the Actions checklist ------------------------------------------------ */
+
+.gx-checks {
+  margin: 0.4rem 0 0;
   padding: 0;
   list-style: none;
 }
 
-.gx-step {
+.gx-check {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
-  padding: 0.32rem 0;
+  gap: 0.55rem;
+  padding: 0.24rem 0;
   color: var(--gx-ink-3);
-  font-size: 0.83rem;
+  font-size: 0.82rem;
   line-height: 1.5;
 }
 
-.gx-step__mark {
+.gx-check__mark {
   flex: none;
   display: grid;
   place-items: center;
   width: 14px;
-  height: 21px;
+  height: 20px;
 }
 
-.gx-step__label {
+.gx-check__label {
   min-width: 0;
 }
 
-.gx-step__detail {
+.gx-check__detail {
   display: block;
   color: var(--gx-ink-3);
-  font-size: 0.78rem;
+  font-size: 0.77rem;
   overflow-wrap: anywhere;
 }
 
-.gx-step.is-done {
+.gx-check.is-done {
   color: var(--gx-ink-2);
 }
 
-.gx-step.is-failed {
+.gx-check.is-failed {
   color: var(--gx-bad);
 }
 
 /* The active step is the only thing in the interface that moves on its own,
    and it stops the moment the step completes. */
-.gx-step.is-active {
+.gx-check.is-active {
   color: var(--gx-ink);
+}
+
+.gx-check.is-pending {
+  color: var(--gx-ink-3);
 }
 
 .gx-ring {
@@ -717,7 +1111,7 @@
 }
 
 .gx-ring__spin {
-  stroke: var(--gx-ember);
+  stroke: var(--gx-amber);
   stroke-linecap: round;
   stroke-dasharray: 10 22;
   transform-origin: 50% 50%;
@@ -728,6 +1122,18 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* A step the worker announced but has not reached. Hollow, and never inferred. */
+.gx-hollow {
+  width: 11px;
+  height: 11px;
+}
+
+.gx-hollow circle {
+  fill: none;
+  stroke: var(--gx-line-2);
+  stroke-width: 1.6;
 }
 
 .gx-tick {
@@ -745,38 +1151,48 @@
   }
 }
 
-/* The ember thread down the left edge while work is happening. This is the
-   whole "the model is alive" gesture: no character, just the interface warming
-   up exactly where the work is, and settling when it stops. */
-.gx-think.is-live {
-  border-left-color: transparent;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    var(--gx-ember) 20%,
-    var(--gx-ember) 80%,
-    transparent 100%
-  );
-  background-size: 1px 100%;
-  background-repeat: no-repeat;
-  background-position: left top;
+/* --- Validation gates ----------------------------------------------------- */
+
+.gx-gates {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-gate__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  color: var(--gx-ink);
+  font-size: 0.82rem;
+}
+
+.gx-gate__verdict {
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-gate.is-pass .gx-gate__verdict {
+  color: var(--gx-good);
+}
+
+.gx-gate.is-fail .gx-gate__verdict {
+  color: var(--gx-warn);
+}
+
+.gx-gate__detail {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--gx-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.55;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .gx-think.is-live {
-    animation: gx-breathe 2.6s ease-in-out infinite;
-  }
-
-  @keyframes gx-breathe {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.74;
-    }
-  }
-
   .gx-msg-in {
     animation: gx-msg 320ms var(--gx-ease) both;
   }
@@ -799,28 +1215,28 @@
 
 .gx-composer {
   border-top: 1px solid var(--gx-line);
-  padding: 0.9rem 1.5rem 1.1rem;
+  padding: 0.9rem 1.5rem 1rem;
 }
 
 .gx-composer__inner {
   max-width: var(--gx-measure);
   margin: 0 auto;
-  border-radius: var(--gx-r);
+  border-radius: 14px;
   border: 1px solid var(--gx-line-2);
   background: var(--gx-raise);
   transition: border-color var(--gx-t-hover) var(--gx-ease);
 }
 
 .gx-composer__inner:focus-within {
-  border-color: rgba(242, 237, 226, 0.28);
+  border-color: rgba(245, 242, 236, 0.28);
 }
 
 .gx-composer textarea {
   display: block;
   width: 100%;
-  min-height: 58px;
+  min-height: 56px;
   max-height: 230px;
-  padding: 0.8rem 0.95rem 0.2rem;
+  padding: 0.85rem 1rem 0.2rem;
   border: 0;
   background: transparent;
   color: var(--gx-ink);
@@ -839,19 +1255,39 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.5rem 0.5rem 0.6rem;
+  padding: 0.45rem 0.55rem 0.55rem 0.6rem;
 }
 
-.gx-composer__send {
+.gx-composer__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
   margin-left: auto;
+}
+
+.gx-composer__note {
+  max-width: var(--gx-measure);
+  margin: 0.6rem auto 0;
+  text-align: center;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.gx-conn-note {
+  margin: 0;
+  padding: 0.35rem 0 0;
+  text-align: center;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
 }
 
 .gx-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  min-height: 30px;
-  padding: 0 0.6rem;
+  min-height: 32px;
+  padding: 0 0.65rem;
   border-radius: 999px;
   border: 1px solid var(--gx-line);
   background: transparent;
@@ -859,6 +1295,7 @@
   font-size: 0.79rem;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition:
     background-color var(--gx-t-hover) var(--gx-ease),
     border-color var(--gx-t-hover) var(--gx-ease),
@@ -870,6 +1307,13 @@
   border-color: var(--gx-line-2);
 }
 
+.gx-chip__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--gx-ink-2);
+}
+
 .gx-chip__swatch {
   width: 7px;
   height: 7px;
@@ -878,8 +1322,43 @@
 }
 
 .gx-chip__caret {
+  display: grid;
+  place-items: center;
   opacity: 0.55;
   flex: none;
+}
+
+/* The filled circular send button. */
+.gx-send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-left: 0.25rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gx-cream);
+  color: var(--gx-cream-ink);
+  cursor: pointer;
+  transition:
+    filter var(--gx-t-hover) var(--gx-ease),
+    opacity var(--gx-t-hover) var(--gx-ease);
+}
+
+.gx-send:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.gx-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gx-send.is-stop {
+  background: var(--gx-raise-2);
+  border: 1px solid var(--gx-line-2);
+  color: var(--gx-ink);
 }
 
 /* --------------------------------------------------------------------------
@@ -928,28 +1407,6 @@
   to {
     transform: none;
     opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .gx-drawer,
-  .gx-scrim,
-  .gx-pop,
-  .gx-msg-in {
-    animation: none;
-  }
-
-  .gx-think.is-live {
-    animation: none;
-  }
-
-  .gx-ring__spin {
-    animation: none;
-    stroke-dasharray: 32;
-  }
-
-  .gx-tick {
-    animation: none;
   }
 }
 
@@ -1017,7 +1474,7 @@
    -------------------------------------------------------------------------- */
 
 .gx :focus-visible {
-  outline: 2px solid var(--gx-ember);
+  outline: 2px solid var(--gx-amber);
   outline-offset: 2px;
   border-radius: 5px;
 }
@@ -1033,12 +1490,123 @@
   border: 0;
 }
 
+/* Touch targets. A mouse can hit 36px; a thumb cannot. */
+@media (pointer: coarse) {
+  .gx-icon-btn,
+  .gx-send {
+    width: 44px;
+    height: 44px;
+  }
+
+  .gx-btn,
+  .gx-chip,
+  .gx-pill,
+  .gx-conv,
+  .gx-viewall,
+  .gx-pop__item,
+  .gx-top__cp {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-drawer,
+  .gx-scrim,
+  .gx-pop,
+  .gx-msg-in,
+  .gx-tick {
+    animation: none;
+  }
+
+  .gx-think__body,
+  .gx-think__chev,
+  .gx-rail {
+    transition: none;
+  }
+
+  /* The one genuinely load-bearing animation is the in-flight ring. Stopped,
+     it still has to read as "not finished", so it becomes a partial arc. */
+  .gx-ring__spin {
+    animation: none;
+    stroke-dasharray: 20 12;
+  }
+}
+
 /* --------------------------------------------------------------------------
-   13. Responsive — the rail becomes an overlay below tablet
+   13. Collapsed rail (wide viewports only — below 861px the rail is an
+       overlay and collapsing it would be meaningless)
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 861px) {
+  .gx-shell.is-rail-collapsed {
+    grid-template-columns: var(--gx-rail-min) minmax(0, 1fr);
+  }
+
+  .gx-rail.is-collapsed {
+    overflow: hidden;
+  }
+
+  .gx-rail.is-collapsed .gx-wordmark__text,
+  .gx-rail.is-collapsed .gx-new__label,
+  .gx-rail.is-collapsed .gx-kbd,
+  .gx-rail.is-collapsed .gx-rail__scroll > *,
+  .gx-rail.is-collapsed .gx-card-btn__text,
+  .gx-rail.is-collapsed .gx-card-btn__chev,
+  .gx-rail.is-collapsed .gx-user-card__names,
+  .gx-rail.is-collapsed .gx-user-card__caret,
+  .gx-rail.is-collapsed .gx-user-card__gear {
+    display: none;
+  }
+
+  .gx-rail.is-collapsed .gx-rail__head {
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.7rem 0.5rem 0.4rem;
+  }
+
+  .gx-rail.is-collapsed .gx-wordmark {
+    justify-content: center;
+  }
+
+  .gx-rail.is-collapsed .gx-rail__collapse {
+    margin-left: 0;
+  }
+
+  .gx-rail.is-collapsed .gx-new {
+    justify-content: center;
+    margin: 0.15rem 0.6rem 0.6rem;
+    padding: 0;
+  }
+
+  .gx-rail.is-collapsed .gx-rail__foot {
+    padding: 0.5rem 0.6rem;
+    justify-items: center;
+  }
+
+  .gx-rail.is-collapsed .gx-card-btn {
+    justify-content: center;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .gx-rail.is-collapsed .gx-user-card {
+    justify-content: center;
+    padding: 0.25rem;
+  }
+
+  .gx-rail.is-collapsed .gx-user-card__id {
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   14. Responsive — the rail becomes an overlay below tablet
    -------------------------------------------------------------------------- */
 
 @media (max-width: 860px) {
-  .gx-shell {
+  .gx-shell,
+  .gx-shell.is-rail-collapsed {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1048,7 +1616,7 @@
     bottom: 0;
     left: 0;
     z-index: 52;
-    width: var(--gx-rail-w);
+    width: min(var(--gx-rail-w), 86vw);
     transform: translateX(-100%);
     transition: transform var(--gx-t-enter) var(--gx-ease);
   }
@@ -1057,18 +1625,28 @@
     transform: none;
   }
 
+  .gx-icon-btn.gx-rail__collapse {
+    display: none;
+  }
+
+  .gx-icon-btn.gx-rail__close {
+    display: grid;
+  }
+
   /* Specificity has to beat .gx-icon-btn, which is declared later. */
   .gx-icon-btn.gx-rail-toggle {
     display: grid;
   }
 
   .gx-thread,
-  .gx-composer__inner {
+  .gx-composer__inner,
+  .gx-composer__note {
     max-width: none;
   }
 
   .gx-thread {
-    padding: 1.25rem 1rem 0.75rem;
+    padding: 1.25rem 1rem 0.9rem;
+    gap: 1.45rem;
   }
 
   .gx-composer {
@@ -1076,12 +1654,42 @@
   }
 
   .gx-user {
-    max-width: 92%;
+    max-width: 88%;
+  }
+
+  .gx-top {
+    padding: 0 0.65rem;
+    gap: 0.35rem;
+  }
+
+  .gx-top__cp-label {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .gx-top__when {
+    display: none;
+  }
+
+  .gx-turn--agent {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .gx-mark {
+    width: 28px;
+    height: 28px;
+  }
+
+  .gx-mark svg {
+    width: 19px;
+    height: 19px;
   }
 }
 
 /* --------------------------------------------------------------------------
-   14. Studio stage — diagnostic renders forwarded from the plugin
+   15. Studio stage — diagnostic renders forwarded from the plugin
    -------------------------------------------------------------------------- */
 
 .gx-stage {
@@ -1165,21 +1773,21 @@
 }
 
 /* --------------------------------------------------------------------------
-   15. Toast placement
+   16. Toast placement
    -------------------------------------------------------------------------- */
 
 /* The toast is anchored to the bottom of the viewport, which on a phone puts
-   it directly on top of the composer's mode and provider chips. Lift it clear
-   of the composer rather than letting a transient message cover a control. */
+   it directly on top of the composer's chips. Lift it clear of the composer
+   rather than letting a transient message cover a control. */
 @media (max-width: 860px) {
   .toast-stack,
   .toasts {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 9.5rem) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12.5rem) !important;
   }
 }
 
 /* --------------------------------------------------------------------------
-   16. Generative-UI panels, in the workspace material
+   17. Generative-UI panels, in the workspace material
 
    The typed component registry predates this design layer and carries the
    older stylesheet's chrome. Rather than restyle every one of its components,
@@ -1187,9 +1795,9 @@
    critique sits in the conversation as the same material as everything else.
    -------------------------------------------------------------------------- */
 
-.gx-assistant .gu-doc,
-.gx-assistant .gu-panel,
-.gx-assistant .gu-block {
+.gx-turn--agent .gu-doc,
+.gx-turn--agent .gu-panel,
+.gx-turn--agent .gu-block {
   --surface: var(--gx-raise);
   --surface-2: var(--gx-raise-2);
   --paper: var(--gx-ground);
@@ -1199,11 +1807,11 @@
   --faint: var(--gx-ink-3);
   --line: var(--gx-line);
   --line-strong: var(--gx-line-2);
-  --accent: var(--gx-ember);
+  --accent: var(--gx-amber);
   --good: var(--gx-good);
   --bad: var(--gx-bad);
   --warn: var(--gx-warn);
-  --r-lg: var(--gx-r);
+  --r-lg: var(--gx-r-lg);
   --r-md: var(--gx-r);
   --r-sm: var(--gx-r-sm);
   /* The conversation supplies the vertical rhythm; the panel should not add
@@ -1212,6 +1820,6 @@
 }
 
 /* One border weight in the conversation, not two. */
-.gx-assistant .gu-doc {
+.gx-turn--agent .gu-doc {
   box-shadow: none;
 }

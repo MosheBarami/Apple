@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
-import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, BudgetError } from './gateway';
+import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
@@ -361,7 +361,15 @@ app.post('/api/admin/model-test', async (c) => {
 
 app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
 
-/** Raw provider response, for adapting the normalizer to a new model's shape. */
+/**
+ * Raw provider response, for adapting the normalizer to a new model's shape.
+ *
+ * The call itself is NOT made here. It goes through `rawProbe()` in the gateway, which reserves
+ * against the global neuron ledger before the model runs and settles the real cost afterwards —
+ * so the kill switch and the daily/monthly caps refuse this probe exactly as they refuse a chat
+ * turn. This route used to call `c.env.AI.run` directly and was the one way in the product to
+ * spend model tokens without a reservation. It charges no user Sparks: QuotaDO is untouched.
+ */
 app.post('/api/admin/raw-probe', async (c) => {
   const { model, prompt, system, tools, maxTokens, reasoning, sessionId } = await c.req.json<{
     model: string;
@@ -379,28 +387,23 @@ app.post('/api/admin/raw-probe', async (c) => {
      */
     sessionId?: string;
   }>();
-  const payload: Record<string, unknown> = {
-    messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }],
-    max_tokens: maxTokens ?? 200,
-  };
-  if (tools?.length) {
-    payload.tools = tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } }));
-  }
-  if (reasoning) payload.reasoning = { effort: reasoning };
-  const raw = await c.env.AI.run(model as never, payload as never, {
-    gateway: { id: c.env.AI_GATEWAY_ID ?? 'golem', cacheTtl: 0 },
-    ...(sessionId ? { extraHeaders: { 'x-session-affinity': sessionId } } : {}),
-  } as never);
   const shape = (o: unknown, d = 0): unknown => {
     if (o === null || typeof o !== 'object') return typeof o === 'string' ? `str(${o.length}):${o.slice(0, 120)}` : o;
     if (Array.isArray(o)) return o.slice(0, 3).map((x) => shape(x, d + 1));
     if (d > 7) return '…';
     return Object.fromEntries(Object.entries(o as Record<string, unknown>).map(([k, v]) => [k, shape(v, d + 1)]));
   };
-  // usage is surfaced directly: the whole point of a probe is the numbers, and prompt_tokens_details
-  // .cached_tokens is the one that answers whether prefix caching engaged.
-  const u = (raw as { usage?: unknown; result?: { usage?: unknown } })?.usage ?? (raw as { result?: { usage?: unknown } })?.result?.usage;
-  return c.json({ keys: Object.keys(raw as object), usage: u, shape: shape(raw) });
+  try {
+    const { raw, neurons } = await rawProbe(c.env, { model, prompt, system, tools, maxTokens, reasoning, sessionId });
+    // usage is surfaced directly: the whole point of a probe is the numbers, and prompt_tokens_details
+    // .cached_tokens is the one that answers whether prefix caching engaged.
+    const u = (raw as { usage?: unknown; result?: { usage?: unknown } })?.usage ?? (raw as { result?: { usage?: unknown } })?.result?.usage;
+    return c.json({ keys: Object.keys(raw as object), usage: u, shape: shape(raw), neurons });
+  } catch (e) {
+    // A cap hit or the kill switch is a refusal, not a crash: say so, with the reason.
+    if (e instanceof BudgetError) return c.json({ error: e.message, reason: e.reason }, 429);
+    throw e;
+  }
 });
 
 /** Full AI spend picture: today, this month, per-model, per-purpose, against the hard caps. */

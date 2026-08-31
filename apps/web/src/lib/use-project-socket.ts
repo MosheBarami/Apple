@@ -9,12 +9,23 @@ import type {
   StudioFrame,
   GolemMode,
   QuotaState,
+  RunIntent,
   ServerMsg,
   StudioEventLog,
   StudioEventState,
 } from '@golem/shared';
 import { fetchCheckpoints, fetchMessages } from './api';
-import { MOCK_MODE, mockCheckpoints, mockFrames, mockLiveTools, mockLogs, mockMessages, mockQuota, mockStudioState } from './mock';
+import {
+  MOCK_MODE,
+  mockCheckpoints,
+  mockFrames,
+  mockIntent,
+  mockLiveTools,
+  mockLogs,
+  mockMessages,
+  mockQuota,
+  mockStudioState,
+} from './mock';
 import { getAccessToken, supabase } from './supabase';
 
 export interface ToolEvent {
@@ -42,6 +53,15 @@ export interface ChatItem {
   stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
   error?: string;
   createdAt: number;
+  /**
+   * What the worker announced it understood the request to be, from the
+   * `run_intent` message (and replayed on `run_state`). UNDEFINED UNTIL THE
+   * WORKER SENDS ONE — the Thinking card's Intent and Plan rows key off exactly
+   * this, so an older run, or a deployment that does not emit it, shows no such
+   * rows rather than invented ones. Message history carries no intent, so a
+   * reloaded conversation is correctly silent about it.
+   */
+  intent?: RunIntent;
 }
 
 export interface AgentStatus {
@@ -128,6 +148,10 @@ function mockHistory(): ChatItem[] {
     })),
     streaming: false,
     createdAt: Date.now() - 60_000,
+    // Only this fixture carries an intent, exactly as only a run that actually
+    // emitted `run_intent` would. The earlier turns above deliberately have
+    // none, so mock mode shows both shapes of the Thinking card side by side.
+    intent: mockIntent,
   });
   return base;
 }
@@ -242,7 +266,14 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       case 'msg_start':
         setRunning(true);
         setMessages((list) => {
-          if (list.some((m) => m.id === msg.msgId)) return list;
+          const existing = list.findIndex((m) => m.id === msg.msgId);
+          if (existing !== -1) {
+            // `run_intent` may have created the shell first; fill in the mode
+            // it did not know, and keep the intent it did.
+            const next = [...list];
+            next[existing] = { ...list[existing]!, mode: msg.mode, streaming: true };
+            return next;
+          }
           return [
             ...list,
             {
@@ -338,6 +369,33 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           return next;
         });
         break;
+      case 'run_intent':
+        // Attach to the run's own message. `run_intent` is emitted at run start
+        // and can land either side of `msg_start`, so create the shell if it is
+        // not there yet — the same pattern `delta` uses. Nothing is synthesised:
+        // the intent stored is exactly what the worker sent.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) {
+            return [
+              ...list,
+              {
+                id: msg.msgId,
+                role: 'assistant',
+                mode: null,
+                content: '',
+                tools: [],
+                streaming: true,
+                createdAt: Date.now(),
+                intent: msg.intent,
+              },
+            ];
+          }
+          const next = [...list];
+          next[idx] = { ...list[idx]!, intent: msg.intent };
+          return next;
+        });
+        break;
       case 'agent_status':
         // Carry forward the last known effort: the policy announces it once per
         // step, but the phase changes several times within a step.
@@ -386,6 +444,8 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             })),
             streaming: true,
             createdAt: run.startedAt,
+            // Replayed only when the snapshot genuinely carries one.
+            intent: run.intent,
           };
           const idx = list.findIndex((m) => m.id === run.msgId);
           if (idx === -1) return [...list, restored];

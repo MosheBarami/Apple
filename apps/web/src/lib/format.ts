@@ -16,6 +16,44 @@ export function relativeTime(input: string | number | Date): string {
   return new Date(then).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/**
+ * The compact form used in the rail and the conversation header: "2m", "1h",
+ * "Yesterday", "2d". Falls back to a short date past a month.
+ *
+ * Returns '' for a missing or unparseable input, so a caller can simply skip
+ * rendering rather than print a placeholder.
+ */
+export function shortRelative(input: string | number | Date | null | undefined): string {
+  if (input === null || input === undefined) return '';
+  const then = new Date(input).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Date.now() - then;
+  if (diff < 0) return 'now';
+  const min = 60_000;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  if (diff < min) return 'now';
+  if (diff < hour) return `${Math.floor(diff / min)}m`;
+  if (diff < day) return `${Math.floor(diff / hour)}h`;
+  if (diff < 2 * day) return 'Yesterday';
+  if (diff < 30 * day) return `${Math.floor(diff / day)}d`;
+  return new Date(then).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** Wall-clock time for a message timestamp, e.g. "14:32". Never invented. */
+export function clockTime(input: string | number | Date): string {
+  const then = new Date(input).getTime();
+  if (Number.isNaN(then)) return '';
+  return new Date(then).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+/** Full, unambiguous timestamp for a `title` / `dateTime` attribute. */
+export function isoStamp(input: string | number | Date): string {
+  const then = new Date(input).getTime();
+  if (Number.isNaN(then)) return '';
+  return new Date(then).toISOString();
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.max(0, Math.round(ms))}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;

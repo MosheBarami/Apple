@@ -1,7 +1,7 @@
 // Typed fetch helpers for the Golem worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
-import { MOCK_MODE, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockCounters, mockMe, mockProviders, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -87,7 +87,8 @@ export interface ProvidersDto {
  * computed server-side from the environment on every request, so the picker
  * cannot show a provider as usable when no credential for it exists.
  */
-export const fetchProviders = (): Promise<ProvidersDto> => request<ProvidersDto>('/api/providers');
+export const fetchProviders = (): Promise<ProvidersDto> =>
+  MOCK_MODE ? Promise.resolve(mockProviders) : request<ProvidersDto>('/api/providers');
 
 export const fetchMessages = (projectId: string, limit = 100) =>
   request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
