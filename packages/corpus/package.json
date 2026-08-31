@@ -9,7 +9,8 @@
     "chunk": "node src/chunk.mjs",
     "upload": "node src/upload.mjs",
     "all": "node src/fetch.mjs && node src/chunk.mjs && node src/upload.mjs",
-    "typecheck": "node --check src/fetch.mjs && node --check src/chunk.mjs && node --check src/upload.mjs"
+    "test": "node --test src/intake/*.test.mjs",
+    "typecheck": "for f in src/*.mjs src/intake/*.mjs; do node --check \"$f\" || exit 1; done"
   },
   "dependencies": {
     "yaml": "^2.6.1"
