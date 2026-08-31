@@ -18,9 +18,11 @@ const year = new Date().getFullYear();
       <nav aria-label="Product" class="foot__col">
         <h2>Product</h2>
         <ul>
-          <li><a href="/#how">How it works</a></li>
-          <li><a href="/#modes">Modes</a></li>
-          <li><a href="/#proof">Proof</a></li>
+          {/* The landing is one viewport; these sections no longer exist as
+              anchors. Point at the routes that actually explain them. */}
+          <li><a href="/docs/getting-started">How it works</a></li>
+          <li><a href="/docs/modes">Modes</a></li>
+          <li><a href="/changelog">Changelog</a></li>
           <li><a href="/pricing">Pricing</a></li>
           <li><a href="/changelog">Changelog</a></li>
           <li><a href="/status">Status</a></li>

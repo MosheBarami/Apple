@@ -111,3 +111,42 @@ test('supporting routes resolve', async ({ page }) => {
     expect(res.status(), `${route} should resolve`).toBe(200);
   }
 });
+
+test('no link anywhere on the site points at a section that no longer exists', async ({ page }) => {
+  // Cutting the landing down to one viewport deleted /#how, /#modes and
+  // /#proof. Links to them survived in the shared nav and footer, which put a
+  // dead anchor on every other page — the reader lands at the top of the
+  // landing with nothing to see and no explanation. This asserts every
+  // internal link resolves to something real.
+  const routes = ['/', '/pricing', '/docs', '/changelog', '/privacy', '/terms'];
+  const bad: string[] = [];
+
+  for (const route of routes) {
+    await page.goto(route);
+    const hrefs = await page.$$eval('a[href]', (as) =>
+      as.map((a) => a.getAttribute('href') ?? '').filter((h) => h.startsWith('/')),
+    );
+    for (const href of new Set(hrefs)) {
+      const [path, hash] = href.split('#');
+      // /app is the React workspace, served by the worker out of D1. The
+      // static preview this suite runs against does not have it, so a 404
+      // here says nothing about production. Its own links are covered by the
+      // app's tests, not this one.
+      if (path.startsWith('/app')) continue;
+      const target = path || route;
+      const res = await page.request.get(target);
+      if (res.status() !== 200) {
+        bad.push(`${route} -> ${href} (HTTP ${res.status()})`);
+        continue;
+      }
+      if (hash) {
+        // An anchor has to exist on the page it claims to be on.
+        const body = await res.text();
+        const present = new RegExp(`id=["']${hash}["']`).test(body);
+        if (!present) bad.push(`${route} -> ${href} (no #${hash} on ${target})`);
+      }
+    }
+  }
+
+  expect(bad, `dead links:\n${bad.join('\n')}`).toEqual([]);
+});

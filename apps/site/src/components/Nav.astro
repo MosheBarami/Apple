@@ -1,12 +1,14 @@
 ---
 import GolemMark from './GolemMark.astro';
 
+// The landing is one viewport now, so /#how, /#modes and /#proof no longer
+// exist. Anchors to sections that were deleted are worse than no links at
+// all — they land the reader at the top of the page with nothing to see and
+// no explanation. Those subjects live on real routes instead.
 const links = [
-  { href: '/#how', label: 'How it works' },
-  { href: '/#modes', label: 'Modes' },
-  { href: '/#proof', label: 'Proof' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
+  { href: '/changelog', label: 'Changelog' },
 ];
 const path = Astro.url.pathname;
 const isCurrent = (href: string) =>
