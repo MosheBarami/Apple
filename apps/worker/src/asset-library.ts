@@ -42,7 +42,6 @@ export const ASSET_SOURCE_SITES = [
   'roblox_official',
   'creator_store',
   'generated_roblox',
-  'generated_meshy',
   'procedural',
 ] as const;
 export type AssetSourceSite = (typeof ASSET_SOURCE_SITES)[number];
@@ -142,13 +141,6 @@ export const LICENCES: Readonly<Record<string, LicenceRule>> = {
     allowedInLibrary: true,
     why: 'produced by GenerationService in the user’s own Studio session and persisted to their own account',
   },
-  'MESHY-PREMIUM': {
-    commercialUse: true,
-    attributionRequired: false,
-    shareAlike: false,
-    allowedInLibrary: true,
-    why: 'owner-owned output of a paid Meshy plan. BUILD-TIME ONLY — see docs/ASSET-PIPELINE.md',
-  },
   'NONE-PROCEDURAL': { commercialUse: true, attributionRequired: false, shareAlike: false, allowedInLibrary: true, why: 'no third-party material involved' },
 };
 
@@ -168,7 +160,6 @@ export function normaliseLicence(verbatim: string): string | null {
   if (/\bcc[- ]?by\b|creative commons attribution/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
   if (/roblox terms of use|roblox-tou/.test(t)) return 'ROBLOX-TOU';
   if (/roblox-generated|generationservice/.test(t)) return 'ROBLOX-GENERATED';
-  if (/meshy/.test(t)) return 'MESHY-PREMIUM';
   if (/none-procedural|no third[- ]party/.test(t)) return 'NONE-PROCEDURAL';
   return null;
 }

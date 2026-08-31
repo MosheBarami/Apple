@@ -1,0 +1,63 @@
+---
+/**
+ * The root route's layout, and only the root route's.
+ *
+ * Deliberately does NOT extend Base.astro: Base pulls in global.css (1.1k
+ * lines), the custom cursor, the full nav and the footer, none of which the
+ * one-viewport landing uses. Keeping this separate is what makes the landing's
+ * payload small, so resist the urge to "tidy up" by merging them.
+ *
+ * Fonts: two families, three cuts. Fraunces for the display line only, Inter
+ * for everything else. JetBrains Mono is not requested here — nothing on this
+ * page is code.
+ */
+import '../styles/landing.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const site = Astro.site ?? new URL('https://golemworks.pages.dev');
+const canonical = new URL(Astro.url.pathname, site);
+const ogImage = new URL('/og.svg', site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Golem" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {/* This surface is dark-committed, so there is one colour, not a pair. */}
+    <meta name="theme-color" content="#0d0c0a" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400&family=Inter:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

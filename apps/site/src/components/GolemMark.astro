@@ -6,10 +6,14 @@
 interface Props {
   size?: number;
   class?: string;
-  /** blink + breathe. Off for footers and static contexts. */
+  /**
+   * Retained for call-site compatibility. The mark no longer animates: a
+   * blinking logo reads as a mascot reaction, and the mascot direction was
+   * cancelled. The prop is accepted and ignored.
+   */
   alive?: boolean;
 }
-const { size = 30, class: className = '', alive = true } = Astro.props;
+const { size = 30, class: className = '' } = Astro.props;
 ---
 
 <svg
@@ -19,7 +23,7 @@ const { size = 30, class: className = '', alive = true } = Astro.props;
   fill="none"
   xmlns="http://www.w3.org/2000/svg"
   aria-hidden="true"
-  class={`gm ${alive ? 'gm--alive' : ''} ${className}`}
+  class={`gm ${className}`}
 >
   <!-- monolith -->
   <path
@@ -68,30 +72,4 @@ const { size = 30, class: className = '', alive = true } = Astro.props;
     opacity: 0.75;
   }
 
-  .gm--alive .gm__eye {
-    animation: gm-blink 7.5s var(--ease-in-out) infinite;
-  }
-
-  .gm--alive .gm__eye--r {
-    animation-delay: 40ms;
-  }
-
-  @keyframes gm-blink {
-    0%,
-    92%,
-    100% {
-      transform: scaleY(1);
-      opacity: 1;
-    }
-    95% {
-      transform: scaleY(0.12);
-      opacity: 0.6;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .gm--alive .gm__eye {
-      animation: none;
-    }
-  }
 </style>

@@ -1,0 +1,677 @@
+/* ==========================================================================
+   GOLEM — landing surface.
+
+   One viewport. No scroll. The whole proposition in a single held frame.
+
+   The material is quarried stone lit from one side: a deep charcoal ground,
+   large matte planes that overlap without announcing themselves, hairline
+   architectural rules, and warm ivory type. The only warmth that emits is a
+   single ember, spent once, on the thing you are meant to press.
+
+   Deliberately dark-committed. This surface is a designed image rather than a
+   reading environment, so it does not follow the theme toggle; docs, pricing
+   and the app all still do.
+
+   This file is the ENTIRE stylesheet for the root route. It does not import
+   global.css. Keep it that way — the landing's payload discipline depends on
+   it.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* --- material ---------------------------------------------------------
+     A single warm-neutral ramp. Every value is a desaturated brown-black,
+     never a blue-black — the whole surface has to read as stone, not screen. */
+  --ground: #0d0c0a; /* the page itself: near-black basalt */
+  --plane-1: #131210; /* first plane off the ground */
+  --plane-2: #191714; /* second plane, where it overlaps */
+  --plane-3: #201d19; /* raised edge / chip face */
+
+  --ivory: #f4efe4; /* primary type: warm, unbleached */
+  --stone: #a49a89; /* secondary type: restrained */
+  --stone-dim: #8b8274; /* tertiary: legal, meta */
+
+  --rule: rgba(244, 239, 228, 0.09); /* architectural hairline */
+  --rule-bright: rgba(244, 239, 228, 0.17); /* where a line should be read */
+
+  --cream: #f6f2e9; /* CTA fill */
+  --cream-ink: #16140f; /* type on the CTA */
+
+  /* The single emitting colour. Used at low alpha for illumination and at
+     full strength for exactly one dot. */
+  --ember: #c96a2e;
+  --ember-glow: rgba(201, 106, 46, 0.13);
+
+  /* --- type ------------------------------------------------------------- */
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  /* Sharp Scotch-Roman cut at high optical size: no wonk, no softness. */
+  --display-vf: 'SOFT' 0, 'WONK' 0, 'opsz' 144;
+
+  /* Aliases so the shared GolemMark component, which is written against the
+     themed token names, drops into this surface unchanged. */
+  --ink: var(--ivory);
+  --accent: var(--ember);
+
+  /* --- geometry --------------------------------------------------------- */
+  --gutter: clamp(1.25rem, 4.5vw, 4rem);
+  --measure: 46ch;
+
+  /* --- motion ----------------------------------------------------------- */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 140ms;
+  --dur: 280ms;
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset — only what this page actually uses
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body,
+h1,
+h2,
+p,
+ul,
+li,
+figure {
+  margin: 0;
+  padding: 0;
+}
+
+ul {
+  list-style: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   3. Page frame
+   -------------------------------------------------------------------------- */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ivory);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis-weight: none;
+}
+
+/* The frame is a three-row grid at exactly one viewport tall. The middle row
+   is the only one that flexes, so the hero always sits optically centred and
+   the supporting strip is always pinned to the bottom edge without any
+   overflow trickery.
+
+   min-height rather than height, and no overflow clipping, so that a user who
+   enlarges text to 200% gets a page that grows and scrolls normally instead of
+   having its content cut off. The one-screen promise is a design target at
+   supported sizes, not a cage. */
+.frame {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100dvh;
+  isolation: isolate;
+}
+
+/* --------------------------------------------------------------------------
+   4. Stage — the depth, built from planes and light
+   -------------------------------------------------------------------------- */
+
+/* Everything here is decorative and non-interactive. It is CSS and one inline
+   SVG: no images, no canvas, no 3D. */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Soft key light, upper left, as if a single lamp were hung off frame. */
+.stage__key {
+  position: absolute;
+  top: -30vh;
+  left: -14vw;
+  width: 92vw;
+  height: 118vh;
+  background: radial-gradient(
+    58% 50% at 32% 34%,
+    var(--ember-glow) 0%,
+    rgba(201, 106, 46, 0.045) 38%,
+    transparent 72%
+  );
+}
+
+/* Cold fill from the opposite corner, so the planes have two sides. */
+.stage__fill {
+  position: absolute;
+  right: -20vw;
+  bottom: -34vh;
+  width: 78vw;
+  height: 96vh;
+  background: radial-gradient(
+    50% 50% at 62% 62%,
+    rgba(150, 168, 184, 0.05) 0%,
+    transparent 70%
+  );
+}
+
+/* Large matte planes. Two overlapping slabs, rotated a hair off true, with a
+   lit leading edge. They read as mass rather than as cards. */
+.plane {
+  position: absolute;
+  border-radius: 2px;
+}
+
+/* The far slab. Larger, flatter, further back. Its leading edge catches a
+   little of the key light, which is the only thing that separates it from the
+   ground — mass described by one lit edge rather than by a border. */
+.plane--a {
+  top: -6%;
+  right: -16%;
+  width: 66vw;
+  height: 122vh;
+  background: linear-gradient(
+    148deg,
+    #17150f 0%,
+    #131210 46%,
+    #0f0e0c 100%
+  );
+  transform: rotate(-9deg);
+  box-shadow:
+    inset 1px 0 0 rgba(244, 239, 228, 0.055),
+    -28px 0 70px -30px rgba(0, 0, 0, 0.9);
+}
+
+/* The near slab, overlapping the far one. Slightly lighter face and a brighter
+   leading edge, so the overlap reads as two distinct planes rather than one
+   gradient. */
+.plane--b {
+  top: 22%;
+  right: -2%;
+  width: 46vw;
+  height: 104vh;
+  background: linear-gradient(
+    162deg,
+    #1c1a15 0%,
+    #161410 58%,
+    #100f0c 100%
+  );
+  transform: rotate(6.5deg);
+  box-shadow:
+    inset 1px 0 0 rgba(244, 239, 228, 0.085),
+    -34px 0 80px -34px rgba(0, 0, 0, 0.95);
+}
+
+/* A third, small chip of stone catching the most light. It gives the eye a
+   near point to read the depth against. */
+.plane--c {
+  top: 58%;
+  right: 12%;
+  width: 15vw;
+  height: 34vh;
+  background: linear-gradient(155deg, #221f19 0%, #191713 100%);
+  transform: rotate(-3deg);
+  box-shadow:
+    inset 1px 1px 0 rgba(244, 239, 228, 0.1),
+    -20px 10px 50px -26px rgba(0, 0, 0, 0.9);
+}
+
+/* Thin architectural rules — a drawing sheet under the stone. */
+.stage__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+}
+
+/* Fine material grain. Kept very low so it is felt, not seen. */
+.stage__grain {
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+}
+
+/* --------------------------------------------------------------------------
+   5. Navigation — sparse by instruction
+   -------------------------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  padding: clamp(1rem, 2vh, 1.5rem) var(--gutter);
+  border-bottom: 1px solid var(--rule);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ivory);
+  text-decoration: none;
+  letter-spacing: -0.015em;
+  font-weight: 500;
+  font-size: 0.98rem;
+}
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.4vw, 2rem);
+  margin-left: auto;
+}
+
+.nav__links a {
+  color: var(--stone);
+  text-decoration: none;
+  font-size: 0.88rem;
+  letter-spacing: 0.005em;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.nav__links a:hover {
+  color: var(--ivory);
+}
+
+/* --------------------------------------------------------------------------
+   6. Buttons
+   -------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  /* 44px minimum target on every pointer type. */
+  min-height: 44px;
+  padding: 0 1.35rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.btn--cream {
+  background: var(--cream);
+  color: var(--cream-ink);
+  font-weight: 550;
+}
+
+.btn--cream:hover {
+  background: #fffdf7;
+}
+
+.btn--quiet {
+  color: var(--ivory);
+  border-color: var(--rule-bright);
+  background: transparent;
+}
+
+.btn--quiet:hover {
+  border-color: rgba(244, 239, 228, 0.3);
+  background: rgba(244, 239, 228, 0.035);
+}
+
+.btn:active {
+  transform: translateY(0.5px);
+}
+
+.btn--sm {
+  min-height: 38px;
+  padding: 0 1rem;
+  font-size: 0.86rem;
+}
+
+/* --------------------------------------------------------------------------
+   7. Hero
+   -------------------------------------------------------------------------- */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.5rem, 5vh, 4rem) var(--gutter);
+}
+
+.hero__inner {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--stone);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: clamp(1rem, 2.4vh, 1.75rem);
+}
+
+/* The one emitting dot on the page. */
+.eyebrow__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 12px 1px rgba(201, 106, 46, 0.55);
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-vf);
+  font-weight: 400;
+  /* Sized to hold two lines inside the smallest supported desktop height. */
+  font-size: clamp(2.7rem, 7vw, 6.1rem);
+  line-height: 0.97;
+  letter-spacing: -0.028em;
+  color: var(--ivory);
+  text-wrap: balance;
+}
+
+/* Second line steps back so the pair reads as a statement and a consequence
+   rather than as one shouted phrase. */
+.hero__title em {
+  display: block;
+  font-style: normal;
+  color: var(--stone);
+}
+
+.hero__lede {
+  max-width: var(--measure);
+  margin-top: clamp(1.1rem, 2.6vh, 1.9rem);
+  color: var(--stone);
+  font-size: clamp(1rem, 1.15vw, 1.14rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.hero__lede strong {
+  color: var(--ivory);
+  font-weight: 500;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: clamp(1.4rem, 3.4vh, 2.4rem);
+}
+
+/* --------------------------------------------------------------------------
+   8. Supporting strip — the minimum that earns its place
+   -------------------------------------------------------------------------- */
+
+.support {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(0.75rem, 2.6vw, 2.25rem);
+  padding: clamp(0.9rem, 1.8vh, 1.35rem) var(--gutter);
+  border-top: 1px solid var(--rule);
+  color: var(--stone-dim);
+  font-size: 0.8rem;
+}
+
+.support__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.support__tick {
+  color: var(--stone);
+  flex: none;
+}
+
+.support__legal {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.support__legal a {
+  color: var(--stone-dim);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.support__legal a:hover {
+  color: var(--ivory);
+}
+
+/* --------------------------------------------------------------------------
+   9. Accessibility
+   -------------------------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 50;
+  padding: 0.7rem 1.1rem;
+  background: var(--cream);
+  color: var(--cream-ink);
+  border-radius: 0 0 6px 0;
+  font-size: 0.9rem;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* One visible focus treatment for every interactive element. Never removed. */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   10. Entrance — one settle, then still
+   -------------------------------------------------------------------------- */
+
+/* The page arrives once and then stops moving. Nothing here loops. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    animation: settle 620ms var(--ease) both;
+  }
+
+  .reveal-1 {
+    animation-delay: 40ms;
+  }
+  .reveal-2 {
+    animation-delay: 110ms;
+  }
+  .reveal-3 {
+    animation-delay: 180ms;
+  }
+  .reveal-4 {
+    animation-delay: 250ms;
+  }
+
+  @keyframes settle {
+    from {
+      opacity: 0;
+      transform: translateY(9px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   11. Responsive — reflow, never clip
+   -------------------------------------------------------------------------- */
+
+/* Tablet portrait and below: the nav sheds its middle links (they remain
+   reachable from the supporting strip, which is always on screen). */
+@media (max-width: 720px) {
+  .nav__links a:not(.nav__cta) {
+    display: none;
+  }
+
+  .hero__title {
+    font-size: clamp(2.5rem, 11.5vw, 3.6rem);
+  }
+
+  .hero__lede {
+    font-size: 0.98rem;
+  }
+
+  .support {
+    gap: 0.5rem 1.1rem;
+    font-size: 0.76rem;
+  }
+
+  .support__legal {
+    margin-left: 0;
+    width: 100%;
+    padding-top: 0.35rem;
+  }
+
+  .plane--a,
+  .plane--b {
+    opacity: 0.6;
+  }
+
+  /* The near chip has nowhere to sit once the type fills the width. */
+  .plane--c {
+    display: none;
+  }
+}
+
+/* Short landscape (laptops at 768px tall, phones turned sideways): tighten the
+   vertical rhythm rather than shrink the type past readability. */
+@media (max-height: 780px) and (min-width: 721px) {
+  .hero__title {
+    font-size: clamp(2.6rem, 5.4vw, 4.4rem);
+  }
+
+  .hero__lede {
+    margin-top: 1rem;
+  }
+
+  .hero__actions {
+    margin-top: 1.3rem;
+  }
+}
+
+/* Very short landscape (a phone turned sideways, ~390px tall). Everything
+   still fits, but the rhythm is compressed hard and the supporting strip is
+   reduced to one fact. Nothing is hidden that carries the proposition: the
+   headline, the lede and both calls to action all survive. */
+@media (max-height: 560px) {
+  .nav {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .hero {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .eyebrow {
+    margin-bottom: 0.55rem;
+    font-size: 0.66rem;
+  }
+
+  .hero__title {
+    font-size: clamp(1.9rem, 4.6vw, 2.6rem);
+  }
+
+  .hero__lede {
+    margin-top: 0.6rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    max-width: 54ch;
+  }
+
+  .hero__actions {
+    margin-top: 0.85rem;
+  }
+
+  .btn {
+    min-height: 40px;
+  }
+
+  .support {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  /* Two of the three facts step aside; the legal links stay, because they are
+     the only route to those documents from this page. */
+  .support__item:nth-child(2),
+  .support__item:nth-child(3) {
+    display: none;
+  }
+}
