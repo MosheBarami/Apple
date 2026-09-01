@@ -191,10 +191,30 @@ const CHEAT_TERMS = [
 const LINE_RULES = [
   { kind: 'executor-global', severity: 'high', pattern: EXECUTOR_GLOBALS },
   {
-    // Not a Roblox API. `game:HttpGet` is an executor extension; honest code reaches HttpService.
+    //[[ Not a Roblox API. `game:HttpGet` is an executor extension; honest code reaches
+    //   HttpService. The RECEIVER COLON is what carries that reasoning, and the pattern used to
+    //   have a second alternative — a bare `\bHttpGet\s*\(` — that did not.
+    //
+    //   With `/i` that alternative matched any function named `httpGet`, and it fired five times
+    //   in `evaera/roblox-lua-promise`'s `docs/WhyUsePromises.md`, a tutorial whose whole subject
+    //   is wrapping `HttpService:GetAsync` in a Promise:
+    //
+    //       local function httpGet(url)          <- flagged
+    //       local promise = httpGet("https://google.com")   <- flagged
+    //
+    //   That condemned one of the most widely used libraries in the Roblox ecosystem as an
+    //   `executor`, which is the precise failure this scanner's own test file warns about: a
+    //   scanner that condemns legitimate code is a scanner someone switches off, and a
+    //   switched-off scanner is worse than none because it also carries a false assurance.
+    //
+    //   Requiring the receiver keeps every true positive. `loadstring(game:HttpGet(url))()` still
+    //   matches; so does any other receiver, because the colon is matched and the name before it
+    //   is not. `HttpService:GetAsync` feeding `loadstring` was never caught here anyway — it is
+    //   caught by the fetch-and-execute pair rule, which is the correct detector for it, since a
+    //   fetch with no execution sink is not a payload loader. ]]
     kind: 'remote-payload-fetch',
     severity: 'high',
-    pattern: /\bgame\s*:\s*HttpGet(?:Async)?\s*\(|\bHttpGet(?:Async)?\s*\(|\bhttp_request\s*\(|\brequest\s*\(\s*\{\s*Url\b/i,
+    pattern: /:\s*HttpGet(?:Async)?\s*\(|\bhttp_request\s*\(|\brequest\s*\(\s*\{\s*Url\b/i,
   },
   {
     // The session cookie. There is no reading of this in a repository that is about making games.
