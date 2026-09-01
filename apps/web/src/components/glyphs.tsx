@@ -73,18 +73,7 @@ export function NavIcon({ d, size = 17 }: { d: string; size?: number }) {
   );
 }
 
-export const ICONS = {
-  projects: 'M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z',
-  usage: 'M5 20V10m7 10V4m7 16v-7',
-  settings:
-    'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm8 3a8 8 0 0 0-.2-1.7l2-1.5-2-3.4-2.3 1a8 8 0 0 0-2.9-1.7L14.2 2h-4l-.4 2.4a8 8 0 0 0-2.9 1.7l-2.3-1-2 3.4 2 1.5A8 8 0 0 0 4 12c0 .6.1 1.1.2 1.7l-2 1.5 2 3.4 2.3-1a8 8 0 0 0 2.9 1.7l.4 2.4h4l.4-2.4a8 8 0 0 0 2.9-1.7l2.3 1 2-3.4-2-1.5c.1-.6.2-1.1.2-1.7z',
-  docs: 'M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm9 0v4h4M9 12h6M9 16h6',
-  admin: 'M12 3l7 4v5c0 4.4-3 8-7 9-4-1-7-4.6-7-9V7z',
-  lab: 'M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 6.7 21h10.6a2 2 0 0 0 1.7-3.5L14 9V3',
-  rail: 'M3 4h18v16H3zM15 4v16',
-  surface: 'M3 4h18v16H3zM3 10h18',
-  plus: 'M12 5v14M5 12h14',
-} as const;
+export { ICON_PATH as ICONS } from './icons';
 
 /**
  * Empty-state mark for the project list: an uncarved form.
