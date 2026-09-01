@@ -132,8 +132,11 @@ Palette.World = {
 		 is literally `Frost` — so half the road was byte-identical to the ground
 		 under it and the route vanished. §9.5 wants the path to contrast hard
 		 with the ground, the way Dirt-on-Grass does in the north. ]]
-	IcePath = Color3.fromRGB(96, 141, 173),
-	IcePathDark = Color3.fromRGB(74, 116, 146),
+	--[[ Saturated to 64/70 % from 45/49 % (V4). The contrast job these do against the snow is
+		 unchanged — they are still much darker than the floor — but at the old chroma they were
+		 part of why the whole zone read as one grey-blue wash. ]]
+	IcePath = Color3.fromRGB(74, 158, 206),
+	IcePathDark = Color3.fromRGB(52, 128, 176),
 
 	Sky = Color3.fromRGB(127, 200, 240),
 }

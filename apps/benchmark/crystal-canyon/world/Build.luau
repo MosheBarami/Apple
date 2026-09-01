@@ -1062,17 +1062,26 @@ local BIOME_MEADOW: Biome = {
 
 local BIOME_FROST: Biome = {
 	Id = "frost",
-	-- Cool stone, not rust. A rust wall behind a snowfield was half of why the
-	-- two halves of the map read as one zone painted twice.
-	Cliff = { Color3.fromRGB(134, 152, 170), Color3.fromRGB(112, 130, 150), Color3.fromRGB(94, 112, 132) },
+	--[[ Cool stone, not rust. A rust wall behind a snowfield was half of why the two halves of
+		 the map read as one zone painted twice.
+
+		 SATURATED cool stone, as of V4. The first version of this triple ran 21/25/29 %
+		 saturation against the meadow cliff's 68 %, and the visual critic called the whole zone
+		 near-monochrome pale blue-grey — §1 opens "Bright, saturated, high-key. No muted
+		 palettes, no tasteful neutrals" and §9.10 makes desaturated an automatic fail. About a
+		 third of the map was failing a headline criterion.
+
+		 The hue is unchanged; only the chroma moved, to 44/50/55 %. Cool does not have to mean
+		 grey, and "icy" in this style language is a saturated blue, not an absence of colour. ]]
+	Cliff = { Color3.fromRGB(126, 186, 224), Color3.fromRGB(104, 166, 209), Color3.fromRGB(86, 146, 192) },
 	Snow = true,
 	Tint = {
-		foliage = Color3.fromRGB(62, 104, 96), -- deep pine / desaturated blue-green
+		foliage = Color3.fromRGB(54, 132, 110), -- deep pine, saturated rather than blue-grey (V4)
 		wood = Color3.fromRGB(104, 116, 134),
-		stone = Color3.fromRGB(146, 170, 188),
+		stone = Color3.fromRGB(140, 186, 214),
 		-- The middle of this biome's own Cliff triple, for the same reason as in
 		-- the canyon: a boulder mass is wall, not scenery.
-		cliff = Color3.fromRGB(112, 130, 150),
+		cliff = Color3.fromRGB(104, 166, 209),
 		crystal = frost.CrystalColor,
 		accent = Color3.fromRGB(96, 214, 236),
 		--[[ The frost accent is NOT reused as road paint. Measured against the ice
