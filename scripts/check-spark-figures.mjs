@@ -51,10 +51,17 @@ function neuronsFor(label) {
 
 // The row each published figure is derived from. Named here rather than guessed, because
 // "Stone" has four rows in COST-MODEL and only one of them is the advertised case.
+//
+// TWO NAMES PER MODE, on purpose. COST-MODEL.md is internal and names the specialists —
+// Clay, Stone, Rune. The public site must not: packages/shared states that those "are
+// internal specialist identities, not user-facing brands: nothing in normal product UI
+// should name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
+// This guard therefore reads the neuron figure by the internal name and checks the
+// published figure by the public one.
 const MODES = [
-  { mode: 'Clay', row: 'Clay question (Studio attached)' },
-  { mode: 'Stone', row: 'Stone, targeted edit + read-back verify in Studio' },
-  { mode: 'Rune', row: 'Rune, build + read-back verify + playtest in Studio' },
+  { mode: 'Plan', row: 'Clay question (Studio attached)' },
+  { mode: 'Agent', row: 'Stone, targeted edit + read-back verify in Studio' },
+  { mode: 'Super Agent', row: 'Rune, build + read-back verify + playtest in Studio' },
 ];
 
 for (const { mode, row } of MODES) {
@@ -99,6 +106,7 @@ const PROSE = [
   'apps/site/pages/changelog.astro',
   'apps/site/pages/docs/sparks-and-limits.astro',
   'apps/site/pages/docs/modes.astro',
+  'apps/site/pages/docs/faq.astro',
 ].map((p) => `apps/site/src/${p.slice('apps/site/'.length)}`);
 
 const expectedFor = {};
@@ -116,8 +124,13 @@ for (const file of PROSE) {
     continue;
   }
   for (const [mode, expected] of Object.entries(expectedFor)) {
-    // "Clay — 3 sparks", "Clay: 3 sparks", "Clay</strong> (3 sparks", "Clay ... for 3 sparks"
-    const re = new RegExp(`${mode}[^.\n]{0,40}?\\b(\\d+) spark`, 'g');
+    // "Plan — 3 sparks", "Plan: 3 sparks", "Plan</strong> (3 sparks", "Plan ... for 3 sparks".
+    //
+    // The lookbehind is load-bearing: "Agent" is a substring of "Super Agent", so
+    // without it every "Super Agent — 10 sparks" is reported as Agent costing 10.
+    // It produced five false positives against a correct file.
+    const guard = mode === 'Agent' ? '(?<!Super )' : '';
+    const re = new RegExp(`${guard}\\b${mode}[^.\n]{0,40}?\\b(\\d+) spark`, 'g');
     for (const m of text.matchAll(re)) {
       if (Number(m[1]) !== expected) {
         problems.push(`${file}: "${m[0].trim()}" — ${mode} costs ${expected} spark(s)`);

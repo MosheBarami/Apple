@@ -4,8 +4,8 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
 <DocsLayout
   title="Modes — Golem Docs"
-  description="Clay, Stone and Rune: what each Golem mode does, what it costs in Sparks, and how to choose the right one for the job."
-  heading="Modes: Clay, Stone, Rune"
+  description="Plan, Agent and Super Agent: what each Golem mode does, what it costs in Sparks, and how to choose the right one for the job."
+  heading="Modes: Plan, Agent, Super Agent"
 >
   <p>
     Every message you send wakes one of three golems. They differ in how much autonomy they take
@@ -13,11 +13,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     Golem well is mostly picking the smallest golem that can carry the job.
   </p>
 
-  <h2>Clay — 2 sparks</h2>
+  <h2>Plan — 2 sparks</h2>
   <p><em>Fast answers and small edits.</em></p>
   <p>
-    Clay is conversational and quick. It reads the parts of your project that matter to your
-    question and responds in seconds. Use Clay for:
+    Plan is conversational and quick. It reads the parts of your project that matter to your
+    question and responds in seconds. Use Plan for:
   </p>
   <ul>
     <li>“What does this script do?” / “Why is this deprecated?”</li>
@@ -25,16 +25,16 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li>Roblox API questions with your project as context.</li>
   </ul>
   <p>
-    At 2 sparks per request — about thirty a day on the free plan — Clay is the cheapest
+    At 2 sparks per request — about thirty a day on the free plan — Plan is the cheapest
     way to work. It is also the best way to
     <em>plan</em> a big build cheaply before handing the plan to a bigger golem.
   </p>
 
-  <h2>Stone — 4 sparks</h2>
+  <h2>Agent — 4 sparks</h2>
   <p><em>Builds features across your project.</em></p>
   <p>
-    Stone is the everyday builder. It reads your project tree, edits multiple scripts, creates
-    and wires instances, and reports what it did. Use Stone for:
+    Agent is the everyday builder. It reads your project tree, edits multiple scripts, creates
+    and wires instances, and reports what it did. Use Agent for:
   </p>
   <ul>
     <li>“Add a shop that sells speed boosts for coins.”</li>
@@ -42,16 +42,16 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li>Refactors that touch several scripts at once.</li>
   </ul>
   <p>
-    Stone finishes a request in one pass and then stops — it does not playtest on its own. Press
+    Agent finishes a request in one pass and then stops — it does not playtest on its own. Press
     Play, see what you think, and tell it what to change.
   </p>
 
-  <h2>Rune — 10 sparks, +1 per extra step</h2>
+  <h2>Super Agent — 10 sparks, +1 per extra step</h2>
   <p><em>Plans, builds, tests and fixes autonomously.</em></p>
   <p>
-    Rune is the deep agent. Give it an outcome, and it writes a plan, executes it step by step,
+    Super Agent is the deep agent. Give it an outcome, and it writes a plan, executes it step by step,
     runs your game in Studio, reads the output, and repairs what breaks — repeating until the
-    outcome holds or it needs your input. Use Rune for:
+    outcome holds or it needs your input. Use Super Agent for:
   </p>
   <ul>
     <li>“Build a complete round system: intermission, map vote, teleport, win detection.”</li>
@@ -59,30 +59,30 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li>Anything where “done” means <em>verified working</em>, not <em>code written</em>.</li>
   </ul>
   <p>
-    Rune requests start at 10 sparks and add <strong>1 spark per extra step</strong> beyond the
-    included ones. The running cost is displayed live during the run, and you can stop a Rune run
+    Super Agent requests start at 10 sparks and add <strong>1 spark per extra step</strong> beyond the
+    included ones. The running cost is displayed live during the run, and you can stop a Super Agent run
     at any moment — completed steps stay applied (and undoable).
   </p>
 
   <div class="callout callout--violet">
     <p>
-      <strong>Rule of thumb:</strong> question → Clay. Feature → Stone. Outcome you want proven →
-      Rune. When unsure, start one size smaller; escalating costs you nothing but the retry.
+      <strong>Rule of thumb:</strong> question → Plan. Feature → Agent. Outcome you want proven →
+      Super Agent. When unsure, start one size smaller; escalating costs you nothing but the retry.
     </p>
   </div>
 
   <h2>Switching modes</h2>
   <p>
     The mode picker sits next to the message box. Every message can use a different mode — a
-    common rhythm is Clay to plan, Rune to build, Clay to ask “what did you just do?”, Stone to
+    common rhythm is Plan to plan, Super Agent to build, Plan to ask “what did you just do?”, Agent to
     polish. All modes share the same project memory, so nothing is lost between switches.
   </p>
 
   <h2>Costs at a glance</h2>
   <ul>
-    <li><strong>Clay</strong> — 2 sparks per request</li>
-    <li><strong>Stone</strong> — 4 sparks per request</li>
-    <li><strong>Rune</strong> — 10 sparks per request, +1 per extra agent step</li>
+    <li><strong>Plan</strong> — 2 sparks per request</li>
+    <li><strong>Agent</strong> — 4 sparks per request</li>
+    <li><strong>Super Agent</strong> — 10 sparks per request, +1 per extra agent step</li>
   </ul>
   <p>See <a href="/docs/sparks-and-limits">Sparks &amp; limits</a> for how the daily quota works.</p>
 </DocsLayout>

@@ -120,6 +120,22 @@ for (const file of files) {
     say(`only ${headings.length} heading(s) — nothing to navigate by; check for titles written as <span> or <div>`);
   }
 
+  // §15.3 gives the public modes as Plan / Agent / Super Agent. packages/shared is
+  // explicit that Clay, Stone and Rune "are internal specialist identities, not
+  // user-facing brands: nothing in normal product UI should name them" — and the web app
+  // goes as far as regex-replacing them out of worker copy before it renders. The docs
+  // site named them 96 times, so a reader learned a vocabulary the product does not use.
+  //
+  // Script and style contents are stripped first: a CSS class like `is-clay` is
+  // implementation, not something a reader is told.
+  const prose = html
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/g, '')
+    .replace(/<[^>]+>/g, ' ');
+  const leaked = [...new Set([...prose.matchAll(/\b(Clay|Stone|Rune)\b/g)].map((m) => m[1]))];
+  if (leaked.length > 0) {
+    say(`names an internal specialist in visible copy: ${leaked.join(', ')} — the public modes are Plan, Agent and Super Agent`);
+  }
+
   const mains = (html.match(/<main\b/g) ?? []).length;
   if (mains !== 1) say(`${mains} <main>, expected exactly 1`);
 

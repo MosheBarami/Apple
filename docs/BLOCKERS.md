@@ -345,10 +345,33 @@ day at $0 and Pro remains an unpriced waitlist. What changed is a claim about co
 that the code contradicted, and the reason not to leave it is that a reader planning
 around "60 questions a day" hits the limit at 30.
 
-**If the intent was that a Clay question should cost 1 spark**, that is a change to the
+**If the intent was that a Plan question should cost 1 spark**, that is a change to the
 worker — `NEURONS_PER_SPARK`, or a per-mode floor — and not to the page. This correction
 assumed the code is right and the page was wrong, because the code is what actually
 charges people. Say if that assumption is backwards.
+
+### And the public site was naming the internal specialists
+
+Found while fixing the above. `packages/shared/src/index.ts` states it plainly:
+
+> Clay, Stone and Rune are internal specialist identities, not user-facing brands:
+> nothing in normal product UI should name them.
+
+Mission §15.3 gives the public modes as **Plan / Agent / Super Agent**, the app offers
+exactly those, and `apps/web/src/components/roadmap/model.ts` goes as far as
+regex-replacing the specialist names out of worker copy before rendering it. The
+documentation site named them **96 times** across nine files — including the docs nav
+label, a page title and every mode heading — so a reader learned "Clay", went to the app,
+and found no such thing.
+
+Renamed on 2026-09-01: Clay → Plan, Stone → Agent, Rune → Super Agent, across the site
+only. `docs/COST-MODEL.md` keeps the specialist names, which is correct — it is internal.
+`check-site-semantics.mjs` now fails if any of the three appears in visible copy on a
+built page.
+
+**This is a vocabulary change to public documentation**, so it is recorded here rather
+than only in a commit. It aligns the docs with §15.3 and with the product; it does not
+change any behaviour, price or URL.
 
 ---
 
