@@ -9,7 +9,7 @@ import FAQ from '../components/FAQ.astro';
 //
 //   Plan         37-43 neurons -> ceil(43/30)  =  2 sparks
 //   Agent        111 neurons   -> ceil(111/30) =  4 sparks  (targeted edit + read-back verify)
-//   Super Agent  297 neurons   -> ceil(297/30) = 10 sparks  (+1 per extra agent step)
+//   Super Agent  297 neurons   -> ceil(297/30) = 10 sparks  (+1 per extra step)
 //
 // COST-MODEL.md names these by their INTERNAL specialist identities — Clay, Stone, Rune
 // — which is correct there and wrong here: packages/shared says those "are internal
@@ -62,7 +62,7 @@ const limitFaq = [
   },
   {
     q: 'Can one Super Agent request cost more than 10 Sparks?',
-    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Sparks and add 1 Spark per extra agent step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Golem warns before starting work it estimates will be expensive.</p>`,
+    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Sparks and add 1 Spark per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Golem warns before starting work it estimates will be expensive.</p>`,
   },
   {
     q: 'What is a Spark, underneath?',
@@ -204,7 +204,7 @@ const limitFaq = [
       </div>
 
       <p class="tfoot" data-reveal>
-        A Super Agent request includes its base steps; each additional agent step beyond
+        A Super Agent request includes its base steps; each additional step beyond
         them costs 1 extra Spark, metered live so you always see where you
         stand. Golem's own housekeeping does not count against your quota.
       </p>

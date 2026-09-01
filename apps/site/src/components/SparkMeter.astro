@@ -6,7 +6,7 @@
 // All arithmetic uses the published figures and changes none of them:
 //   Free   60 sparks/day · 900/month        (docs/COST-MODEL.md)
 //   Pro    400 sparks/day · 6,000/month     (designed, waitlist)
-//   Plan 1 · Agent 4 · Super Agent 10 (+1 per extra agent step)
+//   Plan 2 · Agent 4 · Super Agent 10 (+1 per extra step)
 //   1 Spark = 30 neurons; Cloudflare bills $0.011 per 1,000 neurons
 // "Whichever limit binds first applies."
 // ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ const { showCost = true } = Astro.props;
 
       <div class="ctl ctl--sub">
         <label for="sm-steps">
-          <span class="ctl__name">Extra agent steps per Super Agent run</span>
+          <span class="ctl__name">Extra steps per Super Agent run</span>
           <span class="ctl__mode mono">+1 spark each</span>
         </label>
         <div class="ctl__row">
