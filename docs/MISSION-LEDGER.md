@@ -8,7 +8,7 @@ Statuses: **PROVEN** (evidence in repo) · **PARTIAL** (real but incomplete) ·
 **UNPROVEN** (not attempted or not evidenced) · **BLOCKED** (external/human-only) ·
 **REJECTED** (tried, measured, refused).
 
-Last reconciled: **2026-09-01**.
+Last reconciled: **2026-09-01** (second pass).
 
 | # | Outcome (§AS) | Status | Evidence / note |
 |---:|---|---|---|
@@ -17,7 +17,7 @@ Last reconciled: **2026-09-01**.
 | 3 | Frost Hollow primitive fallback resolved | **PROVEN** | 0 → 22 crystal meshes · `evidence/2026-09-01-detexture-ab.md` |
 | 4 | Glacier Heart no longer a box stack | **PROVEN** | radial crystal burst; dais geometry fixed · same file |
 | 5 | UI visual quality passes rendered review | **PARTIAL** | shop/HUD render well once `Icons` installed; not all screens reviewed |
-| 6 | UI motion passes frame review | **PARTIAL** | 2 of 14 §O categories measured · `evidence/2026-09-01-ui-motion-frames.md` |
+| 6 | UI motion passes frame review | **PARTIAL** | **8 of 14** measured + reduced-motion implemented and proven · `evidence/2026-09-01-ui-motion-frames.md` |
 | 7 | Creator Store asset intelligence used in real builds | **PROVEN** | 326 curated clones in the built world |
 | 8 | Style-coherence gate rejects incompatible assets | **PROVEN** | mesas rejected twice, 7 of 9 Cube generations refused |
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
@@ -31,16 +31,16 @@ Last reconciled: **2026-09-01**.
 | 17 | Thinking/activity UX alive, structured, honest | **UNPROVEN** | not attempted |
 | 18 | Inline near-live playtest viewport | **UNPROVEN** | not attempted |
 | 19 | Roadmap intelligence suggests/builds milestones | **PARTIAL** | roadmap + suggestions exist; not driven by live project inspection |
-| 20 | Durable design/source intelligence pipeline | **PARTIAL** | intake machinery built + tested; applied only to 2 official doc repos |
-| 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **UNPROVEN** | 217 seed URLs not yet ingested |
+| 20 | Durable design/source intelligence pipeline | **PROVEN** | machinery run against all 217 seeds; 119 resolved · `evidence/2026-09-01-source-corpus-classification.md` |
+| 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **PROVEN** | 217 classified: 68 reusable, 8 copyleft, 2 attribution, 139 quarantined |
 | 22 | Discovery expands beyond the seed manifest | **UNPROVEN** | recursive discovery not run |
-| 23 | Licences/provenance preserved | **PARTIAL** | schema + tests exist; only 2 sources recorded |
-| 24 | Unsafe/exploit content quarantined | **PARTIAL** | scanner built and tested; nothing to quarantine yet |
-| 25 | Golem stops inventing every GUI from blank | **UNPROVEN** | no retrieval-backed UI composition |
-| 26 | Corpus materially improves UI/world evals | **UNPROVEN** | no matched before/after |
+| 23 | Licences/provenance preserved | **PROVEN** | `data/sources.json` tracked; SHA + SPDX + evidence path per source |
+| 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence; security scanner still has nothing downloaded to scan |
+| 25 | Golem stops inventing every GUI from blank | **PARTIAL** | `@golem/design` retrieves 26 ruled constraints into a generator brief; not yet wired to the worker |
+| 26 | Corpus materially improves UI/world evals | **PARTIAL** | 4 rules mechanised as checks; caught a real remaining defect (Icons contract) and it was fixed |
 | 27 | UI Labs or equivalent isolated UI harness | **UNPROVEN** | not evaluated |
 | 28 | Icon intelligence from strong free sources | **PARTIAL** | original icon family ships; not sourced from a vetted library |
-| 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | Theme motion measured; not a reusable library |
+| 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | `MotionProbe.luau` + 4 motion rules in the library; still one game's patterns |
 | 30 | Studs/classic a first-class art language | **UNPROVEN** | not attempted |
 | 31 | Broad non-simulator UI/game patterns represented | **UNPROVEN** | single genre only |
 | 32 | Hugging Face pipeline measured and privacy-safe | **UNPROVEN** | not attempted this phase |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01**.
 
 ## Tally
 
-PROVEN 17 · PARTIAL 11 · UNPROVEN 11 · BLOCKED 1 · REJECTED 0
+PROVEN 20 · PARTIAL 11 · UNPROVEN 8 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.

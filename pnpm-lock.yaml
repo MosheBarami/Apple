@@ -104,6 +104,8 @@ importers:
         specifier: ^2.6.1
         version: 2.9.0
 
+  packages/design: {}
+
   packages/evals: {}
 
   packages/shared: {}

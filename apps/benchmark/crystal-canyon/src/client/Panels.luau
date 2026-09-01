@@ -91,7 +91,34 @@ local Util = require(Shared:WaitForChild("Util"))
 	 that could only ever drift apart. `Icons` is the one set, drawn entirely in
 	 scale units off a 32-unit grid, and it resolves a hole's colour from the
 	 surface behind it by itself. Sibling require, as Hud does. ]]
-local Icons = require(script.Parent:WaitForChild("Icons"))
+--[[ BOUNDED, and degrading, for the same reason Hud is — and because the two
+	 disagreeing is what made the real failure invisible.
+
+	 This module used to wait here UNBOUNDED while Hud waited five seconds and
+	 printed "drawing without pictograms". `Icons` was then left out of the install
+	 manifest for several passes, so Hud degraded loudly and kept drawing while
+	 THIS module never finished loading: every panel in the game — shop, upgrades,
+	 codes, zones — was unreachable, announced only by an "Infinite yield possible"
+	 warning nobody was reading. The HUD still rendered, so screenshots looked fine.
+
+	 One consumer treating a dependency as optional and another blocking on it
+	 forever is an inconsistent contract, and the inconsistency is the bug. If
+	 Icons can be absent, it can be absent here too. A missing icon set must cost
+	 the panels their pictograms, never the panels themselves. ]]
+local Icons: any = nil
+do
+	local module = script.Parent:WaitForChild("Icons", 5)
+	if module and module:IsA("ModuleScript") then
+		local ok, result = pcall(require, module)
+		if ok then
+			Icons = result
+		else
+			warn(`[CrystalCanyon] Panels: Icons failed to load, drawing without pictograms: {result}`)
+		end
+	else
+		warn("[CrystalCanyon] Panels: Icons module missing, drawing without pictograms")
+	end
+end
 
 local Panels = {}
 
@@ -428,11 +455,13 @@ local function iconTile(parent: Instance, kind: string, tint: Color3, size: numb
 		 surface behind it, which is this tile — so the padlock's keyhole and the
 		 magnet's gap come out right without this file knowing anything about how
 		 they are drawn. ]]
-	Icons.draw(tile, kind, {
-		size = UDim2.fromScale(ICON_INSET, ICON_INSET),
-		fill = Palette.UI.TextLight,
-		zIndex = tile.ZIndex + 2,
-	})
+	if Icons then
+		Icons.draw(tile, kind, {
+			size = UDim2.fromScale(ICON_INSET, ICON_INSET),
+			fill = Palette.UI.TextLight,
+			zIndex = tile.ZIndex + 2,
+		})
+	end
 	return tile
 end
 
