@@ -42,7 +42,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 28 | Icon intelligence from strong free sources | **PARTIAL** | original icon family ships; not sourced from a vetted library |
 | 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | `MotionProbe.luau` + 4 motion rules in the library; still one game's patterns |
 | 30 | Studs/classic a first-class art language | **PARTIAL** | 10 studs-classic + 9 retro-roblox rules, 12 sourced from creator-docs (CC-BY-4.0); no studs world built yet |
-| 31 | Broad non-simulator UI/game patterns represented | **PARTIAL** | 51 rules over 17 of 23 families; 6 still empty (fantasy, sci-fi, modern, battleground-fps, social, dialogue-story) and the coverage test names them |
+| 31 | Broad non-simulator UI/game patterns represented | **PARTIAL** | **54 rules over 20 of 23 families.** `social`, `battleground-fps` and `dialogue-story` closed from creator-docs engine facts; `fantasy`, `sci-fi`, `modern` deliberately left open — they are matters of taste and the one licence-clear source documents behaviour, so inventing them is what §AK forbids |
 | 32 | Hugging Face pipeline measured and privacy-safe | **PARTIAL** | landscape characterised, licences read, duplicates identified; nothing uploaded/downloaded/trained · `evidence/2026-09-01-huggingface-luau-landscape.md` |
 | 33 | No user project is training data without opt-in | **PROVEN** | standing policy, unchanged |
 | 34 | Cost controls intact | **PROVEN** | no purchases; caps untouched |

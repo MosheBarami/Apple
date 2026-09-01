@@ -685,6 +685,46 @@ export const RULES = Object.freeze([
     prevents: 'Six gold boxes floating in the sky in the hero shot.',
     provenance: { kind: 'golem-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'rendered before and after' },
   },
+  //[[ THREE FAMILIES THAT HAD NO RULE, CLOSED FROM THE ONE LICENCE-CLEAR SOURCE.
+  //
+  //   `library.test.mjs` pins the uncovered list precisely so it cannot be closed the way §L
+  //   warns about — by adding a family to a rule that was never written for it. These three are
+  //   closed the other way: each is an ENGINE FACT from `Roblox/creator-docs` (CC-BY-4.0) that
+  //   constrains what a design for that family can even do.
+  //
+  //   `fantasy`, `sci-fi` and `modern` stay open. They are matters of taste, and creator-docs
+  //   cannot teach taste — it documents behaviour. Inventing three plausible aesthetic rules to
+  //   empty the list is exactly what §AK forbids and what the pinned test exists to prevent. ]]
+  {
+    id: 'social.system-chat-owns-its-corner',
+    component: 'layout',
+    styleFamilies: ['social'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'Treat the default chat window\'s screen region as occupied by the system, or disable it deliberately with ChatWindowConfiguration.Enabled = false and replace it.',
+    because: 'The window ships Enabled, and the player can summon it at any moment even if it is not on screen when you take your screenshot. A panel drawn in that region is not competing with your own UI, it is competing with a surface you do not control and cannot restyle beyond the handful of documented properties.',
+    prevents: 'A social hub whose friends list is legible in every screenshot the builder takes and is covered by chat the first time a real player types.',
+    provenance: GUIDE('chat/chat-window.md'),
+  },
+  {
+    id: 'fps.locked-cursor-disables-pointer-ui',
+    component: 'modal',
+    styleFamilies: ['battleground-fps'],
+    platforms: ['desktop'],
+    rule: 'Any UI shown while UserInputService.MouseBehavior is LockCenter must either release the lock first or be fully navigable without a pointer.',
+    because: 'LockCenter pins the cursor to the middle of the screen; the pointer no longer travels, so every hover, click target and drag in a conventional GUI becomes unreachable. The lock is a mode, and UI drawn during it belongs to a different input model.',
+    prevents: 'A loadout menu that opens over a locked-cursor firefight and cannot be clicked, which reads to the player as the game having frozen.',
+    provenance: GUIDE('input/mouse-and-keyboard.md'),
+  },
+  {
+    id: 'dialogue.prompt-visibility-is-the-cameras-not-the-players',
+    component: 'panel',
+    styleFamilies: ['dialogue-story'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'A ProximityPrompt driving dialogue must not be the only way to reach it, because RequiresLineOfSight is measured from the CAMERA and defaults to true.',
+    because: 'The player standing in front of an NPC is not the condition being tested. A pillar between the CAMERA and the prompt hides it, and so does any scripted or shoulder camera that swings the view — so the prompt vanishes at exactly the moments a story scene is most likely to move the camera.',
+    prevents: 'A conversation that becomes unreachable when the player stands close enough for the camera to clip behind geometry, with no feedback distinguishing it from an NPC that has nothing to say.',
+    provenance: GUIDE('ui/proximity-prompts.md'),
+  },
 ]);
 
 /**

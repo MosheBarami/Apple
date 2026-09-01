@@ -266,3 +266,29 @@ concretely, on a defect no human had noticed.
   shipped, which is the honest order.
 - **The safe-area defect above is real and unfixed**, because fixing it means editing
   `apps/**`.
+
+---
+
+## 2026-09-01, third pass — three of the six empty families closed from the one licence-clear source
+
+`library.test.mjs` pins the uncovered family list exactly, so it cannot be closed by widening an
+existing rule's `styleFamilies` — which §L names as the failure mode and which costs nothing.
+
+Three are now closed properly. Each is an **engine fact** from `Roblox/creator-docs`
+(CC-BY-4.0, the same source already vetted by the corpus intake), and each constrains what a
+design for that family can even do:
+
+| family | rule | the fact it rests on |
+|---|---|---|
+| `social` | treat the default chat window's region as occupied, or disable it deliberately | it ships `Enabled = true` and the player can summon it at any moment, so a panel there competes with a surface you neither own nor can restyle beyond a handful of documented properties |
+| `battleground-fps` | UI shown while `MouseBehavior` is `LockCenter` must release the lock or be navigable without a pointer | `LockCenter` pins the cursor to the screen centre, so the pointer no longer travels and every hover and click target in a conventional GUI becomes unreachable |
+| `dialogue-story` | a `ProximityPrompt` must not be the only route into dialogue | `RequiresLineOfSight` defaults to **true** and is measured from the **camera**, not the character — so the prompt vanishes exactly when a story scene moves the camera |
+
+**`fantasy`, `sci-fi` and `modern` stay open, deliberately.** They are matters of taste, and the
+one source that can prove a licence about itself documents *behaviour*. Writing three plausible
+aesthetic rules to empty the list is precisely what §AK forbids and what the pinned test exists
+to catch. Closing them needs a source that can teach taste and prove a licence; the corpus
+classification found none — every free cartoon UI kit and low-poly pack in the seed manifest is
+a DevForum thread, and a thread is a claim rather than a licence.
+
+The library is 54 rules over 20 of 23 families.

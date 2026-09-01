@@ -189,14 +189,18 @@ test('the genre gap is PINNED, not merely non-empty', () => {
   // that a rule invented because it sounded plausible is worse than an absence.
   // Covering one of them is welcome — it just has to come with an edit here, and
   // to this list in docs/evidence/2026-09-01-design-intelligence.md.
+  //
+  // 2026-09-01: social, battleground-fps and dialogue-story were closed from
+  // Roblox/creator-docs (CC-BY-4.0) — each with an ENGINE FACT that constrains what a design
+  // for that family can do, not with an aesthetic guess. The three that remain are matters of
+  // taste, and the one licence-clear source documents behaviour rather than taste. Closing
+  // them needs a source that can teach taste and can prove a licence about itself; the corpus
+  // classification found none.
   const c = coverage();
   assert.deepEqual(c.uncovered.styleFamilies, [
     'fantasy',
     'sci-fi',
     'modern',
-    'battleground-fps',
-    'social',
-    'dialogue-story',
   ]);
 });
 
