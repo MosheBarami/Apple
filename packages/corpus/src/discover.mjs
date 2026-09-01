@@ -21,7 +21,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { loadSeeds, parseGitHubUrl, seedRecord, capKind } from './intake/seeds.mjs';
+import { loadSeeds, parseGitHubUrl, seedRecord, capKind, validateSeed } from './intake/seeds.mjs';
 import { classify } from './intake/licence.mjs';
 import { toProvenanceRecord } from './intake/forks.mjs';
 
@@ -126,9 +126,70 @@ export async function resolveRepo(seed, { discoveredAt }) {
 }
 
 // ------------------------------------------------------------------------ runner
-export async function run({ force = false, limit = Infinity } = {}) {
+/**
+ * Candidates enumerated from the package registries, if `enumerate.mjs` has produced any.
+ *
+ * THE HANDOFF THAT WAS MISSING. §J asked for the Wally and Pesde indexes to be enumerated, and
+ * they were — once, by hand, into a set of aggregate counts. The 6,588 packages were counted and
+ * discarded: no list, no re-runnable enumerator, and nothing feeding intake, so every record in
+ * the corpus still carried `origin: "seed-manifest"` and the corpus was exactly the seed floor.
+ *
+ * A registry candidate arrives with the licence its PUBLISHER DECLARED, which §H is explicit is
+ * a claim rather than evidence. It is dropped on the floor here on purpose: resolution reads the
+ * repository's actual LICENSE file and `classify` decides, exactly as it does for a hand-picked
+ * seed. An index saying MIT buys a candidate nothing except the right to be checked.
+ */
+function loadRegistrySeeds() {
+  const file = join(PKG, 'data', 'registry-seeds.json');
+  if (!existsSync(file)) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return [];
+  }
+  return (parsed.seeds ?? []).map((s) => ({
+    id: `reg-${s.registryName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`,
+    url: s.url,
+    category: 'registry-package',
+    kind: 'repo',
+    origin: s.origin,
+  }));
+}
+
+export async function run({ force = false, limit = Infinity, includeRegistry = false } = {}) {
   const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
   const seeds = loadSeeds(manifest);
+  if (includeRegistry) {
+    const extra = loadRegistrySeeds().filter((s) => !seeds.byId.has(s.id));
+    // Deduplicate by URL as well as by id: a registry package whose repository is already a
+    // hand-picked seed is the same source twice, and counting it twice is the failure §2 names.
+    const knownUrls = new Set(seeds.entries.map((e) => e.url.replace(/\.git$/, '').toLowerCase()));
+    const novel = extra.filter((s) => !knownUrls.has(s.url.replace(/\.git$/, '').toLowerCase()));
+    //[[ A MALFORMED REGISTRY CANDIDATE IS SKIPPED; A MALFORMED HAND-WRITTEN SEED THROWS.
+    //
+    //   `loadSeeds` is deliberately unforgiving because the manifest is written by a person and
+    //   a typo there is a mistake that should stop the run. This input is different in kind:
+    //   1,082 URLs typed by 1,082 strangers into a package index, where a handful of oddities is
+    //   the expected condition rather than a defect in this repository. One bad row must not
+    //   halt a bulk import — but it must be COUNTED, because silently dropping candidates is how
+    //   a corpus quietly stops growing. ]]
+    let rejected = 0;
+    for (const s of novel) {
+      try {
+        validateSeed(s);
+      } catch {
+        rejected += 1;
+        continue;
+      }
+      seeds.entries.push(s);
+      seeds.byId.set(s.id, s);
+    }
+    console.log(
+      `[discover] +${novel.length - rejected} registry candidates ` +
+        `(${extra.length - novel.length} already known, ${rejected} unusable)`,
+    );
+  }
   const discoveredAt = new Date().toISOString().slice(0, 10);
 
   let store = { generatedAt: null, counts: {}, records: {} };

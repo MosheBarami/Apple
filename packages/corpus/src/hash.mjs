@@ -178,7 +178,12 @@ async function main() {
           'One ContentRecord per distinct normalised content hash. Every observing provenance id is ' +
           'listed and weight is 1, so N forks of one artifact carry the weight of one artifact.',
         counts: { checkouts: hashed.length, distinct: contentRecords.length, clusters: clusters.length },
-        records: contentRecords,
+        //[[ `fileHashes` is DROPPED from the persisted form. It is the bulky half — every file
+        //   in every checkout — and it is entirely regenerable by re-running this script, while
+        //   the part worth keeping in version control is the COLLAPSE: which sources are one
+        //   idea, which diverged, and by how much. Persisting a 600 KB derived index to record a
+        //   23-row answer is how a data directory stops being reviewable. ]]
+        records: contentRecords.map(({ fileHashes: _drop, ...rest }) => rest),
       },
       null,
       2,

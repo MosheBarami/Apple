@@ -16,13 +16,13 @@ that stopped partway.
 
 ## 1. The corpus
 
-217 sources discovered, 119 resolved.
+289 sources discovered, 170 resolved.
 
 | classification | sources | share |
 | --- | --- | --- |
-| `UNCLEAR_QUARANTINE` | 139 | 64 % |
-| `COMMERCIAL_REUSABLE` | 68 | 31 % |
-| `COPYLEFT` | 8 | 4 % |
+| `UNCLEAR_QUARANTINE` | 169 | 58 % |
+| `COMMERCIAL_REUSABLE` | 109 | 38 % |
+| `COPYLEFT` | 9 | 3 % |
 | `ATTRIBUTION_REQUIRED` | 2 | 1 % |
 
 `UNCLEAR_QUARANTINE` is the largest class and that is the honest outcome, not a backlog.
@@ -88,7 +88,7 @@ The boundary these kinds encode is a licence boundary, not a citation style:
 
 ## 4. What has NOT been fetched
 
-46 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
+87 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
 out. They are lawful to use and currently teach nothing.
 
 | id | licence | category | url |
@@ -114,11 +114,11 @@ out. They are lawful to use and currently teach nothing.
 | `gh-raymondwzeng-simulator-in-roblox-studio` | MIT | full-game | https://github.com/raymondwzeng/Simulator-In-Roblox-Studio |
 | `gh-awesome-roblox-awesome-roblox` | CC0-1.0 | official | https://github.com/awesome-roblox/awesome-roblox |
 
-…and 26 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
+…and 67 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
 
 ## 5. Security
 
-23 of 217 sources carry a scan verdict.
+23 of 289 sources carry a scan verdict.
 
 The ordering is load-bearing and `docs/SOURCE-INTELLIGENCE.md` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an

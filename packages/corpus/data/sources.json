@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-09-01T05:06:43.216Z",
+  "generatedAt": "2026-09-01T14:40:06.488Z",
   "counts": {
-    "total": 217,
-    "resolved": 119,
-    "errored": 2,
+    "total": 289,
+    "resolved": 170,
+    "errored": 23,
     "byClass": {
-      "UNCLEAR_QUARANTINE": 139,
-      "COMMERCIAL_REUSABLE": 68,
-      "COPYLEFT": 8,
+      "UNCLEAR_QUARANTINE": 169,
+      "COMMERCIAL_REUSABLE": 109,
+      "COPYLEFT": 9,
       "ATTRIBUTION_REQUIRED": 2
     },
     "byKind": {
@@ -15,7 +15,7 @@
       "devforum": 64,
       "official-docs": 11,
       "registry": 2,
-      "repo": 121
+      "repo": 193
     },
     "byCategory": {
       "generation": 6,
@@ -29,11 +29,8 @@
       "ux-system": 15,
       "world-pack": 13,
       "engineering": 16,
-      "full-game": 33
-    },
-    "security": {
-      "scanned": 23,
-      "unscanned": 194
+      "full-game": 33,
+      "registry-package": 72
     },
     "contentHashed": 23
   },
@@ -13181,6 +13178,4868 @@
         "pushedAt": "2026-05-10T13:49:30Z",
         "defaultBranch": "main",
         "licenceFilePresent": false
+      }
+    },
+    "reg-010devx101-lyra": {
+      "id": "reg-010devx101-lyra",
+      "url": "https://github.com/010devx101/lyra",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/010DevX101/lyra@bf78f9d8bd5d1cc33c74cc336a3849983abb595c",
+        "host": "github.com",
+        "owner": "010DevX101",
+        "repo": "lyra",
+        "ref": "main",
+        "sha": "bf78f9d8bd5d1cc33c74cc336a3849983abb595c",
+        "url": "https://github.com/010DevX101/lyra",
+        "discoveredAt": "2026-09-01",
+        "isFork": true,
+        "upstream": null,
+        "forkCount": 4,
+        "stars": 1,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-29T03:55:26Z",
+          "sizeKb": 688
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Fork of OutOfBears/lyra; content-hash before granting it independent weight (§J)."
+      ],
+      "repo": "010devx101/lyra",
+      "signals": {
+        "stars": 1,
+        "forks": 4,
+        "archived": false,
+        "isFork": true,
+        "parent": "OutOfBears/lyra",
+        "pushedAt": "2026-08-29T03:55:26Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-0hirume-audio": {
+      "id": "reg-0hirume-audio",
+      "url": "https://github.com/0hirume/basis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-0hirume-avatar": {
+      "id": "reg-0hirume-avatar",
+      "url": "https://github.com/0hirume/basis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-0hirume-clip": {
+      "id": "reg-0hirume-clip",
+      "url": "https://github.com/0hirume/basis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-0hirume-flare": {
+      "id": "reg-0hirume-flare",
+      "url": "https://github.com/0hirume/basis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-0hirume-keeper": {
+      "id": "reg-0hirume-keeper",
+      "url": "https://github.com/0hirume/basis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-0hirume-lyra": {
+      "id": "reg-0hirume-lyra",
+      "url": "https://github.com/0hirume/lyra",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/0hirume/lyra@b242e76464d43e4bd85d3f9b9ce92cde50af9232",
+        "host": "github.com",
+        "owner": "0hirume",
+        "repo": "lyra",
+        "ref": "main",
+        "sha": "b242e76464d43e4bd85d3f9b9ce92cde50af9232",
+        "url": "https://github.com/0hirume/lyra",
+        "discoveredAt": "2026-09-01",
+        "isFork": true,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-08T16:15:32Z",
+          "sizeKb": 666
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Fork of paradoxum-games/lyra; content-hash before granting it independent weight (§J)."
+      ],
+      "repo": "0hirume/lyra",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": true,
+        "parent": "paradoxum-games/lyra",
+        "pushedAt": "2026-06-08T16:15:32Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-0hirume-read": {
+      "id": "reg-0hirume-read",
+      "url": "https://github.com/0hirume/basis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-0xsteak-blueprint": {
+      "id": "reg-0xsteak-blueprint",
+      "url": "https://github.com/0xsteak/blueprint",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/0xsteak/blueprint@d38c99b8b14f68ead218b8b99b75b0f6d2772b1d",
+        "host": "github.com",
+        "owner": "0xsteak",
+        "repo": "blueprint",
+        "ref": "main",
+        "sha": "d38c99b8b14f68ead218b8b99b75b0f6d2772b1d",
+        "url": "https://github.com/0xsteak/blueprint",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-03-18T13:19:42Z",
+          "sizeKb": 8
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "0xsteak/blueprint",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-03-18T13:19:42Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-29cmb-cooker": {
+      "id": "reg-29cmb-cooker",
+      "url": "https://github.com/29cmb/Cooker",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/29cmb/Cooker@ee193a7f6ad9e940ce7037df936499ec36206208",
+        "host": "github.com",
+        "owner": "29cmb",
+        "repo": "Cooker",
+        "ref": "master",
+        "sha": "ee193a7f6ad9e940ce7037df936499ec36206208",
+        "url": "https://github.com/29cmb/Cooker",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 1,
+        "stars": 0,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "none",
+          "evidencePath": null,
+          "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": null,
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-07-26T21:37:22Z",
+          "sizeKb": 71
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "29cmb/Cooker",
+      "signals": {
+        "stars": 0,
+        "forks": 1,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-07-26T21:37:22Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": false
+      }
+    },
+    "reg-abendrothj-nexus-sdk": {
+      "id": "reg-abendrothj-nexus-sdk",
+      "url": "https://github.com/abendrothj/nexus",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-acecateer-lyra": {
+      "id": "reg-acecateer-lyra",
+      "url": "https://github.com/wonder-works-studio/lyra",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/wonder-works-studio/lyra@8299c28b59178eb12450323efb13d80c9266bf7a",
+        "host": "github.com",
+        "owner": "wonder-works-studio",
+        "repo": "lyra",
+        "ref": "main",
+        "sha": "8299c28b59178eb12450323efb13d80c9266bf7a",
+        "url": "https://github.com/wonder-works-studio/lyra",
+        "discoveredAt": "2026-09-01",
+        "isFork": true,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-03-06T21:05:49Z",
+          "sizeKb": 667
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Fork of 010DevX101/lyra; content-hash before granting it independent weight (§J)."
+      ],
+      "repo": "wonder-works-studio/lyra",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": true,
+        "parent": "010DevX101/lyra",
+        "pushedAt": "2026-03-06T21:05:49Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-aerodymier-pathfinder": {
+      "id": "reg-aerodymier-pathfinder",
+      "url": "https://github.com/Aerodymier/Pathfinder",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE.md",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE.md the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Aerodymier/Pathfinder@2b40eb06b7ded20a051c46d44bf3bbfed2ef8e6d",
+        "host": "github.com",
+        "owner": "Aerodymier",
+        "repo": "Pathfinder",
+        "ref": "master",
+        "sha": "2b40eb06b7ded20a051c46d44bf3bbfed2ef8e6d",
+        "url": "https://github.com/Aerodymier/Pathfinder",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 1,
+        "stars": 7,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE.md",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE.md the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-07-31T12:43:25Z",
+          "sizeKb": 466
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Aerodymier/Pathfinder",
+      "signals": {
+        "stars": 7,
+        "forks": 1,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-07-31T12:43:25Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-alaqmarg-xp-monitor": {
+      "id": "reg-alaqmarg-xp-monitor",
+      "url": "https://github.com/ShilohAndBros/xp-monitor",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-alexanderlindholt-signalplus": {
+      "id": "reg-alexanderlindholt-signalplus",
+      "url": "https://github.com/AlexanderLindholt/SignalPlus",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/AlexanderLindholt/SignalPlus@08a6461678983257bda6c16600d1991d411f11c3",
+        "host": "github.com",
+        "owner": "AlexanderLindholt",
+        "repo": "SignalPlus",
+        "ref": "main",
+        "sha": "08a6461678983257bda6c16600d1991d411f11c3",
+        "url": "https://github.com/AlexanderLindholt/SignalPlus",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 12,
+        "stars": 35,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-05-10T19:25:32Z",
+          "sizeKb": 296
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "AlexanderLindholt/SignalPlus",
+      "signals": {
+        "stars": 35,
+        "forks": 12,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-05-10T19:25:32Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-alexanderlindholt-tweenplus": {
+      "id": "reg-alexanderlindholt-tweenplus",
+      "url": "https://github.com/AlexanderLindholt/TweenPlus",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/AlexanderLindholt/TweenPlus@a37d4958d01064d6c2a97c5c9bbf55a62db8d79e",
+        "host": "github.com",
+        "owner": "AlexanderLindholt",
+        "repo": "TweenPlus",
+        "ref": "main",
+        "sha": "a37d4958d01064d6c2a97c5c9bbf55a62db8d79e",
+        "url": "https://github.com/AlexanderLindholt/TweenPlus",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 3,
+        "stars": 18,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-07-06T13:23:00Z",
+          "sizeKb": 452
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "AlexanderLindholt/TweenPlus",
+      "signals": {
+        "stars": 18,
+        "forks": 3,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-07-06T13:23:00Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-anexpia-squish": {
+      "id": "reg-anexpia-squish",
+      "url": "https://github.com/anexpia/Squish",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/anexpia/Squish@79f5bc5156ccacd3a47bd69211e6b3058b61455b",
+        "host": "github.com",
+        "owner": "anexpia",
+        "repo": "Squish",
+        "ref": "main",
+        "sha": "79f5bc5156ccacd3a47bd69211e6b3058b61455b",
+        "url": "https://github.com/anexpia/Squish",
+        "discoveredAt": "2026-09-01",
+        "isFork": true,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-05T14:13:54Z",
+          "sizeKb": 17380
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Fork of Data-Oriented-House/Squash; content-hash before granting it independent weight (§J)."
+      ],
+      "repo": "anexpia/Squish",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": true,
+        "parent": "Data-Oriented-House/Squash",
+        "pushedAt": "2026-08-05T14:13:54Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-anexpia-syncee": {
+      "id": "reg-anexpia-syncee",
+      "url": "https://github.com/anexpia/syncee",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/anexpia/syncee@6b8fc1e25c0464d85eb074e7afe8df4dbfe597bf",
+        "host": "github.com",
+        "owner": "anexpia",
+        "repo": "syncee",
+        "ref": "main",
+        "sha": "6b8fc1e25c0464d85eb074e7afe8df4dbfe597bf",
+        "url": "https://github.com/anexpia/syncee",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 1,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-05T18:08:48Z",
+          "sizeKb": 1732
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "anexpia/syncee",
+      "signals": {
+        "stars": 1,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-05T18:08:48Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-anothersubatomo-chaconne": {
+      "id": "reg-anothersubatomo-chaconne",
+      "url": "https://github.com/anothersubatomo/chaconne",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-anothersubatomo-quark": {
+      "id": "reg-anothersubatomo-quark",
+      "url": "https://github.com/anothersubatomo/quark",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COPYLEFT",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": "MPL-2.0",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/AnotherSubatomo/quark@c62f10dc2bf9b3222383e4a9d402f76139e02b2f",
+        "host": "github.com",
+        "owner": "AnotherSubatomo",
+        "repo": "quark",
+        "ref": "main",
+        "sha": "c62f10dc2bf9b3222383e4a9d402f76139e02b2f",
+        "url": "https://github.com/AnotherSubatomo/quark",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COPYLEFT",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": "MPL-2.0",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MPL-2.0",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-04-07T07:56:50Z",
+          "sizeKb": 10
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "anothersubatomo/quark",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-04-07T07:56:50Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-ansiktemuskler4489-guistruct": {
+      "id": "reg-ansiktemuskler4489-guistruct",
+      "url": "https://github.com/ansiktemuskler4489/GuiStruct",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-anytrio-anirio-table": {
+      "id": "reg-anytrio-anirio-table",
+      "url": "https://github.com/AnyTrio/AnirioUtility",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/AnyTrio/AnirioUtility@d696315962a94714034ad46cec5ed9244a92c8b0",
+        "host": "github.com",
+        "owner": "AnyTrio",
+        "repo": "AnirioUtility",
+        "ref": "master",
+        "sha": "d696315962a94714034ad46cec5ed9244a92c8b0",
+        "url": "https://github.com/AnyTrio/AnirioUtility",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-28T19:29:12Z",
+          "sizeKb": 78
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "AnyTrio/AnirioUtility",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-28T19:29:12Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-anytrio-player-utility": {
+      "id": "reg-anytrio-player-utility",
+      "url": "https://github.com/AnyTrio/AnirioUtility",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/AnyTrio/AnirioUtility@d696315962a94714034ad46cec5ed9244a92c8b0",
+        "host": "github.com",
+        "owner": "AnyTrio",
+        "repo": "AnirioUtility",
+        "ref": "master",
+        "sha": "d696315962a94714034ad46cec5ed9244a92c8b0",
+        "url": "https://github.com/AnyTrio/AnirioUtility",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-28T19:29:12Z",
+          "sizeKb": 78
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "AnyTrio/AnirioUtility",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-28T19:29:12Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-anytrio-spatial-query": {
+      "id": "reg-anytrio-spatial-query",
+      "url": "https://github.com/AnyTrio/AnirioUtility",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/AnyTrio/AnirioUtility@d696315962a94714034ad46cec5ed9244a92c8b0",
+        "host": "github.com",
+        "owner": "AnyTrio",
+        "repo": "AnirioUtility",
+        "ref": "master",
+        "sha": "d696315962a94714034ad46cec5ed9244a92c8b0",
+        "url": "https://github.com/AnyTrio/AnirioUtility",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-28T19:29:12Z",
+          "sizeKb": 78
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "AnyTrio/AnirioUtility",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-28T19:29:12Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-arakodev-mrdialogue": {
+      "id": "reg-arakodev-mrdialogue",
+      "url": "https://github.com/arakoDev/MrDialogue",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/arakoDev/MrDialogue@72bc9f18b88b101b0d09599a7c3b216a3fee14ec",
+        "host": "github.com",
+        "owner": "arakoDev",
+        "repo": "MrDialogue",
+        "ref": "main",
+        "sha": "72bc9f18b88b101b0d09599a7c3b216a3fee14ec",
+        "url": "https://github.com/arakoDev/MrDialogue",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-02T14:46:08Z",
+          "sizeKb": 874
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "arakoDev/MrDialogue",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-02T14:46:08Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-arenn22-connection-hub": {
+      "id": "reg-arenn22-connection-hub",
+      "url": "https://github.com/arenn22/Connection-Hub",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/arenn22/Connection-Hub@820e12a84564696d8244d738ae2a0c8b155b1d6b",
+        "host": "github.com",
+        "owner": "arenn22",
+        "repo": "Connection-Hub",
+        "ref": "main",
+        "sha": "820e12a84564696d8244d738ae2a0c8b155b1d6b",
+        "url": "https://github.com/arenn22/Connection-Hub",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 1,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-27T06:49:14Z",
+          "sizeKb": 35
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "arenn22/Connection-Hub",
+      "signals": {
+        "stars": 0,
+        "forks": 1,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-27T06:49:14Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-arensiboi-cifra": {
+      "id": "reg-arensiboi-cifra",
+      "url": "https://github.com/ArensiBoi/Cifra",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "license-file",
+        "evidencePath": "LICENSE.MD",
+        "reason": "LICENSE.MD reads as MIT but the declared SPDX id is NOASSERTION; a licence disagreeing with its own declaration is exactly the ambiguity §3 quarantines."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/ArensiBoi/Cifra@f5fd6348ff554fead04d3327632238ef6ba6be1c",
+        "host": "github.com",
+        "owner": "ArensiBoi",
+        "repo": "Cifra",
+        "ref": "main",
+        "sha": "f5fd6348ff554fead04d3327632238ef6ba6be1c",
+        "url": "https://github.com/ArensiBoi/Cifra",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "license-file",
+          "evidencePath": "LICENSE.MD",
+          "reason": "LICENSE.MD reads as MIT but the declared SPDX id is NOASSERTION; a licence disagreeing with its own declaration is exactly the ambiguity §3 quarantines."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "NOASSERTION",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-07-31T04:43:51Z",
+          "sizeKb": 48
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "ArensiBoi/Cifra",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-07-31T04:43:51Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-areshaistg-asset-manager": {
+      "id": "reg-areshaistg-asset-manager",
+      "url": "https://github.com/areshaistg/rbx-asset-manager",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "Apache-2.0",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "Apache-2.0 is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/areshaistg/rbx-asset-manager@7712d3ab0e66039331790657641d7b26a3b9a79d",
+        "host": "github.com",
+        "owner": "areshaistg",
+        "repo": "rbx-asset-manager",
+        "ref": "main",
+        "sha": "7712d3ab0e66039331790657641d7b26a3b9a79d",
+        "url": "https://github.com/areshaistg/rbx-asset-manager",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 1,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "Apache-2.0",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "Apache-2.0 is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "Apache-2.0",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-01-28T15:29:33Z",
+          "sizeKb": 10
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "areshaistg/rbx-asset-manager",
+      "signals": {
+        "stars": 1,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-01-28T15:29:33Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-aristosis-axis": {
+      "id": "reg-aristosis-axis",
+      "url": "https://github.com/NeonD00m/Axis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/NeonD00m/Axis@045d645f477cafaaa6402dbb5f658b398258c113",
+        "host": "github.com",
+        "owner": "NeonD00m",
+        "repo": "Axis",
+        "ref": "main",
+        "sha": "045d645f477cafaaa6402dbb5f658b398258c113",
+        "url": "https://github.com/NeonD00m/Axis",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 5,
+        "stars": 14,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-02-15T23:39:48Z",
+          "sizeKb": 8562
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "NeonD00m/Axis",
+      "signals": {
+        "stars": 14,
+        "forks": 5,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-02-15T23:39:48Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-artzified-parallelizer": {
+      "id": "reg-artzified-parallelizer",
+      "url": "https://github.com/scion-softworks/parallelizer",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/scion-softworks/parallelizer@04401e8068ecb42449e025d3ebed1a8d1d062301",
+        "host": "github.com",
+        "owner": "scion-softworks",
+        "repo": "parallelizer",
+        "ref": "main",
+        "sha": "04401e8068ecb42449e025d3ebed1a8d1d062301",
+        "url": "https://github.com/scion-softworks/parallelizer",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 1,
+        "stars": 11,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-03-27T15:22:32Z",
+          "sizeKb": 823
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "scion-softworks/parallelizer",
+      "signals": {
+        "stars": 11,
+        "forks": 1,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-03-27T15:22:32Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-arythmitical-typedenum": {
+      "id": "reg-arythmitical-typedenum",
+      "url": "https://github.com/arythmitical/TypedEnum",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-asiandayboy-inventorymakerclient": {
+      "id": "reg-asiandayboy-inventorymakerclient",
+      "url": "https://github.com/Asiandayboy/InventoryMaker",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Asiandayboy/InventoryMaker@abe56671cc41c2e730164a19211e600dfcde597b",
+        "host": "github.com",
+        "owner": "Asiandayboy",
+        "repo": "InventoryMaker",
+        "ref": "main",
+        "sha": "abe56671cc41c2e730164a19211e600dfcde597b",
+        "url": "https://github.com/Asiandayboy/InventoryMaker",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 16,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-12-21T12:54:29Z",
+          "sizeKb": 668
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Asiandayboy/InventoryMaker",
+      "signals": {
+        "stars": 16,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-12-21T12:54:29Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-asiandayboy-inventorymakerserver": {
+      "id": "reg-asiandayboy-inventorymakerserver",
+      "url": "https://github.com/Asiandayboy/InventoryMaker",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Asiandayboy/InventoryMaker@abe56671cc41c2e730164a19211e600dfcde597b",
+        "host": "github.com",
+        "owner": "Asiandayboy",
+        "repo": "InventoryMaker",
+        "ref": "main",
+        "sha": "abe56671cc41c2e730164a19211e600dfcde597b",
+        "url": "https://github.com/Asiandayboy/InventoryMaker",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 16,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-12-21T12:54:29Z",
+          "sizeKb": 668
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Asiandayboy/InventoryMaker",
+      "signals": {
+        "stars": 16,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-12-21T12:54:29Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-athar-adv-item-group": {
+      "id": "reg-athar-adv-item-group",
+      "url": "https://github.com/athar-adv/ItemGroup",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/athar-adv/ItemGroup@2aae10f22cf979cdca9f53566157e24c2a2365cf",
+        "host": "github.com",
+        "owner": "athar-adv",
+        "repo": "ItemGroup",
+        "ref": "main",
+        "sha": "2aae10f22cf979cdca9f53566157e24c2a2365cf",
+        "url": "https://github.com/athar-adv/ItemGroup",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 1,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-12-15T08:10:51Z",
+          "sizeKb": 1123
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "athar-adv/ItemGroup",
+      "signals": {
+        "stars": 1,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-12-15T08:10:51Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-athar-adv-replicated-registry": {
+      "id": "reg-athar-adv-replicated-registry",
+      "url": "https://github.com/athar-adv/ReplicatedRegistry2",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/athar-adv/ReplicatedRegistry2@bb7864f78f2f82eaa0a61bd954955e0494de4ddf",
+        "host": "github.com",
+        "owner": "athar-adv",
+        "repo": "ReplicatedRegistry2",
+        "ref": "main",
+        "sha": "bb7864f78f2f82eaa0a61bd954955e0494de4ddf",
+        "url": "https://github.com/athar-adv/ReplicatedRegistry2",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 3,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-07-22T02:43:06Z",
+          "sizeKb": 2083
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "athar-adv/ReplicatedRegistry2",
+      "signals": {
+        "stars": 3,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-07-22T02:43:06Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-atlascreative-lyra": {
+      "id": "reg-atlascreative-lyra",
+      "url": "https://github.com/paradoxum-games/lyra",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/paradoxum-games/lyra@e8927a9daa7c1be24bbafc600e8ed0bf0befe3e5",
+        "host": "github.com",
+        "owner": "paradoxum-games",
+        "repo": "lyra",
+        "ref": "main",
+        "sha": "e8927a9daa7c1be24bbafc600e8ed0bf0befe3e5",
+        "url": "https://github.com/paradoxum-games/lyra",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 27,
+        "stars": 151,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-03-25T13:46:06Z",
+          "sizeKb": 2228
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "paradoxum-games/lyra",
+      "signals": {
+        "stars": 151,
+        "forks": 27,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-03-25T13:46:06Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-avant-rbx-avant-runtime": {
+      "id": "reg-avant-rbx-avant-runtime",
+      "url": "https://github.com/Avant-Rbx/Avant-Runtime",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Avant-Rbx/Avant-Runtime@e24fa0dabea54fd7a51e7e9fb2b827ded4e847d4",
+        "host": "github.com",
+        "owner": "Avant-Rbx",
+        "repo": "Avant-Runtime",
+        "ref": "main",
+        "sha": "e24fa0dabea54fd7a51e7e9fb2b827ded4e847d4",
+        "url": "https://github.com/Avant-Rbx/Avant-Runtime",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 1,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-10-26T05:07:36Z",
+          "sizeKb": 149
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Avant-Rbx/Avant-Runtime",
+      "signals": {
+        "stars": 1,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-10-26T05:07:36Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-avgbyfronenjoyer-lyra": {
+      "id": "reg-avgbyfronenjoyer-lyra",
+      "url": "https://github.com/010devx101/lyra",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/010DevX101/lyra@bf78f9d8bd5d1cc33c74cc336a3849983abb595c",
+        "host": "github.com",
+        "owner": "010DevX101",
+        "repo": "lyra",
+        "ref": "main",
+        "sha": "bf78f9d8bd5d1cc33c74cc336a3849983abb595c",
+        "url": "https://github.com/010DevX101/lyra",
+        "discoveredAt": "2026-09-01",
+        "isFork": true,
+        "upstream": null,
+        "forkCount": 4,
+        "stars": 1,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-29T03:55:26Z",
+          "sizeKb": 688
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Fork of OutOfBears/lyra; content-hash before granting it independent weight (§J)."
+      ],
+      "repo": "010devx101/lyra",
+      "signals": {
+        "stars": 1,
+        "forks": 4,
+        "archived": false,
+        "isFork": true,
+        "parent": "OutOfBears/lyra",
+        "pushedAt": "2026-08-29T03:55:26Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-axp3cter-lync": {
+      "id": "reg-axp3cter-lync",
+      "url": "https://github.com/Axp3cter/Lync",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Axp3cter/Lync@99447caf2cb0cedb53e6866585c4c8ea6bcee0cb",
+        "host": "github.com",
+        "owner": "Axp3cter",
+        "repo": "Lync",
+        "ref": "main",
+        "sha": "99447caf2cb0cedb53e6866585c4c8ea6bcee0cb",
+        "url": "https://github.com/Axp3cter/Lync",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 2,
+        "stars": 18,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-29T06:01:19Z",
+          "sizeKb": 2237
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Axp3cter/Lync",
+      "signals": {
+        "stars": 18,
+        "forks": 2,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-29T06:01:19Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-b-j-roberts-starknet-luau": {
+      "id": "reg-b-j-roberts-starknet-luau",
+      "url": "https://github.com/b-j-roberts/starknet-luau",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/b-j-roberts/starknet-luau@586f4fdf9eecf97e92f70ee06c7042413c5e038a",
+        "host": "github.com",
+        "owner": "b-j-roberts",
+        "repo": "starknet-luau",
+        "ref": "main",
+        "sha": "586f4fdf9eecf97e92f70ee06c7042413c5e038a",
+        "url": "https://github.com/b-j-roberts/starknet-luau",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 2,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-03-13T03:49:16Z",
+          "sizeKb": 1646
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "b-j-roberts/starknet-luau",
+      "signals": {
+        "stars": 2,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-03-13T03:49:16Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-bazalbuilder-aegis": {
+      "id": "reg-bazalbuilder-aegis",
+      "url": "https://github.com/Bazalbuilder/aegis",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bazalbuilder-dash-community": {
+      "id": "reg-bazalbuilder-dash-community",
+      "url": "https://github.com/Bazalbuilder/Flash",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bazalbuilder-lunit": {
+      "id": "reg-bazalbuilder-lunit",
+      "url": "https://github.com/Bazalbuilder/Lunit",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bhr1stt-bstrees": {
+      "id": "reg-bhr1stt-bstrees",
+      "url": "https://github.com/bhr1stt/BSTrees",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bhr1stt-structkit": {
+      "id": "reg-bhr1stt-structkit",
+      "url": "https://github.com/bhr1stt/StructKit",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bigfootpp-lucid": {
+      "id": "reg-bigfootpp-lucid",
+      "url": "https://github.com/Bigfootpp/lucid",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Bigfootpp/lucid@cd5d8929dbec97cdc6dc88e846121793c3d2f0fa",
+        "host": "github.com",
+        "owner": "Bigfootpp",
+        "repo": "lucid",
+        "ref": "main",
+        "sha": "cd5d8929dbec97cdc6dc88e846121793c3d2f0fa",
+        "url": "https://github.com/Bigfootpp/lucid",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-21T00:50:43Z",
+          "sizeKb": 108
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Bigfootpp/lucid",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-21T00:50:43Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-bigfootpp-skiptable": {
+      "id": "reg-bigfootpp-skiptable",
+      "url": "https://github.com/Bigfootpp/skiptable-luau",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bigfootpp-spec": {
+      "id": "reg-bigfootpp-spec",
+      "url": "https://github.com/Bigfootpp/spec",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "LICENSE reads as BSD-3-Clause but the declared SPDX id is NOASSERTION; a licence disagreeing with its own declaration is exactly the ambiguity §3 quarantines."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Bigfootpp/spec@16339b996b1a31bba8bec318d61bc5425f586fdc",
+        "host": "github.com",
+        "owner": "Bigfootpp",
+        "repo": "spec",
+        "ref": "master",
+        "sha": "16339b996b1a31bba8bec318d61bc5425f586fdc",
+        "url": "https://github.com/Bigfootpp/spec",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "LICENSE reads as BSD-3-Clause but the declared SPDX id is NOASSERTION; a licence disagreeing with its own declaration is exactly the ambiguity §3 quarantines."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "NOASSERTION",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-04T18:17:01Z",
+          "sizeKb": 19
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Bigfootpp/spec",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-04T18:17:01Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-bigfootpp-sync": {
+      "id": "reg-bigfootpp-sync",
+      "url": "https://github.com/Bigfootpp/lucid",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Bigfootpp/lucid@cd5d8929dbec97cdc6dc88e846121793c3d2f0fa",
+        "host": "github.com",
+        "owner": "Bigfootpp",
+        "repo": "lucid",
+        "ref": "main",
+        "sha": "cd5d8929dbec97cdc6dc88e846121793c3d2f0fa",
+        "url": "https://github.com/Bigfootpp/lucid",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-21T00:50:43Z",
+          "sizeKb": 108
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Bigfootpp/lucid",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-21T00:50:43Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-analyticskit": {
+      "id": "reg-biotoxin495-analyticskit",
+      "url": "https://github.com/biotoxin495/AnalyticsKit",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/AnalyticsKit@65cfd25c2c35e0c1829ea85333554bb36ab512ed",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "AnalyticsKit",
+        "ref": "main",
+        "sha": "65cfd25c2c35e0c1829ea85333554bb36ab512ed",
+        "url": "https://github.com/biotoxin495/AnalyticsKit",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T11:06:13Z",
+          "sizeKb": 18
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/AnalyticsKit",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T11:06:13Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-dropdown": {
+      "id": "reg-biotoxin495-dropdown",
+      "url": "https://github.com/biotoxin495/Dropdown",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/Dropdown@9437ada32c7255ae12502cf553e96e76c424808a",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "Dropdown",
+        "ref": "main",
+        "sha": "9437ada32c7255ae12502cf553e96e76c424808a",
+        "url": "https://github.com/biotoxin495/Dropdown",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-30T13:37:06Z",
+          "sizeKb": 17
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/Dropdown",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-30T13:37:06Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-guiinteractioneffects": {
+      "id": "reg-biotoxin495-guiinteractioneffects",
+      "url": "https://github.com/biotoxin495/GuiInteractionEffects",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/GuiInteractionEffects@8428d0c6cb6ff50fc588aaed32d446373a1156b7",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "GuiInteractionEffects",
+        "ref": "main",
+        "sha": "8428d0c6cb6ff50fc588aaed32d446373a1156b7",
+        "url": "https://github.com/biotoxin495/GuiInteractionEffects",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T23:29:29Z",
+          "sizeKb": 15
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/GuiInteractionEffects",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T23:29:29Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-loadingspinner": {
+      "id": "reg-biotoxin495-loadingspinner",
+      "url": "https://github.com/biotoxin495/LoadingSpinner",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/LoadingSpinner@7f691f3f8cac5a544fb7011081b69dd89ec3d33f",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "LoadingSpinner",
+        "ref": "main",
+        "sha": "7f691f3f8cac5a544fb7011081b69dd89ec3d33f",
+        "url": "https://github.com/biotoxin495/LoadingSpinner",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T23:21:23Z",
+          "sizeKb": 12
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/LoadingSpinner",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T23:21:23Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-notificationkit": {
+      "id": "reg-biotoxin495-notificationkit",
+      "url": "https://github.com/biotoxin495/NotificationKit",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/NotificationKit@6fae5ed551237074c68eae922e0638997de83e07",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "NotificationKit",
+        "ref": "main",
+        "sha": "6fae5ed551237074c68eae922e0638997de83e07",
+        "url": "https://github.com/biotoxin495/NotificationKit",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T23:25:27Z",
+          "sizeKb": 26
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/NotificationKit",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T23:25:27Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-numberspinnerv2": {
+      "id": "reg-biotoxin495-numberspinnerv2",
+      "url": "https://github.com/biotoxin495/NumberSpinnerV2",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/NumberSpinnerV2@f6e2b2f94d6b56cb50697e4630a5d42062b3c44a",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "NumberSpinnerV2",
+        "ref": "main",
+        "sha": "f6e2b2f94d6b56cb50697e4630a5d42062b3c44a",
+        "url": "https://github.com/biotoxin495/NumberSpinnerV2",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 3,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T11:07:12Z",
+          "sizeKb": 25
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/NumberSpinnerV2",
+      "signals": {
+        "stars": 3,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T11:07:12Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-roblox-utils": {
+      "id": "reg-biotoxin495-roblox-utils",
+      "url": "https://github.com/biotoxin495/roblox-utils",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-biotoxin495-scrollframescaler": {
+      "id": "reg-biotoxin495-scrollframescaler",
+      "url": "https://github.com/biotoxin495/ScrollFrameScaler",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/ScrollFrameScaler@1657a1ffba1d0666eb83103667c01f7d03f563f9",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "ScrollFrameScaler",
+        "ref": "main",
+        "sha": "1657a1ffba1d0666eb83103667c01f7d03f563f9",
+        "url": "https://github.com/biotoxin495/ScrollFrameScaler",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T23:22:38Z",
+          "sizeKb": 9
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/ScrollFrameScaler",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T23:22:38Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-taskscheduler": {
+      "id": "reg-biotoxin495-taskscheduler",
+      "url": "https://github.com/biotoxin495/TaskScheduler",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/TaskScheduler@ce68b1650d825404d0d3702bf63154f9188fdb75",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "TaskScheduler",
+        "ref": "main",
+        "sha": "ce68b1650d825404d0d3702bf63154f9188fdb75",
+        "url": "https://github.com/biotoxin495/TaskScheduler",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-28T11:18:27Z",
+          "sizeKb": 8
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/TaskScheduler",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-28T11:18:27Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-tooltipmanager": {
+      "id": "reg-biotoxin495-tooltipmanager",
+      "url": "https://github.com/biotoxin495/TooltipManager",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/TooltipManager@acda8f953f53507b29b54cb7b3e41267b74caa3d",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "TooltipManager",
+        "ref": "main",
+        "sha": "acda8f953f53507b29b54cb7b3e41267b74caa3d",
+        "url": "https://github.com/biotoxin495/TooltipManager",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T23:19:58Z",
+          "sizeKb": 11
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/TooltipManager",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T23:19:58Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-biotoxin495-uihighlighter": {
+      "id": "reg-biotoxin495-uihighlighter",
+      "url": "https://github.com/biotoxin495/UIHighlighter",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/biotoxin495/UIHighlighter@65c7ab41dcfa8312c6b18ad117ce5b391f92cd2f",
+        "host": "github.com",
+        "owner": "biotoxin495",
+        "repo": "UIHighlighter",
+        "ref": "main",
+        "sha": "65c7ab41dcfa8312c6b18ad117ce5b391f92cd2f",
+        "url": "https://github.com/biotoxin495/UIHighlighter",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-06T23:23:32Z",
+          "sizeKb": 11
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "biotoxin495/UIHighlighter",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-06T23:23:32Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-bizwiz3-loader": {
+      "id": "reg-bizwiz3-loader",
+      "url": "https://github.com/BizWiz3/Loader",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/BizWiz3/Loader@52d6640e37bdfdfdf037192de8204039d95733ab",
+        "host": "github.com",
+        "owner": "BizWiz3",
+        "repo": "Loader",
+        "ref": "main",
+        "sha": "52d6640e37bdfdfdf037192de8204039d95733ab",
+        "url": "https://github.com/BizWiz3/Loader",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-06-30T04:04:16Z",
+          "sizeKb": 4
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "BizWiz3/Loader",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-06-30T04:04:16Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-blakesd-forge-vfx": {
+      "id": "reg-blakesd-forge-vfx",
+      "url": "https://github.com/zilibobi/forge-vfx",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "LICENSE reads as MIT but the declared SPDX id is NOASSERTION; a licence disagreeing with its own declaration is exactly the ambiguity §3 quarantines."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/zilibobi/forge-vfx@f3faf4f42ce4e87d9748c3ac4763e2cc039a0512",
+        "host": "github.com",
+        "owner": "zilibobi",
+        "repo": "forge-vfx",
+        "ref": "main",
+        "sha": "f3faf4f42ce4e87d9748c3ac4763e2cc039a0512",
+        "url": "https://github.com/zilibobi/forge-vfx",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 5,
+        "stars": 16,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "LICENSE reads as MIT but the declared SPDX id is NOASSERTION; a licence disagreeing with its own declaration is exactly the ambiguity §3 quarantines."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "NOASSERTION",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-07-26T18:44:31Z",
+          "sizeKb": 494
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "zilibobi/forge-vfx",
+      "signals": {
+        "stars": 16,
+        "forks": 5,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-07-26T18:44:31Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-blukezz-snowlib": {
+      "id": "reg-blukezz-snowlib",
+      "url": "https://github.com/Blukezz/snowlib",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "LICENSE is present but its terms match no licence this classifier recognises. The host reports LGPL-3.0, which a reviewer can confirm."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/Blukezz/snowlib@6f85e6bad25bfd5f264de2924f39e914e5d29d9c",
+        "host": "github.com",
+        "owner": "Blukezz",
+        "repo": "snowlib",
+        "ref": "main",
+        "sha": "6f85e6bad25bfd5f264de2924f39e914e5d29d9c",
+        "url": "https://github.com/Blukezz/snowlib",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 1,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "LICENSE is present but its terms match no licence this classifier recognises. The host reports LGPL-3.0, which a reviewer can confirm."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "LGPL-3.0",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-05-12T03:12:27Z",
+          "sizeKb": 23
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "Blukezz/snowlib",
+      "signals": {
+        "stars": 1,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-05-12T03:12:27Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-boshyxd-rosentry": {
+      "id": "reg-boshyxd-rosentry",
+      "url": "https://github.com/boshyxd/rosentry",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-bruvblesgitdev-boundhitbox": {
+      "id": "reg-bruvblesgitdev-boundhitbox",
+      "url": "https://github.com/bruvblesgitdev/boundhitbox",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
+      }
+    },
+    "reg-call23re-soma": {
+      "id": "reg-call23re-soma",
+      "url": "https://github.com/call23re/soma",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/call23re/soma@81ee74c635e3c85aef7a7817a8b5869efa6d61f2",
+        "host": "github.com",
+        "owner": "call23re",
+        "repo": "soma",
+        "ref": "master",
+        "sha": "81ee74c635e3c85aef7a7817a8b5869efa6d61f2",
+        "url": "https://github.com/call23re/soma",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-06-09T12:20:11Z",
+          "sizeKb": 42
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "call23re/soma",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-06-09T12:20:11Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-cayasde-lutest": {
+      "id": "reg-cayasde-lutest",
+      "url": "https://github.com/lutest-dev/lutest",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "COMMERCIAL_REUSABLE",
+        "reuse": "allowed",
+        "training": "allowed",
+        "spdx": "MIT",
+        "evidence": "license-file",
+        "evidencePath": "LICENSE",
+        "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/lutest-dev/lutest@5e575c5597bd62538fa2238fc70b624c4700e9fb",
+        "host": "github.com",
+        "owner": "lutest-dev",
+        "repo": "lutest",
+        "ref": "main",
+        "sha": "5e575c5597bd62538fa2238fc70b624c4700e9fb",
+        "url": "https://github.com/lutest-dev/lutest",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 1,
+        "stars": 8,
+        "licence": {
+          "class": "COMMERCIAL_REUSABLE",
+          "reuse": "allowed",
+          "training": "allowed",
+          "spdx": "MIT",
+          "evidence": "license-file",
+          "evidencePath": "LICENSE",
+          "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": "MIT",
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2026-08-28T15:04:18Z",
+          "sizeKb": 705
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "lutest-dev/lutest",
+      "signals": {
+        "stars": 8,
+        "forks": 1,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2026-08-28T15:04:18Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": true
+      }
+    },
+    "reg-cerebrallabs-ceebral": {
+      "id": "reg-cerebrallabs-ceebral",
+      "url": "https://github.com/CerebralLabs/cerebral/tree/v0.0.3",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/CerebralLabs/cerebral@56b4c3f79112f03d0e4022401027c0345a689648",
+        "host": "github.com",
+        "owner": "CerebralLabs",
+        "repo": "cerebral",
+        "ref": "master",
+        "sha": "56b4c3f79112f03d0e4022401027c0345a689648",
+        "url": "https://github.com/CerebralLabs/cerebral",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 6,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "none",
+          "evidencePath": null,
+          "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": null,
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-09-05T13:17:11Z",
+          "sizeKb": 78
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "CerebralLabs/cerebral",
+      "signals": {
+        "stars": 6,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-09-05T13:17:11Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": false
+      }
+    },
+    "reg-cerebrallabs-cerebral": {
+      "id": "reg-cerebrallabs-cerebral",
+      "url": "https://github.com/CerebralLabs/cerebral/tree/v0.0.4",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/CerebralLabs/cerebral@56b4c3f79112f03d0e4022401027c0345a689648",
+        "host": "github.com",
+        "owner": "CerebralLabs",
+        "repo": "cerebral",
+        "ref": "master",
+        "sha": "56b4c3f79112f03d0e4022401027c0345a689648",
+        "url": "https://github.com/CerebralLabs/cerebral",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 6,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "none",
+          "evidencePath": null,
+          "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": null,
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-09-05T13:17:11Z",
+          "sizeKb": 78
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "CerebralLabs/cerebral",
+      "signals": {
+        "stars": 6,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-09-05T13:17:11Z",
+        "defaultBranch": "master",
+        "licenceFilePresent": false
+      }
+    },
+    "reg-christian-toney-edtw-profile": {
+      "id": "reg-christian-toney-edtw-profile",
+      "url": "https://github.com/EveryoneDestroysTheWorld/stage",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/EveryoneDestroysTheWorld/stage@20021dedc9a076640b19794ef8a62b89785fb716",
+        "host": "github.com",
+        "owner": "EveryoneDestroysTheWorld",
+        "repo": "stage",
+        "ref": "main",
+        "sha": "20021dedc9a076640b19794ef8a62b89785fb716",
+        "url": "https://github.com/EveryoneDestroysTheWorld/stage",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "none",
+          "evidencePath": null,
+          "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": null,
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-01-09T03:49:59Z",
+          "sizeKb": 6
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "EveryoneDestroysTheWorld/stage",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-01-09T03:49:59Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": false
+      }
+    },
+    "reg-christian-toney-edtw-stage": {
+      "id": "reg-christian-toney-edtw-stage",
+      "url": "https://github.com/EveryoneDestroysTheWorld/stage",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": true,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": {
+        "id": "github.com/EveryoneDestroysTheWorld/stage@20021dedc9a076640b19794ef8a62b89785fb716",
+        "host": "github.com",
+        "owner": "EveryoneDestroysTheWorld",
+        "repo": "stage",
+        "ref": "main",
+        "sha": "20021dedc9a076640b19794ef8a62b89785fb716",
+        "url": "https://github.com/EveryoneDestroysTheWorld/stage",
+        "discoveredAt": "2026-09-01",
+        "isFork": false,
+        "upstream": null,
+        "forkCount": 0,
+        "stars": 0,
+        "licence": {
+          "class": "UNCLEAR_QUARANTINE",
+          "reuse": "forbidden",
+          "training": "forbidden",
+          "spdx": null,
+          "evidence": "none",
+          "evidencePath": null,
+          "reason": "No licence file, no SPDX identifier and no explicit terms were found; absence of evidence is not permission."
+        },
+        "security": {
+          "safe": false,
+          "class": "unscanned",
+          "signals": [],
+          "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        },
+        "contentHash": null,
+        "shaResolved": true,
+        "unverified": {
+          "spdxId": null,
+          "archived": false,
+          "disabled": false,
+          "private": false,
+          "pushedAt": "2025-01-09T03:49:59Z",
+          "sizeKb": 6
+        }
+      },
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable."
+      ],
+      "repo": "EveryoneDestroysTheWorld/stage",
+      "signals": {
+        "stars": 0,
+        "forks": 0,
+        "archived": false,
+        "isFork": false,
+        "parent": null,
+        "pushedAt": "2025-01-09T03:49:59Z",
+        "defaultBranch": "main",
+        "licenceFilePresent": false
+      }
+    },
+    "reg-cinnamonarc-tag-hooks": {
+      "id": "reg-cinnamonarc-tag-hooks",
+      "url": "https://github.com/CinnamonArc/Package_TagService",
+      "category": "registry-package",
+      "kind": "repo",
+      "origin": "seed-manifest",
+      "strategy": "github-api",
+      "canProveLicence": true,
+      "canContentHash": true,
+      "discoveredAt": "2026-09-01",
+      "resolved": false,
+      "licence": {
+        "class": "UNCLEAR_QUARANTINE",
+        "reuse": "forbidden",
+        "training": "forbidden",
+        "spdx": null,
+        "evidence": "none",
+        "evidencePath": null,
+        "reason": "No licence evidence examined yet; absence of evidence is not permission."
+      },
+      "security": {
+        "safe": false,
+        "class": "unscanned",
+        "signals": [],
+        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+      },
+      "provenance": null,
+      "notes": [
+        "LICENSE file + SPDX + commit SHA are all reachable.",
+        "Repository is gone, renamed, or private. Recorded rather than dropped: a source that vanished is a finding."
+      ],
+      "error": {
+        "stage": "repo",
+        "status": "404",
+        "detail": "gh: Not Found (HTTP 404)"
       }
     }
   }

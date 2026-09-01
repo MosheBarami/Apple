@@ -14,7 +14,8 @@
     "scan": "node src/scan.mjs",
     "record": "node src/fetch.mjs --record-only",
     "manifest": "node src/manifest.mjs",
-    "hash": "node src/hash.mjs"
+    "hash": "node src/hash.mjs",
+    "enumerate": "node src/enumerate.mjs --emit-seeds"
   },
   "dependencies": {
     "yaml": "^2.6.1"

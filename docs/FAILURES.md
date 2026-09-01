@@ -499,6 +499,46 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-42 · A declared licence is a claim, and now there is a number for it
+
+§H says a licence a publisher declares is a CLAIM, not evidence. That was policy; enumerating
+the package registries turned it into a measurement.
+
+Of **51 registry candidates resolved** — their repositories fetched and their actual LICENSE
+files read — 46 had declared something in the index:
+
+| | count |
+|---|---|
+| declaration CONFIRMED by a LICENSE file in the repository | 41 |
+| declaration NOT confirmed, so quarantined | **5** |
+| no declaration in the index at all | 5 |
+
+**Roughly one in nine packages that declare a licence cannot prove it.** Four of the five
+declared plain `MIT`. One declared `VFX-DL-1.1`, which is not an SPDX identifier at all.
+
+That is the whole argument for resolving rather than trusting, expressed as a rate. A pipeline
+that had accepted the index's word would have taken five unlicensed packages into a corpus whose
+entire claim is that everything in it may lawfully be learned from.
+
+Two further facts worth keeping:
+
+- **Only 1,082 of 6,410 registry packages declare a repository URL at all.** The other 5,328
+  cannot be resolved, cannot be licence-checked, and therefore cannot enter the corpus by any
+  route. The registries are far less usable as a corpus than their headline size suggests, and
+  "6,588 packages, 30× the seed floor" was never 30× of anything that could be used.
+- **The earlier one-off count was wrong.** It reported 781 Pesde packages; the index holds 601
+  package files plus 180 `scope.toml` and one `config.toml`. It counted scope metadata as
+  packages, ~30 % high, and the mission ledger cited that figure as evidence for a PROVEN gate.
+
+Real third-party data also broke two things that clean data never would. `https://www.github.com/
+…` — a form GitHub itself serves — was rejected by the seed validator's regex. And one malformed
+candidate aborted the whole import, because `loadSeeds` is deliberately unforgiving: correct for
+a hand-written manifest where a typo is a mistake, wrong for 1,082 URLs typed by 1,082 strangers,
+where a few oddities are the expected condition. Registry candidates are now skipped and
+**counted**; hand-written seeds still throw.
+
+---
+
 ### F-41 · Three bugs found by running code that had never run
 
 An independent audit found that `contenthash.mjs`, `dedupe.mjs` and `records.mjs` — **784 lines

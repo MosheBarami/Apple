@@ -80,9 +80,19 @@ export const SEED_KINDS = Object.freeze(Object.keys(KIND_POLICY));
 export const SEED_CATEGORIES = Object.freeze([
   'official', 'ui-framework', 'ui-tooling', 'ui-kit', 'motion', 'ux-system',
   'studs', 'world-pack', 'full-game', 'engineering', 'generation', 'huggingface',
+  //[[ Discovered by enumerating the Wally and Pesde indexes rather than named by a human.
+  //   Deliberately its own category: these arrive in bulk with a licence their PUBLISHER
+  //   declared, and the difference between "somebody chose this source" and "an index listed
+  //   it" is worth keeping visible in every record downstream. ]]
+  'registry-package',
 ]);
 
-const GITHUB_RE = /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s#?]+)/i;
+//[[ `www.` is optional because GitHub serves both, and publishers use both. Found by feeding
+//   1,082 real registry candidates through this validator: `https://www.github.com/
+//   YetAnotherClown/token-bucket-luau` is a perfectly ordinary repository URL that this regex
+//   rejected. A validator that refuses a form the host itself serves is not being strict, it is
+//   being wrong. ]]
+const GITHUB_RE = /^https?:\/\/(?:www\.)?github\.com\/([^/\s]+)\/([^/\s#?]+)/i;
 
 /** Split a GitHub seed URL into owner/repo. Returns null for anything else. */
 export function parseGitHubUrl(url) {

@@ -23,6 +23,12 @@ packages/corpus/raw/
 # regenerated on demand — a classification nobody can diff is one nobody reviews.
 !packages/corpus/data/sources.json
 !packages/corpus/data/registries.json
+# The ContentRecord ledger: which sources are one idea, which diverged. Small, because the
+# per-file hashes it derives from are regenerable and are not persisted.
+!packages/corpus/data/content.json
+# The registry handoff: 1,082 resolvable candidates. Tracked so `discover --includeRegistry`
+# works without re-cloning 43MB of package indexes first.
+!packages/corpus/data/registry-seeds.json
 packages/evals/results/raw/
 
 # Playwright
