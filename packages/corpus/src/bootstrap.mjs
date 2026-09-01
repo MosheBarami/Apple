@@ -193,8 +193,14 @@ function presentRegistryShas() {
   return out;
 }
 
-/** Clone at a pinned commit without downloading the whole history. */
-function cloneAt(url, sha, dir) {
+/**
+ * Clone at a pinned commit without downloading the whole history.
+ *
+ * Exported so it can be tested against a LOCAL repository — no network, real git, real
+ * fallback. Every line here moves bytes onto disk, and until this was exported the only
+ * evidence it worked was one manual clone.
+ */
+export function cloneAt(url, sha, dir) {
   git(['init', '--quiet', dir]);
   git(['-C', dir, 'remote', 'add', 'origin', url]);
   try {
