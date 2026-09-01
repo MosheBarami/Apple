@@ -575,3 +575,15 @@ test('an unknown tool does not eat a real announcement through the phase default
   const labels = r.phases.map((p) => p.label);
   assert.ok(labels.includes('Building world'), `announcement was eaten; got ${labels.join(', ')}`);
 });
+
+test('the announcement window has an edge, and it is where the code says it is', () => {
+  // ANNOUNCE_WINDOW_MS is a judgement, not a measurement — two messages sent back to
+  // back over one socket arrive a few milliseconds apart, and a second is generous by
+  // three orders of magnitude while still nowhere near a model call. A threshold nobody
+  // pins is a threshold that drifts, so both sides of it are asserted here.
+  const at = (gap) =>
+    run([phase('building', T0), start('a', 'set_properties', T0 + gap), end('a', T0 + gap + 90, { durationMs: 90 })]);
+
+  assert.deepEqual(kinds(at(1000)), ['editing'], 'exactly at the edge counts as the tool\'s own announcement');
+  assert.deepEqual(kinds(at(1001)), ['building', 'editing'], 'one millisecond past it is a row of its own');
+});
