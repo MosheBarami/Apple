@@ -23,8 +23,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -105,4 +105,52 @@ test('the canonical C-series ids are unique, and the gaps are declared', () => {
   for (const [id, reason] of Object.entries(ACTIVITY_NOT_MODELLED)) {
     assert.ok(reason.length > 60, `${id} needs a real reason, not a shrug`);
   }
+});
+
+test('there is only one tool LABEL/KIND table left in the web app', () => {
+  // Four existed: TOOL_KIND and STEP_LABEL in activity-model, TOOL_LABEL in
+  // thinking-model, and a `TOOLS` map in lib/tool-meta.ts. The last was the worst —
+  // three of its entries were tools that do not exist and seven real ones were
+  // missing, so a work-surface panel from `generate_model` was headed "Working".
+  //
+  // NARROWLY defined, because a per-tool map is not automatically a duplicate. The
+  // first version of this guard flagged `ws/evidence-model.ts`, which maps a tool to
+  // which EVIDENCE CARD its result yields — a different fact about tools, deliberately
+  // narrow, and documented as such. Only two value shapes are the vocabulary's own:
+  //
+  //   a LABEL — prose, so it starts with a capital and contains a space;
+  //   a KIND  — one of the activity names in ACTIVITY.
+  //
+  // This cannot catch a duplicate that invents a third value shape. It catches the
+  // drift that actually happened, which was wrong words on the screen.
+  const real = new Set(registeredTools());
+  const kinds = new Set(Object.keys(ACTIVITY));
+  const offenders = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) {
+        if (e.name === 'node_modules' || e.name === 'dist') continue;
+        walk(join(dir, e.name));
+      } else if (/\.(ts|tsx)$/.test(e.name)) {
+        const p = join(dir, e.name);
+        if (p.endsWith('tool-vocabulary.ts')) continue;
+        const src = readFileSync(p, 'utf8');
+        // LINE BY LINE. A table entry occupies one line, and matching across the whole
+        // file let a greedy character class run past a newline — the first version of
+        // this loop read one key's "value" as the next two lines of source and skipped
+        // the entry between them, so it found nothing and passed.
+        const hits = new Set();
+        for (const line of src.split('\n')) {
+          const key = /^\s{2,}([a-z_][a-z0-9_]*):/.exec(line)?.[1];
+          if (!key || !real.has(key)) continue;
+          for (const [, value] of line.matchAll(/['"]([^'"\n]*)['"]/g)) {
+            if (kinds.has(value) || (/^[A-Z]/.test(value) && value.includes(' '))) hits.add(key);
+          }
+        }
+        if (hits.size >= 3) offenders.push(`${relative(WEB, p)} (${hits.size} tool labels or kinds)`);
+      }
+    }
+  };
+  walk(join(WEB, 'src'));
+  assert.deepEqual(offenders, [], `a second tool label/kind table has appeared in: ${offenders.join(', ')}`);
 });

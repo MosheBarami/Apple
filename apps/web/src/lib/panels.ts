@@ -6,7 +6,7 @@
 // unvalidated shape.
 import { documentFromToolDetail, sanitizeDocument } from './generative-ui';
 import type { Block, RenderReviewBlock, UIDocument } from './generative-ui/schema';
-import { toolMeta } from './tool-meta';
+import { labelForTool } from '../components/ws/tool-vocabulary';
 import type { ChatItem, ToolEvent } from './use-project-socket';
 
 export interface SurfacePanel {
@@ -34,7 +34,7 @@ function titleFor(tool: string, doc: UIDocument): string {
   if (first?.type === 'code_diff') return `Diff · ${first.path}`;
   if (first?.type === 'test_report') return first.title ?? 'Test run';
   if (first?.type === 'error_diagnosis') return first.title;
-  return toolMeta(tool).label;
+  return labelForTool(tool);
 }
 
 /** Build a panel from one tool event, or null when its result is not presentable. */
