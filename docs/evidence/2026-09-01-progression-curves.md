@@ -45,8 +45,18 @@ Compounded over twelve levels, the last upgrade costs this multiple of the first
 
 These are not variations on one shape. A shallow curve over hundreds of levels reads
 as a long ladder where every rung is affordable; a steep curve over a dozen reads as
-three cheap purchases and then a wall. Our steepest track tops out at **643x**, which
-is roughly forty times steeper than the reference set's most aggressive tier.
+three cheap purchases and then a wall.
+
+Two corrections to how that was first written, because both overstated it:
+
+- **643x is a normalised figure, not a shipped one.** It is `1.8 ** 11` — growth 1.8 held over a
+  common twelve-level horizon so the growth rates can be compared like for like, which is what the
+  table above does. Our steepest *configured* track is `magnet`, growth 1.8 over ten levels, whose
+  last upgrade costs **198x** the first. `pack` is 176x and `speed` 41x.
+- **1.28 is the reference game's steepest UPGRADE track, not its steepest curve.** The same
+  `GameConfig.luau` prices rebirths at `growth = 4.5`. The honest comparison is upgrade-track to
+  upgrade-track, where ours are steeper; it is not true that the reference set has nothing
+  aggressive in it.
 
 The arithmetic is pinned by a test rather than left in prose, because a number quoted
 in a rule's justification is exactly the kind of claim that drifts.

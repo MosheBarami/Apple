@@ -19,6 +19,36 @@ import { checkNoAntipattern } from './roblox-antipatterns.mjs';
 import { checkNoDesignViolation } from './design-checks.mjs';
 import { checkPlaybookComplete } from './playbook-checks.mjs';
 
+/**
+ * Every check type `evalCheck` below can actually dispatch.
+ *
+ *[[ Exported because `tasks.mjs` validates `check.type` against its OWN hand-written
+ *   set, and the two drifted: `no_design_violation` and `playbook_complete` were both
+ *   implemented, imported, unit-tested and dispatched here, while `tasks.mjs` rejected
+ *   them as `bad type`. A task file could not declare either one, so neither was
+ *   reachable from the eval suite at all.
+ *
+ *   That is the same defect this repository has now recorded four times — five design
+ *   checks that existed, passed their tests and were not exported (F-26 era);
+ *   `retrievalRank` reading a field `scan.mjs` never wrote (F-47); `includeRegistry`
+ *   accepted by `run()` and never passed by the CLI (gate 22). Each time the capability
+ *   was real, complete, and unreachable, and each time the only thing wrong was the
+ *   sentence connecting two correct halves.
+ *
+ *   So the two lists are bound rather than synchronised by hand: `tasks.mjs` imports
+ *   this, and `grade.test.mjs` asserts it matches the `case` labels in this file's own
+ *   source. Adding a `case` without adding it here now fails a test. ]]
+ */
+export const DISPATCHABLE_CHECK_TYPES = Object.freeze([
+  'contains',
+  'not_contains',
+  'regex',
+  'luau_syntax',
+  'no_antipattern',
+  'playbook_complete',
+  'no_design_violation',
+]);
+
 const FENCE_RE = /```[ \t]*[A-Za-z0-9_+-]*[ \t]*\r?\n([\s\S]*?)```/g;
 
 /** Concatenate all fenced code blocks in a model response (empty string if none). */

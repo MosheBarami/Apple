@@ -37,6 +37,13 @@ quarantined and stay quarantined until evidence exists.
 checkout's **own LICENSE file**, independently of what classification decided; a disagreement
 would appear here as a conflict rather than be resolved silently.
 
+> **The checkouts themselves are not in this repository.** `packages/corpus/raw/` is gitignored,
+> so a fresh clone has none of them and every stage downstream of fetch — scan, hash, tag, and this
+> document — would run against an empty tree. The tracked artefacts are the *derived* ones:
+> `data/sources.json`, `data/content.json` and this file, which describe checkouts a reader
+> cannot see. To reproduce them, run `pnpm --filter @golem/corpus fetch -- <ids>` first; the SHA
+> column is what makes that reproduction exact.
+
 **era** is decided by the density of dated engine markers, not by their presence — a maintained
 library with one five-year-old `wait()` is not legacy, and `—` means the checkout gave too
 little evidence either way rather than that it passed. **quality** scores engineering hygiene —
@@ -117,9 +124,9 @@ checked out. They are lawful to use and currently teach nothing.
 
 Those records collapse to **497 distinct repositories**, and that is the number that
 measures the remaining work. A registry index publishes one record per PACKAGE, so a monorepo
-arrives many times over — `roblox/react-lua` alone accounts for 19 of them. Counting records
-here would overstate what is left to fetch by roughly a third, in a section whose entire job is to
-say how much is left.
+arrives many times over — `roblox/jest-roblox` alone accounts for 34 of them. Counting
+records here would overstate what is left to fetch by 47 %,
+in a section whose entire job is to say how much is left.
 
 | id | licence | category | url |
 | --- | --- | --- | --- |

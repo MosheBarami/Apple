@@ -8,6 +8,9 @@ Statuses: **PROVEN** (evidence in repo) · **PARTIAL** (real but incomplete) ·
 **UNPROVEN** (not attempted or not evidenced) · **BLOCKED** (external/human-only) ·
 **REJECTED** (tried, measured, refused).
 
+Gate 14 is written **HUMAN-BLOCKED**, which is `BLOCKED` with the reason spelled out; it counts as
+BLOCKED in the tally. No other spelling variants are in use.
+
 Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 | # | Outcome (§AS) | Status | Evidence / note |
@@ -47,7 +50,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 33 | No user project is training data without opt-in | **PROVEN** | standing policy, unchanged |
 | 34 | Cost controls intact | **PROVEN** | no purchases; caps untouched |
 | 35 | Security/tenant isolation intact | **PROVEN** | CI holds no secrets; tree clean |
-| 36 | GitHub CI healthy | **PROVEN** | 6/6 jobs green on `90718b5` |
+| 36 | GitHub CI healthy | **PROVEN** | 6/6 jobs green on `90718b5`  *Citation note (2026-09-01): the SHA above is now 111 commits behind HEAD. The claim was re-checked rather than re-dated — CI on HEAD is green across all six jobs, the same shape the cited run had — so the gate stands and only its pointer is stale.* |
 | 37 | No auto feature-branch production deploy | **PROVEN** | no deploy step in any workflow |
 | 38 | No purchases / new paid services | **PROVEN** | none made |
 | 39 | PR #1 carries honest evidence incl. rejections | **PROVEN** | body updated 2026-09-01 |
@@ -95,12 +98,19 @@ content-hash stages, which found five defects in code that was tested and called
 (F-41); and gate 26's criticism — "the word doing the work is *evals*, and there is no eval" —
 was closed by making the design library's rules a grader check type.
 
-Gate 22 stopped at PARTIAL rather than returning to PROVEN, with 1,020 candidates still
-unresolved. Going straight back would be the same flattering arithmetic that produced the
-downgrade.
+Gate 22 stopped at PARTIAL at the time of that audit, with 1,020 candidates still unresolved,
+because going straight back to PROVEN would have been the same flattering arithmetic that produced
+the downgrade. **It returned to PROVEN later the same day**, on the evidence the audit said was
+missing: the candidates were ingested rather than counted, and the corpus went 289 → 1,240 sources.
+See its row above.
 
-Only **one** gate (14) is externally blocked, on AI Gateway credit. Everything else marked
-PARTIAL is reachable without owner action.
+**Two** gates are externally blocked: **14** on AI Gateway credit, and **40** on the Studio
+`screen_capture` transport, which drops the whole MCP connection on every attempt. Everything else
+marked PARTIAL is reachable without owner action.
+
+*(This paragraph read "Only one gate (14) is externally blocked" until 2026-09-01. It was written
+before gate 40's blocker was a transport fault rather than a judgement, and it contradicted the
+summary thirty-three lines above it. Found by an adversarial audit of this file.)*
 
 The UNPROVEN one is gate 40, which moved there *from* PARTIAL. Gate 18 recovered to PARTIAL once a frame actually existed. A visual critic ran and
 returned "Prototype". Marking that PARTIAL because three other critics passed would be the

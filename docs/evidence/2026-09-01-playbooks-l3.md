@@ -5,8 +5,10 @@
 > **Every rung must beat the rung below it, measured.** An unmeasured technique is
 > not a rung.
 
-Before this change, L3 was one grep hit in the whole repository — the ladder table
-row naming it. This records what was built, and, more importantly, the measurement.
+Before this change, L3 was three prose mentions in the whole repository — the ladder table
+row, the `→ PLAYBOOKS` line in the §1 pipeline diagram, and one sentence of body text. No playbook
+file, type, test or consumer existed. (An earlier draft of this document said "one grep hit"; there
+were four, and the distinction matters only because a claim that specific should be right.) This records what was built, and, more importantly, the measurement.
 
 ---
 
@@ -89,7 +91,7 @@ Same source, both layers:
 | | L2 `audit({files})` | L3 `gradePlaybook(…, 'panel.shop')` |
 | --- | --- | --- |
 | empty "shop panel" above | `ok: true`, **0 findings** | `ok: false`, **4 of 5 steps missing** (`footer, rows, price, transition`) |
-| hand-rolled, every step present | `ok: true`, 0 findings | `ok: true`, **5 steps flagged as library bypass** |
+| hand-rolled, every step present | `ok: false`, 1 finding (motion gate) | `ok: true`, **5 steps flagged as library bypass** |
 | real `Panels.luau` | `ok: true`, 0 findings | `ok: true`, 5/5 `primitive`, 0 bypasses |
 
 The first row is the rung: four defects, none of which L2 can express. The third
@@ -131,13 +133,23 @@ real code, not by reading it.
 
 `playbook_complete` is a check type in `grade.mjs` beside `no_antipattern` and
 `no_design_violation`. It is the only check in `packages/evals` that can fail model
-output for what it does **not** do. A library bypass is reported on a pass as well
+output for what it does **not** do.
+
+> **This section was overstated when written, and the correction is F-57.** The check was
+> implemented, imported by `grade.mjs`, dispatched, and unit-tested — but `tasks.mjs` validated
+> `check.type` against its own hand-written `CHECK_TYPES` set, which contained neither
+> `playbook_complete` nor `no_design_violation`. A task file declaring either was rejected as
+> `bad type`, so **neither was reachable from the eval suite at all** while both were described as
+> wired into it. That is this repository's signature defect — a capability that is real, complete
+> and unreachable — committed by the person documenting the previous four instances of it. The two
+> lists are now bound: `tasks.mjs` imports `DISPATCHABLE_CHECK_TYPES` from the module that
+> dispatches them, and a test reads `grade.mjs`'s own `case` labels and fails if they diverge. A library bypass is reported on a pass as well
 as a failure — burying it inside a green result would hide the one thing the check
 exists to notice — and `allowManual: false` lets a task refuse it outright.
 
 ## 6. Suite
 
-`pnpm -r test` — **1,543 pass, 0 fail**. `packages/design` 60 → 72,
+`pnpm -r test` — **1,547 pass, 0 fail**. `packages/design` 60 → 72,
 `packages/evals` 1,006 → 1,011.
 
 ## 7. What this does not claim

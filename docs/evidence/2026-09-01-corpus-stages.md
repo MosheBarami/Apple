@@ -73,8 +73,15 @@ established.
 
 Stars and forks are absent by design: popularity already enters through
 `retrievalRank`, and counting it here too would double it while dressing the second
-count up as quality. Measured on the real corpus, **quality correlates with
-`log(stars)` at r = 0.10**, and a test fails the build above 0.8.
+count up as quality. A test fails the build if the correlation exceeds 0.8.
+
+> **A figure in this paragraph went stale within one commit.** It originally read
+> *"quality correlates with `log(stars)` at r = 0.10"*, which was true of the 23 records that
+> existed when it was written and false by the next commit. On the current 38-record corpus the
+> value is **r = 0.32**. The independence property holds and is gated; the specific number was
+> quoted as if it were a standing property when it is a measurement of one moment. Where a number
+> moves with the data, this document should say when it was taken — this one was taken at 38
+> records, after the fetch.
 
 ## 4. What running it found
 
@@ -125,8 +132,13 @@ Density got that right where a presence test would not have.
 ## 5. The result
 
 23 of 23 records scored, 13 tagged with an era, 13 with detected libraries.
-**23 of 23 sources now rank where all of them returned 0, and 17 of 22 positions
-changed** against the pre-quality ordering.
+**23 of 23 sources now rank where all of them returned 0** — that half reproduces exactly.
+
+> The sentence originally continued *"and 17 of 22 positions changed"*. That figure is **not
+> reproducible** from the method described here; the closest reconstruction gives 19 of 23. It is
+> withdrawn rather than restated, because a re-ordering claim needs a defined baseline and this
+> document never fixed one. What is solid and sufficient: every source ranked 0 before, and none
+> does now.
 
 ```
 before   after    quality   source

@@ -499,6 +499,49 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-57 · The signature defect, committed by the person documenting it
+
+`no_design_violation` and `playbook_complete` were both implemented, imported by `grade.mjs`,
+dispatched by `evalCheck`, and covered by passing unit tests. Both were described — in commit
+messages, in `docs/evidence/2026-09-01-playbooks-l3.md`, and in the Draft PR — as wired into the
+eval harness.
+
+Neither was reachable from it. `tasks.mjs` validated `check.type` against its own hand-written set:
+
+```js
+const CHECK_TYPES = new Set(['contains', 'not_contains', 'regex', 'luau_syntax', 'no_antipattern']);
+```
+
+enforced at `tasks.mjs:77`. A task file declaring either new type was rejected as **`bad type`**, so
+no eval task could use them and neither had ever graded anything but a synthetic object built
+inside its own test.
+
+This is the fourth instance of one defect in this repository, and the list is worth having in one
+place:
+
+| | capability | the sentence that was missing |
+| --- | --- | --- |
+| gate 26 era | five mechanised design checks | never exported from `packages/design` |
+| **F-47** | `retrievalRank` | read `provenance.security`; `scan.mjs` wrote `record.security` |
+| gate 22 | `includeRegistry` | accepted by `run()`, never passed by the CLI |
+| **F-57** | two check types | dispatched by `grade.mjs`, rejected by `tasks.mjs` |
+
+Every one: two correct halves, no sentence joining them, every unit test passing. What makes this
+instance worth its own entry is that it was introduced **on the same day, by the same author, as
+the entries describing the other three** — while writing a test whose entire purpose was to prevent
+the general form of it for `discover.mjs`'s CLI. Knowing a defect's shape well enough to write its
+guard is not the same as recognising it in your own next commit.
+
+Fixed by binding rather than syncing. `grade.mjs` exports `DISPATCHABLE_CHECK_TYPES`, `tasks.mjs`
+imports it instead of restating it, and `grade.test.mjs` reads `grade.mjs`'s own `case` labels and
+fails if the two lists diverge — so adding a `case` without registering it now breaks the build. A
+third test confirms the binding did not turn the validator into a rubber stamp: an unknown type is
+still rejected.
+
+**Found by an adversarial audit, not by me.** A workflow was run to verify this session's own
+handoff report, with agents instructed to hunt for "a code-existence claim written as an execution
+claim". It returned 33 overstatements across six areas; this was the most serious.
+
 ### F-56 · A measured limitation, deliberately not fixed
 
 Recorded because a known limitation with a number on it is worth more than a rushed change to an
@@ -518,7 +561,9 @@ end
 ```
 
 That is the normal way to write a fixed-point iteration and it terminates in a handful of passes.
-On the numbers above the rule's precision on real code is roughly **23 %**.
+On the numbers above the rule's precision on real code is roughly **18 %**. (First published as
+23 %, from a cruder scan that counted 30 rather than 32; a nesting-aware pass gives 32/7. The
+conclusion is unchanged and the measured number is worse than first stated.)
 
 **Why this is not fixed here.** Exempting every loop with a `break` would let the real case through,
 because a spin-wait has one too:
@@ -534,7 +579,7 @@ something outside it, and that is not decidable from a regex. Five rule changes 
 with paired tests; a sixth requiring a judgement I cannot make reliably, at the end of a long
 session, is precisely the shape of change this file keeps recording as a failure.
 
-The 9 findings with no exit at all are the rule working. What is needed is either a real reaching
+The 7 findings with no exit at all are the rule working. What is needed is either a real reaching
 analysis or splitting the rule so a loop with an exit reports at `warn` — and a per-finding
 severity is not something the current shape supports, since severity is a property of the rule.
 
@@ -573,9 +618,26 @@ one closing the list. So a correct retry helper went unrecognised and its two pr
 the better answer" itself penalised the better answer, because typed generic Luau is more modern
 than the code the fix was tested against.
 
-134 → 33, and the remainder is spread across nine files rather than concentrated in one. The
-remaining findings look genuine — Cmdr's `var`/`varSet` commands, `rice-simulator`'s legacy
-`SaveData.server.lua` — which is what a rule's output should look like.
+**134 → 31, across 8 files — and the concentration was not resolved, it moved.**
+
+The first version of this entry claimed "spread across nine files rather than concentrated in one",
+and that was wrong in both halves. Re-measured over the same 2,646 files at HEAD:
+
+| file | findings |
+| --- | ---: |
+| `MadStudioRoblox__ProfileStore/ProfileStoreTest.server.luau` | **23** |
+| `phocodes__rice-simulator/.../SaveData.server.lua` | 2 |
+| six others (Cmdr `var`/`varSet`, `fetchServer`, `ToolSaver`) | 1 each |
+
+23 of 31 is **74 %** in one file — worse concentration than the 70 % that prompted the fix. And
+that file's own header reads *"Automatic testing of the ProfileStore module"*: it is another test
+harness, hand-rolled rather than jest-lua, so the source-based detector added above does not
+recognise it. The detector catches the framework idiom, not the intent.
+
+**This is left open deliberately.** Widening test detection to catch a bare `*Test.server.luau`
+script means either trusting a filename — which the entry above explains is the wrong signal for
+grading model output — or guessing at intent from shape. The remaining eight findings outside it
+look genuine.
 
 ### F-54 · An enforced check reported the best-behaved call site in the file
 
@@ -719,11 +781,11 @@ obviously fine"* — is an argument from reputation about a security verdict.
 
 ### F-50 · Counting engine vocabulary inside comments, for the third time in this repository
 
-The domain tagger's first run over the real corpus reported 3 bare `wait()` calls in
-`Sleitnick/RbxCameraShaker`'s `src/CameraShaker/init.lua`, and 1 in `Reselim/Flipper`'s
-`typings/Signal.d.ts`. Both counts were checked by opening the files rather than by trusting them.
+The domain tagger's first run over the real corpus reported 2 bare `wait()` calls in
+`Sleitnick/RbxCameraShaker`'s `src/CameraShaker/init.lua` (at lines 32 and 45), and 1 in
+`Reselim/Flipper`'s `typings/Signal.d.ts`. (An earlier draft said 3; there are two.) Both counts were checked by opening the files rather than by trusting them.
 
-All three CameraShaker hits are inside the usage example in the file's **opening doc comment**:
+Both CameraShaker hits are inside the usage example in the file's **opening doc comment**:
 
 ```lua
 --[[ Usage:
@@ -750,8 +812,8 @@ effect on the real corpus, all of it in the direction of fewer false claims:
 
 | checkout | deprecated before | after |
 | --- | --- | --- |
-| `Sleitnick__RbxCameraShaker` | 3 | **0** |
-| `ddust1n__CameraShaker` | 3 | **0** |
+| `Sleitnick__RbxCameraShaker` | 2 | **0** |
+| `ddust1n__CameraShaker` | 2 | **0** |
 | `MadStudioRoblox__ProfileService` | 10 | 9 |
 | `Reselim__Flipper` | 2 | 1 |
 | `evaera__roblox-lua-promise` | 1 | **0** |
@@ -814,8 +876,11 @@ to one member of an equivalence class it did not know it was in.
 
 ### F-49 · A quality tagger that condemned a library for its own naming convention
 
-The domain tagger classified `Reselim/Flipper` as `legacy` on 9 deprecated markers. Eight of the
-nine were `:connect(`, the pre-2016 lowercase alias for `RBXScriptSignal:Connect`.
+The domain tagger classified `Reselim/Flipper` as `legacy` on 9 deprecated markers. Seven of the
+nine were `:connect(`, the pre-2016 lowercase alias for `RBXScriptSignal:Connect`; the other two
+were one `spawn/delay` and the `wait(): Parameters<T>` in a `.d.ts` that F-50 later addressed.
+(An earlier draft said eight of nine. There are exactly seven `:connect(` occurrences in the
+checkout, and the tagger's own `suppressed` report says so.)
 
 Flipper does not use that alias. It ships its own userland `Signal` class —
 `function Signal:connect(handler)` — and every flagged call site is a call into its own API. Regex

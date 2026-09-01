@@ -4,10 +4,16 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RULE_IDS } from './roblox-antipatterns.mjs';
+import { DISPATCHABLE_CHECK_TYPES } from './grade.mjs';
 
 export const TASKS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'tasks');
 
-const CHECK_TYPES = new Set(['contains', 'not_contains', 'regex', 'luau_syntax', 'no_antipattern']);
+//[[ Imported from the module that DISPATCHES them, not restated here. This set used to
+//   be written by hand and fell two behind: `no_design_violation` and `playbook_complete`
+//   were implemented, imported by grade.mjs, unit-tested, and rejected by this validator
+//   as `bad type` — so no task file could declare either, and both were unreachable from
+//   the suite while being described as wired into it. ]]
+const CHECK_TYPES = new Set(DISPATCHABLE_CHECK_TYPES);
 const TARGETS = new Set(['text', 'code']);
 const CONTEXTS = new Set(['server', 'client', 'module', 'unknown']);
 
