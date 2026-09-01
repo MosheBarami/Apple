@@ -82,3 +82,26 @@ atmosphere, because that is exactly what a depth-buffered Luau triangle rasteris
 running inside a plugin can do. It reads composition perfectly well and it cannot
 answer *"finished game or prototype"*. This image is the concrete reason the
 rasteriser is not offered as a substitute for Gate 40's player-eye pixels.
+
+## Since made reproducible
+
+The section above was one manual browser session, and a review's fair objection was
+that `encodeRGB` — the base64 packer the whole claim depends on — was covered by no
+test. `apps/web/tests/real-frame.test.mjs` closes that. It reads **this document's own
+committed PNG** rather than a separate 64KB blob, so the picture shown here and the
+bytes under test cannot drift apart, and it asserts:
+
+| | |
+|---|---|
+| dimensions | 160 × 100, matching `PLAYTEST_FRAME_WIDTH/HEIGHT` |
+| distinct colours | **141** — the count cited above, now a test rather than a note |
+| `rgb24` round-trip | the shipped `decodeFrame` returns the source bytes exactly |
+| `rle24` round-trip | byte-exact through the packing the wire actually uses |
+| compression | **48,000 → 4,564 bytes (9.5 %)**, 6,088 base64 characters on the wire |
+
+The colour-count assertion is doing real work: a frame of one flat colour would
+round-trip through any codec, so the test first proves the fixture is a picture.
+
+That last row is a measurement this document previously did not have. The ledger's
+"RLE24 packs it 82,944 → 8,868 bytes (10.7 %)" was a different, larger frame from an
+earlier session; this one is 9.5 % on the 160×100 the product actually ships.
