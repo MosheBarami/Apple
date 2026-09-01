@@ -50,6 +50,19 @@
 export const COMPONENTS = Object.freeze([
   'panel', 'modal', 'button', 'icon-button', 'currency-pill', 'nav', 'toast',
   'card', 'counter', 'gauge', 'tab', 'icon', 'layout', 'motion', 'typography',
+  //[[ `progression` is the first non-VISUAL component here, and it is deliberate.
+  //
+  //   docs/SOURCE-INTELLIGENCE.md §8 says the corpus is judged by one thing — does the
+  //   simulator/tycoon build get better — and names three questions it must answer
+  //   better than this phase managed alone. One of them is *"What do real simulator
+  //   progression curves look like, against the ones guessed in `Config.luau`?"*
+  //
+  //   That question has an answer now, and it had nowhere to live. Recording it only as
+  //   evidence would leave it unretrievable, which §7 explicitly rules out: the chain
+  //   ends "extraction → retrieval → playbooks → evals", not "extraction → a document".
+  //   It scores only for a brief that asks for it — `score()` gives its cross-cutting
+  //   bonus to `layout` and `motion` alone — so a panel brief is unaffected. ]]
+  'progression',
 ]);
 
 export const STYLE_FAMILIES = Object.freeze([
@@ -100,6 +113,20 @@ const DOCS = (file) => ({
   kind: 'learned-pattern',
   source: `Roblox/creator-docs content/en-us/reference/engine/${file} (CC-BY-4.0)`,
   validated: 'documented engine behaviour; not yet built in a Golem fixture',
+});
+
+/**
+ * A shipped, licence-clear tycoon, pinned to the SHA it was read at.
+ *
+ * Unlike DOCS/GUIDE this is not documentation of engine behaviour — it is one team's
+ * shipped balance decisions, which is a weaker kind of evidence and is described as
+ * such. `validated` says "observed in one shipped game" rather than claiming a genre
+ * consensus that a single source cannot establish.
+ */
+const TYCOON = (file) => ({
+  kind: 'learned-pattern',
+  source: `DLinacre/slime-factory-tycoon@c471a2ef7d ${file} (MIT)`,
+  validated: 'observed in one shipped tycoon; not yet built in a Golem fixture',
 });
 
 /** Same source, same licence, but a prose guide rather than the API reference. */
@@ -1542,6 +1569,52 @@ export const RULES = Object.freeze([
     },
   },
 
+
+  // ------------------------------------------------------------ progression
+  //[[ These three answer docs/SOURCE-INTELLIGENCE.md §8's second question, and they are
+  //   the first rules in this library extracted from a shipped GAME rather than from
+  //   engine documentation or a UI kit. The evidence is weaker in kind and the
+  //   provenance says so: one team's balance decisions, not a measured genre consensus.
+  //
+  //   They are here because the answer, when it arrived, was not a small correction.
+  //   `apps/benchmark/crystal-canyon/src/shared/Config.luau` uses cost growth of
+  //   1.6 / 1.7 / 1.8 over 8-12 levels. The shipped tycoon uses 1.15 / 1.18 / 1.22 /
+  //   1.25 / 1.28 over 250-500, and its own comment calls ~1.15 "the genre standard".
+  //   At twelve levels those shapes are not variations on each other: the last upgrade
+  //   costs 4.7x the first at 1.15, 15x at 1.28, and 643x at 1.8. ]]
+  {
+    id: 'progression.cost-growth-is-shallow-over-many-levels-not-steep-over-few',
+    component: 'progression',
+    styleFamilies: ['tycoon', 'incremental', 'cartoon-simulator'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Price an upgrade track as `baseCost * growth ^ level` with a growth per level near 1.15-1.30 and a level ceiling in the hundreds, rather than a steep growth over eight to twelve levels.',
+    because: 'The two shapes are not interchangeable at the scale a player feels. Compounded across twelve levels, growth of 1.15 makes the last step cost 4.7x the first and growth of 1.8 makes it cost 643x — so a shallow curve reads as a long ladder of affordable steps while a steep one reads as three cheap purchases and then a wall. The ceiling is what buys the shallow curve its range: hundreds of small steps span the same economy that a dozen large ones do, without any single price ever looking impossible.',
+    prevents: "A track whose top level is priced 643x its first, so the last two upgrades are never bought and the tuning effort spent on them is invisible to every player.",
+    provenance: TYCOON('src/shared/GameConfig.luau (Upgrades: baseCost/growth/maxLevel)'),
+    tokens: { growthPerLevel: '1.15 to 1.30', levelCeiling: '250 to 500', formula: 'baseCost * growth ^ level' },
+  },
+  {
+    id: 'progression.growth-rate-rises-with-tier-so-later-tracks-are-steeper',
+    component: 'progression',
+    styleFamilies: ['tycoon', 'incremental'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Give each successive upgrade track a slightly HIGHER growth rate than the one before it, rather than one growth rate shared across every track.',
+    because: 'A later track is unlocked by a player who already earns more, so a constant growth rate makes each new track cheaper in real terms than the last and the newest content becomes the fastest to exhaust. Raising the rate a little per tier keeps the time-to-max roughly level across tracks that are bought at very different income rates.',
+    prevents: 'A late-game track that is trivially maxed on the income the player already had before unlocking it, which spends new content in one session.',
+    provenance: TYCOON('src/shared/GameConfig.luau (growth 1.15 / 1.18 / 1.22 / 1.25 / 1.28 across five tiers)'),
+    tokens: { perTierIncrement: '0.03 to 0.04', example: '1.15, 1.18, 1.22, 1.25, 1.28' },
+  },
+  {
+    id: 'progression.gate-on-lifetime-earnings-not-on-current-balance',
+    component: 'progression',
+    styleFamilies: ['tycoon', 'incremental', 'cartoon-simulator'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Gate a zone or tier unlock on a LIFETIME total the player has earned, never on the balance they are holding right now.',
+    because: 'A balance is spent. Gating on it means buying an upgrade can retract access to an area the player already reached, so the game punishes the exact action it spent the whole session teaching. A lifetime total only ever rises, which makes an unlock permanent without needing a separate flag to remember it.',
+    prevents: 'A player who unlocks a zone, buys an upgrade, and is refused re-entry to the zone they were standing in.',
+    provenance: TYCOON('src/shared/GameConfig.luau (Zones: requiredLifetime)'),
+    tokens: { gateOn: 'lifetime earned, monotonically increasing', neverGateOn: 'current spendable balance' },
+  },
 ]);
 
 /**

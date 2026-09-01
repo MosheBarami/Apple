@@ -49,7 +49,7 @@ modern, because a summary is not a suppression.
 | checkout | licence | security | era | quality | deprecated | rules |
 | --- | --- | --- | --- | --- | --- | --- |
 | `Crabzzai__SimpleDialogue` | MIT | clean | modern | 0.86 | — | 6 |
-| `DLinacre__slime-factory-tycoon` | MIT | clean | modern | 0.86 | — | — |
+| `DLinacre__slime-factory-tycoon` | MIT | clean | modern | 0.86 | — | 3 |
 | `Diabetoss__NotificationSystem` | MIT | clean | — | 0.67 | — | 4 |
 | `LolplePlays__framer` | Apache-2.0 | clean | modern | 0.93 | — | — |
 | `MadStudioRoblox__ProfileService` | Apache-2.0 | clean | modern | 0.79 | 9 | — |
@@ -87,19 +87,19 @@ modern, because a summary is not a suppression.
 | `tijnepema__lucide-roblox` | MIT | clean | — | 0.58 | — | 7 |
 | `zhsj0089944__roblox-free-assets.skill` | MIT | clean | — | 0.67 | — | 3 |
 
-14 of 38 checkouts have had patterns extracted from them.
+15 of 38 checkouts have had patterns extracted from them.
 The empty cells in that last column are the most useful thing in this document: a
 licence-clear, security-scanned source that has taught Golem nothing yet is exactly where the
 remaining value is, and it is cheaper to reach than a new source.
 
 ## 3. What was extracted
 
-107 rules in `packages/design/src/rules.mjs`, by provenance kind:
+110 rules in `packages/design/src/rules.mjs`, by provenance kind:
 
 | kind | rules | share |
 | --- | --- | --- |
-| `golem-authored` | 41 | 38 % |
-| `learned-pattern` | 63 | 59 % |
+| `golem-authored` | 41 | 37 % |
+| `learned-pattern` | 66 | 60 % |
 | `reference-only` | 3 | 3 % |
 
 The boundary these kinds encode is a licence boundary, not a citation style:

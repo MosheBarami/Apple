@@ -316,3 +316,51 @@ test('the library still says out loud how much of it is one game', () => {
     'if every rule comes from one game again, the library has stopped generalising',
   );
 });
+
+// ------------------------------------------------------------- progression
+test('the progression rule states arithmetic that is actually true', () => {
+  // The rule's `because` carries three concrete numbers — 4.7x at growth 1.15,
+  // 15x at 1.28, 643x at 1.8 — and a claim nobody can check is a claim that will
+  // drift. This recomputes them from the formula the rule itself names.
+  const lastOverFirst = (growth, levels) => growth ** (levels - 1);
+  assert.equal(lastOverFirst(1.15, 12).toFixed(1), '4.7');
+  assert.equal(lastOverFirst(1.28, 12).toFixed(0), '15');
+  assert.equal(lastOverFirst(1.8, 12).toFixed(0), '643');
+
+  const rule = RULES.find((r) => r.id === 'progression.cost-growth-is-shallow-over-many-levels-not-steep-over-few');
+  assert.ok(rule.because.includes('4.7x'), 'the rule must still quote the figure this test pins');
+  assert.ok(rule.because.includes('643x'));
+  // And the token range must bracket the source's own observed rates.
+  assert.equal(rule.tokens.growthPerLevel, '1.15 to 1.30');
+  for (const observed of [1.15, 1.18, 1.22, 1.25, 1.28]) {
+    assert.ok(observed >= 1.15 && observed <= 1.3, `${observed} falls outside the range the rule advertises`);
+  }
+});
+
+test('progression rules are retrievable by their own brief and leak into no other', () => {
+  // `progression` is the first non-visual component in the library. It must not
+  // start appearing in panel or button briefs, where it would push out grammar the
+  // generator actually needs — the overfitting failure retrieve.mjs already guards.
+  const wanted = retrieve({ component: 'progression', styleFamily: 'tycoon' });
+  const top = wanted.slice(0, 3).map((h) => h.rule.component);
+  assert.deepEqual(top, ['progression', 'progression', 'progression'], 'a progression brief must rank them first');
+
+  for (const component of ['panel', 'button', 'toast', 'modal', 'counter', 'nav']) {
+    const leaked = retrieve({ component }).filter((h) => h.rule.component === 'progression');
+    assert.deepEqual(leaked, [], `progression rules leaked into a ${component} brief`);
+  }
+});
+
+test('a rule learned from a shipped game does not claim to be documented behaviour', () => {
+  // Weaker evidence, described as weaker. One team's balance decisions are not a
+  // measured genre consensus, and `validated` is where that distinction lives —
+  // retrieve() reads it for its +2, so overstating it would also mis-rank them.
+  const fromGame = RULES.filter((r) => /slime-factory-tycoon/.test(r.provenance.source ?? ''));
+  assert.ok(fromGame.length >= 3);
+  for (const r of fromGame) {
+    assert.equal(r.provenance.kind, 'learned-pattern');
+    assert.match(r.provenance.source, /@[0-9a-f]{10} .+ \(MIT\)$/, 'must pin a SHA and name its licence');
+    assert.match(r.provenance.validated, /observed in one shipped tycoon/);
+    assert.ok(!/genre standard|consensus|every tycoon/i.test(r.rule), 'n=1 cannot establish a genre consensus');
+  }
+});
