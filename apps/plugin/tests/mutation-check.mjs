@@ -30,6 +30,27 @@ const MUTATIONS = [
     replace: "local PROPERTY_OPS = { set_props = true }",
   },
   {
+    name: "find stops being escaped, so it compiles as a Lua pattern",
+    claim: "every Lua magic character survives a find",
+    module: "Ops",
+    find: "\t\t\t\tnewSrc = string.gsub(newSrc, escapeLuaPattern(e.find), (e.replace:gsub(\"%%\", \"%%%%\")))",
+    replace: "\t\t\t\tnewSrc = string.gsub(newSrc, e.find, (e.replace:gsub(\"%%\", \"%%%%\")))",
+  },
+  {
+    name: "percent stops being escaped in the replacement",
+    claim: "a percent in the replacement is written literally",
+    module: "Ops",
+    find: "\t\t\t\tnewSrc = string.gsub(newSrc, escapeLuaPattern(e.find), (e.replace:gsub(\"%%\", \"%%%%\")))",
+    replace: "\t\t\t\tnewSrc = string.gsub(newSrc, escapeLuaPattern(e.find), e.replace)",
+  },
+  {
+    name: "an edit that changes nothing reports success",
+    claim: "an edit that changes nothing is an error, not a silent success",
+    module: "Ops",
+    find: "\t\t\tif before == newSrc then error((\"edit %d changed nothing\"):format(i)) end",
+    replace: "\t\t\tif false then error((\"edit %d changed nothing\"):format(i)) end",
+  },
+  {
     name: "a restore no longer counts as preexisting",
     claim: "a rollback may re-materialise the user's own asset ids",
     module: "Ops",
