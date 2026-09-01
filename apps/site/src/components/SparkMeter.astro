@@ -26,7 +26,7 @@ const { showCost = true } = Astro.props;
       <div class="ctl is-clay">
         <label for="sm-clay">
           <span class="ctl__name">Questions &amp; small edits</span>
-          <span class="ctl__mode mono">Clay · 1 spark</span>
+          <span class="ctl__mode mono">Clay · 2 sparks</span>
         </label>
         <div class="ctl__row">
           <input
@@ -36,7 +36,7 @@ const { showCost = true } = Astro.props;
             max="60"
             step="1"
             value="12"
-            data-cost="1"
+            data-cost="2"
             data-cursor="drag"
             data-cursor-label="drag"
           />
@@ -110,7 +110,7 @@ const { showCost = true } = Astro.props;
     <div class="meter__result">
       <div class="gauge">
         <p class="gauge__label mono">Sparks used per day</p>
-        <p class="gauge__value" id="sm-total">46</p>
+        <p class="gauge__value" id="sm-total">60</p>
 
         <div class="gauge__track" aria-hidden="true">
           <span class="gauge__fill" id="sm-fill"></span>
@@ -125,7 +125,14 @@ const { showCost = true } = Astro.props;
       </div>
 
       <p class="verdictline" id="sm-verdict" aria-live="polite">
-        Comfortably inside the free allowance.
+        <!-- Pre-rendered to match what the script computes for these slider defaults,
+             so the page tells the same story before JavaScript runs and for a reader
+             who has it turned off. It said "Comfortably inside the free allowance"
+             while the defaults totalled 46; correcting Clay from 1 spark to 2 makes
+             them total exactly 60, which is the whole daily allowance and is the
+             monthly cap binding, not comfort. -->
+        A day like this fits the free plan — it is the monthly cap that binds. 900 free
+        sparks covers about <strong>15 days</strong> of building at this intensity.
       </p>
 
       <dl class="figures">
@@ -139,7 +146,7 @@ const { showCost = true } = Astro.props;
         </div>
         <div>
           <dt class="mono">Your month</dt>
-          <dd id="sm-month">1,380 sparks</dd>
+          <dd id="sm-month">1,800 sparks</dd>
         </div>
         <div>
           <dt class="mono">Binding limit</dt>
@@ -577,7 +584,15 @@ const { showCost = true } = Astro.props;
       outs.rune.textContent = String(r);
       outs.steps.textContent = String(extra);
 
-      const perDay = c * 1 + s * 4 + r * (10 + extra);
+      // COSTS COME FROM THE INPUTS, not from literals here. `data-cost` was already on
+      // every slider and this line ignored it, so the label a reader sees, the attribute
+      // in the markup and the arithmetic were three copies of one number — and when Clay
+      // was corrected from 1 spark to 2 (37-43 neurons, ceil(43/30) = 2, the same
+      // `sparksForNeurons` the worker charges with), the first two changed and this did
+      // not. The Rune slider adds its extra steps on top, which is the one cost that is
+      // genuinely per-run rather than per-request.
+      const cost = (el: HTMLInputElement) => Number(el.dataset.cost ?? 0);
+      const perDay = c * cost(clay) + s * cost(stone) + r * (cost(rune) + extra);
       const perMonth = perDay * 30;
 
       totalEl.textContent = fmt(perDay);

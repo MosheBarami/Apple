@@ -3,18 +3,26 @@ import Base from '../layouts/Base.astro';
 import SparkMeter from '../components/SparkMeter.astro';
 import FAQ from '../components/FAQ.astro';
 
-// Figures are fixed by docs/COST-MODEL.md and are not changed here:
+// Figures come from docs/COST-MODEL.md through the SAME arithmetic the worker uses,
+// `sparksForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
 // Free 60 sparks/day (900/month) · Pro (designed, waitlist) 400/day (6,000/month)
-// Clay 1 · Stone 4 · Rune 10 (+1 per extra agent step)
+//
+//   Clay   37-43 neurons  -> ceil(43/30) =  2 sparks
+//   Stone  111 neurons    -> ceil(111/30) = 4 sparks   (targeted edit + read-back verify)
+//   Rune   297 neurons    -> ceil(297/30) = 10 sparks  (+1 per extra agent step)
+//
+// Clay was published as 1 spark, and 60 requests a free day. It is 2 and 30. Stone and
+// Rune were right, which is what makes the Clay figure an arithmetic slip rather than a
+// different model of pricing: whoever wrote them did 111 and 297 correctly.
 // "≈ requests / free day" is simply 60 ÷ cost.
 const modeRows = [
   {
     mode: 'Clay',
     cls: 'is-clay',
-    cost: '1 spark',
+    cost: '2 sparks',
     extra: '',
     does: 'Fast answers and small edits',
-    perDay: '60',
+    perDay: '30',
   },
   {
     mode: 'Stone',

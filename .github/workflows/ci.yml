@@ -118,6 +118,13 @@ jobs:
         # the build succeeds and the 404 ships. 577 links today.
         run: node scripts/check-site-links.mjs
 
+      - name: Published spark figures match what the worker charges
+        # The pricing page stated Clay at 1 spark and 60 requests a free day. The worker
+        # charges ceil(neurons / 30) and Clay measures 37-43, so it is 2 and 30. Stone
+        # and Rune were right, which is what made it an arithmetic slip rather than a
+        # different pricing model — and nothing connected the page to the arithmetic.
+        run: node scripts/check-spark-figures.mjs
+
       - name: Heading hierarchy and landmarks
         # Structure is invisible until someone navigates by it. The landing shipped with
         # its three claims inside a <footer> and their titles as <span>, which looks
