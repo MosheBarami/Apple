@@ -150,4 +150,31 @@ H.test("a degenerate subject still yields a usable camera distance", function()
 	H.ok(d > 1, "expected a non-degenerate distance, got " .. tostring(d))
 end)
 
+--[[ THE FRAMING DISTANCE, pinned in both directions.
+
+	 `d = radius * 1.35` is a measured value, not a taste: at 2.1x the subject filled
+	 8-11% of the frame and the visual critic called it "a postage stamp in a void"
+	 while hallucinating detail it could not resolve at that size. Too close is the
+	 opposite failure — the silhouette leaves the frame and the shot reads as a
+	 texture.
+
+	 The old assertion was `d < radius * 12`, which is not a pin: multiplying 1.35 by
+	 anything up to eight still passed. This is a band around the measured value, so
+	 the number cannot drift in either direction without someone deciding to. ]]
+H.test("the framing distance stays in the band that was measured", function()
+	local lo, hi = Vector3.new(-10, 0, -10), Vector3.new(10, 20, 10)
+	local radius = (hi - lo).Magnitude * 0.5
+	local centre = (lo + hi) * 0.5
+	local byName = {}
+	for _, v in Render.viewpoints(lo, hi, "all") do byName[v.name] = v.cf end
+
+	-- `front` sits at (0, radius*0.45, d), so its distance is a direct function of d.
+	local front = (byName.front.Position - centre).Magnitude / radius
+	H.ok(front > 1.30, "front camera has moved too close: " .. tostring(front) .. " radii")
+	H.ok(front < 1.60, "front camera has retreated to a postage stamp: " .. tostring(front) .. " radii")
+
+	local hero = (byName.hero.Position - centre).Magnitude / radius
+	H.ok(hero > 1.35 and hero < 1.80, "hero camera is out of band: " .. tostring(hero) .. " radii")
+end)
+
 H.report("plugin/render")

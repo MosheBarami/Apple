@@ -23,6 +23,41 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 const MUTATIONS = [
   {
+    name: "a restore no longer counts as preexisting",
+    claim: "a rollback may re-materialise the user's own asset ids",
+    module: "Ops",
+    find: "\t\treturn { allow = {}, preexisting = true }",
+    replace: "\t\treturn { allow = {}, preexisting = false }",
+  },
+  {
+    name: "Terrain, Camera and game become deletable",
+    claim: "the destructive-safety guard refuses what a restore cannot bring back",
+    module: "Ops",
+    find: "\t\tif inst.ClassName == \"Terrain\" or inst.ClassName == \"Camera\" or inst == game then",
+    replace: "\t\tif false then",
+  },
+  {
+    name: "SoundId leaves the content-property list",
+    claim: "each content-property family gates the non-URI forms too",
+    module: "Paths",
+    find: "\tSoundId = true, AnimationId = true, Video = true,",
+    replace: "\tAnimationId = true, Video = true,",
+  },
+  {
+    name: "the framing distance retreats to a postage stamp",
+    claim: "the framing distance stays in the band that was measured",
+    module: "Render",
+    find: "\tlocal d = radius * 1.35",
+    replace: "\tlocal d = radius * 5.0",
+  },
+  {
+    name: "the framing distance collapses onto the subject",
+    claim: "the framing distance stays in the band that was measured",
+    module: "Render",
+    find: "\tlocal d = radius * 1.35",
+    replace: "\tlocal d = radius * 0.6",
+  },
+  {
     name: "a mutating op proceeds when no recording could be opened",
     claim: "a mutation without an undo point is refused, not performed",
     module: "Ops",
@@ -137,8 +172,22 @@ if (luauMissing()) {
 const dir = mkdtempSync(join(tmpdir(), 'plugin-mut-'));
 const specs = readdirSync(HERE).filter((f) => f.endsWith('.spec.luau')).sort();
 
-/** True when at least one spec goes red under `mutate`. */
-function suiteFails(mutate, tag) {
+/**
+ * How the suite responded to a mutation: 'pass', 'assertion' or 'broken'.
+ *
+ * WHY THIS IS NOT A BOOLEAN. It was, and a boolean cannot tell the two ways a Luau
+ * run can be non-zero apart: an assertion that failed, and a chunk that never
+ * compiled. A mutation which happens to produce a syntax error would have been
+ * reported "caught" while demonstrating nothing at all about the tests — a check
+ * that lies in exactly the direction that makes it look good.
+ *
+ * The harness always prints `<suite>: N passed` or `<suite>: N passed, M FAILED`
+ * before it raises (see harness.report — the raise is how a non-zero exit is
+ * produced, since the standalone CLI has no os.exit). So the report line is the
+ * evidence that the chunk RAN. No report line means the mutation broke the build
+ * rather than tripping a test.
+ */
+function runSuite(mutate, tag) {
   for (const spec of specs) {
     const specSrc = readFileSync(join(HERE, spec), 'utf8');
     const mods = declaredModules(specSrc);
@@ -147,18 +196,22 @@ function suiteFails(mutate, tag) {
     writeFileSync(out, buildChunk(specSrc, mods, mutate));
     try {
       execFileSync('luau', [out], { encoding: 'utf8', stdio: 'pipe' });
-    } catch {
-      return true;
+    } catch (err) {
+      const output = `${err.stdout ?? ''}${err.stderr ?? ''}`;
+      if (/\bFAILED\b/.test(output)) return { kind: 'assertion', spec, output };
+      return { kind: 'broken', spec, output };
     }
   }
-  return false;
+  return { kind: 'pass' };
 }
 
 let survived = 0;
 
 // Baseline first. If the unmutated suite is red, every "caught" below is meaningless.
-if (suiteFails((src) => src, 'baseline')) {
-  console.error('plugin mutation-check: the UNMUTATED suite fails — fix that before trusting this.');
+const baseline = runSuite((src) => src, 'baseline');
+if (baseline.kind !== 'pass') {
+  console.error(`plugin mutation-check: the UNMUTATED suite ${baseline.kind === 'broken' ? 'does not compile' : 'fails'} — fix that before trusting this.`);
+  console.error(baseline.output?.slice(0, 800) ?? '');
   process.exit(1);
 }
 console.log(`plugin mutation-check: baseline green, applying ${MUTATIONS.length} mutations`);
@@ -170,14 +223,20 @@ for (const [i, m] of MUTATIONS.entries()) {
     applied = true;
     return src.replace(m.find, m.replace);
   };
-  const caught = suiteFails(mutate, `m${i}`);
+  const result = runSuite(mutate, `m${i}`);
   if (!applied) {
     // The source moved out from under the mutation. Silently "passing" here would be
     // the worst outcome: a check that stops checking without saying so.
     console.error(`  STALE   ${m.name} — its target text no longer exists in ${m.module}.luau`);
     survived += 1;
-  } else if (caught) {
+  } else if (result.kind === 'assertion') {
     console.log(`  caught  ${m.name}  (${m.claim})`);
+  } else if (result.kind === 'broken') {
+    // Non-zero, but not because a test noticed. This mutation proves nothing and
+    // must be rewritten to be a behaviour change rather than a compile error.
+    console.error(`  INVALID ${m.name} — the chunk did not compile, so no test was exercised`);
+    console.error(`          ${(result.output ?? '').split('\n').find((l) => /error|Error/.test(l)) ?? ''}`);
+    survived += 1;
   } else {
     console.error(`  SURVIVED ${m.name} — nothing asserts: ${m.claim}`);
     survived += 1;

@@ -157,7 +157,15 @@ jobs:
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
-          name: golem-plugin
+          #[[ NAMED SO NOBODY INSTALLS IT BY MISTAKE.
+          #
+          #   plugin-release.yml tells a human to download "the artifact" and drop the
+          #   .rbxm into their local Plugins folder. THIS artifact is built from
+          #   whatever a pull request contains, including a fork's, and now that every
+          #   PR runs CI there are many more of them. It is a build check, not a
+          #   release. The release artifact comes from plugin-release.yml, which is
+          #   workflow_dispatch-only. ]]
+          name: golem-plugin-pr-unverified
           path: golem-plugin.rbxm
           retention-days: 7
 
@@ -192,7 +200,11 @@ jobs:
         run: node scripts/check-workspace-coverage.mjs
 
       - name: Formatting drift (report only)
-        run: npx --yes prettier@3 --check "apps/**/*.{ts,tsx,css,astro}" || echo "::warning::prettier reported formatting drift"
+        # PINNED. `prettier@3` resolves the newest 3.x from npm on every run, including
+        # every fork PR — unpinned remote code execution, in a workflow whose other two
+        # toolchain installs are deliberately version-pinned so the supply chain is one
+        # fewer thing to trust. Same reasoning, same treatment.
+        run: npx --yes prettier@3.4.2 --check "apps/**/*.{ts,tsx,css,astro}" || echo "::warning::prettier reported formatting drift"
 
   # ------------------------------------------------------------- security ---
   security:

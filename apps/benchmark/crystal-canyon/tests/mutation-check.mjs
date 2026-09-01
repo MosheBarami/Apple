@@ -300,7 +300,16 @@ const dir = mkdtempSync(join(tmpdir(), 'cc-mut-'));
 const specs = readdirSync(HERE).filter((f) => f.endsWith('.spec.luau')).sort();
 
 /** Run every spec with `mutate` applied; true if any spec went red. */
-function suiteFails(mutate, tag) {
+/**
+ * How the suite responded: 'pass', 'assertion' or 'broken'.
+ *
+ * NOT a boolean, for the reason apps/plugin/tests/mutation-check.mjs is not either: a
+ * boolean cannot separate an assertion that failed from a chunk that never compiled,
+ * so a mutation producing a syntax error reported "caught" while demonstrating nothing
+ * about the tests. The harness prints its report line before it raises, so that line
+ * is the evidence the chunk actually RAN.
+ */
+function runSuite(mutate, tag) {
   for (const spec of specs) {
     const specSrc = readFileSync(join(HERE, spec), 'utf8');
     const mods = declaredModules(specSrc);
@@ -309,18 +318,22 @@ function suiteFails(mutate, tag) {
     writeFileSync(out, buildChunk(specSrc, mods, mutate));
     try {
       execFileSync('luau', [out], { encoding: 'utf8', stdio: 'pipe' });
-    } catch {
-      return true;
+    } catch (err) {
+      const output = `${err.stdout ?? ''}${err.stderr ?? ''}`;
+      if (/\bFAILED\b/.test(output)) return { kind: 'assertion', spec, output };
+      return { kind: 'broken', spec, output };
     }
   }
-  return false;
+  return { kind: 'pass' };
 }
 
 let survived = 0;
 
 // Baseline first. If the unmutated suite is red, every "caught" below is meaningless.
-if (suiteFails((src) => src, 'baseline')) {
-  console.error('mutation-check: the UNMUTATED suite fails — fix that before trusting this.');
+const baseline = runSuite((src) => src, 'baseline');
+if (baseline.kind !== 'pass') {
+  console.error(`mutation-check: the UNMUTATED suite ${baseline.kind === 'broken' ? 'does not compile' : 'fails'} — fix that before trusting this.`);
+  console.error(baseline.output?.slice(0, 800) ?? '');
   process.exit(1);
 }
 console.log(`mutation-check: baseline green, applying ${MUTATIONS.length} mutations`);
@@ -332,14 +345,18 @@ for (const [i, m] of MUTATIONS.entries()) {
     applied = true;
     return src.replace(m.find, m.replace);
   };
-  const caught = suiteFails(mutate, `m${i}`);
+  const result = runSuite(mutate, `m${i}`);
   if (!applied) {
     // The source moved out from under the mutation. Silently "passing" here would be the
     // worst outcome: a check that stops checking without saying so.
     console.error(`  STALE   ${m.name} — its target text no longer exists in ${m.module}.luau`);
     survived += 1;
-  } else if (caught) {
+  } else if (result.kind === 'assertion') {
     console.log(`  caught  ${m.name}  (${m.claim})`);
+  } else if (result.kind === 'broken') {
+    console.error(`  INVALID ${m.name} — the chunk did not compile, so no test was exercised`);
+    console.error(`          ${(result.output ?? '').split('\n').find((l) => /error|Error/.test(l)) ?? ''}`);
+    survived += 1;
   } else {
     console.error(`  SURVIVED ${m.name} — nothing asserts: ${m.claim}`);
     survived += 1;

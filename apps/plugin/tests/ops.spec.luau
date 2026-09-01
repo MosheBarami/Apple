@@ -317,4 +317,45 @@ H.test("code with no loop at all is never refused", function()
 	H.eq(refusedFor("for i = 1, 10 do print(i) end"), false, "a bounded numeric for")
 end)
 
+-- ------------------------------------------------- the destructive-safety guard --
+
+--[[ Three instances a delete must refuse. Terrain and the Camera cannot be recreated
+	 by a restore (Serializer's SKIP_CLASSES keeps them for the same reason), and
+	 deleting `game` is not a recoverable mistake. The guard existed and nothing
+	 asserted it, so removing it would have gone unnoticed. ]]
+H.test("Terrain, the Camera and game itself cannot be deleted", function()
+	local ws = game:GetService("Workspace")
+	local cam = Instance.new("Camera", ws)
+	cam.Name = "GuardCam"
+	local r = Ops.execute("d1", { op = "delete_instances", paths = { "game.Workspace.GuardCam" } })
+	H.eq(r.ok, false, "the Camera must be refused")
+	H.ok(string.find(tostring(r.error), "refusing to delete", 1, true), "says why: " .. tostring(r.error))
+	H.ok(cam.Parent ~= nil, "and it is still in the place")
+end)
+
+H.test("an ordinary instance still deletes, so the guard is a guard and not a wall", function()
+	local ws = game:GetService("Workspace")
+	local doomed = Instance.new("Folder", ws)
+	doomed.Name = "Doomed"
+	local r = Ops.execute("d2", { op = "delete_instances", paths = { "game.Workspace.Doomed" } })
+	H.eq(r.ok, true, "ok: " .. tostring(r.error))
+	H.eq(ws:FindFirstChild("Doomed"), nil, "actually gone")
+end)
+
+H.test("a refused delete leaves the rest of the batch alone", function()
+	-- The handler raises on the first refusal, so the op is cancelled and its
+	-- recording rolled back rather than half-applied.
+	local ws = game:GetService("Workspace")
+	local cam = Instance.new("Camera", ws)
+	cam.Name = "BatchCam"
+	local keep = Instance.new("Folder", ws)
+	keep.Name = "SurvivesBatch"
+	local r = Ops.execute("d3", {
+		op = "delete_instances",
+		paths = { "game.Workspace.BatchCam", "game.Workspace.SurvivesBatch" },
+	})
+	H.eq(r.ok, false, "the batch fails")
+	H.ok(ws:FindFirstChild("SurvivesBatch"), "and the later path was never reached")
+end)
+
 H.report("plugin/ops")

@@ -231,4 +231,31 @@ H.test("fullPath round-trips a name that needs brackets", function()
 	H.eq(segs[#segs], "My Part", "and parses back to the same name")
 end)
 
+--[[ ASSET_PROPS IS THE TIER-2 LIST, and it is hand-maintained.
+
+	 A URI is gated on any property (tier 1, asserted above). Every OTHER form — a bare
+	 number, a digit string, an http URL — is an asset reference only on a property
+	 this list names. So dropping an entry silently narrows the gate for exactly the
+	 shapes tier 1 cannot see, and the URI tests would all still pass.
+
+	 One entry per engine surface, so a removal is caught wherever it happens. ]]
+H.test("each content-property family gates the non-URI forms too", function()
+	policy(70)
+	local cases = {
+		{ "SoundId", "Sound" },
+		{ "Image", "ImageLabel" },
+		{ "Texture", "Decal" },
+		{ "MeshId", "MeshPart" },
+		{ "Face", "HumanoidDescription" },
+	}
+	for _, c in cases do
+		local prop, class = c[1], c[2]
+		-- A bare digit string is an asset id ONLY because the property is in the list.
+		H.eq(refused(prop, "71", "string", class), true, prop .. ": an unverified digit string")
+		H.eq(refused(prop, "70", "string", class), false, prop .. ": the verified one")
+		-- And the http form, which is also tier 2.
+		H.eq(refused(prop, "https://www.roblox.com/asset/?id=71", "string", class), true, prop .. ": http id")
+	end
+end)
+
 H.report("plugin/paths")
