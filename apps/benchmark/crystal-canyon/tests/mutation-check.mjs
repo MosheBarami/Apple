@@ -102,6 +102,39 @@ const MUTATIONS = [
     find: '\t\tplayer:SetAttribute(attributeName(zone.Id), Zones.isUnlocked(player, zone.Id))',
     replace: '\t\tif Zones.isUnlocked(player, zone.Id) then player:SetAttribute(attributeName(zone.Id), true) end',
   },
+  {
+    name: "degradeToMemory loses its production guard",
+    claim: "a live server never silently stops saving",
+    module: "DataService",
+    find: "\tif not IS_STUDIO then\n\t\tif not reportedOutage then",
+    replace: "\tif false then\n\t\tif not reportedOutage then",
+  },
+  {
+    name: "a lost lock leaves the session readable",
+    claim: "the economy cannot credit a profile we no longer own",
+    module: "DataService",
+    find: "\t\tsession.persist = false\n\t\tsession.state = \"failed\"\n\t\twarn(",
+    replace: "\t\tsession.persist = false\n\t\twarn(",
+  },
+  {
+    name: "a lost lock does not remove the player",
+    claim: "the player is removed rather than left earning into a discarded copy",
+    module: "DataService",
+    find: "\t\tplayer:Kick(\n\t\t\t\"Your Crystal Canyon save was opened on another server.",
+    replace: "\t\tlocal _skipped = (\n\t\t\t\"Your Crystal Canyon save was opened on another server.",
+  },
+  {
+    // The return at the END of degradeToMemory: the value the load-error branch acts on.
+    // This mutation survived until the studio spec gained a test for a store that fails at
+    // LOAD time. Every earlier test degraded at BOOT instead, where init discards the
+    // return value and onPlayerAdded short-circuits on the flag — so Studio's softening
+    // was never actually exercised by the tests that appeared to cover it. See F-30.
+    name: "Studio no longer degrades to in-memory",
+    claim: "an unreachable DataStore is still playable in Studio",
+    module: "DataService",
+    find: "\t)\n\treturn true\nend",
+    replace: "\t)\n\treturn false\nend",
+  },
 ];
 
 try {

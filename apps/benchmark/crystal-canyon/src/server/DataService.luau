@@ -88,16 +88,50 @@ local persistenceAvailable = true
 
 -- Logging ------------------------------------------------------------------
 
-local function logDegraded(reason: string)
+local reportedOutage = false
+
+--[[ Degrade to in-memory profiles, and answer whether that actually happened.
+
+	 STUDIO ONLY, which is the whole point of the return value. The header of this file
+	 says "A live server never does this: a silent switch to 'not saving' in production is
+	 a worse outage than a kick" — and the code did exactly that anyway. `logDegraded` set
+	 `persistenceAvailable = false` with no Studio gate, from two places:
+
+	   * `DataService.init`, when GetDataStore threw — which is precisely what a real
+	     DataStore outage looks like from inside a live server;
+	   * the load-error path, which DID check IS_STUDIO, so the intent was never in doubt.
+
+	 With the flag cleared, `onPlayerAdded` short-circuited every subsequent joiner to
+	 `state = "ready"` with a blank profile and `persist = false`. A live server would hand
+	 every player an empty save, let them play, and write nothing — the duplication-adjacent
+	 outage this module exists to prevent, arrived at from the other direction.
+
+	 In production this now records the outage once and returns false, leaving `store` nil
+	 so `acquireProfile` returns "error" and each load takes the existing kick path. That
+	 path was already correct; it was simply unreachable once the flag had flipped. ]]
+local function degradeToMemory(reason: string): boolean
+	if not IS_STUDIO then
+		if not reportedOutage then
+			reportedOutage = true
+			warn(
+				`[CrystalCanyon] PERSISTENCE UNAVAILABLE — this server cannot reach the DataStore, `
+					.. `so players will be refused entry rather than handed an empty save that is `
+					.. `never written back. Reason: {reason}`
+			)
+		end
+		return false
+	end
+
 	if not persistenceAvailable then
-		return
+		return true
 	end
 	persistenceAvailable = false
 	warn(
 		`[CrystalCanyon] PERSISTENCE DEGRADED — profiles are in-memory only for this session `
 			.. `and will be lost when the server stops. Nothing will be written to the DataStore. `
-			.. `Reason: {reason}`
+			.. `This is a Studio-only fallback. Reason: {reason}`
 	)
+	return true
 end
 
 --[[ Recognise the permanent "this place cannot reach the DataStore" failures so
@@ -408,13 +442,30 @@ function DataService.save(player: Player, isFinal: boolean?): boolean
 	session.saving = false
 
 	if blocked then
-		-- Stop pretending we own this profile. Gameplay continues on the
-		-- in-memory copy; nothing further is written, so we cannot fight the
-		-- server that now owns it.
+		-- Another server legitimately owns this profile now. We must not write, and we
+		-- must not keep playing either.
+		--
+		-- This used to set `persist = false` and return, leaving the player in the game.
+		-- The HUD went on crediting coins, the objective chain went on advancing, and every
+		-- one of those was discarded — the player was spending real time earning nothing,
+		-- with no way to tell. That is the same silent "not saving" state H2 produced at
+		-- boot, arrived at mid-session, and the load path already treats this exact
+		-- condition (a live foreign lock) as a kick.
+		--
+		-- Marking the session failed BEFORE the kick matters: a kick is not instantaneous,
+		-- and `get`/`isReady` gate on `state == "ready"`, so this closes the window in
+		-- which the economy could still credit a profile that is no longer ours.
 		session.persist = false
+		session.state = "failed"
 		warn(
 			`[CrystalCanyon] save refused for {player.Name} ({player.UserId}): the session lock is `
-				.. `held by another server. This session is now in-memory only.`
+				.. `held by another server. Removing them rather than letting them earn into a `
+				.. `copy that will never be written.`
+		)
+		player:Kick(
+			"Your Crystal Canyon save was opened on another server.\n\n"
+				.. "Nothing has been lost — your progress is safe on that server. "
+				.. "Please rejoin to continue there."
 		)
 		return false
 	end
@@ -461,8 +512,9 @@ local function onPlayerAdded(player: Player)
 	sessions[player] = session
 
 	if not persistenceAvailable then
-		-- Already known degraded from an earlier player; skip the round trip
-		-- that is going to fail the same way.
+		-- Already known degraded from an earlier player; skip the round trip that is going
+		-- to fail the same way. Only reachable in Studio: `persistenceAvailable` is now
+		-- only ever cleared by degradeToMemory, which refuses to clear it on a live server.
 		session.data = Profile.new()
 		session.persist = false
 		session.state = "ready"
@@ -492,8 +544,7 @@ local function onPlayerAdded(player: Player)
 	end
 
 	if status == "error" then
-		if IS_STUDIO then
-			logDegraded("the DataStore is unreachable from this Studio session")
+		if degradeToMemory("the DataStore is unreachable from this session") then
 			session.data = Profile.new()
 			session.persist = false
 			session.state = "ready"
@@ -575,7 +626,7 @@ function DataService.init(_ctx: any)
 	if ok then
 		store = result
 	else
-		logDegraded(`GetDataStore failed: {result}`)
+		degradeToMemory(`GetDataStore failed: {result}`)
 	end
 
 	Players.PlayerAdded:Connect(onPlayerAdded)

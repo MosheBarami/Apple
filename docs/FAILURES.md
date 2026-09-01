@@ -147,8 +147,8 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 | id | severity | finding |
 |---|---|---|
 | ~~H1~~ | ~~high~~ | **CLOSED 2026-09-01.** `src/client/Gates.luau` reads the attribute and paints the gate; `Collect.notifyZoneLocked` supplies the missing feedback. Measured in a Studio playtest — locked 232,62,62 @ T=0.350, unlocked 70,200,85 @ T=0.880, an 8-frame eased fade, and the notice firing 2×/8s inside the locked zone and 0× in an owned one. `docs/evidence/2026-09-01-zone-gate-h1.md`. |
-| H2 | high | A live server **does** silently degrade to no-persistence: `DataService:463` is not Studio-gated, so a `GetDataStore` throw at boot hands every joiner a blank profile at `state = ready`. The docstring asserts the opposite of the code. |
-| H3 | high | Losing the session lock mid-play sets `persist = false` and continues. The HUD keeps crediting coins; every write is discarded. `Notify` is wired and used elsewhere and fires on neither this path nor H2. |
+| ~~H2~~ | ~~high~~ | **CLOSED 2026-09-01.** `logDegraded` became `degradeToMemory`, which refuses to degrade on a live server and returns whether it did; production now leaves `store` nil so each load takes the existing kick path, which was already correct and merely unreachable. 11 tests in `dataservice-production.spec.luau`, and 7 in the Studio counterpart proving the deliberate softening survives. |
+| ~~H3~~ | ~~high~~ | **CLOSED 2026-09-01.** A save that finds a foreign lock now marks the session `failed` *before* kicking, so `get`/`isReady` stop answering in the window before the disconnect lands and the economy cannot credit a profile we no longer own. Five tests cover it, including that no later write reaches the DataStore at all. |
 | H4 | high | Teleport farming works. `MaxPerTick` caps the instantaneous pickup, not the round trip, and there is no server-side movement validation — a ~6-8× economy advantage against the comment's claim of "the same rate as walking". |
 | A2 | high | The **stop button** can be silently lost: `webSocketMessage` does a read-modify-write of `agent` while `runStep` holds its own copy and writes `status: 'running'` at the tail. |
 | A3 | high | Concurrent `startRun` double-charges a Spark, inserts two user rows, and orphans a message that never gets `msg_end`. |
@@ -161,6 +161,36 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 | ~~L8~~ | ~~medium~~ | **CLOSED 2026-09-01.** 33 Luau tests now run the game's own modules in the standalone Luau CLI, plus a 7-mutation check proving the suite can fail. Finding F-26..F-28 below were found by writing them. See `apps/benchmark/crystal-canyon/tests/`. |
 
 ---
+
+### F-30 · A Studio spec that appeared to cover the softening and never reached it
+
+Three tests asserted that an unreachable DataStore stays playable in Studio. All three
+passed. A mutation that made `degradeToMemory` stop degrading — which should break every one
+of them — **survived**, three times, and each survival was a different lie in the tests.
+
+**First survival.** The tests set `__dataStoreService.__fail = true` and nothing else. But an
+earlier test in the same chunk had already handed `DataService` a working store, and `store`
+is never cleared. Failing only `GetDataStore` left that cached handle answering happily: the
+"unreachable DataStore" test had a perfectly reachable one. Fixed by failing the store too.
+
+**Second survival.** Retargeting the mutation at the earlier `return true` also survived —
+and the reasoning behind the retarget was wrong. Both were symptoms of the same thing: every
+test degraded at **boot**, where `init` discards the return value and `onPlayerAdded`
+short-circuits on the flag. `degradeToMemory`'s return value is consulted in exactly one
+place, the `status == "error"` branch, and no test ever got there.
+
+**The gap that hid.** Boot-time unavailability and load-time refusal are different paths.
+`GetDataStore` throwing means no API access at all; `GetDataStore` succeeding and `UpdateAsync`
+being refused means access was granted and the request was not — which is where Studio's
+softening actually lives. Only the first was covered.
+
+Adding a test for the second made the original mutation observable, and it is now caught.
+
+**Why record it.** The tests were not weak in an obvious way — they exercised real code, made
+real assertions, and would have caught a careless edit. What they could not do is tell the
+difference between "Studio degrades correctly" and "this chunk degraded before the question
+was asked". Nothing but a deliberate attempt to break them surfaced that, which is the whole
+argument for `mutation-check.mjs` existing alongside the suite rather than after it.
 
 ### F-29 · A client module that ran, found its target, and painted nothing
 

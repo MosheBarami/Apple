@@ -41,7 +41,7 @@ export function luauMissing() { return !haveLuau(); }
 // spec ever needs real Vector3 maths, that is a signal the thing under test belongs in Studio.
 const PRELUDE = `
 -- The stub instance tree. Modules are emitted dependency-first and each registers itself
--- here as it loads, so a later module's \`require(ReplicatedStorage.CrystalCanyon.X)\` finds
+-- here as it loads, so a later module's own require(ReplicatedStorage.CrystalCanyon.X) finds
 -- the real X that this same chunk already evaluated.
 -- Instance-shaped stubs. These exist so the server modules can be LOADED and CALLED;
 -- they are not a reimplementation of Roblox. Each records what the module did to it so a
@@ -120,6 +120,97 @@ local function __remotesFolder()
   }
 end
 
+-- The task library does not exist outside Roblox, and this runtime has no scheduler to stand in for
+-- it. Rather than fake one, spawned work is RECORDED and not run, and any call that would
+-- actually yield raises. A spec can then assert that a thread was started, and a code path
+-- that depends on real scheduling fails loudly instead of passing against a fake clock.
+-- warn is a Roblox global. Recording rather than printing keeps a passing run quiet and
+-- lets a spec assert that a failure was actually announced -- several findings in
+-- docs/FAILURES.md are precisely "it failed silently".
+local __warnings = {}
+local function warn(...)
+  local parts = {}
+  for i = 1, select("#", ...) do
+    table.insert(parts, tostring((select(i, ...))))
+  end
+  table.insert(__warnings, table.concat(parts, " "))
+end
+
+local __spawned = {}
+local task = {
+  spawn = function(fn, ...)
+    table.insert(__spawned, { fn = fn, args = table.pack(...) })
+  end,
+  defer = function(fn, ...)
+    table.insert(__spawned, { fn = fn, args = table.pack(...) })
+  end,
+  delay = function(_seconds, fn, ...)
+    table.insert(__spawned, { fn = fn, args = table.pack(...) })
+  end,
+  cancel = function() end,
+  wait = function()
+    error("spec: task.wait() would yield, and this harness runs no scheduler. Drive the "
+      .. "code down a path that does not retry, or assert on __spawned instead.", 2)
+  end,
+}
+
+-- A DataStore that keeps values in a table and honours the one contract this game depends
+-- on: UpdateAsync runs the transform against the stored value, and a transform returning
+-- nil aborts the write. __fail makes the next call throw, which is how a spec models an
+-- outage. It is NOT a model of cross-server atomicity — a spec that needs that is asking
+-- for something this runtime cannot honestly provide.
+local function __dataStore()
+  return {
+    __values = {},
+    __fail = false,
+    __calls = 0,
+    UpdateAsync = function(self, key, transform)
+      self.__calls += 1
+      if self.__fail then
+        -- Worded to match DataService.looksPermanent, so a Studio spec short-circuits the
+        -- retry backoff instead of reaching task.wait (which this harness raises on). A
+        -- PRODUCTION spec cannot use this flag for the same reason: looksPermanent is only
+        -- consulted in Studio, so a live-server outage would retry and hit that raise.
+        -- Model a production outage with __dataStoreService.__fail instead, which leaves
+        -- store nil and returns "error" without a round trip.
+        error("403: Studio access to APIs is not allowed (spec-injected outage)", 0)
+      end
+      -- Through self, not the captured table, so a spec can reset __values between tests.
+      local updated = transform(self.__values[key])
+      if updated == nil then
+        return nil
+      end
+      self.__values[key] = updated
+      return updated
+    end,
+    GetAsync = function(self, key) return self.__values[key] end,
+  }
+end
+
+local __store = __dataStore()
+local __dataStoreService = {
+  Name = "DataStoreService",
+  __fail = false,
+  GetDataStore = function(self, _name)
+    if self.__fail then
+      error("DataStoreService: spec-injected GetDataStore failure", 0)
+    end
+    return __store
+  end,
+}
+local __httpService = {
+  Name = "HttpService",
+  __n = 0,
+  GenerateGUID = function(self)
+    self.__n += 1
+    return string.format("00000000-0000-0000-0000-%012d", self.__n)
+  end,
+  JSONEncode = function(_self, v) return tostring(v) end,
+}
+-- Whether the module under test believes it is in Studio. Set per spec with --!studio,
+-- because RunService:IsStudio() is read once at module load and cannot be changed after.
+local __runService = { Name = "RunService", IsStudio = function() return __IS_STUDIO end }
+
 local __playersList = {}
 local __playersService = {
   Name = "Players",
@@ -145,6 +236,8 @@ function __canyon:WaitForChild(childName)
 end
 __canyon.FindFirstChild = function(self, childName) return rawget(self, childName) end
 
+local script = { Name = "spec", Parent = __canyon }
+
 local __rs = { Name = "ReplicatedStorage", CrystalCanyon = __canyon }
 __rs.WaitForChild = function(self, childName)
   local child = rawget(self, childName)
@@ -154,7 +247,14 @@ __rs.WaitForChild = function(self, childName)
   return child
 end
 __rs.FindFirstChild = __rs.WaitForChild
-local __services = { ReplicatedStorage = __rs, Players = __playersService, Workspace = __workspaceService }
+local __services = {
+  ReplicatedStorage = __rs,
+  Players = __playersService,
+  Workspace = __workspaceService,
+  DataStoreService = __dataStoreService,
+  HttpService = __httpService,
+  RunService = __runService,
+}
 local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end, zero = { X = 0, Y = 0, Z = 0 } }
 local Vector2 = { new = function(x, y) return { X = x or 0, Y = y or 0 } end }
 local Color3 = {
@@ -171,7 +271,7 @@ local UDim2 = {
   fromScale = function(x, y) return { X = { Scale = x or 0, Offset = 0 }, Y = { Scale = y or 0, Offset = 0 } } end,
   fromOffset = function(x, y) return { X = { Scale = 0, Offset = x or 0 }, Y = { Scale = 0, Offset = y or 0 } } end,
 }
--- Enum answers any lookup with a distinct, comparable sentinel, so \`Enum.A.B == Enum.A.B\`
+-- Enum answers any lookup with a distinct, comparable sentinel, so \Enum.A.B == Enum.A.B\
 -- holds and a module can store one without the stub having to know the taxonomy.
 local __enumCache = {}
 local Enum = setmetatable({}, {
@@ -191,7 +291,10 @@ local Enum = setmetatable({}, {
     return __enumCache[category]
   end,
 })
+local __boundToClose = {}
 local game = {
+  JobId = "",
+  BindToClose = function(_self, fn) table.insert(__boundToClose, fn) end,
   GetService = function(_self, name)
     local svc = __services[name]
     if not svc then error("spec: no stub for game:GetService(\\"" .. tostring(name) .. "\\")", 2) end
@@ -223,14 +326,19 @@ export function declaredModules(specSrc) {
  *  `mutate` (source, moduleName) => source lets mutation-check.mjs inject a bug into the
  *  source TEXT on its way into the chunk, so the file on disk is never modified. */
 export function buildChunk(specSrc, mods, mutate = (src) => src) {
+  // `--!studio true` makes RunService:IsStudio() answer true for this whole chunk. It has to
+  // be a per-spec chunk setting rather than something a test toggles, because the module
+  // reads IsStudio once at load — which is exactly why H2's production path went untested.
+  const studio = /^--!studio\s+true\s*$/m.test(specSrc);
   return [
+    `local __IS_STUDIO = ${studio}`,
     PRELUDE,
     ...mods.flatMap((m) => [
       wrap(m.name, mutate(readFileSync(m.path, 'utf8'), m.name)),
       `__canyon.${m.name} = { Name = "${m.name}", __module = ${m.name} }`,
     ]),
     `local H = (function()\n${readFileSync(join(HERE, 'harness.luau'), 'utf8')}\nend)()`,
-    specSrc.replace(/^--!modules.*$/m, '').replace(/local H = require\([^)]*\)\s*/g, ''),
+    specSrc.replace(/^--!modules.*$/m, '').replace(/^--!studio.*$/m, '').replace(/local H = require\([^)]*\)\s*/g, ''),
   ].join('\n');
 }
 
