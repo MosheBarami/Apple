@@ -135,6 +135,40 @@ body {
   isolation: isolate;
 }
 
+/*[[ SAFE AREAS, because 100dvh is not the same as 100dvh you can SEE.
+ *
+ *   Measured at 375x812: the page is exactly one viewport, overflow 0, and all three
+ *   strip cells report their bottom at 812 — so it fits, on paper. On a phone with a
+ *   home indicator the bottom ~34px is reserved, and "fits exactly" means the last
+ *   line of the last cell sits underneath it. The same applies at the top on a
+ *   notched device, where the nav would run under the status bar.
+ *
+ *   The insets are added to the two rows that touch the edges rather than to .frame,
+ *   so the hero (the 1fr row) absorbs the difference and the page stays one screen.
+ *   env() resolves to 0 where there is no inset, so nothing changes on a desktop or
+ *   on a phone without one. ]] */
+.nav {
+  padding-top: max(clamp(0.7rem, 2.6vh, 1.9rem), env(safe-area-inset-top));
+}
+
+.strip {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The horizontal insets must never shrink the gutter, only grow past it. Written as
+   max() against --gutter because a bare env() here would override the shorthand above
+   and collapse the nav's side padding to zero on every device without an inset —
+   which is every desktop. */
+.nav {
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
+}
+
+.strip__cell {
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
+}
+
 /* --------------------------------------------------------------------------
    4. The stage — a prism rising from bottom centre
    -------------------------------------------------------------------------- */
