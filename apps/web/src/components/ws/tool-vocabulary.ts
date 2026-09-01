@@ -132,6 +132,11 @@ export const TOOL = {
 
 export type ToolName = keyof typeof TOOL;
 
+/** Whether this build knows the tool at all. */
+export function isKnownTool(tool: string | undefined): boolean {
+  return tool !== undefined && tool in TOOL;
+}
+
 /** Tool -> activity. `working` for a name this build does not know. */
 export function kindForTool(tool: string | undefined): ActivityKind {
   if (!tool) return 'working';

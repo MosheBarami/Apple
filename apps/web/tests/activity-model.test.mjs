@@ -530,7 +530,48 @@ test('the announcement derived from a tool is dropped even when their vocabulari
   ]);
 
   assert.deepEqual(kinds(r), ['inspecting', 'editing', 'reading_scripts']);
-  for (const p of r.phases) {
-    assert.ok(p.steps.length > 0, `"${p.label}" is an empty heading — the announcement was not suppressed`);
+
+  // The real signature of the phantom, and NOT `steps.length > 0`: every ActivityPhase
+  // is built with one step already in it, so a zero-step phase is unrepresentable and
+  // that assertion could never fire. What the phantom actually looked like was
+  // "Building world :: Building world" — a phase whose only step was the ANNOUNCEMENT
+  // itself, which is a step with no toolId.
+  for (const phase of r.phases) {
+    for (const step of phase.steps) {
+      assert.ok(
+        step.toolId !== undefined,
+        `"${phase.label}" contains the announcement "${step.label}" as a step — it was not suppressed`,
+      );
+    }
   }
+});
+
+test('an announcement separated from the next tool by real thinking time is kept', () => {
+  // The suppression's justification has always been that the announcement is broadcast
+  // immediately before the tool_start it describes. session.ts also re-broadcasts the
+  // STICKY previous phase at the top of every step, before the model call — so an
+  // announcement can sit seconds of measured model time away from the tool that
+  // follows, and deleting it deletes a duration the user is entitled to see.
+  const r = run([
+    phase('building', T0),
+    start('a', 'set_properties', T0 + 45_000),
+    end('a', T0 + 45_100, { durationMs: 100 }),
+  ]);
+  assert.equal(r.phases.length, 2, 'the announcement is its own row when it carries real time');
+  assert.equal(r.phases[0].label, 'Building world');
+  assert.ok(r.phases[0].elapsed.ms >= 44_000, `kept only ${r.phases[0].elapsed?.ms}ms of thinking`);
+});
+
+test('an unknown tool does not eat a real announcement through the phase default', () => {
+  // phaseForTool answers 'building' for any name it does not recognise, and its own
+  // JSDoc calls that "for a name this build has never heard of" and "NOT a resting
+  // place". Comparing against it for an unknown tool would let a browser one version
+  // behind a worker silently drop "Building world" whenever the default coincided.
+  const r = run([
+    phase('building', T0),
+    start('a', 'some_tool_from_a_newer_worker', T0 + 10),
+    end('a', T0 + 100, { durationMs: 90 }),
+  ]);
+  const labels = r.phases.map((p) => p.label);
+  assert.ok(labels.includes('Building world'), `announcement was eaten; got ${labels.join(', ')}`);
 });

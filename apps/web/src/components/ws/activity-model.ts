@@ -31,10 +31,18 @@ import {
   ACTIVITY,
   ACTIVITY_LABEL,
   ACTIVITY_NOT_MODELLED,
+  isKnownTool,
   kindForTool,
   labelForTool,
   type ActivityKind,
 } from './tool-vocabulary.ts';
+
+/**
+ * How close an announcement must sit to the tool that follows for it to be that tool's
+ * own announcement. See the note at the filter that uses it.
+ */
+const ANNOUNCE_WINDOW_MS = 1000;
+
 
 /* ---------------------------------------------------------------- states --- */
 
@@ -473,7 +481,30 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
     if (s.toolId !== undefined) return true;
     const next = merged[i + 1];
     if (!next || next.toolId === undefined) return true;
-    if (s.phase !== undefined && next.tool !== undefined) return s.phase !== phaseForTool(next.tool);
+
+    // TWO conditions the first version of this fix left out, both found by re-reading
+    // what the worker actually broadcasts.
+    //
+    // PROXIMITY. This comment has always justified itself by "broadcast immediately
+    // BEFORE the tool_start it describes" — and the code only ever checked adjacency in
+    // the merged array. They are not the same thing: session.ts re-broadcasts the
+    // STICKY previous phase at the top of every step, before the model call, and the
+    // derived one only when the tool starts. So an announcement can sit seconds of real
+    // model thinking away from the tool that follows it, and deleting it deletes a
+    // measured duration the user is entitled to see. The window is a threshold and
+    // therefore a judgement: two messages sent back to back over one socket arrive a
+    // few milliseconds apart, so a second is generous by three orders of magnitude and
+    // still nowhere near a model call.
+    //
+    // KNOWN TOOL. `phaseForTool` answers 'building' for any name it does not recognise,
+    // and its own JSDoc says the default is "for a name this build has never heard of"
+    // and is "NOT a resting place". Comparing against it for an unknown tool means a
+    // browser one version behind a worker silently eats real "Building world"
+    // announcements whenever the default happens to coincide.
+    const close =
+      s.startedAt !== undefined && next.startedAt !== undefined && next.startedAt - s.startedAt <= ANNOUNCE_WINDOW_MS;
+    if (close && s.phase !== undefined && isKnownTool(next.tool)) return s.phase !== phaseForTool(next.tool!);
+    if (!close) return true;
     return next.kind !== s.kind;
   });
 

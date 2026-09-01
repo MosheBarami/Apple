@@ -689,9 +689,17 @@ async function recordPlacedAsset(
         .bind(assetId)
         .first<{ id: string }>();
       key = row?.id ?? null;
-    } catch {
-      // The table may not exist at all (BLOCKERS §4b). That is the unaccounted case,
-      // not a failure to record — fall through and write the sentinel.
+    } catch (e) {
+      // ONLY the missing table. The first version of this catch swallowed everything,
+      // which made it do the very thing the read path in provenance.ts refuses to do —
+      // and worse, durably. A transient D1 error would fall through and write a
+      // PERMANENT `unaccounted:` row for an asset that is in the library; the row
+      // outlives the blip, and because the primary key is (project_id, asset_id) a
+      // later correct placement writes a SECOND row under the real library id, so one
+      // physical asset appears in the report twice — once as unaccounted, once
+      // credited. A missing table is a known state of the world; anything else is a
+      // fault, and a fault must not be recorded as an answer.
+      if (!String(e instanceof Error ? e.message : e).includes('no such table')) throw e;
       key = null;
     }
     const accounted = key !== null;
@@ -1229,7 +1237,10 @@ export const TOOLS: Record<string, ToolImpl> = {
       return {
         ...placed,
         provenance,
-        attribution: recorded ?? { recorded: false },
+        // `null` means there was no project to attribute to at all — the eval harness
+        // and the admin run-tool route. Saying "recorded: false" there would report a
+        // failure that never happened.
+        ...(recorded ? { attribution: recorded } : {}),
         ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
       };
     },

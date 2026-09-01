@@ -285,7 +285,7 @@ credentials, and it is not one to take unilaterally.
    `golem-corpus`.
 4. Add a `scheduled` handler and a cron trigger so `staleAssets` / `markHealth` run, or
    delete the sentence in `staleAssets` that promises a cron that does not exist.
-5. Nothing else. The sixth step this list used to need — dropping a `fromLibrary`
+5. Nothing further in the ingest itself. The extra step this list used to need — dropping a `fromLibrary`
    guard in `recordPlacedAsset` that keyed a library asset as *unaccounted* whenever
    its id had not come from this session's own search — was fixed in code on
    2026-09-01, so the ingest alone is now sufficient.

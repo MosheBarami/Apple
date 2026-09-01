@@ -125,3 +125,80 @@ C10/C12's not-modelled reasons hold. `copyableCredits` handles the case it claim
 plugin 168 + 40 mutations. `pnpm -r typecheck`: 0 errors. Panel re-checked in the
 browser: verdict "1 asset Golem cannot account for", amber, and the section below it now
 agrees with the heading above it.
+
+---
+
+# The confirmation pass
+
+A third agent was asked to verify the nine fixes above rather than trust them, running
+the real code where it could: `projectAssets` against SQLite with `asset_library` absent,
+`readiness()` over an eight-case matrix, and `reduceActivity` over seven adversarial
+sequences.
+
+**Four confirmed correct**: the missing-table fallback (all 21 columns come back under
+the names `JoinRow` reads, and non-missing-table errors still throw); `boundProjectId`
+(the key and shape match what `/init` writes, and the restore sits inside the
+`blockConcurrencyWhile` that blocks `alarm()`); the `unaccounted` verdict (the panel's
+filter and the model's are the identical predicate, and `commercialUse.ok` has no reader
+that could contradict it); and `scrubEngineIdentity` being in scope with no §15.2 leak.
+
+**Four more defects, one of them introduced by the fix itself:**
+
+1. **The new inner catch did the exact thing the sibling fix forbade, and did it
+   durably.** Wrapping the `asset_library` lookup in a bare `catch { key = null }` meant
+   a transient D1 error fell through and wrote a **permanent** `unaccounted:` row for an
+   asset that *is* in the library. The row outlives the blip, and because the usage
+   table's primary key is `(project_id, asset_id)`, a later correct placement writes a
+   **second** row under the real library id — listing one physical asset twice, once
+   unaccounted and once credited. The read path fails loudly; the write path was
+   guessing. It now re-throws anything that is not the missing table, guarded by a test.
+
+2. **`phaseForTool`'s default made the suppression eat real announcements.** It answers
+   `'building'` for any unrecognised name — its own JSDoc calls that "for a name this
+   build has never heard of" and "NOT a resting place". So a browser one version behind a
+   worker silently dropped "Building world" whenever the default coincided. The
+   comparison now requires the tool to be one this build knows.
+
+3. **The suppression justified itself by proximity and only ever checked adjacency.**
+   `session.ts:870` re-broadcasts the *sticky previous* phase at the top of every step,
+   before the model call, while the derived phase is set only when a tool starts. So the
+   announcement being deleted was frequently not the one derived from the following tool
+   — and deleting it deleted measured model thinking time. Verified: an announcement 45
+   seconds before its tool was silently removed, taking 44,800ms of wall time with it. A
+   one-second window now separates the two cases, and it is labelled in the code as the
+   judgement it is.
+
+4. **A vacuous assertion in the regression test I had just written** — the same class as
+   defect 5 of the first pass. `assert.ok(p.steps.length > 0, '… is an empty heading')`
+   can never fire, because every `ActivityPhase` is constructed with one step already in
+   it, so a zero-step phase is unrepresentable. Only the `deepEqual` above it did any
+   work. The phantom's real signature is a phase whose step is the **announcement**, so
+   the test now asserts every step carries a `toolId`.
+
+Also: `attribution: { recorded: false }` was emitted even when there was no project bound
+at all, conflating "nothing to attribute to" with "the write failed"; and a numbering slip
+in `BLOCKERS.md` §4b.
+
+## The three cases, run against the real reducer after the fixes
+
+```
+A. sticky announcement 45s before its tool
+   Building world  :: [announcement] Building world   (45000ms wall)
+   Editing project :: Set properties                  (100ms wall)
+
+B. unknown tool from a newer worker
+   Building world  :: [announcement] Building world | some tool from a newer worker
+
+C. the derived announcement, immediately before its tool
+   Editing project :: Set properties                  (97ms wall)
+```
+
+A keeps the thinking time, B keeps the announcement, C still suppresses the duplicate.
+
+## Suite
+
+`pnpm -r test`: web 260, worker 162, evals 1029, corpus 231, design 80, benchmark 4,
+plugin 168 + 40 mutations. `pnpm -r typecheck`: 0 errors.
+
+**Thirteen real defects across three passes, four of them in fixes for earlier ones.**
+That ratio is the argument for the third pass having been worth running.

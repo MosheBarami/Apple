@@ -151,3 +151,18 @@ test('the session restores its binding when an evicted instance is revived', () 
   assert.match(ctor, /storage\.get<\{ projectId: string \}>\('bind'\)/, 'the constructor must read the binding back');
   assert.match(ctor, /this\.boundProjectId = bound\.projectId/);
 });
+
+test('a fault in the library lookup is not recorded as an answer', () => {
+  // The inner catch around the asset_library lookup must re-throw anything that is not
+  // the missing-table case. Swallowing everything would write a PERMANENT
+  // `unaccounted:` row for an asset that is in the library whenever D1 hiccups — and
+  // because the usage table's primary key is (project_id, asset_id), a later correct
+  // placement adds a SECOND row under the real library id, listing one physical asset
+  // twice: once unaccounted, once credited.
+  const src = readFileSync(join(ROOT, 'apps/worker/src/tools.ts'), 'utf8');
+  const fn = src.slice(src.indexOf('async function recordPlacedAsset'), src.indexOf('export const TOOLS'));
+  const lookup = fn.slice(fn.indexOf('asset_library where roblox_asset_id'));
+  const catchBlock = lookup.slice(lookup.indexOf('} catch'), lookup.indexOf('const accounted'));
+  assert.match(catchBlock, /no such table/, 'the catch must recognise the missing-table case');
+  assert.match(catchBlock, /throw e;/, 'and re-throw everything else');
+});
