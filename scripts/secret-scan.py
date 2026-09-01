@@ -59,7 +59,14 @@ PATTERNS = [
     ("GitHub token", re.compile(rb"gh[pousr]_[A-Za-z0-9]{36,}")),
     ("Slack token", re.compile(rb"xox[baprs]-[0-9A-Za-z\-]{10,}")),
     ("Stripe live secret", re.compile(rb"sk_live_[0-9A-Za-z]{20,}")),
-    ("Private key block", re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+    #   A PEM HEADER IS NOT A KEY. This used to match the header alone, so any prose
+    #   quoting one — including this file's own comments, which is how it was found —
+    #   was a hit, and because this rule is a HARD_SIGNATURE that ALLOW cannot suppress,
+    #   there was no way to write about it. A real key is always followed by its base64
+    #   body, so requiring 40+ characters of one keeps every genuine leak and drops the
+    #   examples. Not an evasion path: a key with no body decrypts nothing.
+    ("Private key block",
+     re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----[\r\n\s]+[A-Za-z0-9+/=\r\n\s]{40,}")),
     ("JWT", re.compile(rb"eyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}")),
     ("Cloudflare API token", re.compile(rb"(?i)cloudflare[_a-z]*token[\"'\s:=]+[A-Za-z0-9_\-]{35,}")),
     ("Supabase service role", re.compile(rb"(?i)service_role[\"'\s:=]+[A-Za-z0-9._\-]{40,}")),
