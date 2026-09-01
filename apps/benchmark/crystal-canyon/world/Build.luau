@@ -229,26 +229,16 @@ local function wedge(parent: Instance, name: string, size: Vector3, cf: CFrame, 
 	return p
 end
 
---[[ EVALUATES ITS ARGUMENTS AND EMITS NOTHING.
+--[[ EVALUATES ITS ARGUMENTS AND EMITS NOTHING, and it is not a mistake.
 
-	 This exists for one job and it is worth stating plainly, because a function that
-	 deliberately throws away its work looks like a mistake.
+	 This builder is deterministic from ONE seeded stream, so removing a `rand()` re-rolls every
+	 draw after it (F-32). When geometry is RETIRED its draws must stay — and those draws sit
+	 inside the emission calls' own argument lists, so the way to keep them is to keep the call
+	 and change where it goes. Lua evaluates arguments left to right before the call, so routing
+	 them here consumes the stream identically and builds nothing.
 
-	 `Build.luau` is deterministic from ONE seeded stream. Adding or removing a single `rand()`
-	 re-rolls every draw after it and rebuilds the entire world differently — F-32, which cost
-	 an afternoon and was caught only because a part count happened to move. So when a piece of
-	 geometry is RETIRED, its draws must stay: the chamfer, the ramp cap, the broken crest and
-	 the buttress are all gone from the wall, and every `rand()` that used to size them still
-	 runs, in the same order, with the same arguments.
-
-	 Those draws sit inside the emission calls' own argument lists, so the way to keep them is to
-	 keep the call and change where it goes. Lua evaluates arguments left to right before the
-	 call, so routing them here consumes the stream identically and builds nothing. The stream
-	 fingerprint printed at the end of the build is what proves it.
-
-	 The alternative — extracting the draws into a program table and replaying it — is where
-	 parity would actually be lost: the sequence has three short-circuits in it, and any one
-	 transcribed wrongly is F-32 again, silently. ]]
+	 Extracting the draws into a program table instead is where parity would be lost: the
+	 sequence has three short-circuits in it. See F-39. ]]
 --[[ THE CLIFF VOCABULARY LIVES IN ONE TABLE, and the reason is a hard Luau limit rather than
 	 taste: a chunk gets 200 local registers per scope, this file runs as one top-level chunk,
 	 and it was already at the ceiling. Adding the facet helpers, the deck and the archetype
@@ -299,37 +289,20 @@ function CW.cornerWedge(parent: Instance, name: string, size: Vector3, cf: CFram
 	return p
 end
 
---[[ ONE ORIENTED FACET — the primitive the whole wall rewrite is built from.
+--[[ ONE ORIENTED FACET — the primitive the wall is built from.
 
-	 `pitch` is SIGNED and it is the lever that matters. Positive leans the outward face BACK
-	 (its top tips away from the player, so the normal tilts up toward the sun); negative
-	 OVERHANGS, which the old construction could not express at all.
+	 `pitch` is SIGNED: positive leans the outward face BACK so its normal tilts toward the sun;
+	 negative OVERHANGS, which the old construction could not express at all.
 
-	 Why orientation and not silhouette. `Lighting` is ClockTime 14, GeographicLatitude 12, so
-	 the sun sits at elevation ~58 degrees (sin e = cos12 * cos30 = 0.847). For a face tilted t
-	 back from vertical at azimuth offset d from the sun:
+	 WHY ORIENTATION. Under this world's sun (elevation ~58 degrees) a face tilted `t` back at
+	 azimuth offset `d` has `N.L = 0.530*cos(d)*cos(t) + 0.848*sin(t)`. Every authored face in
+	 the old wall had t in [2.0, 6.6] degrees — `N.L` in [0.556, 0.624], an ELEVEN PERCENT band
+	 across a 500-stud surface. The ranges here (yaw +/-32, pitch -22..+38, roll +/-18) give
+	 [0.10, 0.94].
 
-	     N·L = cos(58) * cos(d) * cos(t)  +  sin(58) * sin(t)
-	         = 0.530 * cos(d) * cos(t)    +  0.848 * sin(t)
-
-	 Every authored face in the old wall was `batter = -rand(0.035, 0.115)` with yaw at most
-	 +/-7 degrees: t in [2.0, 6.6] degrees, so N·L in [0.556, 0.624] — an ELEVEN PERCENT range
-	 across a 34-stud-tall, 500-stud-long surface. That is a flat panel with lines drawn on it,
-	 and it is what "stacked rectangular blocks" was describing.
-
-	 It also explains F-33, whose recorded reason was incomplete. Raising the batter to
-	 5.7..12.6 degrees moved N·L to [0.612, 0.702]: the MEAN rose 15% and the SPREAD stayed at
-	 15%. Every face brightened together, so nothing separated from anything. That is the general
-	 trap for any change that adjusts one shared parameter across all faces.
-
-	 The ranges here — yaw +/-32, pitch -22..+38, roll +/-18 — put N·L in [0.10, 0.94].
-
-	 HONESTY ABOUT WHAT THAT NUMBER IS. N·L is the geometric term, not the delivered pixel.
-	 This world has OutdoorAmbient (146,152,158), Ambient (112,116,122) and
-	 EnvironmentDiffuseScale 0.55, so the ambient floor compresses a 9.5x N·L range into
-	 something much smaller on screen. The metric is a DESIGN TOOL that says which direction to
-	 move and roughly how far; it is not evidence, and no claim about this wall should be made
-	 from it. The evidence is player-eye pixels and a fresh critic. ]]
+	 HONESTY ABOUT THAT NUMBER: `N.L` is the geometric term, not the delivered pixel, and this
+	 world's ambient floor compresses it hard. It is a design tool, not evidence. See F-39, which
+	 records what happened when the wall was rebuilt on it. ]]
 function CW.facet(
 	parent: Instance,
 	name: string,
@@ -607,10 +580,9 @@ tintablePools.cliff_rock = tintablePools.rock
 -- =========================================================================
 -- THE CUBE FAMILIES — GOLEM-ORIGINATED, NOT CREATOR STORE
 -- =========================================================================
---[[ GolemPalette also carries meshes this project GENERATED through Roblox GenerationService
-	 (Cube). Six of nine were rejected — three on their own render, three more once they stood
-	 in the world — because a Cube mesh arrives TEXTURED and a textured mesh cannot be tinted
-	 into a flat-shaded palette. See docs/WORLD-BUILDER-HISTORY.md. ]]
+--[[ GolemPalette also carries GENERATED meshes (Roblox Cube). Six of nine were rejected,
+	 three of them only once they stood in the world, because a Cube mesh arrives TEXTURED and a
+	 textured mesh cannot be tinted into a flat-shaded palette. See the history doc. ]]
 
 --[[ `cliff_module` is deliberately NOT in this list, and the three meshes are
 	 still in ServerStorage.GolemPalette so the rejection can be re-checked.
@@ -839,9 +811,8 @@ end
 -- =========================================================================
 -- BIOME ART BIBLES
 -- =========================================================================
---[[ THE FIX FOR CONTAMINATION IS STRUCTURAL. Biome is resolved where a prop STANDS, not
-	 where its group is anchored, because an offset large enough to cross the boundary put rust
-	 buttresses in the snow. See docs/WORLD-BUILDER-HISTORY.md. ]]
+-- Biome is resolved where a prop STANDS, not where its group is anchored: an offset large
+	-- enough to cross the boundary put rust buttresses in the snow. See the history doc.
 
 type FamilyRule = {
 	role: string, -- which Tint entry paints it
@@ -1908,27 +1879,17 @@ function CW.buildDeck(r: Random, n: number, allowed: { string }): { string }
 end
 
 
---[[ BUILD ONE SEGMENT'S VISIBLE MASS.
+--[[ BUILD ONE SEGMENT'S VISIBLE MASS, from `r` — a Random PRIVATE to this segment, so tuning
+	 an archetype cannot move any other segment and the shared stream is untouched.
 
-	 Everything here draws from `r`, a Random private to this segment, so tuning any archetype
-	 cannot move any other segment's geometry — F-32's lesson applied at a finer grain than the
-	 file previously applied it — and the shared stream is untouched.
+	 THE RULE THAT SEPARATES THIS FROM THE FOUR REJECTED ATTEMPTS: adjacent facets differ in
+	 pitch by at least 18 degrees and alternate sign. A wide range sampled INDEPENDENTLY still
+	 produces near-identical neighbours, and a wall of mostly-similar faces reads like a wall of
+	 identical ones — so pitch comes from a per-archetype LADDER, never from a per-facet draw.
 
-	 `toneOf(y)` bands by height (see CW.BAND). `capTop` is the dominance ceiling: every
-	 archetype clamps its own tallest element against it rather than trusting its proportions,
-	 because the proportions are relative to `H` and `H` varies 34..51 on the outer ring.
-
-	 THE RULE THAT SEPARATES THIS FROM THE FOUR REJECTED ATTEMPTS: adjacent facets within one
-	 mass differ in pitch by at least 18 degrees and alternate sign wherever both are available.
-	 Uniformly re-randomising over a wide range is NOT enough — a wide range sampled
-	 independently still produces neighbouring pairs that are near-identical, and a wall of
-	 mostly-similar faces reads exactly like a wall of identical ones. So pitch comes from a
-	 per-archetype LADDER, jittered, never from an independent draw per facet.
-
-	 COUNTER-SHADING IS A SAFETY REQUIREMENT, NOT A NICETY. A wide pitch range means the
-	 overhanging facets render dark, and §1 forbids muted palettes while §9.10 makes desaturated
-	 an automatic fail — V4 already failed a third of the map on exactly this. So any facet
-	 pitched at or below -14 degrees takes one step LIGHTER than its height band. ]]
+	 `capTop` is the dominance ceiling; every archetype clamps against it rather than trusting
+	 proportions, because `H` varies 34..51 on the outer ring. Counter-shading is a §1 safety
+	 requirement, not a nicety: V4 already failed a third of the map on desaturation. ]]
 function CW.mass(
 	kind: string,
 	r: Random,
@@ -4313,32 +4274,20 @@ end
 -- =========================================================================
 -- 15. THE APRON — the answer to "the whole play space is one flat slab"
 -- =========================================================================
---[[ V8, and the owner's §2: the play space is one 332 x 4 x 553 block of grass with everything
-	 standing on it. From the overlook camera the world reads as a tabletop diorama.
+--[[ V8 / §2: the play space was one 332 x 4 x 553 block of grass with everything standing on
+	 it, and the overlook camera read as a tabletop diorama.
 
-	 WHY AN APRON AND NOT A HEIGHT FIELD OVER THE WHOLE WORLD. Making `groundTop(x, z)`
-	 continuous and re-datuming everything was designed and rejected on two grounds, both
-	 verified in this codebase rather than guessed:
+	 WHY AN APRON AND NOT A HEIGHT FIELD OVER THE WHOLE WORLD, rejected on two verified grounds:
+	 `Collect.farEnough` compares candidates in 3-D, so giving the ground relief varies Y,
+	 changes rejection outcomes, changes the draw count and silently re-rolls the 34-crystal
+	 layout (F-32 through a rejection loop, not a draw site); and reconciling a continuous field
+	 with collision needs an encoder whose cells do not align with the field's own
+	 discontinuities, which is a player standing in the air.
 
-	   * `Collect.farEnough` compares crystal candidates in 3-D (`d:Dot(d)` on a Vector3). Today
-	     every candidate shares y = 6.4 so it behaves 2-D; give the ground relief and Y varies,
-	     rejection outcomes change, the number of `NextNumber` draws changes, and the whole
-	     34-crystal layout silently re-rolls. F-32 arriving through a rejection loop rather than
-	     through a draw site.
-	   * Reconciling a continuous field with collision geometry needs a run-length encoder whose
-	     cell boundaries do not line up with the field's own discontinuities, so field and
-	     collision disagree by a few studs — a player standing in the air.
-
-	 So the relief goes where it can be built as ordinary geometry and checked by looking: an
-	 apron of terraces rising from the meadow floor to the foot of the walls. It does the one
-	 thing a wall-only change cannot — the wall stops being a fence on a plane and becomes the
-	 top of a slope.
-
-	 Built AFTER every prop is placed, and it re-seats what it swallows (below). A post-pass
-	 takes no draws, so the fingerprint still matches the flat build.
-
-	 The collection field stays flat: §2 is explicit that navigation stays obvious and this is a
-	 simulator, not an obby. ]]
+	 So: terraces rising from the meadow floor to the wall foot, built AFTER every prop is placed
+	 and re-seating what they swallow. A post-pass takes no draws, so the fingerprint still
+	 matches the flat build. The collection field stays flat — §2 keeps navigation obvious and
+	 this is a simulator, not an obby. See F-40. ]]
 --[[ A FUNCTION, not a `do` block, and the difference is not style. Luau allots 200 local
 	 registers per FUNCTION; a `do` block shares the enclosing chunk's, and this file is at that
 	 ceiling too (see the note on `CW`). Wrapping this section in a function gives it its own
@@ -4387,7 +4336,11 @@ end
 		{ x = 0, z = 1, at = 0 }, -- north, up the meadow corridor
 		{ x = 0, z = -1, at = 0 }, -- south, down the frost road
 		{ x = -1, z = 0, at = 130 },
-		{ x = 1, z = 0, at = -140 },
+		--[[ -185, not -140. The east corridor at z = -140 is where a butte's sealing course
+			 stands: the ramp's surface was perfect (0.3 rising to 16.5) and a `CliffSeal` at
+			 x = 95 stopped the player dead on it. Surveyed the whole east side for a stretch
+			 with no cliff mass in x 55..140 and moved it there. ]]
+		{ x = 1, z = 0, at = -185 },
 	}
 	local RAMP_HALF = 16 -- half-width of a ramp
 
@@ -4472,22 +4425,53 @@ end
 			 the top terrace with nothing to step over at either end. A wedge is thin on its
 			 LookVector side (measured — see `CW.facet`), so it faces INWARD to slope down toward
 			 the player. ]]
-		local depthRun, innerEdge, outerEdge
+		--[[ THE RAMP'S FOOT STARTS ON THE FLAT, 34 studs INSIDE the first terrace.
+
+			 The first version began it exactly at the apron's inner edge, where terrace 1
+			 already stands 5.5 studs tall while the wedge is still zero thick — so the terrace
+			 blocked its own ramp and the apron was unreachable on foot from any of the four
+			 crossings. Walked, not reasoned about: `Humanoid:MoveTo` outward along both the
+			 west and north ramps stopped dead at the inner edge, y = 3.1 and 3.3, and never
+			 climbed a stud.
+
+			 Starting on the flat means the wedge is already ~7.8 studs tall where terrace 1
+			 begins, so it stands proud of every step it crosses and the player walks up it. ]]
+		--[[ A RAMP TOPS OUT WHERE THE TOP TERRACE BEGINS, not at the outer edge, and the
+			 arithmetic is the reason rather than the taste.
+
+			 A linear ramp reaching `rise` at the OUTER edge cannot clear a stepped apron. Terrace
+			 k starts at `INNER + (k-1)w/3` and stands `k*STEP` tall; the ramp is only
+			 `rise*(foot + (k-1)w/3)/(foot+w)` there. Requiring the ramp to win reduces to
+			 `foot*(3-k) > w`, which at k = 3 is `0 > w` — false for any foot length. The first
+			 two versions of this ramp were both blocked, and the second was blocked by 0.3
+			 studs, which is exactly the kind of margin that looks fine in a screenshot.
+
+			 Ending the run at the top terrace's inner edge makes it clear every step with room:
+			 8.7 against 5.5, 12.6 against 11.0, and 16.5 against 16.5. Past that the player is
+			 walking on the top terrace itself.
+
+			 The wedge also sits ON the ground (base y = 0) rather than sunk 4 studs, so its foot
+			 emerges at the start of its run instead of 18 studs later — which is what kept the
+			 earlier version below the first step. ]]
+		local RAMP_FOOT = 34
+		local innerEdge, outerEdge
 		if r.z ~= 0 then
-			innerEdge, outerEdge = INNER_ZN, OUTER_ZN
+			innerEdge = INNER_ZN - RAMP_FOOT
+			outerEdge = INNER_ZN + (OUTER_ZN - INNER_ZN) * (TERRACES - 1) / TERRACES
 		else
-			innerEdge, outerEdge = INNER_X, OUTER_X
+			innerEdge = INNER_X - RAMP_FOOT
+			outerEdge = INNER_X + (OUTER_X - INNER_X) * (TERRACES - 1) / TERRACES
 		end
-		depthRun = outerEdge - innerEdge
+		local depthRun = outerEdge - innerEdge
 		local mid = (innerEdge + outerEdge) / 2
 		local inward = Vector3.new(-r.x, 0, -r.z)
 		local at = if r.z ~= 0
-			then Vector3.new(r.at, rise / 2 - 2, r.z * mid)
-			else Vector3.new(r.x * mid, rise / 2 - 2, r.at)
+			then Vector3.new(r.at, rise / 2, r.z * mid)
+			else Vector3.new(r.x * mid, rise / 2, r.at)
 		wedge(
 			fApron,
 			"ApronRamp",
-			Vector3.new(RAMP_HALF * 2, rise + 4, depthRun),
+			Vector3.new(RAMP_HALF * 2, rise, depthRun),
 			CFrame.lookAt(at, at + inward),
 			Palette.World.Sand
 		)
@@ -4520,24 +4504,48 @@ end
 			end
 		end
 	end
+	--[[ CLEAR THE RAMP CORRIDORS.
+
+		 Walked, not assumed: the north and south ramps climbed and the east and west ones did
+		 not, because a 19 x 32 pine from `MeadowCopseWest` stands at (-79, 130) — squarely in
+		 the west ramp's path — and a matching one blocks the east. The ramps were geometrically
+		 perfect and physically unusable, which is a distinction only a walk makes.
+
+		 Props are PUSHED ASIDE rather than deleted, so the part count and the copse both survive
+		 and the ramp is the only thing that changes. No draws. ]]
+	local cleared = 0
+	for _, r in RAMPS do
+		local along = if r.z ~= 0 then "z" else "x"
+		for _, f in canyon:GetChildren() do
+			if f:IsA("Folder") and f.Name ~= "Apron" and f.Name ~= "Cliffs" then
+				for _, d in f:GetDescendants() do
+					if d:IsA("BasePart") and d.CanCollide then
+						local pos = d.Position
+						-- Distance from the ramp's centre line, across the ramp.
+						local off = if along == "z" then pos.X - r.at else pos.Z - r.at
+						local on = if along == "z" then pos.Z * r.z else pos.X * r.x
+						local halfW = (if along == "z" then d.Size.X else d.Size.Z) / 2
+						local clear = RAMP_HALF + halfW + 2
+						if on > INNER_X - 40 and math.abs(off) < clear then
+							local push = (clear - math.abs(off)) * (if off < 0 then -1 else 1)
+							d.Position = if along == "z"
+								then Vector3.new(pos.X + push, pos.Y, pos.Z)
+								else Vector3.new(pos.X, pos.Y, pos.Z + push)
+							cleared += 1
+						end
+					end
+				end
+			end
+		end
+	end
+
 	--[[ THE ENCLOSURE CAP, and it exists because the apron BROKE the enclosure.
 
-		 This is the exposure the design plan named and I still walked into: the apron lifts the
-		 player up to 16.5 studs at the wall's foot, and the wall does not rise with it. Surveyed
-		 from the top terrace: **122 of 256 perimeter samples cleared a 7.15-stud jump**, most of
-		 them by clearing it entirely. The apron turned a sealed canyon into a wall a player can
-		 step over — a strictly worse world than the flat one it replaced, and no capture would
-		 ever have shown it because the player has to climb up there to find out.
-
-		 Four invisible slabs, one per side, standing on the top terrace and rising 70 studs. The
-		 enclosure invariant becomes STRUCTURAL rather than emergent from whatever heights the
-		 archetype deck happened to deal — which is what it should have been before the apron
-		 too, since the pre-existing buttress-and-stepped-courses construction was already a
-		 staircase.
-
-		 Invisible rather than solid because the wall is the thing the player should see; a
-		 visible 70-stud extension would be a box on top of the geology. `CanCollide` on,
-		 `Transparency` 1, and they are charged to the authored bucket like any other terrain. ]]
+		 The apron lifts the player up to 16.5 studs at the wall's foot and the wall does not
+		 rise with it: 122 of 256 samples from the top terrace cleared a 7.15-stud jump. No
+		 capture would have shown that — you have to climb up and look outward. Four invisible
+		 slabs make the invariant STRUCTURAL rather than emergent from whatever heights the
+		 archetype deck dealt. See F-40. ]]
 	local capBase = TERRACES * STEP
 	local CAP_H = 70
 	for _, side in { { x = 1, z = 0 }, { x = -1, z = 0 }, { x = 0, z = 1 }, { x = 0, z = -1 } } do
@@ -4555,7 +4563,7 @@ end
 		cap.CastShadow = false
 	end
 
-	print(("[Crystal Canyon] apron: %d terraces, %d ramps, %d props re-seated, 4 enclosure caps"):format(TERRACES, #RAMPS, lifted))
+	print(("[Crystal Canyon] apron: %d terraces, %d ramps, %d re-seated, %d cleared from ramps, 4 caps"):format(TERRACES, #RAMPS, lifted, cleared))
 	currentBucket = "authored"
 end)()
 

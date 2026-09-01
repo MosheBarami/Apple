@@ -464,6 +464,32 @@ bright green shelves that read as ski slopes. It now blends toward the biome's c
 rises, which is what talus at the foot of a wall actually is, and it ties the apron to the wall
 standing on it instead of leaving a colour seam at the join.
 
+#### Three ramps that were geometrically perfect and physically unusable
+
+The apron is only relief if the player can get onto it, and §2 requires navigation to stay
+obvious. Four ramps, and **all four failed a walk test the raycast survey had passed**:
+
+1. **The ramp began at the apron's inner edge**, where terrace 1 already stands 5.5 studs while
+   the wedge is still zero thick — so the terrace blocked its own ramp. `Humanoid:MoveTo` stopped
+   dead at y = 3.1 and 3.3 and never climbed a stud.
+2. **A linear ramp reaching full height at the OUTER edge cannot clear a stepped apron at all.**
+   Terrace k starts at `INNER + (k−1)w/3` and stands `k·STEP`; the ramp is only
+   `rise·(foot + (k−1)w/3)/(foot + w)` there. The requirement reduces to `foot·(3 − k) > w`,
+   which at k = 3 is `0 > w` — false for every foot length. The second version was blocked by
+   **0.3 studs**, which is exactly the margin that looks fine in a screenshot. Ramps now top out
+   where the top terrace *begins*: 8.7 against 5.5, 12.6 against 11.0, 16.5 against 16.5.
+3. **A 19 × 32 pine stood in the west ramp**, and a butte's sealing course stood in the east one
+   at x = 95. The surface profile under both was flawless — 0.3 rising smoothly to 16.5 — and a
+   player walking it stopped dead. Props are now pushed aside by a corridor pass (no draws, no
+   deletions), and the east ramp moved to z = −185 after surveying the whole side for a stretch
+   with no cliff mass in x 55..140.
+
+Every one of these was found by **walking**, and none by measuring. The raycast survey answers
+"is there a surface at the right height", and the question that matters is "can a humanoid get
+from here to there" — which is a different question whenever anything else has a collision box.
+Final state: all four ramps climb 11.4–14.0 studs on foot, and the escape test from the top of
+each still reports CONTAINED.
+
 #### The review instrument was wrong too
 
 `meadow-wall` and `frost-wall` aimed at `x = ±150`, which is **inside the cliff footprint**.
