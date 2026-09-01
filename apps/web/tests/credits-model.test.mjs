@@ -15,7 +15,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +27,7 @@ execFileSync(
   [join(WEB, 'src/components/ws/credits-model.ts'), '--format=esm', `--outfile=${out}`],
   { stdio: 'pipe' },
 );
-const { readiness, READINESS_TONE, creditLine, creditsText } = await import(out);
+const { readiness, READINESS_TONE, creditLine } = await import(out);
 
 const entry = (over = {}) => ({
   assetId: 'kenney/nature-kit/tree-pine-01',
@@ -134,13 +134,17 @@ test('a credit line says whether the asset was modified, rather than leaving it 
   );
 });
 
-test('the pasteable block is empty when nothing is owed, not a heading with no entries', () => {
-  assert.equal(creditsText(res().attribution), '');
-  const withBoth = creditsText({
-    ...res().attribution,
-    required: [entry({ licence: 'CC-BY-4.0' })],
-    sourceCredits: [{ text: 'Powered by Poly Haven', url: 'https://polyhaven.com', when: 'live_api', why: '' }],
-  });
-  assert.match(withBoth, /^Credits\n/);
-  assert.match(withBoth, /Powered by Poly Haven — https:\/\/polyhaven\.com$/);
+test('the panel pastes the WORKER\'s credits document, not one it built itself', () => {
+  // The first version of this panel reassembled the block client-side. That is the
+  // duplication that put the tool table in three places — and here it is worse than a
+  // stale label: renderAttribution prints a loud INCOMPLETE section for assets with no
+  // provenance, and a copy that forgot it hands someone a credits file that quietly
+  // claims to be complete.
+  const panel = readFileSync(join(WEB, 'src/components/ws/credits-panel.tsx'), 'utf8');
+  assert.match(panel, /writeText\(res\.credits\)/, 'the clipboard must carry the server document');
+  assert.doesNotMatch(panel, /creditsText/, 'and there must be no client-side re-derivation left');
+
+  // And the section is gated on the ENTRIES, because the rendered document always
+  // carries a "Credits" header and is therefore never empty.
+  assert.match(panel, /a\.required\.length > 0 \|\| a\.sourceCredits\.length > 0/);
 });

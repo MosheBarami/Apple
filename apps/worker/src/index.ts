@@ -10,7 +10,7 @@ import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
 import { refuseLuauIngress } from './tools';
-import { attributionReport, commercialUseReport, ensureProvenanceTables, projectAssets } from './provenance';
+import { ensureProvenanceTables, exportProjectAttribution } from './provenance';
 import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
 
 export { SessionDO } from './do/session';
@@ -187,11 +187,14 @@ app.get('/api/projects/:id/attribution', async (c) => {
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const projectId = c.req.param('id');
   await ensureProvenanceTables(c.env);
-  const assets = await projectAssets(c.env, projectId);
-  return c.json({
-    attribution: attributionReport(projectId, assets),
-    commercialUse: commercialUseReport(projectId, assets),
-  });
+  // `exportProjectAttribution` is the module's own composition point and it reads the
+  // asset set ONCE for all three outputs. Re-deriving them here — which the first
+  // version of this route did — would have been a second implementation of the same
+  // composition, free to drift from the one the module tests.
+  const { attribution, commercial, text } = await exportProjectAttribution(c.env, projectId);
+  // `text` is the renderable credits artefact, shipped so the browser pastes what the
+  // worker rendered rather than reassembling its own version of the same document.
+  return c.json({ attribution, commercialUse: commercial, credits: text });
 });
 
 app.post('/api/projects/:id/checkpoints', async (c) => {

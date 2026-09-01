@@ -1071,12 +1071,36 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
-        kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
-        maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-        insertableOnly: true,
-        k: 8,
-      });
+      let hits;
+      try {
+        hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
+          kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
+          maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
+          insertableOnly: true,
+          k: 8,
+        });
+      } catch (e) {
+        // THE LIBRARY NOT EXISTING IS NOT THE SAME FACT AS THE LIBRARY HAVING NO MATCH,
+        // and this deployment is in the first state: nothing in the repository calls
+        // `ensureAssetTables` or `upsertAssets`, so `asset_library` has never been
+        // created and every call here raised `no such table: asset_library_fts`. The
+        // model saw a raw SQL string it could do nothing with.
+        //
+        // Returning [] instead would be worse than the raw error, not better: it would
+        // read as "the curated library has nothing like that", which is a claim about
+        // an empty table nobody has ever filled. So the state is named, and the model
+        // is told to take the Creator Store path DELIBERATELY rather than by accident.
+        if (String(e instanceof Error ? e.message : e).includes('no such table')) {
+          return {
+            error:
+              'the curated asset library is not available in this deployment — it has never been '
+              + 'populated, so this is not a statement that it has nothing matching your query. '
+              + 'Use find_verified_asset for the Creator Store instead, or build the thing from '
+              + 'Parts with create_instances.',
+          };
+        }
+        throw e;
+      }
       // Recorded as provenance, on both sets. A library hit is still resolved and gated before it
       // may be inserted — the library says an id is LICENSED, not that it is safe.
       for (const h of hits) {

@@ -63,6 +63,16 @@ export interface CommercialUseReport {
 export interface AttributionResponse {
   attribution: AttributionReport;
   commercialUse: CommercialUseReport;
+  /**
+   * The credits document, rendered by the WORKER.
+   *
+   * Shipped rather than reassembled here. The first version of this panel built its own
+   * version of the same block, which is how the tool table came to exist three times —
+   * and this one has a harder job than a label: `renderAttribution` prints a loud
+   * INCOMPLETE section for unaccounted assets, and a client-side copy that forgot it
+   * would hand someone a credits file that quietly claims to be complete.
+   */
+  credits: string;
 }
 
 /**
@@ -142,17 +152,4 @@ export const READINESS_TONE: Record<Readiness, 'good' | 'bad' | 'warn' | 'muted'
 export function creditLine(e: CreditEntry): string {
   const mods = e.modifications.length > 0 ? ` (modified: ${e.modifications.join(', ')})` : ' (as published)';
   return `${e.name} by ${e.author} — ${e.licence}${mods}`;
-}
-
-/** The whole block, in the order it should be read. Empty string when nothing is owed. */
-export function creditsText(a: AttributionReport): string {
-  const lines: string[] = [];
-  if (a.required.length > 0) {
-    lines.push('Credits', ...a.required.map(creditLine));
-  }
-  if (a.sourceCredits.length > 0) {
-    if (lines.length > 0) lines.push('');
-    lines.push(...a.sourceCredits.map((s) => `${s.text} — ${s.url}`));
-  }
-  return lines.join('\n');
 }

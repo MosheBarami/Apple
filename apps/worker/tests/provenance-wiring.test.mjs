@@ -57,7 +57,15 @@ test('the attribution route exists and is owner-scoped', () => {
   assert.ok(route.length > 0, 'the ledger needs a way to be read');
   const handler = route.slice(0, route.indexOf('});'));
   assert.match(handler, /withOwnedProject/, 'another user must not be able to read it');
-  assert.ok(handler.indexOf('withOwnedProject') < handler.indexOf('projectAssets'), 'ownership is checked first');
+  assert.ok(
+    handler.indexOf('withOwnedProject') < handler.indexOf('exportProjectAttribution'),
+    'ownership is checked before anything is read',
+  );
+
+  // And it composes through the module's own entry point rather than re-deriving the
+  // three outputs inline, which is what the first version of this route did.
+  assert.match(handler, /exportProjectAttribution/);
+  assert.doesNotMatch(handler, /attributionReport\(/, 'no second composition of the same report');
 });
 
 /* ------------------------------------------------------- the key space it writes --- */

@@ -12,7 +12,6 @@ import { StatusIcon } from '../status-icon';
 import { EmptyState } from '../empty-state';
 import {
   creditLine,
-  creditsText,
   readiness,
   READINESS_TONE,
   type AttributionResponse,
@@ -74,7 +73,9 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
   const tone = READINESS_TONE[verdict.state];
   const blockers = c.findings.filter((f) => f.severity === 'blocker');
   const warnings = c.findings.filter((f) => f.severity === 'warning');
-  const pasteable = creditsText(a);
+  // NOT `credits !== ''`: renderAttribution always writes a "Credits" header, so the
+  // rendered document is never empty even when nothing is owed. The entries decide.
+  const owes = a.required.length > 0 || a.sourceCredits.length > 0;
 
   return (
     <div className="cr">
@@ -129,7 +130,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
         </section>
       )}
 
-      {pasteable !== '' && (
+      {owes && (
         <section className="cr-group">
           <h4 className="cr-group__head">Credits to ship</h4>
           <ul className="cr-entries">
@@ -151,7 +152,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
             type="button"
             className="gx-btn gx-btn--outline"
             onClick={() => {
-              void navigator.clipboard?.writeText(pasteable).then(
+              void navigator.clipboard?.writeText(res.credits).then(
                 () => setCopied(true),
                 // A clipboard the browser refused is reported, not swallowed into a
                 // tick that would tell the user they had copied something they had not.
@@ -159,7 +160,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
               );
             }}
           >
-            {copied ? 'Copied' : 'Copy for the game description'}
+            {copied ? 'Copied' : 'Copy the credits'}
           </button>
         </section>
       )}

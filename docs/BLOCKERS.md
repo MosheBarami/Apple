@@ -194,6 +194,85 @@ listing is gated.
 
 ---
 
+## 4b. The curated asset library has never existed — HUMAN-BLOCKED
+
+**Found 2026-09-01**, by auditing for exported code with no production caller — the same
+audit that found the attribution ledger had none.
+
+### What is true
+
+`apps/worker/src/asset-library.ts` has a complete read path, a provenance validator, and a
+20-entry `SEED_MANIFEST`. It also has `ensureAssetTables`, `upsertAssets`,
+`recordVerification`, `staleAssets` and `markHealth` — **none of which is called by
+anything**, verified across `apps/`, `packages/`, `scripts/` and `.github/`.
+
+The tables were therefore never created. Production D1 `golem-corpus`
+(`32c9471e-a7d7-49ee-a8fe-0a7def2c68bd`) contains `chunks`, `chunks_fts*`, `static_assets`
+and `static_chunks`. There is no `asset_library` and no `asset_library_fts`:
+
+```
+select l.id, bm25(asset_library_fts) as rank from asset_library_fts
+  join asset_library l on l.id = asset_library_fts.asset_id ...
+-> 7500 no such table: asset_library_fts: SQLITE_ERROR
+```
+
+The system prompt tells the model to prefer this tool **first** ("Ids come from
+search_asset_library (curated, licence-cleared, try this first)"). Every one of those
+calls has failed, in production, for the life of the deployment, and the model received
+the raw SQLite string.
+
+`staleAssets` is documented as feeding "the nightly health-check cron". There is no cron
+trigger in `wrangler.jsonc` and no `scheduled` handler in `index.ts`.
+
+### What was fixed without the owner
+
+`search_asset_library` now recognises the missing-table case and returns a plain
+statement of it, naming `find_verified_asset` and `create_instances` as the deliberate
+alternatives. Anything that is not the missing-table case is still thrown.
+
+**Deliberately NOT done:** calling `ensureAssetTables` lazily. It would create the tables,
+the search would return `[]`, and the model would read "the curated library has nothing
+like that" — a claim about a table nobody has ever filled. That is the same defect as an
+attribution report giving a clean bill from an empty ledger, and it would be harder to
+find the second time. `apps/worker/tests/asset-library-availability.test.mjs` pins this,
+including a guard that fails the moment a write-path caller appears, so this section
+cannot quietly go stale.
+
+### Why the owner has to do the rest
+
+Populating the library is not a code change. Every `SEED_MANIFEST` entry is a *pre-ingest
+candidate* with `robloxAssetId: null`, and `SEED_MANIFEST_NOTE` states what ingest must
+do: re-read each licence string live, then fill `sha256`, `triangles`,
+`textureResolution`, `boundsStuds` and `robloxAssetId` **after importing to Studio**.
+
+That last step means downloading third-party binaries and uploading them to Roblox under
+Golem's own account. That is an outward-facing operation on a real account with real
+credentials, and it is not one to take unilaterally.
+
+### Steps for the owner
+
+1. Decide whether the curated library is still wanted. The alternative is to delete the
+   read path and the seed manifest and let `find_verified_asset` be the only asset route
+   — smaller and honest. Roughly 1,000 lines would go.
+2. If it is wanted: run an ingest that, per `SEED_MANIFEST_NOTE`, re-reads each licence
+   live, downloads the binaries, imports each to Studio, uploads under the Golem account,
+   and records `robloxAssetId` + `sha256`.
+3. Call `ensureAssetTables` then `upsertAssets` with the ingested records against
+   `golem-corpus`.
+4. Add a `scheduled` handler and a cron trigger so `staleAssets` / `markHealth` run, or
+   delete the sentence in `staleAssets` that promises a cron that does not exist.
+5. Re-run `apps/worker/tests/asset-library-availability.test.mjs`; the last test is
+   expected to fail once step 3 lands, and that failure is the signal to rewrite this
+   section.
+
+### Impact while it stands
+
+Every asset acquisition falls through to the Creator Store — the path with unverified
+creators and script-bearing models, which the insertion gate then has to catch. The
+library exists to avoid needing that gate so often, and has never once been available.
+This does not invalidate `evidence/2026-09-01-rock-palette-supply.md`, which searched the
+Creator Store directly and whose conclusion stands on its own.
+
 ## 5. Dependabot: 27 advisories on the default branch
 
 **Status:** OPEN, previously triaged, not re-triaged this session.

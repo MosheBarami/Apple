@@ -798,6 +798,23 @@ export async function mockAttribution(): Promise<AttributionResponse> {
       ],
       unaccounted: ['unaccounted:roblox:7042118891'],
     },
+    // As the worker's renderAttribution writes it, INCOMPLETE section and all.
+    credits: [
+      'Credits',
+      '=======',
+      '',
+      'Third-party assets — attribution required by their licence',
+      '  - Rock Cliff 04 by ambientCG — CC-BY-4.0 (modified: rescaled to 6 studs, tinted to the canyon palette)',
+      '',
+      'Credits required by the sources themselves',
+      '  - Powered by Poly Haven — https://polyhaven.com',
+      '',
+      'Third-party assets — no attribution required, credited anyway with thanks',
+      '  - Tree Pine 01 by Kenney — CC0-1.0',
+      '',
+      'INCOMPLETE — these assets have no provenance record and could not be credited:',
+      '  - unaccounted:roblox:7042118891',
+    ].join('\n'),
     commercialUse: {
       projectId: 'p-tycoon',
       ok: false,
