@@ -296,7 +296,71 @@ handlers.move_instances = function(op)
 	return { moved = moved }
 end
 
+--[[ NON-TERMINATING LOOPS CANNOT BE PREEMPTED, so they are refused before they run.
+
+	 The server sends `timeoutMs: 10_000` with every run_code op. This plugin has
+	 never read it, and could not honour it if it did: `pcall(require, module)` runs
+	 on Studio's main thread with no instruction budget, and a loop that never yields
+	 never gives a watchdog a chance to fire. `while true do end` hard-freezes Studio
+	 and the only recovery is killing it and losing unsaved work. The server giving up
+	 after 25s stops it WAITING; it does not stop Studio spinning.
+
+	 There is no in-engine fix for the general case, so this refuses the specific case
+	 that actually happens: an LLM emitting a loop with no yield in its body. A loop
+	 that calls task.wait / wait / RunService:Wait / :Wait() is fine — it yields, so
+	 Studio stays responsive and the op simply takes as long as it takes.
+
+	 Deliberately a narrow syntactic check, not an analysis. It catches the common
+	 mistake and says exactly why; it does not pretend to decide halting. A loop whose
+	 exit condition is merely never satisfied still hangs, and that limit is stated
+	 rather than papered over. ]]
+--[[ `:Wait%w*%(` rather than `:Wait%s*%(`: the narrow version refused
+	 `workspace:WaitForChild("X")`, which yields perfectly well — caught by testing the
+	 guard against real samples rather than by reading it. The DataStore and HTTP calls
+	 are here for the same reason: they yield, so a loop containing one keeps Studio
+	 responsive however long it runs. ]]
+local YIELDS = {
+	"task%.wait",
+	"task%.delay",
+	"task%.spawn",
+	"task%.defer",
+	"%f[%w]wait%s*%(",
+	":Wait%w*%s*%(",
+	"RunService",
+	":GetAsync", ":SetAsync", ":UpdateAsync", ":IncrementAsync",
+	"HttpService", ":RequestAsync",
+}
+
+local function refuseNonYieldingLoop(code: string): string?
+	-- Strip strings and comments first, so a loop keyword inside a literal is not a hit.
+	local stripped = code:gsub("%-%-%[%[.-%]%]", " "):gsub("%-%-[^\n]*", " "):gsub('"[^"\n]*"', '""'):gsub("'[^'\n]*'", "''")
+	local patterns = { "while%s+true%s+do", "while%s+1%s+do", "repeat%f[%W]" }
+	for _, loopPat in patterns do
+		local from, to = stripped:find(loopPat)
+		if from then
+			local body = stripped:sub(to + 1)
+			-- `repeat` only hangs on `until false`; anything else may terminate.
+			if loopPat == "repeat%f[%W]" and not body:find("until%s+false") then
+				continue
+			end
+			for _, y in YIELDS do
+				if body:find(y) then
+					return nil
+				end
+			end
+			return "refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+				.. ":Wait()). Such a loop cannot be interrupted and would freeze Studio permanently. "
+				.. "Add a yield inside the loop, or give it a bounded counter."
+		end
+	end
+	return nil
+end
+
 handlers.run_code = function(op)
+	local refusal = refuseNonYieldingLoop(tostring(op.code or ""))
+	if refusal then
+		return { error = refusal }
+	end
 	local module = Instance.new("ModuleScript")
 	module.Name = "GolemEval"
 	-- NOTE: long-bracket strings swallow a leading newline, so join segments explicitly
@@ -504,10 +568,35 @@ function Ops.execute(id: string, opBody: any): any
 		return { id = id, ok = false, error = "unknown op: " .. tostring(kind) }
 	end
 	local t0 = os.clock()
+	--[[ A MUTATING OP WITHOUT A RECORDING IS REFUSED, NOT PERFORMED.
+
+		 `TryBeginRecording` returns nil when a recording is already open — which
+		 happens for real: a poll loop leaked by a plugin reload, or an op cancelled
+		 mid-yield leaving its recording open forever. The old code took the nil,
+		 ran the handler anyway, and then skipped both Commit and Cancel, reporting
+		 ok = true. Two things followed, and the file's own header claim that "every
+		 AI action is natively undoable" was false on exactly this path:
+
+		   * NO UNDO. The place was modified and Ctrl+Z would not reverse it.
+		   * NO ROLLBACK. `create_instances` parents each item as it goes, so an
+		     invalid className on item 5 of 10 threw with items 1-4 already in the
+		     place and nothing to Cancel — a half-modified place with no undo point,
+		     which is the precise failure the recording exists to prevent.
+
+		 Refusing is strictly better than proceeding. The agent sees a clear error
+		 and can retry; the user's place is untouched. Losing an op is recoverable,
+		 an un-undoable partial mutation is not. ]]
 	local recording: string? = nil
 	if MUTATING[kind] then
-		local rec = ChangeHistoryService:TryBeginRecording("Golem: " .. kind)
-		recording = rec
+		recording = ChangeHistoryService:TryBeginRecording("Golem: " .. kind)
+		if not recording then
+			return {
+				id = id,
+				ok = false,
+				error = "could not open an undo recording (another one is already open), so this "
+					.. "mutation was refused rather than performed without one",
+			}
+		end
 	end
 	-- Opened immediately before the handler and closed immediately after, so every path out of the
 	-- handler — return, error, refusal — leaves the plugin back at "no asset may be referenced".

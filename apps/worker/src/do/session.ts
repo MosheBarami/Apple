@@ -41,7 +41,7 @@ import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
-import { trimTranscript } from '../transcript';
+import { trimTranscript, turnGroups } from '../transcript';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 
@@ -532,7 +532,7 @@ export class SessionDO extends DurableObject<Env> {
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status === 'running') {
           agent.status = 'stopping';
-          await this.ctx.storage.put('agent', agent);
+          await this.persistAgent(agent);
         }
         return;
       }
@@ -644,7 +644,7 @@ export class SessionDO extends DurableObject<Env> {
       // this out of runSnapshot() instead of losing the Intent and Plan rows.
       intent: intent ?? undefined,
     };
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
@@ -755,7 +755,7 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
     agent.llm = trimTranscript(agent.llm, MAX_PROMPT_CHARS);
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     // The opening phase of a step is 'understanding' on the first step and
     // otherwise carries whatever the previous tool left us in, until the next
     // tool call renames it. Never invent a stage the agent has not entered.
@@ -805,7 +805,9 @@ export class SessionDO extends DurableObject<Env> {
       // The DO id is per-project and opaque, so it is never shared across tenants.
       { kind: `${agent.mode}:step:${choice.effort}`, sessionId: this.ctx.id.toString() },
     );
-    agent.lastCalls = res.toolCalls;
+    //[[ Same reason as seenCalls: this holds raw tool arguments verbatim and is persisted.
+    //   Only the most recent turn's calls are ever read, so keeping more is pure weight. ]]
+    agent.lastCalls = (res.toolCalls ?? []).slice(-8);
     // Signals are recomputed from what actually happens each step, so an escalation lapses once
     // the problem it was bought for is resolved.
     agent.priorStepFailed = false;
@@ -901,7 +903,7 @@ export class SessionDO extends DurableObject<Env> {
               : `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
                 'Fix the blocking and major defects in what you already built. Do not start over.',
           });
-          await this.ctx.storage.put('agent', agent);
+          await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
           return;
         }
@@ -916,7 +918,7 @@ export class SessionDO extends DurableObject<Env> {
             'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
             'with a tool call, in this turn. If you were mid-sentence, carry out that action.',
         });
-        await this.ctx.storage.put('agent', agent);
+        await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
       }
@@ -956,6 +958,13 @@ export class SessionDO extends DurableObject<Env> {
         continue;
       }
       agent.seenCalls.push(sig);
+      //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
+      //   the raw JSON — a full script body for edit_script. Unbounded, this array alone can
+      //   carry the persisted AgentState past the Durable Object's 128 KiB value limit, and
+      //   the failure mode is not a lost dedupe: the put rejects, the alarm dies, and the
+      //   retry re-runs the step's paid LLM call and its mutating tools. 40 is far more than
+      //   the duplicate-call guard needs — it only ever compares against the current run. ]]
+      if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
       // Announce the stage this tool actually represents, immediately before it
       // runs. The phase is derived from the tool, so the UI never claims a
       // stage the agent has not entered.
@@ -1016,8 +1025,50 @@ export class SessionDO extends DurableObject<Env> {
           'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
       });
     }
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
+  }
+
+  /**
+   * Persist the run state, shedding transcript rather than dying.
+   *
+   * Durable Object values are capped at 128 KiB. The old code did a bare `put` in seven places,
+   * including inside the error path — so an oversized state rejected, the catch attempted the
+   * SAME oversized put and rejected again, and the exception escaped the alarm handler. The
+   * platform then retried the alarm from the state persisted BEFORE the step, which re-ran the
+   * step's paid LLM call and re-executed its mutating tools against the user's place.
+   *
+   * The budget fix (transcript.ts now counts tool arguments) removes the ordinary route to that.
+   * This is the backstop for the extraordinary one, and it exists because the failure mode is
+   * duplicate mutation rather than a lost write: it is always better to finish a run holding
+   * less history than to hand the platform a state it will replay.
+   */
+  private async persistAgent(agent: AgentState): Promise<void> {
+    try {
+      await this.persistAgent(agent);
+      return;
+    } catch (err) {
+      // Shed the transcript down to what a run genuinely cannot continue without: the system
+      // prompt and anything pinned. `turnGroups` already knows which that is.
+      const { head } = turnGroups(agent.llm);
+      const shed: AgentState = { ...agent, llm: head, seenCalls: [], lastCalls: [], trace: agent.trace.slice(-10) };
+      try {
+        await this.ctx.storage.put('agent', shed);
+        console.warn('[session] agent state too large; persisted without transcript', String(err).slice(0, 200));
+        return;
+      } catch (err2) {
+        // Nothing about this run is recoverable, so record the smallest possible terminal state
+        // rather than letting the alarm die and be retried.
+        await this.ctx.storage.put('agent', {
+          ...shed,
+          llm: [],
+          trace: [],
+          status: 'idle',
+          finalText: 'This run was stopped because its state grew too large to save.',
+        } satisfies AgentState);
+        console.warn('[session] agent state unsaveable even when empty', String(err2).slice(0, 200));
+      }
+    }
   }
 
   private async finishRun(
@@ -1071,7 +1122,7 @@ export class SessionDO extends DurableObject<Env> {
       JSON.stringify(agent.trace),
       Date.now(),
     );
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error });
     // background memory distillation (only after substantive runs)
     if (agent.trace.length > 2 && reason === 'done') {

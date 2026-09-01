@@ -163,25 +163,58 @@ end
 
 function Serializer.restore(snapshot: any): any
 	if type(snapshot) ~= "table" or snapshot.v ~= 1 then error("unsupported snapshot format") end
+	--[[ A RESTORE THAT SILENTLY DROPPED HALF THE TREE MUST NOT REPORT SUCCESS.
+
+		 This is the highest-stakes operation in the product — it is the "undo a bad
+		 AI build" path — and it was the one that could not report failure. Every
+		 write in `build` is wrapped in a pcall whose result is discarded, and the
+		 return was `restored = true` as a LITERAL, with `scriptsRestored` reporting
+		 what was in the SNAPSHOT rather than what was written back. Meanwhile
+		 `clearChildren` has already destroyed the live tree. So a restore that
+		 recreated almost nothing was indistinguishable from one that worked, and
+		 `Ops.execute` only fails an op whose result carries an `error` key — which
+		 this never did.
+
+		 The counters below are the fix: every swallowed pcall now increments one,
+		 and the caller decides. Nothing is made to throw — a best-effort restore is
+		 still the right behaviour after the tree is already gone — but it now says
+		 what it actually managed. ]]
 	local created = 0
+	local failedInstances = 0
+	local failedProps = 0
+	local scriptsWritten = 0
+	local failedScripts = 0
 	local function build(node: any, parent: Instance)
 		local ok, inst = pcall(function() return Instance.new(node.class) end)
-		if not ok then return end
+		if not ok then
+			failedInstances += 1
+			return
+		end
 		created += 1
 		local i = inst :: Instance
+		-- Deliberately NOT pcall'd: a malformed name is a malformed snapshot, and a
+		-- snapshot this plugin did not write is a case the caller must hear about.
 		i.Name = node.name
 		if node.props then
 			for p, pv in node.props do
-				pcall(function() Paths.setProp(i, p, pv) end)
+				if not pcall(function() Paths.setProp(i, p, pv) end) then
+					failedProps += 1
+				end
 			end
 		end
 		if node.attrs then
 			for k, pv in node.attrs do
-				pcall(function() i:SetAttribute(k, Paths.decode(pv)) end)
+				if not pcall(function() i:SetAttribute(k, Paths.decode(pv)) end) then
+					failedProps += 1
+				end
 			end
 		end
 		if node.scriptRef and snapshot.scripts[node.scriptRef] then
-			pcall(function() (i :: any).Source = snapshot.scripts[node.scriptRef].source end)
+			if pcall(function() (i :: any).Source = snapshot.scripts[node.scriptRef].source end) then
+				scriptsWritten += 1
+			else
+				failedScripts += 1
+			end
 		end
 		if node.children then
 			for _, ch in node.children do build(ch, i) end
@@ -221,7 +254,34 @@ function Serializer.restore(snapshot: any): any
 			end
 		end
 	end
-	return { restored = true, instancesCreated = created, scriptsRestored = snapshot.scriptCount }
+	--[[ REPORT WHAT HAPPENED, and fail the op when the restore was materially
+		 incomplete. `scriptsRestored` is now what was WRITTEN, not what was in the
+		 snapshot — the old value could not decrease no matter how badly the restore
+		 went, which is what made the success claim unfalsifiable.
+
+		 A failed SCRIPT is the threshold rather than a failed property: scripts are
+		 the thing a user restores a checkpoint to get back, and losing one silently
+		 is the outcome this whole path exists to prevent. Failed instances count
+		 too, since a missing instance takes its subtree with it. ]]
+	local result = {
+		restored = failedInstances == 0 and failedScripts == 0,
+		instancesCreated = created,
+		scriptsRestored = scriptsWritten,
+		scriptsExpected = snapshot.scriptCount,
+		failedInstances = failedInstances,
+		failedScripts = failedScripts,
+		failedProperties = failedProps,
+	}
+	if not result.restored then
+		result.error = string.format(
+			"restore incomplete: %d instance(s) and %d script(s) could not be recreated (%d of %d scripts written)",
+			failedInstances,
+			failedScripts,
+			scriptsWritten,
+			snapshot.scriptCount or 0
+		)
+	end
+	return result
 end
 
 return Serializer

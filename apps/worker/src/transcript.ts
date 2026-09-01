@@ -23,8 +23,30 @@ import type { GatewayMessage } from '@golem/shared';
 /** How many recent turn groups are never dropped, so a step always keeps its own working context. */
 export const KEEP_RECENT_GROUPS = 2;
 
-const contentChars = (m: GatewayMessage): number =>
-  typeof m.content === 'string' ? m.content.length : m.content.reduce((n, p) => n + ('text' in p ? p.text.length : 0), 0);
+/**
+ * THE BUDGET HAS TO SEE THE BIGGEST FIELD, and it did not.
+ *
+ * This measured `content` only. An assistant turn that calls a tool carries its arguments in
+ * `toolCalls[].arguments` — a JSON string that holds whole script bodies for `edit_script` and
+ * whole instance trees for `create_instances`. Those are routinely the largest strings in the
+ * transcript, and `trimTranscript` could not see any of them.
+ *
+ * The consequence was not a fuzzy "context gets worse". The persisted `AgentState` is written to
+ * Durable Object storage, which rejects values over 128 KiB. A long build that edits scripts
+ * crosses that, the `put` rejects, the catch path attempts the SAME oversized put and rejects
+ * again, and the alarm handler dies. Cloudflare then RETRIES the alarm from the last state
+ * persisted before the step — so the LLM call is paid for again and every mutating tool in that
+ * step runs against the user's place a second time.
+ *
+ * A budget that cannot see the field that overflows it is not a budget.
+ */
+const contentChars = (m: GatewayMessage): number => {
+  const body =
+    typeof m.content === 'string' ? m.content.length : m.content.reduce((n, p) => n + ('text' in p ? p.text.length : 0), 0);
+  const calls = (m as { toolCalls?: { arguments?: string }[] }).toolCalls;
+  if (!calls) return body;
+  return body + calls.reduce((n, c) => n + (c.arguments?.length ?? 0), 0);
+};
 
 export const transcriptChars = (llm: GatewayMessage[]): number => llm.reduce((n, m) => n + contentChars(m), 0);
 
