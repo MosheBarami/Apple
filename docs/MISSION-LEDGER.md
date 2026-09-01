@@ -423,6 +423,52 @@ Two further rulings that change how the rest of the mission is run:
   stays UNPROVEN until a **fresh** critic — one that has not seen the implementation narrative,
   and is told nothing about tests, parts, meshes or hours — judges revised player-eye pixels.
 
+## Session of 2026-09-01 (evening) — Phase H/I product work
+
+Branch `feature/golem-product-experience`, PR #5. Every item below has evidence in
+`docs/evidence/` and a guard that fails if it regresses.
+
+### The canonical visual system (§16)
+
+| what | was | now |
+|---|---|---|
+| status marks (I-series) | a `✓` character in four places, drawn four ways | one `StatusIcon`, I01–I06/I09/I10/I12, tone owned by the status |
+| activity vocabulary (Board C) | one tool table copied FOUR times | one `ws/tool-vocabulary.ts`, canonical C ids, checked against the worker registry both ways |
+| landing structure | three product claims inside a `<footer>`, titles as `<span>` | `main` is the frame, claims are a labelled `<section>` with `<h2>` |
+
+The C-series work fixed a live mislabel: `set_properties` was reported as "Building
+world", and because adjacent same-kind steps merge, "Set properties" was drawn *inside*
+the Building heading — the transcript said Golem was building the world while it
+recoloured a floor. C04 (searching docs) and C06 (reading scripts) were likewise
+collapsed into "Inspecting project". C10 and C12 are declared not-modelled with reasons.
+
+### Two features that were fully tested and never called
+
+Found by auditing every export in the worker and web app for production callers — 38
+candidates, most false positives, two real.
+
+1. **Attribution ledger.** 500 lines, 20 tests, no producer. An empty table yields a
+   CLEAN report, so it answered "you owe nothing" every time and nothing could tell that
+   apart from a compliant project. `insert_asset` now records the use;
+   `GET /api/projects/:id/attribution` reads it; a drawer in the workspace shows it, and
+   never reads an empty ledger as a clearance to publish.
+2. **Curated asset library — HUMAN_BLOCKED, `BLOCKERS.md` §4b.** Its entire write path
+   has no caller, so the tables were never created. Production D1 has no `asset_library`
+   at all, and `search_asset_library` — which the system prompt tells the model to try
+   FIRST — has returned `no such table` for the life of the deployment. It now reports
+   that state honestly instead of handing the model raw SQL. Creating the tables lazily
+   was refused: it would turn a loud failure into "the library has nothing like that".
+
+### Three mistakes of mine worth keeping
+
+- A guard that flagged its own documentation, twice (the Unicode-mark check and the
+  lazy-creation check) — both fixed by matching what the code *does*, not what a comment
+  *says*.
+- A CSS comment asserting a constraint I had not measured. Removing the rule and
+  re-measuring showed the page unchanged; the rule was redundant and the comment false.
+- A guard written to catch a specific defect that did not catch it. Verified by
+  reverting the defect and re-running, rather than assuming.
+
 ## Next-highest-value unblocked work, in dependency order
 
 1. **Cliff wall (2)** — the two routes F-19 named are now costed. "More distinct rock
