@@ -206,7 +206,17 @@ local M = {
 local MIN_SCALE = 0.72
 local MAX_SCALE = 1
 
-local TILE_RADIUS = UDim.new(0, 18) -- §3: rounded rectangle, not a circle
+--[[ CIRCULAR, per §6. V9.
+
+	 This was `UDim.new(0, 18)` with the comment "§3: rounded rectangle, not a circle", and that
+	 was a misreading of the spec twice over. §3 is general guidance — "rounded rectangles
+	 everywhere ... buttons often full pills" — and it does not forbid a circle. §6 is the
+	 SPECIFIC rule for this element and it is unambiguous: "Left edge: vertical stack or 2-wide
+	 grid of circular icon buttons".
+
+	 A general rule was being used to overrule a specific one, which is how the only place the
+	 otherwise-exemplary UI departs from its own spec came to be there on purpose. ]]
+local TILE_RADIUS = UDim.new(0.5, 0)
 
 -- Cluster width rules, kept next to each other because the objective collision
 -- check below is only honest if it uses the numbers the clusters are built from.
