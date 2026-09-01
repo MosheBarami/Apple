@@ -30,6 +30,10 @@
       "world-pack": 13,
       "engineering": 16,
       "full-game": 33
+    },
+    "security": {
+      "scanned": 20,
+      "unscanned": 197
     }
   },
   "records": {
@@ -3110,10 +3114,63 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "CHANGELOG.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/Tour.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/WhyUsePromises.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "lib/init.lua"
+          },
+          {
+            "kind": "exfiltration-endpoint",
+            "severity": "medium",
+            "path": "moonwave.toml"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/Installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/Installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/WhyUsePromises.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/WhyUsePromises.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/WhyUsePromises.md"
+          }
+        ],
+        "reason": "18 file(s) scanned across 1 slice(s), 5 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.700Z",
+        "scannedFiles": 18
       },
       "provenance": {
         "id": "github.com/evaera/roblox-lua-promise@031d429c82ee458a849e79fa523523bd349d7695",
@@ -3350,10 +3407,63 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "README.md"
+          },
+          {
+            "kind": "exfiltration-endpoint",
+            "severity": "medium",
+            "path": "moonwave.toml"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/installation.md"
+          }
+        ],
+        "reason": "59 file(s) scanned across 1 slice(s), 2 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.223Z",
+        "scannedFiles": 59
       },
       "provenance": {
         "id": "github.com/howmanysmall/Janitor@47acf39d7b265fad409e438e976affa9468ff0a2",
@@ -3590,10 +3700,63 @@
         "reason": "Apache-2.0 is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/api.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/index.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/troubleshooting.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileService.lua"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileService.lua"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileTest.server.lua"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileTest.server.lua"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileTest.server.lua"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileTest.server.lua"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "ProfileTest.server.lua"
+          }
+        ],
+        "reason": "14 file(s) scanned across 1 slice(s), 3 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.243Z",
+        "scannedFiles": 14
       },
       "provenance": {
         "id": "github.com/MadStudioRoblox/ProfileService@d736800444eda6bf75b18397f77dfb2c8f31f60f",
@@ -4070,10 +4233,53 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE.md the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "ARCHIVAL.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "LICENSE.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/intellisense.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/middleware.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/services.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "README.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/gettingstarted.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/vscodesnippets.md"
+          }
+        ],
+        "reason": "34 file(s) scanned across 1 slice(s), 5 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.231Z",
+        "scannedFiles": 34
       },
       "provenance": {
         "id": "github.com/Sleitnick/Knit@bb1ecf3dea69ca89147b9abe802a8c14399cb5e5",
@@ -4231,10 +4437,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "5 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.258Z",
+        "scannedFiles": 5
       },
       "provenance": {
         "id": "github.com/stravant/goodsignal@99497c8cd6e5b50c5f4f12796d4ebc3e7dbf9d1f",
@@ -7150,10 +7358,18 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/intro.md"
+          }
+        ],
+        "reason": "77 file(s) scanned across 1 slice(s), 1 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.670Z",
+        "scannedFiles": 77
       },
       "provenance": {
         "id": "github.com/chriscerie/roact-spring@0334ee5d9d562e2cc09d7614a6a14d0939775ac2",
@@ -7391,10 +7607,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "39 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.159Z",
+        "scannedFiles": 39
       },
       "provenance": {
         "id": "github.com/Reselim/Flipper@41380da19278a14ed2c5a34db4f958d090b1994a",
@@ -7471,10 +7689,18 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "modules/dev-benchmarks/README.md"
+          }
+        ],
+        "reason": "93 file(s) scanned across 1 slice(s), 1 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.661Z",
+        "scannedFiles": 93
       },
       "provenance": {
         "id": "github.com/Roblox/otter@ffcb1be528f4f9bade0bcebbba80fa7ec292ec9a",
@@ -7551,10 +7777,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "5 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.244Z",
+        "scannedFiles": 5
       },
       "provenance": {
         "id": "github.com/Sleitnick/RbxCameraShaker@15412099389d746af13a2a661ec1196f980d726b",
@@ -7951,10 +8179,133 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE.md the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/getting-started/compatibility.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/getting-started/lint.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/getting-started/syntax.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/getting-started/why.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/guides/performance.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/guides/sandbox.md"
+          },
+          {
+            "kind": "env-manipulation",
+            "severity": "medium",
+            "path": "src/content/docs/reference/library.md"
+          },
+          {
+            "kind": "env-manipulation",
+            "severity": "medium",
+            "path": "src/content/docs/reference/library.md"
+          },
+          {
+            "kind": "env-manipulation",
+            "severity": "medium",
+            "path": "src/content/docs/reference/library.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/reference/library.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/docs/types/object-oriented-programs.md"
+          },
+          {
+            "kind": "env-manipulation",
+            "severity": "medium",
+            "path": "src/content/news/2019-11-11-luau-recap-november-2019.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2019-11-11-luau-recap-november-2019.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2020-02-25-luau-recap-february-2020.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2020-05-18-luau-recap-may-2020.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2020-06-20-luau-recap-june-2020.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2020-08-11-luau-recap-august-2020.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2020-10-30-luau-recap-october-2020.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2020-11-19-luau-type-checking-release.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2021-03-01-luau-recap-february-2021.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2021-11-29-luau-recap-november-2021.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2022-06-01-luau-recap-may-2022.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2022-10-31-luau-semantic-subtyping.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "src/content/news/2022-11-04-luau-origins-and-evolution.md"
+          }
+        ],
+        "reason": "71 file(s) scanned across 1 slice(s), 24 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.302Z",
+        "scannedFiles": 71
       },
       "provenance": {
         "id": "github.com/luau-lang/site@81c1c1858c407d1c9ee6dd414eaf7b3e728581a1",
@@ -8191,10 +8542,43 @@
         "reason": "CC-BY-4.0 (proven by LICENSE) allows reuse only while the credit survives into the user's shipped project, and a credit line cannot survive into model weights, so training is forbidden."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "STYLE.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "content/en-us/ai/accelerated-workflows.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "content/en-us/ai/build.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "content/en-us/ai-data-sharing.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "content/en-us/animation/capture.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "content/en-us/animation/curve-editor.md"
+          }
+        ],
+        "reason": "2341 file(s) scanned; 18 finding(s) on the accepted register, nothing else disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.253Z",
+        "scannedFiles": 2341
       },
       "provenance": {
         "id": "github.com/Roblox/creator-docs@529a24ff2aa9896dad50fc12268717210ba3127d",
@@ -10153,10 +10537,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "24 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.257Z",
+        "scannedFiles": 24
       },
       "provenance": {
         "id": "github.com/gcaptn/cyan-ui@11cfcedd77f32e46a6e8b7e659f6739e5b7a0275",
@@ -10474,10 +10860,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "95 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.650Z",
+        "scannedFiles": 95
       },
       "provenance": {
         "id": "github.com/loneka/onyx-ui@978b53c5e1d25cc51acef0a6282365a52ed21f99",
@@ -10634,10 +11022,28 @@
         "reason": "Apache-2.0 is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "README.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "scripts/test/lsp.sh"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "sourcemap.json"
+          }
+        ],
+        "reason": "405 file(s) scanned across 1 slice(s), 3 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.834Z",
+        "scannedFiles": 405
       },
       "provenance": {
         "id": "github.com/nightcycle/synthetic@1a0c0d5bb16b9838567e49bfb405eaa6eda691bf",
@@ -11035,10 +11441,48 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE.txt the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "README.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/intro.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "docs/iris.md"
+          },
+          {
+            "kind": "exfiltration-endpoint",
+            "severity": "medium",
+            "path": "moonwave.toml"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/common_issues.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "docs/common_issues.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "lib/Internal.lua"
+          }
+        ],
+        "reason": "53 file(s) scanned across 1 slice(s), 4 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.205Z",
+        "scannedFiles": 53
       },
       "provenance": {
         "id": "github.com/SirMallard/Iris@801973f1c3e0df5e788f26a824fa64a2a42e4054",
@@ -11596,10 +12040,83 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "skills/luau-expert/SKILL.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "skills/roblox-dev/SKILL.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "skills/roblox-toolchain/SKILL.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "skills/roblox-ui/SKILL.md"
+          },
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "skills/roblox-ui/references/roblox-ui-primitives.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-dev/SKILL.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-dev/examples/datastore-session.luau"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-dev/references/cloud-services.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-dev/references/datastore-rules.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-toolchain/examples/default.project.json"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-toolchain/examples/default.project.json"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-toolchain/references/project-format.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-toolchain/references/project-format.md"
+          },
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "skills/roblox-toolchain/references/sync-mapping.md"
+          }
+        ],
+        "reason": "53 file(s) scanned across 1 slice(s), 5 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.686Z",
+        "scannedFiles": 53
       },
       "provenance": {
         "id": "github.com/afrxo/roblox-agent-skills@ff50be7a8a000a24c0f85254e1747a0eb35d857f",
@@ -12077,10 +12594,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE.md the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "8201 file(s) scanned across 3 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.636Z",
+        "scannedFiles": 8201
       },
       "provenance": {
         "id": "github.com/tijnepema/lucide-roblox@793dcaedc8055269487537255f57401a85a0b8a1",
@@ -12157,10 +12676,18 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "http-call",
+            "severity": "low",
+            "path": "scripts/download_icons.py"
+          }
+        ],
+        "reason": "8 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:07.693Z",
+        "scannedFiles": 8
       },
       "provenance": {
         "id": "github.com/zhsj0089944/roblox-free-assets.skill@f48d055028a1e98a0f2dd919822e54980e08dde0",
@@ -12317,10 +12844,18 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
-        "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "safe": true,
+        "class": "clean",
+        "signals": [
+          {
+            "kind": "long-line",
+            "severity": "medium",
+            "path": "sourcemap.json"
+          }
+        ],
+        "reason": "20 file(s) scanned across 1 slice(s), 1 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.252Z",
+        "scannedFiles": 20
       },
       "provenance": {
         "id": "github.com/Crabzzai/SimpleDialogue@25bb85f5e17eb7a26989c664c63891d0eec40329",
@@ -12477,10 +13012,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "1 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:13:06.231Z",
+        "scannedFiles": 1
       },
       "provenance": {
         "id": "github.com/Diabetoss/NotificationSystem@38a47898a27444a99a82ecdb90ba7cd4b5ef6f09",

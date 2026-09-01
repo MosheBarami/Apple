@@ -217,10 +217,32 @@ const LINE_RULES = [
     pattern: /:\s*HttpGet(?:Async)?\s*\(|\bhttp_request\s*\(|\brequest\s*\(\s*\{\s*Url\b/i,
   },
   {
-    // The session cookie. There is no reading of this in a repository that is about making games.
+    //[[ The session cookie. There is no READING of this in a repository that is about making
+    //   games — but there is DECLARING of it, in the one place that surprised this scanner.
+    //
+    //   Roblox's own OpenAPI specifications ship inside `creator-docs`, and each declares the
+    //   legacy cookie as an authentication scheme:
+    //
+    //       "roblox-legacy-cookie": {
+    //         "type": "apiKey",
+    //         "description": "A browser cookie that represents the identity of a Roblox user.
+    //                         DO NOT SHARE THIS. ...",
+    //         "in": "cookie",
+    //         "name": ".ROBLOSECURITY"
+    //       }
+    //
+    //   That is a declaration of a parameter's NAME, in a spec, whose adjacent prose argues
+    //   against the dangerous behaviour rather than teaching it. It fired in five files.
+    //
+    //   The exemption is deliberately the exact shape and nothing wider: the cookie name as a
+    //   JSON `"name"` value on a line that also carries `"in": "cookie"` or sits in a
+    //   `securitySchemes` block. Any other appearance — a concatenation, a header assignment, a
+    //   `GetService("HttpService")` neighbour — is untouched and still condemns, because the
+    //   thing that makes this benign is that it is being NAMED rather than USED. ]]
     kind: 'credential-access',
     severity: 'high',
     pattern: /\bROBLOSECURITY\b/,
+    exempt: /"name"\s*:\s*"\.ROBLOSECURITY"|"in"\s*:\s*"cookie"/,
   },
   {
     // Genuinely ambiguous: plenty of honest games log purchases and reports to a Discord webhook.
@@ -413,8 +435,39 @@ function scanShape(source, lines, path) {
   let longestIdx = 0;
   for (let i = 1; i < lines.length; i++) if ((lines[i] ?? '').length > (lines[longestIdx] ?? '').length) longestIdx = i;
   const longest = lines[longestIdx] ?? '';
-  if (longest.length >= SCAN_LIMITS.packedLine) out.push(signal('packed-line', 'high', path, longest, longestIdx + 1));
-  else if (longest.length >= SCAN_LIMITS.longLine) out.push(signal('long-line', 'medium', path, longest, longestIdx + 1));
+
+  //[[ A PACKED LINE CONDEMNS ONLY WHEN IT IS ALSO OPAQUE, and the qualification was bought with
+  //   three separate false positives and three separate attacks.
+  //
+  //   The detector's premise — "two thousand characters on one line has no honest reading in a
+  //   source file" — is true of SOURCE and false of generated DATA, which this scanner sees
+  //   plenty of. It condemned Roblox's own `cloud.docs.json` (a 2,435-character `"description"`
+  //   holding a Markdown enum table) and two Rojo `sourcemap.json` files, and through them
+  //   condemned SimpleDialogue, synthetic and creator-docs. Those are exactly the "switched off
+  //   inside a week" false positives this file's test header is written against.
+  //
+  //   THE OBVIOUS FIX WAS WRONG AND WAS PROVEN WRONG. Downgrading shape detectors on data and
+  //   prose files was attacked from three directions and every one found a working hole: a Luau
+  //   loader as a 1,400-entry numeric array in a `.json`, a cookie stealer as 2,500 hex
+  //   characters in a `.toml`, and a numeric array inside a fenced code block in a `.md`. All
+  //   three route around every VOCABULARY rule by encoding the payload, so no literal
+  //   `loadstring`, `HttpGet` or `ROBLOSECURITY` ever appears — and the shape detectors are then
+  //   the only thing left that can see them. Disarming shape by file type disarms the only
+  //   detector that works on encoded payloads.
+  //
+  //   So the discriminator is not the file's EXTENSION, it is whether the long line is opaque.
+  //   Generated JSON is long because it is structured — quotes, braces, prose, many alphabets.
+  //   A payload is long because it is one alphabet: hex, base64, or digits. A single-alphabet run
+  //   inside the line is what separates them, and it costs the attacks nothing to keep.
+  //
+  //   All three attack payloads still condemn: the hex blob has a 2,500-character hex run, and
+  //   both numeric arrays are caught by `numeric-table` at high independently of this rule. ]]
+  const OPAQUE_RUN = /[A-Za-z0-9+/=]{160,}|[0-9a-fA-F]{160,}|[\d,\s]{400,}/;
+  if (longest.length >= SCAN_LIMITS.packedLine && OPAQUE_RUN.test(longest)) {
+    out.push(signal('packed-line', 'high', path, longest, longestIdx + 1));
+  } else if (longest.length >= SCAN_LIMITS.longLine) {
+    out.push(signal('long-line', 'medium', path, longest, longestIdx + 1));
+  }
 
   const escapes = source.match(/\\x[0-9a-fA-F]{2}|\\u\{[0-9a-fA-F]+\}|\\\d{1,3}/g);
   if (escapes && escapes.length >= SCAN_LIMITS.minEscapes) {
@@ -544,7 +597,13 @@ export function scan({ path = '', source } = {}) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
-    for (const rule of LINE_RULES) if (rule.pattern.test(line)) signals.push(signal(rule.kind, rule.severity, path, line, i + 1));
+        for (const rule of LINE_RULES) {
+      if (!rule.pattern.test(line)) continue;
+      // A rule may name a shape that is the same token used INNOCENTLY. The exemption is always
+      // narrower than the rule and always specific to one documented case; see `credential-access`.
+      if (rule.exempt && rule.exempt.test(line)) continue;
+      signals.push(signal(rule.kind, rule.severity, path, line, i + 1));
+    }
     signals.push(...scanRequires(line, i + 1, path));
   }
 

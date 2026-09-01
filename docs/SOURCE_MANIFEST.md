@@ -33,29 +33,34 @@ quarantined and stay quarantined until evidence exists.
 
 ## 2. What is checked out
 
-15 checkouts, each pinned to a commit SHA. The licence column is read from the
+20 checkouts, each pinned to a commit SHA. The licence column is read from the
 checkout's **own LICENSE file**, independently of what classification decided; a disagreement
 would appear here as a conflict rather than be resolved silently.
 
 | checkout | licence | sha | security | rules extracted |
 | --- | --- | --- | --- | --- |
-| `Flipper` | MIT | `41380da192` | **unscanned** | 7 |
-| `Iris` | MIT | `801973f1c3` | **unscanned** | 8 |
-| `NotificationSystem` | MIT | `38a47898a2` | **unscanned** | 4 |
-| `RbxCameraShaker` | MIT | `1541209938` | **unscanned** | 5 |
-| `SimpleDialogue` | MIT | `25bb85f5e1` | **unscanned** | 6 |
-| `creator-docs` | CC-BY-4.0 | `529a24ff2a` | **unscanned** | 16 |
-| `cyan-ui` | MIT | `11cfcedd77` | **unscanned** | 3 |
-| `luau-site` | MIT | `81c1c1858c` | **unscanned** | — |
-| `lucide-roblox` | MIT | `793dcaedc8` | **unscanned** | 7 |
-| `onyx-ui` | MIT | `978b53c5e1` | **unscanned** | 5 |
-| `otter` | MIT | `ffcb1be528` | **unscanned** | 8 |
-| `roact-spring` | MIT | `0334ee5d9d` | **unscanned** | 7 |
-| `roblox-agent-skills` | MIT | `ff50be7a8a` | **unscanned** | 4 |
-| `roblox-free-assets.skill` | MIT | `f48d055028` | **unscanned** | 3 |
-| `synthetic` | Apache-2.0 | `1a0c0d5bb1` | **unscanned** | 7 |
+| `Flipper` | MIT | `41380da192` | clean | 7 |
+| `Iris` | MIT | `801973f1c3` | clean | 8 |
+| `Janitor` | MIT | `47acf39d7b` | clean | — |
+| `Knit` | MIT | `bb1ecf3dea` | clean | — |
+| `NotificationSystem` | MIT | `38a47898a2` | clean | 4 |
+| `ProfileService` | Apache-2.0 | `d736800444` | clean | — |
+| `RbxCameraShaker` | MIT | `1541209938` | clean | 5 |
+| `SimpleDialogue` | MIT | `25bb85f5e1` | clean | 6 |
+| `creator-docs` | CC-BY-4.0 | `529a24ff2a` | clean | 16 |
+| `cyan-ui` | MIT | `11cfcedd77` | clean | 3 |
+| `goodsignal` | MIT | `99497c8cd6` | clean | — |
+| `luau-site` | MIT | `81c1c1858c` | clean | — |
+| `lucide-roblox` | MIT | `793dcaedc8` | clean | 7 |
+| `onyx-ui` | MIT | `978b53c5e1` | clean | 5 |
+| `otter` | MIT | `ffcb1be528` | clean | 8 |
+| `roact-spring` | MIT | `0334ee5d9d` | clean | 7 |
+| `roblox-agent-skills` | MIT | `ff50be7a8a` | clean | 4 |
+| `roblox-free-assets.skill` | MIT | `f48d055028` | clean | 3 |
+| `roblox-lua-promise` | MIT | `031d429c82` | clean | — |
+| `synthetic` | Apache-2.0 | `1a0c0d5bb1` | clean | 7 |
 
-14 of 15 checkouts have had patterns extracted from them.
+14 of 20 checkouts have had patterns extracted from them.
 The empty cells in that last column are the most useful thing in this document: a
 licence-clear, security-scanned source that has taught Golem nothing yet is exactly where the
 remaining value is, and it is cheaper to reach than a new source.
@@ -80,37 +85,37 @@ The boundary these kinds encode is a licence boundary, not a citation style:
 
 ## 4. What has NOT been fetched
 
-54 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
+49 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
 out. They are lawful to use and currently teach nothing.
 
 | id | licence | category | url |
 | --- | --- | --- | --- |
 | `gh-evaera-cmdr` | MIT | engineering | https://github.com/evaera/Cmdr |
-| `gh-evaera-roblox-lua-promise` | MIT | engineering | https://github.com/evaera/roblox-lua-promise |
 | `gh-ffrostfall-bridgenet2` | MIT | engineering | https://github.com/ffrostfall/BridgeNet2 |
 | `gh-ffrostfall-bytenet` | MIT | engineering | https://github.com/ffrostfall/ByteNet |
-| `gh-howmanysmall-janitor` | MIT | engineering | https://github.com/howmanysmall/Janitor |
 | `gh-littensy-charm` | MIT | engineering | https://github.com/littensy/charm |
 | `gh-littensy-reflex` | MIT | engineering | https://github.com/littensy/reflex |
-| `gh-madstudioroblox-profileservice` | Apache-2.0 | engineering | https://github.com/MadStudioRoblox/ProfileService |
 | `gh-madstudioroblox-profilestore` | Apache-2.0 | engineering | https://github.com/MadStudioRoblox/ProfileStore |
 | `gh-madstudioroblox-replica` | Apache-2.0 | engineering | https://github.com/MadStudioRoblox/Replica |
 | `gh-matter-ecs-matter` | MIT | engineering | https://github.com/matter-ecs/matter |
 | `gh-quenty-nevermoreengine` | MIT | engineering | https://github.com/Quenty/NevermoreEngine |
 | `gh-red-blox-zap` | MIT | engineering | https://github.com/red-blox/zap |
-| `gh-sleitnick-knit` | MIT | engineering | https://github.com/Sleitnick/Knit |
 | `gh-sleitnick-rbxutil` | MIT | engineering | https://github.com/Sleitnick/RbxUtil |
-| `gh-stravant-goodsignal` | MIT | engineering | https://github.com/stravant/goodsignal |
 | `gh-dlinacre-slime-factory-tycoon` | MIT | full-game | https://github.com/DLinacre/slime-factory-tycoon |
 | `gh-glitchifyed-tunicus-placement-v3` | MIT | full-game | https://github.com/glitchifyed/Tunicus-Placement-v3 |
 | `gh-gue-hub-roblox-tycoon-kit` | MIT | full-game | https://github.com/gue-hub/roblox-tycoon-kit |
 | `gh-isaaccarrington-roblox-obby` | Apache-2.0 | full-game | https://github.com/isaaccarrington/roblox-obby |
+| `gh-jason-lee88-roblox-gym-tycoon` | MIT | full-game | https://github.com/jason-lee88/roblox-gym-tycoon |
+| `gh-phocodes-clicking-mania` | Apache-2.0 | full-game | https://github.com/phocodes/clicking-mania |
+| `gh-phocodes-rice-simulator` | Apache-2.0 | full-game | https://github.com/phocodes/rice-simulator |
+| `gh-raymondwzeng-simulator-in-roblox-studio` | MIT | full-game | https://github.com/raymondwzeng/Simulator-In-Roblox-Studio |
+| `gh-ddust1n-camerashaker` | MIT | motion | https://github.com/ddust1n/CameraShaker |
 
-…and 34 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
+…and 29 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
 
 ## 5. Security
 
-0 of 217 sources carry a scan verdict.
+20 of 217 sources carry a scan verdict.
 
 The ordering is load-bearing and `docs/SOURCE-INTELLIGENCE.md` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an
