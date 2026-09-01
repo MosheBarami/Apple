@@ -499,6 +499,44 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-51 · A lockfile disqualified a source, and the register already knew it shouldn't
+
+Fetching 15 new sources ran the security gate over material it had never seen. Three checkouts
+were flagged. One of the three was the scanner being right about something uncomfortable, one was
+a genuine question for a human, and one was a false positive the codebase had already documented
+without generalising.
+
+**`evaera/Cmdr` was disqualified on its `package-lock.json`.** A lockfile is machine-written,
+contains no executable Roblox code, and is opaque by construction — which is precisely what the
+`unscannable` signal fires on. The `ACCEPTED` register in `scan.mjs` already carried a
+hand-written acceptance for `Roblox/creator-docs`'s lockfile, whose stated reason was *"build
+tooling rather than shipped content"* — the general rule, written down, applied to exactly one
+source. Every future lockfile would have needed its own human review to say the same sentence
+again.
+
+Lockfiles are now excluded before scanning, by four exact filenames, reported rather than silent —
+the same list `hash.mjs` has always used, for the analogous reason that two forks differing only
+in a lockfile are the same content. The now-dead `ACCEPTED` entry was removed rather than left in
+place, because an accepted-path entry that can never fire claims a human reviewed something the
+scanner no longer reaches.
+
+Deliberately narrow. `Roblox/react-luau` stays in REVIEW on a generated `docs/bench/data.json`,
+which cannot be recognised by name, and where a human deciding is the correct outcome rather than
+a gap.
+
+**And the finding that is not a false positive.** `Quenty/NevermoreEngine` — 608 stars, the
+highest-value source in the batch — is UNSAFE as a `remote-payload-loader`, and that verdict
+stands. It ships `tools/studio-bridge/src/commands/console/exec/execute.lua`, a Studio bridge
+whose *purpose* is executing arbitrary code, plus `loadstring` in a UI-converter plugin and three
+test runners. The library's reputation is not evidence about what the code does, and a pattern
+extracted from `execute.lua` would teach how to build an RCE bridge. It has not been added to the
+`ACCEPTED` register: that register is for human-reviewed exceptions, and reviewing my own is the
+thing §4 exists to prevent.
+
+The temptation here is the whole point of writing this down. The exclusion cost the batch its most
+valuable source, the fix was one register entry away, and the argument for it — *"it's Quenty, it's
+obviously fine"* — is an argument from reputation about a security verdict.
+
 ### F-50 · Counting engine vocabulary inside comments, for the third time in this repository
 
 The domain tagger's first run over the real corpus reported 3 bare `wait()` calls in
