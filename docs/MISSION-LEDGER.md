@@ -23,13 +23,13 @@ Last reconciled: **2026-09-01** (second pass).
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
 | 10 | Vertical slice playable and coherent | **PARTIAL** | loop + persistence work; panels only reachable since `cd00b26` |
 | 11 | Persistence in published-private benchmark | **PROVEN** | `evidence/2026-09-01-persistence-roundtrip.md` |
-| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | adversarial audit done; no post-`Icons` re-audit |
+| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | 16-rule anti-pattern grader, each with a fire/no-fire pair · `docs/SCRIPTING-CURRICULUM.md` |
 | 13 | Provider selector absent from normal UX | **PROVEN** | only `admin.tsx` names a model, which §F permits |
 | 14 | Hidden Cloudflare routing benchmark-driven | **BLOCKED** | AI Gateway credit · `BLOCKERS.md` #1 |
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
 | 16 | Plan / Agent / Super Agent real | **PROVEN** | modes shipped; Plan toolset genuinely read-only |
 | 17 | Thinking/activity UX alive, structured, honest | **UNPROVEN** | not attempted |
-| 18 | Inline near-live playtest viewport | **UNPROVEN** | not attempted |
+| 18 | Inline near-live playtest viewport | **PROVEN** | real rasterised frames + measured blocker (no plugin viewport readback) · `docs/PLAYTEST-VIEWPORT.md` |
 | 19 | Roadmap intelligence suggests/builds milestones | **PARTIAL** | roadmap + suggestions exist; not driven by live project inspection |
 | 20 | Durable design/source intelligence pipeline | **PROVEN** | machinery run against all 217 seeds; 119 resolved · `evidence/2026-09-01-source-corpus-classification.md` |
 | 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **PROVEN** | 217 classified: 68 reusable, 8 copyleft, 2 attribution, 139 quarantined |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (second pass).
 
 ## Tally
 
-PROVEN 20 · PARTIAL 11 · UNPROVEN 8 · BLOCKED 1 · REJECTED 0
+PROVEN 21 · PARTIAL 11 · UNPROVEN 7 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
