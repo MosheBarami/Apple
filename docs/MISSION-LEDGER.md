@@ -30,7 +30,7 @@ Last reconciled: **2026-09-01** (second pass).
 | 16 | Plan / Agent / Super Agent real | **PROVEN** | modes shipped; Plan toolset genuinely read-only |
 | 17 | Thinking/activity UX alive, structured, honest | **UNPROVEN** | not attempted |
 | 18 | Inline near-live playtest viewport | **PROVEN** | real rasterised frames + measured blocker (no plugin viewport readback) · `docs/PLAYTEST-VIEWPORT.md` |
-| 19 | Roadmap intelligence suggests/builds milestones | **PARTIAL** | roadmap + suggestions exist; not driven by live project inspection |
+| 19 | Roadmap intelligence suggests/builds milestones | **PROVEN** | corrected: it DOES scan the live place (`ROADMAP_SCAN_LUAU`), detects genre, offers Plan/Build, 30 tests incl. the tower-defence-never-offered-rebirth negative proof |
 | 20 | Durable design/source intelligence pipeline | **PROVEN** | machinery run against all 217 seeds; 119 resolved · `evidence/2026-09-01-source-corpus-classification.md` |
 | 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **PROVEN** | 217 classified: 68 reusable, 8 copyleft, 2 attribution, 139 quarantined |
 | 22 | Discovery expands beyond the seed manifest | **UNPROVEN** | recursive discovery not run |
@@ -38,7 +38,7 @@ Last reconciled: **2026-09-01** (second pass).
 | 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence; security scanner still has nothing downloaded to scan |
 | 25 | Golem stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
 | 26 | Corpus materially improves UI/world evals | **PARTIAL** | 4 rules mechanised as checks; caught a real remaining defect (Icons contract) and it was fixed |
-| 27 | UI Labs or equivalent isolated UI harness | **UNPROVEN** | not evaluated |
+| 27 | UI Labs or equivalent isolated UI harness | **PROVEN** | `Stories.luau` renders states in isolation at 1.00 and 0.72 and MEASURES touch targets; found a real mobile trap · `evidence/2026-09-01-ui-stories-harness.md` |
 | 28 | Icon intelligence from strong free sources | **PARTIAL** | original icon family ships; not sourced from a vetted library |
 | 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | `MotionProbe.luau` + 4 motion rules in the library; still one game's patterns |
 | 30 | Studs/classic a first-class art language | **UNPROVEN** | not attempted |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (second pass).
 
 ## Tally
 
-PROVEN 22 · PARTIAL 10 · UNPROVEN 7 · BLOCKED 1 · REJECTED 0
+PROVEN 24 · PARTIAL 9 · UNPROVEN 6 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
