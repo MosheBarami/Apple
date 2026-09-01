@@ -15,6 +15,7 @@ import {
   creditLine,
   readiness,
   READINESS_TONE,
+  TONE_MARK,
   type AttributionResponse,
   type CreditEntry,
 } from './credits-model';
@@ -88,18 +89,10 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
           panel where getting it wrong would matter most. */}
       <section className={`cr-verdict cr-verdict--${tone}`}>
         <span className="cr-verdict__mark">
-          <StatusIcon
-            status={
-              verdict.state === 'clear'
-                ? 'success'
-                : verdict.state === 'blocked'
-                  ? 'error'
-                  : verdict.state === 'obligations' || verdict.state === 'unaccounted'
-                    ? 'warning'
-                    : 'info'
-            }
-            size={18}
-          />
+          {/* The mark comes from the same tone the border does. It used to be a nested
+              ternary over the verdict here — a second mapping of the one fact on this
+              screen where disagreeing would matter most. */}
+          <StatusIcon status={TONE_MARK[tone]} size={18} />
         </span>
         <div>
           <h3 className="cr-verdict__title">{verdict.title}</h3>

@@ -1,3 +1,5 @@
+import type { StatusName } from '../status-icon-model.ts';
+
 /**
  * WHAT THIS PROJECT OWES, AND WHETHER IT CAN SHIP.
  *
@@ -13,6 +15,8 @@
  * on the strength of an empty list — it says nothing has been recorded yet, which is
  * the true statement.
  */
+
+export type { StatusName };
 
 export interface CreditEntry {
   assetId: string;
@@ -210,3 +214,19 @@ export function creditLine(e: CreditEntry): string {
   const mods = e.modifications.length > 0 ? ` (modified: ${e.modifications.join(', ')})` : ' (as published)';
   return `${e.name} by ${e.author} — ${e.licence}${mods}`;
 }
+
+/**
+ * The canonical mark for a tone, so the icon and the border cannot disagree.
+ *
+ * The panel used to choose the icon with its own nested ternary over `Readiness`, which
+ * is a second mapping of the same fact — and the fact it maps is the one thing on that
+ * screen where being wrong matters most. A fifth verdict would have been added to
+ * READINESS_TONE and missed here, leaving the border amber and the mark on `info`.
+ * Deriving both from the tone means there is only one place to add it.
+ */
+export const TONE_MARK: Record<'good' | 'bad' | 'warn' | 'muted', StatusName> = {
+  good: 'success',
+  bad: 'error',
+  warn: 'warning',
+  muted: 'info',
+};

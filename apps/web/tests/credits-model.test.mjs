@@ -27,7 +27,7 @@ execFileSync(
   [join(WEB, 'src/components/ws/credits-model.ts'), '--format=esm', `--outfile=${out}`],
   { stdio: 'pipe' },
 );
-const { readiness, READINESS_TONE, creditLine, copyableCredits } = await import(out);
+const { readiness, READINESS_TONE, TONE_MARK, creditLine, copyableCredits } = await import(out);
 
 const entry = (over = {}) => ({
   assetId: 'kenney/nature-kit/tree-pine-01',
@@ -214,4 +214,18 @@ test('a real determination still outranks an unknown', () => {
   );
   assert.equal(v.state, 'blocked');
   assert.match(v.title, /1 asset cannot ship/, 'and counts only the determined one');
+});
+
+test('every verdict has a mark, and it comes from the same tone as the border', () => {
+  // The panel used to pick the icon with its own nested ternary over Readiness — a
+  // second mapping of the one fact on that screen where disagreeing would matter most.
+  // A fifth verdict would have been added to READINESS_TONE and missed there, leaving
+  // an amber border with an `info` mark.
+  for (const [state, tone] of Object.entries(READINESS_TONE)) {
+    assert.ok(TONE_MARK[tone], `${state} is toned ${tone}, which has no mark`);
+  }
+  // And the two must not be able to disagree: the panel reads TONE_MARK[tone], nothing else.
+  const panel = readFileSync(join(WEB, 'src/components/ws/credits-panel.tsx'), 'utf8');
+  assert.match(panel, /status=\{TONE_MARK\[tone\]\}/);
+  assert.doesNotMatch(panel, /verdict\.state === 'clear'/, 'no second mapping in the panel');
 });
