@@ -17,6 +17,9 @@ import { gatesFromDocs, plannedStepsFromDocs, type ValidatedDoc } from '../../li
 import { clockTime, isoStamp } from '../../lib/format';
 import { GolemGlyph } from '../glyphs';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
+import { useNow } from './activity';
+import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
+import { buildEvidence } from './evidence-model';
 import { Thinking } from './thinking';
 
 /** Copy for a run that ended without doing the work, or failed. */
@@ -46,10 +49,17 @@ function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
 export function Turn({
   item,
   status,
+  phaseMarks,
   isLast,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
+  /**
+   * The phase transitions observed on THIS run, when this turn is the run in
+   * flight. Undefined for every other turn, because `agent_status` carries no
+   * msgId and guessing which turn a mark belongs to would invent its timing.
+   */
+  phaseMarks?: PhaseMark[];
   isLast: boolean;
 }) {
   const parsed = useMemo(() => {
@@ -80,6 +90,47 @@ export function Turn({
   const gates = useMemo(() => gatesFromDocs(validated), [validated]);
   const plannedSteps = useMemo(() => plannedStepsFromDocs(validated), [validated]);
 
+  // Evidence is keyed by toolId so the activity timeline can hang each card on
+  // the step that produced it. `panelFromTool` already built and validated the
+  // document; this only re-keys it — no second parse, and no second source of
+  // truth that could disagree with the panel below the prose.
+  const evidence = useMemo(() => {
+    const docs = new Map(panels.map((p) => [p.toolId, p.doc]));
+    return buildEvidence(
+      item.tools.map((t) => ({
+        toolId: t.toolId,
+        tool: t.tool,
+        summary: t.summary,
+        ok: t.ok,
+        done: t.done,
+        hasDetail: t.detail !== undefined && t.detail !== null,
+      })),
+      docs,
+    );
+  }, [item.tools, panels]);
+
+  // The ordered, timed activity. Rebuilt from the merged turn through the same
+  // reducer the live socket log feeds, so a reloaded turn and a live one cannot
+  // report different things about the same run.
+  // One clock for the turn. It ticks only while this turn is streaming, so a
+  // settled conversation does not repaint itself once a second forever.
+  const now = useNow(item.streaming);
+  const activity = useMemo(
+    () =>
+      reduceActivity({
+        events: eventsFromTurn({
+          tools: item.tools,
+          phaseMarks,
+          stopReason: item.stopReason,
+          error: item.error,
+        }),
+        upcoming: plannedSteps,
+        now,
+        streaming: item.streaming,
+      }),
+    [item.tools, item.stopReason, item.error, item.streaming, phaseMarks, plannedSteps, now],
+  );
+
   if (item.role === 'user') {
     return (
       <div className="gx-turn gx-turn--user gx-msg-in">
@@ -105,6 +156,8 @@ export function Turn({
           intent={item.intent}
           gates={gates}
           plannedSteps={plannedSteps}
+          activity={activity}
+          evidence={evidence}
         />
 
         {item.content && (

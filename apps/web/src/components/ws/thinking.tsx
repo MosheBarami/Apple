@@ -12,59 +12,26 @@
 // not exist in the DOM at all — they are not greyed out, not "waiting", not
 // there. There is also no percentage anywhere, because a progress figure here
 // would be a guess presented as a measurement.
+//
+// The Actions stage delegates to <Activity> (`activity-model.ts`), which groups
+// the same real events into ordered, timed phases with a terminal state and
+// hangs each step's typed evidence on it. `buildTimeline` still decides whether
+// that stage exists at all, so the honesty tests keep gating the whole timeline.
 import { useState } from 'react';
 import type { RunIntent } from '@golem/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
+import { Activity, ActivityTerminal } from './activity';
+import type { ActivityRun } from './activity-model';
+import type { Evidence } from './evidence-model';
 import { Icon, PATH } from './primitives';
 import {
   buildTimeline,
   headerHint,
-  type ActionRow,
   type GateRow,
   type PlannedStep,
   type TimelineInput,
   type TimelineStage,
 } from './thinking-model';
-
-/* -------------------------------------------------------------- bullets --- */
-
-/** The checklist marks: done tick, in-flight rotating ring, hollow pending ring. */
-function ActionMark({ state }: { state: ActionRow['state'] }) {
-  if (state === 'active') {
-    return (
-      <svg className="gx-ring" viewBox="0 0 16 16" aria-hidden="true">
-        <circle className="gx-ring__track" cx="8" cy="8" r="5" />
-        <circle className="gx-ring__spin" cx="8" cy="8" r="5" />
-      </svg>
-    );
-  }
-  if (state === 'pending') {
-    return (
-      <svg className="gx-hollow" viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="5" />
-      </svg>
-    );
-  }
-  if (state === 'failed') {
-    return (
-      <svg className="gx-tick" width="11" height="11" viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return (
-    <svg className="gx-tick" width="11" height="11" viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const STATE_WORD: Record<ActionRow['state'], string> = {
-  done: 'done',
-  active: 'in progress',
-  failed: 'failed',
-  pending: 'not started',
-};
 
 /* --------------------------------------------------------------- stages --- */
 
@@ -83,7 +50,15 @@ function Gate({ gate }: { gate: GateRow }) {
   );
 }
 
-function Stage({ stage }: { stage: TimelineStage }) {
+function Stage({
+  stage,
+  activity,
+  evidence,
+}: {
+  stage: TimelineStage;
+  activity: ActivityRun;
+  evidence: Map<string, Evidence>;
+}) {
   return (
     <li className={`gx-stage-row${stage.live ? ' is-live' : ''}`}>
       <span className="gx-stage-row__bullet" aria-hidden="true" />
@@ -111,22 +86,12 @@ function Stage({ stage }: { stage: TimelineStage }) {
           </div>
         )}
 
-        {stage.actions && (
-          <ol className="gx-checks">
-            {stage.actions.map((action) => (
-              <li key={action.key} className={`gx-check is-${action.state}`}>
-                <span className="gx-check__mark">
-                  <ActionMark state={action.state} />
-                </span>
-                <span className="gx-check__label">
-                  {action.label}
-                  <span className="gx-sr"> — {STATE_WORD[action.state]}</span>
-                  {action.detail && <span className="gx-check__detail">{action.detail}</span>}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
+        {/* The Actions stage is drawn by <Activity>, which groups the same real
+            events into ordered, timed phases and hangs each step's evidence on
+            it. `stage.actions` still decides whether this stage EXISTS AT ALL —
+            it is the honesty gate `tests/thinking-model.test.mjs` pins, and no
+            timeline appears without it. */}
+        {stage.actions && <Activity run={activity} evidence={evidence} />}
 
         {stage.gates && <ul className="gx-gates">{stage.gates.map((g) => <Gate key={g.key} gate={g} />)}</ul>}
       </div>
@@ -143,6 +108,8 @@ export function Thinking({
   intent,
   gates,
   plannedSteps,
+  activity,
+  evidence,
 }: {
   tools: ToolEvent[];
   status: AgentStatus | null;
@@ -151,6 +118,10 @@ export function Thinking({
   intent?: RunIntent;
   gates: GateRow[];
   plannedSteps: PlannedStep[];
+  /** The ordered, timed activity — see `activity-model.ts`. */
+  activity: ActivityRun;
+  /** Typed artifacts, keyed by `toolId`. See `evidence-model.ts`. */
+  evidence: Map<string, Evidence>;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -182,8 +153,14 @@ export function Thinking({
         <div className="gx-think__inner">
           <ol className="gx-timeline">
             {stages.map((stage) => (
-              <Stage key={stage.kind} stage={stage} />
+              <Stage key={stage.kind} stage={stage} activity={activity} evidence={evidence} />
             ))}
+
+            {/* How the run ended, last — after the gates, because a gate result
+                arrives while the run is still going. Absent entirely when the
+                outcome was never reported, which is the case for every turn
+                reloaded from message history. */}
+            {activity.terminal && <ActivityTerminal terminal={activity.terminal} />}
           </ol>
 
           {/* The reasoning POLICY's own justification for the effort tier it
