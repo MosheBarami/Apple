@@ -13,6 +13,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ProductMode } from '@golem/shared';
+import { EmptyState } from '../components/empty-state';
 import { ApiError, fetchMilestoneBrief, fetchNextMilestones, fetchRoadmap } from '../lib/api';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { relativeTime } from '../lib/format';
@@ -206,18 +207,25 @@ export function RoadmapPage() {
 
       {/* ------------------------------------------------------------ empty */}
       {roadmap.isSuccess && layout.progress.total === 0 && (
-        <div className="empty-state rm-empty">
-          <EmptyRoadmapMark />
-          <h2>Nothing to plan yet</h2>
-          <p>
-            Golem read your place and found nothing it recognises well enough to plan around yet. Build
-            something in the conversation — a spawn, a first room — and the plan fills in as the project
-            takes shape.
-          </p>
-          <Link to={`/projects/${projectId}`} className="btn btn-primary">
-            Back to the conversation
-          </Link>
-        </div>
+        /* M03. The copy is kept verbatim through `detail`: it is more specific than any
+           shared default could be, and the canonical state supplies the identity — title,
+           tone, the M03 marker — rather than replacing what was already good. */
+        <EmptyState
+          state="noRoadmap"
+          illustration={<EmptyRoadmapMark />}
+          detail={
+            <p className="es__body">
+              Golem read your place and found nothing it recognises well enough to plan around yet. Build
+              something in the conversation — a spawn, a first room — and the plan fills in as the project
+              takes shape.
+            </p>
+          }
+          action={
+            <Link to={`/projects/${projectId}`} className="btn btn-primary">
+              Back to the conversation
+            </Link>
+          }
+        />
       )}
 
       {/* ------------------------------------------------------------- plan */}

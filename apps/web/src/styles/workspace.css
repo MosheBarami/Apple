@@ -2657,3 +2657,67 @@
     transition: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Canonical empty, waiting and failed states  (components/empty-state.tsx)
+
+   There were fourteen of these across two incompatible CSS layers — `.empty-state`
+   in styles.css and `.gx-empty` here — some of them considered, one of them a bare
+   `<p>Loading…</p>`. A user meets these on their worst days, so they get one
+   treatment.
+
+   TONE IS SEMANTIC, per the visual system's §16.2 colour grammar: amber is creation
+   and Golem's own identity, blue is Studio and transport, green is proven, violet is
+   future or in-progress, red is failure. The tone comes from the state id in the
+   component and is not a prop a caller can pass, because a state whose colour
+   contradicts its meaning is exactly the drift §16.3 names.
+   -------------------------------------------------------------------------- */
+
+.es {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  /* A hairline in the state's own colour, rather than a filled panel. The workspace
+     is already a lane of cards; one more filled box reads as content, not as
+     absence. */
+  border: 1px solid var(--es-edge, var(--line));
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--es-tint, transparent) 5%, transparent);
+}
+
+.es__art { margin-bottom: 0.25rem; opacity: 0.9; }
+
+.es__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.es__body {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+
+.es__action { margin-top: 0.5rem; }
+
+.es--creation { --es-edge: color-mix(in srgb, var(--acc-ember) 30%, var(--line)); --es-tint: var(--acc-ember); }
+.es--studio   { --es-edge: color-mix(in srgb, var(--acc-stone) 30%, var(--line)); --es-tint: var(--acc-stone); }
+.es--proven   { --es-edge: color-mix(in srgb, var(--good) 32%, var(--line));      --es-tint: var(--good); }
+.es--future   { --es-edge: color-mix(in srgb, var(--acc-rune) 30%, var(--line));  --es-tint: var(--acc-rune); }
+.es--failure  { --es-edge: color-mix(in srgb, var(--bad) 34%, var(--line));       --es-tint: var(--bad); }
+
+/* Motion is a fade only. These appear when something did NOT happen; sliding them in
+   dramatises a non-event. */
+@media (prefers-reduced-motion: no-preference) {
+  .es { animation: es-in var(--dur) var(--ease-out) both; }
+  @keyframes es-in { from { opacity: 0; } to { opacity: 1; } }
+}
