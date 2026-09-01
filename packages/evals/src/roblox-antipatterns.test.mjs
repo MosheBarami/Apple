@@ -20,6 +20,7 @@ import {
   fired,
   inferContext,
   stripComments,
+  blankStringContents,
 } from './roblox-antipatterns.mjs';
 
 // context is stated explicitly so a fire/no-fire assertion measures the RULE, not the accuracy of
@@ -859,4 +860,32 @@ test("this repository's own DataService passes every rule in this file", () => {
   const res = analyzeLuau(src, { path: 'DataService.luau', context: 'server' });
   const errors = res.findings.filter((f) => f.severity === 'error');
   assert.deepEqual(errors.map((f) => `${f.rule}:${f.line}`), []);
+});
+
+test('a deprecated call named inside a string is prose, a class name is usage', () => {
+  // Found by running this rule over apps/plugin/src/Ops.luau:351, which contains
+  // "refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+  // — a refusal message listing the allowed yields, reported as a deprecated call.
+  // This rule grades model output, so a model writing that same sensible message was
+  // being marked down for it.
+  assert.ok(!fired(analyzeLuau('local m = "use task.wait, not wait()"', {}), 'deprecated-api'));
+  assert.ok(!fired(analyzeLuau("local m = 'no spawn() here'", {}), 'deprecated-api'));
+
+  // Strings are not simply discarded: Instance.new("BodyVelocity") is real legacy
+  // usage whose whole evidence lives inside one.
+  assert.ok(fired(analyzeLuau('local x = Instance.new("BodyVelocity")', {}), 'deprecated-api'));
+
+  // And real calls are untouched.
+  assert.ok(fired(analyzeLuau('wait(1)', {}), 'deprecated-api'));
+  assert.ok(fired(analyzeLuau('part.Touched:connect(fn)', {}), 'deprecated-api'));
+});
+
+test('blanking strings does not shift the line a finding reports', () => {
+  // `matches()` computes a line number from a character index, so the blanked view
+  // has to be the same length as the source or every finding after a string points
+  // at the wrong line.
+  const src = 'local a = 1\nlocal s = "padding padding padding"\nwait(1)';
+  assert.equal(blankStringContents(src).length, src.length);
+  const hit = analyzeLuau(src, {}).findings.find((f) => f.rule === 'deprecated-api');
+  assert.equal(hit.line, 3, 'the wait() is on line 3');
 });

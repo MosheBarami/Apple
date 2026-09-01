@@ -499,6 +499,35 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-53 · The same string false positive, in the rule that grades models
+
+`F-50` fixed the domain tagger counting `wait()` inside a comment. Its follow-up found the tagger
+also counting `wait()` inside a **string**, and fixed that too: markers describing call syntax are
+counted with string contents blanked, markers naming a class with them kept, because
+`Instance.new("BodyVelocity")` is real usage whose whole evidence lives inside a string.
+
+`roblox-antipatterns.mjs`'s `deprecated-api` rule had the identical defect and did not get the
+identical fix, because the two live in different packages and only their **vocabulary** was under
+a shared test. Running it over this repository found `apps/plugin/src/Ops.luau:351`:
+
+```luau
+"refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+```
+
+A refusal message listing which yields are allowed, reported as a deprecated call.
+
+The consequence is the same one F-52 has: **this rule grades model output.** A model writing that
+exact sensible message — explaining to a user which yields are permitted — would be marked down
+for the words in it.
+
+Fixed with the same split, and the cross-package test extended from *which* constructs are
+deprecated to *where they count*, so the two cannot drift apart on this either. The blanking
+preserves length, because `matches()` derives a line number from a character index and a shorter
+view would misreport every finding after a string.
+
+The pattern worth naming: **a fix applied to one of two independent implementations is half a
+fix**, and the test that was supposed to bind them only covered the half I had thought about.
+
 ### F-52 · A rule that graded the better answer worse
 
 Running this repository's own nineteen anti-pattern rules over its own server code produced three

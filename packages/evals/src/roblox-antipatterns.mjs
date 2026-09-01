@@ -86,6 +86,15 @@ const BLOCK_TOKENS = /\b(function|do|if|repeat|end|until)\b/g;
  * Used to give a rule the BODY of a handler instead of "the next 500 characters", which is the
  * difference between "this connection yields" and "something later in the file yields".
  */
+/**
+ * Blank the CONTENTS of string literals, keeping quotes, length and line structure.
+ * Offsets must not shift: `matches()` reports a line number computed from the index.
+ */
+export function blankStringContents(source) {
+  return String(source).replace(/(['"])((?:\\.|(?!\1)[^\\\n])*)(\1?)/g, (m, q, body, close) =>
+    q + ' '.repeat(body.length) + close);
+}
+
 export function blockEnd(src, from) {
   BLOCK_TOKENS.lastIndex = from;
   let depth = 0;
@@ -494,9 +503,26 @@ export const RULES = [
     why: 'wait/spawn/delay drift under load and Body* movers are legacy physics; use task.* and constraints',
     find({ src }) {
       const out = [];
-      out.push(...matches(src, /(?<![.:\w])wait\s*\(/g, () => 'bare wait() — use task.wait()'));
-      out.push(...matches(src, /(?<![.:\w])(?:spawn|delay)\s*\(/g, (m) => `${m[0].replace(/\s*\($/, '')}() — use task.spawn/task.delay`));
-      out.push(...matches(src, /:connect\s*\(/g, () => ':connect is the removed lowercase alias — use :Connect'));
+      //[[ CALL SYNTAX IS COUNTED WITH STRING CONTENTS BLANKED; A CLASS NAME IS NOT.
+      //
+      //   `stripComments` keeps string contents deliberately, and it must:
+      //   `Instance.new("BodyVelocity")` is real legacy usage whose entire evidence lives
+      //   inside a string. But `wait(` inside a string is prose. Running this rule over
+      //   this repository found `apps/plugin/src/Ops.luau:351`, which is
+      //
+      //       "refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+      //
+      //   — a refusal message listing which yields are allowed, reported as a deprecated
+      //   call. This rule grades model output, so a model writing that same sensible
+      //   message would be marked down for it.
+      //
+      //   `packages/corpus/src/intake/domain.mjs` reached the same split independently and
+      //   `domain.test.mjs` asserts the two agree; this keeps that agreement true for
+      //   strings as well as for the vocabulary. ]]
+      const noStrings = blankStringContents(src);
+      out.push(...matches(noStrings, /(?<![.:\w])wait\s*\(/g, () => 'bare wait() — use task.wait()'));
+      out.push(...matches(noStrings, /(?<![.:\w])(?:spawn|delay)\s*\(/g, (m) => `${m[0].replace(/\s*\($/, '')}() — use task.spawn/task.delay`));
+      out.push(...matches(noStrings, /:connect\s*\(/g, () => ':connect is the removed lowercase alias — use :Connect'));
       out.push(...matches(src, /\bBody(?:Velocity|Position|Gyro|Thrust|Angular\w*)\b/g, (m) => `${m[0]} is a legacy body mover — use the constraint equivalent`));
       return out;
     },

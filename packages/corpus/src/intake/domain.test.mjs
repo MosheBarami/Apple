@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { tagDomain, stripLuauComments, blankStringContents, ERAS, ERA_THRESHOLDS, ERA_MIN_EVIDENCE } from './domain.mjs';
 // The eval harness's deprecation vocabulary. Imported across the workspace on
 // purpose: see the consistency test at the bottom of this file.
-import { RULES as ANTIPATTERNS, stripComments } from '../../../evals/src/roblox-antipatterns.mjs';
+import { RULES as ANTIPATTERNS, stripComments, analyzeLuau } from '../../../evals/src/roblox-antipatterns.mjs';
 
 const f = (path, source) => ({ path, source });
 
@@ -296,4 +296,24 @@ test('blanking string contents preserves length, quotes and line structure', () 
     5,
     'the five calls after the literal, and not the one inside it',
   );
+});
+
+test('both scanners agree that a call named in a string is not a call', () => {
+  // The two reached this split independently — the tagger from Ops.luau's refusal
+  // message, the eval rule from the same line — and they must not drift apart on it.
+  // The vocabulary test above covers WHICH constructs are deprecated; this covers
+  // WHERE they count.
+  const samples = [
+    ['local m = "use task.wait, not wait()"', false],
+    ["local m = 'no spawn() here'", false],
+    ['local x = Instance.new("BodyVelocity")', true],
+    ['wait(1)', true],
+    ['part.Touched:connect(fn)', true],
+  ];
+  for (const [src, shouldFlag] of samples) {
+    const tagged = tagDomain([f('x.luau', src)]).deprecatedPatterns.length > 0;
+    const linted = analyzeLuau(src, { path: 'x.luau' }).findings.some((x) => x.rule === 'deprecated-api');
+    assert.equal(tagged, shouldFlag, `tagger disagrees on ${JSON.stringify(src)}`);
+    assert.equal(linted, shouldFlag, `eval rule disagrees on ${JSON.stringify(src)}`);
+  }
 });
