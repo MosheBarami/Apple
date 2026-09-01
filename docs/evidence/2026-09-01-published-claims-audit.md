@@ -86,6 +86,17 @@ Reporting only the failures would misrepresent the audit, so:
   anywhere — and it dissolved on reading how Studio loads plugins.
 - **The plugin capability list.** Every "can" maps to a real op in `Ops.luau`, and no op
   exists for anything in the "cannot" list. There is no publish op.
+- **"Deleting a project removes its chat history, checkpoints and Studio pairing
+  forever."** This one needed an authoritative answer rather than a reading. Messages and
+  checkpoints live in SQL tables created with `this.sql.exec`, and `/purge` calls
+  `ctx.storage.deleteAlarm()` then `ctx.storage.deleteAll()` — so the question is whether
+  `deleteAll()` reaches SQL tables or only the key-value API. Cloudflare's own
+  documentation settles it, in the opposite direction to the intuition: *"It is not
+  sufficient to simply delete the specific data that you wrote, such as deleting a key or
+  dropping a table... The only way to remove all storage is to call `deleteAll()`."* The
+  purge is correct, and the explicit `deleteAlarm()` before it is right for any
+  compatibility date — `deleteAll()` only removes the alarm from `2026-02-24` onward.
+  Live sockets are closed with `ws.close(1000, 'project deleted')` first.
 - **`/docs/plugin`'s honesty about not being installable.** It states plainly that the
   Creator Store route does not work yet and that the steps below will not work — rather
   than sending a reader to a page with nothing on it.
