@@ -55,7 +55,22 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 ## Tally
 
-PROVEN 25 · PARTIAL 13 · UNPROVEN 1 · BLOCKED 1 · REJECTED 0
+PROVEN 26 · PARTIAL 12 · UNPROVEN 1 · BLOCKED 1 · REJECTED 0
+
+*Counted by matching gate rows, not by grepping for the word — which also matches the
+"downgraded from PROVEN" notes and inflates the total past 40.*
+
+**Gate 22 returned to PROVEN**, which is the first of the five downgraded gates to recover
+fully. It did so on the strength of the thing the audit said was missing — the enumeration now
+feeds the corpus rather than a summary line — and the corpus went 289 → 1,240 sources with
+lawfully-reusable rising 109 → 769.
+
+The two gates that are not PROVEN or PARTIAL are both blocked on something outside the
+repository: **14** on AI Gateway credit, and **40** on the Studio capture transport, which drops
+the whole MCP connection on every capture attempt. Neither is blocked on judgement or on work
+left undone here, and 40 in particular stays UNPROVEN rather than being argued upward — the one
+capture path that does work renders flat `SmoothPlastic` with no lighting, and so cannot answer
+the question the gate asks.
 
 **Corrected 2026-09-01 by a ten-track independent audit** (`evidence/2026-09-01-mission-track-audit.md`)**, and the correction went the wrong
 way on purpose.** Five gates were downgraded: 6, 18, 19, 20 and 22 — three of them out of
