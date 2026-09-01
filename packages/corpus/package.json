@@ -12,7 +12,8 @@
     "test": "node --test src/intake/*.test.mjs",
     "typecheck": "for f in src/*.mjs src/intake/*.mjs; do node --check \"$f\" || exit 1; done",
     "scan": "node src/scan.mjs",
-    "record": "node src/fetch.mjs --record-only"
+    "record": "node src/fetch.mjs --record-only",
+    "manifest": "node src/manifest.mjs"
   },
   "dependencies": {
     "yaml": "^2.6.1"
