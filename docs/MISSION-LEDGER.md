@@ -13,7 +13,7 @@ Last reconciled: **2026-09-01** (second pass).
 | # | Outcome (§AS) | Status | Evidence / note |
 |---:|---|---|---|
 | 1 | Branch + Draft PR coherent and reviewable | **PROVEN** | `feature/roblox-creation-intelligence`, PR #1 Draft, CI green |
-| 2 | Benchmark materially beyond the rejected blockout | **PARTIAL** | 497 primitives vs 608 blockout; cliffs still terraced |
+| 2 | Benchmark materially beyond the rejected blockout | **PARTIAL** | 482 primitives vs 608 blockout; cliff faces now battered, not terraced; Glacier Heart still not a payoff from the gate |
 | 3 | Frost Hollow primitive fallback resolved | **PROVEN** | 0 → 22 crystal meshes · `evidence/2026-09-01-detexture-ab.md` |
 | 4 | Glacier Heart no longer a box stack | **PROVEN** | radial crystal burst; dais geometry fixed · same file |
 | 5 | UI visual quality passes rendered review | **PARTIAL** | shop/HUD render well once `Icons` installed; not all screens reviewed |

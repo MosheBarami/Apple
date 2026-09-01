@@ -2110,9 +2110,30 @@ local function cliffRun(
 				setback += depth * depthMul * rand(0.06, 0.24)
 			end
 			local centre = anchor + outward * setback + dir * lateral + Vector3.new(0, y + h / 2, 0)
+			--[[ BATTER. This is the answer to the wall still reading as terraced
+				 boxes after the mesh ratio was raised and rejected (F-19).
+
+				 That experiment added mesh silhouette IN FRONT of the courses and
+				 changed no pixels, because what the eye reads is the courses
+				 themselves — and a course was a box with a VERTICAL outward face.
+				 Every one of them presented a flat rectangle to the camera at the
+				 same angle, so twenty masses read as one extrusion however much
+				 their widths and offsets varied.
+
+				 A real cliff face leans back. `lookAt` puts local Z along `outward`
+				 and local Y up, so a NEGATIVE rotation about local X tilts the top
+				 of the slab into the wall. That costs zero parts, breaks the
+				 coplanarity that was doing the damage, and catches the light
+				 differently on every course.
+
+				 Course 1 is exempt and must stay exempt: it is the sealing course,
+				 it keeps full width and no offset so the ring cannot leak, and a
+				 battered base would lift its own foot off the ground. ]]
+			local batter = if k == 1 then 0 else -rand(0.035, 0.115)
 			-- lookAt puts the slab's Z along `outward`, so Size reads
 			-- (width along the run, height, depth into the wall).
-			local cf = CFrame.lookAt(centre, centre + outward) * CFrame.Angles(0, math.rad(rand(-7, 7)), 0)
+			local cf = CFrame.lookAt(centre, centre + outward)
+				* CFrame.Angles(batter, math.rad(rand(-7, 7)), 0)
 			newPart(fCliffs, "CliffCourse", Vector3.new(w, h, dd), cf, toneAt(centre, toneOffset + k), true)
 			y += h * 0.95
 			topY, topCentre, topWidth, topDepth = y, centre, w, dd
@@ -2924,7 +2945,19 @@ local ROAD_TOP = 0.35
 	 a vertex; each arm is yawed ±32°, and the ±3.7 stud lateral offset is what
 	 puts their inner ends at x = 0 so the vertex closes. ]]
 local function chevron(z: number, dirZ: number, tone: Color3)
-	local arm = 14
+	--[[ SIZED DOWN from arm = 14, width = 3.4 after the frost canonical camera
+		 showed the result. The device is right — painted, grounded, cannot become
+		 floating geometry — but at 14 studs of arm on a 24-stud road two chevrons
+		 spanned nearly the whole corridor, and from a camera standing ON the road
+		 they filled the lower half of frame. A route marking that large stops
+		 reading as terrain and starts reading as a debug overlay drawn over the
+		 game, which is a cousin of the failure this section already fixed once.
+
+		 The CONTRAST is deliberately left alone. The guide hue is measured against
+		 the surface it is painted on — 255 on IcePath against a 170 benchmark —
+		 and dimming it to reduce prominence would attack the one property that
+		 keeps the route legible. Area is the free variable here; contrast is not. ]]
+	local arm = 9.5
 	local yaw = 32
 	local dx = (arm / 2) * math.sin(math.rad(yaw))
 	local dz = (arm / 2) * math.cos(math.rad(yaw)) * dirZ
@@ -2932,7 +2965,7 @@ local function chevron(z: number, dirZ: number, tone: Color3)
 		newPart(
 			fSigns,
 			"PathChevron",
-			Vector3.new(3.4, 0.3, arm),
+			Vector3.new(2.6, 0.3, arm),
 			CFrame.new(side * dx, ROAD_TOP + 0.05, z - dz) * CFrame.Angles(0, math.rad(-side * yaw * dirZ), 0),
 			tone,
 			false
