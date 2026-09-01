@@ -37,11 +37,27 @@ const EXPECTED = {
   'multi-file': 5,
   'ui-implementation': 5,
   'failure-recovery': 4,
+  // The scripting curriculum (docs/SCRIPTING-CURRICULUM.md). Its weighting and topic coverage are
+  // asserted in scripting-curriculum.test.mjs; only the counts are pinned here.
+  'scripting-security': 7,
+  'scripting-persistence': 7,
+  'scripting-systems': 7,
+  'scripting-gameplay': 7,
 };
 for (const [cat, n] of Object.entries(EXPECTED)) {
   check(`${cat} has ${n} tasks`, counts[cat] === n, `got ${counts[cat] ?? 0}`);
 }
-check('total task count is 56', tasks.length === 56, `got ${tasks.length}`);
+check('total task count is 84', tasks.length === 84, `got ${tasks.length}`);
+// Scripting is the highest-weight capability in the Master Mission, so it must be the heaviest
+// block in the score the runner actually prints — not merely the largest count of task files.
+const weightOf = (t) => t.weight ?? 1;
+const scriptingWeight = tasks.filter((t) => t.category.startsWith('scripting-')).reduce((a, t) => a + weightOf(t), 0);
+const totalWeight = tasks.reduce((a, t) => a + weightOf(t), 0);
+check(
+  `scripting carries the majority of task weight (${scriptingWeight}/${totalWeight})`,
+  scriptingWeight / totalWeight > 0.5,
+  `${((scriptingWeight / totalWeight) * 100).toFixed(1)}%`,
+);
 
 // ---------------------------------------------------------------- 2. code extraction
 console.log('\n[2] code extraction');
@@ -117,6 +133,20 @@ const weighted = gradeTask(
   'yes',
 );
 check('check weights: 3-of-4 weighted fraction', approx(weighted.score, 0.75), `score=${weighted.score}`);
+
+// no_antipattern end-to-end through the grader. The two answers below are the same feature: both
+// parse, both name RemoteEvent, and only one of them can be drained of currency by any client.
+const shopTask = {
+  id: 'shop',
+  category: 'shop',
+  prompt: 'x',
+  checks: [{ type: 'no_antipattern', target: 'code', context: 'server', rules: ['server-trusts-client-amount', 'unvalidated-remote-arg'] }],
+};
+const exploitable = '```luau\nremote.OnServerEvent:Connect(function(player, price)\n\tplayer.leaderstats.Coins.Value = player.leaderstats.Coins.Value - price\nend)\n```';
+const guarded =
+  '```luau\nlocal PRICES = { sword = 100 }\nremote.OnServerEvent:Connect(function(player, itemId)\n\tlocal price = PRICES[itemId]\n\tif typeof(itemId) ~= "string" or price == nil then\n\t\treturn\n\tend\n\tplayer.leaderstats.Coins.Value -= price\nend)\n```';
+check('no_antipattern fails a client-priced purchase', approx(gradeTask(shopTask, exploitable).score, 0));
+check('no_antipattern passes a server-priced purchase', approx(gradeTask(shopTask, guarded).score, 1), JSON.stringify(gradeTask(shopTask, guarded).checks));
 
 // ---------------------------------------------------------------- 6. aggregation + table + transport prompt
 console.log('\n[6] aggregation, table, transport');

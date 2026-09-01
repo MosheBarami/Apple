@@ -1,12 +1,17 @@
 // Grading: check evaluation + per-task scoring.
-// Check shape: {type: 'contains'|'not_contains'|'regex'|'luau_syntax',
-//               value?, pattern?, flags?, target: 'text'|'code', weight?}
+// Check shape: {type: 'contains'|'not_contains'|'regex'|'luau_syntax'|'no_antipattern',
+//               value?, pattern?, flags?, target: 'text'|'code', weight?, rules?, context?}
 //  - contains:     literal `value` must appear in the target.
 //  - not_contains: literal `value` (or regex `pattern`) must NOT appear/match.
 //  - regex:        `pattern` (+optional `flags`) must match the target.
 //  - luau_syntax:  target (normally 'code') must parse as Luau via the local CLI.
+//  - no_antipattern: target (normally 'code') must contain none of the named Roblox anti-patterns.
+//      `luau_syntax` and the text checks together cannot distinguish a shop that debits the server's
+//      balance from one that trusts a price the client sent — both parse and both mention
+//      RemoteEvent. This check reads the code instead of its vocabulary; see roblox-antipatterns.mjs.
 // Task score = weighted fraction of checks passed (check.weight defaults to 1).
 import { checkLuauSyntax } from './luau.mjs';
+import { checkNoAntipattern } from './roblox-antipatterns.mjs';
 
 const FENCE_RE = /```[ \t]*[A-Za-z0-9_+-]*[ \t]*\r?\n([\s\S]*?)```/g;
 
@@ -56,6 +61,9 @@ function evalCheck(check, text, code, luauCheck) {
     }
     case 'luau_syntax': {
       return (luauCheck ?? checkLuauSyntax)(t);
+    }
+    case 'no_antipattern': {
+      return checkNoAntipattern(t, { rules: check.rules, context: check.context });
     }
     default:
       return { passed: false, detail: `unknown check type: ${check.type}` };
