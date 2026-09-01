@@ -1,0 +1,118 @@
+[
+  {
+    "id": "sg-01-npc-pathfinding",
+    "category": "scripting-gameplay",
+    "topics": ["npc-pathfinding", "error-recovery"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write the server Script that walks an NPC to a target. Assume `npc` is a Model with a Humanoid and `goal` is a part. Use PathfindingService, survive a path that fails to compute without erroring the script, follow the waypoints using MoveToFinished rather than a fixed sleep, and recompute the path when it becomes blocked.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "PathfindingService", "target": "code" },
+      { "type": "contains", "value": "ComputeAsync", "target": "code" },
+      { "type": "contains", "value": "MoveToFinished", "target": "code" },
+      { "type": "contains", "value": "Blocked", "target": "code" },
+      { "type": "contains", "value": "pcall", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["busy-wait-loop", "unbounded-wait-for-child"] }
+    ]
+  },
+  {
+    "id": "sg-02-tool-server-authority",
+    "category": "scripting-gameplay",
+    "topics": ["tools-and-equipment", "exploit-resistance", "remotes-validation"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write the Script that lives inside a sword Tool. While the tool is equipped, its Handle touching another character's Humanoid deals 25 damage, at most once per second per victim. Damage is decided entirely on the server; the client must not be able to report a hit. Stop dealing damage when the tool is unequipped, and do not damage the wielder.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "Humanoid", "target": "code" },
+      { "type": "regex", "pattern": "TakeDamage|Health\\s*-=|Health\\s*=", "target": "code" },
+      { "type": "contains", "value": "Equipped", "target": "code" },
+      { "type": "regex", "pattern": "\\b25\\b", "target": "code" },
+      { "type": "not_contains", "value": "FireServer", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["busy-wait-loop", "unvalidated-remote-arg"] }
+    ]
+  },
+  {
+    "id": "sg-03-animation-animator",
+    "category": "scripting-gameplay",
+    "topics": ["animation", "tools-and-equipment"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write the code that plays a looping animation on a character. Assume `character` is a loaded Model and the asset is rbxassetid://1234567. Load the track through the Humanoid's Animator — Humanoid:LoadAnimation is deprecated — keep the returned AnimationTrack, play it, and expose a way to stop it.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "Animator", "target": "code" },
+      { "type": "contains", "value": "LoadAnimation", "target": "code" },
+      { "type": "not_contains", "pattern": "[Hh]umanoid\\s*:\\s*LoadAnimation", "target": "code" },
+      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']Animation[\"']|AnimationId", "target": "code" },
+      { "type": "regex", "pattern": ":Play\\s*\\(", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["unbounded-wait-for-child", "busy-wait-loop"] }
+    ]
+  },
+  {
+    "id": "sg-04-streaming-safe-client",
+    "category": "scripting-gameplay",
+    "topics": ["streaming-enabled", "client-server-boundary"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write the LocalScript that hooks the MouseClick of workspace.Lobby.Portal.ClickDetector. The place runs with StreamingEnabled, so on this client the model may not have arrived yet, and may be removed again when the player walks away. Reach the ClickDetector safely and give up quietly — without erroring and without hanging the script forever — when it is not there.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "WaitForChild\\s*\\(\\s*[\"']Lobby[\"']\\s*,", "target": "code" },
+      { "type": "not_contains", "pattern": "workspace\\.Lobby|Workspace\\.Lobby", "target": "code" },
+      { "type": "regex", "pattern": "if\\s+not\\s+\\w|==\\s*nil|~=\\s*nil", "target": "code" },
+      { "type": "contains", "value": "MouseClick", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "client", "rules": ["streaming-unsafe-descendant", "unbounded-wait-for-child"] }
+    ]
+  },
+  {
+    "id": "sg-05-mobile-controller-input",
+    "category": "scripting-gameplay",
+    "topics": ["mobile-controller", "client-server-boundary"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write the LocalScript that binds a Sprint action so it reaches keyboard players (Left Shift), gamepad players (ButtonL2) and phone players (an on-screen button), through a single binding call. Give the touch button a title, raise WalkSpeed while the action is held and restore it when released, and unbind when the script is destroyed.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "contains", "value": "ContextActionService", "target": "code" },
+      { "type": "contains", "value": "BindAction", "target": "code" },
+      { "type": "contains", "value": "Enum.KeyCode.LeftShift", "target": "code" },
+      { "type": "contains", "value": "Enum.KeyCode.ButtonL2", "target": "code" },
+      { "type": "regex", "pattern": "SetTitle|SetImage|SetPosition", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "client", "rules": ["keyboard-only-input", "busy-wait-loop"] }
+    ]
+  },
+  {
+    "id": "sg-06-per-frame-cost",
+    "category": "scripting-gameplay",
+    "topics": ["performance"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "This LocalScript makes the game unplayable after a few minutes:\n\nlocal RunService = game:GetService(\"RunService\")\nlocal player = game:GetService(\"Players\").LocalPlayer\nRunService.RenderStepped:Connect(function()\n\tfor _, item in workspace:GetDescendants() do\n\t\tif item:IsA(\"BasePart\") and item.Name == \"Coin\" then\n\t\t\titem.Transparency = if (item.Position - player.Character.HumanoidRootPart.Position).Magnitude < 30 then 0 else 0.8\n\t\tend\n\tend\nend)\n\nRewrite it so the behaviour is the same but the per-frame cost is not. Keep the coin list up to date as coins are added and removed, and do not walk the workspace on every frame.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "not_contains", "pattern": "RenderStepped:Connect\\s*\\(\\s*function[\\s\\S]{0,400}?GetDescendants", "target": "code" },
+      { "type": "regex", "pattern": "CollectionService|DescendantAdded|ChildAdded|GetTagged", "target": "code" },
+      { "type": "regex", "pattern": "DescendantRemoving|ChildRemoved|:Destroying|GetInstanceRemovedSignal", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "client", "rules": ["expensive-call-per-frame", "busy-wait-loop"] }
+    ]
+  },
+  {
+    "id": "sg-07-typed-module",
+    "category": "scripting-gameplay",
+    "topics": ["luau-correctness"],
+    "weight": 3,
+    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a strict-mode ModuleScript for inventories. Export a type Inventory that maps item names to counts. Provide add(inventory, item, count) returning a NEW table rather than mutating the argument, and count(inventory, item) returning 0 when the item is absent. Annotate every parameter and return, start the file with the strict mode directive, and return the module table.",
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "regex", "pattern": "--!strict", "target": "code" },
+      { "type": "regex", "pattern": "export\\s+type\\s+Inventory", "target": "code" },
+      { "type": "regex", "pattern": "\\[\\s*string\\s*\\]\\s*:\\s*number", "target": "code" },
+      { "type": "regex", "pattern": "\\)\\s*:\\s*number", "target": "code" },
+      { "type": "regex", "pattern": "return\\s+\\w+\\s*$", "target": "code" },
+      { "type": "no_antipattern", "target": "code", "context": "module" }
+    ]
+  }
+]
