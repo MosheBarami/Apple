@@ -29,7 +29,14 @@ const tools = readFileSync(join(ROOT, 'apps/worker/src/tools.ts'), 'utf8');
 const body = tools.slice(tools.indexOf('search_asset_library: {'), tools.indexOf('find_verified_asset: {'));
 
 test('a missing library is reported as missing, not as an empty result', () => {
-  assert.match(body, /no such table/, 'the missing-table case has to be recognised');
+  // `.includes('no such table')` — the CHECK, not the phrase. The first version matched
+  // /no such table/ anywhere in the block, which the explanatory comment above the code
+  // satisfies on its own, so deleting the guard entirely left that assertion green.
+  assert.match(
+    body,
+    /\.includes\('no such table'\)/,
+    'the missing-table case has to be recognised in code, not only described in a comment',
+  );
   assert.match(body, /not available in this deployment/, 'and named for what it is');
   assert.match(
     body,
