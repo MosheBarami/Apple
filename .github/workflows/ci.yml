@@ -118,6 +118,12 @@ jobs:
         # the build succeeds and the 404 ships. 577 links today.
         run: node scripts/check-site-links.mjs
 
+      - name: Heading hierarchy and landmarks
+        # Structure is invisible until someone navigates by it. The landing shipped with
+        # its three claims inside a <footer> and their titles as <span>, which looks
+        # identical in a screenshot and gives a screen reader one stop for the page.
+        run: node scripts/check-site-semantics.mjs
+
       - name: Landing payload budget
         # The root route is meant to be one viewport of HTML and CSS with no
         # JavaScript at all. This fails if that regresses, because a budget
