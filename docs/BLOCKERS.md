@@ -8,7 +8,16 @@ Last verified: **2026-09-01**.
 
 ---
 
-## 1. AI Gateway has no credit — blocks benchmark-driven model routing
+## 1. AI Gateway has no credit — HUMAN-BLOCKED, and closed for this run
+
+> **Owner ruling, 2026-09-01:** *"Do not buy credits. Do not ask again during this run. Classify
+> real third-party model inference as HUMAN-BLOCKED. Continue all model-router architecture, mock
+> testing, observability and non-paid work that does not require the credit. One blocked provider
+> experiment does not block Phase IV."*
+>
+> So this is settled rather than pending. Nothing below is a request. The router's architecture,
+> its mock-driven tests and its observability are all reachable without the credit and are not
+> gated on this; only *real third-party inference* is. It will not be raised again this run.
 
 **Status:** HUMAN-ONLY. Unchanged this session.
 

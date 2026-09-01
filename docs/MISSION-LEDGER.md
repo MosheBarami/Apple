@@ -25,7 +25,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 11 | Persistence in published-private benchmark | **PROVEN** | `evidence/2026-09-01-persistence-roundtrip.md` |
 | 12 | Luau/architecture passes functional + security gates | **PROVEN** | 16-rule grader, **78 Luau tests over the game's own modules, 20 mutations all caught**, and **every one of the independent review's 13 findings closed or explicitly rejected** — 9 high-severity among them. Writing the tests surfaced 6 more defects (F-26..F-31), all fixed |
 | 13 | Provider selector absent from normal UX | **PROVEN** | only `admin.tsx` names a model, which §F permits |
-| 14 | Hidden Cloudflare routing benchmark-driven | **BLOCKED** | AI Gateway credit · `BLOCKERS.md` #1 |
+| 14 | Hidden Cloudflare routing benchmark-driven | **HUMAN-BLOCKED** | AI Gateway credit. **Settled by owner ruling 2026-09-01**: do not buy, do not ask again this run; real third-party inference is human-blocked, everything else about the router — architecture, mock testing, observability — is not, and is not gated on it · `BLOCKERS.md` #1 |
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
 | 16 | Plan / Agent / Super Agent real | **PROVEN** | modes shipped; Plan toolset genuinely read-only |
 | 17 | Thinking/activity UX alive, structured, honest | **PROVEN** | state machine folded from real tool/phase events only; 4 §Y states named as underivable · `docs/THINKING-UX.md` |
@@ -134,6 +134,28 @@ One claim in this session was wrong and is corrected in the record: I asserted t
 `DurableObject` subclass cannot be instantiated outside the Workers runtime, and wrote
 source-level assertions on that basis. `packages/evals` had been constructing one over a fake
 storage map since B10. "Untestable" needed the same evidence as any other claim.
+
+## Owner rulings, 2026-09-01 — the three design calls, resolved
+
+These were left for the owner because they are product and art decisions rather than defects.
+They are now decided, and the decisions are recorded here rather than only in a chat message so
+the next reader inherits the reasoning and not just the outcome.
+
+| call | ruling |
+|---|---|
+| **SHOP vs UPGRADES** | Keep both **only if they become meaningfully distinct**. UPGRADES is permanent progression tied to the core loop; SHOP is non-upgrade inventory / utility / consumable / cosmetic, bought with **earned currency — no Robux, no paid monetisation in this benchmark**. And explicitly: if there is not enough real SHOP content to justify a panel, **remove it rather than ship a duplicate**. "Do not create filler merely to preserve the button." |
+| **The flat world** | Now "a deliberate visual/game-design failure, not a minor polish item". Recompose the playable topology so elevation affects silhouette, discovery, paths, sightlines, landmark reveal, zone transitions, movement and spatial hierarchy — *not* by moving props up and down. Restrained: "a simulator/tycoon benchmark, not a platforming obby." Navigation stays obvious. **Evaluate at player eye height.** |
+| **The empty top-centre pill** | Becomes the contextual **primary objective / progression HUD**, driven from real game state — "do not invent fake objectives" — and it **disappears** when no meaningful objective exists. Its transitions become one of the remaining motion-evaluation categories. |
+
+Two further rulings that change how the rest of the mission is run:
+
+- **Gate 2 (canyon walls) is the highest-value world-art problem**, and the four
+  decorate-the-box experiments are closed: "Do not repeat those paths." A materially different
+  construction strategy is required.
+- **Gate 40 is the real visual truth.** The "Prototype" verdict supersedes earlier optimistic
+  visual claims, and: *"Do not attempt to argue the score upward from metrics."* The benchmark
+  stays UNPROVEN until a **fresh** critic — one that has not seen the implementation narrative,
+  and is told nothing about tests, parts, meshes or hours — judges revised player-eye pixels.
 
 ## Next-highest-value unblocked work, in dependency order
 
