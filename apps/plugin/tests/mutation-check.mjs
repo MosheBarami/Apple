@@ -100,6 +100,27 @@ const MUTATIONS = [
     replace: "\tif false then",
   },
   {
+    name: "the script search stops matching literally",
+    claim: "the query is matched literally, so a pattern character is not a wildcard",
+    module: "Ops",
+    find: "\t\t\tif string.find(line, op.query, 1, true) then",
+    replace: "\t\t\tif string.find(line, op.query) then",
+  },
+  {
+    name: "the search result cap is removed",
+    claim: "the default cap applies when none is asked for",
+    module: "Ops",
+    find: "\tlocal maxResults = op.maxResults or 40",
+    replace: "\tlocal maxResults = op.maxResults or 100000",
+  },
+  {
+    name: "get_logs returns the OLDEST lines instead of the newest",
+    claim: "maxEntries takes the END of the history, which is the recent part",
+    module: "Ops",
+    find: "\tlocal from = math.max(1, #history - maxEntries + 1)",
+    replace: "\tlocal from = 1",
+  },
+  {
     name: "the assetId shape check is removed",
     claim: "an assetId that is not a positive integer is refused before anything loads",
     module: "Generation",
