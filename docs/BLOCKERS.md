@@ -329,6 +329,61 @@ It should be re-run before this branch merges.
 
 ---
 
+## HUMAN-ONLY — the Privacy Policy promised to be updated before this shipped
+
+**Found 2026-09-01. Not touched, because it is legal text and a consent control.**
+
+`/privacy`, the governing policy, says:
+
+> Your private project data is never used to train AI models. **If we ever build an
+> opt-in program for contributing examples, it will be a separate, explicit,
+> off-by-default choice — and this policy will be updated before it exists.**
+
+That program already exists in the product. `apps/web/src/routes/settings.tsx:146` renders
+a toggle — *"Contribute anonymised snippets to improve Golem — optional, off by default,
+revocable any time"* — writing `profiles.training_opt_in`, a column in
+`infra/supabase/migrations/0001_init.sql:9`. The policy's own precondition has been
+passed: the mechanism shipped and the policy was not updated.
+
+`/docs/privacy-and-data` is separately inconsistent with the product, in stronger terms:
+
+> your projects ... are never used to train models. Not your scripts, not your chats, not
+> your checkpoints. **There is no fine-print exception.**
+
+A reader is told no such mechanism exists, then finds the switch in Settings.
+
+### What is *not* wrong
+
+No project data has been used for training, and none can be. Searching
+`apps/worker/src`, `packages/evals/src` and `packages/corpus/src` finds **no reader of
+`training_opt_in` at all** — the toggle records a preference that nothing consumes. The
+column defaults to `false`, and the RLS trigger at migration line 119 lets a user edit it
+while blocking `plan` and `is_admin`. So this is a consent-and-documentation
+inconsistency, not a data-handling failure. Mission §33's rule — no training on user
+projects without explicit opt-in — is not violated.
+
+### Why this session did not fix it
+
+Three plausible fixes, and choosing between them is the owner's:
+
+1. **Update the policy** to describe the opt-in that exists. It is the governing legal
+   document; writing it is not this environment's to do.
+2. **Remove the toggle** until the policy is updated, which makes the product match the
+   promise. Conservative, but it discards any preference a user has already set.
+3. **Leave both and correct only the docs page**, which would still leave `/privacy`
+   saying the program does not exist while it does.
+
+Editing consent copy or removing a consent control on the owner's behalf is exactly the
+kind of change that should not happen autonomously, in either direction.
+
+### The minimal owner action
+
+Decide 1, 2 or 3. If 1: `/privacy` and `/docs/privacy-and-data` both need the opt-in
+described, and "there is no fine-print exception" has to go. If 2: hide the control in
+`settings.tsx` and leave the column, so existing values survive the decision.
+
+---
+
 ## For the owner to review — a published figure was corrected
 
 **Not a blocker, and not a price change, but §33 says public pricing is the owner's, so
