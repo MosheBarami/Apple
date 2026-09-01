@@ -18,6 +18,71 @@ import { buildChunk, declaredModules } from './run.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const MUTATIONS = [
+  //[[ The objective resolver. These matter more than most: the bug this module replaced (V10)
+  //   was a slot that went permanently blank and never errored, so every mutation here is a
+  //   silently-wrong answer rather than a crash. If a mutation SURVIVES, the spec is asserting
+  //   that the ladder returns something rather than that it returns the right thing. ]]
+  {
+    name: 'the chain terminator is treated as completion again (V10 restored)',
+    claim: 'finishing onboarding must not empty the slot',
+    module: 'Objectives',
+    find: '\tif price == nil then\n\t\treturn { index = sentinel, id = "", text = "", progress = 0, target = 0, complete = true }',
+    replace: '\tif true then\n\t\treturn { index = sentinel, id = "", text = "", progress = 0, target = 0, complete = true }',
+  },
+  {
+    name: 'a full pack no longer outranks an affordable purchase',
+    claim: 'the only hard block in the game is the first thing the chip says',
+    module: 'Objectives',
+    find: '\tif packCapacity > 0 and shards >= packCapacity then',
+    replace: '\tif false and packCapacity > 0 and shards >= packCapacity then',
+  },
+  {
+    name: 'zero capacity reports a full pack',
+    claim: 'an empty pack is never full, whatever the capacity says',
+    module: 'Objectives',
+    find: '\tif packCapacity > 0 and shards >= packCapacity then',
+    replace: '\tif shards >= packCapacity then',
+  },
+  {
+    name: 'buying a zone counts as visiting it',
+    claim: 'owning a place you have never stood in is the dead end this closes',
+    module: 'Objectives',
+    find: '\t\tif zone.UnlockCost > 0 and profile.zones[zone.Id] == true and visited[zone.Id] ~= true then',
+    replace: '\t\tif false and zone.UnlockCost > 0 and profile.zones[zone.Id] == true and visited[zone.Id] ~= true then',
+  },
+  {
+    name: 'the cheapest purchase is no longer the cheapest',
+    claim: 'the chip points at the nearest goal, not an arbitrary one',
+    module: 'Objectives',
+    find: '\t\tif cost ~= nil and (bestPrice == nil or cost < bestPrice) then',
+    replace: '\t\tif cost ~= nil and (bestPrice == nil or cost > bestPrice) then',
+  },
+  {
+    name: 'a maxed upgrade is still offered for sale',
+    claim: 'upgradeCost returns nil at MaxLevel and nil is not a price',
+    module: 'Objectives',
+    find: '\t\tif cost ~= nil and (bestPrice == nil or cost < bestPrice) then',
+    replace: '\t\tif (bestPrice == nil or (cost or 0) < bestPrice) then',
+  },
+  //[[ DELIBERATELY NOT MUTATED: `math.min(coins, price)` in tier 6.
+  //
+  //   It was mutated, it survived, and the survival is correct rather than a gap. Tier 4 fires
+  //   on `coins >= price`, so tier 6 is only ever reached with `coins < price` and the clamp
+  //   can never bind. It is an EQUIVALENT MUTANT — no test can distinguish the two programs,
+  //   because no input reaches the difference.
+  //
+  //   The clamp stays in the source anyway: it is defence against a future reordering of the
+  //   ladder, and the cost of a capsule that reads 3,000/2,500 is a HUD that is visibly lying
+  //   about the player's money. Recording it here rather than deleting either the clamp or the
+  //   mutation is the honest option — a survived mutant that is quietly removed looks exactly
+  //   like a test that was quietly weakened. ]]
+  {
+    name: 'prices lose their thousands separators',
+    claim: 'a price is formatted as a price, and the width budget depends on it',
+    module: 'Objectives',
+    find: '\tuntil count == 0',
+    replace: '\tuntil true',
+  },
   {
     name: 'NaN guard removed',
     claim: 'NaN never survives sanitisation',

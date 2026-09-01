@@ -668,12 +668,28 @@ end
 	 design was drawn at — TextScaled alone will happily render a 60px word in a
 	 pill built for 22px type. ]]
 local function clampText(label: TextLabel, maxSize: number)
-	label.TextScaled = true
-	label.TextWrapped = false
+	local MIN_SIZE = 10
+	--[[ THE ORDER IS LOAD-BEARING, AND THE ORIGINAL ORDER WAS WRONG.
+
+		 This used to read `TextScaled = true` and then `TextWrapped = false`. Setting
+		 `TextScaled = true` implicitly turns wrapping ON, and explicitly turning wrapping back
+		 OFF silently clears `TextScaled` — so the second line disabled the first, and this
+		 function has been INERT since it was written. Measured in a live session: 105 labels
+		 across the HUD and every panel carried a `UITextSizeConstraint`, which does nothing at
+		 all unless the text is scaled, and not one of them was scaling. The "let type shrink to
+		 fit a small screen" this comment promises had never once happened.
+
+		 The fix is to stop writing `TextWrapped` here. The engine owns it under `TextScaled`
+		 and forces it true; at these sizes the text still lays out on one line, because it
+		 shrinks to fit before it has any reason to wrap. Verified rather than assumed —
+		 `19,834/19,835` in a 112px pill comes back one line, and a short `5/25` still renders
+		 at the full MaxTextSize, which is the half of the contract that stops a pill built for
+		 17px type rendering a 60px word. See F-38 in docs/FAILURES.md. ]]
 	local c = Instance.new("UITextSizeConstraint")
 	c.MaxTextSize = maxSize
-	c.MinTextSize = 10
+	c.MinTextSize = MIN_SIZE
 	c.Parent = label
+	label.TextScaled = true
 end
 
 --------------------------------------------------------------------------------

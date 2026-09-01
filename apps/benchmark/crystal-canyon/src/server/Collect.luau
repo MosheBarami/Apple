@@ -332,6 +332,23 @@ end
 	 O(1) per zone and answers the question the player is actually asking ("why is this
 	 place empty?"), whereas scanning a locked zone's crystal list would reintroduce
 	 exactly the per-crystal cost the sweep is built to avoid. ]]
+--[[ One containment rule, used by both branches of the sweep.
+
+	 The locked branch asks it "why is this place empty?"; the unlocked branch asks it "has this
+	 player ever been here?". Those are two questions about one fact, and answering them with two
+	 copies of the same four comparisons is how they drift.
+
+	 X and Z only, deliberately and not by omission. The bounds are a plan footprint, and the
+	 world is about to gain real elevation under §2 — a Y test here would start refusing players
+	 standing on a terrace inside the zone they are standing in. ]]
+local function insideBounds(origin: Vector3, b: any): boolean
+	return b ~= nil
+		and origin.X >= b.Min.X
+		and origin.X <= b.Max.X
+		and origin.Z >= b.Min.Z
+		and origin.Z <= b.Max.Z
+end
+
 local function notifyZoneLocked(player: Player, zone: any, now: number)
 	local last = lastLockedNotify[player]
 	if last and now - last < LOCKED_NOTIFY_COOLDOWN then
@@ -420,6 +437,7 @@ local function sweep(now: number)
 				local budget = if teleported then 0 else Config.Collect.MaxPerTick
 				local gained = 0
 				local packFull = false
+				local visitedChanged = false
 
 				for zi = 1, #zoneStates do
 					if budget <= 0 or packFull then
@@ -430,17 +448,26 @@ local function sweep(now: number)
 					-- collision — is what stops a locked player farming it.
 					if not ctx.Zones.isUnlocked(player, zs.id) then
 						-- Locked. Award nothing, but say so if they are standing in it.
-						local b = zs.bounds
-						if
-							b
-							and origin.X >= b.Min.X
-							and origin.X <= b.Max.X
-							and origin.Z >= b.Min.Z
-							and origin.Z <= b.Max.Z
-						then
+						if insideBounds(origin, zs.bounds) then
 							notifyZoneLocked(player, zs, now)
 						end
 					else
+						--[[ Has this player ever actually STOOD here?
+
+							 A latch, set once and never cleared, so a player jittering across the
+							 boundary cannot make the HUD flap. Buying a zone does not set it —
+							 `Zones.unlock` deliberately leaves it alone, because owning a place
+							 you have never seen is exactly the dead end the objective HUD closes.
+
+							 One boolean lookup per unlocked zone per player per tick, short-
+							 circuiting forever once latched. That stays inside this sweep's
+							 stated "allocates NOTHING per crystal per tick" contract, because it
+							 is per ZONE and not per crystal. ]]
+						if profile.visited and not profile.visited[zs.id] and insideBounds(origin, zs.bounds) then
+							profile.visited[zs.id] = true
+							visitedChanged = true
+						end
+
 						local records = zs.records
 						for i = 1, #records do
 							if budget <= 0 then
@@ -488,9 +515,19 @@ local function sweep(now: number)
 					if objectives then
 						objectives.collect = (objectives.collect or 0) + gained
 					end
-					-- One authoritative snapshot per tick rather than one per
-					-- crystal: the client renders Sync and nothing else, so
-					-- coalescing here is what keeps the HUD cheap.
+				end
+
+				--[[ A first visit is a Sync-worthy event even when nothing was collected: the
+					 objective resolver reads `visited`, so latching it without pushing would
+					 leave the chip saying EXPLORE FROST HOLLOW while the player stands in Frost
+					 Hollow — the resolver's stated invariant is that every writer of one of its
+					 inputs also pushes. The `objectives.collect` write above stays gated on
+					 `gained`, because walking into a zone is not collecting.
+
+					 One authoritative snapshot per tick rather than one per crystal: the client
+					 renders Sync and nothing else, so coalescing here is what keeps the HUD
+					 cheap. ]]
+				if gained > 0 or visitedChanged then
 					ctx.Economy.push(player)
 				end
 

@@ -26,6 +26,7 @@ import {
   checkPaletteCollisions,
   checkInertSurfaceFlags,
   checkFocusFeedback,
+  checkTextScaleOrder,
   audit,
 } from './checks.mjs';
 import { RULES } from './rules.mjs';
@@ -429,6 +430,51 @@ test('the harness that FIRES MouseEnter is not a missing gamepad response', () =
 
 test('a file with no hover at all is not asked for a focus response', () => {
   assert.deepEqual(checkFocusFeedback([{ path: 'Config.luau', source: 'return {}' }]), []);
+});
+
+test('scale-then-unwrap is reported, because the second write undoes the first', () => {
+  const findings = checkTextScaleOrder([
+    {
+      path: 'Theme.luau',
+      source: 'label.TextScaled = true\nlabel.TextWrapped = false\nc.Parent = label',
+    },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].detail, /turns scaling back off/);
+});
+
+test('the fixed order — constraint first, scale last — is silent', () => {
+  assert.deepEqual(
+    checkTextScaleOrder([
+      {
+        path: 'Theme.luau',
+        source: 'c.Parent = label\nlabel.TextScaled = true',
+      },
+    ]),
+    [],
+  );
+});
+
+test('unwrap BEFORE scale is not reported, because the engine re-enables wrapping', () => {
+  // The check is order-sensitive rather than presence-sensitive. Reporting the harmless
+  // sequence too would make it a style rule wearing a correctness rule's error message.
+  assert.deepEqual(
+    checkTextScaleOrder([
+      { path: 'Theme.luau', source: 'label.TextWrapped = false\nlabel.TextScaled = true' },
+    ]),
+    [],
+  );
+});
+
+test('two different labels are not mistaken for one', () => {
+  // The backreference is what makes this true: `a.TextScaled` followed by `b.TextWrapped` is
+  // two labels being configured, not one label being undone.
+  assert.deepEqual(
+    checkTextScaleOrder([
+      { path: 'Theme.luau', source: 'shade.TextScaled = true\nface.TextWrapped = false' },
+    ]),
+    [],
+  );
 });
 
 test('the enforced list matches the rules the checks actually reference', () => {

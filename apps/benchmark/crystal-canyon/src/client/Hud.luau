@@ -223,7 +223,35 @@ local TILE_RADIUS = UDim.new(0.5, 0)
 -- Both wallet and sell grew by 2 * M.Pad when they gained their stone mounts.
 local WALLET_WIDTH = { Fraction = 0.21, Min = 250, Max = 326 }
 local SELL_WIDTH = { Fraction = 0.23, Min = 236, Max = 336 }
-local OBJECTIVE_WIDTH = { Fraction = 0.34, Min = 300, Max = 480 }
+--[[ `ChipMax` is the widest the CHIP ITSELF can ever be, and it is NOT the mount's clamped
+	 width. `layoutObjective` used the mount for its collision guard, and the two are different
+	 objects: the mount is a plain Frame with `ClipsDescendants` at its default false, while the
+	 chip inside it auto-sizes to its content. At vx = 1000 the mount clamps to 340 and the chip
+	 is 392 wide, so the guard under-estimated the chip by 52 px and only ran the collision test
+	 against a box the chip was hanging out of.
+
+	 That was already true before the objective HUD became contextual, and it stays true after
+	 — this is a latent bug being closed alongside, not one this change introduced.
+
+	 MEASURED, not derived. `TextService:GetTextSize` over every string `Objectives.resolve` can
+	 emit, at FredokaOne 22 (`Theme.Type.Section`), plus the chip's own padding (12 + 14), badge
+	 (34), gaps (12) and capsule (112):
+
+	   COLLECT 25 SHARDS   392  <- the widest, and it is an EXISTING onboarding string
+	   REACH 19,835 COINS  385  <- the widest NEW one, and it is 7 px NARROWER
+	   EXPLORE FROST HOLLOW 317
+	   SELL AT THE GOLD PAD 292
+
+	 Worth stating because the design plan predicted the opposite: it estimated today's worst at
+	 417 and the new worst at 430, "+13 px", and budgeted for growth. The chip does not grow.
+	 The estimate was wrong in both directions at once — it over-estimated the advance width of
+	 uppercase FredokaOne, and it assumed the longest STRING would be the widest CHIP, when the
+	 widest chip is a shorter string that also draws the capsule.
+
+	 402 = the measured 392 plus 10 px of headroom. `objectives.spec.luau` bounds the strings
+	 this depends on, so a Config edit that lengthens a name fails a test before it overflows a
+	 screenshot. ]]
+local OBJECTIVE_WIDTH = { Fraction = 0.34, Min = 300, Max = 480, ChipMax = 402 }
 
 local WALLET_HEIGHT = M.Pad * 2 + M.Foot + M.CapsuleHeight * 2 + M.CapsuleGap + M.GaugeGap + M.GaugeKnob
 local SELL_HEIGHT = M.Pad * 2 + M.Foot + M.SellHeight + M.ChipGap + M.ChipHeight
@@ -346,12 +374,15 @@ end
 --[[ Let type shrink to fit a small screen but never grow past the size the
 	 design was drawn at. Mirrors Theme's private helper of the same name. ]]
 local function clampText(label: TextLabel, maxSize: number)
-	label.TextScaled = true
-	label.TextWrapped = false
+	-- The constraint goes on FIRST and `TextWrapped` is never written. Setting `TextScaled`
+	-- turns wrapping on, and turning wrapping back off silently clears `TextScaled` — which is
+	-- what both copies of this helper used to do, leaving every clamped label in the game
+	-- unscaled and every constraint inert. See the long note in Theme.luau and F-38.
 	local c = Instance.new("UITextSizeConstraint")
 	c.MaxTextSize = maxSize
 	c.MinTextSize = 9
 	c.Parent = label
+	label.TextScaled = true
 end
 
 local function text(parent: Instance, name: string, size: number, color: Color3?): TextLabel
@@ -507,11 +538,21 @@ local function layoutObjective(s: number)
 	local camera = workspace.CurrentCamera
 	local vx = camera and camera.ViewportSize.X or 1920
 	local columnRight = M.Margin + math.clamp(vx * WALLET_WIDTH.Fraction, WALLET_WIDTH.Min, WALLET_WIDTH.Max) * s
-	local chipLeft = vx / 2
-		- math.clamp(vx * OBJECTIVE_WIDTH.Fraction, OBJECTIVE_WIDTH.Min, OBJECTIVE_WIDTH.Max) * s / 2
+	-- The CHIP's width, not the mount's — see the note on OBJECTIVE_WIDTH. This makes the guard
+	-- strictly tighter, so at some mid widths the chip now steps below the wallet column where
+	-- it previously did not. That is the correct behaviour appearing, not a regression.
+	local chipLeft = vx / 2 - OBJECTIVE_WIDTH.ChipMax * s / 2
+
+	--[[ The symmetric right-edge check. `SELL_WIDTH.Max` (336) is WIDER than
+		 `WALLET_WIDTH.Max` (326) and only the left was ever tested. At every width measured the
+		 left is the binding side by roughly 60 px, so this is hardening rather than a fix — it
+		 exists so the guard cannot be made one-sided again by a future change to either
+		 column's fraction. ]]
+	local sellLeft = vx - M.Margin - math.clamp(vx * SELL_WIDTH.Fraction, SELL_WIDTH.Min, SELL_WIDTH.Max) * s
+	local chipRight = vx / 2 + OBJECTIVE_WIDTH.ChipMax * s / 2
 
 	local y = M.Margin
-	if chipLeft < columnRight + 8 then
+	if chipLeft < columnRight + 8 or chipRight > sellLeft - 8 then
 		y = M.Margin + WALLET_HEIGHT * s + 8
 	end
 	mount.Position = UDim2.new(0.5, 0, 0, y)

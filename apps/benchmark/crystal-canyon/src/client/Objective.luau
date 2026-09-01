@@ -96,6 +96,28 @@ local SLIDE_IN = 0.3
 local chip: Frame? = nil
 local titleLabel: TextLabel? = nil
 local countLabel: TextLabel? = nil
+--[[ Icons, on the BOUNDED wait. Copied verbatim from Hud.luau, including both warns.
+
+	 The badge draws a glyph for every contextual objective, so this module now has a real
+	 dependency on Icons — and F-16 is the reason it is bounded: `Panels` waited for this same
+	 module UNBOUNDED, the install manifest had never been taught about it, and every panel in
+	 the game was silently dead in play. A missing icon set must cost this chip its pictogram,
+	 never the chip itself. ]]
+local Icons: any = nil
+do
+	local module = script.Parent:WaitForChild("Icons", 5)
+	if module and module:IsA("ModuleScript") then
+		local ok, result = pcall(require, module)
+		if ok then
+			Icons = result
+		else
+			warn(`[CrystalCanyon] Objective: Icons failed to load, drawing without pictograms: {result}`)
+		end
+	else
+		warn("[CrystalCanyon] Objective: Icons module missing, drawing without pictograms")
+	end
+end
+
 local stepLabel: TextLabel? = nil
 local stepBadge: Frame? = nil
 local tickArt: Frame? = nil
@@ -105,6 +127,14 @@ local capsule: Frame? = nil
 -- Index of the objective currently drawn. 0 means "nothing drawn yet", which
 -- is what suppresses a spurious completion animation on the very first Sync.
 local shownIndex = 0
+--[[ The objective's IDENTITY, tracked beside its index.
+
+	 The index alone stopped being enough the moment contextual objectives arrived: they all
+	 carry the sentinel, so `step.index > shownIndex` is false for every transition between
+	 them. PACK FULL -> SELL YOUR SHARDS -> BUY PACK SIZE would have painted in place, with the
+	 text swapping under a stationary chip, which reads as a rendering glitch rather than as the
+	 game telling the player something new. ]]
+local shownId = ""
 local busy = false
 local pending: any = nil
 local fillTween: Tween? = nil
@@ -250,6 +280,28 @@ local function buildCapsule(parent: Frame): (Frame, Frame, TextLabel)
 	label.ZIndex = track.ZIndex + 2
 	label.Text = ""
 	Palette.styleText(label, Theme.Type.Small + 1)
+
+	--[[ The capsule used to hold at most `25/25`, four characters, at a fixed TextSize with no
+		 scaling and no truncation. The contextual objective can put `19,834/19,835` in it —
+		 thirteen — because the most expensive purchasable thing in the game is magnet level 9.
+
+		 The critic's one piece of unqualified praise was "no text overflow across 149 rendered
+		 strings". This is where that would have been spent.
+
+		 `TextScaled` with a MAX equal to today's size and a floor of 11: short counts render at
+		 exactly the size that shipped, and only the long ones shrink. The house pattern —
+		 `clampText` does the same thing at Theme.luau:670 and Hud.luau:348 — costing one
+		 instance and no layout change, so the chip's width budget is untouched. ]]
+	local cap = Instance.new("UITextSizeConstraint")
+	cap.MaxTextSize = Theme.Type.Small + 1
+	cap.MinTextSize = 11
+	cap.Parent = label
+	-- Constraint first, `TextScaled` last, and `TextWrapped` never written. Writing it is what
+	-- made both copies of `clampText` inert across 105 labels (F-38); this line was written the
+	-- same wrong way and was caught by reading the property back in a live session rather than
+	-- by looking at the pill.
+	label.TextScaled = true
+
 	label.Parent = track
 
 	return track, fill, label
@@ -325,6 +377,7 @@ local DONE_INDEX = #Config.Objectives + 1
 
 type Step = {
 	index: number,
+	id: string,
 	text: string,
 	progress: number,
 	target: number,
@@ -359,11 +412,30 @@ local function readStep(state: any): Step?
 	end
 	local index = math.clamp(math.floor(rawIndex), 1, DONE_INDEX)
 
-	-- Trust the server's flag, but treat the sentinel index as complete too so a
-	-- snapshot that carries one without the other still lands in the same state.
-	local complete = record.complete == true or index >= DONE_INDEX
+	--[[ `complete` now means "there is no objective at all", NOT "the chain is over".
 
-	local fallback = Config.Objectives[index]
+		 This line used to read `record.complete == true or index >= DONE_INDEX`, and that
+		 second term is the whole of V10. The sentinel index is the CHAIN's terminator, and
+		 every contextual objective the resolver emits carries it deliberately — so deriving
+		 completion from the index here would hide the chip for every state this module was
+		 just extended to draw, and nothing would error. That is the F-29 failure mode: code
+		 that runs, finds its target, and paints nothing.
+
+		 The test that fails against the old line is `objectives.spec.luau`'s "finishing the
+		 chain does NOT end the objective", plus the client-side guard below. ]]
+	local complete = record.complete == true
+
+	--[[ A record that claims to be incomplete but carries nothing to say is malformed, and an
+		 empty pill parked at the top of the screen is exactly the leftover furniture §6 exists
+		 to prevent. Collapse instead. ]]
+	local rawId = record.id
+	local id = if typeof(rawId) == "string" then rawId else ""
+	if not complete and id == "" and (typeof(record.text) ~= "string" or record.text == "") then
+		complete = true
+	end
+
+	-- Only a CHAIN index has a Config entry; the sentinel and anything past it do not.
+	local fallback = if index <= #Config.Objectives then Config.Objectives[index] else nil
 	local target = tonumber(record.target) or (fallback and fallback.Target) or 0
 	if target ~= target then -- NaN
 		target = 0
@@ -383,6 +455,7 @@ local function readStep(state: any): Step?
 
 	return {
 		index = index,
+		id = id,
 		text = text :: string,
 		progress = progress,
 		target = target,
@@ -417,6 +490,99 @@ local function setProgress(ratio: number)
 	tween:Play()
 end
 
+--[[ What the badge shows: a step NUMBER for the onboarding chain, a GLYPH for everything else.
+
+	 Without this, `tostring(math.min(step.index, DONE_INDEX - 1))` prints "3" on every
+	 contextual objective — the chip would say "3  PACK FULL — SELL", which reads as a step in a
+	 chain that ended.
+
+	 THERE IS NO SECOND TABLE HERE, and that is deliberate. Zone tints come from `Config.Zones`
+	 and upgrade glyphs from `Config.Upgrades`, both already shared with the server, so the
+	 client and server cannot drift on the SUBJECT of an objective — only on the four fixed
+	 kinds, which are literals in this one function. That is the F-16/F-29 lesson applied
+	 before the fact rather than after it.
+
+	 An unknown prefix hides the badge and warns. That degrades visibly rather than silently:
+	 this module's own header records that a `UIListLayout` lays out every VISIBLE child, so an
+	 invisible badge simply leaves title and capsule correctly spaced. ]]
+local function badgeArt(id: string): (string?, Color3?)
+	local kind, subject = string.match(id, "^(%a+):(.+)$")
+	if not kind then
+		return nil, nil
+	end
+	if kind == "sell" then
+		-- Two sells, two meanings: `sell:full` is a block and takes the danger colour the gauge
+		-- and the pulsing SELL button already use; `sell:goal` is an opportunity and takes the
+		-- coin colour it is earning toward.
+		return "coin", if subject == "full" then Palette.UI.Close else Palette.UI.HardCurrency
+	elseif kind == "save" then
+		-- Matches the capsule fill, so the badge and the bar underneath it agree.
+		return "coin", Palette.UI.SoftCurrency
+	elseif kind == "unlock" or kind == "explore" then
+		local zone = Config.zoneById(subject)
+		return (if kind == "unlock" then "lock" else "arrow"), (zone and zone.AccentColor or nil)
+	elseif kind == "buy" then
+		local up = Config.upgradeById(subject)
+		return (up and up.Icon or nil), Palette.UI.Buy
+	end
+	return nil, nil
+end
+
+--[[ Draw the badge for a step. Returns nothing; it mutates the badge in place.
+
+	 THE BADGE'S SURFACE FILL NEVER CHANGES. `Theme.surface` builds its gradient from its own
+	 gold and a `UIGradient` multiplies, so tweening the badge itself to green renders muddy
+	 olive — this module already records that under `transition`. The colour therefore moves to
+	 the GLYPH via `Icons.draw`'s accent, and the one case that must shout (`sell:full`) gets it
+	 from the chip, whose gradient is explicitly a neutral grey ramp so it CAN be recoloured. ]]
+local glyphBox: Frame? = nil
+
+local function decorateBadge(step: Step, badgeLabel: TextLabel)
+	local existing = glyphBox
+	if existing then
+		existing:Destroy()
+		glyphBox = nil
+	end
+
+	if step.index <= #Config.Objectives then
+		-- The onboarding chain keeps its number, byte-identical to what shipped.
+		badgeLabel.Text = tostring(step.index)
+		badgeLabel.Visible = true
+		return
+	end
+
+	local art, tint = badgeArt(step.id)
+	if not art or not Icons then
+		local badge = stepBadge
+		if badge then
+			badge.Visible = false
+		end
+		--[[ A missing Icons module already warned once at module scope, so saying it again on
+			 every paint would bury the message it is meant to carry. An id the badge has no art
+			 for is different — that is a resolver kind this function was never taught, which is
+			 a code gap rather than an install gap, and it is worth one line per paint. ]]
+		if Icons and step.id ~= "" then
+			warn(`[CrystalCanyon] Objective: no badge art for "{step.id}"; drawing without one`)
+		end
+		return
+	end
+
+	local badge = stepBadge
+	if badge then
+		badge.Visible = true
+	end
+	badgeLabel.Text = ""
+	badgeLabel.Visible = false
+	if badge then
+		glyphBox = Icons.draw(badge, art, {
+			size = UDim2.fromScale(0.62, 0.62),
+			fill = tint,
+			accent = tint,
+			zIndex = badge.ZIndex + 2,
+		})
+	end
+end
+
 local function paint(step: Step)
 	local frame, title, count, badgeLabel, track = chip, titleLabel, countLabel, stepLabel, capsule
 	if not (frame and title and count and badgeLabel and track) then
@@ -432,7 +598,7 @@ local function paint(step: Step)
 	end
 
 	title.Text = step.text
-	badgeLabel.Text = tostring(math.min(step.index, DONE_INDEX - 1))
+	decorateBadge(step, badgeLabel)
 
 	-- A "0/1" on a one-shot step ("SELL AT THE GOLD PAD") is noise, so the
 	-- capsule only appears where counting is actually the instruction.
@@ -530,6 +696,11 @@ local function travel(frame: Frame): (number, number)
 end
 
 local apply -- forward declared; the transition tail re-enters it with `pending`
+-- Forward declared for the same reason: `apply` dispatches to these, and they are defined
+-- below it so they can call `paint` and `travel`.
+local collapse
+local appear
+local swap
 
 local function releaseAndReplay()
 	busy = false
@@ -601,7 +772,8 @@ local function transition(nextStep: Step)
 		tick.Visible = false
 		number.Visible = true
 		frame.BackgroundColor3 = CHIP_FILL
-		shownIndex = nextStep.index
+		-- `apply` records shownIndex/shownId BEFORE dispatching, so writing it again here
+		-- would be a second authority over one value for no benefit.
 
 		if nextStep.complete then
 			-- Chain finished. The chip does not linger as an empty pill; the
@@ -632,6 +804,126 @@ local function transition(nextStep: Step)
 	end)
 end
 
+--[[ THREE MORE MOTIONS, and why they are not one.
+
+	 §3 makes the objective chip a thing that comes and goes and changes its mind, so it needs
+	 vocabulary for arriving, leaving, and being replaced. Sharing `transition` for all of them
+	 would mean a green flash and a tick every time the player filled their pack, which would
+	 spend the celebration the onboarding hand-off is built on.
+
+	 All three set `busy` and end in `releaseAndReplay()`, so the existing newest-wins hand-off
+	 covers every one — a Sync arriving mid-motion is queued and replayed, never dropped and
+	 never interleaved. `collapse` in particular MUST set `busy`: without it a Sync landing
+	 mid-collapse would `paint` a chip that is on its way to hidden, and leave it hidden with
+	 new text in it.
+
+	 `COLLAPSE_TIME` is shorter than `APPEAR_TIME` on purpose. Something leaving should get out
+	 of the way; something arriving is asking to be read. ]]
+local COLLAPSE_TIME = 0.18
+local APPEAR_TIME = 0.26
+
+--[[ Nothing left to do: shrink to nothing and fade, from the chip's own centre.
+
+	 Scale rather than a slide, because a slide means "replaced by the next one" in this
+	 module's existing vocabulary and there is no next one. The UIScale is found before it is
+	 created, the same rule `transition`'s punch follows, so repeated collapses cannot stack. ]]
+function collapse()
+	local frame = chip
+	if not frame then
+		return
+	end
+	busy = true
+	task.spawn(function()
+		local shrink = frame:FindFirstChildOfClass("UIScale")
+		if not shrink then
+			shrink = Instance.new("UIScale")
+			shrink.Parent = frame
+		end
+		local scale = shrink :: UIScale
+		local tween = TweenService:Create(
+			scale,
+			TweenInfo.new(COLLAPSE_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Scale = 0.82 }
+		)
+		tween:Play()
+		tween.Completed:Wait()
+		frame.Visible = false
+		frame.Position = HOME
+		-- Reset for the next appear, so a chip that comes back does not come back small.
+		scale.Scale = 1
+		releaseAndReplay()
+	end)
+end
+
+--[[ Something to do again: paint it, then grow it in. ]]
+function appear(step: Step)
+	local frame = chip
+	if not frame then
+		return
+	end
+	busy = true
+	task.spawn(function()
+		paint(step)
+		frame.Position = HOME
+		local grow = frame:FindFirstChildOfClass("UIScale")
+		if not grow then
+			grow = Instance.new("UIScale")
+			grow.Parent = frame
+		end
+		local scale = grow :: UIScale
+		scale.Scale = 0.82
+		frame.Visible = true
+		local tween = TweenService:Create(
+			frame:FindFirstChildOfClass("UIScale") :: UIScale,
+			TweenInfo.new(APPEAR_TIME, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		)
+		tween:Play()
+		tween.Completed:Wait()
+		releaseAndReplay()
+	end)
+end
+
+--[[ A different objective at the same rank: out to the left, in from the right.
+
+	 This is `transition` with the celebration removed — no tick, no green, no hold — because
+	 the player did not finish anything, the game changed its advice. Same measured travel, so
+	 the two motions read as members of one family rather than as two different animations that
+	 happen to move the same object. ]]
+function swap(step: Step)
+	local frame = chip
+	if not frame then
+		return
+	end
+	busy = true
+	task.spawn(function()
+		local exitLeft = travel(frame)
+		local out = TweenService:Create(
+			frame,
+			TweenInfo.new(SLIDE_OUT, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = homeAt(exitLeft) }
+		)
+		out:Play()
+		out.Completed:Wait()
+
+		paint(step)
+		-- One frame for AutomaticSize to resolve the new text's width before measuring the
+		-- entry distance, exactly as `transition` does and for the same reason. The chip is
+		-- off-screen left for that frame, so the wait costs the player nothing.
+		task.wait()
+		local _, enterRight = travel(frame)
+		frame.Position = homeAt(enterRight)
+		local incoming = TweenService:Create(
+			frame,
+			TweenInfo.new(SLIDE_IN, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Position = HOME }
+		)
+		incoming:Play()
+		incoming.Completed:Wait()
+		releaseAndReplay()
+	end)
+end
+
 function apply(state: any)
 	local frame = chip
 	if not frame then
@@ -645,11 +937,14 @@ function apply(state: any)
 		return
 	end
 
-	if shownIndex == 0 then
+	local prevIndex, prevId = shownIndex, shownId
+	shownIndex, shownId = step.index, step.id
+
+	if prevIndex == 0 then
 		-- First paint of the session: land on the current step with no
 		-- celebration. A returning player must not be congratulated on load for
-		-- objectives they finished days ago.
-		shownIndex = step.index
+		-- objectives they finished days ago. A snap, not an animation — motion on
+		-- join is furniture, and it is one less sub-case to sample.
 		if step.complete then
 			frame.Visible = false
 		else
@@ -659,23 +954,50 @@ function apply(state: any)
 		return
 	end
 
-	if step.index > shownIndex then
-		-- Advanced — including the advance to DONE_INDEX, which is why the
-		-- finish still gets its tick-and-slide before the chip goes away.
+	if step.complete then
+		--[[ Nothing left to do. This is now genuinely rare — it means every zone is owned,
+			 visited, and every upgrade is maxed — where it used to fire the instant onboarding
+			 ended. It COLLAPSES rather than blinking out, because the chip is a persistent
+			 object on the screen and an object that vanishes between frames reads as a bug. ]]
+		if frame.Visible then
+			collapse()
+		else
+			frame.Position = HOME
+		end
+		return
+	end
+
+	if not frame.Visible then
+		-- Coming back from empty: something became purchasable again (a code redeemed, a
+		-- new zone added). Appear rather than snap, for the same reason collapse exists.
+		appear(step)
+		return
+	end
+
+	--[[ THE CHAIN ADVANCE, unchanged and deliberately still first.
+
+		 `prevIndex <= #Config.Objectives` is what keeps this to the onboarding chain: every
+		 contextual objective carries the sentinel, so `step.index > prevIndex` is structurally
+		 false between them and the celebration cannot fire on a routine swap.
+
+		 It still fires on the LAST chain step, which is the property worth having. Finishing
+		 step 3 now pushes the sentinel with `complete = false` and a contextual objective, so
+		 `transition` runs its tick, green flash, hold and slide-out — and then its existing
+		 tail paints the contextual step and slides it back in. The hand-off from onboarding to
+		 the contextual HUD works with zero changes to `transition`. ]]
+	if step.index > prevIndex and prevIndex <= #Config.Objectives then
 		transition(step)
 		return
 	end
 
-	-- Same step, new progress: the cheap path, and the common one, running on
-	-- every Sync while the player is collecting. A step that moved BACKWARDS
-	-- (an objective list shortened between sessions, or a hand-edited profile)
-	-- lands here too and is adopted silently — there is nothing to celebrate.
-	shownIndex = step.index
-	if step.complete then
-		frame.Visible = false
-		frame.Position = HOME
+	if step.id ~= prevId then
+		-- A different objective at the same rank: swap it out and in, without the celebration.
+		swap(step)
 		return
 	end
+
+	-- Same objective, new progress: the cheap path, and the common one, running on every Sync
+	-- while the player is collecting.
 	paint(step)
 end
 

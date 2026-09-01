@@ -28,6 +28,7 @@ type ProfileData = {
 	shards: number,
 	upgrades: { [string]: number },
 	zones: { [string]: boolean },
+	visited: { [string]: boolean },
 	codes: { [string]: boolean },
 	objectives: { [string]: number },
 	stats: { collected: number, sold: number, playtime: number },
@@ -44,6 +45,12 @@ type Ctx = {
 	Collect: any,
 	Codes: any,
 }
+
+--[[ A pure sibling, required directly rather than reached through `ctx`, exactly as
+	 DataService requires Profile and Codes requires CodeTable. `ctx` is for SERVICES — things
+	 with an `init` and an order in the boot sequence — and adding a module with neither would
+	 make the context mean two things. ]]
+local Objectives = require(script.Parent.Objectives)
 
 local ctx: Ctx = nil :: any
 local syncRemote: RemoteEvent = nil :: any
@@ -333,35 +340,23 @@ function Economy.push(player: Player)
 
 	--[[ The current objective is derived from progress rather than stored, so a
 		 profile edited by hand (or an objective list edited in Config) can never
-		 leave a player pointed at a step they already finished. ]]
-	local objectives = ctx.Config.Objectives
-	local objective = {
-		index = #objectives + 1,
-		id = "",
-		text = "",
-		progress = 0,
-		target = 0,
-		complete = true,
-	}
-	for i, obj in objectives do
-		local progress = math.min(obj.Target, profile.objectives[obj.Id] or 0)
-		if progress < obj.Target then
-			objective = {
-				index = i,
-				id = obj.Id,
-				text = obj.Text,
-				progress = progress,
-				target = obj.Target,
-				complete = false,
-			}
-			break
-		end
-	end
+		 leave a player pointed at a step they already finished.
+
+		 The derivation MOVED to `Objectives.resolve` when the objective stopped being a
+		 three-element chain and became a function of the whole player state. What used to sit
+		 here is now its tier 1, byte-identical, so a new player's experience is unchanged and
+		 every existing test stays reachable.
+
+		 Capacity is computed ONCE and passed in rather than recomputed inside the resolver: the
+		 snapshot below needs the same number, and two calls would be two chances for the chip
+		 to disagree with the gauge it sits directly above. ]]
+	local capacity = Economy.packCapacity(player)
+	local objective = Objectives.resolve(profile, capacity)
 
 	syncRemote:FireClient(player, {
 		coins = profile.coins,
 		shards = profile.shards,
-		packCapacity = Economy.packCapacity(player),
+		packCapacity = capacity,
 		upgrades = upgrades,
 		zones = zones,
 		objective = objective,

@@ -32,6 +32,7 @@ export const ENFORCED_RULE_IDS = Object.freeze([
   'studs.classic-palette-is-a-named-set-not-a-ramp',
   'studs.outlines-are-gone-and-no-surface-flag-brings-them-back',
   'state.selection-gained-is-the-gamepad-s-hover',
+  'typography.a-scaled-label-must-not-be-told-not-to-wrap',
 ]);
 
 function finding(ruleId, detail, extra = {}) {
@@ -451,6 +452,43 @@ export function checkFocusFeedback(files = []) {
   return findings;
 }
 
+/**
+ * `typography.a-scaled-label-must-not-be-told-not-to-wrap`
+ *
+ * Reports a label that is set to scale and then told not to wrap, in that order, because the
+ * second write silently undoes the first.
+ *
+ * Mechanisable and completely unambiguous: a property-order question with one right answer and
+ * no taste involved. It is also the kind of defect that CANNOT be caught by looking — the
+ * shipped case had 105 inert labels and every screenshot of them was correct, because at the
+ * design resolution nothing needed to shrink.
+ *
+ * Order-sensitive on purpose. Writing the wrap flag BEFORE the scale flag is harmless, because
+ * the engine re-enables wrapping, so only the sequence that actually breaks is reported.
+ */
+export function checkTextScaleOrder(files = []) {
+  const findings = [];
+  for (const file of files) {
+    const source = String(file.source ?? '');
+    //[[ The \b anchors are load-bearing, and the test that proves it was written before this
+    //   comment was. Without them `\w+` can start mid-identifier, so `shade.TextScaled` and
+    //   `face.TextWrapped` both match on the trailing "e" and two labels being configured
+    //   correctly get reported as one label being undone. ]]
+    const pattern = /\b(\w+)\.TextScaled\s*=\s*true[\s\S]{0,200}?\b\1\.TextWrapped\s*=\s*false/g;
+    const hits = [...source.matchAll(pattern)];
+    if (hits.length === 0) continue;
+    findings.push(
+      finding(
+        'typography.a-scaled-label-must-not-be-told-not-to-wrap',
+        `${file.path} sets TextScaled then clears TextWrapped on the same label at ${hits.length} site(s); ` +
+          `the second write turns scaling back off, so the size constraint beside it does nothing`,
+        { path: file.path, sites: hits.length },
+      ),
+    );
+  }
+  return findings;
+}
+
 /** Run everything that applies to the inputs given. */
 /**
  * `currency.one-value-one-motion-policy` — every surface showing one value must agree about
@@ -506,6 +544,7 @@ export function audit({
     ...(files ? checkMotionGate(files) : []),
     ...(files ? checkInertSurfaceFlags(files) : []),
     ...(files ? checkFocusFeedback(files) : []),
+    ...(files ? checkTextScaleOrder(files) : []),
     ...(priceLayers ? checkPriceAgreement(priceLayers) : []),
     ...(screens ? checkSafeArea(screens) : []),
     ...(selection ? checkGamepadReachability(selection.nodes, { entry: selection.entry }) : []),

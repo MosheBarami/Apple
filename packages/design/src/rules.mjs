@@ -1527,6 +1527,21 @@ export const RULES = Object.freeze([
     },
     tokens: {"observedSlideSeconds":0.5,"observedListPaddingPx":10},
   },
+  {
+    id: 'typography.a-scaled-label-must-not-be-told-not-to-wrap',
+    component: 'typography',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'mobile-first', 'minimalist', 'inventory-heavy'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'Where text is set to scale to fit a box, do not also write the wrapping flag. Set the size constraint first and the scale flag last, and let the engine own wrapping.',
+    because: 'Turning scaling on implicitly turns wrapping on, so writing "do not wrap" afterwards silently turns scaling back OFF. Both halves read as exactly what the author intended — shrink to fit, stay on one line — and together they produce neither. The failure is invisible in every screenshot taken at the design resolution, because at that size nothing needed to shrink; it only appears on the small screen the clamp existed for, which is the screen nobody renders.',
+    prevents: 'A helper called clampText that has never once clamped anything: 105 labels across a HUD and every panel carrying a size constraint that does nothing, because a size constraint is inert unless the text is scaling.',
+    provenance: {
+      kind: 'golem-authored',
+      source: 'apps/benchmark/crystal-canyon/src/client/Theme.luau',
+      validated: 'probed in a live Studio session: TextScaled=true alone reads back true; TextScaled=true followed by TextWrapped=false reads back FALSE; constraint-then-TextScaled reads back true, lays out on one line for a 13-character string in a 112px pill, and still honours MaxTextSize for a short one. 2026-09-01',
+    },
+  },
+
 ]);
 
 /**

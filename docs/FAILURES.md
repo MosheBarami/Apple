@@ -356,6 +356,56 @@ copy of the module and the suite re-run: **8 of 8 tests fail**; against the fix,
 the same pass that was fixing critical bugs. Reviewing a diff is not the same as running it,
 and neither is a green suite that cannot reach the code in question.
 
+### F-38 · `clampText` has never clamped anything, in 105 places
+
+Two copies of this helper, plus a third inline in `Panels`, all wrote:
+
+```luau
+label.TextScaled = true
+label.TextWrapped = false
+local c = Instance.new("UITextSizeConstraint")
+```
+
+Setting `TextScaled = true` implicitly turns wrapping ON. Explicitly turning wrapping back OFF
+**silently clears `TextScaled`**. So line two disabled line one, and the `UITextSizeConstraint`
+on line three — which does nothing at all unless the text is scaling — was inert.
+
+Counted in a live session: **105 labels** across the HUD and every panel carried a size
+constraint, and **not one of them was scaling**. The helper's own comment promises "let type
+shrink to fit a small screen but never grow past the size the design was drawn at". Neither half
+had ever happened.
+
+Both halves of the pair read as exactly what the author meant — shrink to fit, stay on one line
+— which is why it survived three writings and every review. And it is invisible in every
+screenshot taken at the design resolution, because at that size nothing needed to shrink. It
+only shows on the small screen the clamp existed for, which is the screen nobody renders.
+
+**Found by reading the property back.** The new objective capsule was written the same wrong way,
+copying the house pattern; querying `TextScaled` on the live label returned `false` when the
+source plainly set it `true`. Isolating it took six probes in a live session:
+
+| built as | reads back |
+|---|---|
+| `TextScaled = true` alone | **true** |
+| `TextScaled = true` then a constraint | **true** |
+| `TextScaled = true` then `TextWrapped = false` | **false** |
+| constraint first, then `TextScaled = true` | **true** |
+| `TextWrapped = false` first, then `TextScaled = true` | **true** (engine re-enables wrapping) |
+
+**Fix:** stop writing `TextWrapped` at all. The engine owns it under `TextScaled`; at these
+sizes the text still lays out on one line, because it shrinks to fit before it has any reason
+to wrap. Verified, not assumed: `19,834/19,835` in a 112 px pill comes back one line, and a
+short `5/25` still renders at the full `MaxTextSize` — which is the half of the contract that
+stops a pill built for 17 px type rendering a 60 px word.
+
+After the fix, the same live count reads **106 scaling, 0 inert**.
+
+Pinned by `checkTextScaleOrder` and `typography.a-scaled-label-must-not-be-told-not-to-wrap`.
+The check is order-sensitive on purpose — writing the wrap flag BEFORE the scale flag is
+harmless — and its `\b` anchors exist because the first version matched the trailing "e" in
+both `shade.TextScaled` and `face.TextWrapped` and reported two correctly-configured labels as
+one broken one. A test written for that case is what caught it.
+
 ### F-37 · A controller could navigate the whole UI and never be told where it was
 
 Every visible hover response in the game hung off `MouseEnter`. `SelectionGained` appeared

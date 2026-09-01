@@ -394,12 +394,13 @@ local function displayText(parent: Instance, body: string, size: number, color: 
 	label.Size = UDim2.fromScale(1, 1)
 	label.ZIndex = (if parent:IsA("GuiObject") then parent.ZIndex else 0) + 1
 	Palette.styleText(label, size, color)
-	label.TextScaled = true
-	label.TextWrapped = false
+	-- Constraint first, `TextScaled` last, `TextWrapped` never written — the third copy of the
+	-- same helper and the third instance of the same inert ordering. See F-38.
 	local limit = Instance.new("UITextSizeConstraint")
 	limit.MaxTextSize = size
 	limit.MinTextSize = 10
 	limit.Parent = label
+	label.TextScaled = true
 	label.Parent = parent
 	return label
 end

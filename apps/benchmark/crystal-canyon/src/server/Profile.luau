@@ -31,6 +31,7 @@ export type ProfileData = {
 	shards: number,
 	upgrades: { [string]: number },
 	zones: { [string]: boolean },
+	visited: { [string]: boolean },
 	codes: { [string]: boolean },
 	objectives: { [string]: number },
 	stats: { collected: number, sold: number, playtime: number },
@@ -120,6 +121,27 @@ function Profile.sanitize(raw: any): ProfileData
 		zones[zone.Id] = index == 1 or rawZones[zone.Id] == true
 	end
 
+	--[[ Visited: has the player ever STOOD in this zone, as opposed to owning it.
+
+		 Same shape and same reason as the zones block above — index 1 is visited by definition,
+		 because the player spawns in the meadow and claiming otherwise would show
+		 "EXPLORE SUNNY MEADOW" to someone standing in it.
+
+		 Buying is not visiting, and that distinction is the whole point: `Zones.unlock`
+		 deliberately does NOT set this. Owning a place you have never seen is the dead end the
+		 objective HUD exists to close.
+
+		 MIGRATION, STATED RATHER THAN LEFT TO BE DISCOVERED. `Profile.Version` does not bump.
+		 This module's header says there is deliberately no migration path because the store name
+		 carries `_v1`, and adding a field that `sanitize` defaults does not break that. The cost
+		 is exact and one-time: a player who has already been to Frost Hollow sees one wrong
+		 objective until they walk back in, on a benchmark game with no live population. ]]
+	local rawVisited = asTable(src.visited)
+	local visited: { [string]: boolean } = {}
+	for index, zone in Config.Zones do
+		visited[zone.Id] = index == 1 or rawVisited[zone.Id] == true
+	end
+
 	-- Codes are stored sparsely (only redeemed ones) because the set grows with
 	-- every promo we ever run, while zones are a short fixed list the UI
 	-- enumerates and therefore wants explicit false entries.
@@ -158,6 +180,7 @@ function Profile.sanitize(raw: any): ProfileData
 		shards = count(src.shards, capacity),
 		upgrades = upgrades,
 		zones = zones,
+		visited = visited,
 		codes = codes,
 		objectives = objectives,
 		stats = {
