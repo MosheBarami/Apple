@@ -63,6 +63,7 @@ local Upgrades = requireSibling("Upgrades")
 local Zones = requireSibling("Zones")
 local Collect = requireSibling("Collect")
 local Codes = requireSibling("Codes")
+local Shop = requireSibling("Shop")
 local Net = requireSibling("Net")
 
 -- Context -----------------------------------------------------------------
@@ -81,6 +82,7 @@ local ctx = {
 	Zones = Zones,
 	Collect = Collect,
 	Codes = Codes,
+	Shop = Shop,
 }
 
 -- Startup -----------------------------------------------------------------
@@ -101,6 +103,9 @@ local BOOT: { { name: string, module: any } } = {
 	{ name = "Zones", module = Zones },
 	{ name = "Collect", module = Collect },
 	{ name = "Codes", module = Codes },
+	-- Shop spends coins, so it needs Economy; Net stays last so the trust boundary never opens
+	-- onto a service that has not started.
+	{ name = "Shop", module = Shop },
 	{ name = "Net", module = Net },
 }
 
@@ -123,12 +128,20 @@ end
 -- Player lifecycle --------------------------------------------------------
 
 local function applyCharacter(player: Player)
-	if failed.Upgrades then
-		return
+	--[[ Two independent applications, each gated on its OWN service's boot result and each in
+		 its own pcall. A trail that fails to build must not cost the player their walk speed,
+		 and a stats failure must not cost them the cosmetic they paid for. ]]
+	if not failed.Upgrades then
+		local ok, err = pcall(Upgrades.applyCharacter, player)
+		if not ok then
+			warn(`{LOG} Upgrades.applyCharacter failed for {player.Name}: {tostring(err)}`)
+		end
 	end
-	local ok, err = pcall(Upgrades.applyCharacter, player)
-	if not ok then
-		warn(`{LOG} Upgrades.applyCharacter failed for {player.Name}: {tostring(err)}`)
+	if not failed.Shop then
+		local ok, err = pcall(Shop.applyCharacter, player)
+		if not ok then
+			warn(`{LOG} Shop.applyCharacter failed for {player.Name}: {tostring(err)}`)
+		end
 	end
 end
 

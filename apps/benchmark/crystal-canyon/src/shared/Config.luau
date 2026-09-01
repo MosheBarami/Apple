@@ -24,7 +24,7 @@ Config.Version = "1.0.0"
 -- The suffix is part of the key namespace on purpose: bumping it is how a
 -- breaking profile change gets a clean slate instead of a migration bug.
 Config.Store = {
-	Name = "CrystalCanyon_Profile_v1",
+	Name = "CrystalCanyon_Profile_v2",
 	KeyPrefix = "plr_",
 	AutosaveSeconds = 60,
 	-- A lock older than this is treated as abandoned (server crashed, no
@@ -111,6 +111,73 @@ Config.Zones = {
 	},
 }
 
+-- The shop ----------------------------------------------------------------
+--[[ ONE AXIS, ONE PANEL.
+
+	 UPGRADES owns every permanent stat this game has — pack capacity, walk speed, magnet
+	 radius. NOTHING HERE MAY MOVE ONE OF THOSE, temporarily or otherwise. A timed "MAGNET
+	 SURGE" sitting beside an upgrade called "MAGNET" is the upgrades list again with a clock
+	 bolted on, and that is precisely the defect this table exists to fix: the two panels used
+	 to sell the same three `Config.Upgrades` entries at the same prices through the same
+	 remote, and `Hud.luau` even lit both nav badges from one boolean because there was nothing
+	 else the SHOP tile could have been about.
+
+	 That reservation looks like it shrinks the shop to nothing. It does the opposite: it forces
+	 the shop off the stat sheet entirely and onto UTILITY and COSMETICS, which is the one place
+	 the two panels can never converge again. `config.spec.luau` asserts it rather than trusting
+	 this comment.
+
+	 The test that separates them is VERBS. Upgrades has one — buy a level. Shop has three (buy,
+	 use, equip) and two nouns upgrades does not have (a stock count, an equipped state).
+
+	 Everything here is bought with COINS. §1 of the owner's ruling is explicit that this
+	 benchmark introduces no Robux and no paid monetisation. ]]
+Config.Shop = {
+	Consumables = {
+		{
+			Id = "flare",
+			Name = "SIGNAL FLARE",
+			Blurb = "Burn one to call the trader. Sells your whole pack where you stand — worth most deep in the canyon.",
+			Icon = "flare",
+			--[[ 60 coins, derived rather than picked. The flare attacks the loop's dominant
+				 friction, which is not a stat: the walk back to the pad. The sell pad is at
+				 (32, -12) and the meadow's centroid is about (0, 135), so a round trip is
+				 roughly 300 studs — about 19 s at base WalkSpeed 16 — and nothing in
+				 `Config.Upgrades` shortens it. Pack size raises what you carry per trip, not
+				 the trip.
+
+				 Valued against H4's MEASURED 0.40 crystals/s rather than the sweep comment's
+				 estimated 1.8: that trip is worth ~15 coins in the meadow at level 0 and ~76 in
+				 Frost, where shards are worth 5. So 60 sits deliberately ABOVE its early-meadow
+				 value and BELOW its Frost value — a bad buy on minute one, a clear buy once you
+				 are deep. That is the right shape for a convenience item: never mandatory,
+				 never a trap. The card copy says so out loud. ]]
+			Cost = 60,
+			--[[ Bounds the profile field, and gives BUY a dead state ("STOCKED") that is not
+				 the same sentence as UPGRADES' "MAX". ]]
+			MaxStock = 5,
+		},
+	},
+	--[[ Bought once, owned forever, one equipped at a time.
+
+		 Colours are taken FROM THE WORLD, per the HUD's standing rule that nothing in this
+		 interface is a colour invented for a menu. Two of the three reference
+		 `Config.Zones[n].CrystalColor` by expression rather than by re-typed literal, so a
+		 trail can never drift from the crystal it is named after.
+
+		 Prices: 250 lands inside the first session, which is the point of having a cosmetic at
+		 all; 700 sits after the first few upgrades; 1,500 is 60 % of the Frost unlock and
+		 deliberately not 2,000+, where the top trail would sit right under the zone price and
+		 push the scripted 5:00 Frost beat past 7:00. All three together (2,450) come to just
+		 under one zone unlock, which is the intended read — the whole cosmetic set costs about
+		 one zone. ]]
+	Trails = {
+		{ Id = "dust", Name = "DUST TRAIL", Blurb = "Canyon dust, kicked up behind you.", Icon = "trail", Cost = 250, Color = Color3.fromRGB(232, 211, 169) },
+		{ Id = "crystal", Name = "CRYSTAL TRAIL", Blurb = "A meadow-shard shimmer.", Icon = "trail", Cost = 700, Color = Config.Zones[1].CrystalColor },
+		{ Id = "frost", Name = "FROST TRAIL", Blurb = "Frost Hollow, in your wake.", Icon = "trail", Cost = 1500, Color = Config.Zones[2].CrystalColor },
+	},
+}
+
 -- Selling -----------------------------------------------------------------
 Config.Sell = {
 	CoinsPerShard = 2,
@@ -158,6 +225,15 @@ Config.RateLimits = {
 	Sell = { Burst = 6, RefillPerSecond = 3 },
 	Code = { Burst = 4, RefillPerSecond = 0.5 },
 	Unlock = { Burst = 4, RefillPerSecond = 1 },
+	--[[ BuyItem and UseItem both spend, so they take Purchase's rate. Equip spends nothing and
+		 is limited only against flooding.
+
+		 WORTH SAYING BECAUSE A READER WILL ASSUME OTHERWISE: `Net.takeToken` keys its buckets by
+		 REMOTE NAME and only reads its parameters through `LIMIT_KEY`. Two remotes mapping to
+		 `Item` therefore get two INDEPENDENT buckets that happen to have identical parameters —
+		 not one shared bucket. Spending a BuyItem token does not slow UseItem down. ]]
+	Item = { Burst = 6, RefillPerSecond = 2 },
+	Equip = { Burst = 8, RefillPerSecond = 3 },
 }
 
 -- Derived helpers ---------------------------------------------------------
@@ -178,6 +254,39 @@ function Config.zoneById(id: string)
 		end
 	end
 	return nil
+end
+
+function Config.trailById(id: string)
+	for _, trail in Config.Shop.Trails do
+		if trail.Id == id then
+			return trail
+		end
+	end
+	return nil
+end
+
+function Config.consumableById(id: string)
+	for _, item in Config.Shop.Consumables do
+		if item.Id == id then
+			return item
+		end
+	end
+	return nil
+end
+
+--[[ Returns `(entry, kind)` where kind is "consumable" or "trail", so `Shop` can branch once
+	 instead of searching both tables at every call site — and so a future third product
+	 category is one row here rather than a new lookup at five call sites. ]]
+function Config.shopItemById(id: string): (any?, string?)
+	local item = Config.consumableById(id)
+	if item then
+		return item, "consumable"
+	end
+	local trail = Config.trailById(id)
+	if trail then
+		return trail, "trail"
+	end
+	return nil, nil
 end
 
 --[[ Coerce a level from an untrusted profile into [0, max].

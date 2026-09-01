@@ -32,6 +32,13 @@ Remotes.Definitions = {
 
 	-- client -> server (intent only, never amounts)
 	Purchase = "c2s", -- (upgradeId: string)
+	--[[ The shop's three verbs, which are the whole answer to V7: upgrades has one (buy a
+		 level) and the shop has three. `Equip` accepts "" to unequip — `oneString` passes an
+		 empty string through, rejecting only non-strings and over-long ones, which is what
+		 makes the empty case expressible without a fourth remote. ]]
+	BuyItem = "c2s", -- (itemId: string)
+	UseItem = "c2s", -- (itemId: string)
+	Equip = "c2s", -- (trailId: string; "" unequips)
 	Sell = "c2s", -- ()
 	Redeem = "c2s", -- (code: string)
 	Unlock = "c2s", -- (zoneId: string)

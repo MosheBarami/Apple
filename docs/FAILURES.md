@@ -356,6 +356,59 @@ copy of the module and the suite re-run: **8 of 8 tests fail**; against the fix,
 the same pass that was fixing critical bugs. Reviewing a diff is not the same as running it,
 and neither is a green suite that cannot reach the code in question.
 
+### V7 · Two of the four panels were the same panel
+
+Not a new failure — the visual critic's finding — but the diagnosis is worth recording because
+the obvious fix would have recreated it.
+
+`buildShop` was a gold FEATURED tray holding `Config.Upgrades[1]`, a heading reading
+`⭐ ALL UPGRADES ⭐`, and a grid of one card per `Config.Upgrades` entry, each sending
+`Purchase`. `buildUpgrades` was the same three entries as rows. Same ids, same prices, same
+remote, same `readUpgrade`.
+
+There was a second piece of evidence nobody had recorded: `Hud.luau` read
+
+```luau
+setBadge("shop", canUpgrade)
+setBadge("upgrades", canUpgrade)
+```
+
+One boolean lit both nav tiles, because there was genuinely nothing else the SHOP dot could
+have been about. The HUD already knew.
+
+**Why the obvious fix fails.** The owner reserved for UPGRADES every permanent stat: capacity,
+collection speed and radius, sell multiplier, movement, zone effects. Config's three upgrades
+are pack, speed and magnet — so a "MAGNET SURGE" or a "DOUBLE COINS (60s)" is the upgrades list
+again with a clock bolted on. That reservation looks like it shrinks the shop to nothing, and it
+does the opposite: it forces the shop off the stat sheet entirely and onto UTILITY and
+COSMETICS, which is the one place the two panels can never converge again.
+
+**The test that separates them is VERBS.** Upgrades has one — buy a level. Shop has three (buy,
+use, equip) and two nouns upgrades does not have: a stock count and an equipped state.
+
+Kept rather than removed, and the case for removal was real: removing it is a five-line change,
+and it would have spent no effort on V8, which is what actually earned "Prototype". What decided
+it was that `buildShop` holds the only `UIGridLayout` of product cards and the only FEATURED
+tray in the client — §5's whole construction grammar — so deleting the panel deletes evidence
+for a pass criterion on a visual benchmark.
+
+`config.spec`-style enforcement lives in `shop.spec.luau`: no shop product may carry any field
+an upgrade uses to be a stat (`BaseValue`, `PerLevel`, `MaxLevel`, `BaseCost`, `CostGrowth`), and
+none may share an id or a name with one. That is structural rather than a spelling check — a
+stat wearing an innocent name still fails.
+
+#### The one inversion worth reading twice
+
+`Shop.use` runs the EFFECT before spending the charge, which is the opposite of
+`Upgrades.purchase`'s validate-debit-apply. There, the debit was the only thing that could fail
+and delivery could not. Here the roles reverse: the effect is the only thing that can refuse (an
+empty pack, a sell still on cooldown) and the charge is the thing with no refund path. Spending
+first burns a flare for nothing.
+
+Confirmed in the live game, not only in the spec: using a flare with an empty pack returned
+`NOTHING TO SELL` and left the stock at 2. Two mutations guard the ordering, because it is
+exactly the shape a later refactor "tidies" back into the house order.
+
 ### F-38 · `clampText` has never clamped anything, in 105 places
 
 Two copies of this helper, plus a third inline in `Panels`, all wrote:

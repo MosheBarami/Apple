@@ -36,6 +36,7 @@ type Ctx = {
 	Zones: any,
 	Collect: any,
 	Codes: any,
+	Shop: any,
 }
 
 local ctx: Ctx = nil :: any

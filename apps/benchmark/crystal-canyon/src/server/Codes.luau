@@ -36,6 +36,7 @@ type Ctx = {
 	Zones: any,
 	Collect: any,
 	Codes: any,
+	Shop: any,
 }
 
 -- Assigned in init. Declared as non-optional so every call site below reads

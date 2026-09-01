@@ -1011,6 +1011,31 @@ end
 --[[ `Economy.push` sends each upgrade as `{ level, maxLevel, value, nextCost }`
 	 with `nextCost` ABSENT at max level. Both that record and a bare level are
 	 read; the richer form always wins. ]]
+--[[ The shop half of a Sync snapshot.
+
+	 Total and defaulting, exactly like `readUpgrade` below: a snapshot from a server that
+	 predates the shop, or one that arrived mid-boot, must render an honest empty shop rather
+	 than erroring. `equipped` is "" and never nil on the wire precisely so this can tell
+	 "nothing equipped" apart from "this server does not send the field" — but it defaults to ""
+	 anyway, because the client's job is to draw whatever it was given. ]]
+local function readShop(state: Snapshot): ({ [string]: number }, { [string]: boolean }, string)
+	local shop = if type(state.shop) == "table" then (state.shop :: any) else nil
+	local stock = if shop and type(shop.stock) == "table" then shop.stock else {}
+	local trails = if shop and type(shop.trails) == "table" then shop.trails else {}
+	local equipped = if shop and type(shop.equipped) == "string" then shop.equipped else ""
+	return stock, trails, equipped
+end
+
+--- How many charges of `id` the player holds, floored at zero.
+local function heldCount(state: Snapshot, id: string): number
+	local stock = readShop(state)
+	local n = tonumber(stock[id]) or 0
+	if n ~= n then
+		return 0
+	end
+	return math.max(0, math.floor(n))
+end
+
 local function readUpgrade(state: Snapshot, id: string): (number, number?, boolean)
 	local entry = if type(state.upgrades) == "table" then (state.upgrades :: any)[id] else nil
 
@@ -1110,6 +1135,8 @@ type Row = {
 	card: Card,
 	column: Frame,
 	act: Action,
+	--- Present only when `RowOptions.secondary` was given. See the note there.
+	act2: Action?,
 	icon: Frame,
 }
 
@@ -1120,6 +1147,18 @@ type RowOptions = {
 	wash: Color3?,
 	coin: boolean?,
 	onResize: ((height: number) -> ())?,
+	--[[ A SECOND verb on the same card, stacked under the first.
+
+		 Added for the shop's FIELD KIT, where the answer to "why is this not the upgrades
+		 panel again" is literally the verb count: upgrades can only be bought, a consumable
+		 can be bought AND used, and both have to be reachable at once — you buy a third flare
+		 while holding two.
+
+		 It is placed by the SAME reflow as the primary rather than by the caller, so the two
+		 layouts cannot drift: in the wide layout the pair stacks in the action column, and in
+		 the stacked layout they become two full-width bars. A caller that positions its own
+		 second button would be correct at one width. ]]
+	secondary: (() -> ())?,
 }
 
 local function rowCard(
@@ -1183,6 +1222,13 @@ local function rowCard(
 	lines.Parent = column
 
 	local act = action(content, onAction, opts.coin)
+	local act2: Action? = if opts.secondary then action(content, opts.secondary, false) else nil
+
+	--[[ The vertical space the action column needs. One button is ACTION_H; two are two of
+		 them plus the same 6px the column's own lines use, so the card reads as one rhythm
+		 rather than as two spacings that happen to be near each other. ]]
+	local ACTION_STACK_GAP = 6
+	local actionH = if act2 then ACTION_H * 2 + ACTION_STACK_GAP else ACTION_H
 
 	local function apply()
 		local width = handle.root.AbsoluteSize.X
@@ -1211,9 +1257,19 @@ local function rowCard(
 			column.AnchorPoint = Vector2.new(0, 0)
 			column.Position = UDim2.fromOffset(slotSize + GAP, 0)
 			column.Size = UDim2.new(1, -(slotSize + GAP), 0, 0)
-			act.place(UDim2.new(1, 0, 0, ACTION_H), UDim2.new(0.5, 0, 1, 0), Vector2.new(0.5, 1))
+			if act2 then
+				-- Two full-width bars: primary above, secondary on the bottom edge.
+				act.place(
+					UDim2.new(1, 0, 0, ACTION_H),
+					UDim2.new(0.5, 0, 1, -(ACTION_H + ACTION_STACK_GAP)),
+					Vector2.new(0.5, 1)
+				)
+				act2.place(UDim2.new(1, 0, 0, ACTION_H), UDim2.new(0.5, 0, 1, 0), Vector2.new(0.5, 1))
+			else
+				act.place(UDim2.new(1, 0, 0, ACTION_H), UDim2.new(0.5, 0, 1, 0), Vector2.new(0.5, 1))
+			end
 			local top = math.max(slotSize, column.AbsoluteSize.Y)
-			height = top + GAP + ACTION_H + CARD_PAD_Y * 2
+			height = top + GAP + actionH + CARD_PAD_Y * 2
 		else
 			local actionW = math.clamp(math.floor(inner * ACTION_SHARE), ACTION_MIN_W, ACTION_MAX_W)
 			slot.AnchorPoint = Vector2.new(0, 0.5)
@@ -1221,8 +1277,23 @@ local function rowCard(
 			column.AnchorPoint = Vector2.new(0, 0.5)
 			column.Position = UDim2.new(0, slotSize + GAP, 0.5, 0)
 			column.Size = UDim2.new(1, -(slotSize + GAP * 2 + actionW), 0, 0)
-			act.place(UDim2.fromOffset(actionW, ACTION_H), UDim2.new(1, 0, 0.5, 0), Vector2.new(1, 0.5))
-			local top = math.max(slotSize, column.AbsoluteSize.Y)
+			if act2 then
+				--[[ Both anchored to the right edge and centred as a PAIR, so the stack's
+					 midpoint is the card's midpoint whichever button is taller. ]]
+				act.place(
+					UDim2.fromOffset(actionW, ACTION_H),
+					UDim2.new(1, 0, 0.5, -(ACTION_H + ACTION_STACK_GAP) / 2),
+					Vector2.new(1, 0.5)
+				)
+				act2.place(
+					UDim2.fromOffset(actionW, ACTION_H),
+					UDim2.new(1, 0, 0.5, (ACTION_H + ACTION_STACK_GAP) / 2),
+					Vector2.new(1, 0.5)
+				)
+			else
+				act.place(UDim2.fromOffset(actionW, ACTION_H), UDim2.new(1, 0, 0.5, 0), Vector2.new(1, 0.5))
+			end
+			local top = math.max(slotSize, column.AbsoluteSize.Y, actionH)
 			height = top + CARD_PAD_Y * 2
 		end
 
@@ -1243,7 +1314,7 @@ local function rowCard(
 	handle.root:GetPropertyChangedSignal("AbsoluteSize"):Connect(apply)
 	column:GetPropertyChangedSignal("AbsoluteSize"):Connect(apply)
 
-	return { card = handle, column = column, act = act, icon = tile }
+	return { card = handle, column = column, act = act, act2 = act2, icon = tile }
 end
 
 --------------------------------------------------------------------------------
@@ -1403,20 +1474,38 @@ local function buildShop(): PanelDef
 
 	-- Emoji flanking a section label is the one place the style spec permits
 	-- them: ornament, never a functional icon.
-	local featuredHeading = Theme.sectionLabel(tray, "🔥 FEATURED 🔥") :: TextLabel
+	-- Emoji flanking a section label is the one place the style spec permits
+	-- them: ornament, never a functional icon.
+	--
+	-- "FIELD KIT" rather than "FEATURED": FEATURED implied a rotation that never rotated, and
+	-- this tray now holds the one product category that is not a cosmetic.
+	local featuredHeading = Theme.sectionLabel(tray, "🔥 FIELD KIT 🔥") :: TextLabel
 	featuredHeading.LayoutOrder = 1
 
-	local hero = Config.Upgrades[1]
-	if hero then
-		local row = rowCard(tray, hero.Icon, Palette.UI.Premium, HERO_ICON, function()
-			local level, cost, afford = readUpgrade(latest, hero.Id)
-			if level >= hero.MaxLevel or cost == nil or not afford then
+	local kit = Config.Shop.Consumables[1]
+	if kit then
+		--[[ TWO VERBS ON ONE CARD, which is the whole answer to V7.
+
+			 UPGRADES can only buy. This can buy AND use, and both have to be reachable at the
+			 same time — you stock a third flare while holding two. The second button is placed
+			 by `rowCard`'s own reflow, so the pair cannot come apart at a narrow width. ]]
+		local row = rowCard(tray, kit.Icon, Palette.UI.Premium, HERO_ICON, function()
+			if heldCount(latest, kit.Id) >= kit.MaxStock then
 				return
 			end
-			send("Purchase", hero.Id)
+			if (tonumber(latest.coins) or 0) < kit.Cost then
+				return
+			end
+			send("BuyItem", kit.Id)
 		end, {
 			wash = Palette.lift(Palette.UI.Premium, 0.55),
 			coin = true,
+			secondary = function()
+				if heldCount(latest, kit.Id) <= 0 then
+					return
+				end
+				send("UseItem", kit.Id)
+			end,
 			--[[ The tray is as tall as its own chrome plus whatever the row inside
 				 it reflowed to. This is the hand-back that replaces AutomaticSize —
 				 see the note on TRAY_CHROME. ]]
@@ -1428,7 +1517,7 @@ local function buildShop(): PanelDef
 			end,
 		})
 		row.card.root.LayoutOrder = 2
-		registerFlash(`up:{hero.Id}`, row.card.flash)
+		registerFlash(`item:{kit.Id}`, row.card.flash)
 
 		local ribbon = Theme.surface(row.column, {
 			Fill = Palette.UI.Close,
@@ -1447,51 +1536,58 @@ local function buildShop(): PanelDef
 		ribbonCap.MaxSize = Vector2.new(158, 30)
 		ribbonCap.Parent = ribbon
 
-		local ribbonText = displayText(ribbon, "BEST VALUE", Palette.TextSize.Small)
+		--[[ "CONSUMABLE", not "BEST VALUE". The old ribbon was a sales claim about an upgrade;
+			 this one names the product CATEGORY, which is the fact that distinguishes this
+			 panel from the other one. ]]
+		local ribbonText = displayText(ribbon, "CONSUMABLE", Palette.TextSize.Small)
 		ribbonText.Size = UDim2.new(1, -12, 1, -6)
 		ribbonText.Position = UDim2.fromOffset(6, 0)
 
-		local name = text(row.column, hero.Name, Palette.TextSize.Title, Palette.UI.TextDark, nil, true)
+		local name = text(row.column, kit.Name, Palette.TextSize.Title, Palette.UI.TextDark, nil, true)
 		name.LayoutOrder = 1
 
-		local blurb = text(row.column, hero.Blurb, Palette.TextSize.Card, Palette.UI.TextMuted, Palette.Font.Body, true)
+		local blurb = text(row.column, kit.Blurb, Palette.TextSize.Card, Palette.UI.TextMuted, Palette.Font.Body, true)
 		blurb.LayoutOrder = 2
 
-		local pips, setPips = pipTrack(row.column, hero.MaxLevel)
-		pips.LayoutOrder = 3
+		--[[ A stock readout where the upgrade card put its pip track.
 
+			 Deliberately NOT `pipTrack`: pips are the upgrades panel's own vocabulary for a
+			 level, and reusing them here would put back the visual rhyme this change exists to
+			 break. A count reads as inventory, which is what it is. ]]
 		local stat = text(row.column, "", Palette.TextSize.Card, Palette.shade(Palette.UI.Premium, 0.3), nil, true)
-		stat.LayoutOrder = 4
+		stat.LayoutOrder = 3
 
 		table.insert(rows, function()
-			local level, cost, afford = readUpgrade(latest, hero.Id)
-			local value = Config.upgradeValue(hero.Id, level)
-			local maxed = cost == nil
-			local unit = string.upper(hero.Unit)
+			local held = heldCount(latest, kit.Id)
+			local coins = tonumber(latest.coins) or 0
+			local full = held >= kit.MaxStock
 
-			if maxed then
-				stat.Text = `{Util.comma(value)} {unit}  ·  FULLY UPGRADED`
-				setMuted(row.icon, true)
-				setPips(level, Palette.UI.Locked)
-				row.act.setDead("MAX")
-				return
+			stat.Text = `{held} / {kit.MaxStock} IN THE KIT`
+			setMuted(row.icon, held <= 0)
+
+			if full then
+				-- "STOCKED", not "MAX". They are different sentences: MAX means there is
+				-- nothing better to own, STOCKED means come back when you have spent one.
+				row.act.setDead("STOCKED")
+			elseif coins >= kit.Cost then
+				row.act.setLive(Util.comma(kit.Cost))
+			else
+				row.act.setDead(Util.comma(kit.Cost))
 			end
 
-			local nextValue = Config.upgradeValue(hero.Id, level + 1)
-			stat.Text = `{Util.comma(value)} → {Util.comma(nextValue)} {unit}`
-			setMuted(row.icon, false)
-			setPips(level, Palette.UI.Premium)
-
-			if afford then
-				row.act.setLive(Util.comma(cost :: number))
-			else
-				row.act.setDead(Util.comma(cost :: number))
+			local use = row.act2
+			if use then
+				if held > 0 then
+					use.setLive(`USE ×{held}`)
+				else
+					use.setDead("USE ×0")
+				end
 			end
 		end)
 	end
 
-	-- ALL UPGRADES --------------------------------------------------------
-	local gridHeading = Theme.sectionLabel(list, "⭐ ALL UPGRADES ⭐") :: TextLabel
+	-- TRAILS --------------------------------------------------------------
+	local gridHeading = Theme.sectionLabel(list, "⭐ TRAILS ⭐") :: TextLabel
 	gridHeading.LayoutOrder = 2
 
 	local gridHolder = Instance.new("Frame")
@@ -1518,9 +1614,7 @@ local function buildShop(): PanelDef
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.Parent = gridHolder
 
-	local tints = { Palette.UI.HeaderCyan, Palette.UI.HeaderGreen, Palette.UI.HeaderPurple }
-
-	for index, up in Config.Upgrades do
+	for index, trail in Config.Shop.Trails do
 		--[[ Cell geometry is fixed and known, so this card can position from
 			 offsets safely: every one of them is checked against the 224x286 cell
 			 minus the plate and the card padding (192 x 246 of content) and none
@@ -1528,48 +1622,86 @@ local function buildShop(): PanelDef
 		local handle = card(gridHolder, GRID_CELL.Y)
 		handle.root.Size = UDim2.fromScale(1, 1)
 		handle.root.LayoutOrder = index
-		registerFlash(`up:{up.Id}`, handle.flash)
+		registerFlash(`trail:{trail.Id}`, handle.flash)
 
-		local tint = tints[((index - 1) % #tints) + 1]
+		--[[ Each card is tinted with ITS OWN product's colour, replacing the arbitrary
+			 cyan/green/purple rotation the upgrade grid used. That rotation was decoration; this
+			 is the thing being sold. Two of the three colours are `Config.Zones[n].CrystalColor`
+			 by reference, so a trail can never drift from the crystal it is named after. ]]
+		local tint = trail.Color
 
-		local tile = iconTile(handle.root, up.Icon, tint, 84)
+		local tile = iconTile(handle.root, trail.Icon, tint, 84)
 		tile.AnchorPoint = Vector2.new(0.5, 0)
 		tile.Position = UDim2.new(0.5, 0, 0, 0)
 
-		local name = text(handle.root, up.Name, Palette.TextSize.Card, Palette.UI.TextDark)
+		local name = text(handle.root, trail.Name, Palette.TextSize.Card, Palette.UI.TextDark)
 		name.Position = UDim2.fromOffset(0, 92)
 		name.Size = UDim2.new(1, 0, 0, 26)
 		name.TextXAlignment = Enum.TextXAlignment.Center
 
-		local pips, setPips = pipTrack(handle.root, up.MaxLevel)
-		pips.Position = UDim2.fromOffset(0, 124)
+		--[[ A COLOUR SWATCH where the upgrade card put its pip track.
 
-		local levelLabel = text(handle.root, "", Palette.TextSize.Card, Palette.UI.TextMuted, Palette.Font.Body)
-		levelLabel.Position = UDim2.fromOffset(0, 144)
-		levelLabel.Size = UDim2.new(1, 0, 0, 24)
-		levelLabel.TextXAlignment = Enum.TextXAlignment.Center
+			 Same skeleton, different widget, and this one previews the product: the bar runs the
+			 trail's own lift-to-shade ramp, so what you buy is what you are looking at. A pip
+			 track here would have said "level", which is the exact confusion V7 is. ]]
+		local swatch = Theme.surface(handle.root, {
+			Fill = tint,
+			Radius = Theme.Radius.Pill,
+			Stroke = Palette.Outline.Card,
+			Edge = 0,
+			HighlightInset = 8,
+			HighlightThickness = 2,
+			HighlightTransparency = 0.8,
+		}, UDim2.new(1, 0, 0, 16)) :: Frame
+		swatch.Name = "Swatch"
+		swatch.Position = UDim2.fromOffset(0, 126)
+		local ramp = Instance.new("UIGradient")
+		ramp.Color = ColorSequence.new(Palette.lift(tint, 0.35), Palette.shade(tint, 0.25))
+		ramp.Parent = swatch
 
-		local buy = action(handle.root, function()
-			local level, cost, afford = readUpgrade(latest, up.Id)
-			if level >= up.MaxLevel or cost == nil or not afford then
+		local stateLabel = text(handle.root, "", Palette.TextSize.Card, Palette.UI.TextMuted, Palette.Font.Body)
+		stateLabel.Position = UDim2.fromOffset(0, 150)
+		stateLabel.Size = UDim2.new(1, 0, 0, 24)
+		stateLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+		local act = action(handle.root, function()
+			local _, trails, equipped = readShop(latest)
+			if trails[trail.Id] ~= true then
+				if (tonumber(latest.coins) or 0) >= trail.Cost then
+					send("BuyItem", trail.Id)
+				end
 				return
 			end
-			send("Purchase", up.Id)
+			-- Owned. The button is an equip toggle from here on, which is the third verb.
+			if equipped ~= trail.Id then
+				send("Equip", trail.Id)
+			end
 		end, true)
-		buy.place(UDim2.new(1, 0, 0, ACTION_H), UDim2.new(0.5, 0, 1, 0), Vector2.new(0.5, 1))
+		act.place(UDim2.new(1, 0, 0, ACTION_H), UDim2.new(0.5, 0, 1, 0), Vector2.new(0.5, 1))
 
 		table.insert(rows, function()
-			local level, cost, afford = readUpgrade(latest, up.Id)
-			local maxed = cost == nil
-			levelLabel.Text = `LEVEL {level} / {up.MaxLevel}`
-			setMuted(tile, maxed)
-			setPips(level, if maxed then Palette.UI.Locked else tint)
-			if maxed then
-				buy.setDead("MAX")
-			elseif afford then
-				buy.setLive(Util.comma(cost :: number))
+			local _, trails, equipped = readShop(latest)
+			local owned = trails[trail.Id] == true
+			local isEquipped = owned and equipped == trail.Id
+			local coins = tonumber(latest.coins) or 0
+
+			setMuted(tile, not owned)
+
+			if isEquipped then
+				stateLabel.Text = "IN USE"
+				--[[ `setTag` paints Buy-green unconditionally, which is right here for the same
+					 reason it is right on ZONES' "UNLOCKED": it is a state, not an offer. ]]
+				act.setTag("EQUIPPED")
+			elseif owned then
+				stateLabel.Text = "OWNED"
+				act.setLive("EQUIP")
 			else
-				buy.setDead(Util.comma(cost :: number))
+				stateLabel.Text = "NOT OWNED"
+				if coins >= trail.Cost then
+					act.setLive(Util.comma(trail.Cost))
+				else
+					act.setDead(Util.comma(trail.Cost))
+				end
 			end
 		end)
 	end

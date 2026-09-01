@@ -112,6 +112,31 @@ local ART: { [string]: { Shape } } = {
 		{ w = 9, h = 6, x = 16, y = 22, r = 0.35, tone = "accent" },
 	},
 
+	--[[ Signal flare: a tall stick with a lit head and two sparks thrown off it.
+
+		 Drawn as a stick rather than as a flame because a flame at 32 px is a blob — the
+		 silhouette that survives the size ladder is the vertical, and the head reads as "lit"
+		 only because it is the accent tone against it. Not a whistle and not a bell, both of
+		 which lose their profile entirely below 24 px. ]]
+	flare = {
+		{ w = 5, h = 20, x = 16, y = 20, r = 0.4 },
+		{ w = 10, h = 10, x = 16, y = 8, r = 0.5, tone = "accent" },
+		{ w = 3, h = 7, x = 8, y = 9, r = 0.5, rot = 35, tone = "accent", plain = true },
+		{ w = 3, h = 7, x = 24, y = 9, r = 0.5, rot = -35, tone = "accent", plain = true },
+	},
+
+	--[[ Trail: a shard head with three bars streaming behind it, narrowing as they go.
+
+		 The narrowing is what says "motion" — three equal bars read as a list. Paint order
+		 matters here (the file lays these out in order): the tail is drawn first so the head
+		 sits on top of it and the pair reads as one object. ]]
+	trail = {
+		{ w = 3, h = 13, x = 8, y = 24, r = 0.5, rot = 45, tone = "accent", plain = true },
+		{ w = 4, h = 15, x = 13, y = 21, r = 0.5, rot = 45, tone = "accent", plain = true },
+		{ w = 5, h = 16, x = 18, y = 18, r = 0.5, rot = 45, plain = true },
+		{ w = 11, h = 11, x = 24, y = 9, r = 0.2, rot = 45 },
+	},
+
 	-- Storefront: awning wider than the building, door on the ground line.
 	-- Deliberately NOT a bag, because `pack` already is one.
 	shop = {

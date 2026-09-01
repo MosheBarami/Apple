@@ -46,6 +46,7 @@ type Ctx = {
 	Zones: any,
 	Collect: any,
 	Codes: any,
+	Shop: any,
 }
 
 local Zones = {}

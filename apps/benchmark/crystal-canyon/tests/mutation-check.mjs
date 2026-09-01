@@ -18,6 +18,65 @@ import { buildChunk, declaredModules } from './run.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const MUTATIONS = [
+  //[[ The shop. Two of these guard the ORDERING inversion in `Shop.use`, which is the part a
+  //   later refactor is most likely to "tidy" back into the house validate-debit-apply shape
+  //   and thereby burn a charge every time an effect refuses. ]]
+  {
+    name: 'the flare charge is spent BEFORE the effect runs',
+    claim: 'a refused effect must not consume a charge that has no refund path',
+    module: 'Shop',
+    find: '\tlocal ok, reason = effect(player)\n\tif not ok then\n\t\treturn false, reason\n\tend\n\n\tprofile.stock[item.Id] = held - 1',
+    replace: '\tprofile.stock[item.Id] = held - 1\n\tlocal ok, reason = effect(player)\n\tif not ok then\n\t\treturn false, reason\n\tend\n',
+  },
+  {
+    name: 'an empty stock still runs the effect',
+    claim: 'holding none is refused before anything happens',
+    module: 'Shop',
+    find: '\tif held <= 0 then\n\t\treturn false, "NONE LEFT"\n\tend',
+    replace: '\tif false then\n\t\treturn false, "NONE LEFT"\n\tend',
+  },
+  {
+    name: 'the stock cap is removed',
+    claim: 'a consumable cannot be stocked past its cap',
+    module: 'Shop',
+    find: '\t\tif stockOf(profile, item) >= item.MaxStock then',
+    replace: '\t\tif false and stockOf(profile, item) >= item.MaxStock then',
+  },
+  {
+    name: 'a trail can be bought twice',
+    claim: 'a permanent unlock is charged exactly once',
+    module: 'Shop',
+    find: '\t\tif profile.trails[item.Id] == true then\n\t\t\treturn false, "ALREADY OWNED"\n\t\tend',
+    replace: '\t\tif false then\n\t\t\treturn false, "ALREADY OWNED"\n\t\tend',
+  },
+  {
+    name: 'equipping no longer checks ownership',
+    claim: 'a client cannot equip a cosmetic it never bought',
+    module: 'Shop',
+    find: '\t\tif profile.trails[trailId] ~= true then',
+    replace: '\t\tif false then',
+  },
+  {
+    name: 'a trail is accepted as a consumable',
+    claim: 'a cosmetic is not a charge and cannot be used',
+    module: 'Shop',
+    find: '\tif not item or kind ~= "consumable" then',
+    replace: '\tif not item then',
+  },
+  {
+    name: 'a configured item with no effect is consumed anyway',
+    claim: 'an unimplemented effect refuses rather than eating the charge',
+    module: 'Shop',
+    find: '\tlocal effect = EFFECTS[item.Id]\n\tif not effect then',
+    replace: '\tlocal effect = EFFECTS[item.Id] or function() return true, nil end\n\tif false then',
+  },
+  {
+    name: 'a corrupt stock value is trusted rather than clamped',
+    claim: 'a NaN or huge stock cannot mint charges',
+    module: 'Shop',
+    find: '\treturn math.clamp(math.floor(raw), 0, item.MaxStock)',
+    replace: '\treturn raw',
+  },
   //[[ The objective resolver. These matter more than most: the bug this module replaced (V10)
   //   was a slot that went permanently blank and never errored, so every mutation here is a
   //   silently-wrong answer rather than a crash. If a mutation SURVIVES, the spec is asserting

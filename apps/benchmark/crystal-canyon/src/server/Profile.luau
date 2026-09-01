@@ -32,6 +32,9 @@ export type ProfileData = {
 	upgrades: { [string]: number },
 	zones: { [string]: boolean },
 	visited: { [string]: boolean },
+	stock: { [string]: number },
+	trails: { [string]: boolean },
+	equipped: string,
 	codes: { [string]: boolean },
 	objectives: { [string]: number },
 	stats: { collected: number, sold: number, playtime: number },
@@ -42,7 +45,7 @@ export type ProfileData = {
 	 instead of a migration bug that silently halves everyone's coins. A profile
 	 loaded with any other version number is coerced to this shape and stamped
 	 with this version. ]]
-Profile.Version = 1
+Profile.Version = 2
 
 --[[ 2^53 - 1: the largest integer a Lua number represents exactly. Past this,
 	 `n + 1 == n` and the economy stops being able to count, so it is the
@@ -131,15 +134,54 @@ function Profile.sanitize(raw: any): ProfileData
 		 deliberately does NOT set this. Owning a place you have never seen is the dead end the
 		 objective HUD exists to close.
 
-		 MIGRATION, STATED RATHER THAN LEFT TO BE DISCOVERED. `Profile.Version` does not bump.
-		 This module's header says there is deliberately no migration path because the store name
-		 carries `_v1`, and adding a field that `sanitize` defaults does not break that. The cost
-		 is exact and one-time: a player who has already been to Frost Hollow sees one wrong
-		 objective until they walk back in, on a benchmark game with no live population. ]]
+		 MIGRATION. This field originally shipped WITHOUT a version bump, on the reasoning that
+		 `sanitize` defaults it and a v1 save therefore loads correctly — which is true, and is
+		 only half the question. The unsafe direction is a ROLLBACK: a server running the older
+		 code reads a newer profile, drops the fields it does not know about, and silently
+		 deletes them on its next save. The shop landed in the same pass and can lose a
+		 paid-for cosmetic that way, so `Config.Store.Name` went to `_v2` and `Profile.Version`
+		 to 2, which gives the new schema a clean namespace and closes it.
+
+		 The cost of the bump is that every existing profile starts fresh. On a benchmark with
+		 no live population that is free, and it is why the earlier note here — about a returning
+		 player seeing one wrong objective until they walk back into Frost Hollow — no longer
+		 describes anything that can happen. ]]
 	local rawVisited = asTable(src.visited)
 	local visited: { [string]: boolean } = {}
 	for index, zone in Config.Zones do
 		visited[zone.Id] = index == 1 or rawVisited[zone.Id] == true
+	end
+
+	--[[ Shop stock and trail ownership.
+
+		 Enumerated from Config with explicit zeroes and falses rather than stored sparsely, for
+		 the same reason the zones block above gives: both are short fixed lists the UI walks,
+		 and it wants explicit entries. Codes stay sparse because that set grows with every promo
+		 we ever run.
+
+		 `count` already handles NaN, ±inf and negatives asymmetrically, so a corrupt stock value
+		 floors to 0 rather than to MaxStock. Corruption must not be a route to free charges, and
+		 nothing new is needed for that — it is inherited. ]]
+	local rawStock = asTable(src.stock)
+	local stock: { [string]: number } = {}
+	for _, item in Config.Shop.Consumables do
+		stock[item.Id] = count(rawStock[item.Id], item.MaxStock)
+	end
+
+	local rawTrails = asTable(src.trails)
+	local trails: { [string]: boolean } = {}
+	for _, trail in Config.Shop.Trails do
+		trails[trail.Id] = rawTrails[trail.Id] == true
+	end
+
+	--[[ Equipping something you do not own is not a legal profile.
+
+		 The check reads the SANITISED ownership table and never the raw save — the same
+		 dependency, and the same reason, as `shards` being capped by the sanitised pack level
+		 rather than by the level the save claimed. ]]
+	local equipped = ""
+	if type(src.equipped) == "string" and trails[src.equipped] == true then
+		equipped = src.equipped
 	end
 
 	-- Codes are stored sparsely (only redeemed ones) because the set grows with
@@ -181,6 +223,9 @@ function Profile.sanitize(raw: any): ProfileData
 		upgrades = upgrades,
 		zones = zones,
 		visited = visited,
+		stock = stock,
+		trails = trails,
+		equipped = equipped,
 		codes = codes,
 		objectives = objectives,
 		stats = {

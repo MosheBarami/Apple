@@ -43,6 +43,7 @@ local MANIFEST = {
 	{ "src/server/Zones.luau", "server", "Zones", "ModuleScript" },
 	{ "src/server/Collect.luau", "server", "Collect", "ModuleScript" },
 	{ "src/server/Codes.luau", "server", "Codes", "ModuleScript" },
+	{ "src/server/Shop.luau", "server", "Shop", "ModuleScript" },
 	{ "src/server/Net.luau", "server", "Net", "ModuleScript" },
 
 	{ "src/client/init.client.luau", "clientRoot", "CrystalCanyonClient", "LocalScript" },

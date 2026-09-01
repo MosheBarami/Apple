@@ -44,6 +44,7 @@ type Ctx = {
 	Zones: any,
 	Collect: any,
 	Codes: any,
+	Shop: any,
 }
 
 type Bucket = { tokens: number, last: number }
@@ -63,6 +64,13 @@ local LIMIT_KEY: { [string]: string } = {
 	Sell = "Sell",
 	Redeem = "Code",
 	Unlock = "Unlock",
+	--[[ Both spending remotes take Purchase's rate. They map to the same LIMIT_KEY but get
+		 SEPARATE buckets: `takeToken` keys its buckets by remote NAME and only reads the
+		 parameters through this table, so spending a BuyItem token does not slow UseItem down.
+		 A reader will assume otherwise. ]]
+	BuyItem = "Item",
+	UseItem = "Item",
+	Equip = "Equip",
 }
 
 --[[ A transport-level sanity bound on any string argument, not a game rule —
@@ -233,6 +241,62 @@ function Net.init(context: Ctx)
 		end
 		if not granted then
 			reject(player, type(reason) == "string" and reason or "You can't buy that.")
+		end
+	end)
+
+	--[[ The three shop verbs, each the same shape as Purchase above: validate the one string
+		 argument at the boundary, call the service through `callService`, and hand the
+		 service's own player-facing reason back. Nothing here decides anything — `Shop` owns
+		 every refusal, including the ones only it can see (ALREADY STOCKED, NONE LEFT, the
+		 ownership check on equip). ]]
+	connect("BuyItem", function(player, ...)
+		local itemId = oneString(...)
+		if not itemId then
+			reject(player, "That request wasn't understood.")
+			return
+		end
+		local ok, granted, reason = callService("BuyItem", ctx.Shop.buy, player, itemId)
+		if not ok then
+			reject(player, "Something went wrong.")
+			return
+		end
+		if not granted then
+			reject(player, type(reason) == "string" and reason or "You can't buy that.")
+		end
+	end)
+
+	connect("UseItem", function(player, ...)
+		local itemId = oneString(...)
+		if not itemId then
+			reject(player, "That request wasn't understood.")
+			return
+		end
+		local ok, granted, reason = callService("UseItem", ctx.Shop.use, player, itemId)
+		if not ok then
+			reject(player, "Something went wrong.")
+			return
+		end
+		if not granted then
+			reject(player, type(reason) == "string" and reason or "You can't use that.")
+		end
+	end)
+
+	connect("Equip", function(player, ...)
+		--[[ "" is a legal argument here and means unequip, which is why this reads the value
+			 rather than testing it for truthiness. `oneString` returns "" as a string; only a
+			 non-string or an over-long one comes back nil. ]]
+		local trailId = oneString(...)
+		if trailId == nil then
+			reject(player, "That request wasn't understood.")
+			return
+		end
+		local ok, granted, reason = callService("Equip", ctx.Shop.equip, player, trailId)
+		if not ok then
+			reject(player, "Something went wrong.")
+			return
+		end
+		if not granted then
+			reject(player, type(reason) == "string" and reason or "You can't equip that.")
 		end
 	end)
 

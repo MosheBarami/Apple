@@ -1460,6 +1460,38 @@ function Hud.render(state: HudState?)
 		end
 	end
 
+	--[[ The SHOP's own badge, which used to be `canUpgrade` — the same boolean that lit the
+		 UPGRADES tile.
+
+		 That was not a shortcut; it was the HUD telling the truth about a defect. The two panels
+		 sold the same three upgrades, so there was genuinely nothing else the shop dot could
+		 have been about, and V7 was visible here a layer below the panels themselves.
+
+		 Now it asks a question only the shop can answer: is there a shop product I can afford
+		 and do not already have? A stocked kit and an owned trail both stop lighting it, so the
+		 dot means "there is something here for you" rather than "you have money". ]]
+	-- Typed `any` for the same reason `upgrades` and `zones` above are: it comes off a remote,
+	-- so its shape is read through guards rather than asserted.
+	local shop: any = if type((state :: any).shop) == "table" then (state :: any).shop else {}
+	local shopStock: any = if type(shop.stock) == "table" then shop.stock else {}
+	local shopTrails: any = if type(shop.trails) == "table" then shop.trails else {}
+	local canShop = false
+	for _, item in Config.Shop.Consumables do
+		local held = tonumber(shopStock[item.Id]) or 0
+		if coins >= item.Cost and held < item.MaxStock then
+			canShop = true
+			break
+		end
+	end
+	if not canShop then
+		for _, trail in Config.Shop.Trails do
+			if coins >= trail.Cost and shopTrails[trail.Id] ~= true then
+				canShop = true
+				break
+			end
+		end
+	end
+
 	--[[ A dot that appears silently is a dot nobody notices, so becoming visible
 		 pops. Turning off is not animated: nothing was earned, and an outgoing
 		 flourish would read as a reward. ]]
@@ -1473,7 +1505,7 @@ function Hud.render(state: HudState?)
 			punch(dot, 1.5)
 		end
 	end
-	setBadge("shop", canUpgrade)
+	setBadge("shop", canShop)
 	setBadge("upgrades", canUpgrade)
 	setBadge("zones", canUnlock)
 
