@@ -22,6 +22,7 @@ packages/corpus/raw/
 # licence verdicts, and §H requires that metadata be preserved rather than
 # regenerated on demand — a classification nobody can diff is one nobody reviews.
 !packages/corpus/data/sources.json
+!packages/corpus/data/registries.json
 packages/evals/results/raw/
 
 # Playwright

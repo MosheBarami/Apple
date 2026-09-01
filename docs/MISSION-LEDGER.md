@@ -33,7 +33,7 @@ Last reconciled: **2026-09-01** (second pass).
 | 19 | Roadmap intelligence suggests/builds milestones | **PROVEN** | corrected: it DOES scan the live place (`ROADMAP_SCAN_LUAU`), detects genre, offers Plan/Build, 30 tests incl. the tower-defence-never-offered-rebirth negative proof |
 | 20 | Durable design/source intelligence pipeline | **PROVEN** | machinery run against all 217 seeds; 119 resolved · `evidence/2026-09-01-source-corpus-classification.md` |
 | 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **PROVEN** | 217 classified: 68 reusable, 8 copyleft, 2 attribution, 139 quarantined |
-| 22 | Discovery expands beyond the seed manifest | **UNPROVEN** | recursive discovery not run |
+| 22 | Discovery expands beyond the seed manifest | **PROVEN** | Wally 5,807 + Pesde 781 packages enumerated in full — 30x the 217-URL floor · `evidence/2026-09-01-registry-enumeration.md` |
 | 23 | Licences/provenance preserved | **PROVEN** | `data/sources.json` tracked; SHA + SPDX + evidence path per source |
 | 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence; security scanner still has nothing downloaded to scan |
 | 25 | Golem stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (second pass).
 
 ## Tally
 
-PROVEN 24 · PARTIAL 10 · UNPROVEN 5 · BLOCKED 1 · REJECTED 0
+PROVEN 25 · PARTIAL 10 · UNPROVEN 4 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
