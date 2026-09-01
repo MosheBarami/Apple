@@ -43,7 +43,7 @@ Last reconciled: **2026-09-01** (second pass).
 | 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | `MotionProbe.luau` + 4 motion rules in the library; still one game's patterns |
 | 30 | Studs/classic a first-class art language | **UNPROVEN** | not attempted |
 | 31 | Broad non-simulator UI/game patterns represented | **UNPROVEN** | single genre only |
-| 32 | Hugging Face pipeline measured and privacy-safe | **UNPROVEN** | not attempted this phase |
+| 32 | Hugging Face pipeline measured and privacy-safe | **PARTIAL** | landscape characterised, licences read, duplicates identified; nothing uploaded/downloaded/trained · `evidence/2026-09-01-huggingface-luau-landscape.md` |
 | 33 | No user project is training data without opt-in | **PROVEN** | standing policy, unchanged |
 | 34 | Cost controls intact | **PROVEN** | no purchases; caps untouched |
 | 35 | Security/tenant isolation intact | **PROVEN** | CI holds no secrets; tree clean |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (second pass).
 
 ## Tally
 
-PROVEN 24 · PARTIAL 9 · UNPROVEN 6 · BLOCKED 1 · REJECTED 0
+PROVEN 24 · PARTIAL 10 · UNPROVEN 5 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
