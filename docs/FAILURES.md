@@ -499,6 +499,70 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-43 · The roadmap called a shard collector a racing game
+
+`ROADMAP_SCAN_LUAU` is a 92-line evidence payload that the mission ledger cited as proof gate 19
+was PROVEN — "it DOES scan the live place". An audit pointed out that was a **code-existence
+claim written as an execution claim**: the payload had never run.
+
+Running it against Crystal Canyon produced 76,496 bytes of real evidence — 1,159 instances, 974
+parts, 34 scripts — and then this verdict:
+
+```
+genre       : racing
+confidence  : 0
+evidence    : ["the place calls itself a race"]
+milestones  : race_track, race_vehicles, race_results
+```
+
+Crystal Canyon is a shard-collecting simulator. Three separate defects, one execution, and not
+one of them findable by reading the code.
+
+#### 1. Genre signals matched ordinary English in comments
+
+`buildIndex` joined raw script sources, comments included. The two weight-3 signals that fired:
+
+| signal | what actually matched |
+|---|---|
+| `racing` | "this waits for the profile it publishes rather than **racing** it" |
+| `roleplay` | "a walkspeed of 16 for the rest of the **life**" |
+
+Both are prose in a comment. The signal's own description is "a name the genre wears openly" —
+openly means in its instance names and identifiers, not in an aside to a maintainer about thread
+scheduling. `roblox-antipatterns.mjs` had already reached this conclusion for its own rules and
+says so: *"a comment saying `-- never use wait()` must not fire the deprecated-API rule."*
+
+String CONTENTS are still scanned, deliberately, and there is a test for it: a place that renders
+"Coin Simulator" to a player is saying what it is, which is the opposite of an aside.
+
+#### 2. A tie was reported as a verdict, decided by the alphabet
+
+Racing scored 3. Roleplay scored 3. `ranked` breaks ties with `a.genre.localeCompare(b.genre)` —
+correct for determinism, catastrophic as a decision — so **R-A came before R-O and the place
+became a racing game.**
+
+`confidence` is `margin / top.score`, so it was `0`, and the code's own comment already says a
+6–4 win is "a coin toss dressed as a verdict". A 3–3 tie is a coin toss with no dressing at all,
+and `buildRoadmap` committed to genre-specific milestones on it. A zero margin now returns
+`unknown` and names both candidates.
+
+#### 3. The scan never captured the place's own name
+
+The deepest of the three. Every strong genre signal reads "the place calls itself X" — and
+`ROADMAP_SCAN_LUAU` collected services, classes, named containers, GUIs, lighting and script
+sources, and **never `game.Name`**. The single most deliberate statement of intent in a place
+file was invisible to the detector that most needed it.
+
+This is also why the test fixture had been leaning on a comment: `SIMULATOR` declared itself in
+`-- Coin Simulator core loop` because there was nowhere else to put it. The scan captures the
+place name now, and the fixture says it the way a real place would.
+
+**What this cost to find: one execution.** The payload was reviewed, tested through its
+TypeScript half, and cited as evidence for a PROVEN gate, and it had never been pointed at a real
+place. Six new tests, 36 total.
+
+---
+
 ### F-42 · A declared licence is a claim, and now there is a number for it
 
 §H says a licence a publisher declares is a CLAIM, not evidence. That was policy; enumerating

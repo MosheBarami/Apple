@@ -111,6 +111,19 @@ const TOWER_DEFENCE = scan({
 });
 
 const SIMULATOR = scan({
+  //[[ The place NAMES itself, which is where a real Roblox simulator says what it is.
+  //
+  //   This fixture used to declare its genre only in a script COMMENT (`-- Coin Simulator core
+  //   loop`), and that stopped counting when the index started stripping comments — because on a
+  //   real place two weight-3 genre signals fired on ordinary English prose: "racing" from
+  //   "waits for the profile rather than RACING it", and "roleplay" from "the rest of the LIFE".
+  //
+  //   Running the scanner against a real place also showed WHY the fixture had to lean on a
+  //   comment: the scan never captured `game.Name`, so the single most deliberate statement of
+  //   intent in a place file was invisible to a detector whose strongest signals are all "the
+  //   place calls itself X". It is captured now, and this fixture says it the way a real one
+  //   would. ]]
+  place: 'Coin Simulator',
   counts: { instances: 900, parts: 700, scripts: 4 },
   classes: { SpawnLocation: 1, RemoteEvent: 3, ScreenGui: 2, Model: 20, Folder: 6 },
   topLevel: ['Zone1', 'Shop', 'Baseplate'],
@@ -467,4 +480,99 @@ test('a model that fails or replies with junk leaves the deterministic roadmap i
   const junk = await R.polishRoadmap(roadmap, shape, async () => 'I am afraid I cannot do that');
   assert.equal(junk.polished, false);
   assert.deepEqual(junk.next.map((m) => m.why), roadmap.next.map((m) => m.why));
+});
+
+
+// ---------------------------------------------------------------------------------------------
+// FOUND BY RUNNING THE SCANNER AGAINST A REAL PLACE, 2026-09-01.
+//
+// ROADMAP_SCAN_LUAU had never executed against a real place file; the mission ledger rated the
+// gate PROVEN on the payload's existence. Running it on Crystal Canyon — a shard-collecting
+// simulator — produced `genre: racing, confidence: 0` and a roadmap containing `race_track`,
+// `race_vehicles` and `race_results`. Three separate defects, one execution.
+// ---------------------------------------------------------------------------------------------
+
+test('a genre named only in ordinary English prose is not a genre', () => {
+  // The exact two comments from the real place. "racing" and "life" are English words here, and
+  // both were weight-3 "the place calls itself X" signals before comments were stripped.
+  const prosey = scan({
+    counts: { instances: 300, parts: 250, scripts: 2 },
+    classes: { SpawnLocation: 1, RemoteEvent: 2 },
+    topLevel: ['Canyon'],
+    scripts: [
+      {
+        path: 'game.ServerScriptService.DataService',
+        class: 'Script',
+        lines: 40,
+        source: `-- this waits for the profile it publishes rather than racing it
+                 -- a walkspeed of 16 for the rest of the life, so we wait
+                 local ok = pcall(function() return 1 end)`,
+      },
+    ],
+  });
+  const shape = shapeOf(prosey);
+  assert.notEqual(shape.genre, 'racing', 'a thread race is not a racing game');
+  assert.notEqual(shape.genre, 'roleplay', '"the rest of the life" is not roleplay');
+});
+
+test('a comment cannot declare a genre that the place itself never does', () => {
+  const commentOnly = scan({
+    counts: { instances: 300, parts: 250, scripts: 1 },
+    classes: { SpawnLocation: 1 },
+    topLevel: ['Baseplate'],
+    scripts: [{ path: 'game.ServerScriptService.A', class: 'Script', lines: 3, source: '-- Obby core loop\nlocal x = 1' }],
+  });
+  assert.notEqual(shapeOf(commentOnly).genre, 'obby');
+});
+
+test('...but a string literal still can, because a genre announces itself in its UI', () => {
+  // Comments are stripped; STRING CONTENTS are deliberately kept. A place that renders the word
+  // is saying it to the player, which is the opposite of an aside to a maintainer.
+  const inString = scan({
+    counts: { instances: 300, parts: 250, scripts: 1 },
+    classes: { SpawnLocation: 1, RemoteEvent: 2, ScreenGui: 1 },
+    topLevel: ['Zone1'],
+    scripts: [
+      {
+        path: 'game.StarterGui.Hud',
+        class: 'LocalScript',
+        lines: 5,
+        source: 'label.Text = "Coin Simulator"\nlocal leaderstats = player.leaderstats',
+      },
+    ],
+  });
+  assert.equal(shapeOf(inString).genre, 'simulator');
+});
+
+test('a tie is reported as unknown, not resolved by the alphabet', () => {
+  // `ranked` breaks ties with localeCompare, which is right for determinism and catastrophic as a
+  // decision. On the real place racing and roleplay both scored 3 and R-A sorted before R-O.
+  const tied = scan({
+    counts: { instances: 500, parts: 400, scripts: 2 },
+    classes: { SpawnLocation: 1, RemoteEvent: 2 },
+    place: 'Tycoon Obby',
+    topLevel: ['Baseplate'],
+    scripts: [{ path: 'game.ServerScriptService.A', class: 'Script', lines: 3, source: 'local x = 1' }],
+  });
+  const shape = shapeOf(tied);
+  assert.equal(shape.genre, 'unknown', 'two genres named equally loudly is not a verdict');
+  assert.equal(shape.genreConfidence, 0);
+  assert.match(shape.genreEvidence.join(' '), /tied at/, 'and it must say WHY it declined');
+});
+
+test('the place name reaches the detector at all', () => {
+  const named = scan({
+    counts: { instances: 400, parts: 300, scripts: 1 },
+    classes: { SpawnLocation: 1, RemoteEvent: 2 },
+    place: 'Ultimate Tower Defence',
+    topLevel: ['Baseplate'],
+    scripts: [{ path: 'game.ServerScriptService.A', class: 'Script', lines: 3, source: 'local x = 1' }],
+  });
+  assert.equal(shapeOf(named).genre, 'tower_defence');
+});
+
+test('a scan with no place field still parses — the field is additive', () => {
+  // Older plugins send a payload without it; a missing name must degrade, never throw.
+  const shape = shapeOf(scan({ counts: { instances: 10, parts: 5, scripts: 0 } }));
+  assert.equal(shape.genre, 'unknown');
 });

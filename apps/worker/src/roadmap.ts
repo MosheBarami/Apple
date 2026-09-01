@@ -90,6 +90,11 @@ if okG and G then
 end
 local top = {}
 for _, c in ipairs(workspace:GetChildren()) do top[#top + 1] = c.Name end
+-- The place's own name. This is where a Roblox game most often SAYS what it is, and the scan
+-- did not capture it at all -- so a place called "Coin Simulator" was invisible to a detector
+-- whose strongest signals are all "the place calls itself X".
+local placeName = ""
+pcall(function() placeName = game.Name end)
 
 local scripts, budget, scriptsFull, srcCut = {}, 60000, false, false
 for _, svcName in ipairs(SCRIPT_ROOTS) do
@@ -123,7 +128,7 @@ end
 
 return HttpService:JSONEncode({
   counts = counts, services = services, classes = classes, named = named,
-  lighting = lighting, guis = guis, topLevel = top, scripts = scripts,
+  lighting = lighting, guis = guis, topLevel = top, scripts = scripts, place = placeName,
   truncated = {scan = scanned > SCAN_CAP, named = namedFull, scripts = scriptsFull, source = srcCut},
 })
 `;
@@ -152,6 +157,8 @@ export interface ProjectScan {
   lighting: string[];
   guis: string[];
   topLevel: string[];
+  /** The place's own name — where a game most often declares its genre. */
+  place: string;
   scripts: ScannedScript[];
   /** what the scan could NOT see, so a negative can be reported as "unknown" instead of "no" */
   truncated: { scan: boolean; named: boolean; scripts: boolean; source: boolean };
@@ -203,6 +210,7 @@ export function parseScan(raw: unknown): ProjectScan | null {
     lighting: strs(s.lighting),
     guis: strs(s.guis),
     topLevel: strs(s.topLevel),
+    place: typeof s.place === 'string' ? s.place : '',
     scripts: arr<ScannedScript>(s.scripts, (o) =>
       typeof o.path === 'string'
         ? { path: o.path, className: String(o.class ?? 'Script'), lines: typeof o.lines === 'number' ? o.lines : 0, source: String(o.src ?? '') }
@@ -302,9 +310,81 @@ interface ScanIndex {
   scan: ProjectScan;
 }
 
+/**
+ * Blank out Luau comments, preserving everything else.
+ *
+ * WHY THIS IS NOT OPTIONAL, and it took running the scanner against a real place to see it.
+ *
+ * `GENRE_SIGNALS` carries weight-3 rules described as "a name the genre wears openly" — a name
+ * it wears in its instance names and identifiers. They were matched against raw script text,
+ * comments included, and on Crystal Canyon (a shard-collecting simulator) two of them fired on
+ * ORDINARY ENGLISH IN PROSE:
+ *
+ *   racing   <- "this waits for the profile it publishes rather than RACING it"
+ *   roleplay <- "a walkspeed of 16 for the rest of the LIFE"
+ *
+ * Both scored 3, tied, and the alphabet made the place a racing game.
+ *
+ * A comment is the one part of a file that is deliberately NOT the program. `roblox-antipatterns
+ * .mjs` reached the same conclusion and says so: "a comment saying `-- never use wait()` must not
+ * fire the deprecated-API rule". Same discipline here.
+ *
+ * STRING CONTENTS ARE KEPT, deliberately and for the same reason that file does: a genre often
+ * announces itself inside a string — `Instance.new("BillboardGui").Text = "LAP 1"` — and the
+ * detectors are written to see it. Long strings are scanned so a `--` inside one is not read as
+ * a comment start.
+ */
+export function stripLuauComments(source: string): string {
+  const src = String(source ?? '');
+  const out: string[] = [];
+  const blank = (t: string) => t.replace(/[^\n]/g, ' ');
+  let i = 0;
+  while (i < src.length) {
+    if (src.startsWith('--', i)) {
+      const long = /^--(\[=*\[)/.exec(src.slice(i, i + 16));
+      if (long?.[1]) {
+        const close = `]${'='.repeat(long[1].length - 2)}]`;
+        const end = src.indexOf(close, i + long[0].length);
+        const stop = end === -1 ? src.length : end + close.length;
+        out.push(blank(src.slice(i, stop)));
+        i = stop;
+        continue;
+      }
+      const nl = src.indexOf('\n', i);
+      const stop = nl === -1 ? src.length : nl;
+      out.push(blank(src.slice(i, stop)));
+      i = stop;
+      continue;
+    }
+    const longStr = /^\[=*\[/.exec(src.slice(i, i + 16));
+    if (longStr) {
+      const close = `]${'='.repeat(longStr[0].length - 2)}]`;
+      const end = src.indexOf(close, i + longStr[0].length);
+      const stop = end === -1 ? src.length : end + close.length;
+      out.push(src.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    const q = src[i];
+    if (q === '"' || q === "'") {
+      let j = i + 1;
+      while (j < src.length && src[j] !== q && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
+      const stop = Math.min(j + 1, src.length);
+      out.push(src.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    out.push(src[i] ?? '');
+    i += 1;
+  }
+  return out.join('');
+}
+
 function buildIndex(scan: ProjectScan): ScanIndex {
-  const code = scan.scripts.map((s) => s.source).join('\n').toLowerCase();
+  const code = scan.scripts.map((s) => stripLuauComments(s.source)).join('\n').toLowerCase();
   const labels = [
+    // The place name first: it is the most deliberate statement of intent in the whole scan.
+    scan.place ?? '',
     ...scan.named.map((n) => n.name),
     ...scan.topLevel,
     ...scan.guis,
@@ -465,6 +545,28 @@ export function detectGenre(ix: ScanIndex, has: (f: FeatureId) => boolean): Genr
     };
   }
   const margin = top.score - (second?.score ?? 0);
+
+  //[[ A TIE IS NOT A VERDICT, and the sort order must not become the answer.
+  //
+  //   `ranked` breaks ties with `a.genre.localeCompare(b.genre)`, which is right for determinism
+  //   and catastrophic as a decision: on a real place this returned `racing` over `roleplay`
+  //   because both scored 3 and R-A sorts before R-O. `buildRoadmap` then produced `race_track`,
+  //   `race_vehicles` and `race_results` for a shard-collecting simulator.
+  //
+  //   The comment below already says a 6-4 win is "a coin toss dressed as a verdict". A 6-6 win
+  //   is a coin toss with no dressing at all, and `unknown` is a supported genre with its own
+  //   milestone path — so saying "I do not know, and here is what it was between" is both
+  //   available and honest. ]]
+  if (margin === 0 && second) {
+    return {
+      genre: 'unknown',
+      confidence: 0,
+      evidence: [`tied at ${top.score}: ${top.genre} and ${second.genre} are indistinguishable on the evidence`],
+      runnerUp: { genre: second.genre, score: second.score },
+      scores: ranked.map((r) => ({ genre: r.genre, score: r.score })),
+    };
+  }
+
   return {
     genre: top.genre,
     // Confidence is the margin over the winner's own score: a 6-4 win is a coin toss dressed as a
