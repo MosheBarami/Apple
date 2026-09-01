@@ -56,6 +56,36 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 39 | PR #1 carries honest evidence incl. rejections | **PROVEN** | body updated 2026-09-01 |
 | 40 | Independent critic agrees it is not prototype | **UNPROVEN** | 11 findings from the visual critic, **10 closed** (V10 objective slot, V7 shop duplication, plus V1–V6/V9/V11 earlier). **V8 is now materially addressed**: the world had been one 332×4×553 slab and now rises through three terraces to the wall foot, so the overlook reads as a basin rather than a tabletop — at the cost of an enclosure regression I caused and closed (F-40). **Gate 2 is NOT closed**: the wall was rebuilt from an oriented-facet vocabulary with proven machinery and an unproven picture (F-39). The gate stays UNPROVEN until a FRESH critic judges revised player-eye pixels, and §5 forbids arguing it upward from metrics  **Attempted again this session and blocked on tooling, not on judgement.** The built world in Studio was verified current (84 wedges / 14 corner wedges in `Cliffs`, `Apron` present with its 4 ramps) and the canonical `Viewpoints` cameras resolve correctly against live geometry via `execute_luau` — but `screen_capture` times out, and a capture attempt takes the whole MCP transport down with it — `execute_luau`, which had been working, then reports no connected instance too, and recovers only until the next capture. Five attempts, same sequence each time. So the fault is the capture transport rather than the capture parameters. The one capture path that does work is the plugin's own rasteriser, and the reason it cannot stand in is not its resolution — `Render.renderView` could be driven at 320x240 with the canonical player-eye CFrames. It is that the rasteriser renders flat `SmoothPlastic` with no lighting, materials, shadows or atmosphere: it can answer whether the composition reads, and it structurally cannot answer *"is this a finished game or a prototype"*, which is the question this gate asks. Offering a flat-shaded render as "revised player-eye pixels" would be the same move as arguing the score up from metrics. The gate stays UNPROVEN; the blocker is the Studio `screen_capture` transport  **Attempted again 2026-09-01, and the diagnosis is now the result of an experiment rather than an inference.** All five earlier attempts passed camera arguments, so "capture is broken" and "the camera-set inside capture is broken" predicted the same five failures — and only the second would have left Gate 40 reachable today. The discriminator was run: the canonical `overlook` camera was placed through `execute_luau` and verified by reading it back, then `screen_capture` was called with NO camera arguments at all. It timed out identically and took the transport down identically. **The camera path is exonerated and the capture transport is the fault.** The in-engine escape routes were then checked and there are none: `ThumbnailGenerator` is absent, and `CaptureService:CaptureScreenshot`'s callback never fired (8 s, Edit) — which `playtest-card.tsx:5-7` already recorded as verified, so this session reproduced a known result from the other side of the API rather than finding a new one. The only remaining step is operational: restart Studio or its MCP plugin. It was not taken this session because the same paired instance was needed, and working, for the §9 golden creation test · `evidence/2026-09-01-capture-transport-discriminated.md` |
 
+## Plugin coverage, end of 2026-09-01
+
+`apps/plugin` began the day with **no `package.json`**, so `pnpm -r test` could not see
+it at all. It ends with:
+
+| | |
+|---|---|
+| Luau specs | **112**, across ops · paths · rasteriser · render · serializer · editscript |
+| mutations | **27**, all caught |
+| in canonical verification | yes — `pnpm -r test` and `pnpm -r typecheck` both reach it |
+
+The three that were hardest to reach, and why they matter:
+
+* **`Render.renderView`** — every frame the playtest viewport draws comes out of it, and
+  ~340 of Render.luau's 403 lines were not merely untested but UNCALLABLE, because the
+  harness had no camera rotation. It has a real CFrame basis now, and the first four
+  specs test THAT rather than the plugin: a flipped basis renders the world behind the
+  camera and every count assertion still passes.
+* **`Serializer.restore`** — its own header calls it "the highest-stakes operation in
+  the product". It destroys the live tree before rebuilding and had no test of any kind.
+* **`edit_script`** — the only op that rewrites code a user already has. Both its
+  Lua-pattern traps are pinned: `find` compiled as a pattern in the `all` branch, and
+  `%` in the replacement, where `%1` is a capture reference.
+
+**The mutation check itself was fixed first**, because everything above depends on it: it
+returned a boolean, and a boolean cannot separate an assertion that failed from a chunk
+that never compiled — so a mutation producing a syntax error reported "caught" while
+exercising nothing. All 62 existing mutations (27 plugin + 35 benchmark) still pass under
+the stricter rule, so none of them was a compile error in disguise.
+
 ## Persistence and reconnect (§23)
 
 **PROVEN against the deployed product**, 2026-09-01. Not a fixture: the live Worker,
