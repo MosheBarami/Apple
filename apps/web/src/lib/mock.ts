@@ -456,10 +456,81 @@ export function mockBuildPlanDetail() {
   };
 }
 
+/**
+ * A script edit, as `edit_script` reports it. Feeds the activity timeline's diff
+ * evidence card — the counts on that card are derived from these lines, never
+ * written by hand.
+ */
+export function mockDiffDetail() {
+  return {
+    v: 1,
+    blocks: [
+      {
+        type: 'code_diff',
+        path: 'ServerScriptService/LobbyLighting',
+        language: 'luau',
+        summary: 'Warmed the key light and dropped the ambient floor bounce.',
+        hunks: [
+          {
+            header: '@@ -12,7 +12,9 @@',
+            lines: [
+              { kind: 'ctx', text: 'local Lighting = game:GetService("Lighting")', n: 12 },
+              { kind: 'del', text: 'Lighting.Ambient = Color3.fromRGB(90, 90, 90)', n: 13 },
+              { kind: 'add', text: 'Lighting.Ambient = Color3.fromRGB(58, 52, 44)', n: 13 },
+              { kind: 'add', text: 'Lighting.OutdoorAmbient = Color3.fromRGB(70, 62, 52)', n: 14 },
+              { kind: 'ctx', text: 'Lighting.Brightness = 2', n: 15 },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * A playtest, as `run_and_check` reports it. Feeds the test-result evidence card.
+ * One case fails on purpose: the failing path is the one worth being able to see.
+ */
+export function mockPlaytestDetail() {
+  return {
+    v: 1,
+    blocks: [
+      {
+        type: 'test_report',
+        title: 'Playtest · 8s server simulation',
+        passed: 4,
+        failed: 1,
+        skipped: 1,
+        durationMs: 8120,
+        cases: [
+          { name: 'Place loads with no errors', status: 'pass', durationMs: 1900 },
+          { name: 'Spawn point is inside the lobby', status: 'pass', durationMs: 240 },
+          { name: 'Portal teleport fires', status: 'pass', durationMs: 1100 },
+          { name: 'Floor has no gaps underfoot', status: 'pass', durationMs: 380 },
+          {
+            name: 'Seating is reachable from spawn',
+            status: 'fail',
+            durationMs: 2400,
+            message: 'Pathfinding could not reach the seating cluster: it has not been laid out yet.',
+          },
+          { name: 'Ambient audio loops', status: 'skip' },
+        ],
+      },
+    ],
+  };
+}
+
 /** The live (streaming) assistant turn, with a render + critique attached. */
 export function mockLiveTools(): MockToolDetail[] {
   return [
     { tool: 'get_project_tree', summary: 'Read 410 instances across 6 services', ok: true, durationMs: 580 },
+    {
+      tool: 'edit_script',
+      summary: 'Rewrote the lighting setup',
+      ok: true,
+      durationMs: 420,
+      detail: mockDiffDetail(),
+    },
     {
       tool: 'render_view',
       summary: 'Rendered 5 views of game.Workspace.Lobby',
@@ -475,6 +546,13 @@ export function mockLiveTools(): MockToolDetail[] {
       detail: mockInspectDetail(),
     },
     { tool: 'set_properties', summary: 'Floor → Concrete, 3 tones of grey', ok: true, durationMs: 260 },
+    {
+      tool: 'run_and_check',
+      summary: '4 passed, 1 failed',
+      ok: true,
+      durationMs: 8120,
+      detail: mockPlaytestDetail(),
+    },
     {
       tool: 'check_composition',
       summary: 'Published the remaining work',

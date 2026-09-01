@@ -85,6 +85,7 @@ export function WorkspacePage() {
     historyState,
     studio,
     agentStatus,
+    phaseMarks,
     running,
     checkpoints,
     checkpointsState,
@@ -245,7 +246,15 @@ export function WorkspacePage() {
           )}
 
           {messages.map((item) => (
-            <Turn key={item.id} item={item} status={agentStatus} isLast={item.id === lastAssistantId} />
+            <Turn
+              key={item.id}
+              item={item}
+              status={agentStatus}
+              // `agent_status` carries no msgId, so the phase marks can only be
+              // attributed to the run in flight — the last assistant turn.
+              phaseMarks={item.id === lastAssistantId ? phaseMarks : undefined}
+              isLast={item.id === lastAssistantId}
+            />
           ))}
 
           {/* The connect prompt sits at the foot of the conversation — where
