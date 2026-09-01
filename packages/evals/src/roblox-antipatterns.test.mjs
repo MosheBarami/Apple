@@ -10,6 +10,7 @@
 // closure, a for loop) and not just with the token it looks for.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   RULES,
   RULE_IDS,
@@ -803,4 +804,59 @@ test('...and so does having nothing yield in the gap', () => {
   // This is the narrowing that keeps the rule off correct code that simply orders its lines the
   // other way: without a yield there is no window for a client to call into.
   assert.ok(!fired(analyzeLuau(REMOTE_NO_YIELD), 'remote-parented-before-handler'));
+});
+
+// ------------------------------------------------- delegated pcall (F-52)
+test('a helper that pcalls the function it was handed counts as protection', () => {
+  // Found by running these rules over this repository's own server code.
+  // DataService.luau wraps every DataStore call in `withRetry(label, function() ... end)`
+  // and withRetry is a retry loop around `pcall(fn)`. It scored three ERROR findings for
+  // being MORE careful than the rule asks — and because this rule grades model output,
+  // it was marking down the better answer. `datastore-without-retry`, in this same file,
+  // asks for exactly the helper that `datastore-without-pcall` was penalising.
+  const delegated = [
+    'local function withRetry(label, fn)',
+    '\tfor attempt = 1, 3 do',
+    '\t\tlocal ok, result = pcall(fn)',
+    '\t\tif ok then return true, result end',
+    '\tend',
+    '\treturn false, nil',
+    'end',
+    'local store = DataStoreService:GetDataStore("Profiles")',
+    'withRetry("save", function()',
+    '\treturn store:UpdateAsync(key, transform)',
+    'end)',
+  ].join('\n');
+  assert.ok(!fired(analyzeLuau(delegated, { context: 'server' }), 'datastore-without-pcall'));
+});
+
+test('a helper that does NOT pcall its parameter is still unprotected', () => {
+  // The permissive direction lets real bugs through, so the widening is narrow: the
+  // helper must pcall one of its OWN parameters by name. Merely taking a callback,
+  // or merely containing the word pcall, is not protection.
+  const passthrough = [
+    'local function run(label, fn) return fn() end',
+    'local store = DataStoreService:GetDataStore("Profiles")',
+    'run("save", function()',
+    '\treturn store:UpdateAsync(key, transform)',
+    'end)',
+  ].join('\n');
+  assert.ok(fired(analyzeLuau(passthrough, { context: 'server' }), 'datastore-without-pcall'));
+
+  // And a bare call is untouched by any of this.
+  const bare = 'local store = DataStoreService:GetDataStore("P")\nstore:UpdateAsync(key, transform)';
+  assert.ok(fired(analyzeLuau(bare, { context: 'server' }), 'datastore-without-pcall'));
+});
+
+test("this repository's own DataService passes every rule in this file", () => {
+  // The check that produced the fix above, kept as a regression. If DataService grows
+  // an unprotected DataStore call, or a rule regresses into flagging it again, this is
+  // where it shows up.
+  const src = readFileSync(
+    new URL('../../../apps/benchmark/crystal-canyon/src/server/DataService.luau', import.meta.url),
+    'utf8',
+  );
+  const res = analyzeLuau(src, { path: 'DataService.luau', context: 'server' });
+  const errors = res.findings.filter((f) => f.severity === 'error');
+  assert.deepEqual(errors.map((f) => `${f.rule}:${f.line}`), []);
 });

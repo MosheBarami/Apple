@@ -499,6 +499,41 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-52 · A rule that graded the better answer worse
+
+Running this repository's own nineteen anti-pattern rules over its own server code produced three
+ERROR findings in `apps/benchmark/crystal-canyon/src/server/DataService.luau`:
+`datastore-without-pcall`, at every `UpdateAsync` call site.
+
+All three are wrapped in `withRetry(label, function() ... end)`, and `withRetry` is:
+
+```luau
+for attempt = 1, Config.Store.MaxRetries do
+	local ok, result = pcall(fn)
+	if ok then return true, result end
+	...exponential backoff, permanent-error short-circuit...
+end
+```
+
+`pcallRanges` only recognised the literal `pcall(function() ... end)` shape, so a helper handed a
+function and pcalling it was invisible.
+
+The reason this is worse than noise: **the rule grades model output.** A model that factors
+retry-and-pcall into a helper scored worse than one that inlines a bare `pcall` — and
+`datastore-without-retry`, four rules further down the same file, asks for exactly the helper that
+`datastore-without-pcall` was penalising. Two rules in one file wanted opposite things, and the
+one that fires at ERROR severity was the one asking for the worse code.
+
+Fixed narrowly, because the permissive direction lets real bugs through. A helper counts as
+protection only if it pcalls one of its **own parameters by name**. A helper that merely takes a
+callback (`local function run(label, fn) return fn() end`) still fires, and so does a bare call.
+Both are tests.
+
+This is the third time this session that pointing a checker at our own code has paid: the domain
+tagger's `wait()`-inside-a-string, the era claim about our own build coming back clean, and this.
+The rules had run over model output and over corpus sources, and never over the repository that
+ships them.
+
 ### F-51 · A lockfile disqualified a source, and the register already knew it shouldn't
 
 Fetching 15 new sources ran the security gate over material it had never seen. Three checkouts

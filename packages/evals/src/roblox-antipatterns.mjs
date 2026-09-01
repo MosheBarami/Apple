@@ -120,6 +120,57 @@ function pcallRanges(src) {
   const re = /\b(?:x?pcall)\s*\(\s*function\b/g;
   let m;
   while ((m = re.exec(src))) ranges.push([m.index, blockEnd(src, m.index + m[0].length - 'function'.length)]);
+  ranges.push(...delegatedPcallRanges(src));
+  return ranges;
+}
+
+/**
+ * Ranges covered by a helper that pcalls a function it was HANDED.
+ *
+ *[[ Found by running this file's own rules over this repository's server code.
+ *   `DataService.luau` wraps every DataStore call in `withRetry(label, function() ... end)`,
+ *   and `withRetry` is `for attempt = 1, MaxRetries do local ok, result = pcall(fn) ...`
+ *   with exponential backoff and a permanent-error short-circuit. Three ERROR findings
+ *   on code that is MORE careful than the rule asks for.
+ *
+ *   That is worse than noise. This rule grades model output, so it was marking down the
+ *   better answer: a model that factors retry-and-pcall into a helper — which is what
+ *   `datastore-without-retry` in this same file asks for — scored worse than one that
+ *   inlines a bare pcall. Two rules here wanted opposite things.
+ *
+ *   Deliberately narrow, because the permissive direction lets real bugs through. A
+ *   helper qualifies only if it pcalls one of its OWN PARAMETERS by name; a helper that
+ *   merely contains the word pcall somewhere does not. ]]
+ */
+function delegatedPcallRanges(src) {
+  const helpers = new Set();
+  const decl = /\b(?:local\s+)?function\s+([\w.:]+)\s*\(([^)]*)\)/g;
+  let d;
+  while ((d = decl.exec(src))) {
+    const params = d[2].split(',').map((x) => x.trim().split(':')[0].trim()).filter(Boolean);
+    if (params.length === 0) continue;
+    const body = src.slice(d.index, blockEnd(src, d.index));
+    for (const param of params) {
+      if (new RegExp(`\\b(?:x?pcall)\\s*\\(\\s*${param}\\s*[,)]`).test(body)) {
+        helpers.add(d[1].split(/[.:]/).pop());
+        break;
+      }
+    }
+  }
+  if (helpers.size === 0) return [];
+
+  const ranges = [];
+  const call = new RegExp(`\\b(?:${[...helpers].join('|')})\\s*\\(`, 'g');
+  let c;
+  while ((c = call.exec(src))) {
+    // The callback may not be the first argument — `withRetry(label, function() ... end)`.
+    // Look for a `function` keyword shortly after the call opens.
+    const window = src.slice(c.index, c.index + 400);
+    const fn = /\bfunction\s*\(/.exec(window);
+    if (!fn) continue;
+    const at = c.index + fn.index;
+    ranges.push([at, blockEnd(src, at)]);
+  }
   return ranges;
 }
 
