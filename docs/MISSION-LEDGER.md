@@ -55,10 +55,24 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 ## Tally
 
-PROVEN 26 · PARTIAL 13 · UNPROVEN 0 · BLOCKED 1 · REJECTED 0
+PROVEN 28 · PARTIAL 11 · UNPROVEN 0 · BLOCKED 1 · REJECTED 0
 
-Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
+Only **one** gate (14) is externally blocked, on AI Gateway credit. Everything else marked
 PARTIAL is reachable without owner action.
+
+**Counted from the table above rather than carried forward.** An earlier version of this line
+said 26/13 and stayed at 26/13 while gates moved underneath it, which is the same class of
+error as `audit()` reporting the size of the rule library as though it were coverage. The two
+gates that moved are 6 (all applicable motion categories measured) and 12 (every review finding
+closed or explicitly rejected, with 78 Luau tests and 20 mutations behind it).
+
+### One action waiting on the owner, and it is not a blocker
+
+The worker's source changed substantially this session — `persist.ts`, `stop-signal.ts`,
+`single-flight.ts` and `session.ts`, including a Durable Object concurrency change. It
+typechecks and its tests pass, and **it has not been deployed.** Deploying is outward-facing
+and touches the live service, so it is left for the owner rather than done unattended. Nothing
+in the repository depends on it having happened.
 
 ## Rejected experiments (kept so they are not retried)
 
