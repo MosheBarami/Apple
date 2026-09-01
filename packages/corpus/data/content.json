@@ -497,15 +497,7 @@
       "similarity": 0,
       "libraries": [],
       "engineEra": "modern",
-      "deprecatedPatterns": [
-        {
-          "pattern": "bare-spawn-delay",
-          "count": 3,
-          "files": [
-            "test/tests.luau"
-          ]
-        }
-      ],
+      "deprecatedPatterns": [],
       "qualityScore": 0.9286,
       "qualityComponents": {
         "licensed": true,

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { tagDomain, stripLuauComments, ERAS, ERA_THRESHOLDS, ERA_MIN_EVIDENCE } from './domain.mjs';
+import { tagDomain, stripLuauComments, blankStringContents, ERAS, ERA_THRESHOLDS, ERA_MIN_EVIDENCE } from './domain.mjs';
 // The eval harness's deprecation vocabulary. Imported across the workspace on
 // purpose: see the consistency test at the bottom of this file.
 import { RULES as ANTIPATTERNS, stripComments } from '../../../evals/src/roblox-antipatterns.mjs';
@@ -259,4 +259,41 @@ test('a repo name cannot invent a library the vocabulary does not know', () => {
   // Checked against the SAME marker list, so a checkout called `Owner__Whatever` does
   // not mint a library tag nothing else in the pipeline can recognise.
   assert.deepEqual(tagDomain([f('a.luau', 'local x = 1')], { repo: 'Owner__NotALibrary' }).libraries, []);
+});
+
+test('call syntax inside a string is prose; a class name inside a string is usage', () => {
+  // Found by pointing the tagger at this repository's own Luau. Ops.luau contains a
+  // refusal message — "no task.wait, wait() or :Wait()" — explaining to a user which
+  // yields are allowed. It was the single deprecated marker across 37 of our files,
+  // and it was not one. Meanwhile Instance.new("BodyVelocity") is real deprecated
+  // usage whose entire evidence lives inside a string, so strings cannot simply be
+  // discarded. The split is by what the marker IS.
+  const prose = tagDomain([f('a.luau', [
+    'local m = "no task.wait, wait() or :Wait()"',
+    'task.wait(1) task.spawn(f) task.defer(g) task.delay(1,h) task.cancel(x)',
+  ].join('\n'))]);
+  assert.deepEqual(prose.deprecatedPatterns, [], 'a call name quoted in prose is not a call');
+  assert.equal(prose.engineEra, 'modern');
+
+  const classInString = tagDomain([f('a.luau', 'local x = Instance.new("BodyVelocity")\nlocal y = 1')]);
+  assert.deepEqual(classInString.deprecatedPatterns.map((p) => p.pattern), ['body-movers']);
+
+  // And a real call is still a real call.
+  assert.equal(tagDomain([f('a.luau', 'wait(1) wait(2) wait(3) wait(4) wait(5)')]).evidence.legacy, 5);
+});
+
+test('blanking string contents preserves length, quotes and line structure', () => {
+  const src = 'local a = "hello"\nlocal b = 1';
+  const out = blankStringContents(src);
+  assert.equal(out.length, src.length, 'offsets must not shift');
+  assert.equal(out.split('\n').length, src.split('\n').length);
+  assert.ok(out.includes('"     "'), `quotes kept, contents blanked: ${JSON.stringify(out)}`);
+  assert.ok(out.includes('local b = 1'), 'code outside strings is untouched');
+  // An escaped quote must not end the string early — otherwise the blanking stops
+  // mid-literal and the rest of the string is scanned as code.
+  assert.equal(
+    tagDomain([f('a.luau', 'local s = "a\\"wait(1) b" wait(2) wait(3) wait(4) wait(5) wait(6)')]).evidence.legacy,
+    5,
+    'the five calls after the literal, and not the one inside it',
+  );
 });

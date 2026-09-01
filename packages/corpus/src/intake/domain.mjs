@@ -125,11 +125,26 @@ const MODERN_MARKERS = Object.freeze([
 const DEFINES_CONNECT = /\bfunction\s+[\w.]+[.:]connect\s*\(|\bconnect\s*=\s*function\b/;
 
 // Every entry here is also flagged by `deprecated-api` in the eval harness.
+//[[ TWO KINDS OF MARKER, AND THEY NEED DIFFERENT VIEWS OF THE SOURCE.
+//
+//   `Instance.new("BodyVelocity")` is real deprecated usage and the evidence for it
+//   lives entirely INSIDE a string literal, so string contents have to survive. But
+//   `wait(` inside a string is prose, not a call — and pointing the tagger at this
+//   repository's own code found exactly that: `apps/plugin/src/Ops.luau` contains
+//
+//       "refused: this code contains a loop with no yield in it (no task.wait, wait() or ..."
+//
+//   a refusal message that explains to a user which yields are allowed. It was the
+//   single deprecated marker in 37 files of our own Luau, and it was not one.
+//
+//   So call-syntax markers are counted with string contents blanked, and class-name
+//   markers with them kept. The split is by what the marker IS, not by a heuristic
+//   about how the string looks. ]]
 const LEGACY_MARKERS = Object.freeze([
-  ['bare-wait', /(?<![.:\w])wait\s*\(/g],
-  ['bare-spawn-delay', /(?<![.:\w])(?:spawn|delay)\s*\(/g],
-  ['lowercase-connect', /:connect\s*\(/g],
-  ['body-movers', /\bBody(?:Velocity|Position|Gyro|Thrust|Angular\w*)\b/g],
+  ['bare-wait', /(?<![.:\w])wait\s*\(/g, 'no-strings'],
+  ['bare-spawn-delay', /(?<![.:\w])(?:spawn|delay)\s*\(/g, 'no-strings'],
+  ['lowercase-connect', /:connect\s*\(/g, 'no-strings'],
+  ['body-movers', /\bBody(?:Velocity|Position|Gyro|Thrust|Angular\w*)\b/g, 'with-strings'],
 ]);
 
 // Detected by import shape, not by a name appearing in prose: a README that says
@@ -149,15 +164,25 @@ const LIBRARY_MARKERS = Object.freeze([
   ['testez', /require\s*\([^)]*\bTestEZ\b/i],
 ]);
 
+/**
+ * Blank the CONTENTS of string literals, keeping the quotes and the line structure.
+ * Used for markers that describe call syntax, which a string can only ever quote.
+ */
+export function blankStringContents(source) {
+  return source.replace(/(['"])((?:\\.|(?!\1)[^\\\n])*)(\1?)/g, (m, q, body, close) =>
+    q + ' '.repeat(body.length) + close);
+}
+
 /** Total matches for a marker set, plus which markers fired. */
-function tally(source, markers) {
+function tally(source, markers, sourceNoStrings) {
   let total = 0;
   const hit = [];
-  for (const [name, re] of markers) {
+  for (const [name, re, view] of markers) {
+    const hay = view === 'no-strings' ? (sourceNoStrings ?? source) : source;
     // The regexes are module-level and `g`-flagged; matchAll does not mutate
     // lastIndex the way exec in a loop would, but reusing a stateful regex across
     // calls is the classic way this kind of scanner starts skipping files.
-    const n = [...source.matchAll(new RegExp(re.source, re.flags))].length;
+    const n = [...hay.matchAll(new RegExp(re.source, re.flags))].length;
     if (n > 0) {
       total += n;
       hit.push({ marker: name, count: n });
@@ -204,8 +229,9 @@ export function tagDomain(files = [], { repo = '' } = {}) {
     const isLuau = LUAU_FILE.test(String(file?.path ?? ''));
     const code = isLuau ? stripLuauComments(source) : '';
 
-    const m = tally(code, MODERN_MARKERS);
-    const l = tally(code, LEGACY_MARKERS);
+    const codeNoStrings = isLuau ? blankStringContents(code) : '';
+    const m = tally(code, MODERN_MARKERS, codeNoStrings);
+    const l = tally(code, LEGACY_MARKERS, codeNoStrings);
     modern += m.total;
     for (const { marker, count } of l.hit) {
       if (marker === 'lowercase-connect' && definesConnect) {

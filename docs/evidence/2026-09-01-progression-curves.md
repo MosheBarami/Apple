@@ -1,4 +1,4 @@
-# The corpus answers one of the three questions it was built for
+# The corpus answers two of the three questions it was built for
 
 `docs/SOURCE-INTELLIGENCE.md` §8 says the corpus is judged by one thing — *"does the
 simulator/tycoon build get better?"* — and names three questions it must answer
@@ -88,3 +88,49 @@ a cosmetic priced to land inside the first session. Changing an economy that was
 against measurements, on the strength of one comparison, would be exactly the move
 this repository keeps recording as a failure. The finding is retrievable; whether to
 act on it is a design decision with an owner.
+
+
+---
+
+## §8's third question, answered by the same machinery
+
+> Which deprecated UI patterns did this phase's own build already use?
+
+The domain tagger points at any Luau, including ours. Across **37 files** —
+`crystal-canyon`'s client, server, shared and world code, plus the plugin:
+
+```
+era: modern | modern markers: 181 | legacy markers: 0 | deprecated patterns: none
+```
+
+**None.** That is a real answer rather than an absence of checking, and it took one
+correction to earn.
+
+The first run reported exactly one finding: a bare `wait()` in `apps/plugin/src/Ops.luau`.
+It is inside a string literal —
+
+```luau
+"refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+```
+
+— a refusal message explaining to a user which yields are allowed. Not a call.
+
+The stripper deliberately preserves string contents, because `Instance.new("BodyVelocity")`
+is real deprecated usage whose entire evidence lives inside a string. So strings cannot
+simply be discarded, and the fix is not a heuristic about how a string looks: markers
+describing **call syntax** are counted with string contents blanked, markers naming a
+**class** with them kept. The split is by what the marker is.
+
+That is the fourth false-positive class this tagger has produced and the fourth found by
+opening the file it pointed at rather than trusting the count — after doc comments,
+TypeScript declarations, and a library's own `Signal:connect`. Every one of them inflated
+a claim about someone else's code, and the last one inflated a claim about ours.
+
+## The one question still open
+
+> What does a shop panel look like built on `StyleSheet`/`StyleRule` rather than
+> hand-set properties on every instance?
+
+Not answered. No checked-out source uses `StyleSheet`/`StyleRule` — it is recent engine
+API and the corpus skews to libraries older than it. This is a discovery gap with a known
+shape rather than an unknown, which is the useful kind to be left with.
