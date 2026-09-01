@@ -43,10 +43,21 @@ async function loadRules() {
   }
 }
 
-/** Which rules name this checkout in their provenance. The link that makes §7's chain real. */
+/** Which rules name this checkout in their provenance. The link that makes §7's chain real.
+ *
+ *  Checkout directories are `owner__repo` (unique per source — two owners share a repo name far
+ *  more often than is comfortable), while a rule cites `Owner/repo`. Match on the repo half and
+ *  confirm the owner separately, so `LolplePlays__framer` and
+ *  `Starstruck-Studios-Developers__framer` cannot claim each other's rules. */
 function rulesFrom(rules, name) {
-  const needle = name.toLowerCase();
-  return rules.filter((r) => (r.provenance?.source ?? '').toLowerCase().includes(needle));
+  const [owner, repo] = name.includes('__') ? name.split('__') : [null, name];
+  const r1 = repo.toLowerCase();
+  const o1 = owner?.toLowerCase() ?? null;
+  return rules.filter((r) => {
+    const src = (r.provenance?.source ?? '').toLowerCase();
+    if (!src.includes(r1)) return false;
+    return o1 == null || src.includes(`${o1}/${r1}`) || !src.includes('/');
+  });
 }
 
 const pct = (n, d) => (d === 0 ? '0' : ((n / d) * 100).toFixed(0));

@@ -24,7 +24,7 @@
 // manifest without touching the network.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, renameSync, statSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +72,39 @@ const STRATEGY = {
  */
 const FETCHABLE_CLASSES = new Set(['COMMERCIAL_REUSABLE', 'ATTRIBUTION_REQUIRED']);
 
+/** `owner__repo` — unique per source, and still readable in an `ls`. */
+function dirNameFor(url) {
+  const parts = String(url).replace(/\.git$/, '').split('/').filter(Boolean);
+  const repo = parts.pop();
+  const owner = parts.pop();
+  return owner ? `${owner}__${repo}` : repo;
+}
+
+/**
+ * Rename any checkout still sitting under a bare repo name to its owner-scoped name.
+ *
+ * Runs before anything else reads `raw/`, so one pass migrates the whole corpus and the old
+ * layout never has to be supported. A directory whose remote cannot be read is left alone: a
+ * name this tool does not understand is not a name it should rewrite.
+ */
+function migrateBareNames() {
+  const moved = [];
+  for (const name of readdirSync(RAW)) {
+    const dir = path.join(RAW, name);
+    if (!existsSync(path.join(dir, '.git')) || name.includes('__')) continue;
+    const url = gitQuiet(['-C', dir, 'config', '--get', 'remote.origin.url']);
+    if (!url) continue;
+    const want = dirNameFor(url);
+    if (want === name) continue;
+    const target = path.join(RAW, want);
+    if (existsSync(target)) continue; // never clobber; that is the bug being fixed
+    renameSync(dir, target);
+    moved.push(`${name} -> ${want}`);
+  }
+  if (moved.length > 0) console.log(`[fetch] migrated ${moved.length} checkout(s) to owner-scoped names`);
+  return moved;
+}
+
 function loadCorpus() {
   if (!existsSync(SOURCES_JSON)) return [];
   const parsed = JSON.parse(readFileSync(SOURCES_JSON, 'utf8'));
@@ -81,7 +114,19 @@ function loadCorpus() {
     .filter((r) => FETCHABLE_CLASSES.has(r.licence?.class))
     .map((r) => ({
       id: r.id,
-      name: r.url.split('/').pop(),
+      //[[ OWNER-SCOPED, and the bug that forced it is worth keeping in view.
+      //
+      //   The directory used to be `url.split('/').pop()` — the bare repo name. Fetching both
+      //   `LolplePlays/framer` and `Starstruck-Studios-Developers/framer` then wrote them to the
+      //   SAME directory, so the second clone "updated" the first out of existence and the corpus
+      //   silently held one fork where it believed it held two. Provenance survived only because
+      //   `recordAll` reads the git remote rather than trusting the directory name.
+      //
+      //   That is not a one-repository accident. `framer`, `signal`, `promise`, `janitor` and
+      //   `maid` all exist several times over in this ecosystem, and a fork ALWAYS shares its
+      //   upstream's name — which makes the collision most likely in exactly the case §J cares
+      //   about most, comparing a fork against what it forked. ]]
+      name: dirNameFor(r.url),
       url: r.url,
       spdx: r.licence?.spdx ?? null,
       licenceClass: r.licence.class,
@@ -202,6 +247,7 @@ async function main() {
   const wanted = [...args].filter((a) => !a.startsWith('--'));
 
   await mkdir(RAW, { recursive: true });
+  migrateBareNames();
   const corpus = loadCorpus();
   const corpusById = new Map(corpus.map((c) => [c.url.replace(/\.git$/, ''), c]));
 

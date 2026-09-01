@@ -208,16 +208,62 @@ function jaccardEstimated(a, b) {
  * ±sqrt(J(1-J)/k) standard error. A mixed pair is promoted to signatures, because a signature
  * cannot be un-sketched back into a set.
  */
+/**
+ * REFUSES ANYTHING THAT IS NOT TEXT OR A SIGNATURE, and the refusal is the point.
+ *
+ * This function used to accept whatever it was handed. A ContentRecord — the type the rest of
+ * this module is built around, and the obvious thing a caller reaches for — is an object, so
+ * `String(record)` gave `"[object Object]"`, which shingles to ONE token, which is identical for
+ * every record. The consequences were as bad as they sound:
+ *
+ *     similarity(recordA, recordB) === 1     // for ANY two records
+ *     isDivergent(anything, anything) === false
+ *
+ * Two records sharing not one file scored a perfect 1.0 and were reported as the same idea
+ * re-badged. §2 exists to stop one idea being counted twice; this silently collapsed EVERY idea
+ * into one. It never fired in production only because nothing in the repository called it — the
+ * first caller that did was the runner written to close that very gap, and it nearly published
+ * the wrong answer about two real forks.
+ *
+ * So the contract is now enforced rather than documented. A record has `recordSimilarity`, which
+ * picks the right basis and REPORTS which one it used; text and signatures come here.
+ */
+function assertComparable(value, which) {
+  if (typeof value === 'string') return;
+  if (isSignature(value)) return;
+  const hint =
+    value && typeof value === 'object' && ('fileHashes' in value || 'contentHash' in value)
+      ? ' — this looks like a ContentRecord; use recordSimilarity(), which reports its basis'
+      : '';
+  throw new TypeError(`dedupe: similarity() ${which} must be text or a signature, got ${typeof value}${hint}`);
+}
+
 export function similarity(a, b, opts = {}) {
+  assertComparable(a, 'first argument');
+  assertComparable(b, 'second argument');
   const aSig = isSignature(a);
   const bSig = isSignature(b);
   if (!aSig && !bSig) return jaccardExact(shingles(a, opts.width ?? SHINGLE_WIDTH), shingles(b, opts.width ?? SHINGLE_WIDTH));
   return jaccardEstimated(aSig ? a : signature(a, { k: b.k, width: b.width }), bSig ? b : signature(b, { k: a.k, width: a.width }));
 }
 
-/** True when the pair is a genuinely different example rather than the same one re-badged. */
+/** True when the pair is a genuinely different example rather than the same one re-badged.
+ *  Same contract as `similarity`: text or signatures. For records, use `recordDivergent`. */
 export function isDivergent(a, b, threshold = DIVERGENCE_THRESHOLD, opts = {}) {
   return similarity(a, b, opts) < threshold;
+}
+
+/**
+ * The record-shaped counterpart, which is what a caller holding ContentRecords actually wants.
+ *
+ * Returns `null` when there is no comparable evidence rather than guessing — two records with
+ * neither text nor file hashes are not "the same", they are unknown, and the difference matters
+ * when the answer decides whether an idea is counted once or twice.
+ */
+export function recordDivergent(a, b, threshold = DIVERGENCE_THRESHOLD) {
+  const { value, basis } = recordSimilarity(a, b);
+  if (value === null) return { divergent: null, similarity: null, basis };
+  return { divergent: value < threshold, similarity: value, basis };
 }
 
 // ------------------------------------------------------------------ clustering a fork family

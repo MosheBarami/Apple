@@ -81,7 +81,7 @@ function walk(dir, base = dir, acc = []) {
  * rather than a lookalike.
  */
 const ACCEPTED = {
-  'creator-docs': {
+  'Roblox__creator-docs': {
     sha: '529a24ff2aa9896dad50fc12268717210ba3127d',
     paths: {
       'content/en-us/production/creator-store.md':

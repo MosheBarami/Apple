@@ -30,6 +30,7 @@ import {
   signature,
   similarity,
   tokenise,
+  recordDivergent,
 } from './dedupe.mjs';
 
 // ---------------------------------------------------------------- fixtures
@@ -413,4 +414,52 @@ test('records with neither text nor file hashes are reported as incomparable, no
   const groups = cluster([{ contentHash: 'a' }, { contentHash: 'b' }]);
   assert.equal(groups.length, 2, 'incomparable records must stay separate rather than being assumed identical');
   assert.equal(groups[0].basis, 'none');
+});
+
+
+//[[ THE SILENT-WRONG-ANSWER BUG, kept as tests.
+//
+//   `similarity` used to accept anything. A ContentRecord is an object, so `String(record)` gave
+//   "[object Object]", which shingles to ONE token, identical for every record. Two records
+//   sharing not a single file scored a perfect 1.0, and `isDivergent` therefore answered `false`
+//   for every pair of records ever passed to it — reporting every distinct idea as the same idea
+//   re-badged, which is the precise inversion of what §2 exists to prevent.
+//
+//   It never fired in production because nothing called it. The first caller that did was the
+//   runner written to close that gap, and it nearly published the wrong answer about two real
+//   forks (Sleitnick/RbxCameraShaker vs ddust1n/CameraShaker). ]]
+
+test('similarity REFUSES a ContentRecord rather than stringifying it', () => {
+  const a = { contentHash: 'aaa', fileHashes: { 'x.luau': 'h1' } };
+  const b = { contentHash: 'bbb', fileHashes: { 'q.luau': 'zzz' } };
+  assert.throws(() => similarity(a, b), /must be text or a signature/);
+  assert.throws(() => similarity(a, b), /use recordSimilarity/);
+});
+
+test('...and so does isDivergent, which used to answer false for everything', () => {
+  const a = { contentHash: 'aaa', fileHashes: { 'x.luau': 'h1' } };
+  const b = { contentHash: 'bbb', fileHashes: { 'q.luau': 'zzz' } };
+  assert.throws(() => isDivergent(a, b), /must be text or a signature/);
+});
+
+test('recordDivergent is the record-shaped answer, and reports its basis', () => {
+  const shared = { 'a.luau': 'h1', 'b.luau': 'h2', 'c.luau': 'h3', 'd.luau': 'h4' };
+  const same = { contentHash: 'x', fileHashes: shared };
+  const near = { contentHash: 'y', fileHashes: { ...shared, 'e.luau': 'h5' } };
+  const far = { contentHash: 'z', fileHashes: { 'q.luau': 'zz', 'r.luau': 'rr' } };
+
+  const n = recordDivergent(same, near);
+  assert.equal(n.basis, 'files');
+  assert.equal(n.divergent, false, 'a fork that adds one file of five is the same idea');
+
+  const f = recordDivergent(same, far);
+  assert.equal(f.divergent, true, 'records sharing no file are separate examples');
+  assert.equal(f.similarity, 0);
+});
+
+test('recordDivergent says UNKNOWN rather than guessing when there is no evidence', () => {
+  const bare = (h) => ({ contentHash: h, fileHashes: {} });
+  const r = recordDivergent(bare('a'), bare('b'));
+  assert.equal(r.divergent, null, 'no evidence is not the same as "not divergent"');
+  assert.equal(r.basis, 'none');
 });

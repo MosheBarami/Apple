@@ -33,34 +33,37 @@ quarantined and stay quarantined until evidence exists.
 
 ## 2. What is checked out
 
-20 checkouts, each pinned to a commit SHA. The licence column is read from the
+23 checkouts, each pinned to a commit SHA. The licence column is read from the
 checkout's **own LICENSE file**, independently of what classification decided; a disagreement
 would appear here as a conflict rather than be resolved silently.
 
 | checkout | licence | sha | security | rules extracted |
 | --- | --- | --- | --- | --- |
-| `Flipper` | MIT | `41380da192` | clean | 7 |
-| `Iris` | MIT | `801973f1c3` | clean | 8 |
-| `Janitor` | MIT | `47acf39d7b` | clean | — |
-| `Knit` | MIT | `bb1ecf3dea` | clean | — |
-| `NotificationSystem` | MIT | `38a47898a2` | clean | 4 |
-| `ProfileService` | Apache-2.0 | `d736800444` | clean | — |
-| `RbxCameraShaker` | MIT | `1541209938` | clean | 5 |
-| `SimpleDialogue` | MIT | `25bb85f5e1` | clean | 6 |
-| `creator-docs` | CC-BY-4.0 | `529a24ff2a` | clean | 16 |
-| `cyan-ui` | MIT | `11cfcedd77` | clean | 3 |
-| `goodsignal` | MIT | `99497c8cd6` | clean | — |
-| `luau-site` | MIT | `81c1c1858c` | clean | — |
-| `lucide-roblox` | MIT | `793dcaedc8` | clean | 7 |
-| `onyx-ui` | MIT | `978b53c5e1` | clean | 5 |
-| `otter` | MIT | `ffcb1be528` | clean | 8 |
-| `roact-spring` | MIT | `0334ee5d9d` | clean | 7 |
-| `roblox-agent-skills` | MIT | `ff50be7a8a` | clean | 4 |
-| `roblox-free-assets.skill` | MIT | `f48d055028` | clean | 3 |
-| `roblox-lua-promise` | MIT | `031d429c82` | clean | — |
-| `synthetic` | Apache-2.0 | `1a0c0d5bb1` | clean | 7 |
+| `Crabzzai__SimpleDialogue` | MIT | `25bb85f5e1` | clean | 6 |
+| `Diabetoss__NotificationSystem` | MIT | `38a47898a2` | clean | 4 |
+| `LolplePlays__framer` | Apache-2.0 | `ca5886eab1` | **unscanned** | — |
+| `MadStudioRoblox__ProfileService` | Apache-2.0 | `d736800444` | clean | — |
+| `Reselim__Flipper` | MIT | `41380da192` | clean | 7 |
+| `Roblox__creator-docs` | CC-BY-4.0 | `529a24ff2a` | clean | 16 |
+| `Roblox__otter` | MIT | `ffcb1be528` | clean | 8 |
+| `SirMallard__Iris` | MIT | `801973f1c3` | clean | 8 |
+| `Sleitnick__Knit` | MIT | `bb1ecf3dea` | clean | — |
+| `Sleitnick__RbxCameraShaker` | MIT | `1541209938` | clean | 5 |
+| `Starstruck-Studios-Developers__framer` | Apache-2.0 | `fe07a202d9` | **unscanned** | — |
+| `afrxo__roblox-agent-skills` | MIT | `ff50be7a8a` | clean | 4 |
+| `chriscerie__roact-spring` | MIT | `0334ee5d9d` | clean | 7 |
+| `ddust1n__CameraShaker` | MIT | `d4ab467eea` | **unscanned** | — |
+| `evaera__roblox-lua-promise` | MIT | `031d429c82` | clean | — |
+| `gcaptn__cyan-ui` | MIT | `11cfcedd77` | clean | 3 |
+| `howmanysmall__Janitor` | MIT | `47acf39d7b` | clean | — |
+| `loneka__onyx-ui` | MIT | `978b53c5e1` | clean | 5 |
+| `luau-lang__site` | MIT | `81c1c1858c` | clean | — |
+| `nightcycle__synthetic` | Apache-2.0 | `1a0c0d5bb1` | clean | 7 |
+| `stravant__goodsignal` | MIT | `99497c8cd6` | clean | — |
+| `tijnepema__lucide-roblox` | MIT | `793dcaedc8` | clean | 7 |
+| `zhsj0089944__roblox-free-assets.skill` | MIT | `f48d055028` | clean | 3 |
 
-14 of 20 checkouts have had patterns extracted from them.
+14 of 23 checkouts have had patterns extracted from them.
 The empty cells in that last column are the most useful thing in this document: a
 licence-clear, security-scanned source that has taught Golem nothing yet is exactly where the
 remaining value is, and it is cheaper to reach than a new source.
@@ -85,7 +88,7 @@ The boundary these kinds encode is a licence boundary, not a citation style:
 
 ## 4. What has NOT been fetched
 
-49 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
+46 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
 out. They are lawful to use and currently teach nothing.
 
 | id | licence | category | url |
@@ -109,9 +112,9 @@ out. They are lawful to use and currently teach nothing.
 | `gh-phocodes-clicking-mania` | Apache-2.0 | full-game | https://github.com/phocodes/clicking-mania |
 | `gh-phocodes-rice-simulator` | Apache-2.0 | full-game | https://github.com/phocodes/rice-simulator |
 | `gh-raymondwzeng-simulator-in-roblox-studio` | MIT | full-game | https://github.com/raymondwzeng/Simulator-In-Roblox-Studio |
-| `gh-ddust1n-camerashaker` | MIT | motion | https://github.com/ddust1n/CameraShaker |
+| `gh-awesome-roblox-awesome-roblox` | CC0-1.0 | official | https://github.com/awesome-roblox/awesome-roblox |
 
-…and 29 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
+…and 26 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
 
 ## 5. Security
 
