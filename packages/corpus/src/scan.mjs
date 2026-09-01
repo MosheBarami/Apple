@@ -197,6 +197,7 @@ async function main() {
 
   const results = {};
   let unsafe = 0;
+  let sharedVerdicts = 0;
   let review = 0;
   for (const name of names) {
     const sha = manifest.sources?.[name]?.sha ?? null;
@@ -217,11 +218,22 @@ async function main() {
         (v.safe ? '' : `  <- ${v.class}`),
     );
 
-    // Write the verdict back into the CORPUS record, which is where the claim lives.
+    //[[ Write the verdict into BOTH the corpus record and its provenance record.
+    //
+    //   Only the first of those was written for a long time, and the consequence was
+    //   total: `retrievalRank` gates on `p.security?.safe === true` where `p` is a
+    //   PROVENANCE record, so with every provenance record still reading
+    //   `{safe: false, class: 'unscanned'}` its `usable` list was empty for every
+    //   source in the corpus and it returned 0 — for all 170 of them. Ranking was
+    //   not mis-ordered, it was dead, and it returned a number the whole time.
+    //
+    //   `hash.mjs` had already established the convention this missed: it writes
+    //   `rec.contentHash` and mirrors it to `rec.provenance.contentHash`. A verdict
+    //   that lives in one of two places is a verdict half the pipeline cannot see. ]]
     const url = manifest.sources?.[name]?.url?.replace(/\.git$/, '');
     const rec = url ? byUrl.get(url) : null;
     if (rec) {
-      rec.security = {
+      const verdict = {
         safe: v.safe,
         class: v.safe ? 'clean' : v.class,
         signals: v.signals.map((s) => ({ kind: s.kind, severity: s.severity, path: s.path, detail: s.detail })),
@@ -229,10 +241,36 @@ async function main() {
         scannedAt: v.scannedAt,
         scannedFiles: v.scannedFiles,
       };
+      rec.security = verdict;
+      if (rec.provenance) rec.provenance.security = { ...verdict };
+
+      //[[ A provenance id is host/owner/repo/sha — it deliberately does not carry a
+      //   path, because a file inside a repository at a SHA has the same provenance
+      //   as the repository. The seed manifest contains BOTH `gh-roblox-creator-docs`
+      //   and a file-level citation of one SurfaceType.yaml inside it, and the two
+      //   mint the same provenance id. Only the first matches a checkout URL, so only
+      //   the first was scanned — and any consumer building an id -> record map got
+      //   last-write-wins, which handed `retrievalRank` the UNSCANNED twin and dropped
+      //   creator-docs out of ranking entirely.
+      //
+      //   The verdict is about the repo at that SHA, so it belongs on every record
+      //   that names that SHA. This is not a workaround for the collision; it is what
+      //   the identity already means. ]]
+      if (rec.provenance?.id) {
+        for (const twin of Object.values(corpus.records)) {
+          if (twin === rec || twin.provenance?.id !== rec.provenance.id) continue;
+          twin.provenance.security = { ...verdict };
+          if (!twin.security || twin.security.class === 'unscanned') twin.security = { ...verdict };
+          sharedVerdicts += 1;
+        }
+      }
     }
   }
 
   console.log(`[scan] ${names.length} checkout(s), ${unsafe} unsafe, ${review} needing review`);
+  if (sharedVerdicts > 0) {
+    console.log(`[scan] ${sharedVerdicts} record(s) share a provenance id with a scanned checkout and inherited its verdict`);
+  }
 
   if (dry) {
     console.log('[scan] --dry: nothing written');

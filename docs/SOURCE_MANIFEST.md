@@ -118,7 +118,7 @@ out. They are lawful to use and currently teach nothing.
 
 ## 5. Security
 
-23 of 289 sources carry a scan verdict.
+24 of 289 sources carry a scan verdict.
 
 The ordering is load-bearing and `docs/SOURCE-INTELLIGENCE.md` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an

@@ -499,6 +499,77 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-47 · Retrieval ranking returned a number for every source and had been dead the whole time
+
+`retrievalRank()` orders the corpus. It was written, tested, and never once run against
+data on disk. Running it as part of the quality-score work returned **0 for all 23 content
+records** — not mis-ordered, not degraded: no source in the corpus was retrievable by it.
+
+The cause is two stages being individually correct about different halves of one fact.
+`scan.mjs` wrote its verdict to `record.security`, under a comment saying that is "where the
+claim lives". `retrievalRank` gates on `p.security?.safe === true` where `p` is a **provenance**
+record, and every provenance record still read `{safe: false, class: 'unscanned'}` — for all 170
+of them. So `usable` was empty on every call and the function returned 0 every time.
+
+`hash.mjs` had already established the convention that was missed:
+
+```js
+rec.contentHash = h.hash;
+if (rec.provenance) rec.provenance.contentHash = h.hash;   // <- the mirror scan.mjs lacked
+```
+
+Fixed by mirroring the verdict. With real quality scores also populated, 23 of 23 sources now
+rank and **17 of 22 positions changed** against the pre-quality ordering.
+
+Two things made this survivable for so long, and both are worth naming. Every unit test passed,
+because each stage's function was right about its own half and nothing tested the join. And the
+function returned a plausible number rather than throwing — a zero that reads like a low rank
+rather than like an empty result. `pipeline-data.test.mjs` now asserts against the data on disk
+rather than against the functions: a scanned source must carry its verdict in both places, and no
+licence-clear, security-clean record may rank 0.
+
+### F-48 · Two records, one provenance id, and last-write-wins decided which verdict survived
+
+Fixing F-47 revived 22 of 23 sources. `Roblox/creator-docs` stayed at 0.
+
+A provenance id is `host/owner/repo/sha` and deliberately carries no path, because a file inside
+a repository at a SHA has the same provenance as the repository. The seed manifest contains both
+`gh-roblox-creator-docs` and a file-level citation of one `SurfaceType.yaml` inside it, and the
+two mint **the same provenance id**. Only the first matches a checkout URL, so only the first was
+ever scanned — and any consumer building an `id -> record` map got last-write-wins, which handed
+`retrievalRank` the unscanned twin.
+
+The verdict is about the repo at that SHA, so it belongs on every record naming that SHA. That is
+not a workaround for the collision; it is what the identity already means. 23 of 23 now rank.
+
+The general shape: **an identity that intentionally collapses several records is safe to read
+through a map only if every one of those records is kept consistent.** The scan stage was writing
+to one member of an equivalence class it did not know it was in.
+
+### F-49 · A quality tagger that condemned a library for its own naming convention
+
+The domain tagger classified `Reselim/Flipper` as `legacy` on 9 deprecated markers. Eight of the
+nine were `:connect(`, the pre-2016 lowercase alias for `RBXScriptSignal:Connect`.
+
+Flipper does not use that alias. It ships its own userland `Signal` class —
+`function Signal:connect(handler)` — and every flagged call site is a call into its own API. Regex
+cannot type a receiver, so the marker could not tell a removed engine alias from a library's
+method name, and the result was a tag that condemned a library for what it chose to call a method.
+The tag exists to answer "will learning from this teach an API that no longer behaves the way the
+code assumes?", and on Flipper it answered a question about naming instead.
+
+Fixed with a signal that IS decidable: if a checkout defines its own `connect` method, its calls
+are presumed to be its own. The suppression is per-checkout, and it is **reported** rather than
+applied silently — a repo that defines `:connect` and also genuinely calls `part.Touched:connect(f)`
+loses that finding, and that cost should be visible rather than absorbed. Flipper moved from a
+false `legacy` to `unknown`: with the false markers removed it has too little era evidence either
+way, which is the honest answer.
+
+Worth noting what did NOT go wrong here. `MadStudioRoblox/ProfileService` shows 10 bare `wait()`
+calls and is still tagged `modern` — correctly, because all ten are in `ProfileTest.server.lua`, a
+test harness, while `ProfileService.lua` itself makes 32 `task.*` calls. Density-based
+classification got that right where a presence test would have called it legacy.
+
 ### F-45 · A playbook that taught the mouse-only path a comment had already ruled out
 
 Building L3 meant writing down, for each task class, the procedure and the Golem primitive each
