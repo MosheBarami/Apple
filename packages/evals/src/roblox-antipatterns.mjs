@@ -440,6 +440,91 @@ export const RULES = [
       return matches(src, /\b(?:workspace|game\.Workspace|game:GetService\("Workspace"\))\.[A-Z]\w+\.[A-Z]\w+/g, (m) => `${m[0]} is not guaranteed to be streamed in`);
     },
   },
+  //[[ ==================================================================================
+  //   EXTRACTED FROM CANONICAL LIBRARIES, 2026-09-01.
+  //
+  //   Nineteen anti-patterns were proposed by reading five libraries that exist because
+  //   somebody already hit the bug — ProfileService, Janitor, roblox-lua-promise, Knit and
+  //   goodsignal — and every one was then attacked by a reviewer whose default was to reject.
+  //   TWO SURVIVED. The seventeen rejections are the more useful number: they were thrown out
+  //   for firing on correct code (`player-keyed-table-never-cleared` fires on delegated
+  //   cleanup; `client-dot-index-replicated-storage` fires on the standard Rojo/Wally require
+  //   idiom), for being factually wrong about Luau (`uncancelled-per-player-thread` treated
+  //   `task.wait` as an error boundary), or for duplicating one of the sixteen.
+  //
+  //   That ratio is the standard this file's header sets: "an unjustified static rule is just a
+  //   style opinion that costs a model points."
+  //   ================================================================================== ]]
+  {
+    id: 'process-receipt-without-purchase-id',
+    severity: 'error',
+    //[[ Deliberately `null` rather than ['server']. A minimal ProcessReceipt file trips none of
+    //   `inferContext`'s server tokens — no OnServerEvent, no DataStoreService, no PlayerAdded —
+    //   so it resolves to 'unknown' and a server-scoped rule would silently skip the one file
+    //   this rule exists for. ]]
+    contexts: null,
+    title: 'ProcessReceipt grants a purchase without consulting the receipt id',
+    // Roblox RE-DELIVERS a receipt — on the next join, on another server, after a restart — until
+    // a call returns PurchaseGranted, and again if that reply is lost in flight. A handler that
+    // never looks at `receiptInfo.PurchaseId` cannot tell a redelivery from a new purchase, so one
+    // payment grants the product two or three times: currency minted by the payment system itself.
+    // ProfileService's reference implementation builds a whole PurchaseIdLog around this.
+    why: 'Roblox re-delivers receipts until one is granted; without PurchaseId the same payment is granted repeatedly',
+    find({ src }) {
+      const out = [];
+      //[[ FILE-SCOPED, not body-scoped, and the verifier made that correction. A correct handler
+      //   often delegates the idempotency check to a same-file helper, so requiring the id inside
+      //   the handler body fires on code that is right. Requiring it anywhere in the file still
+      //   catches the bad shape and leaves both Roblox's canonical UpdateAsync-log implementation
+      //   and ProfileService's own example clean. ]]
+      if (/\bPurchaseId\b/.test(src)) return out;
+      const re = /(?:MarketplaceService\s*\.\s*)?ProcessReceipt\s*=\s*function\s*\(/g;
+      let m;
+      while ((m = re.exec(src))) {
+        const body = src.slice(m.index, blockEnd(src, m.index));
+        if (/PurchaseGranted/.test(body)) {
+          out.push({ line: lineOf(src, m.index), detail: 'ProcessReceipt returns PurchaseGranted and the file never reads receiptInfo.PurchaseId' });
+        }
+      }
+      return out;
+    },
+  },
+  {
+    id: 'remote-parented-before-handler',
+    severity: 'error',
+    contexts: null,
+    title: 'Remote is replicated before its handler is attached',
+    // Between `.Parent = ReplicatedStorage` and `:Connect`, the remote is callable by every client
+    // and has no listener. A FireServer in that window is silently discarded — the player's first
+    // click does nothing, with no error anywhere to find later. On a RemoteFunction it is worse:
+    // InvokeServer against an unset OnServerInvoke raises on the client and kills that thread. The
+    // window is real whenever anything yields between the two, which is why Knit has a lifecycle.
+    why: 'a remote is callable the instant it replicates; parent it AFTER its handler is connected',
+    find({ src }) {
+      const out = [];
+      const decl = /local\s+(\w+)\s*=\s*Instance\.new\s*\(\s*["'](?:Unreliable)?Remote(?:Event|Function)["']/g;
+      let m;
+      while ((m = decl.exec(src))) {
+        const name = m[1];
+        const parent = new RegExp(`\\b${name}\\.Parent\\s*=`).exec(src);
+        const handler = new RegExp(`\\b${name}\\.(?:OnServerEvent|OnServerInvoke)`).exec(src);
+        if (!parent || !handler) continue;
+        if (parent.index >= handler.index) continue;
+        //[[ Only when something YIELDS in the gap. Parent-then-connect with no yield between is
+        //   two statements in one resumption of the same thread: no client can run in between, so
+        //   there is no window and no bug. Requiring the yield is what keeps this off correct
+        //   code that simply orders its lines the other way. ]]
+        const gap = src.slice(parent.index, handler.index);
+        if (!YIELDS.test(gap)) continue;
+        out.push({
+          line: lineOf(src, parent.index),
+          detail: `\`${name}\` is parented (replicated) before its handler, and the gap yields — calls in that window are silently dropped`,
+        });
+      }
+      return out;
+    },
+  },
+
 ];
 
 function matches(src, re, detail) {

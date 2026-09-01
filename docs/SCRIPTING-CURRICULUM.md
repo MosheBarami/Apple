@@ -26,7 +26,7 @@ parses, contains `OnServerEvent`, contains `leaderstats`, avoids every deprecate
 lets any client send `price = -99999` and mint currency. Under the old check types it scores 1.0.
 
 So the curriculum ships with a fifth check type, `no_antipattern`, backed by
-`packages/evals/src/roblox-antipatterns.mjs`: sixteen static rules that read the code rather than
+`packages/evals/src/roblox-antipatterns.mjs`: eighteen static rules that read the code rather than
 its vocabulary. `src/selftest.mjs` grades exactly the snippet above and requires it to score 0.
 
 ## Weighting
@@ -152,10 +152,35 @@ cost players or frames.
 | `keyboard-only-input` | warn | a feature that does not exist on phones and gamepads |
 | `expensive-call-per-frame` | warn | progressive frame-rate collapse from per-frame instance lookups |
 | `streaming-unsafe-descendant` | warn | a client dot-index into Workspace that throws by player distance |
+| `process-receipt-without-purchase-id` | error | one payment granting a product two or three times, because Roblox re-delivers receipts until one is granted |
+| `remote-parented-before-handler` | error | a remote that is callable before it is listening, silently dropping the player's first click |
 
 Every rule carries a bad sample it must fire on and a good sample it must stay silent on, in
 `src/roblox-antipatterns.test.mjs`. A rule with no such pair fails the suite: a rule never seen to
 fire is indistinguishable from one wired up wrong, and a broken rule makes scores go **up**.
+
+### The two extracted from canonical libraries
+
+The sixteen above were authored. These two were **extracted**, on 2026-09-01, by reading five
+libraries that exist because somebody already hit the bug — ProfileService, Janitor,
+roblox-lua-promise, Knit and goodsignal — on the principle that a good library is a list of bugs
+somebody already hit, and its defensive code is preventing something specific.
+
+Nineteen were proposed and **seventeen were rejected** by a reviewer whose default was to reject.
+That ratio is the useful number, and the rejections are worth more than the survivors: most were
+thrown out for firing on correct code (`player-keyed-table-never-cleared` fires on delegated
+cleanup; `client-dot-index-replicated-storage` fires on the standard Rojo/Wally require idiom),
+one for being factually wrong about Luau (`uncancelled-per-player-thread` treated `task.wait` as
+an error boundary), and several for duplicating a rule already here.
+
+Both survivors carry a narrowing the reviewer demanded, and both narrowings are tested:
+
+- `process-receipt-without-purchase-id` searches the whole **file** for `PurchaseId`, not the
+  handler body. ProfileService's own reference implementation delegates the idempotency check to
+  a helper, so a body-scoped rule would condemn the code the rule was derived from.
+- `remote-parented-before-handler` fires only when something **yields** between the parenting and
+  the connect. Without a yield the two statements are one resumption of the same thread, no
+  client can run in between, and there is no window.
 
 ## Reference answers
 

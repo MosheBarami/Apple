@@ -473,6 +473,71 @@ if door then
 end
 `,
   },
+
+  //[[ The two rules extracted from canonical libraries, 2026-09-01. Both samples are the shapes
+  //   the reviewer used to decide the rule was worth keeping, so the pairing contract below is
+  //   also the record of what each rule was accepted for. ]]
+  'process-receipt-without-purchase-id': {
+    context: 'unknown',
+    bad: `MarketplaceService.ProcessReceipt = function(receiptInfo)
+\tlocal player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+\tif player == nil then
+\t\treturn Enum.ProductPurchaseDecision.NotProcessedYet
+\tend
+\tplayer.leaderstats.Coins.Value += PRODUCTS[receiptInfo.ProductId]
+\treturn Enum.ProductPurchaseDecision.PurchaseGranted
+end
+`,
+    good: `MarketplaceService.ProcessReceipt = function(receiptInfo)
+\tlocal data = sessionData[receiptInfo.PlayerId]
+\tif data == nil then
+\t\treturn Enum.ProductPurchaseDecision.NotProcessedYet
+\tend
+\tif table.find(data.GrantedPurchaseIds, receiptInfo.PurchaseId) == nil then
+\t\ttable.insert(data.GrantedPurchaseIds, receiptInfo.PurchaseId)
+\t\tdata.Coins += PRODUCTS[receiptInfo.ProductId]
+\tend
+\tif savePlayerData(data) ~= true then
+\t\treturn Enum.ProductPurchaseDecision.NotProcessedYet
+\tend
+\treturn Enum.ProductPurchaseDecision.PurchaseGranted
+end
+`,
+  },
+  'remote-parented-before-handler': {
+    context: 'server',
+    //[[ Both samples pcall the DataStore read and validate the remote argument. That is not
+    //   padding: the pairing contract below requires a `good` sample to be good in EVERY respect,
+    //   and the first version of this one tripped `datastore-without-pcall` and
+    //   `unvalidated-remote-arg` while demonstrating correct remote ordering. A sample that is
+    //   right about one rule and wrong about two others teaches the wrong lesson. ]]
+    bad: `local buyRemote = Instance.new("RemoteEvent")
+buyRemote.Name = "Buy"
+buyRemote.Parent = ReplicatedStorage
+local ok, shopConfig = pcall(function()
+\treturn DataStoreService:GetDataStore("Shop"):GetAsync("Config")
+end)
+buyRemote.OnServerEvent:Connect(function(player, itemId)
+\tif typeof(itemId) ~= "string" then
+\t\treturn
+\tend
+\tgrant(player, ok and shopConfig[itemId] or nil)
+end)
+`,
+    good: `local buyRemote = Instance.new("RemoteEvent")
+buyRemote.Name = "Buy"
+local ok, shopConfig = pcall(function()
+\treturn DataStoreService:GetDataStore("Shop"):GetAsync("Config")
+end)
+buyRemote.OnServerEvent:Connect(function(player, itemId)
+\tif typeof(itemId) ~= "string" then
+\t\treturn
+\tend
+\tgrant(player, ok and shopConfig[itemId] or nil)
+end)
+buyRemote.Parent = ReplicatedStorage
+`,
+  },
 };
 
 // ------------------------------------------------------------------ the pairing contract
@@ -601,4 +666,110 @@ test('the pass detail says how many rules actually ran', () => {
   const r = checkNoAntipattern('local t = {}\nreturn t\n', { context: 'server' });
   assert.equal(r.passed, true);
   assert.match(r.detail, /rule\(s\) run as server/);
+});
+
+
+//[[ ============================================================================
+//   THE TWO RULES EXTRACTED FROM CANONICAL LIBRARIES, 2026-09-01.
+//
+//   Nineteen were proposed from ProfileService, Janitor, roblox-lua-promise, Knit and
+//   goodsignal; a reviewer whose default was to reject threw out seventeen, mostly for firing
+//   on correct code. Both survivors carry a NARROWING the reviewer demanded, and the tests for
+//   those narrowings matter more than the tests for the bad shapes — a rule that fires on the
+//   exploit and also on the fix is a rule that gets switched off.
+//   ============================================================================ ]]
+
+const RECEIPT_NO_ID = `
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+\tlocal player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+\tif player == nil then return Enum.ProductPurchaseDecision.NotProcessedYet end
+\tplayer.leaderstats.Coins.Value += PRODUCTS[receiptInfo.ProductId]
+\treturn Enum.ProductPurchaseDecision.PurchaseGranted
+end`;
+
+const RECEIPT_WITH_LOG = `
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+\tlocal data = sessionData[receiptInfo.PlayerId]
+\tif table.find(data.GrantedPurchaseIds, receiptInfo.PurchaseId) == nil then
+\t\ttable.insert(data.GrantedPurchaseIds, receiptInfo.PurchaseId)
+\t\tdata.Coins += PRODUCTS[receiptInfo.ProductId]
+\tend
+\tif save(data) ~= true then return Enum.ProductPurchaseDecision.NotProcessedYet end
+\treturn Enum.ProductPurchaseDecision.PurchaseGranted
+end`;
+
+/** The narrowing: a correct handler that delegates the idempotency check to a helper. A
+ *  body-scoped search fires on this; a file-scoped search does not. */
+const RECEIPT_DELEGATED = `
+local function grantOnce(receiptInfo)
+\tlocal key = receiptInfo.PlayerId .. "_" .. receiptInfo.PurchaseId
+\tif granted[key] then return true end
+\tgranted[key] = true
+\treturn savePlayerData(key)
+end
+
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+\tif not grantOnce(receiptInfo) then return Enum.ProductPurchaseDecision.NotProcessedYet end
+\treturn Enum.ProductPurchaseDecision.PurchaseGranted
+end`;
+
+test('a ProcessReceipt that never reads PurchaseId is a double-grant', () => {
+  assert.ok(fired(analyzeLuau(RECEIPT_NO_ID), 'process-receipt-without-purchase-id'));
+});
+
+test('...and a PurchaseId log clears it', () => {
+  assert.ok(!fired(analyzeLuau(RECEIPT_WITH_LOG), 'process-receipt-without-purchase-id'));
+});
+
+test('...and so does delegating the check to a helper in the same file', () => {
+  // File-scoped, not body-scoped. ProfileService's own reference implementation delegates, so a
+  // body-scoped rule would condemn the code it was derived from.
+  assert.ok(!fired(analyzeLuau(RECEIPT_DELEGATED), 'process-receipt-without-purchase-id'));
+});
+
+test('the receipt rule is context-null, so a minimal handler file is not skipped', () => {
+  // A bare ProcessReceipt file trips none of inferContext's server tokens and resolves to
+  // 'unknown'. Scoping the rule to ['server'] would silently skip the one file it exists for.
+  const res = analyzeLuau(RECEIPT_NO_ID);
+  assert.equal(res.context, 'unknown');
+  assert.ok(!res.skipped.includes('process-receipt-without-purchase-id'));
+});
+
+const REMOTE_PUBLISHED_EARLY = `
+local buyRemote = Instance.new("RemoteEvent")
+buyRemote.Name = "Buy"
+buyRemote.Parent = ReplicatedStorage
+local shopConfig = DataStoreService:GetDataStore("Shop"):GetAsync("Config")
+buyRemote.OnServerEvent:Connect(function(player, itemId)
+\tgrant(player, shopConfig[itemId])
+end)`;
+
+const REMOTE_PUBLISHED_LAST = `
+local buyRemote = Instance.new("RemoteEvent")
+buyRemote.Name = "Buy"
+local shopConfig = DataStoreService:GetDataStore("Shop"):GetAsync("Config")
+buyRemote.OnServerEvent:Connect(function(player, itemId)
+\tgrant(player, shopConfig[itemId])
+end)
+buyRemote.Parent = ReplicatedStorage`;
+
+/** The narrowing: parent-then-connect with NOTHING yielding between them is two statements in
+ *  one resumption of the same thread. No client can run in the gap, so there is no window. */
+const REMOTE_NO_YIELD = `
+local ping = Instance.new("RemoteEvent")
+ping.Parent = ReplicatedStorage
+ping.OnServerEvent:Connect(function(player) print(player) end)`;
+
+test('a remote replicated before its handler, across a yield, drops calls', () => {
+  assert.ok(fired(analyzeLuau(REMOTE_PUBLISHED_EARLY), 'remote-parented-before-handler'));
+});
+
+test('...and parenting last clears it', () => {
+  assert.ok(!fired(analyzeLuau(REMOTE_PUBLISHED_LAST), 'remote-parented-before-handler'));
+});
+
+test('...and so does having nothing yield in the gap', () => {
+  // This is the narrowing that keeps the rule off correct code that simply orders its lines the
+  // other way: without a yield there is no window for a client to call into.
+  assert.ok(!fired(analyzeLuau(REMOTE_NO_YIELD), 'remote-parented-before-handler'));
 });
