@@ -3887,8 +3887,27 @@ local ghTop = stoneDais(
 	GH_X,
 	GH_Z,
 	0.4,
-	{ { 23, 4.6 }, { 18, 4.2 }, { 13, 3.8 } },
-	{ W.IcePathDark, W.IcePath, W.FrostDeep }
+	--[[ TALLER AND DARKER, so the payoff reads as one.
+
+		 The frost camera kept reporting the same thing: the Heart is legible and it
+		 is not a PAYOFF — a modest cluster in the middle distance. The cause is not
+		 size, it is CONTRAST. The crown tier was FrostDeep (168,206,228) standing on
+		 snow at (242,250,255): a pale plinth on a pale field, so the formation had
+		 no base to rise from and the violet crystals floated on nothing.
+
+		 Now the whole dais sits in the dark end of the ice ramp, and the crown is
+		 the darkest course rather than the lightest. That gives the crystals a mass
+		 to stand on and the silhouette an edge against snow, which is what makes a
+		 landmark read at distance — the monument gets the same service for free
+		 from the rust canyon behind it.
+
+		 Raised 12.6 -> 14.4 studs. Deliberately small: the composition gate divides
+		 the monument's height by the SECOND tallest thing, so a Heart that grows
+		 into second place starts eating the monument's dominance. At ~52 finished
+		 it is still under the 59.5 currently holding second, and the DOMINANCE line
+		 in the build report is what will say so if that ever stops being true. ]]
+	{ { 25, 5.4 }, { 19, 4.8 }, { 13.5, 4.2 } },
+	{ W.IcePathDark, W.IcePath, W.IcePathDark }
 )
 
 --[[ THE CORE IS CRYSTAL, NOT MASONRY.
