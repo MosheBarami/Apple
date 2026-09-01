@@ -35,6 +35,7 @@ import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { sparksForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
+import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
@@ -593,6 +594,12 @@ export class SessionDO extends DurableObject<Env> {
       // The art-direction brief is ~1,800 tokens on every step, so only visual requests pay for
       // it. The request text doubles as the scene-kind hint — resolveKind matches on substrings.
       sceneKind: traits.visualDesignTask && mode !== 'clay' ? text : undefined,
+      //[[ Same gate as sceneKind, on the trait that means INTERFACE rather than place.
+      //   `designBrief` returns null when the library has nothing useful for this
+      //   request, and null is a real answer: the library covers a fraction of the
+      //   style families §L asks for, and padding a thin match into a prompt would
+      //   spend tokens on every step to tell the model what it did not need. ]]
+      uiBrief: traits.uiDesignTask && mode !== 'clay' ? (designBrief(text)?.text ?? null) : null,
     });
 
     const history = (

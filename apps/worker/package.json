@@ -9,6 +9,7 @@
     "deploy:api": "wrangler deploy"
   },
   "dependencies": {
+    "@golem/design": "workspace:*",
     "@golem/shared": "workspace:*",
     "hono": "^4.6.0",
     "jose": "^5.9.0"

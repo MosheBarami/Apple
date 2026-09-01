@@ -1,7 +1,7 @@
 // System prompts for Golem's modes. Modes are product surfaces, not models:
 // they set persona, autonomy budget, and verification policy.
 import type { GolemMode } from '@golem/shared';
-import { worldBuildingBrief } from './worldbuilding';
+import { worldBuildingBrief } from './worldbuilding.ts';
 
 const IDENTITY = `You are Golem, an AI that builds Roblox experiences with the user — from vague idea to working game.
 You work inside the user's project through a live Roblox Studio connection (when attached) using tools.
@@ -171,6 +171,19 @@ summary of what you built, what you verified, and anything the user should playt
  * work as described.
  */
 export const BRIEF_START = '<<<ART_DIRECTION>>>';
+
+//[[ The UI grammar brief's markers live HERE rather than beside its composer, for the
+//   same reason the art-direction markers do: they are a property of the PROMPT — where a
+//   block starts, where it ends, and what replaces it when it is collapsed — not of the
+//   thing that fills it. Keeping them together also means `collapseArtDirection` can see
+//   both blocks without importing the composer, which would drag @golem/design into every
+//   consumer of this module. ]]
+export const UI_BRIEF_START = '<<<UI_GRAMMAR>>>';
+export const UI_BRIEF_END = '<<<END_UI_GRAMMAR>>>';
+
+/** The one-line reminder that replaces the UI brief once a GUI exists and the work is trim. */
+export const UI_BRIEF_REMINDER =
+  'UI grammar (full brief given above earlier in this run): keep one plate language across clusters, depth as a hard bottom edge rather than a blur, press as an instant depth change, and open/close on different curves.';
 export const BRIEF_END = '<<<END_ART_DIRECTION>>>';
 
 /** The one-line reminder that replaces the brief once the blockout exists. */
@@ -181,11 +194,21 @@ export const BRIEF_REMINDER =
  * Replace the art-direction brief with a short reminder. Returns the prompt unchanged when the
  * brief is absent, so calling it twice is safe.
  */
-export function collapseArtDirection(sys: string): string {
-  const a = sys.indexOf(BRIEF_START);
-  const b = sys.indexOf(BRIEF_END);
+function collapseBlock(sys: string, start: string, end: string, reminder: string): string {
+  const a = sys.indexOf(start);
+  const b = sys.indexOf(end);
   if (a < 0 || b < 0 || b < a) return sys;
-  return sys.slice(0, a) + BRIEF_REMINDER + sys.slice(b + BRIEF_END.length);
+  return sys.slice(0, a) + reminder + sys.slice(b + end.length);
+}
+
+export function collapseArtDirection(sys: string): string {
+  // Both briefs collapse on the same trigger for the same reason: they earn their tokens
+  // while the agent is deciding what to build and how it should look, and earn nothing once
+  // the thing exists and the work is placing trim. Handling both here means a caller cannot
+  // collapse one and forget the other, which would leave the cheaper brief paying full price
+  // for the rest of the run.
+  const afterArt = collapseBlock(sys, BRIEF_START, BRIEF_END, BRIEF_REMINDER);
+  return collapseBlock(afterArt, UI_BRIEF_START, UI_BRIEF_END, UI_BRIEF_REMINDER);
 }
 
 export function systemPrompt(opts: {
@@ -201,6 +224,12 @@ export function systemPrompt(opts: {
    * script must not pay for it.
    */
   sceneKind?: string;
+  /**
+   * The UI grammar brief, already composed. Supplied only when the request is about an
+   * INTERFACE, on the same cost reasoning as `sceneKind`: it rides in a prompt that is
+   * re-sent every step, so a request about terrain must not pay for it.
+   */
+  uiBrief?: string | null;
 }): string {
   const studio = opts.studioConnected
     ? `Roblox Studio is CONNECTED (place: ${opts.placeName ?? 'unsaved place'}). Use tools to act on the real project.`
@@ -215,6 +244,7 @@ export function systemPrompt(opts: {
     IDENTITY,
     MODE_RULES[opts.mode],
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
+    opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,
     memory,
     `Today: ${new Date().toISOString().slice(0, 10)}.`,

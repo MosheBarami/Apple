@@ -75,6 +75,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@golem/design':
+        specifier: workspace:*
+        version: link:../../packages/design
       '@golem/shared':
         specifier: workspace:*
         version: link:../../packages/shared

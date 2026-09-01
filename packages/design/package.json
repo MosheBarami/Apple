@@ -7,5 +7,11 @@
   "scripts": {
     "typecheck": "for f in src/*.mjs; do node --check \"$f\" || exit 1; done",
     "test": "node --test src/*.test.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./rules": "./src/rules.mjs",
+    "./retrieve": "./src/retrieve.mjs",
+    "./checks": "./src/checks.mjs"
   }
 }

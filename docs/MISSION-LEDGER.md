@@ -36,7 +36,7 @@ Last reconciled: **2026-09-01** (second pass).
 | 22 | Discovery expands beyond the seed manifest | **UNPROVEN** | recursive discovery not run |
 | 23 | Licences/provenance preserved | **PROVEN** | `data/sources.json` tracked; SHA + SPDX + evidence path per source |
 | 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence; security scanner still has nothing downloaded to scan |
-| 25 | Golem stops inventing every GUI from blank | **PARTIAL** | `@golem/design` retrieves 26 ruled constraints into a generator brief; not yet wired to the worker |
+| 25 | Golem stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
 | 26 | Corpus materially improves UI/world evals | **PARTIAL** | 4 rules mechanised as checks; caught a real remaining defect (Icons contract) and it was fixed |
 | 27 | UI Labs or equivalent isolated UI harness | **UNPROVEN** | not evaluated |
 | 28 | Icon intelligence from strong free sources | **PARTIAL** | original icon family ships; not sourced from a vetted library |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (second pass).
 
 ## Tally
 
-PROVEN 21 · PARTIAL 11 · UNPROVEN 7 · BLOCKED 1 · REJECTED 0
+PROVEN 22 · PARTIAL 10 · UNPROVEN 7 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
