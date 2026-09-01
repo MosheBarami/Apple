@@ -40,6 +40,10 @@ test('insert_asset records the use, and only after the asset is proven clean', (
 
   assert.ok(proof > 0 && record > 0, 'insert_asset must both prove and record');
   assert.ok(proof < record, 'the proof has to come first');
+  // `> 0` is not decoration. Without it, deleting the refusal guard makes indexOf
+  // return -1, and -1 < record is true — so the assertion passed with the guard gone,
+  // which a mutation proved.
+  assert.ok(refusalGuard > 0, 'the refusal guard must exist at all');
   assert.ok(refusalGuard < record, 'a refused insertion must return before anything is recorded');
 });
 
@@ -121,8 +125,12 @@ test('the route returns exactly the keys the browser declares', () => {
 
   const model = readFileSync(join(ROOT, 'apps/web/src/components/ws/credits-model.ts'), 'utf8');
   const iface = model.slice(model.indexOf('export interface AttributionResponse {'));
+  // `\?` included: an optional field is optional because a DEPLOYED worker may be older,
+  // not because this one may stop sending it. Dropping it from the route is still drift,
+  // and leaving the `?` out of this pattern silently removed `credits` from the
+  // comparison the moment it was made optional.
   const declared = new Set(
-    [...iface.slice(0, iface.indexOf('\n}')).matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]),
+    [...iface.slice(0, iface.indexOf('\n}')).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]),
   );
 
   assert.ok(declared.size >= 3, `parsed ${declared.size} declared fields; the check would be vacuous`);
@@ -131,4 +139,15 @@ test('the route returns exactly the keys the browser declares', () => {
     [],
     'the browser declares a field the route does not send',
   );
+});
+
+test('the session restores its binding when an evicted instance is revived', () => {
+  // The agent loop runs from alarm(), which never reads the binding. Without this,
+  // an instance revived mid-run has no projectId, recordPlacedAsset returns on its
+  // first line, and every remaining insert records nothing — an empty ledger, which
+  // reads clean. The original bug, re-entering through the recovery path.
+  const src = readFileSync(join(ROOT, 'apps/worker/src/do/session.ts'), 'utf8');
+  const ctor = src.slice(src.indexOf('blockConcurrencyWhile'), src.indexOf('// ------------------------------------------------------------------ helpers'));
+  assert.match(ctor, /storage\.get<\{ projectId: string \}>\('bind'\)/, 'the constructor must read the binding back');
+  assert.match(ctor, /this\.boundProjectId = bound\.projectId/);
 });

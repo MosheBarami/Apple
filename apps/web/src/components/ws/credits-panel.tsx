@@ -72,7 +72,9 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
   const { attribution: a, commercialUse: c } = res;
   const verdict = readiness(res);
   const tone = READINESS_TONE[verdict.state];
-  const blockers = c.findings.filter((f) => f.severity === 'blocker');
+  // Split for the same reason readiness() splits them: an asset whose licence was read
+  // and found incompatible is a finding; an asset whose licence Golem never saw is not.
+  const blockers = c.findings.filter((f) => f.severity === 'blocker' && f.code !== 'missing_provenance');
   const warnings = c.findings.filter((f) => f.severity === 'warning');
   const owes = a.required.length > 0 || a.sourceCredits.length > 0;
   // null when nothing is owed, and also when the worker did not send the document —
@@ -87,7 +89,15 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
       <section className={`cr-verdict cr-verdict--${tone}`}>
         <span className="cr-verdict__mark">
           <StatusIcon
-            status={verdict.state === 'clear' ? 'success' : verdict.state === 'blocked' ? 'error' : verdict.state === 'obligations' ? 'warning' : 'info'}
+            status={
+              verdict.state === 'clear'
+                ? 'success'
+                : verdict.state === 'blocked'
+                  ? 'error'
+                  : verdict.state === 'obligations' || verdict.state === 'unaccounted'
+                    ? 'warning'
+                    : 'info'
+            }
             size={18}
           />
         </span>
@@ -157,8 +167,10 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
             onClick={() => {
               void navigator.clipboard?.writeText(copyable).then(
                 () => setCopied(true),
-                // A clipboard the browser refused is reported, not swallowed into a
-                // tick that would tell the user they had copied something they had not.
+                // A refused clipboard leaves the button alone. It is NOT reported —
+                // an earlier version of this comment said it was, and nothing here
+                // shows the user anything. What it does guarantee is the part that
+                // matters: no tick appears for a copy that did not happen.
                 () => setCopied(false),
               );
             }}
@@ -195,9 +207,14 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
         </section>
       )}
 
+      {/* The limits, all of them. Naming only the Studio-added case would tell a reader
+          that everything Golem placed is on this list, which is false for any project
+          older than this ledger and for any placement whose record failed to write. */}
       <p className="cr-stamp">
-        Read from your project&rsquo;s asset ledger. Golem records an asset when it places one — it
-        cannot see anything you added in Studio yourself.
+        Read from your project&rsquo;s asset ledger, which is not the same thing as your place. Golem
+        records an asset when it places one, so this list cannot see anything you added in Studio
+        yourself, anything placed before this ledger existed, or a placement whose record failed to
+        save. A clean result here is a clean result for what is listed.
       </p>
     </div>
   );

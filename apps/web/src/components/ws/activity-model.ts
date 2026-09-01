@@ -26,7 +26,7 @@
  * Pure and DOM-free so `tests/activity-model.test.mjs` can run it under
  * `node --test`: this module imports types only.
  */
-import type { AgentPhase } from '@golem/shared';
+import { phaseForTool, type AgentPhase } from '@golem/shared';
 import {
   ACTIVITY,
   ACTIVITY_LABEL,
@@ -150,6 +150,8 @@ export interface Elapsed {
 export interface ActivityStep {
   key: string;
   kind: ActivityKind;
+  /** The wire phase this step was announced as, for phase steps only. */
+  phase?: AgentPhase;
   label: string;
   /** The worker's own one-line summary of what the step returned. */
   detail?: string;
@@ -434,6 +436,9 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
     phaseSteps.push({
       key: `phase:${e.phase}:${e.at}:${i}`,
       kind,
+      // The raw wire phase, kept so the suppression below can be exact rather than
+      // approximate. See the note there.
+      phase: e.phase,
       label: ACTIVITY_LABEL[kind],
       state: 'done',
       startedAt: e.at,
@@ -452,10 +457,24 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
   // and hangs a ~0ms clock on the first of them. When an announcement is
   // followed straight away by a tool in the same state, the tool is the row: it
   // carries the same fact and a duration that was actually measured.
+  //
+  // COMPARE THE PHASE, NOT THE KIND. The worker sets `agent.phase = phaseForTool(name)`
+  // on the line before it broadcasts `tool_start`, so an announcement is redundant
+  // exactly when it is the one DERIVED FROM the tool that follows it.
+  //
+  // This used to compare `next.kind === s.kind`, which was the same test only while the
+  // web's vocabulary and the wire's phases were one-to-one. Splitting C04/C06/C08 out of
+  // `inspecting` and `building` broke that: the wire still announces `building` before
+  // `set_properties`, the web now calls that tool `editing`, the kinds no longer matched,
+  // and the announcement survived as an EMPTY "Building world" heading immediately above
+  // "Editing project · Set properties" — reintroducing, as its own row, the very claim
+  // the split was made to remove.
   const steps = merged.filter((s, i) => {
     if (s.toolId !== undefined) return true;
     const next = merged[i + 1];
-    return !(next && next.toolId !== undefined && next.kind === s.kind);
+    if (!next || next.toolId === undefined) return true;
+    if (s.phase !== undefined && next.tool !== undefined) return s.phase !== phaseForTool(next.tool);
+    return next.kind !== s.kind;
   });
 
   for (let i = 0; i < steps.length; i += 1) {

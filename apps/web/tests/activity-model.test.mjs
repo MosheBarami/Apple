@@ -45,6 +45,7 @@ const end = (toolId, at, over = {}) => ({
 });
 
 const kinds = (r) => r.phases.map((p) => p.kind);
+const phase = (name, at) => ({ type: 'phase', at, phase: name });
 const labels = (r) => r.phases.flatMap((p) => p.steps.map((s) => s.label));
 
 // ---------------------------------------------------------------------------
@@ -502,4 +503,34 @@ test('with no motion preference the timeline may travel', () => {
   assert.equal(moving.travel, true);
   assert.equal(moving.feedback, true);
   assert.equal(moving.className, 'is-moving');
+});
+
+test('the announcement derived from a tool is dropped even when their vocabularies differ', () => {
+  // THE REGRESSION THE C-SERIES SPLIT CAUSED, and the reason the suppression compares
+  // the wire PHASE rather than the web's kind.
+  //
+  // The worker sets `agent.phase = phaseForTool(name)` on the line before it broadcasts
+  // tool_start, so the announcement is redundant exactly when it was derived from the
+  // tool that follows. Comparing kinds was the same test only while the two vocabularies
+  // were one-to-one. After C04/C06/C08 were split out, the wire still announced
+  // `building` before set_properties while the web called that tool `editing`, so the
+  // announcement survived — as an EMPTY "Building world" heading directly above
+  // "Editing project · Set properties", reinstating as its own row the exact claim the
+  // split was made to remove.
+  const r = run([
+    phase('inspecting', T0),
+    start('a', 'get_project_tree', T0 + 10),
+    end('a', T0 + 100, { durationMs: 90 }),
+    phase('building', T0 + 200),
+    start('b', 'set_properties', T0 + 210),
+    end('b', T0 + 300, { durationMs: 90 }),
+    phase('inspecting', T0 + 400),
+    start('c', 'read_script', T0 + 410),
+    end('c', T0 + 500, { durationMs: 90 }),
+  ]);
+
+  assert.deepEqual(kinds(r), ['inspecting', 'editing', 'reading_scripts']);
+  for (const p of r.phases) {
+    assert.ok(p.steps.length > 0, `"${p.label}" is an empty heading — the announcement was not suppressed`);
+  }
 });

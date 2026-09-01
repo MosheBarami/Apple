@@ -81,7 +81,7 @@ operator nor the quotes. The register and the scanner disagreed and nothing said
 
 Rotation does not need the old value. It needs the account, which is above.
 
-### This blocks the merge, and it is the only thing that does
+### This blocks the merge, and it is the only gate the owner alone can clear
 
 Master mission §5.1 is explicit: *"do not merge a release that still relies on known
 live credentials exposed in repository history."* §11 lists "historical exposed live
@@ -94,7 +94,7 @@ class this project keeps correcting in itself. Three are open as of 2026-09-01:
 | §11 gate | state |
 |---|---|
 | historical exposed live credentials invalidated | **HUMAN-ONLY** — this entry |
-| at least two fresh creation exercises demonstrate generality | **one done**, second quota-blocked until the daily Spark reset — capability is proven, allowance is not available |
+| at least two fresh creation exercises demonstrate generality | **one done**, second quota-blocked until the daily Spark reset. The gate asks for two *because one cannot demonstrate generality* — so this is not "nearly met", it is half-evidenced |
 | no unresolved release-blocking critic finding | **the final independent pass has not run** |
 
 The difference matters for what happens next: the second and third clear themselves
@@ -285,7 +285,11 @@ credentials, and it is not one to take unilaterally.
    `golem-corpus`.
 4. Add a `scheduled` handler and a cron trigger so `staleAssets` / `markHealth` run, or
    delete the sentence in `staleAssets` that promises a cron that does not exist.
-5. Re-run `apps/worker/tests/asset-library-availability.test.mjs`; the last test is
+5. Nothing else. The sixth step this list used to need — dropping a `fromLibrary`
+   guard in `recordPlacedAsset` that keyed a library asset as *unaccounted* whenever
+   its id had not come from this session's own search — was fixed in code on
+   2026-09-01, so the ingest alone is now sufficient.
+6. Re-run `apps/worker/tests/asset-library-availability.test.mjs`; the last test is
    expected to fail once step 3 lands, and that failure is the signal to rewrite this
    section.
 
@@ -294,6 +298,18 @@ credentials, and it is not one to take unilaterally.
 Every asset acquisition falls through to the Creator Store — the path with unverified
 creators and script-bearing models, which the insertion gate then has to catch. The
 library exists to avoid needing that gate so often, and has never once been available.
+
+**And every asset Golem places is recorded as unaccounted.** The attribution ledger keys
+on `asset_library.id`; with no library there is no key, so every placement writes the
+`unaccounted:` sentinel and the compliance report grades each one `missing_provenance`,
+which it treats as a blocker. That is correct as a fact — Golem checked the asset was
+free, publicly visible, script-free and from a trusted creator, and then genuinely did
+not know its licence — but the credits panel first rendered it as a red *"N assets cannot
+ship commercially"*, a determination nobody made. The panel now distinguishes a finding
+against an asset from the absence of one and says the second in amber. Until this blocker
+clears, the honest state of the credits surface for every project is "Golem cannot account
+for these", and that is what it says.
+
 This does not invalidate `evidence/2026-09-01-rock-palette-supply.md`, which searched the
 Creator Store directly and whose conclusion stands on its own.
 

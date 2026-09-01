@@ -170,12 +170,34 @@ function parseList(json: string | null): string[] {
  * A left join, deliberately: a usage row whose library row was deleted or was never written must
  * still appear in the report. Dropping it would turn an unaccounted asset into an invisible one.
  */
+const JOINED =
+  `select u.asset_id, u.first_used_at, u.last_used_at, u.uses, u.via_live_api, u.context, l.name, l.kind, l.source, l.source_url, l.licence, l.licence_url, l.commercial_use, l.attribution_required, l.author, l.retrieved_at, l.imported_at, l.modifications, l.roblox_asset_id, l.tags, l.sha256 from project_asset_use u left join asset_library l on l.id = u.asset_id where u.project_id = ? order by u.asset_id`;
+
+/**
+ * The same rows with every library column forced to null.
+ *
+ * Used when `asset_library` does not exist. That is not a hypothetical: nothing in the
+ * repository calls `ensureAssetTables`, so the table has never been created in
+ * production (BLOCKERS §4b), and the LEFT JOIN above therefore raised
+ * `no such table: asset_library` on every read — which meant the whole credits surface
+ * answered 500 and rendered a connection error. The honest answer for a project whose
+ * library does not exist is that NOTHING can be accounted for, which is exactly what a
+ * join that matches nothing produces. So produce it, rather than failing.
+ */
+const UNJOINED =
+  `select u.asset_id, u.first_used_at, u.last_used_at, u.uses, u.via_live_api, u.context, null as name, null as kind, null as source, null as source_url, null as licence, null as licence_url, null as commercial_use, null as attribution_required, null as author, null as retrieved_at, null as imported_at, null as modifications, null as roblox_asset_id, null as tags, null as sha256 from project_asset_use u where u.project_id = ? order by u.asset_id`;
+
 export async function projectAssets(env: Pick<Env, 'CORPUS'>, projectId: string): Promise<ProjectAsset[]> {
-  const rows = await env.CORPUS.prepare(
-    `select u.asset_id, u.first_used_at, u.last_used_at, u.uses, u.via_live_api, u.context, l.name, l.kind, l.source, l.source_url, l.licence, l.licence_url, l.commercial_use, l.attribution_required, l.author, l.retrieved_at, l.imported_at, l.modifications, l.roblox_asset_id, l.tags, l.sha256 from project_asset_use u left join asset_library l on l.id = u.asset_id where u.project_id = ? order by u.asset_id`,
-  )
-    .bind(projectId)
-    .all<JoinRow>();
+  let rows;
+  try {
+    rows = await env.CORPUS.prepare(JOINED).bind(projectId).all<JoinRow>();
+  } catch (e) {
+    // ONLY the missing-table case. Anything else — a timeout, a corrupt index — must
+    // still fail loudly: reporting it as "nothing is accounted for" would turn a fault
+    // into a confident answer, which is the failure this whole module exists to avoid.
+    if (!String(e instanceof Error ? e.message : e).includes('no such table')) throw e;
+    rows = await env.CORPUS.prepare(UNJOINED).bind(projectId).all<JoinRow>();
+  }
 
   return rows.results.map((r) => {
     const use: AssetUse = {

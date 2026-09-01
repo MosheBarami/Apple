@@ -117,7 +117,7 @@ test('no source draws a status with a Unicode character', () => {
 test('the marks that were replaced are actually gone from their call sites', () => {
   for (const f of ['components/pairing-dialog.tsx', 'components/loading.tsx', 'lib/generative-ui/render.tsx']) {
     const src = readFileSync(join(SRC, f), 'utf8');
-    assert.match(src, /StatusIcon/, `${f} no longer uses the shared mark`);
+    assert.match(src, /StatusIcon/, `${f} still draws its own mark instead of the shared one`);
   }
 });
 

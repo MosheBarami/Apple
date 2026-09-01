@@ -668,21 +668,31 @@ let provenanceTablesReady = false;
 async function recordPlacedAsset(
   ctx: AgentCtx,
   assetId: number,
-  fromLibrary: boolean,
   parent: string,
-): Promise<{ assetId: string; accounted: boolean } | null> {
+): Promise<{ assetId: string; accounted: boolean; recorded?: false; why?: string } | null> {
   if (!ctx.projectId) return null;
   try {
     if (!provenanceTablesReady) {
       await ensureProvenanceTables(ctx.env);
       provenanceTablesReady = true;
     }
+    // The library is asked about EVERY id, not only ones this session's search returned.
+    // Gating the lookup on `fromLibrary` — which is session membership — meant a library
+    // asset whose id arrived any other way was recorded as unaccounted and then reported
+    // to the customer as an asset Golem could not account for. Both of the other arrival
+    // routes are supported paths: an id the user pasted, and one carried over from an
+    // earlier session. The query below answers correctly for any id, and provenance is a
+    // property of the ASSET, not of how its number reached this function.
     let key: string | null = null;
-    if (fromLibrary) {
+    try {
       const row = await ctx.env.CORPUS.prepare('select id from asset_library where roblox_asset_id = ? limit 1')
         .bind(assetId)
         .first<{ id: string }>();
       key = row?.id ?? null;
+    } catch {
+      // The table may not exist at all (BLOCKERS §4b). That is the unaccounted case,
+      // not a failure to record — fall through and write the sentinel.
+      key = null;
     }
     const accounted = key !== null;
     // `viaLiveApi` is false here and it is a claim, not a default: the only source that
@@ -694,8 +704,13 @@ async function recordPlacedAsset(
       context: parent,
     });
     return { assetId: key ?? `unaccounted:roblox:${assetId}`, accounted };
-  } catch {
-    return null;
+  } catch (e) {
+    // The reason travels back with the failure. A bare `catch { return null }` reported a
+    // permanent schema mistake — a renamed column in `recordAssetUse` — exactly like a
+    // one-off D1 blip, which is the same "well-covered logic, nothing watches the wiring"
+    // shape this producer was written to fix. The placement still stands; only the record
+    // is lost, and now it says what lost it.
+    return { assetId: `unaccounted:roblox:${assetId}`, accounted: false, recorded: false, why: scrubEngineIdentity(String(e instanceof Error ? e.message : e)).slice(0, 160) };
   }
 }
 
@@ -1059,7 +1074,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Golem's curated CC0 asset library. Every hit is licence-cleared and safe to insert. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+        "Search Golem's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
       parameters: S(
         {
           query: { type: 'string' },
@@ -1199,15 +1214,22 @@ export const TOOLS: Record<string, ToolImpl> = {
       // AFTER the asset is proven clean and in the place, and never before: the ledger
       // records what a project actually uses, and an insertion that was refused is not
       // a use. Failures here are swallowed on purpose — an attribution row is a record
-      // ABOUT the build, and losing one must not undo a placement that succeeded. The
-      // report says plainly when it cannot account for an asset, so a lost row degrades
-      // into a visible "unaccounted", not into a silent claim that nothing is owed.
-      const recorded = await recordPlacedAsset(ctx, assetId, fromLibrary, parent);
+      // ABOUT the build, and losing one must not undo a placement that succeeded.
+      //
+      // WHAT A LOST WRITE ACTUALLY COSTS, stated correctly. An earlier version of this
+      // comment claimed it "degrades into a visible unaccounted" — it does not. The
+      // report reads `project_asset_use`, so a row that was never written is not
+      // unaccounted, it is ABSENT, and the asset simply does not appear. The key-space
+      // argument covers a row that was written with a sentinel; it cannot cover a row
+      // that does not exist. `recorded: false` therefore goes into the tool result, so
+      // the loss is at least visible in the transcript and the audit log rather than
+      // nowhere, and the panel's footer says a clean result covers only what is listed.
+      const recorded = await recordPlacedAsset(ctx, assetId, parent);
 
       return {
         ...placed,
         provenance,
-        ...(recorded ? { attribution: recorded } : {}),
+        attribution: recorded ?? { recorded: false },
         ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
       };
     },

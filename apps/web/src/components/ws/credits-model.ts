@@ -72,7 +72,11 @@ export interface AttributionResponse {
    * INCOMPLETE section for unaccounted assets, and a client-side copy that forgot it
    * would hand someone a credits file that quietly claims to be complete.
    */
-  credits: string;
+  // OPTIONAL, and the compiler now enforces what a comment used to only describe: a
+  // worker one version behind sends no such field, and a bare `res.credits.trim()`
+  // type-checked cleanly and took the whole workspace down once already. Read it
+  // through copyableCredits.
+  credits?: string;
 }
 
 /**
@@ -102,7 +106,7 @@ export function copyableCredits(res: AttributionResponse): string | null {
  * recording did not happen" — and from the browser those are the same bytes. Saying
  * "clear to publish" would be a claim about the second case that nothing supports.
  */
-export type Readiness = 'nothing_recorded' | 'blocked' | 'obligations' | 'clear';
+export type Readiness = 'nothing_recorded' | 'blocked' | 'unaccounted' | 'obligations' | 'clear';
 
 export interface ReadinessVerdict {
   state: Readiness;
@@ -127,13 +131,41 @@ export function readiness(res: AttributionResponse): ReadinessVerdict {
   }
 
   const blockers = c.findings.filter((f) => f.severity === 'blocker');
-  if (blockers.length > 0) {
+
+  // MISSING PROVENANCE IS NOT A FINDING AGAINST THE ASSET. It is the absence of one,
+  // and the two must not be drawn the same way.
+  //
+  // The worker grades `missing_provenance` as a blocker, which is right for the export
+  // gate it was written for: you cannot certify what you cannot account for. But the
+  // first version of this panel rendered that as red, "N assets cannot ship
+  // commercially", with "each of these has to be replaced or cleared first" — and while
+  // the curated library does not exist (BLOCKERS §4b) EVERY asset Golem inserts lands
+  // unaccounted, so every user with a placed asset was told their game was not
+  // shippable. Golem never determined that. It checked the asset was free, publicly
+  // visible, script-free and from a trusted creator, and then did not know its licence.
+  //
+  // Saying so is the honest verdict, and it is a different verdict.
+  const determined = blockers.filter((f) => f.code !== 'missing_provenance');
+  const unknown = blockers.filter((f) => f.code === 'missing_provenance');
+
+  if (determined.length > 0) {
     return {
       state: 'blocked',
-      title: blockers.length === 1 ? '1 asset cannot ship commercially' : `${blockers.length} assets cannot ship commercially`,
+      title: determined.length === 1 ? '1 asset cannot ship commercially' : `${determined.length} assets cannot ship commercially`,
       body:
         'A Roblox experience with monetisation on — or merely eligible for the engagement '
         + 'payout — is a commercial use. Each of these has to be replaced or cleared first.',
+    };
+  }
+
+  if (unknown.length > 0) {
+    return {
+      state: 'unaccounted',
+      title: unknown.length === 1 ? "1 asset Golem cannot account for" : `${unknown.length} assets Golem cannot account for`,
+      body:
+        'Golem placed these by Roblox asset id and has no licence record for them. That is '
+        + 'not a finding that they cannot be used — it is the absence of one, so nothing here '
+        + 'clears them either. Check them yourself before you publish.',
     };
   }
 
@@ -146,10 +178,14 @@ export function readiness(res: AttributionResponse): ReadinessVerdict {
     };
   }
 
+  // "Nothing owed" would be a claim about the PROJECT; this is a claim about the
+  // ledger, and the title has to say which. A place can hold assets the ledger never
+  // saw — anything placed before this ledger had a producer, and anything whose write
+  // was lost (see the note on recordPlacedAsset in the worker).
   return {
     state: 'clear',
-    title: `${c.checked === 1 ? '1 asset' : `${c.checked} assets`} checked, nothing owed`,
-    body: 'Every recorded asset is accounted for and none of their licences require a credit.',
+    title: `${c.checked === 1 ? '1 recorded asset' : `${c.checked} recorded assets`}, nothing owed on them`,
+    body: 'Every asset in this ledger is accounted for and none of their licences require a credit.',
   };
 }
 
@@ -157,6 +193,8 @@ export function readiness(res: AttributionResponse): ReadinessVerdict {
 export const READINESS_TONE: Record<Readiness, 'good' | 'bad' | 'warn' | 'muted'> = {
   clear: 'good',
   blocked: 'bad',
+  // Amber, not red. An unknown is an open question, and red would state the answer.
+  unaccounted: 'warn',
   obligations: 'warn',
   nothing_recorded: 'muted',
 };

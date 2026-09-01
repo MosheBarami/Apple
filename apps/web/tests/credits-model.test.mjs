@@ -75,7 +75,8 @@ test('an actually-empty-but-checked project is clear, and says how many it check
   // browser gets that the ledger was ever written to.
   const v = readiness(res({ commercialUse: { checked: 3 } }));
   assert.equal(v.state, 'clear');
-  assert.match(v.title, /3 assets checked/);
+  assert.match(v.title, /3 recorded assets/);
+  assert.match(v.title, /nothing owed on them/, 'a claim about the LEDGER, not about the place');
   assert.equal(READINESS_TONE.clear, 'good');
 });
 
@@ -170,4 +171,47 @@ test('nothing owed means nothing to copy, even though the document is never empt
   // renderAttribution always writes a "Credits" header, so a non-empty string is not
   // evidence that anything is owed.
   assert.equal(copyableCredits({ ...res({ commercialUse: { checked: 3 } }), credits: 'Credits\n=======' }), null);
+});
+
+test('an asset Golem could not account for is not an asset it ruled against', () => {
+  // THE ONE THAT MATTERED. The worker grades `missing_provenance` as a blocker, which
+  // is right for its own export gate — you cannot certify what you cannot account for.
+  // Rendering that as red "N assets cannot ship commercially" is a determination nobody
+  // made, and while the curated library does not exist (BLOCKERS §4b) EVERY asset Golem
+  // inserts lands unaccounted. So every user with a placed asset was being told their
+  // game was not shippable, on evidence that says only that a licence was never read.
+  const v = readiness(
+    res({
+      commercialUse: {
+        checked: 2,
+        ok: false,
+        findings: [
+          { assetId: 'unaccounted:roblox:1', name: 'Roblox asset 1', code: 'missing_provenance', severity: 'blocker', why: 'w', remediation: 'r' },
+        ],
+      },
+    }),
+  );
+  assert.equal(v.state, 'unaccounted');
+  assert.doesNotMatch(v.title, /cannot ship/i, 'an unknown must not be worded as a verdict');
+  assert.match(v.body, /not a finding that they cannot be used/i);
+  assert.match(v.body, /nothing here\s+clears them either/i, 'and it must not read as permission either');
+  assert.equal(READINESS_TONE.unaccounted, 'warn', 'amber: red would state the answer');
+});
+
+test('a real determination still outranks an unknown', () => {
+  // The split must not soften an asset whose licence WAS read and found incompatible.
+  const v = readiness(
+    res({
+      commercialUse: {
+        checked: 3,
+        ok: false,
+        findings: [
+          { assetId: 'a', name: 'A', code: 'missing_provenance', severity: 'blocker', why: 'w', remediation: 'r' },
+          { assetId: 'b', name: 'B', code: 'non_commercial', severity: 'blocker', why: 'w', remediation: 'r' },
+        ],
+      },
+    }),
+  );
+  assert.equal(v.state, 'blocked');
+  assert.match(v.title, /1 asset cannot ship/, 'and counts only the determined one');
 });

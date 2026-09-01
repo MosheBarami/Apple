@@ -266,6 +266,15 @@ export class SessionDO extends DurableObject<Env> {
       //   client got nothing either. See F-35. ]]
       const playtest = await this.ctx.storage.get<PlaytestRun>('playtestRun');
       if (playtest) this.playtestRunBacking = playtest;
+      //[[ The binding, for the same reason as the playtest above.
+      //
+      //   The agent loop is driven by `alarm()`, which never calls `bind()` — so on an
+      //   instance revived after eviction mid-run, `boundProjectId` was null, and
+      //   `recordPlacedAsset` returned on its first line. Every insert_asset for the rest
+      //   of that run recorded nothing, and an empty ledger reads CLEAN. That is the exact
+      //   bug the producer was written to fix, re-entering through the recovery path. ]]
+      const bound = await this.ctx.storage.get<{ projectId: string }>('bind');
+      if (bound) this.boundProjectId = bound.projectId;
     });
   }
 
