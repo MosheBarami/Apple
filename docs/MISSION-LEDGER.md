@@ -56,6 +56,104 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 39 | PR #1 carries honest evidence incl. rejections | **PROVEN** | body updated 2026-09-01 |
 | 40 | Independent critic agrees it is not prototype | **UNPROVEN** | 11 findings from the visual critic, **10 closed** (V10 objective slot, V7 shop duplication, plus V1–V6/V9/V11 earlier). **V8 is now materially addressed**: the world had been one 332×4×553 slab and now rises through three terraces to the wall foot, so the overlook reads as a basin rather than a tabletop — at the cost of an enclosure regression I caused and closed (F-40). **Gate 2 is NOT closed**: the wall was rebuilt from an oriented-facet vocabulary with proven machinery and an unproven picture (F-39). The gate stays UNPROVEN until a FRESH critic judges revised player-eye pixels, and §5 forbids arguing it upward from metrics  **Attempted again this session and blocked on tooling, not on judgement.** The built world in Studio was verified current (84 wedges / 14 corner wedges in `Cliffs`, `Apron` present with its 4 ramps) and the canonical `Viewpoints` cameras resolve correctly against live geometry via `execute_luau` — but `screen_capture` times out, and a capture attempt takes the whole MCP transport down with it — `execute_luau`, which had been working, then reports no connected instance too, and recovers only until the next capture. Five attempts, same sequence each time. So the fault is the capture transport rather than the capture parameters. The one capture path that does work is the plugin's own rasteriser, and the reason it cannot stand in is not its resolution — `Render.renderView` could be driven at 320x240 with the canonical player-eye CFrames. It is that the rasteriser renders flat `SmoothPlastic` with no lighting, materials, shadows or atmosphere: it can answer whether the composition reads, and it structurally cannot answer *"is this a finished game or a prototype"*, which is the question this gate asks. Offering a flat-shaded render as "revised player-eye pixels" would be the same move as arguing the score up from metrics. The gate stays UNPROVEN; the blocker is the Studio `screen_capture` transport  **Attempted again 2026-09-01, and the diagnosis is now the result of an experiment rather than an inference.** All five earlier attempts passed camera arguments, so "capture is broken" and "the camera-set inside capture is broken" predicted the same five failures — and only the second would have left Gate 40 reachable today. The discriminator was run: the canonical `overlook` camera was placed through `execute_luau` and verified by reading it back, then `screen_capture` was called with NO camera arguments at all. It timed out identically and took the transport down identically. **The camera path is exonerated and the capture transport is the fault.** The in-engine escape routes were then checked and there are none: `ThumbnailGenerator` is absent, and `CaptureService:CaptureScreenshot`'s callback never fired (8 s, Edit) — which `playtest-card.tsx:5-7` already recorded as verified, so this session reproduced a known result from the other side of the API rather than finding a new one. The only remaining step is operational: restart Studio or its MCP plugin. It was not taken this session because the same paired instance was needed, and working, for the §9 golden creation test · `evidence/2026-09-01-capture-transport-discriminated.md` |
 
+## Final dispositions (master mission §2)
+
+§2 forbids leaving an outcome as PARTIAL or UNPROVEN: each must end as **PROVEN**,
+**ACCEPTED_DEBT** or **HUMAN_BLOCKED**, and *"critical-path product requirements cannot
+be hidden inside ACCEPTED_DEBT"*. Thirteen rows above still carried the old vocabulary.
+Each is dispositioned here, with the reason, rather than by editing a status word.
+
+**Two of the thirteen moved on new evidence rather than on a relabel.**
+
+### PROVEN
+
+**24 — Unsafe/exploit content quarantined.** The row said "58 of 1,240 records carry a
+scan verdict", which reads as 5 % coverage. Re-measured against `data/sources.json` and
+the checkout lock:
+
+| | |
+|---|---:|
+| records in the corpus | 1,240 |
+| **fetched** — the only ones whose content is on disk | **38** |
+| of those, scanned | **38** |
+| clean | 36 |
+| `remote-payload-loader` (NevermoreEngine, excluded) | 1 |
+| `unscannable` (`Roblox/react-luau`, in REVIEW) | 1 |
+
+The 1,182 unscanned are **unfetched URLs**. There is nothing to scan and nothing that
+can influence anything, because no byte of them exists locally. §8.1's actual
+requirement — *"no quarantined/unscanned source may silently influence production
+generation"* — is met at 38 of 38. The backlog is ACCEPTED_DEBT below, separately,
+because it is a different claim.
+
+**32 — Hugging Face pipeline measured and privacy-safe.** The row reads "nothing
+uploaded/downloaded/trained" as though incomplete. §8.2 is explicit that this is the
+INTENDED state: *"do not fine-tune merely to claim training occurred"*, and *"do not
+upload third-party source/data to external dataset hosts unless redistribution rights
+clearly permit it."* The gate asks for the landscape to be measured and privacy-safe.
+It is both, and doing more would violate the section it serves.
+
+**20 — Durable design/source intelligence pipeline.** All eight of §7's stages execute;
+the row already says so and the PARTIAL predates the last two landing. The remaining
+value is coverage, which is 24b below.
+
+### ACCEPTED_DEBT — non-critical, scoped, reversible
+
+**2 — Benchmark beyond the blockout.** §6 authorises this in terms: *"If the final
+benchmark is coherent, playable, stylistically intentional and demonstrates the creation
+capability but still has non-critical art shortcomings, record those shortcomings as
+ACCEPTED_DEBT and move on."* Five wall approaches are closed and the facet path is shut
+by owner decision. Crystal Canyon is an internal capability benchmark, not the product.
+
+**5 — UI visual quality** and **6 — UI motion.** The kit is the strongest thing in the
+build per the visual critic; three named art defects remain, and the motion probe
+resolves travel and peak but not easing because Studio renders this scene at ~15 fps. A
+220 ms motion gets three samples. A measurement limit stated honestly, on an internal
+benchmark's UI.
+
+**10 — Vertical slice playable.** Loop and persistence work. Benchmark, not product.
+
+**30 — Studs/classic art language** (19 rules, no studs world built) and **31 — broad
+non-simulator patterns** (106 rules over 21 of 23 families; `fantasy` and `sci-fi`
+open). Both are corpus breadth. §8 is explicit that *"a source that is not used by the
+product is not a release blocker merely because it exists in a backlog"*.
+
+**24b — the unfetched corpus backlog.** 497 lawfully-reusable repositories are still
+unfetched. Not a security gap — see 24 above — but real remaining value.
+
+### HUMAN_BLOCKED
+
+**40 — Independent critic agrees it is not prototype.** Blocked on the Studio
+`screen_capture` transport, which times out and takes the whole MCP connection down.
+Established by experiment this session rather than inferred: the camera was placed
+through `execute_luau`, verified, and capture called with NO camera arguments —
+identical failure. The in-engine escapes do not exist. The remaining step is
+operational: the environment needs restarting, not more work here.
+
+**14 — Hidden Cloudflare routing benchmark-driven.** AI Gateway credit. Unchanged, and
+settled by owner ruling.
+
+**18 — Inline playtest viewport.** Three outstanding items, one closed this session. The
+other two — the card is not deployed, and `run_and_check` does not drive the capture
+loop — are NOT accepted as debt, because §2 names the playtest evidence path critical.
+Deployment is gated on PR #1, which is gated on credential rotation. So it is
+**HUMAN_BLOCKED behind the same owner action as the merge**, with every part
+independently proven.
+
+### The two rows whose stated blocker is STALE
+
+**19 — Roadmap intelligence** and **26 — Corpus materially improves evals** both say
+their remaining work "needs a model, which is gate 14's blocker". **That is no longer
+true.** Gate 14 is about third-party comparative inference through AI Gateway. The
+production core model — `@cf/zai-org/glm-5.3-flash` on the keyless `env.AI` binding —
+works today, and was driven end to end this session through the real product path.
+
+What actually blocks them is the free plan's **daily Spark allowance**, which this
+session spent on the golden creation test (60 of 60). It resets at
+2026-09-02T00:00:00Z. §25 forbids raising the cap and §33 forbids purchasing, so both
+are **quota-blocked, not capability-blocked** — a distinction worth keeping, because one
+resolves by waiting and the other would need a decision.
+
 ## Plugin coverage, end of 2026-09-01
 
 `apps/plugin` began the day with **no `package.json`**, so `pnpm -r test` could not see
