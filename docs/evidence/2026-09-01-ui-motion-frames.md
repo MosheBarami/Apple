@@ -188,3 +188,145 @@ child. Sampling one frame and concluding is how a working system gets reported b
 
 **8 of 14 categories plus reduced-motion**, up from 2. The remaining six are reachable
 with the same harness; none is blocked.
+
+> **Superseded by the third pass below.** All six were taken up: three are measured, one is
+> measured and found to have no motion at all, and two turned out to name surfaces this game
+> does not have.
+
+---
+
+# Third pass, 2026-09-01 — the last four categories, and what two of them turned out to be
+
+Same sampler as pass 1: arm on `RenderStepped`, **re-resolve the instance every frame**, drive
+with real input or the real server cue, read afterwards. Two of the four are measured curves.
+The other two are findings.
+
+## Hover — measured
+
+A real mouse moved onto the SHOP nav tile and off again, with the sampler watching every
+animatable colour and transparency in the tile's subtree rather than a property guessed in
+advance.
+
+| t (ms) | tile fill | highlight alpha |
+|---|---|---|
+| 0 | 76,198,244 | 0.52 |
+| +18 | 84,200,244 | 0.46 |
+| +35 | 92,203,245 | 0.40 |
+| +51 | 97,204,245 | 0.37 |
+| +67 | 100,205,245 | 0.35 |
+| +83 | 101,205,245 | 0.34 |
+
+Alpha deltas of 6, 6, 3, 2, 1 — **decelerating over ~66 ms**. Leaving reverses it with the
+same shape (0.34 → 0.40 → 0.46 → 0.49 → 0.51 → 0.52) and lands **exactly** on the resting
+values, so repeated hovers do not drift.
+
+The first attempt sampled `Size` and `Rotation` and recorded 1258 frames of nothing. Hover here
+is colour and glow, not geometry — the same mistake pass 2 records for the toast container,
+which is why the sampler now snapshots the whole subtree instead of one property.
+
+## Loading / progress — measured
+
+The pack gauge fill, driven by a real award from the server's 10 Hz sweep.
+
+| t (ms) | fill (scale) |
+|---|---|
+| 518.6 | 0.0074 |
+| 534.8 | 0.0136 |
+| 550.4 | 0.0189 |
+| 567.1 | 0.0240 |
+| 584.4 | 0.0285 |
+| 601.6 | 0.0322 |
+| 617.5 | 0.0350 |
+| 635.0 | 0.0374 |
+| 650.9 | 0.0389 |
+| 667.7 | **0.0398** |
+
+Deltas 74, 62, 53, 51, 45, 37, 28, 24, 15, 9 (×10⁻⁴): **monotonic, decelerating, no
+overshoot**, settling at 0.0398 ≈ 1/25 — one shard of a 25 capacity. ~150 ms of visible travel
+against a coded 0.18 s Quad Out.
+
+## Unlock burst — measured, three channels at once
+
+Driven by firing the real `Unlocked` remote from the server, never by calling into `Effects`
+(F-18: a `require` in the command context returns a different module instance).
+
+| t (ms) | screen wash alpha | shockwave width |
+|---|---|---|
+| 0 | 0.543 | 165 px |
+| 66 | 0.681 | 448 px |
+| 148 | 0.819 | 751 px |
+| 233 | 0.920 | 1000 px |
+| 315 | 0.979 | 1182 px |
+| 348 | 0.992 | 1239 px |
+
+The ring expands **7.5×** while the wash fades out, both decelerating and **frame-synchronised**
+— they are one gesture, not two animations that happen to overlap. 160 frames, 35 distinct
+states.
+
+*Limitation:* the sampler can only record once an instance exists, so the first captured frame
+already has the wash at 0.543. The rise into the peak is one frame earlier than anything this
+harness can see.
+
+## Purchase — measured, and the finding is that there is no motion
+
+Three real purchases, clicked with a real mouse, sampling both coin surfaces every frame.
+
+```
+t=   0.0ms   HUD wallet=250   panel pill=250
+t=4735.0ms   HUD wallet=122   panel pill=122
+```
+
+**Two states. Both surfaces snap, in the same frame, with nothing in between.** The card's
+"25 → 40 SHARDS" line swaps instantly too. Sampled across 835 frames.
+
+And it is not a debit-only asymmetry — a *sell* behaves the same way:
+
+```
+t=   0.4ms  shards=56   coins=122
+t=1552.1ms  shards=0    coins=234
+```
+
+`Effects.countTo` exists, handles both directions (`math.abs(target - start)`), and is called
+from `Panels.luau:957` — but **`Hud.luau:1306` writes the wallet with
+`coinBox.amount.Text = Util.comma(coins)`**, a direct assignment. `countTo` appears nowhere in
+`Hud.luau`. What the HUD *does* animate on a currency change is the pill punch and plate flash,
+and only on an **increase** (`if coins > lastCoins`), so a purchase produces no HUD motion at
+all.
+
+Pass 2's "currency gain — shard label rolled 15 → 16 → 17 → 18 → 19" is consistent with this
+and was not a counting animation: those are five separate awards from the sweep arriving one at
+a time, with the pill punching on each. The measured travel was the punch.
+
+**This is a gap against §O, recorded rather than closed.** Whether the wallet *should* count is
+a design call — a counter that lags the truth is its own problem — but "purchase" currently has
+no motion of its own, and this document should not have implied otherwise.
+
+## Two categories that name surfaces this game does not have
+
+The fourteen-category list is this document's own enumeration of §O, and two entries in it
+describe surfaces Crystal Canyon never implemented:
+
+- **tab transition** — there is no tab bar. Panels are modal and mutually exclusive, opened
+  from the nav rail; `grep -i "tabbar\|selectTab\|activeTab"` across the client returns
+  nothing.
+- **roadmap transition** — the roadmap is a web-app surface. It has no representation in the
+  game client.
+
+Calling these "unmeasured" implied work outstanding that does not exist. They are **not
+applicable**, and the distinction matters: an unmeasured category is a gap in the evidence, an
+inapplicable one is a gap in the list.
+
+## Coverage against §O, honestly
+
+| category | status |
+|---|---|
+| panel open · panel close | measured (pass 1) |
+| button press | measured as deliberately instantaneous |
+| currency gain · notification · error · success pulse | measured (pass 2) |
+| reduced-motion | implemented and proven (pass 2) |
+| **hover · loading/progress · unlock burst** | **measured (pass 3)** |
+| **purchase** | **measured — no motion exists; recorded as a §O gap** |
+| tab transition · roadmap transition | **not applicable — no such surface in this game** |
+
+**11 of 12 applicable categories carry a measurement**, plus reduced motion. The twelfth
+(purchase) is measured and found empty, which is a finding rather than a curve.

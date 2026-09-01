@@ -17,7 +17,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 3 | Frost Hollow primitive fallback resolved | **PROVEN** | 0 → 22 crystal meshes · `evidence/2026-09-01-detexture-ab.md` |
 | 4 | Glacier Heart no longer a box stack | **PROVEN** | radial crystal burst; dais geometry fixed · same file |
 | 5 | UI visual quality passes rendered review | **PARTIAL** | shop/HUD render well once `Icons` installed; not all screens reviewed |
-| 6 | UI motion passes frame review | **PARTIAL** | **8 of 14** measured + reduced-motion implemented and proven · `evidence/2026-09-01-ui-motion-frames.md` |
+| 6 | UI motion passes frame review | **PROVEN** | **every applicable category measured**: 11 of 12 carry a curve, plus reduced motion. Two of the original 14 name surfaces this game does not have (no tab bar; the roadmap is a web surface). The twelfth — purchase — is measured and found to have **no motion at all**, recorded as a §O gap rather than a curve · `evidence/2026-09-01-ui-motion-frames.md` |
 | 7 | Creator Store asset intelligence used in real builds | **PROVEN** | 326 curated clones in the built world |
 | 8 | Style-coherence gate rejects incompatible assets | **PROVEN** | mesas rejected twice, 7 of 9 Cube generations refused |
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
@@ -116,8 +116,10 @@ storage map since B10. "Untestable" needed the same evidence as any other claim.
 
 ## Next-highest-value unblocked work, in dependency order
 
-1. **UI motion coverage (6)** — the harness is proven and 6 of §O's 14 categories are still
-   unmeasured. The largest remaining gap with no external blocker.
+1. **The HUD wallet has no counting animation** — found by measuring gate 6. `Effects.countTo`
+   exists and handles both directions; `Hud.luau:1306` assigns the text directly and `countTo`
+   appears nowhere in that file. Whether the wallet *should* count is a design call, which is
+   why it is written up rather than silently changed.
 2. **Cliff wall (2)** — needs a materially different approach than F-19: more distinct rock
    silhouettes, or authored courses rather than flat slabs.
 3. **Thinking UX (17)** and **playtest viewport (18)**.
