@@ -1882,6 +1882,36 @@ local function prop(parent: Instance, family: string, x: number, z: number, cfg:
 	return fallbackProp(parent, resolved, x, z, y, fallbackH / NOMINAL[resolved], yaw, tiltX, tiltZ, collide)
 end
 
+--[[ A sign that actually says something. V5.
+
+	 §8 asks a kiosk for "a bright sign". The world had seven `sign` props and **zero** text,
+	 decal or SurfaceGui on any of them — the visual critic counted three BillboardGuis in the
+	 whole Canyon and no Decal or Texture at all. A signpost with nothing written on it is set
+	 dressing pretending to be signage.
+
+	 `prop` returns a height, not the instance it placed, so the newest child is taken after the
+	 call. That is order-dependent and would be a poor pattern in a long-lived API; here the two
+	 statements are adjacent, and the alternative is changing `prop`'s return type for six call
+	 sites that do not need it.
+
+	 No `rand()` here: this must not shift the builder's seeded stream (F-32). ]]
+local function labelledSign(parent: Instance, x: number, z: number, text: string, cfg: PropCfg): number
+	local before = #parent:GetChildren()
+	local h = prop(parent, "sign", x, z, cfg)
+	local kids = parent:GetChildren()
+	if #kids <= before then
+		return h
+	end
+	local placed = kids[#kids]
+	local board: BasePart? = if placed:IsA("BasePart")
+		then placed :: BasePart
+		else placed:FindFirstChildWhichIsA("BasePart", true)
+	if board then
+		billboard(board, text, biomeAt(x, z).Tint.accent, 13, 3.4, math.max(h * 0.6, 4))
+	end
+	return h
+end
+
 -- =========================================================================
 -- 4. CLIFFS
 -- =========================================================================
@@ -3425,8 +3455,8 @@ fenceRun(gatewayGroup, -PATH_HALF - 9, 84, -10, 18, 2)
 
 -- A signpost pair at the mouth of the road. Signage beside a road is the
 -- cheapest environmental storytelling there is: it says a person came this way.
-prop(gatewayGroup, "sign", -PATH_HALF - 7, 47, { tier = "player", anywhere = true })
-prop(gatewayGroup, "sign", PATH_HALF + 8, 62, { tier = "player", anywhere = true })
+labelledSign(gatewayGroup, -PATH_HALF - 7, 47, "CRYSTAL CANYON", { tier = "player", anywhere = true })
+labelledSign(gatewayGroup, PATH_HALF + 8, 62, "THIS WAY", { tier = "player", anywhere = true })
 
 for _ = 1, 5 do
 	local side = if chance(0.5) then 1 else -1
@@ -3612,7 +3642,7 @@ do
 	prop(camp, "crate", CAMP_X + 12, CAMP_Z - 2, { tier = "small", tierTo = "player", anywhere = true })
 end
 
-prop(camp, "sign", CAMP_X + 2, CAMP_Z + 12, { tier = "player", anywhere = true })
+labelledSign(camp, CAMP_X + 2, CAMP_Z + 12, "PROSPECTOR'S CAMP", { tier = "player", anywhere = true })
 
 -- A cold fire ring. Eight small stones and a charred centre — the cheapest
 -- possible "someone camped here", and it reads at a glance. Charged to the
@@ -3716,7 +3746,7 @@ do
 	})
 	prop(post, "crate", px + 22, pz - 3, { tier = "small", tierTo = "player", anywhere = true })
 	prop(post, "crate", px + 12, pz - 12, { tier = "small", anywhere = true })
-	prop(post, "sign", px + 14, pz + 14, { tier = "player", anywhere = true })
+	labelledSign(post, px + 14, pz + 14, "TRADING POST", { tier = "player", anywhere = true })
 	fenceRun(post, px + 26, pz + 12, 2, -26, 3)
 	prop(post, "bush", px - 14, pz + 15, { tier = "player", collide = false, anywhere = true })
 	prop(post, "bush", px + 24, pz + 16, { tier = "player", collide = false, anywhere = true })
@@ -3768,7 +3798,7 @@ do
 		)
 	end
 
-	prop(kiosk, "sign", px - 5, pz + 16, { tier = "player", anywhere = true })
+	labelledSign(kiosk, px - 5, pz + 16, "UPGRADE KIOSK", { tier = "player", anywhere = true })
 	local h1 = prop(kiosk, "crate", px - 21, pz - 14, { tier = "small", tierTo = "player", anywhere = true })
 	prop(kiosk, "crate", px - 21.5, pz - 13.4, {
 		tier = "small",
