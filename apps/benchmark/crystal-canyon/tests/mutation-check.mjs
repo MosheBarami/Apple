@@ -67,6 +67,41 @@ const MUTATIONS = [
     find: '\tlocal negative = n < 0 and whole ~= "0"',
     replace: '\tlocal negative = n < 0',
   },
+  {
+    name: 'a missing profile is treated as ownership',
+    claim: 'a failed load is never ownership',
+    module: 'Zones',
+    find: '\tlocal profile = ctx.Data.get(player)\n\tif not profile or not profile.zones then\n\t\treturn false\n\tend',
+    replace: '\tlocal profile = ctx.Data.get(player)\n\tif not profile or not profile.zones then\n\t\treturn true\n\tend',
+  },
+  {
+    name: 'ownership accepts any truthy value',
+    claim: 'a corrupt zones table cannot unlock a zone',
+    module: 'Zones',
+    find: '\treturn profile.zones[zoneId] == true',
+    replace: '\treturn profile.zones[zoneId] ~= nil and profile.zones[zoneId] ~= false',
+  },
+  {
+    name: 'unlock charges nothing',
+    claim: 'an unlock charges exactly the listed price',
+    module: 'Zones',
+    find: '\tlocal cost = math.max(0, math.floor(zone.UnlockCost))',
+    replace: '\tlocal cost = 0',
+  },
+  {
+    name: 'unlock grants regardless of what spendCoins answered',
+    claim: 'an unaffordable unlock grants nothing',
+    module: 'Zones',
+    find: '\tif not ctx.Economy.spendCoins(player, cost) then\n\t\treturn false,',
+    replace: '\tif false and not ctx.Economy.spendCoins(player, cost) then\n\t\treturn false,',
+  },
+  {
+    name: 'refresh publishes only the unlocked zones',
+    claim: 'locked is a published state, not an absence',
+    module: 'Zones',
+    find: '\t\tplayer:SetAttribute(attributeName(zone.Id), Zones.isUnlocked(player, zone.Id))',
+    replace: '\t\tif Zones.isUnlocked(player, zone.Id) then player:SetAttribute(attributeName(zone.Id), true) end',
+  },
 ];
 
 try {

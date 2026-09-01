@@ -55,6 +55,7 @@ local MANIFEST = {
 	{ "src/client/Panels.luau", "client", "Panels", "ModuleScript" },
 	{ "src/client/Effects.luau", "client", "Effects", "ModuleScript" },
 	{ "src/client/Objective.luau", "client", "Objective", "ModuleScript" },
+	{ "src/client/Gates.luau", "client", "Gates", "ModuleScript" },
 	--[[ The isolated UI evaluation harness (§N). It ships because the command
 		 context runs in a SEPARATE Luau VM whose `require` returns a fresh module —
 		 a harness left outside the manifest could only be run by pasting its

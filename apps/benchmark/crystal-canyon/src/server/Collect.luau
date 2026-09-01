@@ -63,6 +63,10 @@ type ZoneState = {
 	respawn: number,
 	color: Color3,
 	records: { Crystal },
+	-- Copied from Config at spawn so the locked-zone notice costs no lookup per tick.
+	bounds: { Min: Vector3, Max: Vector3 },
+	name: string,
+	cost: number,
 }
 
 local Collect = {}
@@ -96,6 +100,14 @@ local SPIN_SPEED = 0.9
 -- stands in a crystal field with a full pack gets ten toasts a second.
 local FULL_NOTIFY_COOLDOWN = 3
 local lastFullNotify: { [Player]: number } = {}
+
+-- H1: standing in a locked zone used to be completely silent. Collect refuses the
+-- award (that refusal IS the security boundary and has not changed), but the player
+-- got no crystals and no reason -- indistinguishable from the game being broken.
+-- Longer than the pack-full cooldown because walking the length of a locked zone is
+-- one continuous mistake, not a repeated one.
+local LOCKED_NOTIFY_COOLDOWN = 8
+local lastLockedNotify: { [Player]: number } = {}
 
 local FLIP = CFrame.Angles(math.pi, 0, 0)
 
@@ -275,6 +287,11 @@ local function spawnZone(zone: any, zoneIndex: number, crystalsFolder: Instance)
 		respawn = zone.RespawnSeconds,
 		color = zone.CrystalColor,
 		records = records,
+		-- Carried so the locked-zone notice needs neither a Config lookup nor a
+		-- string build inside the tick loop.
+		bounds = zone.Bounds,
+		name = zone.Name,
+		cost = zone.UnlockCost,
 	}
 end
 
@@ -287,6 +304,24 @@ local function notifyPackFull(player: Player, now: number)
 	remoteNotify:FireClient(player, {
 		kind = "warn",
 		text = "PACK FULL — SELL AT THE GOLD PAD",
+	})
+end
+
+--[[ Tell a player standing in a zone they do not own why nothing is happening.
+
+	 The test is the zone's bounding box, not proximity to a crystal: an AABB test is
+	 O(1) per zone and answers the question the player is actually asking ("why is this
+	 place empty?"), whereas scanning a locked zone's crystal list would reintroduce
+	 exactly the per-crystal cost the sweep is built to avoid. ]]
+local function notifyZoneLocked(player: Player, zone: any, now: number)
+	local last = lastLockedNotify[player]
+	if last and now - last < LOCKED_NOTIFY_COOLDOWN then
+		return
+	end
+	lastLockedNotify[player] = now
+	remoteNotify:FireClient(player, {
+		kind = "warn",
+		text = `{zone.name} IS LOCKED — {Util.comma(zone.cost)} COINS`,
 	})
 end
 
@@ -341,7 +376,19 @@ local function sweep(now: number)
 					local zs = zoneStates[zi]
 					-- A locked zone awards nothing. This — not the gate's
 					-- collision — is what stops a locked player farming it.
-					if ctx.Zones.isUnlocked(player, zs.id) then
+					if not ctx.Zones.isUnlocked(player, zs.id) then
+						-- Locked. Award nothing, but say so if they are standing in it.
+						local b = zs.bounds
+						if
+							b
+							and origin.X >= b.Min.X
+							and origin.X <= b.Max.X
+							and origin.Z >= b.Min.Z
+							and origin.Z <= b.Max.Z
+						then
+							notifyZoneLocked(player, zs, now)
+						end
+					else
 						local records = zs.records
 						for i = 1, #records do
 							if budget <= 0 then
@@ -435,6 +482,7 @@ function Collect.init(context: Ctx)
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastFullNotify[player] = nil
+		lastLockedNotify[player] = nil
 	end)
 
 	local interval = 1 / Config.Collect.TickRate

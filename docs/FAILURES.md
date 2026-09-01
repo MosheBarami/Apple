@@ -146,7 +146,7 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 
 | id | severity | finding |
 |---|---|---|
-| H1 | high | The per-player zone gate is published by the server (`zone_<id>` attribute) and **read by nobody**. A player who pays 2,500 coins sees the gate unchanged; one who has not pays walks through and collects nothing with **zero feedback**. |
+| ~~H1~~ | ~~high~~ | **CLOSED 2026-09-01.** `src/client/Gates.luau` reads the attribute and paints the gate; `Collect.notifyZoneLocked` supplies the missing feedback. Measured in a Studio playtest — locked 232,62,62 @ T=0.350, unlocked 70,200,85 @ T=0.880, an 8-frame eased fade, and the notice firing 2×/8s inside the locked zone and 0× in an owned one. `docs/evidence/2026-09-01-zone-gate-h1.md`. |
 | H2 | high | A live server **does** silently degrade to no-persistence: `DataService:463` is not Studio-gated, so a `GetDataStore` throw at boot hands every joiner a blank profile at `state = ready`. The docstring asserts the opposite of the code. |
 | H3 | high | Losing the session lock mid-play sets `persist = false` and continues. The HUD keeps crediting coins; every write is discarded. `Notify` is wired and used elsewhere and fires on neither this path nor H2. |
 | H4 | high | Teleport farming works. `MaxPerTick` caps the instantaneous pickup, not the round trip, and there is no server-side movement validation — a ~6-8× economy advantage against the comment's claim of "the same rate as walking". |
@@ -156,11 +156,38 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 | A5/A6 | medium | Ops queued by a dead run are still delivered and executed; op delivery is at-most-once with no ack or redelivery. |
 | B5 | high | `plugin:Unloading` is never handled — nothing disconnects. After a plugin reload there are two live poll loops draining the same queue, which is also how F-21's nil recording arises. |
 | B6 | high | Reconnect calls `task.cancel` on a possibly-dead thread, and if the old loop is mid-yield it dies inside `Ops.execute`, leaving the ChangeHistory recording open forever and the asset policy stuck open. |
-| M6 | medium | The **HUD** is drawn under the Roblox topbar (`IgnoreGuiInset = true`, and `GetGuiInset` appears nowhere). The modal was fixed this session; the wallet column was not. |
+| M6 | medium | The **HUD** is drawn under the Roblox topbar (`IgnoreGuiInset = true`, and `GetGuiInset` appears nowhere). The modal was fixed this session; the wallet column was not — and the playtest for H1 showed the **notification layer** is a third affected surface: with an inset of `0,58`, `FROST HOLLOW IS LOCKED — 2,500 COINS` rendered with `IS LOCKED` cut off above the viewport. |
 | M9 | medium | `Config.Codes` claims "the client never sees this table" and the client requires `Config`. `Codes.luau` says the opposite and is correct. |
 | ~~L8~~ | ~~medium~~ | **CLOSED 2026-09-01.** 33 Luau tests now run the game's own modules in the standalone Luau CLI, plus a 7-mutation check proving the suite can fail. Finding F-26..F-28 below were found by writing them. See `apps/benchmark/crystal-canyon/tests/`. |
 
 ---
+
+### F-29 · A client module that ran, found its target, and painted nothing
+
+The first `Gates.luau` cached the gate's parts at init:
+
+```luau
+painted[zone.Id] = partsOf(gate)   -- gate:GetDescendants(), once
+```
+
+In the playtest the gate's mean transparency stayed at **0.012** — the authored value,
+untouched — with no warning and no error. At client boot the gate Model has replicated but
+its 13 children have not, so the cached list was empty and every subsequent paint looped over
+nothing.
+
+**Why nothing caught it.** An empty list is indistinguishable from success everywhere except
+the pixels: the module loaded, `findGate` succeeded, the attribute listener connected, and the
+only console output was a legitimate warning about the free zone having no gate. The unit
+tests could not have caught it either — there is no replication in the test runtime, so a
+snapshot taken there is always complete.
+
+**Fix:** hold the Model, walk its descendants at paint time (a gate is a dozen parts and this
+runs on an attribute change, not per frame), and connect `DescendantAdded` so a part that
+replicates late still gets the current state.
+
+**The lesson is the one H1 already taught.** H1 was code that ran and affected nothing. The
+first attempt to fix it was code that ran and affected nothing. Both were invisible to
+everything except a running game.
 
 ### F-26 · `upgradeCost` priced negative levels as a discount — down to free
 

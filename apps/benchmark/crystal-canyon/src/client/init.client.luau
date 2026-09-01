@@ -58,6 +58,7 @@ local Hud = loadModule("Hud")
 local Panels = loadModule("Panels")
 local Effects = loadModule("Effects")
 local Objective = loadModule("Objective")
+local Gates = loadModule("Gates")
 
 -- Remotes -----------------------------------------------------------------
 -- Remotes.get yields; grabbing all of them up front means no render path ever
@@ -255,6 +256,9 @@ end
 initModule("Theme", Theme, ctx)
 local hudReady = initModule("Hud", Hud, ctx)
 initModule("Panels", Panels, ctx)
+-- Gates paints world geometry rather than GUI, so it needs no mount point and takes
+-- no part in the render fan-out: it is driven by attribute changes, not by Sync.
+initModule("Gates", Gates, ctx)
 
 --[[ Objective.init and Effects.init take an INSTANCE to parent into, not a
 	 context table — they do `frame.Parent = mountPoint`. Hud owns the top-centre

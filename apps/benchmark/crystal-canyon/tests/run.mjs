@@ -43,9 +43,118 @@ const PRELUDE = `
 -- The stub instance tree. Modules are emitted dependency-first and each registers itself
 -- here as it loads, so a later module's \`require(ReplicatedStorage.CrystalCanyon.X)\` finds
 -- the real X that this same chunk already evaluated.
+-- Instance-shaped stubs. These exist so the server modules can be LOADED and CALLED;
+-- they are not a reimplementation of Roblox. Each records what the module did to it so a
+-- spec can assert on the effect (an attribute published, a remote fired) rather than on
+-- the module's return value alone. Anything a stub cannot honestly model, it omits, so a
+-- spec that depends on real engine behaviour fails loudly instead of passing against a
+-- convenient fake.
+local function __signal()
+  local handlers = {}
+  return {
+    Connect = function(_self, fn)
+      table.insert(handlers, fn)
+      return { Disconnect = function() end }
+    end,
+    Fire = function(_self, ...)
+      for _, fn in handlers do fn(...) end
+    end,
+    __count = function() return #handlers end,
+  }
+end
+
+-- A Player stub. Attributes are the contract Zones publishes over, so they are recorded
+-- verbatim, including the false values -- "not unlocked" is a real published state and a
+-- spec must be able to tell it apart from "never published".
+local function __player(name)
+  local attrs, order = {}, {}
+  local p
+  p = {
+    Name = name or "Tester",
+    UserId = 1,
+    Parent = { Name = "Players" },
+    Character = nil,
+    CharacterAdded = __signal(),
+    SetAttribute = function(_self, key, value)
+      if attrs[key] == nil then table.insert(order, key) end
+      attrs[key] = value
+    end,
+    GetAttribute = function(_self, key) return attrs[key] end,
+    GetAttributeChangedSignal = function(_self, _key) return __signal() end,
+    __attrs = attrs,
+    __attrOrder = order,
+    __leave = function() p.Parent = nil end,
+  }
+  return p
+end
+
+-- A RemoteEvent that records rather than replicates.
+local function __remote(name)
+  local sent = {}
+  return {
+    Name = name,
+    FireClient = function(_self, player, payload)
+      table.insert(sent, { player = player, payload = payload })
+    end,
+    FireAllClients = function(_self, payload)
+      table.insert(sent, { player = nil, payload = payload })
+    end,
+    OnServerEvent = __signal(),
+    __sent = sent,
+    __last = function() return sent[#sent] end,
+  }
+end
+
+-- A folder whose WaitForChild mints a remote on demand, so a module can ask for whatever
+-- it needs without the spec having to predeclare the list.
+local function __remotesFolder()
+  local made = {}
+  return {
+    Name = "Remotes",
+    WaitForChild = function(_self, childName)
+      if not made[childName] then made[childName] = __remote(childName) end
+      return made[childName]
+    end,
+    FindFirstChild = function(self, childName) return made[childName] end,
+    __made = made,
+  }
+end
+
+local __playersList = {}
+local __playersService = {
+  Name = "Players",
+  PlayerAdded = __signal(),
+  PlayerRemoving = __signal(),
+  GetPlayers = function() return __playersList end,
+}
+-- Workspace with no Canyon: Zones.prepareGates returns early rather than operating on a
+-- fake world. Gate decoration is Studio's to prove, not this runtime's.
+local __workspaceService = { Name = "Workspace", FindFirstChild = function() return nil end }
+
+-- Modules reach their siblings two ways: by direct index, and by WaitForChild -- so the tree
+-- answers both. WaitForChild never yields here: by the time a spec runs, every module the
+-- spec declared is already loaded, and a miss is a spec bug worth raising immediately
+-- rather than a 45-second hang.
 local __canyon = { Name = "CrystalCanyon" }
+function __canyon:WaitForChild(childName)
+  local child = rawget(self, childName)
+  if not child then
+    error("spec: CrystalCanyon has no child " .. tostring(childName) .. " -- add it to --!modules", 2)
+  end
+  return child
+end
+__canyon.FindFirstChild = function(self, childName) return rawget(self, childName) end
+
 local __rs = { Name = "ReplicatedStorage", CrystalCanyon = __canyon }
-local __services = { ReplicatedStorage = __rs }
+__rs.WaitForChild = function(self, childName)
+  local child = rawget(self, childName)
+  if not child then
+    error("spec: ReplicatedStorage has no child " .. tostring(childName), 2)
+  end
+  return child
+end
+__rs.FindFirstChild = __rs.WaitForChild
+local __services = { ReplicatedStorage = __rs, Players = __playersService, Workspace = __workspaceService }
 local Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end, zero = { X = 0, Y = 0, Z = 0 } }
 local Vector2 = { new = function(x, y) return { X = x or 0, Y = y or 0 } end }
 local Color3 = {
