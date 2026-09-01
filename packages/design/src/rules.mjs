@@ -31,6 +31,21 @@
 // `tokens` — concrete reproducible values — because that is the line between
 // learning a pattern and copying an asset. `assertLicenceSafety` enforces it and a
 // test drives the violation.
+//
+// WHERE THE SECOND SOURCE COMES FROM. The first pass drew 25 of 26 rules from one
+// game, which §L names as a risk: a library that only knows one simulator will make
+// every genre look like that simulator. The way out is not to invent the missing
+// genres — §AK — it is to find a source that can prove a licence and read it. The
+// corpus classification found exactly one that suits art direction:
+// `Roblox/creator-docs`, CC-BY-4.0, already vetted, already checked out. It cannot
+// teach taste, but it documents ENGINE FACTS that decide whether an art direction is
+// even achievable — which surface flags still do anything, what a colour becomes when
+// it is converted, which axis a page layout quietly takes away from the player.
+//
+// §M asks for STUDS / CLASSIC as a first-class art language rather than a texture
+// checkbox, and that is where this pays: the classic look is mostly a set of engine
+// behaviours that were never re-documented as style, so guessing at them produces
+// builds that are wrong in ways a screenshot will not show.
 
 export const COMPONENTS = Object.freeze([
   'panel', 'modal', 'button', 'icon-button', 'currency-pill', 'nav', 'toast',
@@ -47,10 +62,42 @@ export const STYLE_FAMILIES = Object.freeze([
 
 export const PROVENANCE_KINDS = Object.freeze(['golem-authored', 'learned-pattern', 'reference-only']);
 
+// A rule that claims a platform it was not written for is the same dishonesty as
+// a rule that claims a genre it was not written for, so the vocabulary is closed.
+// `gamepad` is separate from `desktop`: a controller on a PC still navigates by
+// selection graph rather than by pointer, and that is the whole of the difference.
+export const PLATFORMS = Object.freeze(['desktop', 'mobile', 'gamepad']);
+
 const CC = (file) => ({
   kind: 'golem-authored',
   source: `apps/benchmark/crystal-canyon/src/client/${file}`,
   validated: 'rendered and reviewed in Studio, 2026-09-01',
+});
+
+/**
+ * `Roblox/creator-docs` is one of only two CC-BY-4.0 repositories in the whole
+ * seed manifest, and the corpus intake already vetted it. That makes it a
+ * LICENCE-CLEAR source, so a rule learned from it is `learned-pattern`, not
+ * `reference-only`: it may state the grammar AND carry the engine facts the
+ * document records. The attribution CC-BY requires is the file path itself, so
+ * every such rule names the exact file it was read from rather than the repo.
+ *
+ * `validated` says "documented" rather than "rendered" on purpose. A documented
+ * behaviour has been WRITTEN DOWN by the engine's authors; it has not been seen
+ * to work in a Golem fixture. `retrieve` gives its +2 only to rules that have,
+ * so these correctly rank below the ones that shipped.
+ */
+const DOCS = (file) => ({
+  kind: 'learned-pattern',
+  source: `Roblox/creator-docs content/en-us/reference/engine/${file} (CC-BY-4.0)`,
+  validated: 'documented engine behaviour; not yet built in a Golem fixture',
+});
+
+/** Same source, same licence, but a prose guide rather than the API reference. */
+const GUIDE = (file) => ({
+  kind: 'learned-pattern',
+  source: `Roblox/creator-docs content/en-us/${file} (CC-BY-4.0)`,
+  validated: 'documented engine behaviour; not yet built in a Golem fixture',
 });
 
 /** @type {ReadonlyArray<object>} */
@@ -88,7 +135,90 @@ export const RULES = Object.freeze([
     provenance: CC('Hud.luau'),
     tokens: { minTouchPx: 44, exampleTilePx: 68, exampleMinScale: 0.72 },
   },
+  {
+    id: 'layout.safe-area-is-opt-out-for-decoration-only',
+    component: 'layout',
+    styleFamilies: ['mobile-first'],
+    platforms: ['mobile'],
+    rule: 'Leave a ScreenGui on the default core-UI safe insets. Opt out only for a ScreenGui that holds noninteractive content such as a backdrop image.',
+    because: 'The default inset is what holds controls clear of the Roblox top bar and the device camera cutout. Opting a surface out is a full-bleed decision about decoration, and it silently opts every control inside that surface out of being reachable as well.',
+    prevents: 'A modal close button rendered under a phone\'s camera notch — pressable on the reviewer\'s desktop and not on the player\'s handset.',
+    provenance: DOCS('classes/ScreenGui.yaml (ScreenInsets, IgnoreGuiInset)'),
+  },
+  // ---------------------------------------------------------------- genre
+  //
+  // §L: the library must not overfit to one simulator aesthetic. These rules exist
+  // because a genre is not a palette swap — it changes which of the rules above
+  // still hold. Each one below states what the genre CHANGES about a rule this
+  // library already trusts, which is why they are short and why there are not many:
+  // §AK, a genre rule invented because it sounded plausible is worse than a gap.
+  {
+    id: 'progression.signpost-the-route-in-the-world-not-only-the-hud',
+    component: 'layout',
+    styleFamilies: ['progression', 'obby', 'cartoon-simulator', 'tycoon'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Mark where the player goes next with world geometry — an oversized arrow, a lit pad, a coloured floor ring, a gate — so the route survives with the HUD hidden and without reading any text.',
+    because: 'A HUD objective line is out of sight the moment the player looks at the thing it describes, and text excludes anyone who cannot read the language it happens to be written in. A physical signpost is legible from inside the world and needs no translation.',
+    prevents: 'A player who has been told the objective in words and still does not know which way to walk.',
+    provenance: {
+      kind: 'reference-only',
+      source: 'docs/ROBLOX-STYLE-SPEC.md §7 — derived from reference screenshots that are NOT redistributed and were inspected once (see that document\'s §10)',
+      validated: 'not yet built',
+    },
+  },
+  {
+    id: 'horror.atmosphere-hides-the-world-not-the-sky',
+    component: 'layout',
+    styleFamilies: ['horror'],
+    platforms: ['desktop'],
+    rule: 'When darkening a scene with Atmosphere, treat the skybox as a separate problem and darken it explicitly.',
+    because: 'Atmosphere density obscures in-game objects and terrain but is documented NOT to affect the skybox directly, so raising it removes everything the player might have taken comfort from and leaves the horizon exactly as bright as it always was.',
+    prevents: 'A fog-bound horror level with a cheerful daylight sky glowing between the trees — the brightest thing on screen being the one thing the fog was there to remove.',
+    provenance: DOCS('classes/Atmosphere.yaml (Density)'),
+  },
+  {
+    id: 'horror.measure-hud-contrast-against-the-darkest-ground',
+    component: 'layout',
+    styleFamilies: ['horror'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Measure every HUD contrast against the DARKEST place the player will stand, and give the HUD its own ground rather than letting it float on the world.',
+    because: 'Measuring a colour against the surface it is painted on gets stricter as the world gets darker: a readout tuned in a lit scene has no floor left in the dark scene the game actually spends its time in, and unlike a wayfinding colour the player cannot walk somewhere else to read it.',
+    prevents: 'A health readout that is legible in the lit entrance corridor and invisible for the rest of the game.',
+    provenance: {
+      kind: 'golem-authored',
+      source: 'packages/design (extension of colour.measure-guide-contrast-against-its-own-ground to low-light genres)',
+      validated: 'not yet built',
+    },
+  },
+  {
+    id: 'tower-defence.every-lane-is-load-bearing-not-just-the-centre',
+    component: 'panel',
+    styleFamilies: ['tower-defence'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Open a build or upgrade panel beside the thing it acts on, or make it dismissible in a single input. Edge-anchoring the HUD is not enough when the whole play surface carries information.',
+    because: 'The usual "keep the centre clear" rule assumes only the centre is load-bearing. Where every lane is being scored simultaneously, an opaque panel hides something the player is accountable for no matter which edge it is anchored to.',
+    prevents: 'A tower upgrade panel covering the exact lane the player opened it to defend.',
+    provenance: {
+      kind: 'reference-only',
+      source: 'docs/ROBLOX-STYLE-SPEC.md §6 ("the centre stays empty"), extended to genres where the whole play surface is load-bearing; the underlying screenshots are NOT redistributed (that document\'s §10)',
+      validated: 'not yet built',
+    },
+  },
   // ---------------------------------------------------------------- panel
+  {
+    id: 'minimalist.grouping-must-survive-the-loss-of-the-plate',
+    component: 'panel',
+    styleFamilies: ['minimalist'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'When the shared plate is removed, replace it with an explicit grouping signal — a shared baseline, a fixed gutter, a rule line — rather than leaving proximity to do the work alone.',
+    because: 'A chunky style communicates grouping through one carved surface. Strip the surface and proximity is the only cue left, and proximity is not stable across viewport widths, because the gaps themselves are what change.',
+    prevents: 'A minimal HUD whose three clusters read as one block on a wide monitor and as unrelated floating labels on a narrow one.',
+    provenance: {
+      kind: 'golem-authored',
+      source: 'packages/design (the dual of panel.one-plate-language, whose premise minimalism removes)',
+      validated: 'not yet built',
+    },
+  },
   {
     id: 'panel.one-plate-language',
     component: 'panel',
@@ -293,6 +423,125 @@ export const RULES = Object.freeze([
     prevents: 'A shop that shows a stale balance, and a purchase that celebrates before it is granted.',
     provenance: CC('Panels.luau'),
   },
+  // ---------------------------------------------------------------- nav
+  {
+    id: 'nav.tall-rail-states-its-own-radius',
+    component: 'nav',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'mobile-first'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'A tall navigation channel must state its corner radius explicitly instead of inheriting the pill default that short readouts use.',
+    because: 'A pill radius is half the SHORT axis, so one primitive rounds a wide readout correctly and turns a tall channel into a stadium. The value did not change; the aspect ratio did, and that is enough to change what the shape means.',
+    prevents: 'An 84x380 nav well rendering as a lozenge instead of as a rail.',
+    provenance: CC('Theme.luau'),
+    tokens: { railWellWidthPx: 84, railWellHeightPx: 380 },
+  },
+  {
+    id: 'nav.every-destination-reachable-by-direction-alone',
+    component: 'nav',
+    styleFamilies: ['controller-first'],
+    platforms: ['desktop', 'gamepad'],
+    rule: 'Wire the NextSelection links along a nav rail and mark each item Selectable; use SelectionOrder to choose the entry point only, and never to carry the player past it.',
+    because: 'SelectionOrder decides where gamepad selection STARTS and is documented not to affect directional navigation at all, so an ordered rail with no links is a menu a controller can enter and then cannot move through. A link may also point at an element that is not Selectable, which the engine will accept and the player will experience as a dead direction.',
+    prevents: 'A console player who can highlight the first nav button and reach no other destination in the game.',
+    provenance: DOCS('classes/GuiObject.yaml (NextSelection*, Selectable, SelectionOrder) + classes/GuiService.yaml (SelectedObject)'),
+  },
+  // ---------------------------------------------------------------- card
+  {
+    id: 'card.fixed-cells-are-what-make-a-grid-wrap',
+    component: 'card',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'inventory-heavy', 'mobile-first'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Give a card grid a FIXED cell size and let it wrap. Never size cells as a 1/count share of the container.',
+    because: 'Wrapping is a property of a fixed cell. A scale cell divides the available width by the number of cards, so adding a card makes every existing card smaller instead of adding a row — the grid is pinned to one row for as long as the catalogue lives.',
+    prevents: 'Shop cards collapsing to 58px wide on a phone as the catalogue grows.',
+    provenance: CC('Panels.luau'),
+    tokens: { observedCollapsePx: 58 },
+  },
+  {
+    id: 'card.children-take-a-clamped-share-not-a-fixed-width',
+    component: 'card',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'inventory-heavy'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Size a card\'s action button as a share of the card clamped at BOTH ends, never as a fixed pixel width.',
+    because: 'A fixed control is correct at exactly one card width: narrower and it spills out of its own card, wider and it stops being the proportion the layout was designed around. The lower clamp is the half people forget, and it is what stops the button squeezing the text column to nothing.',
+    prevents: 'A 196px action button spilling past the left edge of a 184px card.',
+    provenance: CC('Panels.luau'),
+    tokens: { fixedButtonPx: 196, cardWidthPx: 184 },
+  },
+  {
+    id: 'card.edge-shade-scales-with-surface-lightness',
+    component: 'card',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Derive a card\'s bottom edge by darkening its own fill, and use a GENTLER ratio on light surfaces than on saturated ones.',
+    because: 'A third off a saturated fill lands on the same hue two shades down, which reads as the card\'s own thickness. The same third off white or sand produces a mid-grey band that reads as a shadow lying on the card, or as dirt on it — the ratio is not a constant, it is a function of where the fill already sits.',
+    prevents: 'Light cards that look smudged sitting beside saturated cards that look correctly extruded.',
+    provenance: CC('Theme.luau'),
+    tokens: { saturatedShade: 0.34 },
+  },
+  {
+    id: 'card.height-is-a-pure-function-of-measured-width',
+    component: 'card',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'inventory-heavy'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'When a card\'s height depends on wrapped text, write the height as a pure function of the MEASURED width, and never let the resulting height feed back into the width.',
+    because: 'Width changes arrive from the card and height changes arrive from the text wrapping to a different number of lines. Both must re-run the layout, so if each is allowed to drive the other the pass oscillates instead of settling.',
+    prevents: 'A card that flips between two heights on every reflow, because the height it produced changed the width that produced it.',
+    provenance: CC('Panels.luau'),
+  },
+  // ---------------------------------------------------------------- counter
+  {
+    id: 'counter.one-primitive-everywhere-a-balance-appears',
+    component: 'counter',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'pets-collection'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Draw a balance with the SAME counter primitive everywhere it appears — screen corner, shop header, purchase confirmation — so it is literally the same object rather than a matching one.',
+    because: 'A number the player is about to spend has to be recognisable as the number they have been watching accumulate. Two similar pills maintained in two places drift apart on the first change to either, and one balance becomes two facts.',
+    prevents: 'A shop balance that looks subtly unlike the HUD balance and reads as a second currency.',
+    provenance: CC('Panels.luau'),
+  },
+  {
+    id: 'counter.a-readout-is-quieter-than-a-control',
+    component: 'counter',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'inventory-heavy'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Give a readout a subtler rim and highlight than a button built from the same primitives. Shared surface language must not make a number look pressable.',
+    because: 'A counter and a button can share every layer and still need different emphasis: a bright rim on a readout competes for attention with the number it exists to display, and it invites a press that does nothing, which teaches the player that presses do nothing.',
+    prevents: 'A currency pill players keep clicking, and a value that loses the contrast fight with its own frame.',
+    provenance: CC('Theme.luau'),
+    tokens: { readoutHighlightTransparency: 0.66, controlHighlightTransparency: 0 },
+  },
+  {
+    id: 'counter.invert-the-medallion-when-the-ground-changes',
+    component: 'counter',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'pets-collection'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'When a readout\'s ground changes lightness, reverse the contrast INSIDE its icon — same parts, same geometry, dark and bright swapped — rather than substituting a different icon.',
+    because: 'A bright disc that reads on a dark pill disappears on a gold one. Reversing contrast keeps one object recognisable across every ground it will ever sit on, whereas swapping the artwork quietly creates a second icon that now has to be maintained in step with the first.',
+    prevents: 'A coin medallion vanishing into the gold currency pill it sits on.',
+    provenance: CC('Theme.luau'),
+  },
+  // ---------------------------------------------------------------- tab
+  {
+    id: 'tab.a-page-layout-claims-one-directional-axis',
+    component: 'tab',
+    styleFamilies: ['controller-first', 'inventory-heavy', 'rpg'],
+    platforms: ['desktop', 'gamepad'],
+    rule: 'A paged tab strip owns one directional axis. Build the tab CONTENT\'s selection on the other axis, or turn the layout\'s gamepad override off deliberately.',
+    because: 'A page layout overrides its siblings\' NextSelection links on its own fill axis and binds the shoulder buttons to page changes, and that override is ON BY DEFAULT — so the axis is taken silently, and nothing in the code that loses it records that it was lost.',
+    prevents: 'A controller player who cannot move sideways between inventory cards because every left press changes tab instead.',
+    provenance: DOCS('classes/UIPageLayout.yaml (GamepadInputEnabled)'),
+  },
+  {
+    id: 'tab.wrapping-animates-the-short-way-round',
+    component: 'tab',
+    styleFamilies: ['inventory-heavy', 'rpg'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Leave a tab strip\'s wrap-around off unless its tabs are only ever stepped through one at a time. A strip that also lets a player jump straight to a tab should not wrap.',
+    because: 'A circular page layout animates the shortest rotational path around the wrap boundary rather than the path the input implied, so a direct jump to a distant tab travels backwards while the selection moves forwards.',
+    prevents: 'A player clicking the last tab of a six-tab strip and watching the content slide backwards, contradicting the direction they just moved.',
+    provenance: DOCS('classes/UIPageLayout.yaml (Circular)'),
+  },
   // ---------------------------------------------------------------- gauge
   {
     id: 'gauge.show-the-ceiling-with-the-value',
@@ -305,6 +554,14 @@ export const RULES = Object.freeze([
     provenance: CC('Hud.luau'),
   },
   // ---------------------------------------------------------------- studs
+  //
+  // §M: "STUDS / CLASSIC ROBLOX must become a first-class art language — not a
+  // texture checkbox." The rules below are what that sentence costs. Almost none
+  // of the classic look is a style choice a builder gets to make freely: it is a
+  // set of engine behaviours, several of them deprecated or inert, and a generator
+  // that does not know which is which produces a build that is wrong in ways a
+  // screenshot cannot show — surfaces that join nothing, flags that do nothing,
+  // palettes that quietly become other palettes.
   {
     id: 'studs.surface-language-is-geometry-not-a-texture-flag',
     component: 'panel',
@@ -314,6 +571,98 @@ export const RULES = Object.freeze([
     because: 'Studs applied to contemporary rounded shapes reads as a filter; the era is carried by the silhouette and the face treatment.',
     prevents: 'A "classic" world that looks like a modern one wearing a texture.',
     provenance: { kind: 'reference-only', source: 'Roblox/creator-docs SurfaceType.yaml (CC-BY-4.0) + DevForum Studs Building Pack thread (unlicensed, REFERENCE_ONLY)', validated: 'not yet built' },
+  },
+  {
+    id: 'studs.surface-type-is-decoration-now-not-structure',
+    component: 'layout',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'Set SurfaceType for the look, and hold the build together with explicit welds and anchoring. Never let a stud face be the thing that joins two parts.',
+    because: 'Surface JOINING is deprecated and leaves only the visual change on the part, so a build that reads as classic is structurally a modern build wearing a classic surface. The era look no longer implies the era physics, and nothing warns you which half you got.',
+    prevents: 'A studded classic build that renders correctly in Studio and comes apart the moment physics runs, because the stud faces were expected to weld it.',
+    provenance: DOCS('enums/SurfaceType.yaml (deprecation_message)'),
+  },
+  {
+    id: 'studs.inlet-is-the-counterpart-to-studs-not-a-second-texture',
+    component: 'panel',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'Put Studs on faces that present and Inlet on faces that receive, and reach for Universal only where the checker of both is genuinely wanted.',
+    because: 'Inlet is documented as square holes WHERE STUDS WOULD BE, so the two are a mating pair rather than two interchangeable finishes, and it is that implied assembly which makes a surface read as construction instead of as pattern.',
+    prevents: 'A "classic" wall carrying Studs on every face, so nothing looks like it fits anything and the surface degrades into wallpaper.',
+    provenance: DOCS('enums/SurfaceType.yaml (Studs, Inlet, Universal)'),
+  },
+  {
+    id: 'studs.outlines-are-gone-and-no-surface-flag-brings-them-back',
+    component: 'panel',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'Do not try to restore the classic per-part outline with a surface flag. If the era silhouette is wanted, earn it from proportion, palette and stud density, or build a deliberate outline system of your own.',
+    because: 'SmoothNoOutlines is documented as no longer relevant BECAUSE outlines were removed from the engine, so the one property whose name promises the era cue does nothing whatsoever — and it fails silently, which is worse than failing.',
+    prevents: 'A retro build that sets SmoothNoOutlines across a thousand parts and renders pixel-identical to plain Smooth.',
+    provenance: DOCS('enums/SurfaceType.yaml (SmoothNoOutlines)'),
+  },
+  {
+    id: 'studs.classic-palette-is-a-named-set-not-a-ramp',
+    component: 'panel',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'Choose a classic palette from the named brick colours and keep the count small, rather than authoring a Color3 ramp and converting it afterwards.',
+    because: 'Converting a colour to a brick colour returns the CLOSEST entry by smallest total absolute per-channel distance, so a hand-tuned ramp collapses onto whichever named bricks happen to sit nearest it. The palette that renders is not the palette that was designed, and nothing reports the substitution.',
+    prevents: 'A six-step gradient authored in Color3 quantising down to three repeated bricks, flattening the depth it existed to create.',
+    provenance: DOCS('datatypes/BrickColor.yaml (BrickColor.new from RGB components)'),
+    // The same metric the world-contrast rule already uses. That is not a
+    // coincidence worth hiding: per-channel absolute distance is how this engine
+    // compares colours, so it is the honest unit for reasoning about them.
+    tokens: { matchMetric: 'smallest total absolute per-channel distance', unmatchedFallback: 'Medium stone grey' },
+  },
+  {
+    id: 'studs.restore-the-surface-with-a-material-variant-not-a-decal',
+    component: 'panel',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'When the classic surface has to survive on modern geometry, express it once as a MaterialVariant tuned by Studs Per Tile — never as per-face decals or textures.',
+    because: 'A MaterialVariant is a reusable TILEABLE material carrying its own physical properties, so the stud pitch stays keyed to world units as parts resize; a decal is pinned to one face of one part and drifts the moment that part changes size.',
+    prevents: 'A studded wall whose studs change size with every resize, so no two walls in the build agree on how big a stud is.',
+    provenance: GUIDE('parts/materials.md (custom materials, Studs Per Tile)'),
+  },
+  {
+    id: 'studs.name-a-material-variant-before-applying-it',
+    component: 'panel',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'Give a custom material its final name BEFORE painting anything with it; renaming afterwards requires re-applying it to every part already using it.',
+    because: 'Parts resolve the variant by name, so a rename is not a label change — it is a broken reference on everything already painted. The parts do not report it; they just quietly stop looking custom.',
+    prevents: 'A finished classic build reverting to plain Plastic because the variant was renamed for tidiness at the end of the pass.',
+    provenance: GUIDE('parts/materials.md (renaming after applying requires re-application)'),
+  },
+  {
+    id: 'studs.one-coarse-module-shared-by-geometry-and-surface',
+    component: 'layout',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop'],
+    rule: 'Build classic geometry in whole studs on ONE coarse module, and make the surface stud pitch agree with that module.',
+    because: 'The era reads as construction because a visible unit repeats. A modular kit only snaps together when its pieces share a module, and when the surface grid and the build grid disagree the eye stops reading assembly and starts reading printed pattern.',
+    prevents: 'Walls built on a four-stud module wearing a stud pattern tiled at one and a half studs, which reads as wallpaper rather than as brick.',
+    provenance: {
+      kind: 'learned-pattern',
+      source: 'Roblox/creator-docs content/en-us/tutorials/use-case-tutorials/modeling/assemble-modular-environments.md + content/en-us/parts/materials.md (CC-BY-4.0)',
+      validated: 'documented grammar; not yet built in a Golem fixture',
+    },
+  },
+  {
+    id: 'retro.quote-the-era-look-not-the-era-ergonomics',
+    component: 'layout',
+    styleFamilies: ['studs-classic', 'retro-roblox'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'Keep the classic surface, the flat unlit colour and the coarse module. Keep modern touch targets, gamepad focus, reduced-motion handling and safe-area insets. Quote the era for its look and never for its ergonomics.',
+    because: 'The period\'s tiny targets, absent focus states and missing accessibility affordances were platform limitations of their moment, not stylistic decisions — so reproducing them makes a game unplayable rather than nostalgic, and no player reads them as a reference to anything.',
+    prevents: 'A "retro" HUD with 24px buttons and no gamepad focus: correct in a screenshot, unusable on a phone or a console.',
+    provenance: {
+      kind: 'golem-authored',
+      source: 'packages/design (synthesis of layout.touch-floor-from-smallest-target, motion.reduced-motion-removes-travel-not-outcome and layout.safe-area-is-opt-out-for-decoration-only)',
+      validated: 'not yet built',
+    },
   },
   // ---------------------------------------------------------------- material
   {

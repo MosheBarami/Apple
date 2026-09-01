@@ -14,7 +14,17 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { checkClusterOverlap, checkWaitContracts, checkPriceAgreement, checkMotionGate, audit } from './checks.mjs';
+import {
+  checkClusterOverlap,
+  checkWaitContracts,
+  checkPriceAgreement,
+  checkMotionGate,
+  checkSafeArea,
+  checkGamepadReachability,
+  checkPaletteCollisions,
+  checkInertSurfaceFlags,
+  audit,
+} from './checks.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
@@ -109,6 +119,181 @@ test('a module creating tweens outside the gate is caught', () => {
   assert.equal(findings.length, 1);
   assert.equal(findings[0].sites, 1);
   assert.match(findings[0].detail, /reduced motion is ignored/);
+});
+
+// ---------------------------------------------------------------- safe area
+//
+// The fixture is DERIVED from the real client rather than transcribed, so it
+// cannot quietly stop describing the code it claims to describe.
+function screenGuisIn(file) {
+  const src = readFileSync(join(CLIENT, file), 'utf8');
+  const out = [];
+  const RE = /Instance\.new\("ScreenGui"\)([\s\S]{0,400}?)(?=\n\n|\nlocal |\nfunction )/g;
+  for (const m of src.matchAll(RE)) {
+    const name = m[1].match(/\.Name\s*=\s*"([^"]+)"/);
+    const inset = m[1].match(/\.IgnoreGuiInset\s*=\s*(true|false)/);
+    if (name) out.push({ name: name[1], ignoreGuiInset: inset ? inset[1] === 'true' : false, declaredIn: file });
+  }
+  return out;
+}
+
+test('the two ScreenGuis in the shipping client disagree about the safe area', () => {
+  const screens = [...screenGuisIn('init.client.luau'), ...screenGuisIn('Hud.luau')];
+  const ui = screens.find((s) => s.name === 'CrystalCanyonUI');
+  const hud = screens.find((s) => s.name === 'CrystalCanyonHud');
+  assert.ok(ui && hud, `expected both ScreenGuis, saw ${screens.map((s) => s.name).join(', ')}`);
+  // Hud.luau opts IN, with a comment saying why: "keep the top row clear of the
+  // Roblox topbar". init.client.luau opts OUT — and it is the one Panels parents
+  // its modal layer to (`ctx.gui = screen`).
+  assert.equal(hud.ignoreGuiInset, false, 'the HUD deliberately keeps the inset');
+  assert.equal(ui.ignoreGuiInset, true, 'the main UI opts out of it');
+});
+
+test('the opted-out ScreenGui carrying every close button IS a finding', () => {
+  // `interactive` is counted from the real source too: Panels builds its controls
+  // through Theme, and its modal layer is parented to CrystalCanyonUI.
+  const panels = readFileSync(join(CLIENT, 'Panels.luau'), 'utf8');
+  const controls = (panels.match(/Theme\.button|Theme\.close/g) ?? []).length;
+  assert.ok(controls >= 10, `expected Panels to build controls, counted ${controls}`);
+
+  const findings = checkSafeArea([
+    { name: 'CrystalCanyonUI', ignoreGuiInset: true, interactive: controls },
+    { name: 'CrystalCanyonHud', ignoreGuiInset: false, interactive: 2 },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].screen, 'CrystalCanyonUI');
+  assert.deepEqual(findings[0].keptInsetIn, ['CrystalCanyonHud']);
+  assert.match(findings[0].detail, /camera cutout/);
+  // The disagreement is the evidence, exactly as in the wait-contract check.
+  assert.match(findings[0].detail, /demonstrably matters here/);
+});
+
+test('a decorative full-bleed surface is NOT a finding — that is what opting out is for', () => {
+  assert.deepEqual(
+    checkSafeArea([{ name: 'Vignette', ignoreGuiInset: true, interactive: 0 }]),
+    [],
+  );
+});
+
+// ---------------------------------------------------------------- gamepad
+test('a link into a non-Selectable element is caught', () => {
+  // The engine accepts this and the player gets a direction that does nothing.
+  const findings = checkGamepadReachability([
+    { name: 'Shop', next: { down: 'Divider' } },
+    { name: 'Divider', selectable: false, next: {} },
+  ]);
+  const link = findings.find((f) => f.reason === 'not-selectable');
+  assert.ok(link, 'a link into a non-selectable element must be reported');
+  assert.match(link.detail, /NextSelectionDown/);
+});
+
+test('a rail with an entry point but no links strands every other destination', () => {
+  // SelectionOrder chooses where selection STARTS and is documented not to affect
+  // directional navigation, so ordering alone is not navigation.
+  const findings = checkGamepadReachability([
+    { name: 'Shop', selectionOrder: 0, next: {} },
+    { name: 'Upgrades', selectionOrder: 1, next: {} },
+    { name: 'Codes', selectionOrder: 2, next: {} },
+  ]);
+  const stranded = findings.find((f) => f.reason === 'unreachable');
+  assert.ok(stranded);
+  assert.equal(stranded.entry, 'Shop');
+  assert.deepEqual(stranded.unreachable, ['Upgrades', 'Codes']);
+});
+
+test('a fully wired rail passes', () => {
+  assert.deepEqual(
+    checkGamepadReachability([
+      { name: 'Shop', selectionOrder: 0, next: { down: 'Upgrades' } },
+      { name: 'Upgrades', next: { up: 'Shop', down: 'Codes' } },
+      { name: 'Codes', next: { up: 'Upgrades' } },
+    ]),
+    [],
+  );
+});
+
+test('a link to an element that does not exist is caught', () => {
+  const findings = checkGamepadReachability([{ name: 'Shop', next: { right: 'Inventory' } }]);
+  assert.ok(findings.some((f) => f.reason === 'unknown-target'));
+});
+
+// ---------------------------------------------------------------- palette
+test('a ramp that collapses onto one named colour is caught, by the documented metric', () => {
+  // Converting a colour to a named brick colour returns the closest entry by the
+  // smallest total absolute per-channel distance. Three steps designed as distinct
+  // land on one entry, so the ramp renders with two fewer steps than it has.
+  const palette = [
+    { name: 'Dark stone grey', color: [99, 95, 98] },
+    { name: 'Medium stone grey', color: [163, 162, 165] },
+    { name: 'Institutional white', color: [248, 248, 248] },
+  ];
+  const findings = checkPaletteCollisions(
+    [
+      { name: 'ramp1', color: [150, 150, 150] },
+      { name: 'ramp2', color: [163, 162, 165] },
+      { name: 'ramp3', color: [176, 175, 178] },
+    ],
+    palette,
+  );
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].entry, 'Medium stone grey');
+  assert.deepEqual(findings[0].collapsed, ['ramp1', 'ramp2', 'ramp3']);
+  assert.match(findings[0].detail, /2 fewer step/);
+});
+
+test('a palette chosen from the named set passes', () => {
+  const palette = [
+    { name: 'Dark stone grey', color: [99, 95, 98] },
+    { name: 'Medium stone grey', color: [163, 162, 165] },
+    { name: 'Institutional white', color: [248, 248, 248] },
+  ];
+  assert.deepEqual(
+    checkPaletteCollisions(
+      [
+        { name: 'shadow', color: [99, 95, 98] },
+        { name: 'body', color: [163, 162, 165] },
+        { name: 'light', color: [248, 248, 248] },
+      ],
+      palette,
+    ),
+    [],
+  );
+});
+
+test('the same colour used twice is a duplicate, not a collapsed ramp', () => {
+  const palette = [{ name: 'Bright red', color: [196, 40, 28] }];
+  assert.deepEqual(
+    checkPaletteCollisions(
+      [
+        { name: 'danger', color: [196, 40, 28] },
+        { name: 'alert', color: [196, 40, 28] },
+      ],
+      palette,
+    ),
+    [],
+    'two names for one colour is a naming choice, not a lost step',
+  );
+});
+
+// ---------------------------------------------------------------- inert flags
+test('SmoothNoOutlines is caught as the no-op it is documented to be', () => {
+  const findings = checkInertSurfaceFlags([
+    { path: 'Retro.luau', source: 'p.TopSurface = Enum.SurfaceType.SmoothNoOutlines' },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].sites, 1);
+  assert.match(findings[0].detail, /changes nothing/);
+});
+
+test('plain Smooth is not flagged — the check fires on exactly one token', () => {
+  // The world builder uses Enum.SurfaceType.Smooth throughout. A check that could
+  // not tell those apart would fire on the whole shipping build.
+  const world = {
+    path: 'world/Build.luau',
+    source: readFileSync(join(REPO, 'apps', 'benchmark', 'crystal-canyon', 'world', 'Build.luau'), 'utf8'),
+  };
+  assert.match(world.source, /Enum\.SurfaceType\.Smooth\b/, 'the real build does set Smooth');
+  assert.deepEqual(checkInertSurfaceFlags([world]), []);
 });
 
 // ---------------------------------------------------------------- the real tree
