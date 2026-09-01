@@ -76,6 +76,25 @@ export interface AttributionResponse {
 }
 
 /**
+ * Whether the panel can offer to hand over the credits document.
+ *
+ * Two separate questions, and both have to be yes:
+ *
+ *  - is anything actually owed? `renderAttribution` always writes a "Credits" header,
+ *    so a non-empty string is not evidence of an obligation;
+ *  - did the worker send the document at all? The browser and the worker deploy
+ *    separately, so a worker one version behind returns no `credits` field. The panel
+ *    reached for it and crashed the whole workspace, which is a bad trade for a copy
+ *    button. It now shows everything else and simply does not offer the copy, because
+ *    it cannot hand over a document it does not have.
+ */
+export function copyableCredits(res: AttributionResponse): string | null {
+  const owed = res.attribution.required.length > 0 || res.attribution.sourceCredits.length > 0;
+  if (!owed) return null;
+  return typeof res.credits === 'string' && res.credits.trim() !== '' ? res.credits : null;
+}
+
+/**
  * The four things this panel can honestly say.
  *
  * `nothing_recorded` is deliberately NOT `clear`. Golem records an asset when it places

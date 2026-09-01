@@ -27,7 +27,7 @@ execFileSync(
   [join(WEB, 'src/components/ws/credits-model.ts'), '--format=esm', `--outfile=${out}`],
   { stdio: 'pipe' },
 );
-const { readiness, READINESS_TONE, creditLine } = await import(out);
+const { readiness, READINESS_TONE, creditLine, copyableCredits } = await import(out);
 
 const entry = (over = {}) => ({
   assetId: 'kenney/nature-kit/tree-pine-01',
@@ -141,10 +141,33 @@ test('the panel pastes the WORKER\'s credits document, not one it built itself',
   // provenance, and a copy that forgot it hands someone a credits file that quietly
   // claims to be complete.
   const panel = readFileSync(join(WEB, 'src/components/ws/credits-panel.tsx'), 'utf8');
-  assert.match(panel, /writeText\(res\.credits\)/, 'the clipboard must carry the server document');
+  assert.match(panel, /writeText\(copyable\)/, 'the clipboard must carry the server document');
+  assert.match(panel, /copyableCredits\(res\)/, 'via the tested decision, not an inline dereference');
   assert.doesNotMatch(panel, /creditsText/, 'and there must be no client-side re-derivation left');
 
   // And the section is gated on the ENTRIES, because the rendered document always
   // carries a "Credits" header and is therefore never empty.
   assert.match(panel, /a\.required\.length > 0 \|\| a\.sourceCredits\.length > 0/);
+});
+
+test('a worker that did not send the credits document costs the button, not the panel', () => {
+  // The browser and the worker deploy separately. A worker one version behind returns
+  // no `credits` field; the panel reached for it and took the whole workspace down with
+  // a TypeError, which is a bad trade for a copy button. Everything else still renders,
+  // and the copy is simply not offered — you cannot hand over a document you do not have.
+  const owed = { attribution: { required: [entry({ licence: 'CC-BY-4.0' })] }, commercialUse: { checked: 1 } };
+
+  const withDoc = { ...res(owed), credits: 'Credits\n=======\n  - x' };
+  assert.equal(copyableCredits(withDoc), 'Credits\n=======\n  - x');
+
+  const missing = res(owed);
+  delete missing.credits;
+  assert.equal(copyableCredits(missing), null, 'absent field must not throw');
+  assert.equal(copyableCredits({ ...res(owed), credits: '   ' }), null, 'nor must a blank one be offered');
+});
+
+test('nothing owed means nothing to copy, even though the document is never empty', () => {
+  // renderAttribution always writes a "Credits" header, so a non-empty string is not
+  // evidence that anything is owed.
+  assert.equal(copyableCredits({ ...res({ commercialUse: { checked: 3 } }), credits: 'Credits\n=======' }), null);
 });
