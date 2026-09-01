@@ -415,4 +415,55 @@ H.test("a nested child is gated too, not just the top-level spec", function()
 	H.eq(deep.MeshId, nil, "and the nested property was never assigned")
 end)
 
+-- ------------------------------------------------- the session-long asset grant --
+
+--[[ insert_asset is the ONLY op that records a verdict.
+
+	 `sessionVerifiedAssets[op.assetId] = true` happens on exactly one line, after a
+	 successful load and nowhere else, and it grants that id for the REST OF THE
+	 SESSION — every later set_props and create_instances may reference it without the
+	 worker naming it again. Nothing asserted either half: that a successful insert
+	 grants, or that a failed one does not. ]]
+
+H.test("a successful insert grants its id for the rest of the session", function()
+	local ws = game:GetService("Workspace")
+	local holder = Instance.new("Folder", ws)
+	holder.Name = "GrantHere"
+	local m = Instance.new("Model"); m.Name = "Asset"
+	__getObjectsResult = { m }
+	local r = Ops.execute("g1", { op = "insert_asset", assetId = 55501, parent = "game.Workspace.GrantHere" })
+	__getObjectsResult = nil
+	H.eq(r.ok, true, "insert ok: " .. tostring(r.error))
+
+	-- A LATER op, with no verifiedAssetIds of its own, may now use that id.
+	local target = Instance.new("MeshPart", ws)
+	target.Name = "UsesGrant"
+	local r2 = Ops.execute("g2", {
+		op = "set_props",
+		path = "game.Workspace.UsesGrant",
+		props = { MeshId = { t = "string", v = "rbxassetid://55501" } },
+	})
+	H.eq(r2.data.propIssues, nil, "the granted id is accepted without being re-declared")
+	H.eq(target.MeshId, "rbxassetid://55501", "and assigned")
+end)
+
+H.test("a FAILED insert grants nothing", function()
+	-- The grant is recorded only on success. Recording it before the load would hand a
+	-- session-long permission to an id that never entered the place.
+	__getObjectsError = "asset is private"
+	local r = Ops.execute("g3", { op = "insert_asset", assetId = 55502, parent = "game.Workspace" })
+	__getObjectsError = nil
+	H.eq(r.ok, false, "insert failed")
+
+	local target = Instance.new("MeshPart", game:GetService("Workspace"))
+	target.Name = "NoGrant"
+	local r2 = Ops.execute("g4", {
+		op = "set_props",
+		path = "game.Workspace.NoGrant",
+		props = { MeshId = { t = "string", v = "rbxassetid://55502" } },
+	})
+	H.ok(r2.data.propIssues, "the ungranted id is still refused")
+	H.eq(target.MeshId, nil, "and never assigned")
+end)
+
 H.report("plugin/ops")

@@ -577,6 +577,14 @@ game = nil
 local __game
 __game = setmetatable({ Name = "game", __children = {} }, {
 	__index = function(t, k)
+		if k == "GetObjects" then
+			return function(_, uri)
+				if __getObjectsError then error(__getObjectsError, 0) end
+				local out = {}
+				for i, o in (__getObjectsResult or {}) do out[i] = o end
+				return out
+			end
+		end
 		if k == "GetService" then
 			return function(_, name)
 				local existing = __services[name]
@@ -640,6 +648,27 @@ function typeof(v)
 	end
 	return __rawtypeof(v)
 end
+
+--[[ DateTime, with a clock a spec can move.
+
+	 Generation's rate limiter is a sliding window over wall-clock seconds. A test that
+	 waited sixty real seconds to watch it slide would not be run, so the clock is
+	 settable: __clockOffset shifts what now() reports without sleeping. ]]
+__clockOffset = 0
+DateTime = {
+	now = function()
+		return { UnixTimestampMillis = (os.time() + __clockOffset) * 1000 }
+	end,
+}
+
+--[[ game:GetObjects, the marketplace loader.
+
+	 The one primitive insert_asset exists to gate. It is stubbed as a switch rather
+	 than a fake marketplace: a spec sets __getObjectsResult to a list, or
+	 __getObjectsError to make it raise, and asserts what Generation.insertAsset does
+	 with each. Nothing here pretends to fetch anything. ]]
+__getObjectsResult = nil
+__getObjectsError = nil
 
 -- ----------------------------------------------------------------- task/time --
 -- No scheduler exists here, and pretending otherwise would let a spec "prove" a

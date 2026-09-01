@@ -86,6 +86,27 @@ const MUTATIONS = [
     replace: "\t\t\t",
   },
   {
+    name: "the assetId shape check is removed",
+    claim: "an assetId that is not a positive integer is refused before anything loads",
+    module: "Generation",
+    find: "\tif type(assetId) ~= \"number\" or assetId <= 0 or assetId % 1 ~= 0 then",
+    replace: "\tif false then",
+  },
+  {
+    name: "an empty asset is reported as a successful insert",
+    claim: "an asset that loads but is empty is a failure, not a silent success",
+    module: "Generation",
+    find: "\tif #list == 0 then",
+    replace: "\tif false then",
+  },
+  {
+    name: "insert_asset stops recording its verdict",
+    claim: "a successful insert grants its id for the rest of the session",
+    module: "Ops",
+    find: "\tsessionVerifiedAssets[op.assetId] = true",
+    replace: "\t",
+  },
+  {
     name: "a restore no longer counts as preexisting",
     claim: "a rollback may re-materialise the user's own asset ids",
     module: "Ops",
