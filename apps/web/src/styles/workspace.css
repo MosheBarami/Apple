@@ -24,7 +24,14 @@
   --gx-ink: #f5f2ec;
   --gx-ink-warm: #c9c0b2;
   --gx-ink-2: #9a938a;
-  --gx-ink-3: #6e6862;
+  /* 4.71:1 on --gx-raise-2, the lightest surface this sits on, and 5.15:1 on the
+     ground. It was #6e6862 — 3.29:1 — which clears the 3:1 that covers large text and
+     non-text UI but not the 4.5:1 that normal text needs, and every use of it is small
+     text: timestamps, detail lines, the credits notes. The 2026-09-01 accessibility
+     pass said in its own words that contrast ratios were "not covered"; this is what
+     measuring them found. It also converges on the landing's --faint (#918b82, 5.86:1),
+     which had the same role and had been getting it right. */
+  --gx-ink-3: #88817a;
 
   --gx-line: rgba(245, 242, 236, 0.08);
   --gx-line-2: rgba(245, 242, 236, 0.14);
@@ -68,7 +75,9 @@
   --gx-ink: #191713;
   --gx-ink-warm: #4b4438;
   --gx-ink-2: #5f584c;
-  --gx-ink-3: #7a7264;
+  /* Light theme, same rule: 4.66:1 on --gx-ground. Was #7a7264 at 4.21:1 — closer than
+     the dark theme was, and still short. */
+  --gx-ink-3: #736b5e;
   --gx-line: rgba(25, 23, 19, 0.12);
   --gx-line-2: rgba(25, 23, 19, 0.2);
   --gx-amber: #9c621d;
