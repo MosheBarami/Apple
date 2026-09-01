@@ -28,9 +28,19 @@ import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
+import { ensureProvenanceTables, recordAssetUse } from './provenance';
 
 export interface AgentCtx {
   env: Env;
+  /**
+   * The project these tools are acting on, when there is one.
+   *
+   * Optional because two callers genuinely have no project: the eval harness and the
+   * admin `/run-tool` route build an AgentCtx directly to exercise a tool in isolation.
+   * Attribution is recorded per project, so those callers record nothing — there is
+   * nothing to attribute it to, which is different from failing to record it.
+   */
+  projectId?: string;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
@@ -630,6 +640,65 @@ export function refuseLuauIngress(code: string): { error: string; blocked: strin
   };
 }
 
+/**
+ * Write the attribution row for an asset that has just been placed.
+ *
+ * The ledger keys on `asset_library.id` — a namespaced slug like
+ * `kenney/city-kit-suburban/building-a-01` — because a Roblox id says nothing about
+ * where the bytes came from or under what licence. A Creator Store asset that is not
+ * in the curated library therefore has no key, and inventing one that LOOKS like a
+ * library id would be worse than having none: the report's left join would match a
+ * real library row one day and credit the wrong author.
+ *
+ * So an unaccounted asset is keyed `unaccounted:roblox:<id>`, which contains a colon
+ * and can never satisfy the library's own id pattern. The join always misses, the
+ * report renders it as provenance-unknown, and that is the honest answer — it is the
+ * one state `provenance: null` exists to express.
+ *
+ * Returns the key it wrote, or null when there was nothing to write it against.
+ */
+/**
+ * Isolate-scoped, not global: a fresh isolate pays for one extra
+ * `create table if not exists` and every insertion after it pays nothing. Getting this
+ * wrong costs three cheap DDL statements, never correctness — which is why the flag is
+ * set AFTER the call rather than before it, so a failed creation is retried.
+ */
+let provenanceTablesReady = false;
+
+async function recordPlacedAsset(
+  ctx: AgentCtx,
+  assetId: number,
+  fromLibrary: boolean,
+  parent: string,
+): Promise<{ assetId: string; accounted: boolean } | null> {
+  if (!ctx.projectId) return null;
+  try {
+    if (!provenanceTablesReady) {
+      await ensureProvenanceTables(ctx.env);
+      provenanceTablesReady = true;
+    }
+    let key: string | null = null;
+    if (fromLibrary) {
+      const row = await ctx.env.CORPUS.prepare('select id from asset_library where roblox_asset_id = ? limit 1')
+        .bind(assetId)
+        .first<{ id: string }>();
+      key = row?.id ?? null;
+    }
+    const accounted = key !== null;
+    // `viaLiveApi` is false here and it is a claim, not a default: the only source that
+    // asks for a live-API credit is Poly Haven, and nothing on this path calls it. A
+    // library asset was ingested offline by an operator and re-uploaded under Golem's
+    // account; the insertion touches Roblox, not the origin's API.
+    await recordAssetUse(ctx.env, ctx.projectId, key ?? `unaccounted:roblox:${assetId}`, {
+      viaLiveApi: false,
+      context: parent,
+    });
+    return { assetId: key ?? `unaccounted:roblox:${assetId}`, accounted };
+  } catch {
+    return null;
+  }
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -1102,9 +1171,19 @@ export const TOOLS: Record<string, ToolImpl> = {
       ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
       const placed = await insertAndProveClean(ctx, assetId, parent);
       if (typeof placed !== 'object' || placed === null || 'error' in placed) return placed;
+
+      // AFTER the asset is proven clean and in the place, and never before: the ledger
+      // records what a project actually uses, and an insertion that was refused is not
+      // a use. Failures here are swallowed on purpose — an attribution row is a record
+      // ABOUT the build, and losing one must not undo a placement that succeeded. The
+      // report says plainly when it cannot account for an asset, so a lost row degrades
+      // into a visible "unaccounted", not into a silent claim that nothing is owed.
+      const recorded = await recordPlacedAsset(ctx, assetId, fromLibrary, parent);
+
       return {
         ...placed,
         provenance,
+        ...(recorded ? { attribution: recorded } : {}),
         ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
       };
     },

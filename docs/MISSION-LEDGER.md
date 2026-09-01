@@ -433,7 +433,14 @@ Two further rulings that change how the rest of the mission is run:
    that produced the accepted geode and six rejections) or **authored courses that are not
    slabs** — built rather than acquired. Neither is blocked; both are larger than a search.
 2. **Thinking UX (17)** and **playtest viewport (18)**.
-3. **Asset provenance ledger** — the logic is tested; nothing populates it yet.
+3. ~~**Asset provenance ledger** — the logic is tested; nothing populates it yet.~~
+   **CLOSED 2026-09-01.** `insert_asset` now writes the usage row and
+   `GET /api/projects/:id/attribution` reads it
+   (`evidence/2026-09-01-provenance-producer.md`). The failure mode was that an empty
+   table produces a CLEAN report, so the feature answered "you owe nothing" every
+   time and nothing distinguished that from a compliant project. Still not recorded:
+   `generate_model` / `generate_image`, which the report classifies separately and
+   which carry no third-party licence obligation.
 
 Superseded: source corpus ingestion (21→24) and design retrieval (25) are landed; every
 review finding is closed or rejected.

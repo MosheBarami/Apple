@@ -271,8 +271,16 @@ export class SessionDO extends DurableObject<Env> {
 
   // ------------------------------------------------------------------ helpers
   private async bind(): Promise<{ projectId: string; projectName: string; ownerId: string } | null> {
-    return (await this.ctx.storage.get('bind')) ?? null;
+    const b = (await this.ctx.storage.get<{ projectId: string; projectName: string; ownerId: string }>('bind')) ?? null;
+    // Cached for `agentCtx`, which is synchronous and needs the project id to
+    // attribute asset use. Every path that runs the agent reads the binding first
+    // — the socket does it in `hello` — so by the time a tool runs this is set.
+    if (b) this.boundProjectId = b.projectId;
+    return b;
   }
+
+  /** The project this session is bound to, or null before the binding has been read. */
+  private boundProjectId: string | null = null;
 
   private broadcast(msg: ServerMsg) {
     const data = JSON.stringify(msg);
@@ -301,6 +309,7 @@ export class SessionDO extends DurableObject<Env> {
       const existing = await this.bind();
       if (existing && existing.ownerId !== body.ownerId) return json({ error: 'owner mismatch' }, 403);
       await this.ctx.storage.put('bind', { projectId: body.projectId, projectName: body.projectName, ownerId: body.ownerId });
+      this.boundProjectId = body.projectId;
       return json({ ok: true });
     }
 
@@ -1275,6 +1284,7 @@ export class SessionDO extends DurableObject<Env> {
   private agentCtx(): AgentCtx {
     return {
       env: this.env,
+      projectId: this.boundProjectId ?? undefined,
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),
