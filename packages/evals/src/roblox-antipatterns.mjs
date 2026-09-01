@@ -123,6 +123,24 @@ function connectedBodies(src, signalRe) {
   return out;
 }
 
+/**
+ * Does this source look like a TEST rather than shipped code?
+ *
+ *[[ Detected from the SOURCE, not the filename, for two reasons. A rule's `find` is
+ *   given no path — and more importantly, the case that matters most is grading a
+ *   model's fenced code block, which has no meaningful path at all. A model asked to
+ *   write tests for a datastore layer should not be marked down for the absence of a
+ *   pcall whose presence would defeat the test.
+ *
+ *   Deliberately strict: an explicit test-framework require, or at least two of the
+ *   three call shapes. A file that merely mentions the word `test` is not a test. ]]
+ */
+export function looksLikeTest(src) {
+  if (/\brequire\s*\(\s*["'](?:Jest|TestEZ)["']\s*\)|\bJest\.Globals\b|\bTestEZ\b/.test(src)) return true;
+  const shapes = [/\bdescribe\s*\(/, /\b(?:it|test)\s*\(\s*["'`]/, /\bexpect\s*\(/];
+  return shapes.filter((re) => re.test(src)).length >= 2;
+}
+
 /** Character ranges covered by a `pcall(function() ... end)` wrapper. */
 function pcallRanges(src) {
   const ranges = [];
@@ -151,12 +169,35 @@ function pcallRanges(src) {
  *   helper qualifies only if it pcalls one of its OWN PARAMETERS by name; a helper that
  *   merely contains the word pcall somewhere does not. ]]
  */
+function paramList(src, openParen) {
+  // Balance parentheses so a function-typed parameter — `fn: (number) -> ()` — does not
+  // end the list at its own closing paren.
+  let depth = 0;
+  for (let i = openParen; i < src.length; i += 1) {
+    if (src[i] === '(') depth += 1;
+    else if (src[i] === ')') {
+      depth -= 1;
+      if (depth === 0) return src.slice(openParen + 1, i);
+    } else if (src[i] === '\n' && depth === 0) break;
+  }
+  return '';
+}
+
 function delegatedPcallRanges(src) {
+  //[[ Generics and typed parameters both broke the first version of this, and both are
+  //   MODERN Luau — the code most worth getting right. `local function retry<T>(fn: () -> T,
+  //   attempts: number)` in `slime-factory-tycoon` failed twice over: `<T>` sits between
+  //   the name and the paren, and a `[^)]*` parameter capture stops at the `)` inside
+  //   `() -> T` rather than at the one that closes the list. So the helper went
+  //   unrecognised and its two protected UpdateAsync calls were reported. ]]
   const helpers = new Set();
-  const decl = /\b(?:local\s+)?function\s+([\w.:]+)\s*\(([^)]*)\)/g;
+  const decl = /\b(?:local\s+)?function\s+([\w.:]+)\s*(?:<[^>]*>\s*)?\(/g;
   let d;
   while ((d = decl.exec(src))) {
-    const params = d[2].split(',').map((x) => x.trim().split(':')[0].trim()).filter(Boolean);
+    const params = paramList(src, d.index + d[0].length - 1)
+      .split(',')
+      .map((x) => x.trim().split(':')[0].trim())
+      .filter((x) => /^[A-Za-z_][\w]*$/.test(x));
     if (params.length === 0) continue;
     const body = src.slice(d.index, blockEnd(src, d.index));
     for (const param of params) {
@@ -384,11 +425,53 @@ export const RULES = [
     // as one.
     why: 'DataStore calls throw on throttle/outage; an unprotected throw aborts the save mid-way',
     find({ src }) {
+      //[[ A TEST IS EXEMPT FROM THIS RULE, AND ONLY FROM THIS ONE.
+      //
+      //   The rule's reason is that an unprotected throw "aborts the save mid-way". In a
+      //   test an unprotected throw is the DESIRED behaviour: it fails the test loudly,
+      //   and wrapping the call in a pcall would swallow exactly what the test exists to
+      //   observe.
+      //
+      //   Found by running these rules over the 2,646 Luau files fetched this session.
+      //   `datastore-without-pcall` produced 134 findings and 93 of them — every one in
+      //   NevermoreEngine — came from a single file: `DataStoreMock.spec.lua`, a jest-lua
+      //   spec exercising a DataStore MOCK. One test file was generating 70 % of the
+      //   rule's output across fifteen real codebases, which is how a real finding gets
+      //   lost in a listing nobody reads.
+      //
+      //   Scoped to this rule on purpose. Other rules have their own relationship to test
+      //   code and some should still apply there — a test that fires a RemoteFunction at
+      //   a client is still demonstrating the pattern `remote-function-to-client` warns
+      //   about. Widening this to every rule would be a different and much larger claim. ]]
+      if (looksLikeTest(src)) return [];
+
+      //[[ A LIBRARY THAT DEFINES `:SetAsync` IS NOT CALLING THE DATASTORE'S.
+      //
+      //   `DATASTORE_CALL` matches `:SetAsync(` with no notion of a receiver, so it
+      //   cannot tell `store:SetAsync(k, v)` from a library's own method of that name.
+      //   `MadStudioRoblox/ProfileStore` declares `function Profile:SetAsync()` — its
+      //   view-mode save — and the rule flagged the DEFINITION line and every call to
+      //   ProfileStore's own API, eight times in the leading DataStore library.
+      //
+      //   This is F-49's shape a third time: Flipper condemned for defining
+      //   `Signal:connect`, the tagger counting `wait()` in prose, and now this. A
+      //   regex cannot type a receiver, so the decidable question is whether the file
+      //   DEFINES the method — and if it does, its calls are presumed to be its own.
+      //
+      //   The cost is real and bounded, exactly as it was for F-49: a file that both
+      //   defines its own `SetAsync` and genuinely calls a DataStore's loses that
+      //   finding. That is a narrower hole than mis-flagging every wrapper library. ]]
+      const ownMethods = new Set();
+      for (const d of src.matchAll(/\bfunction\s+[\w.]+[.:](SetAsync|UpdateAsync|GetAsync|RemoveAsync|IncrementAsync|GetSortedAsync)\s*\(/g)) {
+        ownMethods.add(d[1]);
+      }
+
       const ranges = pcallRanges(src);
       const out = [];
       DATASTORE_CALL.lastIndex = 0;
       let m;
       while ((m = DATASTORE_CALL.exec(src))) {
+        if (ownMethods.has(m[1])) continue;
         const idx = m.index;
         const inPcall = ranges.some(([a, b]) => idx >= a && idx <= b);
         const lineStart = src.lastIndexOf('\n', idx) + 1;

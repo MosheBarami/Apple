@@ -499,6 +499,45 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-55 · Three false-positive classes in one rule, found by running it over 2,646 real files
+
+The fifteen repositories fetched this session are 2,646 Luau files of real, licence-clear code —
+the first corpus this repository's own rules had ever been run against at scale. Fourteen of the
+nineteen rules fired at least once, which is the coverage evidence. `datastore-without-pcall`
+produced **134 error-severity findings**, and almost all of them were wrong, in three distinct ways.
+
+**93 from one test file.** `NevermoreEngine/src/datastore/src/Server/Mocks/DataStoreMock.spec.lua`
+— a jest-lua spec exercising a DataStore *mock*. The rule's stated reason is that an unprotected
+throw "aborts the save mid-way"; in a test an unprotected throw is the DESIRED behaviour, and a
+pcall would swallow exactly what the test exists to observe. One file was generating 70 % of the
+rule's output across fifteen codebases, which is how a real finding gets lost in a listing nobody
+reads. Test-ness is now detected from the SOURCE rather than the filename, because the case that
+matters most is grading a model's fenced code block, which has no meaningful path — and a model
+asked to write datastore tests should not be marked down for the absence of a pcall that would
+break them. **Scoped to this rule only:** a test that hands a RemoteFunction to a client still
+demonstrates what `remote-function-to-client` warns about, and that is a test of its own.
+
+**8 from a library defining its own method.** `ProfileStore` declares
+`function Profile:SetAsync()` — its view-mode save — and `DATASTORE_CALL` matches `:SetAsync(`
+with no notion of a receiver, so the rule flagged the definition line and every call to
+ProfileStore's own API. This is **F-49's shape a third time** (Flipper condemned for defining
+`Signal:connect`, the tagger counting `wait()` in prose). A regex cannot type a receiver, so the
+decidable question is whether the file DEFINES the method. Per method name, not blanket: defining
+`:UpdateAsync` does not exempt `:SetAsync`.
+
+**2 from the F-52 fix not surviving contact with modern Luau.** The delegated-pcall recognition
+added earlier today worked on untyped helpers and failed on
+`local function retry<T>(fn: () -> T, attempts: number)` — twice over. `<T>` sits between the name
+and the paren, and a `[^)]*` parameter capture ends at the `)` inside `() -> T` rather than at the
+one closing the list. So a correct retry helper went unrecognised and its two protected
+`UpdateAsync` calls were reported. The irony is worth recording: the fix for "this rule penalises
+the better answer" itself penalised the better answer, because typed generic Luau is more modern
+than the code the fix was tested against.
+
+134 → 33, and the remainder is spread across nine files rather than concentrated in one. The
+remaining findings look genuine — Cmdr's `var`/`varSet` commands, `rice-simulator`'s legacy
+`SaveData.server.lua` — which is what a rule's output should look like.
+
 ### F-54 · An enforced check reported the best-behaved call site in the file
 
 `checkWaitContracts` is one of the eleven ENFORCED design rules. Pointed at this repository's own

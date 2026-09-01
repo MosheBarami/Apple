@@ -21,6 +21,7 @@ import {
   inferContext,
   stripComments,
   blankStringContents,
+  looksLikeTest,
 } from './roblox-antipatterns.mjs';
 
 // context is stated explicitly so a fire/no-fire assertion measures the RULE, not the accuracy of
@@ -888,4 +889,100 @@ test('blanking strings does not shift the line a finding reports', () => {
   assert.equal(blankStringContents(src).length, src.length);
   const hit = analyzeLuau(src, {}).findings.find((f) => f.rule === 'deprecated-api');
   assert.equal(hit.line, 3, 'the wait() is on line 3');
+});
+
+// ------------------------------------------- tests are exempt from one rule (F-55)
+test('a datastore spec is not marked down for the pcall that would defeat it', () => {
+  // Found by running these rules over the 2,646 Luau files fetched this session:
+  // datastore-without-pcall produced 134 findings and 93 came from ONE file,
+  // NevermoreEngine's DataStoreMock.spec.lua. In a test an unprotected throw is the
+  // desired behaviour — it fails the test — and a pcall would swallow what the test
+  // exists to observe.
+  const spec = [
+    'local Jest = require("Jest")',
+    'local describe = Jest.Globals.describe',
+    'local it = Jest.Globals.it',
+    'local expect = Jest.Globals.expect',
+    'describe("DataStoreMock", function()',
+    '\tit("round-trips", function()',
+    '\t\tmockStore:SetAsync("k", 1)',
+    '\t\texpect(mockStore:GetAsync("k")).toBe(1)',
+    '\tend)',
+    'end)',
+  ].join('\n');
+  assert.ok(looksLikeTest(spec));
+  assert.ok(!fired(analyzeLuau(spec, { context: 'server' }), 'datastore-without-pcall'));
+});
+
+test('test detection is strict enough not to exempt production code', () => {
+  // A file that merely contains the word test is not a test, and neither is one that
+  // uses a single one of the call shapes.
+  assert.ok(!looksLikeTest('local latest = testValue'));
+  assert.ok(!looksLikeTest('local function describe(x) return x end'));
+  assert.ok(!looksLikeTest('local s = DataStoreService:GetDataStore("P")\ns:SetAsync(k, v)'));
+
+  // And the rule still fires on genuinely unprotected production code.
+  assert.ok(fired(analyzeLuau('local s = DataStoreService:GetDataStore("P")\ns:SetAsync(k, v)', { context: 'server' }), 'datastore-without-pcall'));
+});
+
+test('the exemption is scoped to one rule, not granted to all of them', () => {
+  // Other rules have their own relationship to test code, and some should still apply:
+  // a test that hands a RemoteFunction to a client still demonstrates the pattern.
+  const testSrc = [
+    'local Jest = require("Jest")',
+    'describe("net", function()',
+    '\tit("responds", function()',
+    '\t\tlocal rf = Instance.new("RemoteFunction")',
+    '\t\trf:InvokeClient(player)',
+    '\t\texpect(true).toBe(true)',
+    '\tend)',
+    'end)',
+  ].join('\n');
+  assert.ok(looksLikeTest(testSrc));
+  assert.ok(fired(analyzeLuau(testSrc, { context: 'server' }), 'remote-function-to-client'));
+});
+
+test('a generic, typed retry helper is recognised as protection', () => {
+  // The F-52 fix worked on untyped helpers and failed on modern Luau — the code most
+  // worth getting right. slime-factory-tycoon's
+  //   local function retry<T>(fn: () -> T, attempts: number)
+  // broke it twice: `<T>` sits between the name and the paren, and a `[^)]*` parameter
+  // capture ends at the `)` inside `() -> T` rather than the one closing the list.
+  const generic = [
+    'local function retry<T>(fn: () -> T, attempts: number): (boolean, T?)',
+    '\tfor i = 1, attempts do',
+    '\t\tlocal ok, result = pcall(fn)',
+    '\t\tif ok then return true, result end',
+    '\tend',
+    '\treturn false, nil',
+    'end',
+    'local store = DataStoreService:GetDataStore("Profiles")',
+    'local ok, result = retry(function()',
+    '\treturn store:UpdateAsync(key, transform)',
+    'end, 3)',
+  ].join('\n');
+  assert.ok(!fired(analyzeLuau(generic, { context: 'server' }), 'datastore-without-pcall'));
+});
+
+test("a library's own :SetAsync method is not the DataStore's", () => {
+  // ProfileStore declares `function Profile:SetAsync()` — its view-mode save — and the
+  // rule flagged the definition line and every call to ProfileStore's own API, eight
+  // times in the leading DataStore library. F-49's shape a third time: a regex cannot
+  // type a receiver, so the decidable question is whether the file defines the method.
+  const ownMethod = [
+    'function Profile:SetAsync()',
+    '\tSaveProfileAsync(self, nil, true)',
+    'end',
+    'local profile = getProfile()',
+    'profile:SetAsync()',
+  ].join('\n');
+  assert.ok(!fired(analyzeLuau(ownMethod, { context: 'server' }), 'datastore-without-pcall'));
+
+  // Per method name, not blanket: defining :UpdateAsync must not exempt :SetAsync.
+  const partial = [
+    'function Store:UpdateAsync() end',
+    'local s = DataStoreService:GetDataStore("P")',
+    's:SetAsync(key, value)',
+  ].join('\n');
+  assert.ok(fired(analyzeLuau(partial, { context: 'server' }), 'datastore-without-pcall'));
 });
