@@ -259,6 +259,11 @@ type Capsule = {
 }
 
 local gui: ScreenGui? = nil
+--[[ The nav rail's own layer. Tracked separately because it is a SECOND
+	 ScreenGui, and the re-init guard below destroys `gui` — which would leave
+	 this one orphaned and stack two rails on a reload, the exact failure that
+	 guard exists to prevent. ]]
+local navGui: ScreenGui? = nil
 local scales: { UIScale } = {}
 local viewportConn: RBXScriptConnection? = nil
 
@@ -1179,6 +1184,12 @@ function Hud.init(newDeps: Deps)
 		-- Re-initialising rebuilds from scratch rather than patching a half-built
 		-- tree, so a reload during development cannot leave two HUDs stacked.
 		gui:Destroy()
+		if navGui then
+			-- The nav lives on its own ScreenGui above the panel backdrop; destroying
+			-- only `gui` would leave it behind and stack a second rail.
+			navGui:Destroy()
+			navGui = nil
+		end
 		table.clear(scales)
 		table.clear(dots)
 		sellPulse = nil
@@ -1196,8 +1207,40 @@ function Hud.init(newDeps: Deps)
 	screen.Parent = playerGui
 	gui = screen
 
+	--[[ THE NAV RAIL LIVES IN ITS OWN LAYER, ABOVE THE PANEL BACKDROP.
+
+		 Measured, not assumed: with the nav on this ScreenGui (DisplayOrder 5) and
+		 the panels on theirs (DisplayOrder 10), `GetGuiObjectsAtPosition` at the
+		 centre of the SHOP tile returns `Panels.Backdrop` as the TOPMOST object
+		 while any panel is open. The backdrop is full-screen and `Active`, so it
+		 swallows the click. The whole nav rail is dead whenever a panel is open.
+
+		 That is half of a deliberate decision and half of a bug. Blocking the
+		 WORLD is right — a modal must not let you walk or collect behind it, and
+		 Theme says so where it sets `Active`. Blocking the NAV is not: `Panels.open`
+		 is written to handle a direct switch ("Opening a panel closes the outgoing
+		 one and takes its backdrop with it"), and the input layer made that path
+		 unreachable. Switching from SHOP to UPGRADES cost two actions instead of
+		 one, in a genre where players hop between panels constantly.
+
+		 So the nav gets its own ScreenGui ABOVE the panels, and everything else —
+		 the world, the wallet, the sell action — stays blocked exactly as before.
+		 The dim no longer covers the rail, which is the normal convention anyway:
+		 the scrim is there to focus attention on the modal, and the control that
+		 SWITCHES modals is not something to hide from. ]]
+	local navLayer = Instance.new("ScreenGui")
+	navLayer.Name = "CrystalCanyonNav"
+	navLayer.IgnoreGuiInset = false
+	navLayer.ResetOnSpawn = false
+	navLayer.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	-- Above CrystalCanyonUI's 10. The rail is the only HUD control that must
+	-- survive a modal; everything else on `screen` deliberately does not.
+	navLayer.DisplayOrder = 15
+	navLayer.Parent = playerGui
+	navGui = navLayer
+
 	buildWallet(screen)
-	buildNav(screen, newDeps.openPanel)
+	buildNav(navLayer, newDeps.openPanel)
 	buildSell(screen, sellRemote)
 	buildObjectiveMount(screen)
 	buildVersion(screen)
