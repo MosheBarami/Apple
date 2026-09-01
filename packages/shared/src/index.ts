@@ -403,8 +403,24 @@ export interface RunSnapshot {
  * (~207KB at the default 288x180).
  */
 export interface StudioFrame {
-  /** Packed 24-bit RGB rows, base64. Decoded to a canvas in the browser. */
+  /**
+   * The pixels, base64. The byte stream underneath depends on `encoding`:
+   * packed 24-bit RGB rows by default, run-length records when the worker
+   * found that smaller. Decoded to a canvas in the browser.
+   */
   rgbBase64: string;
+  /**
+   * How `rgbBase64` is packed. ABSENT MEANS 'rgb24' — every frame emitted
+   * before this field existed is raw RGB, and a decoder that defaults to rgb24
+   * reads them correctly without knowing the field exists.
+   *
+   * 'rle24' is chosen PER FRAME and only when it actually wins. Measured on
+   * synthetic frames matching the rasteriser's output structure (flat sky and
+   * ground fills, flat-shaded quads): 10-22x smaller on that content, but
+   * 1.33x LARGER on high-entropy content, so the encoder compares and keeps
+   * the smaller of the two. See frame-bus.ts.
+   */
+  encoding?: FrameEncoding;
   width: number;
   height: number;
   /** Which camera preset produced it. */
@@ -414,7 +430,84 @@ export interface StudioFrame {
   capturedAt: number;
   /** The run this belongs to, so late frames cannot attach to a new turn. */
   msgId?: string;
+  /**
+   * The playtest this frame was captured during, when it was captured during
+   * one. Absent on the ordinary critique renders, which is how the UI tells a
+   * playtest frame from a build render without guessing.
+   */
+  playtestRunId?: string;
+  /** Monotonic per-playtest counter, so a reordered frame cannot appear newer. */
+  seq?: number;
 }
+
+export type FrameEncoding = 'rgb24' | 'rle24';
+
+/**
+ * A playtest, as the browser is entitled to describe it.
+ *
+ * Every field is a fact the worker has actually observed. `elapsedMs` is
+ * derived from timestamps the worker wrote, `consoleErrors` is a count of real
+ * LogService entries, and `action` names the step the worker is genuinely
+ * executing right now. Nothing here is predicted or interpolated: when the
+ * worker does not know, the field is absent rather than filled with a
+ * plausible value.
+ */
+export type PlaytestPhase =
+  /** Protective checkpoint / census, before RunService:Run() is called. */
+  | 'preparing'
+  /** Run mode is live in Studio and frames are being captured. */
+  | 'running'
+  /** RunService:Stop() issued; the post-run census has not returned yet. */
+  | 'stopping'
+  /** Finished cleanly. Terminal. */
+  | 'finished'
+  /** Refused or aborted — `error` says why. Terminal. */
+  | 'failed';
+
+export interface PlaytestRun {
+  id: string;
+  phase: PlaytestPhase;
+  /** Wall-clock ms since the playtest was started, as the worker measured it. */
+  startedAt: number;
+  /** Set once the run reaches a terminal phase. Absent while live. */
+  endedAt?: number;
+  /** How many seconds of run mode were requested. */
+  requestedSeconds: number;
+  /** What the worker is doing at this instant, in the user's language. */
+  action: string;
+  /** Real counts from the Studio console, not estimates. */
+  consoleErrors: number;
+  consoleWarnings: number;
+  /** Frames actually delivered to the browser for this playtest. */
+  framesDelivered: number;
+  /**
+   * Frames the capture loop asked for and did not get — a rasterise that timed
+   * out, a frame refused by the size cap, a plugin that went away. Surfaced so
+   * a stuttering stream reads as a stuttering stream rather than as a slow one.
+   */
+  framesDropped: number;
+  /** capturedAt of the newest delivered frame, for staleness. Absent until one lands. */
+  lastFrameAt?: number;
+  /** Present only in the 'failed' phase. */
+  error?: string;
+  /** The agent turn this playtest belongs to. */
+  msgId?: string;
+}
+
+/**
+ * A frame older than this is STALE: still shown, but the UI must say it is not
+ * current. Set above the capture floor (1500ms) plus a rasterise and a
+ * long-poll round trip, so an ordinary healthy stream never trips it.
+ */
+export const PLAYTEST_STALE_MS = 6000;
+
+/**
+ * A frame older than this is DEAD: the stream has stopped in a way the user
+ * needs told. The card keeps showing the last real frame — throwing it away
+ * would destroy information — but labels it as the last frame received and
+ * when, never as the current state of the game.
+ */
+export const PLAYTEST_DEAD_MS = 20_000;
 
 export interface RunSnapshotTool {
   toolId: string;
@@ -460,6 +553,11 @@ export type ServerMsg =
   // A real frame rasterised inside Studio and forwarded to the browser.
   // See StudioFrame — this is a diagnostic render, NOT a viewport capture.
   | { type: 'studio_frame'; frame: StudioFrame }
+  // The live playtest, or null once there is none. Emitted on every phase
+  // change and on every capture tick, so the card's elapsed time and console
+  // counts come from the worker rather than from a timer in the browser
+  // guessing what the worker is doing.
+  | { type: 'playtest_state'; run: PlaytestRun | null }
   // Emitted once, at run start, after the request has been classified.
   | { type: 'run_intent'; msgId: string; intent: RunIntent }
   | { type: 'error'; code: string; message: string }

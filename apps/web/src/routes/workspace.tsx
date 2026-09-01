@@ -21,6 +21,7 @@ import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
+import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
@@ -82,6 +83,7 @@ export function WorkspacePage() {
     checkpoints,
     checkpointsState,
     frames,
+    playtest,
     sendChat,
     stop,
     createCheckpoint,
@@ -305,6 +307,13 @@ export function WorkspacePage() {
               Studio attaches. It is a pure function of studioStatus, so there
               is no dismissal state to get stuck. */}
           <ConnectStudio status={studioStatus} onPair={() => setShowPairing(true)} />
+
+          {/* The playtest viewport. Renders only while the worker says a
+              playtest exists — it is a pure function of `playtest`, so it
+              cannot linger after one ends or appear before one starts. Placed
+              above the build renders because a live run is the thing the user
+              is waiting on. */}
+          <PlaytestCard run={playtest} frames={frames} studioConnected={studio.connected} />
 
           {/* Renders forwarded from Studio during this session. Pinned below
               the conversation so a long build does not push them out of sight. */}

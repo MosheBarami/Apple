@@ -1938,3 +1938,216 @@
 .gx-turn--agent .gu-doc {
   box-shadow: none;
 }
+
+/* ---------------------------------------------------------------- playtest
+   The inline playtest viewport.
+
+   The visual language carries the honesty rules, not just the copy: a stale
+   frame is DIMMED and veiled, a dead stream loses its accent colour entirely,
+   and the state chip's colour is bound to frame freshness rather than to the
+   run's phase — so the card cannot look live while the pixels are old. The
+   states themselves are decided in lib/playtest-view.ts. */
+.gx-playtest {
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-lg);
+  background: var(--gx-raise);
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.gx-playtest__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.gx-playtest__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gx-ink-warm);
+  flex: none;
+}
+
+.gx-playtest__chip {
+  font-size: 0.7rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--gx-line-2);
+  color: var(--gx-ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Only a genuinely fresh frame gets the live treatment. */
+.gx-playtest__chip--fresh {
+  color: var(--gx-good);
+  border-color: color-mix(in srgb, var(--gx-good) 40%, transparent);
+  background: color-mix(in srgb, var(--gx-good) 10%, transparent);
+}
+
+.gx-playtest__chip--stale {
+  color: var(--gx-warn);
+  border-color: color-mix(in srgb, var(--gx-warn) 40%, transparent);
+  background: color-mix(in srgb, var(--gx-warn) 10%, transparent);
+}
+
+.gx-playtest__chip--dead {
+  color: var(--gx-bad);
+  border-color: color-mix(in srgb, var(--gx-bad) 40%, transparent);
+  background: color-mix(in srgb, var(--gx-bad) 10%, transparent);
+}
+
+.gx-playtest__elapsed {
+  margin-left: auto;
+  font-family: var(--gx-mono);
+  font-size: 0.72rem;
+  color: var(--gx-ink-2);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.gx-playtest__stage {
+  background: var(--gx-ground);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+}
+
+.gx-playtest__frame {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  line-height: 0;
+  width: 100%;
+}
+
+.gx-playtest.is-expanded .gx-playtest__frame {
+  cursor: zoom-out;
+}
+
+.gx-playtest__canvas {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  /* Nearest-neighbour. These are 160x100 renders, and smoothing them would
+     invent detail the rasteriser never produced. */
+  image-rendering: pixelated;
+  transition:
+    opacity var(--gx-t-move) var(--gx-ease),
+    filter var(--gx-t-move) var(--gx-ease);
+}
+
+.gx-playtest.is-expanded .gx-playtest__canvas {
+  max-height: 520px;
+}
+
+/* Not-current pixels are visibly not-current. */
+.gx-playtest.is-dimmed .gx-playtest__canvas {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+
+.gx-playtest__veil {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  font-family: var(--gx-mono);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--gx-r-sm);
+  background: rgba(11, 10, 9, 0.82);
+  line-height: 1.4;
+}
+
+.gx-playtest__veil--stale {
+  color: var(--gx-warn);
+  border: 1px solid color-mix(in srgb, var(--gx-warn) 45%, transparent);
+}
+
+.gx-playtest__veil--dead {
+  color: var(--gx-bad);
+  border: 1px solid color-mix(in srgb, var(--gx-bad) 45%, transparent);
+}
+
+.gx-playtest__empty {
+  padding: 1.6rem 1rem;
+  text-align: center;
+  color: var(--gx-ink-3);
+  font-size: 0.8rem;
+}
+
+.gx-playtest__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-top: 1px solid var(--gx-line);
+}
+
+.gx-playtest__what {
+  font-size: 0.7rem;
+  color: var(--gx-ink-3);
+  line-height: 1.45;
+}
+
+.gx-playtest__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--gx-ink-2);
+}
+
+.gx-playtest__action {
+  color: var(--gx-ink-warm);
+  margin-right: auto;
+}
+
+.gx-playtest__count {
+  font-family: var(--gx-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-ink-3);
+}
+
+.gx-playtest__count.is-error {
+  color: var(--gx-bad);
+}
+
+.gx-playtest__count.is-warn {
+  color: var(--gx-warn);
+}
+
+.gx-playtest__degraded {
+  font-size: 0.73rem;
+  line-height: 1.5;
+  color: var(--gx-ink-warm);
+  background: color-mix(in srgb, var(--gx-warn) 8%, transparent);
+  border-left: 2px solid var(--gx-warn);
+  padding: 0.4rem 0.55rem;
+  border-radius: 0 var(--gx-r-sm) var(--gx-r-sm) 0;
+  margin: 0;
+}
+
+.gx-playtest__open {
+  align-self: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-playtest__canvas {
+    transition: none;
+  }
+}

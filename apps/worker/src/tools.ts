@@ -23,6 +23,8 @@ import {
 } from './assets';
 import { searchAssetLibrary } from './asset-library';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
+import { countConsole, parseLogEntries } from './playtest-stream';
+import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
@@ -44,6 +46,16 @@ export interface AgentCtx {
    * tokens and tell it nothing it did not already get from the metadata.
    */
   emitFrame?(frame: StudioFrame): void;
+  /**
+   * The live playtest channel, when the caller provides one.
+   *
+   * Optional for the same reason everything else here is: the eval harness and
+   * the admin `run-tool` route build an AgentCtx directly, and a playtest they
+   * cannot watch should still RUN — the safety behaviour in run_and_check is
+   * the part that must never be conditional. Without this the tool does
+   * everything it always did and simply streams nothing.
+   */
+  playtest?: PlaytestBus;
   /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
   lastRender?: RenderViewResult;
   lastCritique?: VisualCritique;
@@ -66,6 +78,32 @@ export interface AgentCtx {
    * never whether the gate runs.
    */
   libraryAssetIds?: Set<number>;
+}
+
+/**
+ * What run_and_check needs in order to be watchable, and nothing more.
+ *
+ * Every method is a REPORT of something that already happened, never a request
+ * to make something happen. `begin` is called after the checkpoint is taken,
+ * `phase` after the transition, `captureFrame` returns whether a frame was
+ * actually delivered. The tool cannot use this interface to tell the card a
+ * story that differs from what it did.
+ */
+export interface PlaytestBus {
+  /** A playtest has started. Returns its id. */
+  begin(opts: { requestedSeconds: number; action: string }): string;
+  /** Report the current phase and what is being done. */
+  phase(phase: 'preparing' | 'running' | 'stopping' | 'finished' | 'failed', action: string, error?: string): void;
+  /** Replace the console counts from a fresh log window. */
+  console(errors: number, warnings: number): void;
+  /**
+   * Ask Studio for one frame and forward it if it arrives.
+   * Resolves false when the rate gate, the budget or the plugin declined —
+   * which the caller records as a drop rather than retrying immediately.
+   */
+  captureFrame(): Promise<boolean>;
+  /** Whether the capture budget and rate gate would allow another frame now. */
+  canCapture(): boolean;
 }
 
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
@@ -708,12 +746,19 @@ export const TOOLS: Record<string, ToolImpl> = {
       const beforeRaw = await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000);
       const before = beforeRaw.ok ? parseCensus(beforeRaw.data) : null;
 
+      // The playtest becomes watchable from here. `begin` is deliberately AFTER the
+      // census and BEFORE the checkpoint, so a refusal below is reported to the card as
+      // a failed playtest the user can see the reason for, rather than as a playtest
+      // that never appeared to exist.
+      ctx.playtest?.begin({ requestedSeconds: secs, action: 'Taking a protective checkpoint' });
+
       // Protective checkpoint. If there is real work here and it cannot be protected, REFUSE — an
       // unprotected playtest is precisely the hazard, and declining costs the user nothing.
       let checkpointId: string | null = null;
       if (needsProtection(before)) {
         const cp = await ctx.createCheckpoint('before playtest', 'auto');
         if ('error' in cp) {
+          ctx.playtest?.phase('failed', 'Refused: the project could not be protected first', cp.error);
           return {
             error:
               `refused to playtest: could not take a protective checkpoint first (${cp.error}). ` +
@@ -724,10 +769,63 @@ export const TOOLS: Record<string, ToolImpl> = {
         checkpointId = cp.id;
       }
 
+      ctx.playtest?.phase('preparing', 'Starting run mode in Studio');
       const start = await ctx.execStudioOp({ op: 'run_mode', action: 'start' }, 20_000);
-      if (!start.ok) return { error: `could not start run mode: ${start.error}` };
-      await new Promise((r) => setTimeout(r, secs * 1000));
+      if (!start.ok) {
+        ctx.playtest?.phase('failed', 'Run mode would not start', start.error);
+        return { error: `could not start run mode: ${start.error}` };
+      }
+
+      // ------------------------------------------------------------- watch it run
+      //
+      // What replaced a blind `sleep(secs)`. The simulation runs for the same wall
+      // clock either way; the difference is that the user can now see it.
+      //
+      // The loop is driven by the CLOCK, not by a frame counter: each pass captures a
+      // frame if the rate gate allows one, and sleeps only for what is left of the
+      // interval. A rasterise that takes 800ms therefore costs the playtest nothing —
+      // it eats into the wait rather than extending the run past `secs`, so the
+      // playtest still lasts as long as the agent asked for and no longer.
+      //
+      // Frames are captured through the EXISTING `render_view` op, at a size the
+      // existing plugin already clamps to. No new op, no protocol bump, nothing that
+      // an installed plugin would fail on — which matters because Roblox has no
+      // automatic plugin updating and a new op would be broken for every current user
+      // until each of them clicked Update by hand.
+      const deadline = Date.now() + secs * 1000;
+      const pt = ctx.playtest;
+      if (pt) {
+        pt.phase('running', 'Run mode is live — capturing frames');
+        let logsSeen = 0;
+        while (Date.now() < deadline) {
+          const tickStart = Date.now();
+          if (pt.canCapture()) await pt.captureFrame();
+
+          // Console state is refreshed roughly every other capture. Reading it every
+          // pass would double the op traffic to show a number that changes slowly.
+          logsSeen += 1;
+          if (logsSeen % 2 === 0) {
+            const live = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 10_000);
+            if (live.ok) {
+              const counts = countConsole(parseLogEntries(live.data) ?? undefined);
+              pt.console(counts.errors, counts.warnings);
+            }
+          }
+
+          const spent = Date.now() - tickStart;
+          const wait = Math.min(PLAYTEST_FRAME_MIN_INTERVAL_MS - spent, deadline - Date.now());
+          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        }
+        pt.phase('stopping', 'Stopping run mode and checking what changed');
+      } else {
+        await new Promise((r) => setTimeout(r, secs * 1000));
+      }
+
       const logs = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 15_000);
+      if (logs.ok) {
+        const counts = countConsole(parseLogEntries(logs.data) ?? undefined);
+        ctx.playtest?.console(counts.errors, counts.warnings);
+      }
       const stop = await ctx.execStudioOp({ op: 'run_mode', action: 'stop' }, 20_000);
 
       // Census AFTER, and restore if the playtest ate anything.
@@ -747,6 +845,16 @@ export const TOOLS: Record<string, ToolImpl> = {
             ? 'the project was restored from the pre-playtest checkpoint, and the restore was verified by re-counting'
             : `THE RESTORE DID NOT FULLY SUCCEED (${res.error ?? stillLost.join('; ')}) — checkpoint ${checkpointId} still holds the pre-playtest state`;
       }
+
+      // The card's last word. A playtest that destroyed work says so even when the
+      // restore succeeded, because "it was put back" and "nothing happened" are
+      // different facts and the user is entitled to the first one.
+      ctx.playtest?.phase(
+        'finished',
+        lost.length
+          ? `Finished — the playtest destroyed committed work${restored ? ' and it was restored' : ''}`
+          : 'Finished',
+      );
 
       // Safety fields come FIRST. Tool results are truncated at MAX_RESULT_CHARS and the console log
       // is easily thousands of characters, so putting the destruction warning after it means the

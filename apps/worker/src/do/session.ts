@@ -18,12 +18,24 @@ import type {
   ToolTraceEntry,
   QuotaState,
   RunIntent,
+  StudioFrame,
+  PlaytestRun,
+  RenderViewResult,
 } from '@golem/shared';
 import { MODE_INFO } from '@golem/shared';
+import {
+  admitFrame,
+  FrameRate,
+  FrameRing,
+  PLAYTEST_FRAME_HEIGHT,
+  PLAYTEST_FRAME_WIDTH,
+  type RawFrame,
+} from '../frame-bus';
+import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { sparksForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
-import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
+import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
@@ -304,6 +316,18 @@ export class SessionDO extends DurableObject<Env> {
       // straight away rather than making it ask.
       const live = await this.runSnapshot();
       if (live) server.send(JSON.stringify({ type: 'run_state', run: live } satisfies ServerMsg));
+      // A playtest in flight, and the frames still in the ring. Without this, a
+      // user who refreshes during a playtest gets an empty card until the next
+      // capture tick — up to a rate-gate interval of looking at nothing while
+      // their game is running. The frames are replayed with their ORIGINAL
+      // capturedAt, so the staleness the card computes is the truth about when
+      // they were rendered, not about when this socket opened.
+      if (this.playtestRun) {
+        server.send(JSON.stringify({ type: 'playtest_state', run: this.playtestRun } satisfies ServerMsg));
+        for (const frame of this.frames.list()) {
+          server.send(JSON.stringify({ type: 'studio_frame', frame } satisfies ServerMsg));
+        }
+      }
       // browsers abort the handshake unless a requested subprotocol is echoed back
       return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'golem.v1' } });
     }
@@ -986,6 +1010,28 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+
+    // A playtest cannot outlive the run that started it.
+    //
+    // run_and_check reports its own terminal phase on every path it returns
+    // from, but it is not the only way this run can end: the tool can throw,
+    // the user can press stop, the budget can abort mid-loop. On any of those
+    // the record would be left saying 'running' and the card would sit there
+    // counting up the age of a frame from a playtest that is long over.
+    //
+    // Reported as 'failed' rather than 'finished' because that is what
+    // happened — the playtest did not complete, and saying it did would be the
+    // same category of lie the card exists to avoid.
+    if (this.playtestRun && !isTerminal(this.playtestRun.phase)) {
+      this.playtestRun = advance(this.playtestRun, {
+        phase: 'failed',
+        action: 'The run ended before the playtest finished',
+        error: error ?? (reason === 'stopped' ? 'stopped by you' : `the run ended (${reason})`),
+        now: Date.now(),
+      });
+      this.emitPlaytest();
+    }
+
     // 'incomplete' OVERRIDES the model's own text rather than appending to it, which is the whole
     // point: on the run this was written for, that text was the single word "Done." A reply that
     // reports work which did not happen is worse than an error, because the user has no reason to
@@ -1082,10 +1128,12 @@ export class SessionDO extends DurableObject<Env> {
       // Frames go to the browser and nowhere else. They are deliberately not
       // persisted: a run's worth of uncompressed RGB would be tens of megabytes
       // in DO storage to show something the user was already watching. A client
-      // that reconnects mid-run gets the trace, not the pixels.
+      // that reconnects mid-run gets the trace, the ring buffer, and the pixels
+      // still in it — not the whole history.
       emitFrame: (frame) => {
-        this.broadcast({ type: 'studio_frame', frame: { ...frame, msgId: this.currentMsgId } });
+        this.publishFrame(frame, { recompress: false });
       },
+      playtest: this.playtestBus(),
       addMemoryFact: async (fact) => {
         const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
         memory.facts = [...memory.facts.filter((f) => f !== fact), fact].slice(-24);
@@ -1096,6 +1144,142 @@ export class SessionDO extends DurableObject<Env> {
 
   private pluginSeenRecently = false;
   private liveJwt: string | null = null;
+
+  // ------------------------------------------------------------------ frames
+  /**
+   * Recent frames, in memory only, bounded on both count and bytes.
+   *
+   * TENANT SCOPE IS STRUCTURAL, NOT CHECKED. This ring is a field of the
+   * SessionDO instance, and a SessionDO instance is addressed by project id
+   * (`idFromName(projectId)` in index.ts). There is exactly one of these per
+   * project and no code path that hands a frame to a different one, so frames
+   * cannot cross a tenant boundary without someone first routing an op to the
+   * wrong DO — at which point the frame is the least of it. The /ws handler
+   * already refuses any socket whose X-User-Id is not the bound owner, so the
+   * set of readers is the set of that project's owner's sockets.
+   */
+  private frames = new FrameRing();
+  /** Rate + budget gate for the playtest currently streaming, if any. */
+  private frameRate: FrameRate | null = null;
+  private playtestRun: PlaytestRun | null = null;
+  private playtestSeq = 0;
+
+  /**
+   * Admit a frame, then fan it out and remember it.
+   *
+   * Returns whether it was delivered, so a caller counting drops counts real
+   * ones. A refusal is logged to the oplog rather than thrown: a bad frame must
+   * degrade the picture, never the build.
+   */
+  private publishFrame(raw: RawFrame, opts: { recompress: boolean; playtestRunId?: string }): boolean {
+    const verdict = admitFrame(raw, { recompress: opts.recompress });
+    if (!verdict.ok) {
+      this.sql.exec(
+        `insert into oplog(op_id, kind, ok, summary, created_at) values(?,?,?,?,?)`,
+        'frame',
+        'frame_rejected',
+        0,
+        `${verdict.reason}: ${verdict.detail}`.slice(0, 200),
+        Date.now(),
+      );
+      return false;
+    }
+    const frame: StudioFrame = {
+      ...verdict.frame,
+      msgId: this.currentMsgId,
+      ...(opts.playtestRunId ? { playtestRunId: opts.playtestRunId, seq: (this.playtestSeq += 1) } : {}),
+    };
+    this.frames.push(frame);
+    this.broadcast({ type: 'studio_frame', frame });
+    return true;
+  }
+
+  /** Push the playtest record to every attached client. */
+  private emitPlaytest(): void {
+    this.broadcast({ type: 'playtest_state', run: this.playtestRun });
+  }
+
+  /**
+   * The channel run_and_check writes its progress to.
+   *
+   * Everything here is a report of something that already happened. The one
+   * method that acts — `captureFrame` — asks Studio for a render through the
+   * ordinary op queue and returns whether pixels actually came back, so a
+   * plugin that has gone away produces a recorded drop rather than a frame the
+   * card would otherwise keep showing as current.
+   */
+  private playtestBus(): PlaytestBus {
+    return {
+      begin: ({ requestedSeconds, action }) => {
+        const id = `pt_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+        this.frameRate = new FrameRate();
+        this.playtestSeq = 0;
+        this.playtestRun = startPlaytest({
+          id,
+          now: Date.now(),
+          requestedSeconds,
+          action,
+          msgId: this.currentMsgId,
+        });
+        this.emitPlaytest();
+        return id;
+      },
+      phase: (phase, action, error) => {
+        if (!this.playtestRun) return;
+        this.playtestRun = advance(this.playtestRun, { phase, action, error, now: Date.now() });
+        this.emitPlaytest();
+      },
+      console: (errors, warnings) => {
+        if (!this.playtestRun) return;
+        this.playtestRun = advance(this.playtestRun, { consoleErrors: errors, consoleWarnings: warnings });
+        this.emitPlaytest();
+      },
+      canCapture: () => {
+        if (!this.frameRate || !this.playtestRun) return false;
+        return this.frameRate.remaining > 0;
+      },
+      captureFrame: async () => {
+        const run = this.playtestRun;
+        const rate = this.frameRate;
+        if (!run || !rate) return false;
+        const gate = rate.take(Date.now());
+        if (!gate.ok) return false;
+
+        // 'eye' is roughly player eye height looking into the scene: the closest
+        // thing the rasteriser has to what someone standing in the game would
+        // see. The timeout is short on purpose — a render that takes longer than
+        // this has stalled the simulation the user is trying to watch, and the
+        // honest response is a dropped frame, not a longer freeze.
+        const res = await this.execStudioOp(
+          { op: 'render_view', view: 'eye', width: PLAYTEST_FRAME_WIDTH, height: PLAYTEST_FRAME_HEIGHT },
+          8000,
+        );
+        const data = res.ok ? (res.data as RenderViewResult & { error?: string }) : null;
+        const view = data?.views?.[0];
+        if (!view?.rgbBase64) {
+          this.playtestRun = advance(run, { droppedFrame: true });
+          this.emitPlaytest();
+          return false;
+        }
+        const delivered = this.publishFrame(
+          {
+            rgbBase64: view.rgbBase64,
+            width: view.meta.width,
+            height: view.meta.height,
+            view: view.name,
+            subject: data?.subject ?? 'game.Workspace',
+            capturedAt: Date.now(),
+          },
+          { recompress: true, playtestRunId: run.id },
+        );
+        this.playtestRun = advance(this.playtestRun ?? run, {
+          ...(delivered ? { deliveredFrame: true, lastFrameAt: Date.now() } : { droppedFrame: true }),
+        });
+        this.emitPlaytest();
+        return delivered;
+      },
+    };
+  }
 
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
