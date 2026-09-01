@@ -1,0 +1,131 @@
+/**
+ * Plan mode's promise, which is enforced in one function and was tested by nothing.
+ *
+ * The user does not pick clay/stone/rune — they pick Plan, Agent or Super Agent, and
+ * Plan maps onto clay. Plan's promise is that it looks and thinks and does NOT touch
+ * their project: they can point it at work in progress, ask "what would you do here",
+ * and get an answer without risking an instance. It is the only mode that offers that,
+ * and it is the reason Plan is safe to run on something you care about.
+ *
+ * router.ts says it plainly: "the system prompt asks the model to behave like a
+ * planner, but a prompt is a request; the toolset is what makes it true." So the
+ * toolset IS the guarantee — and the guarantee had no test. A tool added to clay's
+ * list turns a mode that CANNOT damage a project into one that promises not to, and
+ * nothing anywhere would go red.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WORKER = join(HERE, '..');
+const out = join(mkdtempSync(join(tmpdir(), 'router-')), 'router.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'router.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
+  { stdio: 'pipe' });
+const { toolsForMode } = await import(out);
+
+/** The real tool names, read from tools.ts rather than retyped here — a hand-copied
+ *  list would drift and this test would then be asserting about a fiction. */
+const ALL = (() => {
+  const src = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const start = src.indexOf('export const TOOLS');
+  const names = [...src.slice(start).matchAll(/^ {2}([a-z_][a-z0-9_]*): \{$/gm)].map((m) => m[1]);
+  assert.ok(names.length > 15, `expected the real tool table, found ${names.length}`);
+  return names;
+})();
+
+/** Every tool in the WORKER's table that can change a user's project.
+ *
+ *  These are worker tool names, which are not the same as the plugin's StudioOp names —
+ *  the plugin has `move_instances` and `restore`, the worker does not expose them as
+ *  tools. Listing a name that does not exist would make the assertions below pass by
+ *  checking for nothing, which is why the first test asserts every one of these is
+ *  really in the table. */
+const MUTATING = [
+  'edit_script', 'create_instances', 'set_properties', 'delete_instances',
+  'run_luau', 'insert_asset', 'generate_model',
+];
+
+test('every tool this file calls mutating is really in the table', () => {
+  // Guards the guard. A rename would otherwise turn every assertion below into a check
+  // that a nonexistent tool is absent — trivially true, and silent.
+  const missing = MUTATING.filter((n) => !ALL.includes(n));
+  assert.deepEqual(missing, [],
+    `${missing.join(', ')} is not in TOOLS. If it was renamed, rename it here too — `
+    + 'otherwise this file guards nothing.');
+});
+
+test('PLAN can reach nothing that changes a project', () => {
+  const allowed = toolsForMode('clay', true, ALL);
+  const leaked = [...allowed].filter((n) => MUTATING.includes(n));
+  assert.deepEqual(leaked, [],
+    `Plan mode can reach ${leaked.join(', ')}. Plan's promise to the user is that it `
+    + 'cannot touch their project; this is the line that makes that true.');
+});
+
+test('PLAN can still do the thing it exists to do', () => {
+  // A read-only mode that cannot read is not safe, it is useless — and a caller who
+  // finds Plan unhelpful reaches for Agent on a project they were being careful with.
+  const allowed = toolsForMode('clay', true, ALL);
+  for (const needed of ['get_project_tree', 'list_scripts', 'read_script', 'search_scripts']) {
+    assert.ok(allowed.has(needed), `Plan cannot ${needed}, so it cannot inspect anything`);
+  }
+});
+
+test('`remember` is the one write Plan is allowed, and it writes to Golem not the place', () => {
+  const allowed = toolsForMode('clay', true, ALL);
+  assert.ok(allowed.has('remember'),
+    'Plan cannot record what it learned, so planning twice costs twice');
+  assert.ok(!MUTATING.includes('remember'), 'remember must never become a project write');
+});
+
+test('AGENT and SUPER get the full toolset', () => {
+  for (const mode of ['stone', 'rune']) {
+    const allowed = toolsForMode(mode, true, ALL);
+    assert.equal(allowed.size, ALL.length, `${mode} is missing tools`);
+    for (const n of MUTATING) {
+      assert.ok(allowed.has(n), `${mode} cannot ${n}`);
+    }
+  }
+});
+
+test('with Studio disconnected, EVERY mode drops to two tools', () => {
+  // Not a Plan-mode rule — it applies first, to all three. There is no project to act
+  // on, so offering tools that act on one would produce refusals the model has to
+  // learn from instead of a toolset that never suggested them.
+  for (const mode of ['clay', 'stone', 'rune']) {
+    const allowed = toolsForMode(mode, false, ALL);
+    assert.deepEqual([...allowed].sort(), ['remember', 'search_docs'],
+      `${mode} offers more than search_docs and remember with no Studio`);
+  }
+});
+
+test('disconnected beats mode: even Super Agent cannot mutate', () => {
+  const allowed = toolsForMode('rune', false, ALL);
+  const leaked = [...allowed].filter((n) => MUTATING.includes(n));
+  assert.deepEqual(leaked, [], `Super Agent can reach ${leaked.join(', ')} with no Studio`);
+});
+
+test('the returned set never invents a tool that is not in the table', () => {
+  // Every mode filters ALL rather than listing names, so a typo in a mode's list drops
+  // a tool rather than conjuring one. This asserts that property directly.
+  for (const mode of ['clay', 'stone', 'rune']) {
+    for (const connected of [true, false]) {
+      for (const n of toolsForMode(mode, connected, ALL)) {
+        assert.ok(ALL.includes(n), `${mode} offered ${n}, which is not a real tool`);
+      }
+    }
+  }
+});
+
+test('an empty tool table yields empty sets rather than throwing', () => {
+  for (const mode of ['clay', 'stone', 'rune']) {
+    assert.equal(toolsForMode(mode, true, []).size, 0);
+    assert.equal(toolsForMode(mode, false, []).size, 0);
+  }
+});
