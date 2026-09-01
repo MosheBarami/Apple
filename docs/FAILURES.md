@@ -356,6 +356,54 @@ copy of the module and the suite re-run: **8 of 8 tests fail**; against the fix,
 the same pass that was fixing critical bugs. Reviewing a diff is not the same as running it,
 and neither is a green suite that cannot reach the code in question.
 
+### F-36 · The sealing course promised the world could not leak, and it could
+
+`cliffRun`'s sealing course carries this comment, and has since it was written:
+
+> the ring is continuous at ground level and **the world does not leak away**. This is the one
+> course that is not allowed to be interesting.
+
+It was not true. Two multipliers stack on a saddle segment — `height = baseHeight *
+rand(0.34, 0.5)` and `courseFraction[1] = 0.62` — and then the entire stack sinks by
+`y = -rand(0.4, 3.0)`, the sealing course included. Worst case the seal's top lands at
+`34 · 0.34 · 0.62 · 0.78 − 3.0` = **2.59 studs**, full segment width, with no boulder mass in
+front because `useModule` is false on a saddle. A default humanoid jumps 7.15.
+
+Probing outward from a breach found cliff mass to stand on for about 50 studs and then void —
+so the failure is a player stepping over the sill, walking the cliff tops, and falling out of
+the world.
+
+**Found by an integrator reviewing four design plans**, not by any of the four. It was a
+side-observation in the walls plan, which understated it as "≈5.2 studs" and as "a lateral
+window"; the integrator worked out that the sink applies to the seal too and that the whole
+segment is the window. Neither the author nor I had noticed it in four passes over this
+function.
+
+**Fix:** a floor on the sealing course only — `h = math.max(h, SEAL_MIN_TOP - y)` with
+`SEAL_MIN_TOP = 16`. Chosen above the 7.15-stud jump rather than at it, because a floor set at
+the number the player is trying to beat is not a floor. `math.max` takes no draw, so the seeded
+stream is untouched (F-32). A saddle at 16 against neighbours at 30–51 still reads as the
+skyline break §7 wants; what it stops being is a doorway.
+
+#### And the measurement was wrong the first time, which is the more useful half
+
+The first survey reported **42 of 299 perimeter samples** clearing a 7.15-stud jump, and 33
+after the fix. Both numbers were inflated: the survey counted any sample with something
+standable beneath it, including positions **on top of the cliff** — and finding no wall beyond
+a wall you have already climbed is not a leak.
+
+Filtered to the playable floor, the honest figures are **2 of 215 before, 1 after**. The one
+that closed was at (-100, -150); the one that remains is at (165, 200), at the corner where the
+grass ends, and is ring closure rather than saddle sink.
+
+So the headline is 2 → 1, not 42 → 33, and the constructive claim is the one worth quoting
+because a 5-stud sample grid can miss the deepest saddle entirely: **the worst-case seal top
+goes from 2.59 studs to 16 by construction**, verified in the rebuilt world — zero cliff courses
+top out below 12 studs.
+
+The baseline was re-measured rather than reasoned about, by setting `SEAL_MIN_TOP = -1000`,
+which makes the `max` an exact no-op, and rebuilding.
+
 ### F-32 · Adding one random draw to the world builder rebuilt the entire world
 
 `Build.luau` is deterministic from a single seeded stream. The cliff experiment below added

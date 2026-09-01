@@ -1997,6 +1997,14 @@ type CliffOpts = {
 	 inside one. 46 is a little under the 48-stud segment stride, so two adjacent
 	 masses can still touch and read as one massif without either of them
 	 becoming the run. ]]
+--[[ The lowest the perimeter seal's top may sit above the run's ground line.
+
+	 16 rather than 8: a default humanoid jumps 7.15 studs from flat ground, and more from a
+	 slope or a prop, so a floor set at the jump height is a floor set at exactly the number the
+	 player is trying to beat. 16 is comfortably past any unassisted jump while still leaving a
+	 saddle reading as a break against neighbours twice its height. ]]
+local SEAL_MIN_TOP = 16
+
 local CLIFF_MASS_MAX_W = 46
 
 local function cliffRun(
@@ -2118,6 +2126,39 @@ local function cliffRun(
 
 		for k = 1, courses do
 			local h = height * courseFraction[k] * rand(0.78, 1.28)
+			if k == 1 then
+				--[[ THE SEAL HAS A FLOOR, AND IT IS NOT DECORATION. F-36.
+
+					 The course below promises "the ring is continuous at ground level and the
+					 world does not leak away". It was not true. Two multipliers stack on a
+					 saddle — `height = baseHeight * rand(0.34, 0.5)` and `courseFraction[1] =
+					 0.62` — and then the whole stack SINKS by `y = -rand(0.4, 3.0)`, the seal
+					 included. Worst case the seal's top lands at 34 · 0.34 · 0.62 · 0.78 − 3.0
+					 = **2.59 studs**, full width, with no boulder mass in front because
+					 `useModule` is false on a saddle.
+
+					 Measured, and then re-measured honestly. The first survey said 42 of 299
+					 perimeter samples cleared a 7.15-stud jump — but it counted samples where
+					 the player was standing ON THE CLIFF, and finding no wall beyond a wall you
+					 have already climbed is not a leak. Filtering to the playable floor
+					 (y <= 5) gives the real figure: **2 of 215 floor-level samples before, 1
+					 after**. The one that closed was at (-100, -150); the one that remains is at
+					 (165, 200), at the very corner where the grass ends, and is a ring-closure
+					 problem rather than this one.
+
+					 The stronger claim is the constructive one, because a 5-stud sample grid can
+					 miss the deepest saddle entirely: the worst-case seal top goes from **2.59
+					 studs to 16 by construction**. Probing outward from a breach found cliff
+					 mass to stand on for ~50 studs and then void — so the failure this prevents
+					 is a player jumping the sill, walking the cliff tops, and falling out of the
+					 world.
+
+					 A saddle stays a saddle: 16 studs against neighbours at 30–51 is still the
+					 dramatic skyline dip §7 asks for. What it stops being is a doorway.
+
+					 `math.max` takes no draw, so the seeded stream is untouched (F-32). ]]
+				h = math.max(h, SEAL_MIN_TOP - y)
+			end
 			local w, lateral, dd
 			if k == 1 then
 				--[[ THE SEALING COURSE. Full width plus 9 studs of overlap with
