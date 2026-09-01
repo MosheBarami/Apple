@@ -7,6 +7,9 @@
 //  - luau_syntax:  target (normally 'code') must parse as Luau via the local CLI.
 //  - no_antipattern: target (normally 'code') must contain none of the named Roblox anti-patterns.
 //  - no_design_violation: target must violate none of the design library's text-decidable rules.
+//  - playbook_complete: target must carry out every step of a task class's playbook. This is the
+//      only check that can fail code for what it does NOT do; the rest are violation detectors,
+//      and a bare Frame answering "build a shop panel" violates nothing.
 //      `luau_syntax` and the text checks together cannot distinguish a shop that debits the server's
 //      balance from one that trusts a price the client sent — both parse and both mention
 //      RemoteEvent. This check reads the code instead of its vocabulary; see roblox-antipatterns.mjs.
@@ -14,6 +17,7 @@
 import { checkLuauSyntax } from './luau.mjs';
 import { checkNoAntipattern } from './roblox-antipatterns.mjs';
 import { checkNoDesignViolation } from './design-checks.mjs';
+import { checkPlaybookComplete } from './playbook-checks.mjs';
 
 const FENCE_RE = /```[ \t]*[A-Za-z0-9_+-]*[ \t]*\r?\n([\s\S]*?)```/g;
 
@@ -66,6 +70,9 @@ function evalCheck(check, text, code, luauCheck) {
     }
     case 'no_antipattern': {
       return checkNoAntipattern(t, { rules: check.rules, context: check.context });
+    }
+    case 'playbook_complete': {
+      return checkPlaybookComplete(t, { playbook: check.playbook, path: check.path, allowManual: check.allowManual });
     }
     case 'no_design_violation': {
       // The design library's mechanised rules, pointed at what the MODEL wrote rather than at

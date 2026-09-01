@@ -29,3 +29,12 @@ export {
   checkTextScaleOrder,
   audit,
 } from './checks.mjs';
+export {
+  PLAYBOOKS,
+  PLAYBOOK_IDS,
+  STEP_STATUS,
+  getPlaybook,
+  composePlaybook,
+  gradePlaybook,
+  assertPlaybookIntegrity,
+} from './playbooks.mjs';

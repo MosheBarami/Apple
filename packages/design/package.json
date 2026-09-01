@@ -12,6 +12,7 @@
     ".": "./src/index.mjs",
     "./rules": "./src/rules.mjs",
     "./retrieve": "./src/retrieve.mjs",
-    "./checks": "./src/checks.mjs"
+    "./checks": "./src/checks.mjs",
+    "./playbooks": "./src/playbooks.mjs"
   }
 }

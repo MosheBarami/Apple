@@ -253,6 +253,19 @@ Two rules make this a ladder rather than a list:
   never L7, and calling it training is the specific dishonesty the access
   manifest's §7 prohibits.
 
+**Where the ladder actually stands.** L0–L2 are built. **L3 is built**: three
+playbooks over thirteen steps in `packages/design/src/playbooks.mjs`, graded by
+`playbook_complete` in the eval harness. It clears the "must beat the rung below,
+measured" bar in one specific respect and not another, and the difference matters:
+it **detects** what L2 cannot — on a bare-`Frame` answer to "build a shop panel",
+`audit()` returns zero findings and the playbook returns four of five steps missing
+— because every enforced check is a violation detector and omission is invisible to
+all of them. What is *not* yet measured is this rung's own promotion criterion,
+"the playbook's task class improves": that is a comparison between a generator
+handed `composePlaybook()` and one handed `composeBrief()`, and it needs model
+inference, which is currently human-blocked. L4 and above are not built.
+See `docs/evidence/2026-09-01-playbooks-l3.md`.
+
 L7 additionally requires that the training subset be the *intersection* of
 legally-permitted-for-training and actually-useful — which, given §3, will be a
 small fraction of what is discovered. That is expected and correct.

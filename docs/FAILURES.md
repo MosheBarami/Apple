@@ -499,6 +499,57 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-45 · A playbook that taught the mouse-only path a comment had already ruled out
+
+Building L3 meant writing down, for each task class, the procedure and the Golem primitive each
+step should reach for. The `button.interactive` playbook's `press` step named
+`MouseButton1Down` as the primitive and `Activated` as the hand-rolled fallback.
+
+Grading `Theme.luau` — the file the step was derived from — returned `manual`, meaning "attempted,
+but bypassed the library". Reading why produced the opposite conclusion. `Theme.luau:1088`:
+
+> ButtonA is the gamepad's activate, and it arrives through InputBegan on the button itself once
+> that button holds selection. Without it the controller path fired `Activated` — so the game
+> responded — while the control never looked pressed, which reads as an input that did not
+> register.
+
+A press arrives from three devices — mouse, touch, gamepad — and only one of them is a mouse
+button. `Theme.luau` routes all three through `InputBegan`/`InputEnded` behind an `isPress`
+predicate. The codebase had already learned this and written the reason down; the playbook was
+a step **behind** the code it was supposedly extracted from, and would have taught a generator
+the mouse-only path under the authority of the library.
+
+Corrected: `InputBegan` with a device predicate is the primitive, a bare mouse-button signal is
+the re-invention. `Theme.luau` now grades 4/4 `primitive`.
+
+The general shape is worth naming, because L3 will keep producing it: **a playbook can encode a
+procedure the codebase has already outgrown**, and unlike a stale rule it does so prescriptively.
+Nothing about reading the rules would have caught it — the two rules cited by that step are both
+correct and neither mentions an input event. It surfaced only from running the playbook against
+real code and refusing to accept a `manual` verdict without checking the source.
+
+### F-46 · An `ok: true` that meant "nothing was examined"
+
+The first probe written to demonstrate L3's value called `audit(source, {})`.
+
+`audit()` takes a structured spec — `{clusters, files, priceLayers, …}` — not a source string.
+Passing a string destructures every field to `undefined`, runs **zero** of the eleven checks, and
+returns `{ok: true, findings: [], enforced: 11}`. That `enforced: 11` is what makes it dangerous:
+the result reports the size of the check set beside a clean verdict, and reads exactly like eleven
+checks passing.
+
+It was reported as evidence that the check layer is omission-blind. The layer *is* omission-blind
+— `checkFocusFeedback` returns early on any file with no `MouseEnter` to contradict — but that
+probe did not show it, and would have returned the same green for code riddled with violations.
+
+Re-run as `audit({files: [{path, source}]})`, the finding held: 0 findings on a panel that does
+nothing. The conclusion survived; the evidence for it had to be thrown away and redone.
+
+This is the session's recurring shape arriving one level up. F-41, F-43 and F-44 were all *code
+that had never run*. This was code that ran, returned green, and was **measuring nothing** — the
+same defect as a test that asserts nothing. The regression test now asserts `enforced === 11`
+against a spec that actually carries files, so an empty-spec call cannot masquerade as a clean run.
+
 ### F-44 · The motion probe measured one axis of a two-axis space
 
 `MotionProbe.luau` exists so motion claims come from frames rather than from `TweenInfo`, and its
