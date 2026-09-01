@@ -499,6 +499,44 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-54 · An enforced check reported the best-behaved call site in the file
+
+`checkWaitContracts` is one of the eleven ENFORCED design rules. Pointed at this repository's own
+benchmark, it reported a defect:
+
+> `"CrystalCanyon"` is treated as OPTIONAL in `init.client.luau`, `init.server.luau` (bounded wait,
+> degrades) but blocked on FOREVER in twelve other modules. One of the two is wrong, and while they
+> disagree a missing `"CrystalCanyon"` is invisible: the bounded consumer keeps drawing.
+
+The reasoning needs the bounded consumer to actually keep drawing. Both entry points do this:
+
+```luau
+local root = ReplicatedStorage:WaitForChild("CrystalCanyon", 30)
+assert(root, "CrystalCanyon shared folder never replicated")
+```
+
+and the server's `if not sharedRoot then error(...) end`. **Neither degrades.** A bounded wait
+followed by a throw is a bounded FAIL-FAST — a named error in thirty seconds instead of an
+"Infinite yield possible" warning forever — which is strictly better than the unbounded pattern it
+was being contrasted with. The check had found the two best call sites in the file and reported
+them as the problem.
+
+Fixed by looking at the statement immediately after a bounded wait: if it throws on the result, the
+dependency is required there and the file is not treating it as optional. The case the check exists
+for — a consumer that warns and carries on while another blocks forever — still fires, and is a
+test in its own right so the widening cannot swallow it.
+
+`checks.mjs` already carries this lesson in `checkFocusFeedback`, which was flagging the Stories
+harness and whose comment says a check that reports the test harness as a defect "gets switched
+off, which is worse than not having written it". Same failure, different check, and this one was
+enforced.
+
+Worth noting what the *other* checker said. `roblox-antipatterns.mjs`'s `unbounded-wait-for-child`
+reports all fifty-eight of those unbounded waits at `warn` severity, and those findings are real —
+the twelve modules genuinely have no nil path. They are also unreachable in practice, because a
+module only runs after an entry point has already asserted the folder exists. Two checkers, two
+defensible readings, and only one of them was claiming a contradiction that was not there.
+
 ### F-53 · The same string false positive, in the rule that grades models
 
 `F-50` fixed the domain tagger counting `wait()` inside a comment. Its follow-up found the tagger

@@ -10,7 +10,7 @@
 // in a screenshot three passes later.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -501,4 +501,52 @@ test('audit reports what it enforced, not the size of the library', () => {
   assert.equal(result.enforced, ENFORCED_RULE_IDS.length);
   assert.equal(result.library, RULES.length);
   assert.ok(result.library > result.enforced, 'most rules still need a human; saying otherwise flatters');
+});
+
+// ------------------------------------- bounded fail-fast is not optional (F-54)
+test('a bounded wait followed by a throw is not treating the dependency as optional', () => {
+  // Found by running this check over its own repository. Both crystal-canyon entry
+  // points bound the wait and then throw — `assert(root, ...)` on the client, `if not
+  // sharedRoot then error(...) end` on the server — so neither degrades, and the check
+  // was reporting the best-behaved call sites in the file.
+  const failFast = [
+    { path: 'init.client.luau', source: 'local root = ReplicatedStorage:WaitForChild("Shared", 30)\nassert(root, "never replicated")' },
+    { path: 'Hud.luau', source: 'local S = ReplicatedStorage:WaitForChild("Shared")' },
+  ];
+  assert.deepEqual(checkWaitContracts(failFast), []);
+
+  const errorForm = [
+    { path: 'init.server.luau', source: 'local root = ReplicatedStorage:WaitForChild("Shared", 30)\nif not root then\n\terror("not installed")\nend' },
+    { path: 'Shop.luau', source: 'local S = ReplicatedStorage:WaitForChild("Shared")' },
+  ];
+  assert.deepEqual(checkWaitContracts(errorForm), []);
+});
+
+test('a bounded wait that actually degrades still contradicts an unbounded one', () => {
+  // The widening must not swallow the case the check exists for: one consumer carries
+  // on without the dependency while another blocks forever on it.
+  const degrades = [
+    { path: 'boot.luau', source: 'local root = X:WaitForChild("Shared", 10)\nif not root then\n\twarn("continuing without it")\n\treturn\nend' },
+    { path: 'Hud.luau', source: 'local S = X:WaitForChild("Shared")' },
+  ];
+  const found = checkWaitContracts(degrades);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].dependency, 'Shared');
+  assert.deepEqual(found[0].blockedIn, ['Hud.luau']);
+});
+
+test("this repository's own benchmark satisfies the wait contract", () => {
+  // The check that produced the fix above, kept as a regression in both directions:
+  // it fails if the benchmark grows a genuinely optional consumer, and it fails if the
+  // check regresses into flagging fail-fast again.
+  const dir = new URL('../../../apps/benchmark/crystal-canyon/src/', import.meta.url);
+  const files = [];
+  for (const sub of ['client', 'server', 'shared']) {
+    const d = new URL(`${sub}/`, dir);
+    for (const name of readdirSync(d)) {
+      if (name.endsWith('.luau')) files.push({ path: `${sub}/${name}`, source: readFileSync(new URL(name, d), 'utf8') });
+    }
+  }
+  assert.ok(files.length >= 20, `expected the benchmark's modules, found ${files.length}`);
+  assert.deepEqual(checkWaitContracts(files), []);
 });

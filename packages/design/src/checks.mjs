@@ -101,12 +101,41 @@ export function checkWaitContracts(files = []) {
   const BOUNDED = /WaitForChild\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*[\d.]+\s*\)/g;
   const UNBOUNDED = /WaitForChild\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*\)/g;
 
+  //[[ A BOUNDED WAIT THAT THROWS IS NOT AN OPTIONAL DEPENDENCY.
+  //
+  //   This check fires when one file bounds a wait and another blocks forever, on the
+  //   reasoning that a bounded consumer "keeps drawing" while the missing dependency
+  //   stays invisible. That reasoning needs the bounded consumer to actually CONTINUE.
+  //
+  //   Running this check over its own repository found it reporting
+  //   `apps/benchmark/crystal-canyon`, where both entry points do:
+  //
+  //       local root = ReplicatedStorage:WaitForChild("CrystalCanyon", 30)
+  //       assert(root, "CrystalCanyon shared folder never replicated")
+  //
+  //   and the server's equivalent `if not sharedRoot then error(...) end`. Neither
+  //   degrades. A bounded wait followed by a throw is a bounded FAIL-FAST, which is
+  //   strictly better than the unbounded alternative it was being compared against: a
+  //   named error in 30 seconds rather than an "Infinite yield possible" warning
+  //   forever. The check was reporting the best-behaved call site in the file.
+  //
+  //   That matters beyond one false positive. This is one of the eleven ENFORCED rules,
+  //   and a check that reports correct code as a defect is a check that gets switched
+  //   off — which `checkFocusFeedback` already learned when it flagged the test harness.
+  const THROWS_AFTER = /^\s*(?:\)\s*)?(?:assert\s*\(|if\s+not\s+[\w.]+\s+then[\s\S]{0,120}?\berror\s*\()/;
+
   const bounded = new Map(); // dependency -> [paths that treat it as optional]
   const unbounded = new Map(); // dependency -> [paths that block forever]
 
   for (const file of files) {
     const src = String(file.source ?? '');
     for (const m of src.matchAll(BOUNDED)) {
+      // Look at what happens immediately after the bounded wait's statement. If the
+      // very next thing is a throw on the result, the dependency is required here and
+      // this file is not treating it as optional.
+      const after = src.slice(m.index + m[0].length, m.index + m[0].length + 200);
+      const nextStatement = after.replace(/^[^\n]*\n/, '');
+      if (THROWS_AFTER.test(nextStatement)) continue;
       if (!bounded.has(m[1])) bounded.set(m[1], []);
       bounded.get(m[1]).push(file.path);
     }
