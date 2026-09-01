@@ -14,7 +14,7 @@ import {
   copyableCredits,
   creditLine,
   readiness,
-  READINESS_TONE,
+  PUBLISH_TONE,
   TONE_MARK,
   type AttributionResponse,
   type CreditEntry,
@@ -72,7 +72,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
   const res = q.data as AttributionResponse;
   const { attribution: a, commercialUse: c } = res;
   const verdict = readiness(res);
-  const tone = READINESS_TONE[verdict.state];
+  const tone = PUBLISH_TONE[verdict.state];
   // Split for the same reason readiness() splits them: an asset whose licence was read
   // and found incompatible is a finding; an asset whose licence Golem never saw is not.
   const blockers = c.findings.filter((f) => f.severity === 'blocker' && f.code !== 'missing_provenance');

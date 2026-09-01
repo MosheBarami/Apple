@@ -110,17 +110,24 @@ export function copyableCredits(res: AttributionResponse): string | null {
  * recording did not happen" — and from the browser those are the same bytes. Saying
  * "clear to publish" would be a claim about the second case that nothing supports.
  */
-export type Readiness = 'nothing_recorded' | 'blocked' | 'unaccounted' | 'obligations' | 'clear';
+/**
+ * Named for what it is. `roadmap/model.ts` already exports a `Readiness` — 'landed' |
+ * 'in-progress' | 'ready' | 'waiting', about a milestone — and this one is about whether
+ * a project can be published. Two different facts under one name in one app is a
+ * collision I introduced; a reader seeing `Readiness` imported should not have to check
+ * which module it came from.
+ */
+export type PublishReadiness = 'nothing_recorded' | 'blocked' | 'unaccounted' | 'obligations' | 'clear';
 
-export interface ReadinessVerdict {
-  state: Readiness;
+export interface PublishVerdict {
+  state: PublishReadiness;
   /** The heading. A statement, never a score. */
   title: string;
   /** One sentence of what it means, including what it does NOT mean. */
   body: string;
 }
 
-export function readiness(res: AttributionResponse): ReadinessVerdict {
+export function readiness(res: AttributionResponse): PublishVerdict {
   const { attribution: a, commercialUse: c } = res;
 
   if (c.checked === 0) {
@@ -194,7 +201,7 @@ export function readiness(res: AttributionResponse): ReadinessVerdict {
 }
 
 /** The tone each verdict is drawn in. §16.2: green is proven, red is failure, amber is an open obligation. */
-export const READINESS_TONE: Record<Readiness, 'good' | 'bad' | 'warn' | 'muted'> = {
+export const PUBLISH_TONE: Record<PublishReadiness, 'good' | 'bad' | 'warn' | 'muted'> = {
   clear: 'good',
   blocked: 'bad',
   // Amber, not red. An unknown is an open question, and red would state the answer.
@@ -218,10 +225,10 @@ export function creditLine(e: CreditEntry): string {
 /**
  * The canonical mark for a tone, so the icon and the border cannot disagree.
  *
- * The panel used to choose the icon with its own nested ternary over `Readiness`, which
+ * The panel used to choose the icon with its own nested ternary over `PublishReadiness`, which
  * is a second mapping of the same fact — and the fact it maps is the one thing on that
  * screen where being wrong matters most. A fifth verdict would have been added to
- * READINESS_TONE and missed here, leaving the border amber and the mark on `info`.
+ * PUBLISH_TONE and missed here, leaving the border amber and the mark on `info`.
  * Deriving both from the tone means there is only one place to add it.
  */
 export const TONE_MARK: Record<'good' | 'bad' | 'warn' | 'muted', StatusName> = {

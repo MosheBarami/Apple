@@ -27,7 +27,7 @@ execFileSync(
   [join(WEB, 'src/components/ws/credits-model.ts'), '--format=esm', `--outfile=${out}`],
   { stdio: 'pipe' },
 );
-const { readiness, READINESS_TONE, TONE_MARK, creditLine, copyableCredits } = await import(out);
+const { readiness, PUBLISH_TONE, TONE_MARK, creditLine, copyableCredits } = await import(out);
 
 const entry = (over = {}) => ({
   assetId: 'kenney/nature-kit/tree-pine-01',
@@ -67,7 +67,7 @@ test('an empty ledger is "nothing recorded", never "clear to publish"', () => {
   assert.equal(v.state, 'nothing_recorded');
   assert.doesNotMatch(v.title, /clear/i, 'the heading must not read as a clearance');
   assert.match(v.body, /not a clearance to publish/i, 'and it has to say so outright');
-  assert.equal(READINESS_TONE[v.state], 'muted', 'an unknown is not drawn as a success');
+  assert.equal(PUBLISH_TONE[v.state], 'muted', 'an unknown is not drawn as a success');
 });
 
 test('an actually-empty-but-checked project is clear, and says how many it checked', () => {
@@ -77,7 +77,7 @@ test('an actually-empty-but-checked project is clear, and says how many it check
   assert.equal(v.state, 'clear');
   assert.match(v.title, /3 recorded assets/);
   assert.match(v.title, /nothing owed on them/, 'a claim about the LEDGER, not about the place');
-  assert.equal(READINESS_TONE.clear, 'good');
+  assert.equal(PUBLISH_TONE.clear, 'good');
 });
 
 test('a blocker outranks any number of credits', () => {
@@ -96,7 +96,7 @@ test('a blocker outranks any number of credits', () => {
   );
   assert.equal(v.state, 'blocked', 'a blocker must not be hidden behind a credit count');
   assert.match(v.title, /1 asset cannot ship/);
-  assert.equal(READINESS_TONE.blocked, 'bad');
+  assert.equal(PUBLISH_TONE.blocked, 'bad');
 });
 
 test('warnings alone are obligations, not blockers, and say publishing is not blocked', () => {
@@ -111,7 +111,7 @@ test('warnings alone are obligations, not blockers, and say publishing is not bl
   );
   assert.equal(v.state, 'obligations');
   assert.match(v.body, /Nothing here blocks publishing/);
-  assert.equal(READINESS_TONE.obligations, 'warn');
+  assert.equal(PUBLISH_TONE.obligations, 'warn');
 });
 
 test('a source credit counts as an obligation even with no licence-required entries', () => {
@@ -195,7 +195,7 @@ test('an asset Golem could not account for is not an asset it ruled against', ()
   assert.doesNotMatch(v.title, /cannot ship/i, 'an unknown must not be worded as a verdict');
   assert.match(v.body, /not a finding that they cannot be used/i);
   assert.match(v.body, /nothing here\s+clears them either/i, 'and it must not read as permission either');
-  assert.equal(READINESS_TONE.unaccounted, 'warn', 'amber: red would state the answer');
+  assert.equal(PUBLISH_TONE.unaccounted, 'warn', 'amber: red would state the answer');
 });
 
 test('a real determination still outranks an unknown', () => {
@@ -217,11 +217,11 @@ test('a real determination still outranks an unknown', () => {
 });
 
 test('every verdict has a mark, and it comes from the same tone as the border', () => {
-  // The panel used to pick the icon with its own nested ternary over Readiness — a
+  // The panel used to pick the icon with its own nested ternary over PublishReadiness — a
   // second mapping of the one fact on that screen where disagreeing would matter most.
-  // A fifth verdict would have been added to READINESS_TONE and missed there, leaving
+  // A fifth verdict would have been added to PUBLISH_TONE and missed there, leaving
   // an amber border with an `info` mark.
-  for (const [state, tone] of Object.entries(READINESS_TONE)) {
+  for (const [state, tone] of Object.entries(PUBLISH_TONE)) {
     assert.ok(TONE_MARK[tone], `${state} is toned ${tone}, which has no mark`);
   }
   // And the two must not be able to disagree: the panel reads TONE_MARK[tone], nothing else.
