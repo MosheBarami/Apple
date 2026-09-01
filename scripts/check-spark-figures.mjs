@@ -91,6 +91,41 @@ if (/perDay = c \* \d/.test(meter)) {
   problems.push('SparkMeter computes a mode cost from a literal again instead of reading data-cost');
 }
 
+// EVERY page that states a per-mode cost, not just the pricing table. The wrong Clay
+// figure turned out to be repeated in six places across the docs, the changelog and the
+// docs layout's own footer — each of them a sentence a reader would plan around.
+const PROSE = [
+  'apps/site/layouts/DocsLayout.astro',
+  'apps/site/pages/changelog.astro',
+  'apps/site/pages/docs/sparks-and-limits.astro',
+  'apps/site/pages/docs/modes.astro',
+].map((p) => `apps/site/src/${p.slice('apps/site/'.length)}`);
+
+const expectedFor = {};
+for (const { mode, row } of MODES) {
+  const n = neuronsFor(row);
+  if (n !== null) expectedFor[mode] = sparksFor(n);
+}
+
+for (const file of PROSE) {
+  let text;
+  try {
+    text = read(file);
+  } catch {
+    problems.push(`${file} is listed here but does not exist — update this list`);
+    continue;
+  }
+  for (const [mode, expected] of Object.entries(expectedFor)) {
+    // "Clay — 3 sparks", "Clay: 3 sparks", "Clay</strong> (3 sparks", "Clay ... for 3 sparks"
+    const re = new RegExp(`${mode}[^.\n]{0,40}?\\b(\\d+) spark`, 'g');
+    for (const m of text.matchAll(re)) {
+      if (Number(m[1]) !== expected) {
+        problems.push(`${file}: "${m[0].trim()}" — ${mode} costs ${expected} spark(s)`);
+      }
+    }
+  }
+}
+
 if (problems.length) {
   console.error(`check-spark-figures: ${problems.length} disagreement(s) between the site and the worker\n`);
   for (const p of problems) console.error(`  ${p}`);
