@@ -499,6 +499,84 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-41 · Three bugs found by running code that had never run
+
+An independent audit found that `contenthash.mjs`, `dedupe.mjs` and `records.mjs` — **784 lines
+of production code with 766 lines of passing tests** — were imported by no non-test file. Every
+provenance record carried `contentHash: null`; not one ContentRecord existed. Separately,
+`security.mjs` (35 KB, 31 KB of tests) had never been run either, and all 217 records read
+`security.class: "unscanned"` while fifteen sources had already been read closely enough to
+extract 48 design rules from them.
+
+Writing the two runners found three defects, and none of them was findable by reading.
+
+#### 1. A bare identifier read as an executor
+
+`remote-payload-fetch` matched `/\bgame\s*:\s*HttpGet\(|\bHttpGet\(|.../i`. The detector's own
+comment justifies it with "`game:HttpGet` is an executor extension; honest code reaches
+HttpService" — reasoning that applies to the **receiver** form. The second alternative was a bare
+`\bHttpGet\(` which, with `/i`, matches any function anyone has named `httpGet`.
+
+It fired five times in `evaera/roblox-lua-promise`'s `docs/WhyUsePromises.md`, a tutorial whose
+subject is wrapping `HttpService:GetAsync` in a Promise, and classified one of the most widely
+used packages in the ecosystem as exploit code. Requiring the receiver colon keeps every true
+positive.
+
+#### 2. Checkout directories collided, and forks collide worst
+
+`fetch.mjs` named checkouts by bare repo name. Fetching both `LolplePlays/framer` and
+`Starstruck-Studios-Developers/framer` wrote them to the **same directory**, so the second clone
+updated the first out of existence and the corpus held one fork where it believed it held two.
+Provenance survived only because `recordAll` reads the git remote rather than trusting the name.
+
+Not a one-repository accident: `framer`, `signal`, `promise`, `janitor` and `maid` all exist
+several times over, and **a fork always shares its upstream's name** — so the collision is
+likeliest in exactly the case §J cares about most.
+
+#### 3. `isDivergent` answered `false` for every pair of records
+
+The worst of the three. `similarity()` accepted anything, so a ContentRecord — the type the rest
+of the module is built around — stringified to `"[object Object]"`, which shingles to **one
+token, identical for every record**. Two records sharing not a single file scored a perfect
+`1.0`:
+
+```
+similarity(recordA, recordB) === 1      // for ANY two records
+isDivergent(anything, anything) === false
+```
+
+§2 exists to stop one idea being counted twice. This silently collapsed **every** idea into one.
+It never fired in production because nothing called it — and the first caller was the runner
+written to close that very gap, which nearly published the wrong answer about two real forks.
+
+`similarity`/`isDivergent` now refuse anything that is not text or a signature, with an error
+pointing at `recordSimilarity`; `recordDivergent` is the record-shaped API and returns `null`
+rather than guessing when there is no evidence.
+
+#### And then the fix for the false positives was itself attacked
+
+Three sources came back unsafe on shapes that were plainly benign — Roblox's own OpenAPI specs
+declaring `.ROBLOSECURITY` as an auth **parameter**, a policy page naming `getfenv` in order to
+**prohibit** it, two Rojo sourcemaps. The obvious fix was to downgrade the shape detectors on
+data and prose files.
+
+**Three independent attacks each found a working hole**, verified against the live scanner: a
+Luau loader as a 1,400-entry numeric array in `.json`, a cookie stealer as 2,500 hex characters
+in `.toml`, and a numeric array inside a `.md` fenced block. All three route around every
+*vocabulary* rule by encoding the payload, which leaves the shape detectors as the only thing
+that can see them.
+
+So the discriminator is not the file's extension, it is whether the long line is **opaque**.
+Generated JSON is long because it is structured; a payload is long because it is one alphabet.
+All three attacks stay condemned and all three false positives clear, and all six are permanent
+tests.
+
+**The shape of all of this**: five separate defects, in code that was tested, reviewed and
+believed to work, none of them reachable by reading it. The tests were right about the functions
+and the functions were never called by anything real.
+
+---
+
 ### THE FACET PATH IS CLOSED — 2026-09-01, by owner decision
 
 Gate 2 has now had **five** distinct approaches and every one of them is closed. Written here as

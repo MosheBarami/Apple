@@ -41,7 +41,7 @@ would appear here as a conflict rather than be resolved silently.
 | --- | --- | --- | --- | --- |
 | `Crabzzai__SimpleDialogue` | MIT | `25bb85f5e1` | clean | 6 |
 | `Diabetoss__NotificationSystem` | MIT | `38a47898a2` | clean | 4 |
-| `LolplePlays__framer` | Apache-2.0 | `ca5886eab1` | **unscanned** | — |
+| `LolplePlays__framer` | Apache-2.0 | `ca5886eab1` | clean | — |
 | `MadStudioRoblox__ProfileService` | Apache-2.0 | `d736800444` | clean | — |
 | `Reselim__Flipper` | MIT | `41380da192` | clean | 7 |
 | `Roblox__creator-docs` | CC-BY-4.0 | `529a24ff2a` | clean | 16 |
@@ -49,10 +49,10 @@ would appear here as a conflict rather than be resolved silently.
 | `SirMallard__Iris` | MIT | `801973f1c3` | clean | 8 |
 | `Sleitnick__Knit` | MIT | `bb1ecf3dea` | clean | — |
 | `Sleitnick__RbxCameraShaker` | MIT | `1541209938` | clean | 5 |
-| `Starstruck-Studios-Developers__framer` | Apache-2.0 | `fe07a202d9` | **unscanned** | — |
+| `Starstruck-Studios-Developers__framer` | Apache-2.0 | `fe07a202d9` | clean | — |
 | `afrxo__roblox-agent-skills` | MIT | `ff50be7a8a` | clean | 4 |
 | `chriscerie__roact-spring` | MIT | `0334ee5d9d` | clean | 7 |
-| `ddust1n__CameraShaker` | MIT | `d4ab467eea` | **unscanned** | — |
+| `ddust1n__CameraShaker` | MIT | `d4ab467eea` | clean | — |
 | `evaera__roblox-lua-promise` | MIT | `031d429c82` | clean | — |
 | `gcaptn__cyan-ui` | MIT | `11cfcedd77` | clean | 3 |
 | `howmanysmall__Janitor` | MIT | `47acf39d7b` | clean | — |
@@ -118,7 +118,7 @@ out. They are lawful to use and currently teach nothing.
 
 ## 5. Security
 
-20 of 217 sources carry a scan verdict.
+23 of 217 sources carry a scan verdict.
 
 The ordering is load-bearing and `docs/SOURCE-INTELLIGENCE.md` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an

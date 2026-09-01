@@ -32,8 +32,8 @@
       "full-game": 33
     },
     "security": {
-      "scanned": 20,
-      "unscanned": 197
+      "scanned": 23,
+      "unscanned": 194
     },
     "contentHashed": 23
   },
@@ -3170,7 +3170,7 @@
           }
         ],
         "reason": "18 file(s) scanned across 1 slice(s), 5 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.700Z",
+        "scannedAt": "2026-09-01T14:30:03.419Z",
         "scannedFiles": 18
       },
       "provenance": {
@@ -3464,7 +3464,7 @@
           }
         ],
         "reason": "59 file(s) scanned across 1 slice(s), 2 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.223Z",
+        "scannedAt": "2026-09-01T14:30:03.446Z",
         "scannedFiles": 59
       },
       "provenance": {
@@ -3758,7 +3758,7 @@
           }
         ],
         "reason": "14 file(s) scanned across 1 slice(s), 3 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.243Z",
+        "scannedAt": "2026-09-01T14:30:02.135Z",
         "scannedFiles": 14
       },
       "provenance": {
@@ -4282,7 +4282,7 @@
           }
         ],
         "reason": "34 file(s) scanned across 1 slice(s), 5 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.231Z",
+        "scannedAt": "2026-09-01T14:30:03.366Z",
         "scannedFiles": 34
       },
       "provenance": {
@@ -4446,7 +4446,7 @@
         "class": "clean",
         "signals": [],
         "reason": "5 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.258Z",
+        "scannedAt": "2026-09-01T14:30:03.709Z",
         "scannedFiles": 5
       },
       "provenance": {
@@ -7374,7 +7374,7 @@
           }
         ],
         "reason": "77 file(s) scanned across 1 slice(s), 1 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.670Z",
+        "scannedAt": "2026-09-01T14:30:03.407Z",
         "scannedFiles": 77
       },
       "provenance": {
@@ -7453,10 +7453,12 @@
         "reason": "MIT is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "8 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:30:03.409Z",
+        "scannedFiles": 8
       },
       "provenance": {
         "id": "github.com/ddust1n/CameraShaker@d4ab467eea25e480cd1381375184bf984a1f8269",
@@ -7619,7 +7621,7 @@
         "class": "clean",
         "signals": [],
         "reason": "39 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.159Z",
+        "scannedAt": "2026-09-01T14:30:02.141Z",
         "scannedFiles": 39
       },
       "provenance": {
@@ -7708,7 +7710,7 @@
           }
         ],
         "reason": "93 file(s) scanned across 1 slice(s), 1 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.661Z",
+        "scannedAt": "2026-09-01T14:30:03.315Z",
         "scannedFiles": 93
       },
       "provenance": {
@@ -7791,7 +7793,7 @@
         "class": "clean",
         "signals": [],
         "reason": "5 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.244Z",
+        "scannedAt": "2026-09-01T14:30:03.368Z",
         "scannedFiles": 5
       },
       "provenance": {
@@ -8315,7 +8317,7 @@
           }
         ],
         "reason": "71 file(s) scanned across 1 slice(s), 24 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.302Z",
+        "scannedAt": "2026-09-01T14:30:03.522Z",
         "scannedFiles": 71
       },
       "provenance": {
@@ -8589,7 +8591,7 @@
           }
         ],
         "reason": "2341 file(s) scanned; 18 finding(s) on the accepted register, nothing else disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.253Z",
+        "scannedAt": "2026-09-01T14:30:03.299Z",
         "scannedFiles": 2341
       },
       "provenance": {
@@ -10554,7 +10556,7 @@
         "class": "clean",
         "signals": [],
         "reason": "24 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.257Z",
+        "scannedAt": "2026-09-01T14:30:03.425Z",
         "scannedFiles": 24
       },
       "provenance": {
@@ -10793,10 +10795,12 @@
         "reason": "Apache-2.0 is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "7 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:30:02.119Z",
+        "scannedFiles": 7
       },
       "provenance": {
         "id": "github.com/LolplePlays/framer@ca5886eab186c05ecdd90065cfe762bda1810cbb",
@@ -10879,7 +10883,7 @@
         "class": "clean",
         "signals": [],
         "reason": "95 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.650Z",
+        "scannedAt": "2026-09-01T14:30:03.468Z",
         "scannedFiles": 95
       },
       "provenance": {
@@ -11058,7 +11062,7 @@
           }
         ],
         "reason": "405 file(s) scanned across 1 slice(s), 3 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.834Z",
+        "scannedAt": "2026-09-01T14:30:03.706Z",
         "scannedFiles": 405
       },
       "provenance": {
@@ -11498,7 +11502,7 @@
           }
         ],
         "reason": "53 file(s) scanned across 1 slice(s), 4 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.205Z",
+        "scannedAt": "2026-09-01T14:30:03.357Z",
         "scannedFiles": 53
       },
       "provenance": {
@@ -11738,10 +11742,12 @@
         "reason": "Apache-2.0 is permissive: reuse is allowed subject to keeping the licence notice, and because the grant is proven by LICENSE the source is also cleared for training."
       },
       "security": {
-        "safe": false,
-        "class": "unscanned",
+        "safe": true,
+        "class": "clean",
         "signals": [],
-        "reason": "Not yet scanned; the security gate runs before anything reads the source."
+        "reason": "7 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
+        "scannedAt": "2026-09-01T14:30:03.371Z",
+        "scannedFiles": 7
       },
       "provenance": {
         "id": "github.com/Starstruck-Studios-Developers/framer@fe07a202d9d619ce3d93802d202256cb3ef7a71d",
@@ -12134,7 +12140,7 @@
           }
         ],
         "reason": "53 file(s) scanned across 1 slice(s), 5 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.686Z",
+        "scannedAt": "2026-09-01T14:30:03.392Z",
         "scannedFiles": 53
       },
       "provenance": {
@@ -12618,7 +12624,7 @@
         "class": "clean",
         "signals": [],
         "reason": "8201 file(s) scanned across 3 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.636Z",
+        "scannedAt": "2026-09-01T14:30:04.475Z",
         "scannedFiles": 8201
       },
       "provenance": {
@@ -12707,7 +12713,7 @@
           }
         ],
         "reason": "8 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:07.693Z",
+        "scannedAt": "2026-09-01T14:30:04.483Z",
         "scannedFiles": 8
       },
       "provenance": {
@@ -12876,7 +12882,7 @@
           }
         ],
         "reason": "20 file(s) scanned across 1 slice(s), 1 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.252Z",
+        "scannedAt": "2026-09-01T14:30:02.112Z",
         "scannedFiles": 20
       },
       "provenance": {
@@ -13039,7 +13045,7 @@
         "class": "clean",
         "signals": [],
         "reason": "1 file(s) scanned across 1 slice(s), 0 note(s), nothing disqualifying.",
-        "scannedAt": "2026-09-01T14:13:06.231Z",
+        "scannedAt": "2026-09-01T14:30:02.116Z",
         "scannedFiles": 1
       },
       "provenance": {
