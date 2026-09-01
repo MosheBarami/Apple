@@ -29,7 +29,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
 | 16 | Plan / Agent / Super Agent real | **PROVEN** | modes shipped; Plan toolset genuinely read-only |
 | 17 | Thinking/activity UX alive, structured, honest | **PROVEN** | state machine folded from real tool/phase events only; 4 §Y states named as underivable · `docs/THINKING-UX.md` |
-| 18 | Inline near-live playtest viewport | **UNPROVEN — downgraded from PROVEN** | The worker frame bus, adaptive RLE24 packing, the SessionDO capture ring with reconnect replay, the browser decoder and the PlaytestCard are all built and wired. **Not one frame has ever been produced.** The gate was flipped UNPROVEN → PROVEN two minutes after the feature commit, citing "real rasterised frames", with no end-to-end validation against live Studio and no deployment of the card to users. The machinery is real; the claim was about output that does not exist |
+| 18 | Inline near-live playtest viewport | **PARTIAL — recovered from UNPROVEN** | **The first frame exists.** `apps/plugin/src/Render.luau` was installed into Studio unmodified and called through its real entry point against the live place: 192×144, **930 parts rasterised in 39 ms**, 110,592 base64 chars (exactly 192×144×3). It is recognisably the world. Pushed through the real `frame-bus.ts`: RLE24 packs it 82,944 → **8,868 bytes (10.7 %)** and **round-trips byte-exactly**, `admitFrame` accepts it, and the ceilings genuinely refuse an oversize payload (`too-large`) and a dimension mismatch (`too-many-pixels`) — the codec's correctness property now holds on real geometry rather than a fixture. **Not PROVEN**: the browser decoder has not drawn this frame for a user, the card is not deployed, and the `run_and_check` capture loop did not drive it · `evidence/2026-09-01-playtest-frame.md` |
 | 19 | Roadmap intelligence suggests/builds milestones | **PARTIAL — and the scan has now actually run** | `ROADMAP_SCAN_LUAU` executed against a real place for the first time: 76,496 bytes of evidence off Crystal Canyon, 1,159 instances, 974 parts, 34 scripts, POSTed out of Studio and run through `parseScan → analyzeProject → buildRoadmap`. **It got the answer wrong, in three separate ways, none of them visible by reading the code** (F-43): it called a shard-collecting simulator a *racing game* with confidence 0 and generated `race_track` / `race_vehicles` / `race_results`. All three fixed and pinned by 6 new tests (36 total). Still PARTIAL rather than PROVEN: the polish pass needs a model, which is gate 14's blocker |
 | 20 | Durable design/source intelligence pipeline | **PARTIAL** | Of §7's eight stages, **six now execute**: discovery, provenance, rights, **security** (23 of 23 checkouts scanned, verdicts written back — 0 of 217 records carried one this morning), **content hashing** (23 records, and the collapse policy finally has its demonstration: the two fork pairs the corpus had flagged "content-hash before granting independent weight" land on opposite sides of the 0.30 threshold — RbxCameraShaker/fork at 0.0833 is divergent, the two `framer` repos at 0.7500 are one idea twice), and pattern extraction. Running the last two found **three real bugs in the pipeline itself** (F-41). Still missing: quality score, domain tag, engineEra, and **playbooks (L3)** — one grep hit in the repo, in the doc's own table row |
 | 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **PROVEN** | 217 classified: 68 reusable, 8 copyleft, 2 attribution, 139 quarantined |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 ## Tally
 
-PROVEN 25 · PARTIAL 12 · UNPROVEN 2 · BLOCKED 1 · REJECTED 0
+PROVEN 25 · PARTIAL 13 · UNPROVEN 1 · BLOCKED 1 · REJECTED 0
 
 **Corrected 2026-09-01 by a ten-track independent audit** (`evidence/2026-09-01-mission-track-audit.md`)**, and the correction went the wrong
 way on purpose.** Five gates were downgraded: 6, 18, 19, 20 and 22 — three of them out of
@@ -87,7 +87,7 @@ downgrade.
 Only **one** gate (14) is externally blocked, on AI Gateway credit. Everything else marked
 PARTIAL is reachable without owner action.
 
-The UNPROVEN two are gates 18 and 40. Gate 40 moved there *from* PARTIAL. A visual critic ran and
+The UNPROVEN one is gate 40, which moved there *from* PARTIAL. Gate 18 recovered to PARTIAL once a frame actually existed. A visual critic ran and
 returned "Prototype". Marking that PARTIAL because three other critics passed would be the
 flattering arithmetic this ledger keeps having to correct.
 
