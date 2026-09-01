@@ -131,6 +131,12 @@ jobs:
         # identical in a screenshot and gives a screen reader one stop for the page.
         run: node scripts/check-site-semantics.mjs
 
+      - name: Web app bundle budget
+        # The landing had a budget and the app had none, so it drifted the way bundles
+        # always do — by accumulating pages nobody visits. /ui-lab is a specimen book and
+        # /admin renders only for is_admin, and both were downloaded by everyone.
+        run: node scripts/check-app-bundle.mjs
+
       - name: Landing payload budget
         # The root route is meant to be one viewport of HTML and CSS with no
         # JavaScript at all. This fails if that regresses, because a budget
