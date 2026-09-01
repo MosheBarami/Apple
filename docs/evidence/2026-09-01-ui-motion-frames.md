@@ -111,3 +111,80 @@ third as intentionally curve-free.
 The reusable part is the sampler pattern above — arm on `RenderStepped`, re-resolve
 live every frame, drive with real input, read afterwards. Every remaining category can
 be measured with it. None of them has been yet, and this file does not claim otherwise.
+
+---
+
+# Second pass, 2026-09-01 — reduced motion implemented, and five more categories
+
+## Reduced motion did not exist
+
+§O requires reduced-motion support and §AL lists it under accessibility. Searching the
+client for `ReducedMotionEnabled`, `GuiService` or any equivalent returned **nothing**:
+all 31 tween sites across the five client modules played unconditionally. A player who
+had asked their device for less motion got every overshoot, pop, burst and rollup.
+
+**Implemented as a drop-in replacement for TweenService**, not as a branch at each call
+site. Every site already writes `TweenService:Create(obj, info, goal):Play()`, so
+swapping what `TweenService` *names* in a module converts all of that module's sites at
+once — and a site added later is covered without anyone remembering. A rule you must
+remember in 31 places is a rule that will be missed.
+
+| module | sites | how it was routed |
+|---|---:|---|
+| `Theme.luau` | 6 | gate defined here; local shadows the service |
+| `Effects.luau` | 13 | `local TweenService = Theme.motion` |
+| `Objective.luau` | 5 | same |
+| `Hud.luau` | 4 | same |
+| `Panels.luau` | 3 | Theme arrives by injection, so repointed in `Panels.init` |
+
+**Reduced motion does not mean no feedback.** The end state is still applied
+immediately — the counter still reaches the number, the panel still reaches full size,
+the toast still appears and still leaves. Only the travel is removed. Suppressing the
+outcome too would make the interface look broken to exactly the players who asked for
+calm.
+
+### Proven, both directions
+
+`GuiService.ReducedMotionEnabled` is **read-only** — a user accessibility setting that
+cannot be set from code — so the gate's predicate was overridden on a freshly-required
+`Theme` and both branches driven against a real Frame:
+
+| | 50 ms after `Play()` | settles |
+|---|---|---|
+| full motion | size **175** px (mid-tween) | 400 px |
+| reduced motion | size **400** px, alpha **1.00** — immediate | already there |
+
+`Completed` still fired in the reduced branch and `PlaybackState` reached `Completed`.
+That matters more than it looks: `Theme.close` hides the panel *in its Completed
+handler*, so a tween that never reports completion would leave a panel visible forever.
+
+## Categories measured this pass
+
+Driven through the real paths — the server's own 10 Hz proximity sweep for collection,
+and the real `Notify` / `Pop` / `Unlocked` s2c remotes — never by poking a module.
+
+| category | evidence |
+|---|---|
+| **currency gain** | shard label rolled `15 → 16 → 17 → 18 → 19` with 3.8 px size travel |
+| **success / attention pulse** | shard plate scale travel 0.023 on the same event |
+| **notification (success)** | inner `Frame` travels **16.96 px** in Y; `Highlight` sweeps alpha **0.140** |
+| **notification (error)** | same path, distinct text `NOT ENOUGH COINS` |
+| **reduced-motion behaviour** | table above |
+
+**A probe correction worth keeping:** the toast *container* never moves — constant
+position, alpha, scale, zero visibility changes across 229 frames. Measuring only the
+container says "notifications do not animate", which is false. The animation is on a
+child. Sampling one frame and concluding is how a working system gets reported broken.
+
+## Coverage against §O, honestly
+
+| category | status |
+|---|---|
+| panel open · panel close | measured (pass 1) |
+| button press | measured as deliberately instantaneous |
+| currency gain · notification · error · success pulse | **measured (this pass)** |
+| reduced-motion | **implemented and proven (this pass)** |
+| hover · tab transition · purchase · unlock burst · loading/progress · roadmap transition | **still unmeasured** |
+
+**8 of 14 categories plus reduced-motion**, up from 2. The remaining six are reachable
+with the same harness; none is blocked.

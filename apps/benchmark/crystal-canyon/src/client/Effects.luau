@@ -55,7 +55,6 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
-local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("CrystalCanyon")
 local Config = require(Shared:WaitForChild("Config"))
@@ -70,6 +69,11 @@ local Util = require(Shared:WaitForChild("Util"))
 	 every other surface in the game carries. Sibling require, exactly as Hud
 	 reaches for it. ]]
 local Theme = require(script.Parent:WaitForChild("Theme"))
+--[[ Reduced motion (§O, §AL). `Theme.motion` has TweenService's `:Create`
+	 shape and returns an instant, still-Completed tween when the player has asked
+	 their device for less motion. Swapped here rather than at each call site so a
+	 tween added later to this module is covered without anyone remembering to. ]]
+local TweenService = Theme.motion
 
 local Effects = {}
 

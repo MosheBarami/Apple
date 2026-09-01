@@ -74,7 +74,11 @@
 
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
+--[[ Reduced motion (§O, §AL). Panels receives Theme by INJECTION at init, not
+	 by require, so this starts as the real service and is repointed at
+	 `Theme.motion` in `Panels.init`. Every tween in this module is created
+	 after init, so none of them can miss the swap. ]]
+local TweenService: any = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("CrystalCanyon")
 local Config = require(Shared:WaitForChild("Config"))
@@ -2173,6 +2177,7 @@ function Panels.init(inputDeps: any)
 
 	deps = inputDeps or {}
 	Theme = deps.Theme or deps.theme
+	TweenService = Theme.motion or TweenService
 	assert(Theme, "Panels.init requires deps.Theme")
 
 	--[[ Theme's spacing scale is the padding `Theme.card` actually applies, and

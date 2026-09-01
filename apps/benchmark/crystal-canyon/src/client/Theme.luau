@@ -115,13 +115,98 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
+local RealTweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("CrystalCanyon")
 local Palette = require(Shared:WaitForChild("Palette") :: ModuleScript)
 local Util = require(Shared:WaitForChild("Util") :: ModuleScript)
 
 local Theme = {}
+
+--------------------------------------------------------------------------------
+-- REDUCED MOTION
+--------------------------------------------------------------------------------
+--[[ §O requires reduced-motion support and §AL lists it under accessibility. It
+	 did not exist: all 31 tween sites across the five client modules played
+	 unconditionally, so a player who has asked their device for less motion got
+	 every overshoot, pop, burst and number rollup anyway.
+
+	 The gate is implemented as a DROP-IN REPLACEMENT for TweenService rather than
+	 as a branch at each call site. Every site already writes
+	 `TweenService:Create(obj, info, goal):Play()`, so swapping what `TweenService`
+	 names in a module converts all of that module's sites at once, and — more
+	 importantly — a site added later is covered without anyone remembering to.
+	 A rule you have to remember at 31 places is a rule that will be missed.
+
+	 Reduced motion does NOT mean "no feedback". The END STATE is still applied,
+	 immediately: a currency counter still reaches the new number, a panel still
+	 reaches full size, a toast still appears and still leaves. What is removed is
+	 the travel between those states. Suppressing the outcome as well would make
+	 the interface look broken to exactly the players who asked for calm.
+
+	 `Completed` still fires, because callers use it to clear their own state —
+	 `Theme.close` hides the panel in that handler, so a tween that never reports
+	 completion leaves a panel visible forever. It fires deferred rather than
+	 synchronously so a caller that connects AFTER calling Play() still hears it.  ]]
+function Theme.reducedMotion(): boolean
+	-- Wrapped: ReducedMotionEnabled is a newer GuiService member and a client on an
+	-- older engine should get full motion, not an error.
+	local ok, enabled = pcall(function()
+		return GuiService.ReducedMotionEnabled
+	end)
+	return ok and enabled == true
+end
+
+local InstantTween = {}
+InstantTween.__index = InstantTween
+
+function InstantTween.new(target: Instance, goal: { [string]: any })
+	local signal = Instance.new("BindableEvent")
+	return setmetatable({
+		_target = target,
+		_goal = goal,
+		_signal = signal,
+		Completed = signal.Event,
+		PlaybackState = Enum.PlaybackState.Begin,
+	}, InstantTween)
+end
+
+function InstantTween:Play()
+	for property, value in pairs(self._goal) do
+		-- pcall so one unsettable property cannot strand the whole goal, which a
+		-- real tween would also survive.
+		pcall(function()
+			(self._target :: any)[property] = value
+		end)
+	end
+	self.PlaybackState = Enum.PlaybackState.Completed
+	local signal = self._signal
+	task.defer(function()
+		signal:Fire(Enum.PlaybackState.Completed)
+	end)
+end
+
+function InstantTween:Cancel()
+	self.PlaybackState = Enum.PlaybackState.Cancelled
+end
+
+function InstantTween:Pause() end
+
+--[[ Same `:Create(target, info, goal)` shape as TweenService, so a module adopts
+	 it by changing ONE line: `local TweenService = Theme.motion`. ]]
+Theme.motion = {
+	Create = function(_self, target: Instance, info: TweenInfo, goal: { [string]: any })
+		if Theme.reducedMotion() then
+			return InstantTween.new(target, goal)
+		end
+		return RealTweenService:Create(target, info, goal)
+	end,
+}
+
+-- Theme's own sites go through the gate too. Declared after `Theme.motion` so the
+-- name below refers to the gate, not to the service.
+local TweenService = Theme.motion
 
 --------------------------------------------------------------------------------
 -- design tokens

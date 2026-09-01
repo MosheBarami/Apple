@@ -12,8 +12,16 @@ build/
 !apps/plugin/release/*.rbxm
 .dev.vars
 secrets/
-packages/corpus/data/
+# Fetched corpus content — ~49MB, re-fetchable from raw/manifest.json.
+# NOTE the trailing /* rather than /: git does not descend into an ignored
+# DIRECTORY, so a negation below it can never match. Ignoring the CONTENTS is
+# what makes the exception reachable.
+packages/corpus/data/*
 packages/corpus/raw/
+# ...except the source LEDGER. sources.json is 0.4MB of derived provenance and
+# licence verdicts, and §H requires that metadata be preserved rather than
+# regenerated on demand — a classification nobody can diff is one nobody reviews.
+!packages/corpus/data/sources.json
 packages/evals/results/raw/
 
 # Playwright
@@ -22,3 +30,6 @@ playwright-report/
 
 # Throwaway measurement scaffolding
 measure-tmp.mjs
+
+# Agent worktrees — isolated checkouts, never part of the committed tree
+.claude/worktrees/
