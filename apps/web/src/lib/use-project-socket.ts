@@ -7,6 +7,7 @@ import type {
   CheckpointMeta,
   ClientMsg,
   StudioFrame,
+  PlaytestRun,
   GolemMode,
   QuotaState,
   RunIntent,
@@ -23,6 +24,7 @@ import {
   mockLiveTools,
   mockLogs,
   mockMessages,
+  mockPlaytest,
   mockQuota,
   mockStudioState,
 } from './mock';
@@ -101,6 +103,12 @@ export interface ProjectSocket {
   logs: StudioEventLog[];
   /** Recent frames rasterised inside Studio. Capped — these are large. */
   frames: StudioFrame[];
+  /**
+   * The playtest the worker says is happening, or null. NEVER synthesised here:
+   * if the worker has not sent a `playtest_state`, there is no playtest as far
+   * as this app is concerned, and the card does not appear.
+   */
+  playtest: PlaytestRun | null;
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
   sendChat: (text: string, mode: GolemMode) => boolean;
@@ -181,6 +189,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<StudioEventLog[]>([]);
   const [frames, setFrames] = useState<StudioFrame[]>([]);
+  const [playtest, setPlaytest] = useState<PlaytestRun | null>(null);
   const [checkpoints, setCheckpoints] = useState<CheckpointMeta[]>([]);
   const [checkpointsState, setCheckpointsState] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -237,7 +246,13 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     if (MOCK_MODE) {
       setCheckpoints(mockCheckpoints);
       setCheckpointsState('ready');
-      setFrames(mockFrames());
+      // The build renders, plus a playtest in progress. The playtest frames are
+      // stamped relative to now, so mock mode shows the card's real
+      // fresh -> stale -> dead progression as it sits there rather than a
+      // permanently "live" badge.
+      const pt = mockPlaytest();
+      setFrames([...mockFrames(), ...pt.frames]);
+      setPlaytest(pt.run);
       return;
     }
     setCheckpointsState('loading');
@@ -489,6 +504,12 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         // in memory. They are never persisted.
         setFrames((list) => [...list, msg.frame].slice(-MAX_FRAMES));
         break;
+      case 'playtest_state':
+        // Straight through. The worker owns every field on this record —
+        // elapsed time, console counts, frame tallies — precisely so the card
+        // cannot drift from what actually happened during the run.
+        setPlaytest(msg.run);
+        break;
       case 'studio_log':
         setLogs((list) => [...list, ...msg.entries].slice(-MAX_LOGS));
         break;
@@ -656,6 +677,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     running,
     logs,
     frames,
+    playtest,
     checkpoints,
     checkpointsState,
     sendChat,

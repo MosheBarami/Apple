@@ -14,6 +14,7 @@
 import type {
   CheckpointMeta,
   MessageDto,
+  PlaytestRun,
   QuotaState,
   RunIntent,
   StudioEventLog,
@@ -626,4 +627,94 @@ export function mockFrames(): StudioFrame[] {
     { rgbBase64: build(0), width: W, height: H, view: 'hero', subject: 'Workspace.Lobby', capturedAt: now - 42_000 },
     { rgbBase64: build(1), width: W, height: H, view: 'eye', subject: 'Workspace.Lobby', capturedAt: now - 6_000 },
   ];
+}
+
+/** The playtest a mock session is pretending to be in the middle of. */
+export const MOCK_PLAYTEST_ID = 'pt_mock';
+
+/**
+ * A live playtest and the frames belonging to it, so the Playtest card can be
+ * looked at without a Studio session.
+ *
+ * The frames are stamped RELATIVE TO NOW and tagged with the playtest's id,
+ * which matters for what this fixture actually demonstrates: the card's
+ * staleness logic is driven by wall-clock age, so leaving mock mode open shows
+ * the real fresh -> stale -> dead progression rather than a frozen "live"
+ * badge. That transition is the whole point of the card and it should be
+ * observable, not just asserted in a test.
+ *
+ * Mock mode only; never reachable in a production build.
+ */
+export function mockPlaytest(): { run: PlaytestRun; frames: StudioFrame[] } {
+  const W = 160;
+  const H = 100;
+  const now = Date.now();
+
+  const build = (t: number): string => {
+    const bytes = new Uint8Array(W * H * 3);
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const i = (y * W + x) * 3;
+        let r: number;
+        let g: number;
+        let b: number;
+        if (y < H * 0.5) {
+          const k = y / (H * 0.5);
+          r = 28 + k * 26;
+          g = 26 + k * 24;
+          b = 24 + k * 20;
+        } else {
+          r = 56;
+          g = 53;
+          b = 46;
+        }
+        // A platform, and a block that moves between frames — the thing a
+        // playtest viewport exists to let you see.
+        if (y > H * 0.62 && y < H * 0.68 && x > 30 && x < 130) {
+          r = 120;
+          g = 108;
+          b = 86;
+        }
+        const bx = 44 + t * 22;
+        if (x > bx && x < bx + 20 && y > H * 0.44 && y < H * 0.62) {
+          r = 168;
+          g = 128;
+          b = 72;
+        }
+        bytes[i] = r;
+        bytes[i + 1] = g;
+        bytes[i + 2] = b;
+      }
+    }
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+    return btoa(binary);
+  };
+
+  const frames: StudioFrame[] = [0, 1, 2].map((t) => ({
+    rgbBase64: build(t),
+    width: W,
+    height: H,
+    view: 'eye',
+    subject: 'game.Workspace',
+    capturedAt: now - (2 - t) * 1500,
+    playtestRunId: MOCK_PLAYTEST_ID,
+    seq: t + 1,
+  }));
+
+  return {
+    run: {
+      id: MOCK_PLAYTEST_ID,
+      phase: 'running',
+      startedAt: now - 4600,
+      requestedSeconds: 8,
+      action: 'Run mode is live — capturing frames',
+      consoleErrors: 1,
+      consoleWarnings: 2,
+      framesDelivered: 3,
+      framesDropped: 1,
+      lastFrameAt: now,
+    },
+    frames,
+  };
 }
