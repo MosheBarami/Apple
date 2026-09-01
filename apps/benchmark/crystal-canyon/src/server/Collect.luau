@@ -89,9 +89,22 @@ local PLACE_ATTEMPTS = 24
 local HOVER_HEIGHT = 2.4 -- centre height above the zone's ground plane
 
 -- Gem proportions. Oversized on purpose (§7: realistic scale reads as empty).
-local CORE_SIZE = Vector3.new(1.15, 1.5, 1.15)
-local WEDGE_SIZE = Vector3.new(1.15, 0.85, 0.575)
-local SHARD_SIZE = Vector3.new(0.55, 0.95, 0.55)
+--[[ SCALED UP FOR §7. V11.
+
+	 §7 asks for props "oversized relative to the player". A crystal was about 1.5 studs tall
+	 against a ~5-stud character — the visual critic called them undersized, and they are the
+	 one prop in the game a player is meant to spot from across a field and walk toward.
+
+	 1.8× makes a crystal roughly 3 studs: still smaller than the character, which is right for
+	 something you collect, but large enough to read as a target at the distance the magnet
+	 radius (7 studs at level 0) actually operates over.
+
+	 Applied as a factor rather than by editing three vectors, so the proportions between core,
+	 wedge and shard — which were tuned together — cannot drift apart in a later edit. ]]
+local CRYSTAL_SCALE = 1.8
+local CORE_SIZE = Vector3.new(1.15, 1.5, 1.15) * CRYSTAL_SCALE
+local WEDGE_SIZE = Vector3.new(1.15, 0.85, 0.575) * CRYSTAL_SCALE
+local SHARD_SIZE = Vector3.new(0.55, 0.95, 0.55) * CRYSTAL_SCALE
 
 local BOB_HEIGHT = 0.35
 local BOB_SPEED = 1.6
