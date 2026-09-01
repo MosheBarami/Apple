@@ -136,9 +136,25 @@ function MotionProbe.read()
 		local sizeTravel, _, sizeHi, sizePeakT = travel(series, function(s)
 			return s.size.X
 		end)
-		local posTravel = select(1, travel(series, function(s)
+		--[[ BOTH AXES, and the reason is a measurement that came back zero on a motion that
+			 plainly moves.
+
+			 This measured `pos.Y` alone. The objective chip's whole vocabulary — `transition`,
+			 `swap` — slides it OUT to the left and back IN from the right, and the probe
+			 reported `posTravel = 0.0 px` across 451 frames of exactly that, because none of
+			 the travel was vertical. Worse, `moved` is computed from these totals, so a purely
+			 horizontal animation could be reported as no animation at all.
+
+			 A probe that silently measures one axis of a two-axis space does not fail loudly —
+			 it returns a confident zero, which is the shape of wrong answer this module's own
+			 header was written about. ]]
+		local posTravelY = select(1, travel(series, function(s)
 			return s.pos.Y
 		end))
+		local posTravelX = select(1, travel(series, function(s)
+			return s.pos.X
+		end))
+		local posTravel = math.max(posTravelX, posTravelY)
 		local alphaTravel = select(1, travel(series, function(s)
 			return s.transparency
 		end))
@@ -162,6 +178,8 @@ function MotionProbe.read()
 			sizePeak = sizeHi,
 			sizePeakT = sizePeakT,
 			posTravel = posTravel,
+			posTravelX = posTravelX,
+			posTravelY = posTravelY,
 			alphaTravel = alphaTravel,
 			scaleTravel = scaleTravel,
 			scalePeak = scaleHi,

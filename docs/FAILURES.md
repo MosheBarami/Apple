@@ -499,6 +499,38 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-44 · The motion probe measured one axis of a two-axis space
+
+`MotionProbe.luau` exists so motion claims come from frames rather than from `TweenInfo`, and its
+header is a careful record of two earlier probe designs that "produced confident WRONG answers".
+It had never been run. An audit found no recorded execution and no persisted frame data.
+
+Running it against the objective chip's slide motions reported:
+
+```
+posTravel  0.0 px      across 451 frames
+```
+
+`posTravel` was `travel(series, s => s.pos.Y)` — **vertical only**. The chip's entire motion
+vocabulary is horizontal: `transition` and `swap` slide it out to the left and back in from the
+right. None of the travel was vertical, so the probe returned zero.
+
+Worse, `moved` is computed from these totals, so **a purely horizontal animation could be reported
+as no animation at all** — a third confident wrong answer from the module written to stop exactly
+that.
+
+Both axes are measured now, and the same motion reports **1109.7 px**.
+
+#### And the run set an honest ceiling on what this instrument can claim
+
+497 frames over 45 seconds is **~15 fps** — Studio's render rate for this scene in play mode. The
+motions are 180–300 ms, so a slide is resolved by **about three samples**. That establishes that a
+motion happened, how far it went, and roughly where it peaked. It does **not** characterise an
+easing curve, and the evidence file says so, because gate 6's PROVEN rating rested on the word
+"measured" doing three different jobs at once.
+
+---
+
 ### F-43 · The roadmap called a shard collector a racing game
 
 `ROADMAP_SCAN_LUAU` is a 92-line evidence payload that the mission ledger cited as proof gate 19
