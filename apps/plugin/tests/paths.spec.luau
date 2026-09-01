@@ -258,4 +258,66 @@ H.test("each content-property family gates the non-URI forms too", function()
 	end
 end)
 
+-- --------------------------------------------------------------- the codec ----
+
+--[[ Paths.decode / Paths.encode are the wire format between the worker and the place.
+	 Every property the agent sets and every value it reads back passes through them,
+	 and only `string` and `number` were covered. A codec that silently mis-decodes one
+	 type produces a build that is wrong in a way no error reports. ]]
+
+H.test("each declared type decodes to the datatype it names", function()
+	local v3 = Paths.decode({ t = "Vector3", v = { 1, 2, 3 } })
+	H.eq(v3.X, 1, "Vector3.X"); H.eq(v3.Y, 2, "Vector3.Y"); H.eq(v3.Z, 3, "Vector3.Z")
+
+	local c3 = Paths.decode({ t = "Color3", v = { 0.25, 0.5, 0.75 } })
+	H.eq(c3.R, 0.25, "Color3.R"); H.eq(c3.B, 0.75, "Color3.B")
+
+	local u2 = Paths.decode({ t = "UDim2", v = { 0.5, 10, 0.25, 4 } })
+	H.eq(u2.X.Scale, 0.5, "UDim2.X.Scale"); H.eq(u2.X.Offset, 10, "UDim2.X.Offset")
+	H.eq(u2.Y.Scale, 0.25, "UDim2.Y.Scale"); H.eq(u2.Y.Offset, 4, "UDim2.Y.Offset")
+
+	local ud = Paths.decode({ t = "UDim", v = { 0.1, 2 } })
+	H.eq(ud.Scale, 0.1, "UDim.Scale"); H.eq(ud.Offset, 2, "UDim.Offset")
+
+	local cf = Paths.decode({ t = "CFrame", v = { 4, 5, 6 } })
+	H.eq(cf.Position.X, 4, "CFrame.X"); H.eq(cf.Position.Z, 6, "CFrame.Z")
+
+	H.eq(Paths.decode({ t = "bool", v = true }), true, "bool true")
+	H.eq(Paths.decode({ t = "bool", v = "yes" }), false, "bool is === true, not truthiness")
+	H.eq(Paths.decode({ t = "number", v = "12" }), 12, "number coerces its string form")
+	H.eq(Paths.decode({ t = "string", v = 12 }), "12", "string coerces its number form")
+	H.eq(Paths.decode({ t = "nil", v = nil }), nil, "nil")
+end)
+
+H.test("a NumberRange with one bound repeats it rather than becoming nil", function()
+	local nr = Paths.decode({ t = "NumberRange", v = { 5 } })
+	H.eq(nr.Min, 5, "Min"); H.eq(nr.Max, 5, "Max")
+end)
+
+H.test("an EnumItem decodes from its full dotted name", function()
+	local e = Paths.decode({ t = "EnumItem", v = "Enum.Material.Neon" })
+	H.eq(e.Name, "Neon", "item"); H.eq(e.EnumType, "Material", "enum")
+end)
+
+H.test("a malformed EnumItem is an error rather than a silent nil", function()
+	-- Returning nil here would clear the property instead of setting it, which is a
+	-- change the agent did not ask for and would not hear about.
+	H.raises(function() Paths.decode({ t = "EnumItem", v = "Neon" }) end, "bad EnumItem", "bare name")
+	H.raises(function() Paths.decode({ t = "EnumItem", v = "Enum.Material" }) end, "bad EnumItem", "no item")
+end)
+
+H.test("an unknown type is refused, not guessed at", function()
+	H.raises(function() Paths.decode({ t = "Quaternion", v = { 1, 2, 3, 4 } }) end,
+		"unknown prop type", "an unrecognised tag")
+end)
+
+H.test("an Instance value resolves through the same path rules", function()
+	local ws = game:GetService("Workspace")
+	local target = Instance.new("Folder", ws)
+	target.Name = "CodecTarget"
+	H.eq(Paths.decode({ t = "Instance", v = "game.Workspace.CodecTarget" }), target, "resolved")
+	H.raises(function() Paths.decode({ t = "Instance", v = "game.Workspace.NotThere" }) end,
+		"not found", "a missing instance is an error")
+end)
+
 H.report("plugin/paths")

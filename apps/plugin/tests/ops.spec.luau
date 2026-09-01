@@ -358,4 +358,61 @@ H.test("a refused delete leaves the rest of the batch alone", function()
 	H.ok(ws:FindFirstChild("SurvivesBatch"), "and the later path was never reached")
 end)
 
+-- ---------------------------------------------- create_instances and the gate --
+
+--[[ The asset policy covers TWO ops, and every assertion above used only one of them.
+	 `create_instances` routes through the same `Paths.setProp` via `createFromSpec`,
+	 but that is a fact about the code rather than about the tests — and a regression
+	 that dropped it from PROPERTY_OPS fails CLOSED (the policy goes nil, so nothing is
+	 verified), which is safe and completely silent. These make it audible. ]]
+
+H.test("create_instances refuses an unverified asset id", function()
+	local ws = game:GetService("Workspace")
+	local r = Ops.execute("c1", {
+		op = "create_instances",
+		items = { {
+			className = "MeshPart", name = "UnverifiedMesh", parent = "game.Workspace",
+			props = { MeshId = { t = "string", v = "rbxassetid://31337" } },
+		} },
+	})
+	H.eq(r.ok, true, "the instance is still created: " .. tostring(r.error))
+	H.ok(r.data.propIssues, "and the refusal is reported")
+	H.ok(string.find(table.concat(r.data.propIssues, " "), "31337", 1, true), "naming the id")
+	local m = ws:FindFirstChild("UnverifiedMesh")
+	H.ok(m, "the instance exists")
+	H.eq(m.MeshId, nil, "but the refused property was never assigned")
+end)
+
+H.test("create_instances admits an envelope-verified id", function()
+	local ws = game:GetService("Workspace")
+	local r = Ops.execute("c2", {
+		op = "create_instances",
+		verifiedAssetIds = { 31338 },
+		items = { {
+			className = "MeshPart", name = "VerifiedMesh", parent = "game.Workspace",
+			props = { MeshId = { t = "string", v = "rbxassetid://31338" } },
+		} },
+	})
+	H.eq(r.data.propIssues, nil, "no issue: " .. tostring(r.data.propIssues and r.data.propIssues[1]))
+	H.eq(ws:FindFirstChild("VerifiedMesh").MeshId, "rbxassetid://31338", "assigned")
+end)
+
+H.test("a nested child is gated too, not just the top-level spec", function()
+	-- createFromSpec recurses, and the policy has to hold all the way down.
+	local ws = game:GetService("Workspace")
+	local r = Ops.execute("c3", {
+		op = "create_instances",
+		items = { {
+			className = "Model", name = "NestedGate", parent = "game.Workspace",
+			children = { {
+				className = "MeshPart", name = "Deep",
+				props = { MeshId = { t = "string", v = "rbxassetid://31339" } },
+			} },
+		} },
+	})
+	H.ok(r.data.propIssues, "the nested refusal is reported")
+	local deep = ws:FindFirstChild("NestedGate"):FindFirstChild("Deep")
+	H.eq(deep.MeshId, nil, "and the nested property was never assigned")
+end)
+
 H.report("plugin/ops")

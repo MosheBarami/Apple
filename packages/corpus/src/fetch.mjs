@@ -241,6 +241,34 @@ function recordAll(corpusById) {
   return sources;
 }
 
+/**
+ * The package indexes under `raw/_registries/`, pinned like everything else.
+ *
+ * These were absent from the lock, because `recordAll` walks the top level of `raw/`
+ * and these sit one directory deeper. So `bootstrap` restored 38 source checkouts and
+ * not the 43MB of indexes `enumerate.mjs` reads, and a fresh clone could re-fetch them
+ * only at whatever HEAD happened to be — which is re-acquisition, not reproduction.
+ *
+ * They are recorded SEPARATELY from `sources` and are deliberately exempt from the
+ * licence gate. That is not a hole: an index is a list of package names, urls and
+ * hashes, not code anything extracts a pattern from. What it produces is candidate
+ * URLs, and those go through classification before a byte of their content is read.
+ * The gate still stands exactly where it stood.
+ */
+function recordRegistries() {
+  const dir = path.join(RAW, '_registries');
+  if (!existsSync(dir)) return {};
+  const out = {};
+  for (const name of readdirSync(dir).sort()) {
+    const d = path.join(dir, name);
+    if (!statSync(d).isDirectory() || !existsSync(path.join(d, '.git'))) continue;
+    const sha = gitQuiet(['-C', d, 'rev-parse', 'HEAD']);
+    const url = gitQuiet(['-C', d, 'config', '--get', 'remote.origin.url']);
+    if (sha && url) out[name] = { url: url.replace(/\.git$/, ''), sha };
+  }
+  return out;
+}
+
 async function main() {
   const args = new Set(process.argv.slice(2));
   const recordOnly = args.has('--record-only');
@@ -277,6 +305,7 @@ async function main() {
   }
 
   const sources = recordAll(corpusById);
+  const registries = recordRegistries();
   const manifest = {
     recordedAt: new Date().toISOString(),
     note:
@@ -289,6 +318,7 @@ async function main() {
       fetchableInCorpus: corpus.length,
     },
     sources,
+    registries,
   };
   await writeFile(path.join(RAW, 'manifest.json'), JSON.stringify(manifest, null, 2));
   const c = manifest.counts;

@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { planBootstrap, loadClassOf, FETCHABLE_CLASSES } from '../bootstrap.mjs';
+import { planBootstrap, planRegistries, loadClassOf, FETCHABLE_CLASSES } from '../bootstrap.mjs';
 
 const CORPUS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LOCK = path.join(CORPUS, 'raw', 'manifest.json');
@@ -158,4 +158,53 @@ test('the real tracked lock passes both checks', () => {
   const plan = planBootstrap(lock, loadClassOf(), new Map());
   assert.deepEqual(plan.refused, []);
   assert.equal(plan.clone.length, Object.keys(lock.sources).length);
+});
+
+// --- the package indexes ------------------------------------------------------
+// `raw/_registries/` holds 43MB of Wally and Pesde indexes that enumerate.mjs reads.
+// They were absent from the lock entirely, because recordAll walks the top level of
+// raw/ and these sit one directory deeper — so "a fresh clone can reproduce the
+// corpus" was true of 38 checkouts and quietly false of the stage that discovers new
+// ones. A fresh clone could re-fetch them at whatever HEAD happened to be, which is
+// re-acquisition rather than reproduction.
+
+test('the lock pins the package indexes as well as the sources', () => {
+  const regs = lock.registries ?? {};
+  assert.ok(Object.keys(regs).length > 0, 'the lock records no registries');
+  for (const [name, e] of Object.entries(regs)) {
+    assert.match(e.url ?? '', /^https:\/\//, `${name} has no https url`);
+    assert.match(e.sha ?? '', /^[0-9a-f]{40}$/, `${name} has no pinned commit`);
+  }
+});
+
+test('a fresh clone can restore every package index', () => {
+  const plan = planRegistries(lock, new Map());
+  assert.deepEqual(plan.refused, []);
+  assert.equal(plan.clone.length, Object.keys(lock.registries ?? {}).length);
+});
+
+test('the registries are exempt from the LICENCE gate, and from nothing else', () => {
+  // An index is names, urls and hashes — not code anything extracts from — and what
+  // it yields is classified before its content is read. But the checks that stop a
+  // manifest writing outside raw/ or handing git an executing transport still apply.
+  const SHA = 'c'.repeat(40);
+  assert.equal(planRegistries({ registries: { wally: { url: 'https://github.com/o/i', sha: SHA } } }).clone.length, 1,
+    'no licence class is required');
+  for (const [name, entry] of [
+    ['../escape', { url: 'https://github.com/o/i', sha: SHA }],
+    ['ok', { url: 'ext::sh -c whoami', sha: SHA }],
+    ['ok', { url: 'http://github.com/o/i', sha: SHA }],
+    ['ok', { url: 'https://github.com/o/i', sha: 'main' }],
+  ]) {
+    const plan = planRegistries({ registries: { [name]: entry } });
+    assert.equal(plan.clone.length, 0, `${name} ${entry.url} ${entry.sha} should be refused`);
+    assert.equal(plan.refused.length, 1);
+  }
+});
+
+test('an index already at its pinned commit is left alone', () => {
+  const SHA = 'd'.repeat(40);
+  const plan = planRegistries({ registries: { wally: { url: 'https://github.com/o/i', sha: SHA } } },
+    new Map([['wally', SHA]]));
+  assert.deepEqual([plan.clone.length, plan.satisfied.length], [0, 1]);
 });

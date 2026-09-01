@@ -23,6 +23,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 const MUTATIONS = [
   {
+    name: "create_instances leaves the property-op list",
+    claim: "create_instances is gated by the same asset policy as set_props",
+    module: "Ops",
+    find: "local PROPERTY_OPS = { create_instances = true, set_props = true }",
+    replace: "local PROPERTY_OPS = { set_props = true }",
+  },
+  {
     name: "a restore no longer counts as preexisting",
     claim: "a rollback may re-materialise the user's own asset ids",
     module: "Ops",

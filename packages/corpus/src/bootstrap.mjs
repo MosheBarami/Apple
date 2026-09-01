@@ -119,6 +119,39 @@ export function planBootstrap(lock, classOf, present = new Map()) {
   return plan;
 }
 
+/**
+ * The package indexes, planned separately from the sources.
+ *
+ * Separate because the licence gate does not apply to them and must not be quietly
+ * bent to let them through: an index is names, urls and hashes, not code anything
+ * extracts from. The candidate URLs it yields are classified before their content is
+ * read, so the gate stands where it stood. The same name and scheme checks DO apply,
+ * because those are about not letting a manifest write outside raw/ or hand git a
+ * transport that executes.
+ */
+export function planRegistries(lock, present = new Map()) {
+  const plan = { clone: [], checkout: [], satisfied: [], refused: [] };
+  const regs = lock?.registries ?? {};
+  for (const name of Object.keys(regs).sort()) {
+    const e = regs[name] ?? {};
+    const url = typeof e.url === 'string' ? e.url.replace(/\.git$/, '') : null;
+    const sha = typeof e.sha === 'string' && /^[0-9a-f]{40}$/.test(e.sha) ? e.sha : null;
+    if (!/^[A-Za-z0-9._-]+$/.test(name)) {
+      plan.refused.push({ name, why: 'the registry name is not a plain directory name' });
+    } else if (!url || !/^https:\/\//.test(url)) {
+      plan.refused.push({ name, why: 'the registry url is missing or not https' });
+    } else if (!sha) {
+      plan.refused.push({ name, why: 'the registry records no 40-character commit SHA' });
+    } else {
+      const have = present.get(name) ?? null;
+      if (have === sha) plan.satisfied.push({ name, url, sha });
+      else if (have) plan.checkout.push({ name, url, sha, from: have });
+      else plan.clone.push({ name, url, sha });
+    }
+  }
+  return plan;
+}
+
 /** Licence class per url, read from the tracked corpus ledger. */
 export function loadClassOf(sourcesJson = SOURCES_JSON) {
   if (!existsSync(sourcesJson)) return new Map();
@@ -141,6 +174,20 @@ function presentShas() {
     const dir = path.join(RAW, name);
     if (!statSync(dir).isDirectory() || !existsSync(path.join(dir, '.git'))) continue;
     const sha = gitQuiet(['-C', dir, 'rev-parse', 'HEAD']);
+    if (sha) out.set(name, sha);
+  }
+  return out;
+}
+
+/** SHA per package index currently on disk. */
+function presentRegistryShas() {
+  const out = new Map();
+  const dir = path.join(RAW, '_registries');
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir)) {
+    const d = path.join(dir, name);
+    if (!statSync(d).isDirectory() || !existsSync(path.join(d, '.git'))) continue;
+    const sha = gitQuiet(['-C', d, 'rev-parse', 'HEAD']);
     if (sha) out.set(name, sha);
   }
   return out;
@@ -170,10 +217,16 @@ async function main() {
   }
   const lock = JSON.parse(readFileSync(LOCK, 'utf8'));
   const plan = planBootstrap(lock, loadClassOf(), presentShas());
+  const regPlan = planRegistries(lock, presentRegistryShas());
+  // The registries live one level down and are restored into raw/_registries/<name>.
+  for (const c of regPlan.clone) plan.clone.push({ ...c, name: path.join('_registries', c.name) });
+  for (const c of regPlan.checkout) plan.checkout.push({ ...c, name: path.join('_registries', c.name) });
+  plan.satisfied.push(...regPlan.satisfied);
+  plan.refused.push(...regPlan.refused);
 
   const todo = plan.clone.length + plan.checkout.length;
   console.log(
-    `[bootstrap] ${Object.keys(lock.sources ?? {}).length} in the lock: ` +
+    `[bootstrap] ${Object.keys(lock.sources ?? {}).length + Object.keys(lock.registries ?? {}).length} in the lock: ` +
       `${plan.satisfied.length} already at the pinned commit, ${plan.clone.length} to clone, ` +
       `${plan.checkout.length} to move, ${plan.refused.length} refused`,
   );
@@ -194,6 +247,7 @@ async function main() {
   for (const c of plan.clone) {
     process.stdout.write(`[bootstrap] cloning ${c.name} at ${c.sha.slice(0, 12)} ... `);
     try {
+      await mkdir(path.dirname(path.join(RAW, c.name)), { recursive: true });
       cloneAt(c.url, c.sha, path.join(RAW, c.name));
       console.log('ok');
     } catch (err) {

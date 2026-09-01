@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-09-01T16:03:31.432Z",
+  "recordedAt": "2026-09-01T19:52:10.749Z",
   "note": "Every git checkout present in raw/, described from git and from its own LICENSE file. Written unconditionally so that a checkout this tool did not create still keeps its provenance.",
   "counts": {
     "checkouts": 38,
@@ -539,6 +539,16 @@
       "corpusId": "gh-zhsj0089944-roblox-free-assets-skill",
       "category": "ui-tooling",
       "classified": true
+    }
+  },
+  "registries": {
+    "pesde": {
+      "url": "https://github.com/pesde-pkg/index",
+      "sha": "79753c65115794b6f707285a18be2d97b485cd65"
+    },
+    "wally": {
+      "url": "https://github.com/UpliftGames/wally-index",
+      "sha": "3c2009ab5264b501bb61177625b7cac08fb1b8d6"
     }
   }
 }
