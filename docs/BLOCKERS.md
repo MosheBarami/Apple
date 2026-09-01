@@ -155,6 +155,31 @@ existing clone and the credentials would still exist in anyone's local copy.
 `scripts/secret-scan.py` does catch these — and emits `::warning::` with exit 0, so
 CI reminds forever and never blocks.
 
+## 3b. The world-building brief is over its own stated token budget
+
+**Status:** DECISION NEEDED — small, and the owner's call rather than a test's.
+
+`apps/worker/src/worldbuilding.ts` opens with: *"Token budget is a hard product
+constraint — worldBuildingBrief() must stay ~1.5k tokens."* Measured 2026-09-01 while
+writing the module's first tests, at the usual ~4 characters per token:
+
+| kind | characters | ~tokens |
+|---|---:|---:|
+| `obby` | 7,529 | **1,883** |
+| `tycoon` / `simulator` / `showcase` / unknown | 6,947 | **1,737** |
+
+16–26 % over, on **every build request**. Nothing enforced it, which is how it drifted.
+
+Two honest resolutions, and the choice is a product one:
+
+1. **Trim the brief** back under ~6,000 characters. The universal section is shared by
+   every kind, so most of the saving is there.
+2. **Restate the budget** in the header to the number that is actually intended.
+
+`apps/worker/tests/worldbuilding.test.mjs` now ratchets it at ~2,000 tokens so it
+cannot grow further while this is open. That threshold is a holding position, not an
+endorsement — the test says so where it is set.
+
 ## 4. Creator Store public distribution of the plugin
 
 **Status:** HUMAN-ONLY GATE. Inherited, not re-verified this session.
