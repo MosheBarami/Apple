@@ -522,6 +522,7 @@ function newBudget() {
         if (typeof a === 'object' && a !== null) for (const [k, v] of Object.entries(a)) store.set(k, v);
         else store.set(a, b);
       },
+      delete: async (k) => store.delete(k),
     },
   };
   const obj = new B.BudgetDO(ctx, {});
@@ -755,6 +756,7 @@ const TAVERN_BRIEF =
  */
 function sessionHarness(store = new Map()) {
   const sent = [];
+  const alarms = [];
   const ws = { send: (d) => sent.push(JSON.parse(d)) };
   store.set('bind', { projectId: 'p1', projectName: 'Preserved Place', ownerId: 'u1' });
   const quota = {
@@ -769,7 +771,14 @@ function sessionHarness(store = new Map()) {
         if (typeof k === 'object') for (const [a, b] of Object.entries(k)) store.set(a, b);
         else store.set(k, v);
       },
-      setAlarm: async () => {},
+      // The stop signal lives under its own key and is cleared at both ends of a run, so a
+      // fake storage without `delete` no longer models the real one. See stop-signal.ts.
+      delete: async (k) => store.delete(k),
+      // Recorded rather than ignored: "was an alarm scheduled" is the difference between a
+      // run that continues and one that is wedged. See the A4 test below.
+      setAlarm: async (at) => {
+        alarms.push(at);
+      },
     },
     blockConcurrencyWhile: async (fn) => await fn(),
     getWebSockets: () => [ws],
@@ -783,7 +792,7 @@ function sessionHarness(store = new Map()) {
       get: () => ({ fetch: async () => new Response(JSON.stringify({ ok: true, state: quota })) }),
     },
   };
-  return { session: new SessionDO(ctx, env), sent, store, ws, bind: store.get('bind') };
+  return { session: new SessionDO(ctx, env), sent, store, ws, alarms, bind: store.get('bind') };
 }
 
 const intentsIn = (sent) => sent.filter((m) => m.type === 'run_intent');
@@ -1003,4 +1012,139 @@ test('B10 the summary is always a verbatim substring of the request, whatever sh
     assert.ok(bare.length > 0, 'an emitted Intent row must never carry an empty summary');
     assert.ok(flat.includes(bare), 'the summary must be the user\'s literal words, never a paraphrase');
   }
+});
+
+// ---------------------------------------------------------------------------
+// A2, A3, A4 — the three high-severity concurrency findings, driven through the REAL SessionDO.
+//
+// These were nearly shipped with source-level assertions instead, on the belief that a
+// DurableObject subclass cannot be instantiated outside the Workers runtime. The harness above
+// disproves that, and it was already in this file. Worth recording as its own small lesson:
+// "untestable" is a claim that deserves the same evidence as any other.
+// ---------------------------------------------------------------------------
+
+const errorsIn = (sent, code) => sent.filter((m) => m.type === 'error' && m.code === code);
+
+test('A3 two runs started together produce ONE run, not two', async () => {
+  // Both frames used to read an idle agent from storage — because reading storage is one of
+  // the things startRun awaits — so both spent a Spark, both inserted a user row, and one of
+  // the two msg_start broadcasts never got its msg_end.
+  const h = sessionHarness();
+
+  // Started together and NOT awaited in between: this is how two websocket frames arrive.
+  const first = h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  const second = h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await Promise.all([first, second]);
+
+  assert.equal(
+    h.sent.filter((m) => m.type === 'msg_start').length,
+    1,
+    'exactly one message may be opened; a second is one that never gets msg_end',
+  );
+  assert.equal(intentsIn(h.sent).length, 1, 'and exactly one Intent row');
+  assert.equal(errorsIn(h.sent, 'busy').length, 1, 'the caller that lost must be told, not ignored');
+});
+
+test('A3 the gate reopens, so the next message still works', async () => {
+  // A guard that stayed shut after the first run would be a worse bug than the one it fixes.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  h.store.set('agent', { ...h.store.get('agent'), status: 'idle' });
+
+  await h.session.startRun(h.bind, 'Add a chimney.', 'stone');
+  assert.equal(h.sent.filter((m) => m.type === 'msg_start').length, 2, 'the second run must open its own message');
+});
+
+test('A2 a stop is recorded without touching the run state', async () => {
+  // The fix's whole basis: two writers on one blob is the bug, so the stop path writes a key
+  // of its own and the run's blob is left exactly as the run left it.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  const before = h.store.get('agent');
+
+  await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
+
+  assert.ok(h.store.get('stopRequested'), 'the stop must be recorded');
+  assert.equal(h.store.get('agent'), before, 'and the agent blob must be untouched — same object');
+});
+
+test('A2 a stop survives the run writing its state afterwards', async () => {
+  // The losing interleaving: the stop arrives mid-step and the run persists at the tail.
+  // Under the old design that tail write carried status 'running' and erased the stop.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
+
+  const agent = h.store.get('agent');
+  h.store.set('agent', { ...agent, status: 'running', step: agent.step + 1 });
+
+  assert.ok(h.store.get('stopRequested'), 'the stop must outlive the run writing its own state');
+});
+
+test('A2 a stop does not travel into the next run', async () => {
+  // startRun clears as well as finishRun, because a stop landing as a run ends would
+  // otherwise kill the user's next message before its first step.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
+  assert.ok(h.store.get('stopRequested'));
+
+  h.store.set('agent', { ...h.store.get('agent'), status: 'idle' });
+  await h.session.startRun(h.bind, 'A completely new request.', 'stone');
+
+  assert.equal(h.store.get('stopRequested'), undefined, 'the new run must start un-stopped');
+});
+
+test('A2 an idle session ignores a stop', async () => {
+  const h = sessionHarness();
+  await h.session.webSocketMessage(h.ws, JSON.stringify({ type: 'stop' }));
+  assert.equal(h.store.get('stopRequested'), undefined, 'nothing is running, so there is nothing to stop');
+});
+
+test('A4 a checkpoint that throws does not wedge the run', async () => {
+  // startRun persisted the agent as running, broadcast msg_start, then awaited the pre-run
+  // checkpoint BEFORE scheduling the alarm that drives the run. A throw skipped setAlarm, and
+  // alarm()'s staleness rescue cannot help: it requires step > 0, and no step has run.
+  const h = sessionHarness();
+  h.store.set('pluginLastSeen', Date.now()); // studio connected, so the checkpoint is attempted
+  h.session.createCheckpoint = async () => {
+    throw new Error('checkpoint exploded');
+  };
+
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+
+  assert.equal(h.alarms.length, 1, 'the run must still be scheduled to advance');
+  assert.equal(h.store.get('agent').status, 'running', 'and must still be a live run');
+  assert.equal(errorsIn(h.sent, 'checkpoint').length, 1, 'the lost undo point must be reported');
+});
+
+test('A4 a checkpoint that RETURNS an error is reported too', async () => {
+  // createCheckpoint is documented to return { error } rather than throw for expected
+  // failures, and that return was being discarded entirely.
+  const h = sessionHarness();
+  h.store.set('pluginLastSeen', Date.now());
+  h.session.createCheckpoint = async () => ({ error: 'studio said no' });
+
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+
+  assert.equal(h.alarms.length, 1);
+  const reported = errorsIn(h.sent, 'checkpoint');
+  assert.equal(reported.length, 1);
+  assert.match(reported[0].message, /studio said no/, 'the reason must reach the user');
+});
+
+test('A4 a healthy checkpoint reports nothing and still schedules the run', async () => {
+  const h = sessionHarness();
+  h.store.set('pluginLastSeen', Date.now());
+  let called = 0;
+  h.session.createCheckpoint = async () => {
+    called += 1;
+    return { id: 'cp1', label: 'before Golem changes', kind: 'pre_agent', createdAt: Date.now() };
+  };
+
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+
+  assert.equal(called, 1, 'the checkpoint is still taken');
+  assert.equal(errorsIn(h.sent, 'checkpoint').length, 0, 'and nothing is reported when it works');
+  assert.equal(h.alarms.length, 1);
 });

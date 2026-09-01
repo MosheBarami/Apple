@@ -19,10 +19,16 @@
  * path, and the run was saved WITHOUT its transcript — on every single step, silently, with only
  * a console warning that reads like a size problem. The agent forgot the conversation each step.
  *
- * Nothing caught it because nothing could: `SessionDO` extends `DurableObject` and cannot be
- * instantiated outside the Workers runtime, so the whole policy sat in a place no test reached.
- * Taking the `put` as an argument makes the policy ordinary code with ordinary tests, and leaves
- * the method on the DO a single line that only supplies storage. See F-31 in docs/FAILURES.md.
+ * Nothing caught it because nothing reached it. Not because nothing COULD — `packages/evals`
+ * bundles this module's file and constructs a real `SessionDO` over a fake storage map, which
+ * I had assumed was impossible until the suite proved otherwise. The policy simply had no test
+ * of its own, and the one console warning it emitted on failure reads like a benign size
+ * condition.
+ *
+ * Taking the `put` as an argument is still the right shape: it makes the policy ordinary code
+ * that a test can drive directly, without standing up a Durable Object to reach it, and leaves
+ * the method on the DO a single line that only supplies storage. See F-31 in
+ * docs/FAILURES.md.
  */
 import { turnGroups } from './transcript.ts';
 import type { GatewayMessage } from '@golem/shared';

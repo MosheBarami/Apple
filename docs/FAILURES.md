@@ -150,9 +150,9 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 | ~~H2~~ | ~~high~~ | **CLOSED 2026-09-01.** `logDegraded` became `degradeToMemory`, which refuses to degrade on a live server and returns whether it did; production now leaves `store` nil so each load takes the existing kick path, which was already correct and merely unreachable. 11 tests in `dataservice-production.spec.luau`, and 7 in the Studio counterpart proving the deliberate softening survives. |
 | ~~H3~~ | ~~high~~ | **CLOSED 2026-09-01.** A save that finds a foreign lock now marks the session `failed` *before* kicking, so `get`/`isReady` stop answering in the window before the disconnect lands and the economy cannot credit a profile we no longer own. Five tests cover it, including that no later write reaches the DataStore at all. |
 | ~~H4~~ | ~~high~~ | **CLOSED 2026-09-01.** `src/server/Movement.luau` bounds a step by the walk speed the *server* says the player is entitled to; `Collect` zeroes that tick's budget when the step was impossible. Measured A/B in Studio against the pre-fix code, same harness and world: **1.95 → 0.08 crystals/s, a 24× reduction**, while walking (0.15/s) now out-earns teleporting. False positives on legitimate walking-and-jumping: 2 of 202 ticks, 0.1s each. `docs/evidence/2026-09-01-teleport-farming-h4.md`. |
-| A2 | high | The **stop button** can be silently lost: `webSocketMessage` does a read-modify-write of `agent` while `runStep` holds its own copy and writes `status: 'running'` at the tail. |
-| A3 | high | Concurrent `startRun` double-charges a Spark, inserts two user rows, and orphans a message that never gets `msg_end`. |
-| A4 | high | `createCheckpoint` throwing inside `startRun` leaves `status: 'running'` with **no alarm scheduled**, so nothing can ever recover it before the 180 s staleness bypass. |
+| ~~A2~~ | ~~high~~ | **CLOSED 2026-09-01.** The stop moved to its own key with one writer and one reader (`src/stop-signal.ts`), so neither write can erase the other. The race ran both ways: the run's tail write erased the stop, *and* the stop's stale blob erased the step's own transcript, inviting a replay of a step whose paid call had already run. 9 unit tests + 4 behavioural tests through the real `SessionDO`. |
+| ~~A3~~ | ~~high~~ | **CLOSED 2026-09-01.** `src/single-flight.ts` — a gate set **synchronously**, before any await, because the storage read that decides "is a run in flight" is one of the things `startRun` awaits. 7 unit tests + a behavioural test that starts two runs without awaiting between them and asserts exactly one `msg_start`. |
+| ~~A4~~ | ~~high~~ | **CLOSED 2026-09-01.** The pre-run checkpoint is wrapped and `setAlarm` sits outside the wrapper, so a throw can no longer skip it — and `alarm()`'s staleness rescue could not have helped, since it requires `step > 0`. The discarded `{ error }` return is now surfaced too. 3 behavioural tests covering throw, returned-error, and the healthy path. |
 | A5/A6 | medium | Ops queued by a dead run are still delivered and executed; op delivery is at-most-once with no ack or redelivery. |
 | B5 | high | `plugin:Unloading` is never handled — nothing disconnects. After a plugin reload there are two live poll loops draining the same queue, which is also how F-21's nil recording arises. |
 | B6 | high | Reconnect calls `task.cancel` on a possibly-dead thread, and if the old loop is mid-yield it dies inside `Ops.execute`, leaving the ChangeHistory recording open forever and the asset policy stuck open. |
@@ -186,10 +186,19 @@ persisted without transcript"*, which looks like a known, benign, size-related c
 The user-visible symptom would have been an agent that forgets the conversation between
 steps — read as a model quality problem, not a storage bug.
 
-**Why nothing caught it.** `SessionDO extends DurableObject` and cannot be instantiated
-outside the Workers runtime, so the policy sat where no test could reach it. 1,416 passing
-tests, `tsc --noEmit` clean, CI green: none of them could see it, and a reviewer reading the
-diff sees a plausible-looking try/catch whose comment describes exactly the right behaviour.
+**Why nothing caught it.** No test reached the policy. 1,416 passing tests, `tsc --noEmit`
+clean, CI green: none of them touched it, and a reviewer reading the diff sees a
+plausible-looking try/catch whose comment describes exactly the right behaviour.
+
+**A correction, because the first version of this entry got it wrong.** I wrote that nothing
+*could* have caught it, on the grounds that `SessionDO extends DurableObject` and cannot be
+instantiated outside the Workers runtime. That is false, and the disproof was already in the
+repository: `packages/evals/src/preserved.test.mjs` bundles `session.ts` and constructs a real
+`SessionDO` over a fake storage map. It has done so since B10. "Untestable" is a claim that
+deserves the same evidence as any other, and I asserted it instead of checking — which is the
+same failure as the bug being recorded here, one level up. A2, A3 and A4 are now covered by
+behavioural tests through that harness rather than by the source-level assertions I had
+written on the false premise.
 
 **Fix:** the policy moved to `src/persist.ts` and takes its `put` as an argument, which makes
 it ordinary code with ordinary tests. `persistAgent` on the DO is now one line that supplies

@@ -43,6 +43,8 @@ import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, 
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import { trimTranscript } from '../transcript';
 import { persistWithShedding } from '../persist';
+import { clearStop, requestStop, stopRequested } from '../stop-signal';
+import { singleFlight } from '../single-flight';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 
@@ -530,10 +532,13 @@ export class SessionDO extends DurableObject<Env> {
         await this.startRun(bind, msg.text.slice(0, 8000), msg.mode);
         return;
       case 'stop': {
+        // Written to its OWN key, never into the agent blob. The run holds a copy of that blob
+        // for the length of a step and writes it back at the tail, so a stop written into the
+        // same blob either gets erased by that write or erases the step's own progress,
+        // depending only on which lands last. See stop-signal.ts.
         const agent = await this.ctx.storage.get<AgentState>('agent');
-        if (agent && agent.status === 'running') {
-          agent.status = 'stopping';
-          await this.persistAgent(agent);
+        if (agent && agent.status !== 'idle') {
+          await requestStop(this.ctx.storage);
         }
         return;
       }
@@ -555,7 +560,37 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ agent run
+
+  /** Admits one startRun at a time. See the comment on startRun. */
+  private readonly startGate = singleFlight();
+
+  /**
+   * Start a run, at most one at a time.
+   *
+   * Durable Objects are single-threaded, but this function awaits — and the storage read that
+   * decides whether a run is already in flight is one of the things it awaits. Two `chat`
+   * frames arriving together both saw an idle agent, so both spent a Spark, both inserted a
+   * user row, and one of the two `msg_start` broadcasts never got its `msg_end`: a message
+   * that sits in the transcript spinning forever.
+   *
+   * The guard is an instance field set SYNCHRONOUSLY, before any await. That is the whole
+   * point of it — a guard that is itself established across an await is just a smaller race.
+   * In-memory is sufficient because the concurrency is within one instance: two frames on one
+   * socket, or two sockets on one Durable Object, are all the same object.
+   */
   private async startRun(
+    bind: { projectId: string; projectName: string; ownerId: string },
+    text: string,
+    mode: GolemMode,
+    forcedEffort?: Effort,
+  ) {
+    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort));
+    if (!attempt.ran) {
+      this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
+    }
+  }
+
+  private async startRunInner(
     bind: { projectId: string; projectName: string; ownerId: string },
     text: string,
     mode: GolemMode,
@@ -566,6 +601,11 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
       return;
     }
+    // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
+    // a stop that arrives in the moment a run is finishing can land after that clear, and it
+    // must not travel into the run the user starts next.
+    await clearStop(this.ctx.storage);
+
     // Sparks are billed from measured usage after each model call, so entering a run only
     // requires having some balance left — the user is never charged for an estimate.
     const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
@@ -653,9 +693,35 @@ export class SessionDO extends DurableObject<Env> {
     agent.phase = mode === 'clay' ? 'understanding' : 'planning';
     this.broadcast({ type: 'agent_status', phase: agent.phase });
 
-    // auto-checkpoint before builder modes touch the project
+    // Auto-checkpoint before builder modes touch the project.
+    //
+    // Everything here is inside a try, and the alarm below is outside it, because a throw on
+    // this line used to skip `setAlarm` entirely — leaving the run at `status: 'running'` with
+    // nothing scheduled to advance it. The staleness bypass cannot rescue that one: it requires
+    // `agent.step > 0`, and no step has run. The user got a message that never finished and
+    // three minutes of "Golem is already working" before a new run could start.
+    //
+    // The returned error was also being discarded. A checkpoint is the user's undo point, so
+    // failing to take one is worth saying out loud — but it is not a reason to refuse to work,
+    // and silently pressing on is the thing this codebase keeps getting wrong.
     if (studioConnected && mode !== 'clay') {
-      await this.createCheckpoint('before Golem changes', 'pre_agent'); // broadcasts internally
+      try {
+        const checkpoint = await this.createCheckpoint('before Golem changes', 'pre_agent'); // broadcasts internally
+        if ('error' in checkpoint) {
+          this.broadcast({
+            type: 'error',
+            code: 'checkpoint',
+            message: `Couldn't snapshot your project before starting (${checkpoint.error}). Continuing without an undo point.`,
+          });
+        }
+      } catch (err) {
+        console.warn('[session] pre-run checkpoint threw', String(err).slice(0, 200));
+        this.broadcast({
+          type: 'error',
+          code: 'checkpoint',
+          message: "Couldn't snapshot your project before starting. Continuing without an undo point.",
+        });
+      }
     }
     await this.ctx.storage.setAlarm(Date.now() + 10);
   }
@@ -664,7 +730,8 @@ export class SessionDO extends DurableObject<Env> {
     const agent = await this.ctx.storage.get<AgentState>('agent');
     if (!agent) return;
     if (agent.status === 'idle') return;
-    if (agent.status === 'stopping') {
+    if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
+      agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
       return;
     }
@@ -1005,14 +1072,17 @@ export class SessionDO extends DurableObject<Env> {
         toolCallId: call.id,
         name: call.name,
       });
-      const current = await this.ctx.storage.get<AgentState>('agent');
-      if (current?.status === 'stopping') {
+      if (await stopRequested(this.ctx.storage)) {
         agent.status = 'stopping';
         break;
       }
     }
 
-    if (agent.status === 'stopping') {
+    // Checked again here, not only inside the tool loop: a stop that arrives after the last
+    // tool's check would otherwise be overwritten by this step's tail persist below, and the
+    // next alarm would carry on as though the button had never been pressed.
+    if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
+      agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
       return;
     }
@@ -1034,9 +1104,8 @@ export class SessionDO extends DurableObject<Env> {
    * Persist the run state, shedding transcript rather than dying.
    *
    * The policy lives in `persist.ts` and is tested there; this supplies the storage and nothing
-   * else. It was a method here until that method was found calling ITSELF instead of storage —
-   * a bug no test could reach, because a Durable Object cannot be instantiated outside the
-   * Workers runtime. See F-31.
+   * else. It was a method here until that method was found calling ITSELF instead of storage,
+   * a bug no test happened to reach. See F-31.
    */
   private async persistAgent(agent: AgentState): Promise<void> {
     await persistWithShedding((value) => this.ctx.storage.put('agent', value), agent);
@@ -1048,6 +1117,9 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+    // The signal belongs to the run it was pressed during. Leaving it set would stop the
+    // user's NEXT message before its first step.
+    await clearStop(this.ctx.storage);
 
     // A playtest cannot outlive the run that started it.
     //

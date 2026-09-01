@@ -14,9 +14,11 @@
  * and the only visible symptom was that it behaved as though it had.
  *
  * The first test below is the one that fails against that code: it asserts a healthy save
- * writes the state INTACT and exactly once. Nothing could assert it before, because a
- * DurableObject subclass cannot be instantiated outside the Workers runtime — the policy lived
- * where no test could go. It takes its `put` as an argument now.
+ * writes the state INTACT and exactly once. Nothing DID assert it before — not because nothing
+ * could (packages/evals constructs a real SessionDO over a fake storage map, and has since
+ * B10), but because the policy had no test of its own and its one warning on failure reads
+ * like a benign size condition. Taking the `put` as an argument means a test can drive the
+ * policy directly, without standing up a Durable Object to reach it.
  *
  * Run with:  node --test           (from apps/worker)
  */
