@@ -70,16 +70,12 @@ error as `audit()` reporting the size of the rule library as though it were cove
 gates that moved are 6 (all applicable motion categories measured) and 12 (every review finding
 closed or explicitly rejected, with 78 Luau tests and 20 mutations behind it).
 
-### One action waiting on the owner, and it is not a blocker
+### The worker is deployed
 
-The worker's source changed substantially this session — `persist.ts`, `stop-signal.ts`,
-`single-flight.ts` and `session.ts`, including a Durable Object concurrency change. It
-typechecks, its tests pass, and `wrangler deploy --dry-run` bundles it cleanly with every
-binding resolved — so "ready to deploy" is verified rather than assumed. **It has not been
-deployed.** Deploying is outward-facing and touches the live service, so it is left for the
-owner rather than done unattended. Nothing in the repository depends on it having happened.
-
-    cd apps/worker && npx wrangler deploy
+`persist.ts`, `stop-signal.ts`, `single-flight.ts` and the Durable Object concurrency changes are
+live. Verified rather than assumed: `wrangler deployments status` reports the active version
+created **2026-09-01T11:23:27Z**, which is after the last commit touching `apps/worker/src`
+(`dfac79f`, 08:35 UTC) — so F-34 and F-35 are both in it.
 
 ## Rejected experiments (kept so they are not retried)
 
