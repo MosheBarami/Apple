@@ -33,6 +33,17 @@ const read = (p) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null)
 
 const sources = read(path.join(CORPUS, 'data', 'sources.json'));
 const checkouts = read(path.join(CORPUS, 'raw', 'manifest.json'));
+const content = read(path.join(CORPUS, 'data', 'content.json'));
+
+// contentRecord.observedIn holds `github.com/Owner/Repo@sha`; checkout directories are
+// `Owner__Repo`. Join on that, so the era and quality a checkout was tagged with appear
+// beside the licence and security verdicts it was already carrying.
+const contentByDir = new Map(
+  (content?.records ?? []).flatMap((r) => {
+    const m = /github\.com\/([^/]+)\/([^/@]+)/.exec(String(r.observedIn?.[0] ?? ''));
+    return m ? [[`${m[1]}__${m[2]}`, r]] : [];
+  }),
+);
 
 async function loadRules() {
   try {
@@ -122,6 +133,15 @@ ${coNames.length} checkouts, each pinned to a commit SHA. The licence column is 
 checkout's **own LICENSE file**, independently of what classification decided; a disagreement
 would appear here as a conflict rather than be resolved silently.
 
+**era** is decided by the density of dated engine markers, not by their presence — a maintained
+library with one five-year-old \`wait()\` is not legacy, and \`—\` means the checkout gave too
+little evidence either way rather than that it passed. **quality** scores engineering hygiene —
+tested, typed, documented, licensed, CI-gated, current — and deliberately not whether the patterns
+inside are good ones; stars and forks are excluded, because popularity already enters retrieval
+ranking and counting it twice while calling the second count quality is how a score stops meaning
+anything. **deprecated** counts dated constructs found, and is reported even where the era reads
+modern, because a summary is not a suppression.
+
 ${table(
     coNames.map((n) => {
       const s = co[n];
@@ -129,15 +149,19 @@ ${table(
       const sec = rec?.security;
       const secCell = !sec || sec.class === 'unscanned' ? '**unscanned**' : sec.safe ? 'clean' : `**${sec.class}**`;
       const rs = rulesFrom(rules, n);
+      const cr = contentByDir.get(n);
+      const dep = (cr?.deprecatedPatterns ?? []).reduce((t, d) => t + d.count, 0);
       return [
         `\`${n}\``,
         s.licence?.spdx ?? '?',
-        `\`${(s.sha ?? '').slice(0, 10)}\``,
         secCell,
+        cr?.engineEra && cr.engineEra !== 'unknown' ? cr.engineEra : '—',
+        typeof cr?.qualityScore === 'number' ? cr.qualityScore.toFixed(2) : '—',
+        dep > 0 ? String(dep) : '—',
         rs.length > 0 ? String(rs.length) : '—',
       ];
     }),
-    ['checkout', 'licence', 'sha', 'security', 'rules extracted'],
+    ['checkout', 'licence', 'security', 'era', 'quality', 'deprecated', 'rules'],
   )}
 
 ${extractedFrom.size} of ${coNames.length} checkouts have had patterns extracted from them.

@@ -499,6 +499,54 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-50 · Counting engine vocabulary inside comments, for the third time in this repository
+
+The domain tagger's first run over the real corpus reported 3 bare `wait()` calls in
+`Sleitnick/RbxCameraShaker`'s `src/CameraShaker/init.lua`, and 1 in `Reselim/Flipper`'s
+`typings/Signal.d.ts`. Both counts were checked by opening the files rather than by trusting them.
+
+All three CameraShaker hits are inside the usage example in the file's **opening doc comment**:
+
+```lua
+--[[ Usage:
+     camShake:Shake(CameraShaker.Presets.Explosion)
+     wait(1)
+```
+
+That matters more than a stray count, because **five shake and motion rules were extracted from
+that source**, so an era claim about it is not idle: a tag saying "this teaches APIs that no longer
+behave as assumed" would have been pointing at documentation.
+
+The Flipper hit is `wait(): Parameters<T>` — a TypeScript method declaration for a method named
+`wait`, in a `.d.ts`, with no relationship to the Roblox global. Era is a claim about Luau, and a
+`.ts` file in a Roblox repository is tooling or typings.
+
+The comment half is **the third occurrence of this exact defect class here**. F-43 is the roadmap
+matching genre words in English prose and calling a shard collector a racing game.
+`roblox-antipatterns.mjs` carries a `stripComments` written for the same reason, and its header
+says so. Three independent scanners, three times the same mistake — vocabulary counted where the
+language is not being spoken.
+
+Fixed by blanking comment bodies before counting and scoping era markers to `.lua`/`.luau`. The
+effect on the real corpus, all of it in the direction of fewer false claims:
+
+| checkout | deprecated before | after |
+| --- | --- | --- |
+| `Sleitnick__RbxCameraShaker` | 3 | **0** |
+| `ddust1n__CameraShaker` | 3 | **0** |
+| `MadStudioRoblox__ProfileService` | 10 | 9 |
+| `Reselim__Flipper` | 2 | 1 |
+| `evaera__roblox-lua-promise` | 1 | **0** |
+
+Library detection got the same scoping and lost a false positive with it: `Sleitnick/Knit` had been
+detected as depending on `knit`, from a `require` inside a comment in Knit's own source.
+
+`packages/corpus` is upstream of `packages/evals` and must not depend on it, so the stripper is
+implemented locally and a test asserts it agrees with the eval harness's `stripComments` on a
+battery of samples — comments, long-bracket comments, comment markers inside strings, and strings
+inside comments. Divergence is caught by a test rather than prevented by a coupling, which is the
+same arrangement the shared deprecation vocabulary already has.
+
 ### F-47 · Retrieval ranking returned a number for every source and had been dead the whole time
 
 `retrievalRank()` orders the corpus. It was written, tested, and never once run against

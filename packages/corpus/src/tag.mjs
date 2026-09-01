@@ -114,7 +114,7 @@ async function main() {
     }
 
     const { files, discovered, truncated } = readCheckout(dir);
-    const domain = tagDomain(files);
+    const domain = tagDomain(files, { repo: dir });
 
     const m = /github\.com\/([^/]+)\/([^/@]+)/.exec(String(first));
     const prov = m ? byUrl.get(`${m[1]}/${m[2]}`.toLowerCase()) : null;

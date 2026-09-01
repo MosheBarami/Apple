@@ -25,6 +25,79 @@
 
 export const ERAS = Object.freeze(['modern', 'transitional', 'legacy', 'unknown']);
 
+//[[ ERA MARKERS ARE COUNTED IN CODE, NOT IN PROSE OR IN TYPE DECLARATIONS.
+//
+//   Two false positives from the first run over the real corpus, both found by reading
+//   the files the tagger pointed at rather than by trusting the counts:
+//
+//   `Sleitnick/RbxCameraShaker` reported 3 bare `wait()` calls in `src/CameraShaker/
+//   init.lua`. All three are inside the usage example in the file's opening doc
+//   comment. The library's own clock never appears in them — and five shake and motion
+//   rules were extracted from this source, so an era claim about it is not idle.
+//
+//   `Reselim/Flipper` reported a bare `wait()` in `typings/Signal.d.ts`. The line is
+//   `wait(): Parameters<T>` — a TypeScript method declaration for a method named
+//   `wait`, which has nothing to do with the Roblox global.
+//
+//   The first of those is the THIRD time this repository has counted engine vocabulary
+//   inside comments; F-43 is the roadmap doing it with genre words, and
+//   `roblox-antipatterns.mjs` carries a `stripComments` written for the same reason.
+//   So: blank comments before counting, and count era only in Luau. ]]
+const LUAU_FILE = /\.luau?$/i;
+
+/**
+ * Blank comment bodies, preserving line structure and string CONTENTS.
+ *
+ * Deliberately a local implementation rather than an import: `packages/corpus` is
+ * upstream of `packages/evals` and must not depend on it. `domain.test.mjs` asserts
+ * this agrees with the eval harness's `stripComments` on a battery of samples, which
+ * is the same guard the deprecation vocabulary gets — divergence is caught by a test
+ * rather than prevented by a coupling.
+ */
+export function stripLuauComments(source) {
+  let out = '';
+  let i = 0;
+  const n = source.length;
+  while (i < n) {
+    const two = source.slice(i, i + 2);
+    // A long bracket comment: --[[ ... ]] or --[=[ ... ]=]
+    if (two === '--') {
+      const long = /^--\[(=*)\[/.exec(source.slice(i));
+      if (long) {
+        const close = `]${long[1]}]`;
+        const end = source.indexOf(close, i + long[0].length);
+        const stop = end === -1 ? n : end + close.length;
+        // Keep newlines so line numbers and line-anchored regexes still line up.
+        out += source.slice(i, stop).replace(/[^\n]/g, ' ');
+        i = stop;
+        continue;
+      }
+      const eol = source.indexOf('\n', i);
+      const stop = eol === -1 ? n : eol;
+      out += ' '.repeat(stop - i);
+      i = stop;
+      continue;
+    }
+    // Skip over string literals so a comment marker inside one is not treated as a
+    // comment, and so string contents survive.
+    if (two[0] === '"' || two[0] === "'") {
+      const quote = two[0];
+      let j = i + 1;
+      while (j < n && source[j] !== quote) {
+        if (source[j] === '\\') j += 1;
+        if (source[j] === '\n') break;
+        j += 1;
+      }
+      out += source.slice(i, Math.min(j + 1, n));
+      i = j + 1;
+      continue;
+    }
+    out += source[i];
+    i += 1;
+  }
+  return out;
+}
+
 // A marker is [name, regex]. Names are reported, so a tag can be argued with.
 const MODERN_MARKERS = Object.freeze([
   ['task.*', /\btask\s*\.\s*(?:wait|spawn|delay|defer|cancel)\s*\(/g],
@@ -107,24 +180,32 @@ export const ERA_MIN_EVIDENCE = 5;
 
 /**
  * @param {{path: string, source: string}[]} files
+ * @param {{repo?: string}} [opts]  the checkout's own repo name, e.g. `Sleitnick__Knit`
  * @returns {{engineEra: string, libraries: string[], deprecatedPatterns: object[],
  *            suppressed: object[],
  *            evidence: {modern: number, legacy: number, legacyShare: number|null}}}
  */
-export function tagDomain(files = []) {
+export function tagDomain(files = [], { repo = '' } = {}) {
   let modern = 0;
   let legacy = 0;
   const legacyByMarker = new Map();
   const libraries = new Set();
-  const definesConnect = files.some((file) => DEFINES_CONNECT.test(String(file?.source ?? '')));
+  const definesConnect = files.some(
+    (file) => LUAU_FILE.test(String(file?.path ?? '')) && DEFINES_CONNECT.test(String(file?.source ?? '')),
+  );
   const suppressed = [];
 
   for (const file of files) {
     const source = String(file?.source ?? '');
     if (!source) continue;
 
-    const m = tally(source, MODERN_MARKERS);
-    const l = tally(source, LEGACY_MARKERS);
+    // Era is a claim about Luau. A `.ts`, `.js` or `.d.ts` file in a Roblox repo is
+    // tooling or typings, and its `wait(` is not the engine's.
+    const isLuau = LUAU_FILE.test(String(file?.path ?? ''));
+    const code = isLuau ? stripLuauComments(source) : '';
+
+    const m = tally(code, MODERN_MARKERS);
+    const l = tally(code, LEGACY_MARKERS);
     modern += m.total;
     for (const { marker, count } of l.hit) {
       if (marker === 'lowercase-connect' && definesConnect) {
@@ -137,7 +218,20 @@ export function tagDomain(files = []) {
       entry.count += count;
       if (file.path && entry.files.length < 5) entry.files.push(file.path);
     }
-    for (const [name, re] of LIBRARY_MARKERS) if (re.test(source)) libraries.add(name);
+    // Same scoping as the era markers: a `require(` inside a doc comment is a usage
+    // example, and a `.ts` import is not a Luau require.
+    for (const [name, re] of LIBRARY_MARKERS) if (re.test(code)) libraries.add(name);
+  }
+
+  //[[ §1 defines this tag as "which library/libraries it BELONGS TO", and require-shape
+  //   cannot see that a repository IS the library — `Sleitnick/Knit` has no
+  //   `require(...Knit)` in its own runtime code, only in a fenced example inside a doc
+  //   comment, so once comments stopped being counted Knit stopped belonging to knit.
+  //   The repo name is the decidable half of "belongs to", and it is checked against the
+  //   SAME marker vocabulary so a checkout cannot invent a library nothing else knows. ]]
+  if (repo) {
+    const own = String(repo).split(/__|\//).pop().toLowerCase();
+    for (const [name] of LIBRARY_MARKERS) if (name === own) libraries.add(name);
   }
 
   const total = modern + legacy;

@@ -243,11 +243,32 @@ function tally(records) {
   return { total: Object.keys(records).length, resolved, errored, byClass, byKind, byCategory };
 }
 
+/**
+ * argv -> the options `run()` takes.
+ *
+ *[[ Exported so it can be TESTED, because the defect it now guards lived entirely in
+ *   this mapping. `includeRegistry` was a parameter of `run()` from the day the
+ *   enumerator landed, and the CLI called `run({ force, limit })` — so the 1,082
+ *   enumerated registry candidates were reachable only from a test file. The gate that
+ *   blocked was measured and reported as "1,020 candidates unresolved", which reads as
+ *   a scale problem and was a dropped argument.
+ *
+ *   It is the same shape as five design checks that existed, had passing tests, and
+ *   were not exported from their package: the capability was real, complete, and
+ *   unreachable. Neither the unit tests nor the integration run could see it, because
+ *   the only thing wrong was the sentence that connects them. ]]
+ */
+export function optionsFromArgv(argv = []) {
+  const limArg = argv.find((a) => a.startsWith('--limit='));
+  return {
+    force: argv.includes('--force'),
+    limit: limArg ? Number(limArg.split('=')[1]) : Infinity,
+    includeRegistry: argv.includes('--registry'),
+  };
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const force = process.argv.includes('--force');
-  const limArg = process.argv.find((a) => a.startsWith('--limit='));
-  const limit = limArg ? Number(limArg.split('=')[1]) : Infinity;
-  run({ force, limit }).then((s) => {
+  run(optionsFromArgv(process.argv.slice(2))).then((s) => {
     console.log('\n=== counts ===');
     console.log(JSON.stringify(s.counts, null, 2));
   });

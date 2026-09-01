@@ -90,7 +90,7 @@
       "deprecatedPatterns": [
         {
           "pattern": "bare-wait",
-          "count": 10,
+          "count": 9,
           "files": [
             "ProfileTest.server.lua"
           ]
@@ -128,13 +128,6 @@
           "files": [
             "src/Signal.spec.lua"
           ]
-        },
-        {
-          "pattern": "bare-wait",
-          "count": 1,
-          "files": [
-            "typings/Signal.d.ts"
-          ]
         }
       ],
       "qualityScore": 0.9167,
@@ -159,10 +152,10 @@
       "libraries": [],
       "engineEra": "unknown",
       "deprecatedPatterns": [],
-      "qualityScore": 0.3333,
+      "qualityScore": 0.5833,
       "qualityComponents": {
         "licensed": true,
-        "clean": false,
+        "clean": true,
         "tested": false,
         "documented": false,
         "currentEra": null,
@@ -255,16 +248,7 @@
       "similarity": 0.08333333333333333,
       "libraries": [],
       "engineEra": "unknown",
-      "deprecatedPatterns": [
-        {
-          "pattern": "bare-wait",
-          "count": 3,
-          "files": [
-            "README.md",
-            "src/CameraShaker/init.lua"
-          ]
-        }
-      ],
+      "deprecatedPatterns": [],
       "qualityScore": 0.6667,
       "qualityComponents": {
         "licensed": true,
@@ -359,16 +343,7 @@
       "similarity": 0.08333333333333333,
       "libraries": [],
       "engineEra": "unknown",
-      "deprecatedPatterns": [
-        {
-          "pattern": "bare-wait",
-          "count": 3,
-          "files": [
-            "README.md",
-            "src/init.lua"
-          ]
-        }
-      ],
+      "deprecatedPatterns": [],
       "qualityScore": 0.6667,
       "qualityComponents": {
         "licensed": true,
@@ -392,15 +367,7 @@
         "testez"
       ],
       "engineEra": "modern",
-      "deprecatedPatterns": [
-        {
-          "pattern": "bare-wait",
-          "count": 1,
-          "files": [
-            "lib/init.lua"
-          ]
-        }
-      ],
+      "deprecatedPatterns": [],
       "qualityScore": 0.8571,
       "qualityComponents": {
         "licensed": true,
@@ -445,6 +412,7 @@
       "divergentFrom": "3a608f5742f09f4b487d8bd2055447fb8fbe628d8d8ea8522815faad73bc154d",
       "similarity": 0.01,
       "libraries": [
+        "janitor",
         "maid",
         "promise"
       ],

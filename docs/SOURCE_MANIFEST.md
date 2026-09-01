@@ -16,14 +16,14 @@ that stopped partway.
 
 ## 1. The corpus
 
-289 sources discovered, 170 resolved.
+1240 sources discovered, 1019 resolved.
 
 | classification | sources | share |
 | --- | --- | --- |
-| `UNCLEAR_QUARANTINE` | 169 | 58 % |
-| `COMMERCIAL_REUSABLE` | 109 | 38 % |
-| `COPYLEFT` | 9 | 3 % |
-| `ATTRIBUTION_REQUIRED` | 2 | 1 % |
+| `COMMERCIAL_REUSABLE` | 769 | 62 % |
+| `UNCLEAR_QUARANTINE` | 409 | 33 % |
+| `COPYLEFT` | 60 | 5 % |
+| `ATTRIBUTION_REQUIRED` | 2 | 0 % |
 
 `UNCLEAR_QUARANTINE` is the largest class and that is the honest outcome, not a backlog.
 The corpus classification found that of the free cartoon UI kits and low-poly world packs in the
@@ -37,31 +37,40 @@ quarantined and stay quarantined until evidence exists.
 checkout's **own LICENSE file**, independently of what classification decided; a disagreement
 would appear here as a conflict rather than be resolved silently.
 
-| checkout | licence | sha | security | rules extracted |
-| --- | --- | --- | --- | --- |
-| `Crabzzai__SimpleDialogue` | MIT | `25bb85f5e1` | clean | 6 |
-| `Diabetoss__NotificationSystem` | MIT | `38a47898a2` | clean | 4 |
-| `LolplePlays__framer` | Apache-2.0 | `ca5886eab1` | clean | — |
-| `MadStudioRoblox__ProfileService` | Apache-2.0 | `d736800444` | clean | — |
-| `Reselim__Flipper` | MIT | `41380da192` | clean | 7 |
-| `Roblox__creator-docs` | CC-BY-4.0 | `529a24ff2a` | clean | 16 |
-| `Roblox__otter` | MIT | `ffcb1be528` | clean | 8 |
-| `SirMallard__Iris` | MIT | `801973f1c3` | clean | 8 |
-| `Sleitnick__Knit` | MIT | `bb1ecf3dea` | clean | — |
-| `Sleitnick__RbxCameraShaker` | MIT | `1541209938` | clean | 5 |
-| `Starstruck-Studios-Developers__framer` | Apache-2.0 | `fe07a202d9` | clean | — |
-| `afrxo__roblox-agent-skills` | MIT | `ff50be7a8a` | clean | 4 |
-| `chriscerie__roact-spring` | MIT | `0334ee5d9d` | clean | 7 |
-| `ddust1n__CameraShaker` | MIT | `d4ab467eea` | clean | — |
-| `evaera__roblox-lua-promise` | MIT | `031d429c82` | clean | — |
-| `gcaptn__cyan-ui` | MIT | `11cfcedd77` | clean | 3 |
-| `howmanysmall__Janitor` | MIT | `47acf39d7b` | clean | — |
-| `loneka__onyx-ui` | MIT | `978b53c5e1` | clean | 5 |
-| `luau-lang__site` | MIT | `81c1c1858c` | clean | — |
-| `nightcycle__synthetic` | Apache-2.0 | `1a0c0d5bb1` | clean | 7 |
-| `stravant__goodsignal` | MIT | `99497c8cd6` | clean | — |
-| `tijnepema__lucide-roblox` | MIT | `793dcaedc8` | clean | 7 |
-| `zhsj0089944__roblox-free-assets.skill` | MIT | `f48d055028` | clean | 3 |
+**era** is decided by the density of dated engine markers, not by their presence — a maintained
+library with one five-year-old `wait()` is not legacy, and `—` means the checkout gave too
+little evidence either way rather than that it passed. **quality** scores engineering hygiene —
+tested, typed, documented, licensed, CI-gated, current — and deliberately not whether the patterns
+inside are good ones; stars and forks are excluded, because popularity already enters retrieval
+ranking and counting it twice while calling the second count quality is how a score stops meaning
+anything. **deprecated** counts dated constructs found, and is reported even where the era reads
+modern, because a summary is not a suppression.
+
+| checkout | licence | security | era | quality | deprecated | rules |
+| --- | --- | --- | --- | --- | --- | --- |
+| `Crabzzai__SimpleDialogue` | MIT | clean | modern | 0.86 | — | 6 |
+| `Diabetoss__NotificationSystem` | MIT | clean | — | 0.67 | — | 4 |
+| `LolplePlays__framer` | Apache-2.0 | clean | modern | 0.93 | — | — |
+| `MadStudioRoblox__ProfileService` | Apache-2.0 | clean | modern | 0.79 | 9 | — |
+| `Reselim__Flipper` | MIT | clean | — | 0.92 | 1 | 7 |
+| `Roblox__creator-docs` | CC-BY-4.0 | clean | — | 0.58 | — | 16 |
+| `Roblox__otter` | MIT | clean | modern | 0.93 | — | 8 |
+| `SirMallard__Iris` | MIT | clean | modern | 0.93 | — | 8 |
+| `Sleitnick__Knit` | MIT | clean | modern | 0.93 | — | — |
+| `Sleitnick__RbxCameraShaker` | MIT | clean | — | 0.67 | — | 5 |
+| `Starstruck-Studios-Developers__framer` | Apache-2.0 | clean | — | 0.92 | — | — |
+| `afrxo__roblox-agent-skills` | MIT | clean | modern | 0.79 | — | 4 |
+| `chriscerie__roact-spring` | MIT | clean | modern | 1.00 | — | 7 |
+| `ddust1n__CameraShaker` | MIT | clean | — | 0.67 | — | — |
+| `evaera__roblox-lua-promise` | MIT | clean | modern | 0.86 | — | — |
+| `gcaptn__cyan-ui` | MIT | clean | modern | 0.64 | — | 3 |
+| `howmanysmall__Janitor` | MIT | clean | modern | 0.93 | — | — |
+| `loneka__onyx-ui` | MIT | clean | modern | 0.79 | — | 5 |
+| `luau-lang__site` | MIT | clean | — | 0.75 | — | — |
+| `nightcycle__synthetic` | Apache-2.0 | clean | modern | 1.00 | — | 7 |
+| `stravant__goodsignal` | MIT | clean | — | 0.67 | — | — |
+| `tijnepema__lucide-roblox` | MIT | clean | — | 0.58 | — | 7 |
+| `zhsj0089944__roblox-free-assets.skill` | MIT | clean | — | 0.67 | — | 3 |
 
 14 of 23 checkouts have had patterns extracted from them.
 The empty cells in that last column are the most useful thing in this document: a
@@ -88,7 +97,7 @@ The boundary these kinds encode is a licence boundary, not a citation style:
 
 ## 4. What has NOT been fetched
 
-87 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
+747 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
 out. They are lawful to use and currently teach nothing.
 
 | id | licence | category | url |
@@ -114,11 +123,11 @@ out. They are lawful to use and currently teach nothing.
 | `gh-raymondwzeng-simulator-in-roblox-studio` | MIT | full-game | https://github.com/raymondwzeng/Simulator-In-Roblox-Studio |
 | `gh-awesome-roblox-awesome-roblox` | CC0-1.0 | official | https://github.com/awesome-roblox/awesome-roblox |
 
-…and 67 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
+…and 727 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
 
 ## 5. Security
 
-24 of 289 sources carry a scan verdict.
+24 of 1240 sources carry a scan verdict.
 
 The ordering is load-bearing and `docs/SOURCE-INTELLIGENCE.md` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an
