@@ -482,6 +482,28 @@ the resulting transcript as clean. It was not — an empty "Building world" head
 directly above "Editing project · Set properties" — and the evidence file corrects
 that claim rather than quietly fixing the code.
 
+### The published-claims audit
+
+Every claim on the public site that the repository can settle, checked against the code
+(`evidence/2026-09-01-published-claims-audit.md`). Four wrong, six right — and the six are
+written down, because reporting only failures would make an audit look like fault-finding.
+
+| claim | verdict |
+|---|---|
+| a Plan request costs 1 spark | **wrong** — 2, from `ceil(43/30)`. In six places, plus three inside the calculator |
+| the modes are Clay, Stone, Rune | **wrong** — those are internal identities `packages/shared` forbids surfacing. 96 occurrences |
+| quota resets on a rolling 24h clock | **wrong** — `QuotaDO` fixes midnight UTC for everyone |
+| the Privacy Policy will be updated before an opt-in program exists | **wrong** — the toggle already ships. HUMAN-ONLY |
+| pairing codes: 6 chars, no O/I/L/1, 10 min, single use, case- and punctuation-insensitive | all six hold |
+| the status page checks the live API from your browser | holds — relative fetch, same origin, 200 in 145 ms |
+| our servers hold no master key | holds — no `service_role` key anywhere |
+| the plugin cannot act on places you did not connect | holds, enforced by Studio's per-DataModel plugin model |
+| deleting a project removes chat, checkpoints and pairing forever | holds — settled against Cloudflare's docs, not intuition |
+
+**Production is still serving the wrong ones.** The site is D1-backed and only changes on
+deploy; `BLOCKERS.md` records what is live and why this session did not ship it (the batch
+carries the mode rename, which is the owner's call).
+
 ### Three mistakes of mine worth keeping
 
 - A guard that flagged its own documentation, twice (the Unicode-mark check and the
