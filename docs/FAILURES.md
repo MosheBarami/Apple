@@ -239,6 +239,24 @@ since going through the setter would immediately write back what it had just rea
 The write is fire-and-forget: losing a card's state is not worth failing a run over, and the
 next transition rewrites it.
 
+#### The sweep this came from, completed
+
+F-34 and F-35 were both found by one question — *which instance fields carry something that
+outlives the instance?* — so the rest of `SessionDO`'s fields were classified rather than left
+to chance:
+
+| field | verdict |
+|---|---|
+| `opQueue`, `seq`, `pluginSeenRecently` | persisted and restored in the constructor — correct |
+| `opWaiters`, `pollWaiter`, `startGate` | in-memory by nature: promise resolvers, an open request, a concurrency latch. Nothing to persist |
+| `frames`, `frameRate` | a live ring buffer and a measurement of it. Losing them on eviction costs a few frames, which is what a ring buffer is for |
+| `currentMsgId` | **was broken — F-34** |
+| `playtestRun` | **was broken — F-35** |
+| `liveJwt` | instance-only **on purpose**, and correctly: it is the user's own JWT, its comment says it "is never written to durable storage", and its one consumer guards for absence. Persisting it to fix an eviction would be a security regression dressed as a bug fix |
+
+Two of eleven were wrong. The point of writing the table down is that the next person asking
+this question does not have to re-derive the ten that were right.
+
 ### F-31 · A helper that called itself, so every save silently dropped the transcript
 
 **Self-inflicted, this session, in `a1b0261` — the commit that fixed four criticals.** The
