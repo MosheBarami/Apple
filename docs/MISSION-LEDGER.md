@@ -459,6 +459,29 @@ candidates, most false positives, two real.
    that state honestly instead of handing the model raw SQL. Creating the tables lazily
    was refused: it would turn a loud failure into "the library has nothing like that".
 
+### The critic pass (§11 gate 3)
+
+Two adversarial passes over the session's own work, briefed separately for correctness
+and for whether the product claims more than it establishes. **Nine real defects**, two
+severe, all fixed — `evidence/2026-09-01-critic-pass-two.md`.
+
+The two severe ones were both in work I had written and documented as sound hours
+earlier:
+
+- the credits feature **500s in production**, because the read path joins the
+  `asset_library` table this same session proved does not exist — a case I had handled
+  in `search_asset_library` and not carried across;
+- the panel told **every user with a placed asset** that their game could not ship
+  commercially, because with no library every asset is unaccounted and
+  `missing_provenance` is graded a blocker. Golem never made that determination.
+
+A third was a regression from this session's own C-series split: the reducer's
+announcement suppression compared kinds, which was the right test only while the web
+vocabulary and the wire phases were one-to-one. `b2fb1f8`'s commit message described
+the resulting transcript as clean. It was not — an empty "Building world" heading sat
+directly above "Editing project · Set properties" — and the evidence file corrects
+that claim rather than quietly fixing the code.
+
 ### Three mistakes of mine worth keeping
 
 - A guard that flagged its own documentation, twice (the Unicode-mark check and the
