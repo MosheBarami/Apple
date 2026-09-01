@@ -41,7 +41,8 @@ import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
-import { trimTranscript, turnGroups } from '../transcript';
+import { trimTranscript } from '../transcript';
+import { persistWithShedding } from '../persist';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 
@@ -1032,43 +1033,13 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * Persist the run state, shedding transcript rather than dying.
    *
-   * Durable Object values are capped at 128 KiB. The old code did a bare `put` in seven places,
-   * including inside the error path — so an oversized state rejected, the catch attempted the
-   * SAME oversized put and rejected again, and the exception escaped the alarm handler. The
-   * platform then retried the alarm from the state persisted BEFORE the step, which re-ran the
-   * step's paid LLM call and re-executed its mutating tools against the user's place.
-   *
-   * The budget fix (transcript.ts now counts tool arguments) removes the ordinary route to that.
-   * This is the backstop for the extraordinary one, and it exists because the failure mode is
-   * duplicate mutation rather than a lost write: it is always better to finish a run holding
-   * less history than to hand the platform a state it will replay.
+   * The policy lives in `persist.ts` and is tested there; this supplies the storage and nothing
+   * else. It was a method here until that method was found calling ITSELF instead of storage —
+   * a bug no test could reach, because a Durable Object cannot be instantiated outside the
+   * Workers runtime. See F-31.
    */
   private async persistAgent(agent: AgentState): Promise<void> {
-    try {
-      await this.persistAgent(agent);
-      return;
-    } catch (err) {
-      // Shed the transcript down to what a run genuinely cannot continue without: the system
-      // prompt and anything pinned. `turnGroups` already knows which that is.
-      const { head } = turnGroups(agent.llm);
-      const shed: AgentState = { ...agent, llm: head, seenCalls: [], lastCalls: [], trace: agent.trace.slice(-10) };
-      try {
-        await this.ctx.storage.put('agent', shed);
-        console.warn('[session] agent state too large; persisted without transcript', String(err).slice(0, 200));
-        return;
-      } catch (err2) {
-        // Nothing about this run is recoverable, so record the smallest possible terminal state
-        // rather than letting the alarm die and be retried.
-        await this.ctx.storage.put('agent', {
-          ...shed,
-          llm: [],
-          trace: [],
-          status: 'idle',
-          finalText: 'This run was stopped because its state grew too large to save.',
-        } satisfies AgentState);
-        console.warn('[session] agent state unsaveable even when empty', String(err2).slice(0, 200));
-      }
-    }
+    await persistWithShedding((value) => this.ctx.storage.put('agent', value), agent);
   }
 
   private async finishRun(

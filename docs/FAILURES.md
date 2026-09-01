@@ -162,6 +162,49 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 
 ---
 
+### F-31 · A helper that called itself, so every save silently dropped the transcript
+
+**Self-inflicted, this session, in `a1b0261` — the commit that fixed four criticals.** The
+whole point of that commit's `persistAgent` was to centralise seven bare `storage.put` calls
+behind one shedding-aware helper. What it centralised was this:
+
+```ts
+private async persistAgent(agent: AgentState): Promise<void> {
+  try {
+    await this.persistAgent(agent);   // itself, not storage
+    return;
+  } catch (err) {
+    // ...shed the transcript and put...
+```
+
+Entering an async function runs synchronously until its first await *operand* is evaluated,
+and the operand here is the recursive call — so it recursed until the stack overflowed. The
+`RangeError` landed in the shedding path, which dutifully saved the run **without its
+transcript**. Every step. Silently. Behind a `console.warn` reading *"agent state too large;
+persisted without transcript"*, which looks like a known, benign, size-related condition.
+
+The user-visible symptom would have been an agent that forgets the conversation between
+steps — read as a model quality problem, not a storage bug.
+
+**Why nothing caught it.** `SessionDO extends DurableObject` and cannot be instantiated
+outside the Workers runtime, so the policy sat where no test could reach it. 1,416 passing
+tests, `tsc --noEmit` clean, CI green: none of them could see it, and a reviewer reading the
+diff sees a plausible-looking try/catch whose comment describes exactly the right behaviour.
+
+**Fix:** the policy moved to `src/persist.ts` and takes its `put` as an argument, which makes
+it ordinary code with ordinary tests. `persistAgent` on the DO is now one line that supplies
+storage and nothing else. It also returns `'full' | 'shed' | 'terminal'`, because the old
+`void` made a healthy save and a degraded one indistinguishable to everything except a human
+reading console output.
+
+**Verified against the bug, not just against the fix.** The defect was reintroduced into a
+copy of the module and the suite re-run: **8 of 8 tests fail**; against the fix, 8 of 8 pass.
+
+**What this says about the session.** Three of the five defects found by writing tests
+(F-29, F-30, F-31) are cases where working-looking code did nothing, and F-31 was written by
+the same pass that was fixing critical bugs. Reviewing a diff is not the same as running it,
+and neither is a green suite that cannot reach the code in question.
+
 ### F-30 · A Studio spec that appeared to cover the softening and never reached it
 
 Three tests asserted that an unreachable DataStore stays playable in Studio. All three
