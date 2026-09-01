@@ -70,9 +70,12 @@ closed or explicitly rejected, with 78 Luau tests and 20 mutations behind it).
 
 The worker's source changed substantially this session — `persist.ts`, `stop-signal.ts`,
 `single-flight.ts` and `session.ts`, including a Durable Object concurrency change. It
-typechecks and its tests pass, and **it has not been deployed.** Deploying is outward-facing
-and touches the live service, so it is left for the owner rather than done unattended. Nothing
-in the repository depends on it having happened.
+typechecks, its tests pass, and `wrangler deploy --dry-run` bundles it cleanly with every
+binding resolved — so "ready to deploy" is verified rather than assumed. **It has not been
+deployed.** Deploying is outward-facing and touches the live service, so it is left for the
+owner rather than done unattended. Nothing in the repository depends on it having happened.
+
+    cd apps/worker && npx wrangler deploy
 
 ## Rejected experiments (kept so they are not retried)
 
