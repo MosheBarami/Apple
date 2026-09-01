@@ -409,6 +409,87 @@ Confirmed in the live game, not only in the spec: using a flare with an empty pa
 `NOTHING TO SELL` and left the stock at 2. Two mutations guard the ordering, because it is
 exactly the shape a later refactor "tidies" back into the house order.
 
+### F-39 · The facet rewrite: the machinery is right and the picture is not
+
+The fifth attempt at gate 2 ("the orange/red perimeter is visibly repeated rectangular blocks").
+It is recorded here **while still unproven**, because the honest state of it is the useful part.
+
+#### The diagnosis, which I still believe
+
+Every previous attempt changed the wall's SILHOUETTE or its material and left its SHADING alone.
+With `batter = -rand(0.035, 0.115)` and yaw at most ±7°, every authored face in the ring sat
+between 2.0° and 6.6° off vertical — Lambert `N·L` in [0.556, 0.624], an **11 % band across a
+500-stud surface**. That is a flat panel with lines drawn on it, whatever its outline does.
+
+It also explains F-33 better than F-33's own entry does. Raising the batter to 5.7–12.6° moved
+`N·L` to [0.612, 0.702]: the **mean rose 15 % and the spread stayed 15 %**. Every face brightened
+together, so nothing separated from anything. That is the general trap for any change that
+adjusts one shared parameter across all faces, and it is worth naming.
+
+#### What was built
+
+A facet vocabulary — `WedgePart` / `CornerWedgePart` / `Block` over ±32° yaw, −22°..+38° pitch,
+±18° roll — drawn from a shuffled five-archetype deck with adjacency repair, standing forward of
+a buried sealing course by a per-segment standoff so the wall's plan meanders. Pitch comes from a
+per-archetype **ladder**, not an independent draw, because a wide range sampled independently
+still produces near-identical neighbours.
+
+Axis conventions were **measured, not assumed** (F-14 was exactly a wrong guess about a wedge's
+local axes): raycasting a 12-stud cube of each from above on a 5×5 lattice shows a `WedgePart` is
+thin on its LookVector side and full behind it, and a `CornerWedgePart`'s apex is at +X on the
+LookVector side.
+
+#### What is genuinely proven
+
+| | before | after |
+|---|---|---|
+| stream fingerprint | `0.35833105581491947` | **identical** |
+| world primitives | 513 | 485 |
+| Cliffs primitives | 164 | 136 |
+| dominance ratio | 1.37 | 1.32 (gate is 1.25) |
+| floor-level breaches | 1 | **0** |
+| cliff albedo spread | one of 3 band tones | 58 % meadow / 91 % frost |
+
+The fingerprint is the one that matters most. A wall this different consumed the shared seeded
+stream **bit-identically**, so every before/after comparison in this entry is a comparison of one
+variable. That was achieved by keeping every draw site in place and routing the retired
+geometry's arguments through `discard`, rather than by extracting a program table — the draw
+sequence has three short-circuits in it and any one transcribed wrongly is F-32 again, silently.
+
+#### What is NOT proven, and this is the point
+
+**The picture did not improve.** Five captures from the canonical `meadow-wall` camera, across
+five iterations, and the wall still reads as a large flat red panel. The first iteration was
+visibly WORSE than what it replaced. Three real defects were found by looking rather than by
+measuring, and each is recorded on the code that caused it:
+
+1. The seal kept `courseFraction[1]` = 0.46 from a construction where it was the bottom of a
+   stack. With the stack gone, TALUS and BREACH segments left the wall a 16-stud band.
+2. `BREACH` sized against the saddle's own reduced height, so its shoulders finished **below**
+   the sill they were opening — the notch was hidden behind the thing it notched.
+3. `TALUS` as a whole outer-ring segment is a long low mass, and the deck dealt two side by side
+   on the most-photographed stretch of the world.
+
+All three are fixed. The wall is now taller, encloses better, costs less and has real albedo
+variation — and from the canonical camera it is at best marginally different.
+
+#### The lesson, which is the reason this entry exists
+
+The design plan's central number was `N·L`, and `N·L` is not the pixel. This world runs
+`OutdoorAmbient (146,152,158)`, `Ambient (112,116,122)` and `EnvironmentDiffuseScale 0.55` under
+`Brightness 3`; that ambient floor compresses a 9.5× geometric spread into something far flatter
+on screen. The plan flagged this risk and then reasoned past it, and so did I — for four
+iterations, while every metric in the pass improved.
+
+Baking the pitch into the **albedo** was the response, and it is measurable (58 %/91 % value
+spread) and still not sufficient. What the evidence now points at is that a few large tilted
+quads do not read as rock at this scale whatever their tone; low-poly rock reads through **many
+smaller facets with visible tonal steps between them**.
+
+§5 of the owner's ruling is explicit that gate 40 may not be argued upward from metrics. This
+entry is that rule applied to my own work: better numbers, no better picture, and the gate stays
+where it was.
+
 ### F-38 · `clampText` has never clamped anything, in 105 places
 
 Two copies of this helper, plus a third inline in `Panels`, all wrote:

@@ -2,155 +2,18 @@
 --[[
 	Crystal Canyon — deterministic edit-time world builder.
 
-	Run this as a plain chunk from the Studio command bar (or a build plugin) in
-	EDIT mode. It is not a ModuleScript and returns nothing; it does its work on
-	execution and prints a summary — including the four-way part split, which is
-	the number successive revisions of this file are measured against.
+	Run this as a plain chunk from the Studio command bar (or a build plugin) in EDIT mode. It
+	is not a ModuleScript and returns nothing; it does its work on execution and prints a
+	summary — including the four-way part split, which is the number successive revisions of
+	this file are measured against.
 
-	=========================================================================
-	WHAT CHANGED, AND WHY — REVISION 4, THE GENERATED-GEOMETRY PASS
-	=========================================================================
+	THE REVISION HISTORY LIVES IN docs/WORLD-BUILDER-HISTORY.md, not here. It was four
+	revisions of narrative at the top of a file that is already at Studio's 200 000-character
+	ceiling for assigning `Source` from a script — which is a real build limit, not a style
+	preference: the loader physically cannot install this file once it passes it. What remains
+	below is the part a reader has to have in front of them to change anything safely.
 
-	Revision 3 (the style-coherence pass, documented in full below) was reviewed
-	and two failures survived it. Both are failures of GEOMETRY rather than of
-	palette or placement, and both were unfixable with the vocabulary revision 3
-	had, which was `box`, `wedge` and a curated shelf of third-party props:
-
-	  E. THE PRIMARY LANDMARK. "tall rectangular crystal columns + stacked
-	     rectangular pedestal … still resembles a primitive blockout. It is the
-	     PRIMARY landmark and needs the highest visual quality in the map."
-	  C. THE CANYON WALLS. "visibly constructed from repeated rectangular blocks
-	     … still reads as prototype terrain. Do NOT solve by merely adding more
-	     bricks."
-
-	E is answered with a mesh this project GENERATED — Roblox GenerationService
-	(Cube), prompted for this world. C is answered with curated rock meshes,
-	AFTER the generated answer to it was rejected in-world.
-
-	That split is the finding of this revision, and it is worth stating plainly:
-	generation is not the constraint, STYLE COHERENCE is. Six of nine Cube
-	generations were rejected in total — three on their own render, three more
-	once they were seen standing in the world. A Cube mesh arrives textured, and
-	a textured mesh cannot be tinted into a flat-shaded palette, so it either
-	happens to already be in the world's language or it cannot be made to be.
-	The geode happens to be. The mesas were not. See § "THE CUBE FAMILIES".
-
-	  E. The crown of the monument is the accepted giant crystal geode — one
-	     silhouette, every shard growing from one rocky base. The dais underneath
-	     stays, because a stepped octagonal drum of radial ashlar is a plinth and
-	     that half of the criticism was already answered. The collar of authored
-	     box shards around it becomes the cyan Cube collectible. The monument is
-	     still the tallest thing in the map by a clear margin, and the summary now
-	     MEASURES that ratio off the built geometry instead of asserting it.
-	  C. The large masses along the canyon wall are BOULDER MASSES: two or three
-	     curated low-poly rock meshes at a new `cliff` scale tier, standing
-	     against the outward face with the tallest carrying the silhouette. Such
-	     a segment spends FEWER authored parts than a plain one, not more: the
-	     slabs are demoted to sealing the ring at ground level and connecting one
-	     mass to the next, which is what they are actually good at.
-
-	     THIS WAS CUBE CLIFF MODULES FIRST, AND THEY WERE REJECTED IN-WORLD.
-	     Three generated mesas were accepted on their own renders and failed the
-	     moment they stood in the canyon: strata banding that reads as geology at
-	     asset scale reads as a candy stripe against flat-shaded vertex-coloured
-	     rock, and a barber-pole tower on a block wall answers "reads as
-	     prototype terrain" worse than the wall did. A textured mesh also cannot
-	     take the biome tint, which is why that version had to be meadow-only and
-	     left the frost wall untouched. The rock mesh is untextured, so it tints,
-	     so BOTH walls get the relief. See CUBE_FAMILIES for the full rejection.
-
-	  Also: the upgrade pad finally has an upgrade KIOSK, which was one of the
-	  five families the Creator Store search came back empty on.
-
-	Two rules govern every Cube placement, and both follow from the fact that a
-	generated mesh is TEXTURED and so cannot be tinted:
-
-	  * THEY GO WHERE THEIR OWN COLOURS ALREADY BELONG. The geode and the cyan
-	    crystal read as crystal accents and are correct in either half of the
-	    map. Nothing else generated survived this rule: it is what disqualified
-	    the rust mesas, which could only ever have been canyon-only, and it is
-	    the reason a Cube asset can be right for a landmark and wrong for a
-	    hundred metres of wall. Contamination is prevented by placement here
-	    rather than by paint, because paint is not available.
-	  * THEY ARE NOT ON THE CURATED ALLOWLIST AND MUST NOT BE. `CURATED` decides
-	    which results of a keyword search may stand in this world; these were
-	    commissioned for it and vetted by rendering. Worse, `curatedFor` reads a
-	    name's trailing digits as a Creator Store asset id, and these are named
-	    `<family>_cube_1..3` — they would match ids 1, 2 and 3, be culled, and be
-	    reported as unvetted acquisitions. The allowlist is untouched and still
-	    governs the eight third-party families.
-
-	=========================================================================
-	WHAT CHANGED, AND WHY — REVISION 3, THE STYLE-COHERENCE PASS
-	=========================================================================
-
-	Revision 1 built 608 primitives and was rejected as a blockout. Revision 2
-	replaced the props with a curated Creator Store palette; that was accepted as
-	a real improvement and rejected again for a DIFFERENT reason:
-
-	    "the world reads too much like multiple unrelated free assets placed
-	     into one map"
-
-	The failure moved from "no asset vocabulary" to "no style coherence", and the
-	named hard fails were specific: giant green slabs at eye height, lime-green
-	trees standing in the snow, a canyon wall of repeated rectangles, red spheres
-	on the cliff tops, a blockout landmark, props that disagree about scale, and
-	raw grey imported meshes.
-
-	Each of those is answered here by a STRUCTURE, not by a convention, because a
-	convention is what failed: the previous file had the right intentions written
-	in comments and still put a lime tree in the snow, because any call site
-	could pass its own `tint` and its own `scale`.
-
-	  1. BIOME ART BIBLES (§ "BIOME ART BIBLES" below). Two biomes are declared as
-	     data: allowed vegetation families, a tint per material role, and the
-	     cliff tones. `biomeAt(x, z)` resolves one from position, and it is the
-	     ONLY path — `pick()` resolves the family through the biome and `place()`
-	     takes the tint from the biome. There is no `tint` parameter on any prop
-	     call any more, and `tree_round` is not an allowed family in the frost
-	     biome, so it is substituted for a pine before a clone is ever drawn.
-	     Writing one more prop() call cannot put a warm-green tree in the snow.
-
-	  2. PLAYER-RELATIVE SCALE TIERS. Placements ask for a NAMED TIER — micro,
-	     small, player, large, sapling, tree, landmark — expressed in studs of
-	     finished height, and the builder solves the scale factor from the clone's
-	     own extents. No call site sets a raw scale factor. A rock and a crate
-	     that both ask for `player` come out the same height whatever their source
-	     mesh measured, which is the direct fix for "trees, rocks, fences, crates
-	     disagree strongly in scale".
-
-	  3. EVERY CLONE IS TINTED INTO ITS BIOME. MeshPart.Color only takes effect
-	     where TextureID is empty, so a textured mesh cannot be recoloured. The
-	     loader measures that per member (`isTintable`) and each biome declares,
-	     per family, whether a textured member is admissible. Frost admits none —
-	     a texture authored for a temperate tree is off-palette in snow. The
-	     canyon admits textured FOLIAGE only, because green-on-brown foliage art
-	     is already the canyon's palette; every hard-surface family (rock, fence,
-	     sign, crate, crystal) is tintable-only in both biomes, which is what
-	     makes a raw grey imported fence impossible rather than merely unlikely.
-
-	  4. GUIDANCE IS PAINTED, NOT FLOWN. The floating slab arrows are deleted.
-	     Route reading is now chevrons painted flat ON the road, a lit edge trim
-	     along both verges, and low marker posts at ~6 studs. See § 9.
-
-	  5. CANYON WALLS ARE MASSIFS. Fewer, longer masses; a sealing base course
-	     with irregular offset courses above it; every stack ramp-capped; eroded
-	     saddles cut deliberately into the run; talus AND biome vegetation at the
-	     foot so the wall never meets the ground in a straight seam. The ball
-	     "crowns" that read as red eggs on the skyline are gone.
-
-	  6. THE LANDMARK IS BUILT, NOT BLOCKED OUT. The pedestal is a stepped
-	     octagonal dais of radial ashlar segments with a chamfer course, not two
-	     squares per tier; the spire is a seven-level tapering faceted shaft with
-	     a twist per level, not three rectangular columns. The Glacier Heart uses
-	     the same dais builder so the two landmarks read as one civilisation.
-
-	  7. THE PALETTE IS CULLED, HARD. 26 members down to 15, curated by an
-	     explicit allowlist in this file (so the cull survives whatever happens to
-	     ServerStorage) and recorded with a reason per exclusion in
-	     assets/palette.json. Fewer and coherent beats more and mixed.
-
-	Two properties this file has always guaranteed and still does:
+	TWO PROPERTIES THIS FILE GUARANTEES.
 
 	1. IDEMPOTENT. It destroys Workspace.Canyon before rebuilding, so running it
 	   twice never doubles the geometry. Anything it touches outside that folder
@@ -364,6 +227,129 @@ local function wedge(parent: Instance, name: string, size: Vector3, cf: CFrame, 
 	buckets[currentBucket] += 1
 	track(cf.Position, size)
 	return p
+end
+
+--[[ EVALUATES ITS ARGUMENTS AND EMITS NOTHING.
+
+	 This exists for one job and it is worth stating plainly, because a function that
+	 deliberately throws away its work looks like a mistake.
+
+	 `Build.luau` is deterministic from ONE seeded stream. Adding or removing a single `rand()`
+	 re-rolls every draw after it and rebuilds the entire world differently — F-32, which cost
+	 an afternoon and was caught only because a part count happened to move. So when a piece of
+	 geometry is RETIRED, its draws must stay: the chamfer, the ramp cap, the broken crest and
+	 the buttress are all gone from the wall, and every `rand()` that used to size them still
+	 runs, in the same order, with the same arguments.
+
+	 Those draws sit inside the emission calls' own argument lists, so the way to keep them is to
+	 keep the call and change where it goes. Lua evaluates arguments left to right before the
+	 call, so routing them here consumes the stream identically and builds nothing. The stream
+	 fingerprint printed at the end of the build is what proves it.
+
+	 The alternative — extracting the draws into a program table and replaying it — is where
+	 parity would actually be lost: the sequence has three short-circuits in it, and any one
+	 transcribed wrongly is F-32 again, silently. ]]
+--[[ THE CLIFF VOCABULARY LIVES IN ONE TABLE, and the reason is a hard Luau limit rather than
+	 taste: a chunk gets 200 local registers per scope, this file runs as one top-level chunk,
+	 and it was already at the ceiling. Adding the facet helpers, the deck and the archetype
+	 builder as ten more top-level locals failed to compile with "Out of local registers".
+
+	 So they are fields of `CW`. If this file grows another subsystem, do the same thing rather
+	 than hunting for a local to delete — and note the other ceiling, in the header: 200 000
+	 characters of `Source`. ]]
+local CW = {}
+function CW.discard(...: any) end
+
+--[[ CornerWedgePart: a triangular silhouette from TWO horizontal directions at once, which is
+	 the one thing a WedgePart cannot give. Used for the hoodoo caps, where the skyline needs a
+	 genuine point rather than a ridge.
+
+	 AXIS CONVENTION, MEASURED RATHER THAN ASSUMED. The ramp-cap bug (F-14) was exactly a wrong
+	 guess about a WedgePart's local axes, and CornerWedgePart is less well understood again, so
+	 both were probed in Studio by raycasting a 12-stud cube of each from above and reading the
+	 top surface height on a 5x5 lattice:
+
+	   WedgePart, identity CFrame (LookVector = local -Z):
+	     thin (h=1) at local z = -5, full (h=11) at local z = +5, UNIFORM across x.
+	     => the slope runs along local Z and descends TOWARD the LookVector.
+	     => under `CFrame.lookAt(centre, centre + outward)` a wedge is thin on the OUTWARD side
+	        and full behind it: a scree slope facing the player. Rotate 90 degrees about Y to
+	        put the slope along the run instead.
+
+	   CornerWedgePart, identity CFrame:
+	     apex (h=11) at local (x = +5, z = -5); falls to h=1 along both -X and +Z.
+	     => the point is on the LookVector side, at the +X (RightVector) corner.
+
+	 The existing `wedge` comment above describes the OLD convention and is left alone because
+	 the ramp cap it documents is gone; this one is the measured truth. ]]
+function CW.cornerWedge(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3): CornerWedgePart
+	local p = Instance.new("CornerWedgePart")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	p.Anchored = true
+	p.CanCollide = true
+	p.CanTouch = false
+	p.Parent = parent
+	partCount += 1
+	buckets[currentBucket] += 1
+	track(cf.Position, size)
+	return p
+end
+
+--[[ ONE ORIENTED FACET — the primitive the whole wall rewrite is built from.
+
+	 `pitch` is SIGNED and it is the lever that matters. Positive leans the outward face BACK
+	 (its top tips away from the player, so the normal tilts up toward the sun); negative
+	 OVERHANGS, which the old construction could not express at all.
+
+	 Why orientation and not silhouette. `Lighting` is ClockTime 14, GeographicLatitude 12, so
+	 the sun sits at elevation ~58 degrees (sin e = cos12 * cos30 = 0.847). For a face tilted t
+	 back from vertical at azimuth offset d from the sun:
+
+	     N·L = cos(58) * cos(d) * cos(t)  +  sin(58) * sin(t)
+	         = 0.530 * cos(d) * cos(t)    +  0.848 * sin(t)
+
+	 Every authored face in the old wall was `batter = -rand(0.035, 0.115)` with yaw at most
+	 +/-7 degrees: t in [2.0, 6.6] degrees, so N·L in [0.556, 0.624] — an ELEVEN PERCENT range
+	 across a 34-stud-tall, 500-stud-long surface. That is a flat panel with lines drawn on it,
+	 and it is what "stacked rectangular blocks" was describing.
+
+	 It also explains F-33, whose recorded reason was incomplete. Raising the batter to
+	 5.7..12.6 degrees moved N·L to [0.612, 0.702]: the MEAN rose 15% and the SPREAD stayed at
+	 15%. Every face brightened together, so nothing separated from anything. That is the general
+	 trap for any change that adjusts one shared parameter across all faces.
+
+	 The ranges here — yaw +/-32, pitch -22..+38, roll +/-18 — put N·L in [0.10, 0.94].
+
+	 HONESTY ABOUT WHAT THAT NUMBER IS. N·L is the geometric term, not the delivered pixel.
+	 This world has OutdoorAmbient (146,152,158), Ambient (112,116,122) and
+	 EnvironmentDiffuseScale 0.55, so the ambient floor compresses a 9.5x N·L range into
+	 something much smaller on screen. The metric is a DESIGN TOOL that says which direction to
+	 move and roughly how far; it is not evidence, and no claim about this wall should be made
+	 from it. The evidence is player-eye pixels and a fresh critic. ]]
+function CW.facet(
+	parent: Instance,
+	name: string,
+	kind: string, -- "block" | "wedge" | "corner"
+	size: Vector3,
+	centre: Vector3,
+	outward: Vector3,
+	yawDeg: number,
+	pitchDeg: number,
+	rollDeg: number,
+	color: Color3
+): BasePart
+	local cf = CFrame.lookAt(centre, centre + outward)
+		* CFrame.Angles(math.rad(pitchDeg), math.rad(yawDeg), math.rad(rollDeg))
+	if kind == "wedge" then
+		return wedge(parent, name, size, cf, color)
+	elseif kind == "corner" then
+		return CW.cornerWedge(parent, name, size, cf, color)
+	end
+	return newPart(parent, name, size, cf, color, true)
 end
 
 --[[ Floating world label. The style spec's outline rule (§2) is not a UI-only
@@ -1915,79 +1901,49 @@ end
 -- =========================================================================
 -- 4. CLIFFS
 -- =========================================================================
---[[ Named hard fail: "the orange/red perimeter is visibly repeated rectangular
-	 blocks. Reads as prototype terrain. Do NOT fix by adding more bricks."
+--[[ THE CANYON WALL. Named hard fail: "the orange/red perimeter is visibly repeated
+	 rectangular blocks. Reads as prototype terrain. Do NOT fix by adding more bricks."
 
-	 The previous run was 50 masses of 46 studs, every one built the same way:
-	 three or four concentric slabs of the same width, stepped back by the same
-	 mean, and a coin-flip cap. At that segment length the eye gets the rhythm
-	 inside two seconds and the whole ring reads as one extrusion repeated.
+	 Seven attempts are recorded in docs/FAILURES.md (F-13 Cube mesas, F-19 mesh ratio, F-33
+	 batter, plus the buttress / broken crest / ramp cap / weathering chamfer, all now retired).
+	 Every one of them changed the wall's SILHOUETTE or its material and left its SHADING alone,
+	 and that is why every one of them failed: with `batter = -rand(0.035, 0.115)` and yaw at
+	 most +/-7 degrees, every authored face in the ring sat within an 11 % band of one Lambert
+	 value. A 500-stud surface rendering at one luminance is a flat panel with lines on it,
+	 whatever its outline does. The full derivation is on `facet`.
 
-	 What changed, and none of it is more bricks — this build uses FEWER cliff
-	 parts than the last one:
+	 So this construction is FACET-FIRST. Per segment:
 
-	 1. FEWER, LONGER MASSES. 84-stud segments rather than 46, so the ring is
-	    about twenty masses instead of fifty. A mass is now a composition, not a
-	    tile.
-	 2. A SEALING BASE COURSE, THEN AN IRREGULAR PROFILE ABOVE IT. Course 1 keeps
-	    full width, no lateral offset, and overlaps its neighbours — that is the
-	    course that guarantees the world cannot leak away. Courses 2+ take strong
-	    independent width (0.55-1.0) and lateral offsets, so the silhouette steps
-	    and breaks instead of stacking concentrically.
-	 3. A BUTTRESS. Most masses get one lower, deeper sub-mass offset along the
-	    run with its own yaw, which is what turns a rectangle into a massif.
-	 4. EROSION IS DELIBERATE. Roughly one mass in five is a SADDLE: a low, wide,
-	    ramp-capped break in the run. The wall still encloses — a saddle is a
-	    dip, never a hole — but the skyline stops being continuous.
-	 5. EVERY STACK IS RAMP-CAPPED. A flat lid at a shared height is the single
-	    strongest "these are boxes" cue on a skyline, so no stack ends in one.
-	    Tall masses also get a broken summit: two smaller slabs at their own yaw.
-	 6. THE BALL CROWNS ARE GONE. They were the "repeated red/orange spheres on
-	    the cliff tops" of the review — a ball painted in a rust cliff tone reads
-	    as an egg, not as rock, because a sphere has no facets to catch the flat
-	    shading the rest of the world is built on. Where a summit boulder is
-	    wanted the build now places an actual rock MESH there, which reads as a
-	    boulder because it is one.
-	 7. THE FOOT IS PLANTED. Talus rock and biome vegetation at the base, so the
-	    wall never meets the ground along a straight seam.
+	   * ONE SEAL, full width, overlapping its neighbours, floored at 16 studs (F-36). It is not
+	     a face anybody looks at — it is the recessed back plane seen through the gullies
+	     between the forward masses, which is what a real cliff's back wall does.
+	   * ONE ARCHETYPE from a shuffled deck with adjacency repair, standing forward of the seal
+	     by a per-segment standoff in [-6, cap], so the wall's PLAN meanders instead of running
+	     as a fence. Negative standoff opens a gully.
+	   * Boulder masses, talus, planting and ledge rock below, all unchanged.
 
-	 8. AND NOW: THE LARGE MASSES ARE MESHES. The review came back on this wall a
-	    second time — "visibly constructed from repeated rectangular blocks …
-	    still reads as prototype terrain. Do NOT solve by merely adding more
-	    bricks" — and points 1-7 above are the limit of what a box can do about
-	    it. Two or three CURATED ROCK MESHES at the `cliff` tier now stand
-	    against the outward face of most masses, the tallest carrying the
-	    silhouette and the flankers spanning `tree`-to-`cliff` so the group has a
-	    peak rather than three equal lumps.
-
-	    Such a segment SPENDS FEWER AUTHORED PARTS than a plain one, which is the
-	    whole point: two courses instead of three or four, no broken crest, no
-	    ledge boulder, and mesh mass doing the silhouette work those parts were
-	    failing to do. The authored slabs that remain are demoted to what they
-	    are genuinely good at — course 1 seals the ring at ground level, course 2
-	    runs the full width of the segment so the gap between two masses is
-	    filled mass rather than sky, and the ramp cap keeps a flat lid off the
-	    connective stack. The ring encloses on course 1 alone, exactly as before,
-	    so no gap opens whether or not a single mesh loads.
-
-	    THE FIRST ANSWER HERE WAS THREE CUBE-GENERATED MESAS AND IT WAS WRONG.
-	    They rendered well alone and read as candy stripe in the world — see
-	    CUBE_FAMILIES. They were also necessarily MEADOW ONLY, because a textured
-	    mesh cannot be tinted and rust is wrong on a snowfield, so half the wall
-	    kept its plain slabs. The rock mesh is untextured and takes `biome.Tint`
-	    like every other prop, so the frost wall gets the same relief in its own
-	    cool stone. The colour constraint did not have to be honoured; it had to
-	    be designed out.
-
-	 Tones come from the BIOME under each mass, not from a global rust triple, so
-	 the south wall is cool stone rather than rust with a cold-tinted talus pile
-	 in front of it. ]]
+	 The archetypes and the orientation model are on `cliffMass`. The determinism contract — how
+	 a wall this different costs the shared seeded stream nothing — is on `discard`. ]]
 
 type CliffOpts = {
 	talus: boolean?,
 	planting: boolean?,
 	saddles: boolean?,
 	modules: boolean?, -- boulder masses as the large masses (default on)
+	--[[ How far, in studs, the visible masses may step INWARD of the sealing course. This is
+		 what makes the wall's plan meander instead of running as one straight fence. A segment
+		 draws its own value in [-6, standoff]; negative means the mass recedes BEHIND the seal
+		 line, which is what opens a gully.
+
+		 Caps come from the clearances this file already documents, not from taste:
+		   outer E/W (x = +/-146): crystals reach x = +/-96, so 50 studs of clearance; a mass is
+		     at most 19.3 deep from its centre, so 18 leaves 12.7 clear.
+		   outer N/S (z = 252 / -255): the meadow reaches z = 210, 42 studs; 10 leaves 12.7.
+		   spur: 4 — a mass here frames the landmark between two domes.
+		   butte: 0 — its courses already reach x ~ -95. ]]
+	standoff: number?,
+	--- Which archetypes this run may draw. Defaults to the full deck.
+	deck: { string }?,
 }
 
 --[[ The widest a boulder mass may finish, in studs. The curated rock shelf runs
@@ -2006,6 +1962,280 @@ type CliffOpts = {
 local SEAL_MIN_TOP = 16
 
 local CLIFF_MASS_MAX_W = 46
+
+--[[ THE TALLEST A SINGLE CLIFF FACET MAY FINISH, and it is a composition gate rather than a
+	 style preference.
+
+	 `DOMINANCE` in the build summary is `monument top / tallest non-landmark top`, and it fails
+	 below 1.25. Measured on the baseline: monument 81.8, tallest rival 59.5, ratio 1.37. So the
+	 rival may rise to 81.8 / 1.25 = 65.4 before the gate fails, and no further.
+
+	 This matters because the HOODOO archetype is a single tall shaft. At the outer ring
+	 `height = 34 * rand(0.88, 1.5)` reaches 51, and a 1.55x shaft on top of that is 79 studs —
+	 which would take the ratio to 1.04 and fail the gate outright, silently, while every other
+	 measurement in the pass improved. 62 keeps the ratio at 1.32 with room to spare.
+
+	 The design plan this construction comes from contained no dominance check and never named
+	 the metric. That is exactly the shape of failure this codebase keeps recording: a change
+	 that is right about the thing it is looking at and wrong about the thing it is not. ]]
+CW.FACET_MAX_TOP = 62
+
+--[[ Height band for cliff tone, in studs.
+
+	 §7 asks for horizontal banding. It used to come from `toneOffset + k` — an INDEX — so a
+	 band was a property of a MASS and every mass restarted the sequence. Banding is a property
+	 of HEIGHT: the band at y = 20 is the same tone at every point on the ring, which is what
+	 stratigraphy actually looks like and what makes separate masses read as one geology.
+
+	 11 studs over walls of 30-50 gives 3-4.5 bands, which is §7's "two or three tones" read
+	 across the whole ring rather than around each mass. Both biome triples are already ordered
+	 light to dark, so one indexing rule serves both and the biome tint is untouched. ]]
+CW.BAND = 11
+
+--[[ The archetype deck.
+
+	 The second cause of the repetition — after flat normals — is one recipe run thirty times.
+	 The old construction made independent per-segment coin flips, and independent probability is
+	 precisely why runs of identical recipes appear: a 0.62 module roll produces three module
+	 segments in a row about a quarter of the time.
+
+	 A deck cannot. Build ceil(segments / kinds) copies of each allowed archetype, shuffle, then
+	 sweep once swapping any adjacent duplicate with the next non-conflicting element.
+
+	 Drawn from the run's OWN Random, so it costs the shared stream nothing (F-32). ]]
+--[[ TALUS IS NOT IN THE OUTER DECK, and that was decided by a render rather than by taste.
+
+	 It is the cheap archetype — two wedges, no vertical structure — and it was meant to be the
+	 bright counterweight that pays for the expensive ones. As a whole SEGMENT on an 84-stud
+	 outer run it is a long low mass, and the deck dealt two of them side by side on the
+	 meadow-side west wall along with a saddle, so the single most-photographed stretch of this
+	 world came out as an unbroken low band with no vertical event anywhere in it. Three
+	 captures in a row showed it and no metric in the pass did.
+
+	 Its job is still done, and better, by the `cliff_rock` talus and boulder meshes that already
+	 stand at the wall's foot. So it stays in the BUTTE deck, where masses are small and a scree
+	 shoulder is the right scale, and off the ring. ]]
+CW.DECK_ALL = { "FIN", "SCARP", "ALCOVE", "HOODOO" }
+
+function CW.buildDeck(r: Random, n: number, allowed: { string }): { string }
+	local deck: { string } = {}
+	local copies = math.ceil(n / #allowed)
+	for _ = 1, copies do
+		for _, kind in allowed do
+			table.insert(deck, kind)
+		end
+	end
+	-- Fisher-Yates on the run's private stream.
+	for i = #deck, 2, -1 do
+		local j = r:NextInteger(1, i)
+		deck[i], deck[j] = deck[j], deck[i]
+	end
+	-- One repair sweep. Give up rather than loop: with five kinds and a shuffled deck an
+	-- unresolvable adjacency is vanishingly rare, and a loop that cannot terminate is worse
+	-- than one repeat in a wall.
+	for i = 2, #deck do
+		if deck[i] == deck[i - 1] then
+			for j = i + 1, #deck do
+				if deck[j] ~= deck[i - 1] and (j == #deck or deck[j] ~= deck[j + 1]) then
+					deck[i], deck[j] = deck[j], deck[i]
+					break
+				end
+			end
+		end
+	end
+	return deck
+end
+
+
+--[[ BUILD ONE SEGMENT'S VISIBLE MASS.
+
+	 Everything here draws from `r`, a Random private to this segment, so tuning any archetype
+	 cannot move any other segment's geometry — F-32's lesson applied at a finer grain than the
+	 file previously applied it — and the shared stream is untouched.
+
+	 `toneOf(y)` bands by height (see CW.BAND). `capTop` is the dominance ceiling: every
+	 archetype clamps its own tallest element against it rather than trusting its proportions,
+	 because the proportions are relative to `H` and `H` varies 34..51 on the outer ring.
+
+	 THE RULE THAT SEPARATES THIS FROM THE FOUR REJECTED ATTEMPTS: adjacent facets within one
+	 mass differ in pitch by at least 18 degrees and alternate sign wherever both are available.
+	 Uniformly re-randomising over a wide range is NOT enough — a wide range sampled
+	 independently still produces neighbouring pairs that are near-identical, and a wall of
+	 mostly-similar faces reads exactly like a wall of identical ones. So pitch comes from a
+	 per-archetype LADDER, jittered, never from an independent draw per facet.
+
+	 COUNTER-SHADING IS A SAFETY REQUIREMENT, NOT A NICETY. A wide pitch range means the
+	 overhanging facets render dark, and §1 forbids muted palettes while §9.10 makes desaturated
+	 an automatic fail — V4 already failed a third of the map on exactly this. So any facet
+	 pitched at or below -14 degrees takes one step LIGHTER than its height band. ]]
+function CW.mass(
+	kind: string,
+	r: Random,
+	anchor: Vector3,
+	dir: Vector3,
+	outward: Vector3,
+	S: number, -- segment width along the run
+	H: number, -- this segment's height (a saddle's is already reduced)
+	runH: number, -- the RUN's base height, so a saddle can size against its neighbours
+	D: number, -- segment depth (already multiplied)
+	base: number, -- the run's ground line (sink), negative
+	q: number, -- standoff: how far this mass steps inward of the seal
+	toneOf: (number, number) -> Color3
+)
+	local function span(lo: number, hi: number): number
+		return lo + r:NextNumber() * (hi - lo)
+	end
+	--[[ Place one facet, clipped against the dominance ceiling.
+
+		 The clip holds the BASE and lowers the top, which is what "the mass grows from the
+		 ground and is cut off at a height" means; shrinking around the centre would lift the
+		 foot off the ground and leave daylight under it.
+
+		 The first version had a `math.max(4, ...)` floor on the height and it FOUGHT the cap: a
+		 hoodoo cap sitting on an already-clipped shaft had a base at the ceiling, so the floor
+		 won and the cap finished 2.4 studs above it. Measured, not reasoned about — the build
+		 printed a tallest cliff of 64.4 against a ceiling of 62. Here the floor is applied to
+		 the base rather than to the height, so a part with no room simply is not placed. ]]
+	local function put(name, shape, size: Vector3, centre: Vector3, yaw, pitch, roll)
+		local base = centre.Y - size.Y / 2
+		local top = math.min(centre.Y + size.Y / 2, CW.FACET_MAX_TOP)
+		local h = top - base
+		if h < 3 then
+			return -- entirely above the ceiling; drawing it would breach the composition gate
+		end
+		local c = Vector3.new(centre.X, base + h / 2, centre.Z)
+		CW.facet(fCliffs, name, shape, Vector3.new(size.X, h, size.Z), c, outward, yaw, pitch, roll, toneOf(c.Y, pitch))
+	end
+
+	if kind == "FIN" then
+		--[[ Four wedges with the slope along the RUN, at descending heights, each advancing a
+			 different amount. The old ramp cap's finding — put the slope in the skyline along
+			 the run, not into the wall — is not lost with it: it became the default orientation
+			 of every wedge in this vocabulary. ]]
+		local ladder = { 34, -16, 12, -20 }
+		local frac = { 1.00, 0.78, 0.58, 0.40 }
+		local tall = r:NextInteger(1, 4)
+		for n = 1, 4 do
+			local w = S * span(0.28, 0.42)
+			local dd = D * span(0.55, 0.95)
+			local h = H * frac[n] * (if n == tall then 1.18 else 1.0)
+			local at = anchor
+				+ dir * (S * (-0.42 + 0.28 * (n - 1)))
+				+ outward * -(q * (0.6 + 0.4 * r:NextNumber()))
+				+ Vector3.new(0, base + h / 2, 0)
+			-- Slope along the run: 90 degrees off the outward-facing default, alternating so
+			-- the skyline zigzags instead of sawing one way.
+			local yaw = (if n % 2 == 0 then 90 else -90) + span(-32, 32) * 0.35
+			put("CliffFin", "wedge", Vector3.new(dd, h, w), at, yaw, ladder[n] + span(-6, 6), span(-16, 16))
+		end
+	elseif kind == "SCARP" then
+		--[[ Three bedding planes, ROLLED so their top edges become parallel diagonals, plus a
+			 wedge continuing the dip. This is the direct answer to "obvious horizontal course
+			 repetition": the beds are still slabs — a bedding plane IS a slab — but they no
+			 longer present horizontal edges. ]]
+		local dipSign = if r:NextNumber() < 0.5 then 1 else -1
+		local ladder = { 8, 20, 32 }
+		local y = base
+		for n = 1, 3 do
+			local h = H * span(0.20, 0.30)
+			local w = S * span(0.92, 1.06)
+			local dd = D * span(0.5, 0.8)
+			local at = anchor
+				+ dir * (0.10 * S * (n - 2))
+				+ outward * -(q * span(0.4, 1.0))
+				+ Vector3.new(0, y + h / 2, 0)
+			put("CliffBed", "block", Vector3.new(w, h, dd), at, span(-14, 14), ladder[n] + span(-5, 5), dipSign * (10 + 6 * n))
+			y += h * 0.86
+		end
+		local ch = H * span(0.18, 0.28)
+		local at = anchor + outward * -(q * 0.7) + Vector3.new(0, y + ch / 2, 0)
+		put("CliffDip", "wedge", Vector3.new(D * 0.7, ch, S * 0.8), at, dipSign * 90, 24, dipSign * 14)
+	elseif kind == "ALCOVE" then
+		--[[ A genuine CONCAVE section, which is the one thing additive convex primitives cannot
+			 fake and which §4 names explicitly. Two jambs yawed to face each other so the pocket
+			 narrows outward, and an OVERHANGING lintel across them — the deepest shadow in the
+			 frame, and a channel the old construction had no way to use at all. ]]
+		for side = -1, 1, 2 do
+			local w = S * 0.30
+			local h = H * span(0.7, 0.95)
+			local at = anchor
+				+ dir * (side * S * span(0.24, 0.34))
+				+ outward * -(q + D * 0.35)
+				+ Vector3.new(0, base + h / 2, 0)
+			put("CliffJamb", "wedge", Vector3.new(D * 0.7, h, w), at, -side * span(18, 30), span(6, 16), side * 10)
+		end
+		local lh = H * span(0.16, 0.24)
+		local ly = base + H * span(0.6, 0.75)
+		local at = anchor + outward * -(q + D * 0.2) + Vector3.new(0, ly + lh / 2, 0)
+		put("CliffLintel", "block", Vector3.new(S * 0.78, lh, D * 0.6), at, span(-8, 8), -span(18, 26), span(-6, 6))
+	elseif kind == "HOODOO" then
+		--[[ Two shafts capped with CornerWedgeParts, so the skyline gets two genuine POINTS
+			 rather than another ridge. A wall whose masses are all the same height is
+			 repetitive whatever their shape, and this is the archetype that breaks the top
+			 line. Its height is where the dominance ceiling actually binds. ]]
+		for side = -1, 1, 2 do
+			local w = S * span(0.16, 0.24)
+			local dd = D * span(0.45, 0.65)
+			local ch = H * span(0.14, 0.22)
+			--[[ The cap's height is RESERVED before the shaft is sized, so the pair is clipped
+				 once, at the top of the cap, rather than the shaft taking the whole ceiling and
+				 leaving the cap nowhere legal to go. That was the actual defect behind the
+				 64.4-stud reading. ]]
+			local h = math.min(H * span(1.15, 1.55), CW.FACET_MAX_TOP - ch - base)
+			local at = anchor
+				+ dir * (side * S * span(0.20, 0.36))
+				+ outward * -(q * span(0.5, 1.0))
+				+ Vector3.new(0, base + h / 2, 0)
+			put("CliffShaft", "block", Vector3.new(w, h, dd), at, side * span(20, 40), span(-8, 14), side * span(4, 12))
+
+			local capAt = Vector3.new(at.X, at.Y + h / 2 + ch / 2, at.Z)
+			put("CliffCap", "corner", Vector3.new(w * 1.25, ch, dd * 1.25), capAt, side * span(20, 40), 0, 0)
+		end
+		local sh = H * span(0.30, 0.40)
+		local at = anchor + outward * -(q * 0.4) + Vector3.new(0, base + sh / 2, 0)
+		put("CliffShoulder", "wedge", Vector3.new(D * 0.8, sh, S * 0.5), at, 90, span(26, 34), span(-10, 10))
+	elseif kind == "BREACH" then
+		--[[ The saddle's mass. Two wedges leaning toward each other over the sill, so the
+			 skyline dips to a V rather than to a flat notch. Two parts, because a saddle is
+			 meant to be the cheap segment.
+
+			 SIZED AGAINST THE RUN, NOT AGAINST THE SADDLE'S OWN HEIGHT, and the first version
+			 got this wrong in a way only the render showed. A saddle's `H` is already reduced
+			 to 0.34-0.5 of the run, so 0.8-1.1 of it came out at 9-19 studs — BELOW the
+			 saddle's own 16-stud sealing floor. The breach was completely hidden behind the
+			 thing it was supposed to open, and the segment rendered as a bare 94-stud flat
+			 panel. The whole point of a notch is that it reads against tall shoulders, so the
+			 shoulders are sized off `runH`. ]]
+		for side = -1, 1, 2 do
+			local h = runH * span(0.55, 0.80)
+			local at = anchor
+				+ dir * (side * S * 0.32)
+				+ outward * -(q * 0.5)
+				+ Vector3.new(0, base + h / 2, 0)
+			put("CliffBreach", "wedge", Vector3.new(D * 0.7, h, S * 0.36), at, -side * 90, span(14, 26), side * span(8, 18))
+		end
+	else -- TALUS
+		--[[ Two wedges fanned in opposite slope directions at different standoffs, so one sits
+			 behind the other. Pitched at the BRIGHT end of the range: this is the counterweight
+			 that keeps the wall from going dark overall, and it is cheap, which is how the
+			 expensive archetypes are paid for. ]]
+		for n = 1, 2 do
+			local w = S * span(0.4, 0.55)
+			--[[ 0.72-1.0 rather than 0.42-0.62. Talus is conceptually a scree shoulder at the
+				 foot of a taller face, but on this ring it IS the segment's visible mass, and
+				 at 0.62 it finished below its own 0.72 seal — so the segment rendered as the
+				 flat back plane with two small wedges at its foot. If it is the mass, it has
+				 to be the height. ]]
+			local h = H * span(0.72, 1.0)
+			local dd = D * span(0.8, 1.1)
+			local at = anchor
+				+ dir * (S * span(-0.22, 0.22))
+				+ outward * -(q * (if n == 1 then 0.5 else 1.1))
+				+ Vector3.new(0, base + h / 2, 0)
+			put("CliffTalus", "wedge", Vector3.new(dd, h, w), at, (if n == 1 then 90 else -90), span(26, 38), span(-14, 14))
+		end
+	end
+end
 
 local function cliffRun(
 	from: Vector3,
@@ -2027,6 +2257,67 @@ local function cliffRun(
 	local segments = math.max(1, math.floor(length / segLen + 0.5))
 	local segWidth = length / segments
 
+	--[[ THE PRIVATE STREAM. Every parameter of the new wall geometry comes from here, never
+		 from `rng`, so this whole construction costs the shared seeded stream exactly nothing
+		 and the rest of the world is bit-identical to before it (F-32). The build prints a
+		 stream fingerprint at the end; if it moves, this rule was broken.
+
+		 Seeded from the run's own geometry rather than from a counter, so adding or removing a
+		 `cliffRun` CALL cannot shift the seed of the runs after it. ]]
+	local runSeed = math.floor(math.abs(from.X * 7919 + from.Z * 104729 + to.X * 31 + to.Z * 7) + 0.5)
+	local r = Random.new(runSeed)
+	local deck = CW.buildDeck(r, segments, o.deck or CW.DECK_ALL)
+	local standoffMax = o.standoff or 0
+
+	--[[ Tone by HEIGHT, not by course index — see CW.BAND. Resolved where the geometry
+		 STANDS, which is the same rule `toneAt` below already enforces and for the same
+		 measured reason: a mass offset along the run can cross the biome boundary. ]]
+	local function toneAtY(y: number, pitch: number): Color3
+		-- Biome is decided at the run's own line; a facet's lateral offset is far smaller than
+		-- the standoff the old buttress had, and the run never spans the boundary.
+		local set = biomeAt(from.X, (from.Z + to.Z) / 2).Cliff
+		local band = math.clamp(math.floor(y / CW.BAND), 0, #set - 1)
+		local idx = #set - band
+		-- Counter-shading: an overhang renders dark, so it takes one step lighter. §1 forbids
+		-- muted, §9.10 makes desaturated an automatic fail, and V4 already failed a third of
+		-- the map this way.
+		local tone = set[math.clamp(idx, 1, #set)]
+
+		--[[ AND THEN THE FACET'S OWN PITCH IS BAKED INTO ITS ALBEDO, which is the change the
+			 renders forced and the one the design plan did not anticipate.
+
+			 The plan's whole thesis is that the old wall's faces sat inside an 11 % band of one
+			 Lambert value, and that spreading their normals over -22..+38 degrees of pitch takes
+			 that to 9.5x. The geometry now does exactly that — and the wall STILL rendered as a
+			 flat panel, three captures in a row.
+
+			 The reason is the one the plan flagged and then reasoned past: N·L is not the pixel.
+			 This world runs OutdoorAmbient (146,152,158), Ambient (112,116,122) and
+			 EnvironmentDiffuseScale 0.55 under Brightness 3, and that ambient floor compresses a
+			 large N·L range into a small luminance range. A 9.5x geometric spread arrives as
+			 something much flatter than 9.5x on screen.
+
+			 So the variation goes where it cannot be compressed away: the surface colour. A
+			 sun-facing facet takes a lighter step and an overhang a darker one, which is both
+			 what the light would have done and what stratified rock actually looks like. This is
+			 ordinary low-poly practice — bake the shading the renderer will not deliver — and
+			 this file already does it everywhere else, from the biome tints to the crystal
+			 shades.
+
+			 The magnitude is bounded on purpose. §1 forbids muted palettes and §9.10 makes
+			 desaturated an automatic fail; V4 already failed a third of the map that way. So the
+			 darkest step is 0.16 rather than the 0.4 the raw Lambert ratio would suggest, which
+			 is clearly faceted while keeping the deepest overhang a saturated rust rather than a
+			 shadow. ]]
+		local t = math.clamp((pitch + 22) / 60, 0, 1) -- -22 deg -> 0, +38 deg -> 1
+		if t > 0.62 then
+			return Palette.lift(tone, (t - 0.62) * 0.45)
+		elseif t < 0.38 then
+			return Palette.shade(tone, (0.38 - t) * 0.42)
+		end
+		return tone
+	end
+
 	--[[ THE TONE IS RESOLVED WHERE THE GEOMETRY STANDS, not where its mass is
 		 anchored. A buttress offsets up to 0.48 of a segment along the run — 40
 		 studs at outer-ring scale — which is easily far enough to cross the biome
@@ -2046,29 +2337,14 @@ local function cliffRun(
 		-- without opening the ring.
 		local saddle = (o.saddles ~= false) and chance(0.2)
 
-		--[[ THE BOULDER-MASS DECISION, AND ALL SEVEN OF ITS DRAWS, TAKEN
-			 UNCONDITIONALLY SO THE RUN CONSUMES THE SAME STREAM EITHER WAY.
+		--[[ THE BOULDER-MASS DECISION, AND ALL SEVEN OF ITS DRAWS, TAKEN UNCONDITIONALLY so the
+			 run consumes the same stream either way.
 
-			 The named hard fail is "visibly constructed from repeated rectangular
-			 blocks … do NOT solve by merely adding more bricks". This answers it by
-			 spending FEWER authored parts on such a segment than on a plain one —
-			 two courses instead of three or four, and no broken crest — and standing
-			 two or three CURATED ROCK MESHES at cliff scale against the face, so the
-			 silhouette is broken by boulder mass rather than by another slab.
-
-			 It was a Cube-generated mesa mesh first. That version is in the git
-			 history and it was rejected on sight in-world: see CUBE_FAMILIES. The
-			 replacement is deliberately an asset this world ALREADY uses — the same
-			 low-poly rock family that dresses the talus — because it is flat-shaded
-			 and untextured, and therefore takes the biome tint like everything else.
-			 Coherence here is a property of the asset choice, not of the placement.
-
-			 Two rules decide where a boulder mass may stand:
-
-			   * NOT ON A SADDLE. A saddle is a deliberate low break in the run;
-			     filling one with mass removes the erosion it exists to express.
-			   * NOT ON THE INNER SPURS. Their clearance from the crystal spawn
-			     bounds is about a stud, and a mass stands inward of its courses. ]]
+			 Two or three curated rock meshes stand against the face instead of another slab.
+			 They are an asset this world ALREADY uses, because a flat-shaded untextured mesh
+			 takes the biome tint and a Cube-generated textured mesa cannot (F-13). Not on a
+			 saddle — a saddle is a deliberate break and filling it removes the erosion it
+			 expresses. Not on the inner spurs — their clearance is about a stud. ]]
 		local modRoll = rng:NextNumber()
 		local modU = rng:NextNumber()
 		local modT = rng:NextNumber()
@@ -2087,24 +2363,10 @@ local function cliffRun(
 		--[[ `height` is not in scope yet, so the run's own size is tested at the
 			 placement below rather than here: this decision must be made from the
 			 draws already taken so the stream is consumed identically either way. ]]
-		--[[ 0.62, and RAISING IT WAS TRIED AND REJECTED on 2026-09-01.
-			 At 0.85 the arithmetic all improves: Cliffs fall from 157 primitives to
-			 136, cliff meshes rise 29 -> 41, and the world drops 497 -> 482. The
-			 pixels do not. The wall still reads as terraced boxes from every wide
-			 camera, because what the eye is reading is the AUTHORED COURSES, and
-			 those are still large flat slabs whether or not a mesh stands in front
-			 of them.
-
-			 It also costs something real: the curated rock shelf is THREE meshes,
-			 already placed 172 times across the map, and 0.85 takes that to 177.
-			 Section AK names extreme repetition as a hard failure, so buying 15
-			 primitives with five more copies of the same three rocks is a bad
-			 trade even before the render disagrees.
-
-			 The lesson is where the remaining work is: this wall does not need a
-			 higher mesh RATIO, it needs either more distinct rock silhouettes in
-			 the palette or authored courses that are not flat slabs. Left at 0.62
-			 so a later pass starts from the measurement rather than repeating it. ]]
+		--[[ 0.62, and raising it to 0.85 was tried and rejected on 2026-09-01: the arithmetic all
+			 improved and the pixels did not, because what the eye was reading was the authored
+			 COURSES behind the mesh. F-19. Left here so a later pass starts from the
+			 measurement rather than repeating it. ]]
 		local useModule = (o.modules ~= false) and not saddle and modRoll < 0.62
 
 		local height = baseHeight * (if saddle then rand(0.34, 0.5) else rand(0.88, 1.5))
@@ -2157,7 +2419,27 @@ local function cliffRun(
 					 dramatic skyline dip §7 asks for. What it stops being is a doorway.
 
 					 `math.max` takes no draw, so the seeded stream is untouched (F-32). ]]
-				h = math.max(h, SEAL_MIN_TOP - y)
+				--[[ AND IT IS ALSO THE WALL'S HEIGHT, which the first version of this rewrite got
+					 wrong and the render caught.
+
+					 The seal kept `courseFraction[1]` = 0.46 from the old construction, where it
+					 was the BOTTOM of a stack of three or four courses that carried the wall to
+					 30-50 studs. Those courses are gone. So on any segment whose archetype is a
+					 low one — TALUS at 0.42-0.62 H, or a BREACH whose saddle H is only 11.6-17
+					 — nothing reached above the seal and the wall came out a 16-stud band. The
+					 meadow-wall capture showed a flat red fence, visibly worse than the stack it
+					 replaced, and no metric in the pass said so.
+
+					 The seal is meant to be the RECESSED BACK PLANE, seen through the gullies
+					 between the forward masses. A back plane has to be as tall as the wall. So
+					 it takes 0.72 of the segment height, and the masses stand in front of it.
+
+					 A saddle keeps the low seal on purpose: 0.9 of a saddle's own smaller height,
+					 floored at 16 studs (F-36), which is the dip the BREACH archetype opens over
+					 without ever becoming a doorway.
+
+					 Neither multiplier is a draw, so the stream is untouched. ]]
+				h = math.max(h, SEAL_MIN_TOP - y, height * (if saddle then 0.85 else 0.62))
 			end
 			local w, lateral, dd
 			if k == 1 then
@@ -2190,52 +2472,43 @@ local function cliffRun(
 				setback += depth * depthMul * rand(0.06, 0.24)
 			end
 			local centre = anchor + outward * setback + dir * lateral + Vector3.new(0, y + h / 2, 0)
-			--[[ BATTER. This is the answer to the wall still reading as terraced
-				 boxes after the mesh ratio was raised and rejected (F-19).
-
-				 That experiment added mesh silhouette IN FRONT of the courses and
-				 changed no pixels, because what the eye reads is the courses
-				 themselves — and a course was a box with a VERTICAL outward face.
-				 Every one of them presented a flat rectangle to the camera at the
-				 same angle, so twenty masses read as one extrusion however much
-				 their widths and offsets varied.
-
-				 A real cliff face leans back. `lookAt` puts local Z along `outward`
-				 and local Y up, so a NEGATIVE rotation about local X tilts the top
-				 of the slab into the wall. That costs zero parts, breaks the
-				 coplanarity that was doing the damage, and catches the light
-				 differently on every course.
-
-				 Course 1 is exempt and must stay exempt: it is the sealing course,
-				 it keeps full width and no offset so the ring cannot leak, and a
-				 battered base would lift its own foot off the ground. ]]
+			--[[ BATTER — kept only as a DRAW. It leans a course back by 2.0-6.6 degrees, which is
+				 the 11 % band the whole rewrite exists to escape; F-33 raised it and moved the
+				 mean without moving the spread. Pitch now comes from a per-archetype ladder in
+				 `cliffMass`. This still runs because removing a draw re-rolls the world. ]]
 			local batter = if k == 1 then 0 else -rand(0.035, 0.115)
 			-- lookAt puts the slab's Z along `outward`, so Size reads
 			-- (width along the run, height, depth into the wall).
 			local cf = CFrame.lookAt(centre, centre + outward)
 				* CFrame.Angles(batter, math.rad(rand(-7, 7)), 0)
-			newPart(fCliffs, "CliffCourse", Vector3.new(w, h, dd), cf, toneAt(centre, toneOffset + k), true)
 
-			--[[ WEATHERING CHAMFER on the free courses. EXPERIMENT.
+			--[[ ONLY THE SEAL IS DRAWN FROM THIS LOOP NOW.
 
-				 What the eye reads as "stacked boxes" is not the courses' widths or offsets —
-				 those already vary a lot — it is the TERRACE LINE: every course presents a
-				 sharp 90° edge where its vertical outward face meets its horizontal top, and
-				 the part of that top the next course does not cover is a flat ledge. Twenty
-				 of those in a row is a staircase however irregular the plan.
+				 The free courses k > 1 were the flat stacked boxes. Their DRAWS all still
+				 happen — every `rand()` above and below runs exactly as it did — because this
+				 builder runs off one seeded stream and removing a draw re-rolls the entire
+				 world (F-32). What changed is only what is EMITTED: the visible mass is built
+				 after this loop by `cliffMass`, from the run's private Random.
 
-				 F-19 tried to hide it behind more mesh and failed; F-33 tried to tilt it away
-				 and failed, because tilting a rectangle leaves a rectangle. This cuts the edge
-				 off instead: a wedge along the top-outer edge, sloping down and outward, so
-				 the silhouette steps through a bevel rather than a corner.
+				 Keeping the draws in place rather than extracting them into a program table is
+				 deliberate. The extraction is where the parity would be lost: the draw sequence
+				 has three short-circuits in it — `o.saddles ~= false and chance(0.2)`, the
+				 three-way `courses` branch, and `not saddle and not useModule and chance(0.55)`
+				 — and any one of them transcribed wrongly is F-32 again, silently. Leaving the
+				 code where it is cannot get it wrong.
 
-				 Only the free courses. The sealing course (k == 1) must keep its full outward
-				 face or the ring leaks, and a course under a module is behind a mesh that is
-				 already doing the silhouette.
+				 The seal is now what it should always have been: not a face anybody looks at,
+				 but the recessed back plane visible through the gullies between the forward
+				 masses, which is what a real cliff's back wall does. It keeps its full width,
+				 its overlap and its 16-stud floor (F-36). ]]
+			if k == 1 then
+				newPart(fCliffs, "CliffSeal", Vector3.new(w, h, dd), cf, toneAtY(centre.Y, 0), true)
+			end
 
-				 Every proportion here is FIXED, not drawn: this builder runs off one seeded
-				 stream, so a `rand()` here would re-roll the whole world and make the
-				 before/after screenshots incomparable. See F-32. ]]
+			--[[ WEATHERING CHAMFER — RETIRED, draws kept. It bevelled the 90-degree corner where a
+				 course's vertical face met its horizontal top. There are no such corners left in
+				 the vocabulary, so it was 29 parts softening an edge that no longer exists.
+				 See F-39. ]]
 			if k > 1 and not useModule then
 				--[[ Sized to be SEEN. The first version was h * 0.30 on courses that turn out
 					 to be about 4 studs tall — a 1.3-stud bevel, roughly one percent of the
@@ -2246,7 +2519,13 @@ local function cliffRun(
 				local chamferAt = centre
 					+ outward * (dd / 2 - cd / 2)
 					+ Vector3.new(0, h / 2 + ch2 / 2, 0)
-				wedge(
+				--[[ RETIRED. The chamfer existed to soften a terrace corner, and there are no
+					 terrace corners left: no facet in the new vocabulary meets its own top at
+					 90 degrees with a horizontal ledge above it. It cost 29 parts to bevel an
+					 edge that no longer exists.
+
+					 Routed through `discard` rather than deleted so its draws survive. ]]
+				CW.discard(
 					fCliffs,
 					"CliffChamfer",
 					Vector3.new(w * 0.98, ch2, cd),
@@ -2265,16 +2544,9 @@ local function cliffRun(
 			 legible along the run. ]]
 		local capCentre = Vector3.new(topCentre.X, topY, topCentre.Z) + outward * (depth * depthMul * rand(0.02, 0.12))
 		local ch = height * rand(0.12, 0.24)
-		--[[ THE RAMP SLOPES ALONG THE WALL, NOT INTO IT. EXPERIMENT.
-
-			 A WedgePart's slope runs along its local Z. Pointing that at `outward` — which is
-			 what this did — chamfers the top across the wall's DEPTH, and depth is the one
-			 axis the camera cannot see from outside the canyon. From the front the silhouette
-			 was still the wedge's high edge: a horizontal line, which is the exact thing the
-			 courses were already producing.
-
-			 Pointing local Z along the RUN instead puts the slope in the skyline, where a
-			 diagonal replaces a horizontal. X becomes the depth, Z the width along the run. ]]
+		--[[ RAMP CAP — RETIRED, finding kept. Its lesson was that a slope reads in the skyline
+			 when it runs ALONG the wall rather than into it, and that is now the default
+			 orientation of every wedge in the vocabulary. See F-39. ]]
 		--[[ Derived from the segment index, NOT from `chance()`.
 
 			 This builder is deterministic from one seeded stream, so ADDING a random draw
@@ -2284,7 +2556,14 @@ local function cliffRun(
 			 of one variable. A parity test costs no draw and leaves the rest of the world
 			 byte-identical. See F-32. ]]
 		local rampDir = if toneOffset % 2 == 0 then dir else -dir
-		wedge(
+		--[[ RETIRED, and its FINDING KEPT. The ramp cap proved that a slope reads in the
+			 skyline when it runs ALONG the wall rather than into it. That is not lost with the
+			 part: it became the default orientation of every wedge in the archetype vocabulary,
+			 which is why FIN, BREACH and TALUS all yaw their wedges to 90 degrees off the
+			 outward face. One cap on top of a stack has become the shape of the whole wall.
+
+			 Routed through `discard` so its five draws survive. ]]
+		CW.discard(
 			fCliffs,
 			"CliffRamp",
 			Vector3.new(topDepth * rand(0.85, 1.05), ch, topWidth * rand(0.72, 0.98)),
@@ -2305,7 +2584,10 @@ local function cliffRun(
 					+ dir * rand(-topWidth * 0.32, topWidth * 0.32)
 					+ inward * rand(0, topDepth * 0.35)
 					+ Vector3.new(0, ch * 0.4 + sh / 2, 0)
-				newPart(
+				--[[ RETIRED. Folded into HOODOO and FIN, where the same shattered skyline comes
+					 from the mass itself rather than from two slabs parked on top of it — which
+					 is the "more bricks" answer §AK names as a hard failure. Draws kept. ]]
+				CW.discard(
 					fCliffs,
 					"CliffCrest",
 					Vector3.new(sw, sh, topDepth * rand(0.4, 0.7)),
@@ -2327,7 +2609,10 @@ local function cliffRun(
 				+ dir * (rand(0.22, 0.48) * segWidth * (if chance(0.5) then 1 else -1))
 				+ inward * (bd * 0.22)
 				+ Vector3.new(0, -rand(0.5, 2.0) + bh / 2, 0)
-			newPart(
+			--[[ RETIRED. FIN is the buttress, four times over and at four different pitches.
+				 One compound silhouette per segment was the cheapest version of the right idea;
+				 the archetype is the full one. Draws kept. ]]
+			CW.discard(
 				fCliffs,
 				"CliffButtress",
 				Vector3.new(bw, bh, bd),
@@ -2337,22 +2622,23 @@ local function cliffRun(
 			)
 		end
 
-		--[[ THE BOULDER MASS ITSELF.
+		--[[ THE VISIBLE MASS, built from the run's PRIVATE stream.
 
-			 Two or three curated rock meshes standing against the outward face, at
-			 the `cliff` tier so they are cliff-scale rather than scenery-scale, and
-			 clamped to this run's own mass height so a 22-stud inner spur cannot be
-			 handed a 50-stud boulder.
+			 Everything above this point consumed the shared seeded stream exactly as it always
+			 did — the retired geometry still takes all of its draws through `discard` — and
+			 everything below it (boulder masses, talus, planting, ledge rock) is unchanged. So
+			 this call sits between them and costs the shared stream nothing.
 
-			 They step INWARD of their courses by `modInset` — small on purpose,
-			 because every stud of it is a stud of cliff moving into the play area —
-			 and they are spread along the run from `modLat` so the mass reads as one
-			 shouldered outcrop rather than three separate rocks in a row.
+			 A saddle always takes BREACH regardless of the deck, so the mesh-prop counts that
+			 branch on `saddle` do not move. Everything else takes the next card. ]]
+		local kind = if saddle then "BREACH" else deck[((i - 1) % #deck) + 1]
+		local standoff = -6 + r:NextNumber() * (standoffMax + 6)
+		CW.mass(kind, r, anchor, dir, outward, segWidth, height, baseHeight, depth * depthMul, sink, standoff, toneAtY)
 
-			 `anywhere = true` because this stands ON the cliff footprint, which the
-			 placement blocker owns; `collide = true` because a cliff mass is walked
-			 into, not through. Tint comes from the biome like every other prop —
-			 which is the whole reason this is a rock mesh and not a textured one. ]]
+		--[[ THE BOULDER MASS ITSELF. Curated rock meshes at the `cliff` tier, clamped to this
+			 run's mass height, stepped inward by `modInset` and spread by `modLat` so the group
+			 reads as one shouldered outcrop. `anywhere` because it stands on the cliff
+			 footprint; `collide` because a cliff mass is walked into, not through. ]]
 		if useModule then
 			local masses = if modT < 0.45 then 2 else 3
 			for k = 1, masses do
@@ -2443,14 +2729,25 @@ local function cliffRun(
 	end
 end
 
--- Outer ring: the world does not leak away.
+--[[ Outer ring: the world does not leak away.
+
+	 STANDOFF, which is what makes the wall's plan meander instead of running as one straight
+	 fence. The caps come from the clearances this file already documents rather than from
+	 taste: the N/S runs face a meadow that reaches z = 210 against a wall at z = 252, so 42
+	 studs, and 10 leaves 12.7 clear after a mass's own half-depth. The E/W runs face crystals
+	 at x = +/-96 against a wall at x = +/-146, so 50 studs, and 18 leaves the same 12.7.
+
+	 Asymmetric on purpose: the E/W walls are the ones the meadow-wall and frost-wall cameras
+	 look straight at, so they get the deeper meander. ]]
+local OUTER: { NS: CliffOpts, EW: CliffOpts } = { NS = { standoff = 10 }, EW = { standoff = 18 } }
 cliffRun(
 	Vector3.new(-WORLD_X - 6, 0, WORLD_Z_N),
 	Vector3.new(WORLD_X + 6, 0, WORLD_Z_N),
 	Vector3.new(0, 0, 1),
 	84,
 	34,
-	28
+	28,
+	OUTER_NS
 )
 cliffRun(
 	Vector3.new(-WORLD_X - 6, 0, WORLD_Z_S),
@@ -2458,10 +2755,11 @@ cliffRun(
 	Vector3.new(0, 0, -1),
 	84,
 	34,
-	28
+	28,
+	OUTER_NS
 )
-cliffRun(Vector3.new(WORLD_X, 0, WORLD_Z_S), Vector3.new(WORLD_X, 0, WORLD_Z_N), Vector3.new(1, 0, 0), 84, 34, 28)
-cliffRun(Vector3.new(-WORLD_X, 0, WORLD_Z_S), Vector3.new(-WORLD_X, 0, WORLD_Z_N), Vector3.new(-1, 0, 0), 84, 34, 28)
+cliffRun(Vector3.new(WORLD_X, 0, WORLD_Z_S), Vector3.new(WORLD_X, 0, WORLD_Z_N), Vector3.new(1, 0, 0), 84, 34, 28, OUTER.EW)
+cliffRun(Vector3.new(-WORLD_X, 0, WORLD_Z_S), Vector3.new(-WORLD_X, 0, WORLD_Z_N), Vector3.new(-1, 0, 0), 84, 34, 28, OUTER.EW)
 
 --[[ Inner spurs hug the hub so the clearing is enclosed rather than open on
 	 four sides. Saddles are off here: a dip in a 72-stud spur beside the hub is
@@ -2474,7 +2772,12 @@ cliffRun(Vector3.new(-WORLD_X, 0, WORLD_Z_S), Vector3.new(-WORLD_X, 0, WORLD_Z_N
 	 studs from the monument it is a boulder standing in the approach, and the
 	 hub camera came back with the landmark framed between two rust domes. The
 	 enclosure here is the wall's job. Same rule as BUTTE below. ]]
-local SPUR: CliffOpts = { saddles = false, modules = false }
+--[[ The spur deck is restricted, and not out of caution. An ALCOVE is a feature of a WALL — a
+	 pocket eroded into a long face — and a spur is a short shoulder beside the hub, so an
+	 alcove here reads as a hole in a rock rather than as a recess in a cliff. HOODOO is
+	 excluded for the reason the comment above already gives about boulder masses: a tall
+	 pointed shaft 64 studs from the monument competes with it. ]]
+local SPUR: CliffOpts = { saddles = false, modules = false, standoff = 4, deck = { "SCARP", "TALUS", "FIN" } }
 cliffRun(Vector3.new(64, 0, -56), Vector3.new(64, 0, 16), Vector3.new(1, 0, 0), 40, 22, 20, SPUR)
 cliffRun(Vector3.new(-64, 0, -56), Vector3.new(-64, 0, 16), Vector3.new(-1, 0, 0), 40, 22, 20, SPUR)
 cliffRun(
@@ -2504,7 +2807,11 @@ cliffRun(
 	 mesa on top of a crystal spawn point. This is the invariant the comment
 	 above has always claimed, and it is cheaper to keep it than to re-derive the
 	 spawn field around a mesh. ]]
-local BUTTE: CliffOpts = { saddles = false, modules = false }
+--[[ A butte is an isolated massif, not a wall, so it gets the archetypes that read as one
+	 free-standing mass: fins, points and scree. No alcove and no scarp — a bedding plane needs
+	 a run to bed along. Standoff 0 because its courses already reach x ~ -95 and there is no
+	 clearance left to meander into. ]]
+local BUTTE: CliffOpts = { saddles = false, modules = false, standoff = 0, deck = { "FIN", "HOODOO", "TALUS" } }
 cliffRun(Vector3.new(-112, 0, 150), Vector3.new(-112, 0, 190), Vector3.new(-1, 0, 0), 44, 28, 24, BUTTE)
 cliffRun(Vector3.new(114, 0, 100), Vector3.new(114, 0, 138), Vector3.new(1, 0, 0), 44, 26, 24, BUTTE)
 cliffRun(Vector3.new(-116, 0, -158), Vector3.new(-116, 0, -198), Vector3.new(-1, 0, 0), 44, 27, 24, BUTTE)
@@ -2683,51 +2990,11 @@ local plinthTop = stoneDais(
 	{ W.CliffC, W.CliffB, W.CliffA }
 )
 
---[[ =====================  THE CROWN IS A MESH  =====================
-
-	 THE NAMED HARD FAIL: "tall rectangular crystal columns + stacked rectangular
-	 pedestal … still resembles a primitive blockout. It is the PRIMARY landmark
-	 and needs the highest visual quality in the map."
-
-	 The previous answer gave the shaft a taper and a 9-degree twist per level.
-	 That made it a better-shaped stack of boxes, and it was still a stack of
-	 boxes, because `box` was the only vocabulary available to it. The pedestal
-	 was rebuilt properly at the same time — a stepped octagonal drum of radial
-	 ashlar with a chamfer course — and that half of the criticism is answered:
-	 it reads as masonry from every elevation, so the dais STAYS. A monument
-	 stands on a plinth.
-
-	 The crown does not stay. It is replaced by the accepted `landmark` Cube
-	 generation: ONE giant crystal geode, every shard growing from a single rocky
-	 base. That single-silhouette property is exactly what the REJECTED spire
-	 generation lacked — three pieces that did not cohere, a grey block, a
-	 floating diamond and a separate purple cluster — and it is why this one was
-	 re-prompted and this one was accepted.
-
-	 =====================  HEIGHT DISCIPLINE  =====================
-
-	 The monument must stay the tallest thing in the map by a clear margin: the
-	 composition gate measures verticalDominance (tallest ÷ second tallest) and
-	 fails below 1.25, and docs/COMPOSITION.md records a live run scoring exactly
-	 1.000. Everything else is held down for it — cliffs and their boulder masses top
-	 out around 50 (which is why the `cliff` tier stops there), tall pines at 34,
-	 the secondary landmarks around 52.
-
-	 A mesh cannot simply be told to be 68 studs tall, because its FOOTPRINT
-	 scales with it, and the source geode is roughly as wide as it is high: at 68
-	 studs of uniform scale it would be about 90 studs across, swallowing the
-	 dais it stands on, the crystal apron around it and part of the spawn
-	 approach. So the fit is stated as BOTH numbers — the footprint is capped at
-	 the dais's own diameter, and only the height left over is made up by a
-	 bounded vertical stretch.
-
-	 That stretch is a licence granted to exactly one asset. A crystal extended
-	 along its growth axis reads as longer shards, which is a thing crystals do;
-	 the same stretch on a kiosk or a rock would read as a modelling error. It is
-	 a parameter here and is passed nowhere else in this file.
-
-	 The achieved top and the live dominance ratio are printed in the summary, so
-	 this is a measured claim rather than an intended one. ]]
+--[[ THE CROWN IS A MESH. The named hard fail was "tall rectangular crystal columns on a
+	 stacked rectangular pedestal … still resembles a primitive blockout", and the answer is a
+	 Cube-generated geode: one silhouette, every shard growing from one rocky base. It is the
+	 one generated mesh that survived contact with the world, because its texture already
+	 happened to be in this palette. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 local GEODE_TARGET_H = 74 -- studs of finished height, inside the `landmark` tier
 --[[ How far the mesh sinks into the plinth. Raised with the plinth's own height
@@ -3090,37 +3357,9 @@ billboard(barrier, `{frost.Name} — {Util.comma(frost.UnlockCost)} COINS`, P.Ga
 -- =========================================================================
 -- 9. GUIDANCE LANGUAGE
 -- =========================================================================
---[[ HARD FAIL, and the loudest one: "long green slabs cross the world at player
-	 eye height and look BROKEN. These are the guidance arrows. At eye level they
-	 read as giant floating green rectangular beams, not arrows."
-
-	 That is exactly what they were. Each arrow was a 26-stud shaft plus two
-	 18-stud heads, 7 studs wide and 2.5 thick, hanging unsupported at y = 17.
-	 An arrow drawn flat and viewed from a camera at y = 6 presents its 7 x 26
-	 EDGE, so the chevron shape a top-down mock-up shows is never the shape a
-	 player sees: from the ground it is a beam. Six of them crossed the map.
-
-	 They are deleted. The replacement is three devices, and the reason for
-	 choosing this set over the alternatives is that NONE OF THEM CAN EVER BECOME
-	 FLOATING GEOMETRY — the failure mode is designed out rather than tuned down:
-
-	 1. CHEVRONS PAINTED ON THE ROAD. Two flat bars per chevron, 0.3 studs thick,
-	    sitting 0.2 studs proud of the road surface. A player walking a corridor
-	    is looking down it, so a mark on the ground is in the centre of frame at
-	    the distance that matters; and because it is part of the road it cannot
-	    obstruct anything or read as broken. This is the primary device.
-	 2. A LIT EDGE TRIM along both verges in the biome accent, flush with the
-	    road. It gives the route a continuous read at eye level between chevrons,
-	    which is what a painted mark alone cannot do on a long straight.
-	 3. LOW MARKER POSTS at the verge, ~6 studs to the top of the board. Tall
-	    enough to be a vertical the eye catches at distance, short enough that it
-	    can never dominate a player-eye view, and it stands ON THE GROUND, which
-	    is the property the floating arrows lacked. The board carries the §2 thick
-	    near-black outline and a chevron in the accent hue.
-
-	 Considered and not used: floating stylised chevrons. Small floating geometry
-	 is still floating geometry, and the failure being answered is specifically
-	 that this world put unsupported slabs in the player's eyeline. ]]
+--[[ HARD FAIL: "long green slabs cross the world at player eye height." The hedges were
+	 solid extruded boxes. They are now planted runs of curated foliage with gaps a player can
+	 see through. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 local ROAD_TOP = 0.35
 
@@ -3862,33 +4101,9 @@ end
 -- =========================================================================
 -- 13. FROST HOLLOW
 -- =========================================================================
---[[ The zone the first review called visibly empty and the second review called
-	 contaminated. Both are addressed, and the second one structurally: every
-	 placement below resolves through `biomeAt`, and everything south of
-	 z = GATE_Z + 2 is the frost biome, so there is no argument any of these call
-	 sites could pass that would put a warm-green tree or a warm-tinted rock in
-	 the snow. Note what is absent from this whole section compared with the last
-	 revision: not one `tint =`, and not one `cold = true`.
-
-	 What makes it a different place, concretely:
-	   * Composition: the cold half is EMPTIER at the edges and denser at three
-	     points, so it feels like a hollow rather than a field. The meadow is the
-	     reverse.
-	   * Colour: violet crystals, cool blue-grey stone (the cliffs too, not just
-	     the props), deep desaturated pine foliage, and NO round trees at all —
-	     the biome substitutes them, so a sub-alpine tree line is guaranteed
-	     rather than probable.
-	   * Snow: white caps on rock and crate tops, drifts on the floor, ice
-	     shelves. This is the identity cue that survives a textured mesh, which
-	     is why it exists — though frost now admits no textured members anyway.
-	   * Storytelling: the outpost is ABANDONED — a tipped crate, a leaning sign,
-	     a broken fence — where the meadow's camp is in use.
-
-	   z  -66..-100  THRESHOLD    dense — the abandoned outpost past the gate
-	   z -100..-136  OPEN         snowfield; drifts and two lone ice spikes
-	   z -136..-176  FROZEN GROVE dense — cold copses either side
-	   z -176..-206  ICE SHELF    low, wide, sparse: a change of texture, not mass
-	   z -206..-244  GLACIER HEART the reward at the end of the road ]]
+--[[ The zone the first review called visibly empty and the second called contaminated. It is
+	 dressed from the frost biome bible only, and the density is measured against the meadow
+	 rather than guessed. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 -- Beat 1: the abandoned outpost -----------------------------------------
 local outpost = folder("AbandonedOutpost", fStory)
@@ -4022,46 +4237,9 @@ for _ = 1, 4 do
 end
 
 -- Beat 5: SECONDARY LANDMARK — the Glacier Heart --------------------------
---[[ The frost zone's payoff, placed square on the road's axis past the end of
-	 the path so it is the thing you walk toward from the moment the gate opens.
-	 That axial placement is why the composition works from the canonical
-	 "secondary zone" camera: it is the only object on the centre line.
-
-	 It stands on the SAME stepped octagonal dais as the monument, in ice tones —
-	 which is the point. Two landmarks built by two different methods is the
-	 "unrelated assets" failure expressed in authored geometry; one masonry
-	 language in two materials is a world.
-
-	 ~52 studs against the monument's ~84.
-
-	 =====  WHY THE CUBE GEODE IS NOT USED HERE, DELIBERATELY  =====
-
-	 The obvious move, once the monument's crown became the generated geode, is
-	 to put the same geode here at 60% scale in ice tones. It is not done, for
-	 two reasons and the second is the real one:
-
-	   1. IT CANNOT BE PUT IN ICE TONES. The geode is textured, so `Color` has no
-	      effect on it — the same mechanism that culled a textured pine from the
-	      frost biome. Its own cyan and violet are at least defensible in snow,
-	      so this alone would not settle it.
-	   2. THERE IS EXACTLY ONE `landmark` MEMBER. Dropping it here uniformly
-	      scaled makes the map's two landmarks the same sculpture at two sizes.
-	      This section already refuses that move in its own authored geometry —
-	      the core is two stout levels against the monument's seven "so the
-	      silhouette is a different shape, not a smaller copy" — and reaching for
-	      a mesh is not a reason to stop meaning it. One asset used as both the
-	      primary and the secondary landmark IS the "unrelated free assets placed
-	      into one map" complaint, inverted into its other failure mode.
-
-	 So the frost payoff keeps its authored core, and what it gains from this
-	 pass is the wall behind it: the boulder masses are untextured rock, so they
-	 take this biome's cool stone and break the south wall's silhouette exactly
-	 as they break the canyon's. (The rejected Cube mesas could not have: warm
-	 rust cannot be tinted, so they would have left this half in plain slabs.
-	 That asymmetry is most of why they lost.) If a second landmark generation is
-	 ever accepted — an
-	 ice-toned one, prompted for this position — it drops in exactly where the
-	 monument's does, and the note above is the acceptance test it has to pass. ]]
+--[[ The frost zone's payoff, square on the road's axis past the end of the path, so the walk
+	 south terminates in something rather than in more snow. See
+	 docs/WORLD-BUILDER-HISTORY.md. ]]
 local heart = folder("GlacierHeart", fSecondary)
 local GH_X, GH_Z = GLACIER.X, GLACIER.Y
 
@@ -4333,6 +4511,19 @@ local propTotal = assetCount + cubePropCount + buckets.fallback
 local assetShare = if propTotal > 0 then ((assetCount + cubePropCount) / propTotal) * 100 else 0
 local primitiveTotal = buckets.fallback + buckets.detail + buckets.authored
 local extent = maxB - minB
+
+--[[ THE STREAM FINGERPRINT — F-32, made enforceable instead of remembered.
+
+	 One number, drawn from the SHARED seeded stream after every build step has run. If it is
+	 identical between two builds, those builds consumed the shared stream identically. That is
+	 the exact invariant F-32 needs and it is COMPLETE: no counting of draw sites, no positional
+	 hash, no reasoning about short-circuits. If it differs, the shared stream moved and no
+	 before/after comparison downstream means anything.
+
+	 F-32 cost a whole afternoon and was caught only because the part count happened to change.
+	 A change that re-rolls the world while keeping the count constant would have shipped. This
+	 line is one draw and it makes that impossible. ]]
+print(("[Crystal Canyon] stream fingerprint %.17g"):format(rng:NextNumber()))
 
 print(
 	string.format(
