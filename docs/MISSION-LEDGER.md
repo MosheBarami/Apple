@@ -16,7 +16,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 2 | Benchmark materially beyond the rejected blockout | **PARTIAL** | 482 primitives vs 608 blockout; cliff faces now battered, not terraced; Glacier Heart still not a payoff from the gate |
 | 3 | Frost Hollow primitive fallback resolved | **PROVEN** | 0 → 22 crystal meshes · `evidence/2026-09-01-detexture-ab.md` |
 | 4 | Glacier Heart no longer a box stack | **PROVEN** | radial crystal burst; dais geometry fixed · same file |
-| 5 | UI visual quality passes rendered review | **PARTIAL** | shop/HUD render well once `Icons` installed; not all screens reviewed |
+| 5 | UI visual quality passes rendered review | **PARTIAL** | The visual critic calls the UI kit **"the strongest thing in the build, by a distance"** — 4 px outlines throughout, FredokaOne uppercase with a 3 px stroke, panels at 60 % of viewport (§5.6 wants 50–70), **no text overflow across 149 rendered strings**. Three real defects against it: V6 (a shadow 91 px oversized and offset the wrong way in all four panels), V7 (SHOP duplicates UPGRADES), V9 (nav tiles square where §6 says circular). Still not reviewed as PIXELS in play mode — `screen_capture` returns magenta there |
 | 6 | UI motion passes frame review | **PROVEN** | **all 12 applicable categories measured**, plus reduced motion. Two of the original 14 name surfaces this game does not have (no tab bar; the roadmap is a web surface). Measuring the last one found the wallet had no counting animation at all — now added and measured at ~400 ms over 25 steps, with shards deliberately still snapping · `evidence/2026-09-01-ui-motion-frames.md` |
 | 7 | Creator Store asset intelligence used in real builds | **PROVEN** | 326 curated clones in the built world |
 | 8 | Style-coherence gate rejects incompatible assets | **PROVEN** | mesas rejected twice, 7 of 9 Cube generations refused |
@@ -51,14 +51,18 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 37 | No auto feature-branch production deploy | **PROVEN** | no deploy step in any workflow |
 | 38 | No purchases / new paid services | **PROVEN** | none made |
 | 39 | PR #1 carries honest evidence incl. rejections | **PROVEN** | body updated 2026-09-01 |
-| 40 | Independent critic agrees it is not prototype | **PARTIAL** | 3 independent critics ran with clean context — security, engineering, worker/plugin. 4 criticals found and fixed; 13 findings recorded unfixed in `FAILURES.md`. No VISUAL critic yet |
+| 40 | Independent critic agrees it is not prototype | **UNPROVEN** | A **visual** critic has now run — the fourth, first with eyes — and its verdict is **"Prototype. A carefully-dressed prototype with a genuinely shipped-quality UI kit bolted onto a world that is still a blockout."** 11 findings recorded as V1–V11 in `FAILURES.md`, four of them new and serious. Honest answer: this gate is not PARTIAL, it is failed, and the ledger should say so |
 
 ## Tally
 
-PROVEN 28 · PARTIAL 11 · UNPROVEN 0 · BLOCKED 1 · REJECTED 0
+PROVEN 28 · PARTIAL 10 · UNPROVEN 1 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked, on AI Gateway credit. Everything else marked
 PARTIAL is reachable without owner action.
+
+The UNPROVEN one is gate 40, and it moved there *from* PARTIAL. A visual critic ran and
+returned "Prototype". Marking that PARTIAL because three other critics passed would be the
+flattering arithmetic this ledger keeps having to correct.
 
 **Counted from the table above rather than carried forward.** An earlier version of this line
 said 26/13 and stayed at 26/13 while gates moved underneath it, which is the same class of

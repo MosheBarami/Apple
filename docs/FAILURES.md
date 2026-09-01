@@ -140,6 +140,53 @@ author never sees.
 
 ---
 
+## The visual critic, 2026-09-01 — verdict: PROTOTYPE
+
+The fourth independent critic, and the first with eyes. Clean context, the style spec, and the
+live place; told to be harsh and that a charitable review had already let a dead UI ship.
+
+> **"Prototype.** A carefully-dressed prototype with a genuinely shipped-quality UI kit bolted
+> onto a world that is still a blockout."
+
+It confirmed the wall finding from five camera positions at player eye height and explicitly
+declined to re-litigate it — *"my finding is confirmation, not news"* — which is the right
+reading of F-19/F-33 and gate 2.
+
+What it found that this project had **not** recorded is below. Every measurement is the
+critic's own; where it retracted a suspicion after checking, that is recorded too, because a
+critic that only ever adds findings is not calibrated.
+
+| id | severity | finding |
+|---|---|---|
+| V1 | **high** | **The frost gate's price label is 100 % occluded on the entire walking approach.** `Barrier.Label` sits at `StudsOffsetWorldSpace (0,30,0)` → centre Y 46, spanning 41.5–50.5; the gate's own `Lintel` spans 37.5–44.5 at the same Z, and `AlwaysOnTop = false`. Raycast, 27 points across the label face, from a realistic third-person camera: 67 % occluded at 56 studs, **100 % from 36 studs all the way in**, never better than 59 % when offset ±16 laterally. The only price the game states in the world is unreadable on foot. It renders fine from directly overhead, "which is presumably how it passed review before". |
+| V2 | medium | **The spawn point is an undressed default `SpawnLocation`** — `Size (20, 1.2, 20)`, cream, no outline, no bevel, 1.5 studs proud of the sand. Its `SpawnRing` is a ∅26 disc, so the square's 14.14 half-diagonal **projects 1.14 studs past the ring at four corners**, reading as a rendering fault. First thing every player sees. |
+| V3 | medium | **F-14's residual cause.** The dais yaw and chord are fixed, but each block's outer corner still lands at `1.054·R` while its neighbour's face is at `R` — a **1.2-stud sawtooth** round the base tier — and `k % 2` alternating tone paints every block a different shade so the eye cannot fuse them into a drum. F-14 recorded the pinwheel; it recorded neither of these. |
+| V4 | **high** | **Frost Hollow fails §1 wholesale.** Cliffs `#708296/#7086A8/#5E7084`, floor `#CEE8F5`, path `#4A7492/#608DAD`. §1 opens *"Bright, saturated, high-key. No muted palettes, no tasteful neutrals"* and §9.10 makes desaturated an automatic fail. **Roughly a third of the map fails a headline criterion.** |
+| V5 | medium | **Thirteen signs carry no text, decal or GUI of any kind** — 7 `sign_*` meshes and 6 `MarkerBoard`s. The whole Canyon has 3 `BillboardGui`s and **zero** `SurfaceGui`/`Decal`/`Texture`. §8 asks kiosks for "a bright sign"; three kiosk structures have none. |
+| V6 | medium | **The balance-bar coin-counter shadow is 359 px wide against a 268 px counter and offset 86 px to the LEFT**, in all four panels. Every other shadow in the kit matches its owner and offsets down-right. |
+| V7 | medium | **SHOP and UPGRADES sell the identical three items at identical prices** in two card templates. The SHOP panel has no products of its own — it is the upgrades list with a FEATURED strip. Two of the four panels are the same panel. |
+| V8 | medium | **The whole play space is one flat slab.** `Ground.Grass` is a single `332 × 4 × 553` Part and every walkable surface sits at Y ≈ 0.00–0.35. Zero elevation change anywhere a player can walk. |
+| V9 | low | Nav tiles are rounded squares (`UICorner 18` on 62 × 62) where §6 specifies circular icon buttons — the one place the otherwise-exemplary UI departs from the spec. |
+| V10 | low | **§6's top-centre pill is permanently empty for any post-onboarding player.** The objective chip is the only thing that ever occupies that slot and it retires after three steps. A spec gap rather than a bug. |
+| V11 | low | The 34 collectible crystals are ~1.5 studs against a ~5-stud character, where §7 asks for props oversized relative to the player; and 34 across a 332 × 553 world is thin. |
+
+**What it retracted after checking**, which is why the rest is trustworthy: it suspected the SELL
+and UPGRADES pad labels were buried behind crystal clusters, raycast the actual walking
+approaches, found 0–33 % and 0 % occlusion, and withdrew the finding. It also suspected the
+empty objective chip was dead UI, checked the profile, found all three onboarding steps
+complete, and reclassified it as V10.
+
+**What it praised**, specifically: the crystal monument silhouette (84 studs against 50-stud
+cliffs, visible from spawn); the path corridor; flora clustering measured rather than asserted
+(nearest-neighbour CV 1.35 flora, 0.84 rocks); 896 of 896 parts `SmoothPlastic` with zero
+realistic materials; and the UI kit — *"the strongest thing in the build, by a distance"* —
+with **no text overflow across 149 rendered strings**.
+
+**A limitation it stated plainly:** `screen_capture` returns magenta in play mode, so it never
+saw a pixel of the HUD or the panels. Everything it says about the UI is derived from the live
+GUI tree — `AbsoluteSize`, `AbsolutePosition`, `TextBounds`, stroke and corner properties — and
+it says so rather than implying it looked.
+
 ## Found by the critics and NOT yet fixed
 
 Recorded so they are not rediscovered as new. Severity is the critics' own.
