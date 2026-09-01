@@ -33,7 +33,7 @@ quarantined and stay quarantined until evidence exists.
 
 ## 2. What is checked out
 
-23 checkouts, each pinned to a commit SHA. The licence column is read from the
+38 checkouts, each pinned to a commit SHA. The licence column is read from the
 checkout's **own LICENSE file**, independently of what classification decided; a disagreement
 would appear here as a conflict rather than be resolved silently.
 
@@ -49,30 +49,45 @@ modern, because a summary is not a suppression.
 | checkout | licence | security | era | quality | deprecated | rules |
 | --- | --- | --- | --- | --- | --- | --- |
 | `Crabzzai__SimpleDialogue` | MIT | clean | modern | 0.86 | — | 6 |
+| `DLinacre__slime-factory-tycoon` | MIT | clean | modern | 0.86 | — | — |
 | `Diabetoss__NotificationSystem` | MIT | clean | — | 0.67 | — | 4 |
 | `LolplePlays__framer` | Apache-2.0 | clean | modern | 0.93 | — | — |
 | `MadStudioRoblox__ProfileService` | Apache-2.0 | clean | modern | 0.79 | 9 | — |
+| `MadStudioRoblox__ProfileStore` | Apache-2.0 | clean | modern | 0.79 | 2 | — |
+| `Quenty__NevermoreEngine` | MIT | **remote-payload-loader** | modern | 0.79 | — | — |
 | `Reselim__Flipper` | MIT | clean | — | 0.92 | 1 | 7 |
 | `Roblox__creator-docs` | CC-BY-4.0 | clean | — | 0.58 | — | 16 |
 | `Roblox__otter` | MIT | clean | modern | 0.93 | — | 8 |
+| `Roblox__react-luau` | MIT | **unscannable** | modern | 0.57 | 1 | — |
+| `Roblox__roact` | Apache-2.0 | clean | transitional | 0.86 | 4 | — |
 | `SirMallard__Iris` | MIT | clean | modern | 0.93 | — | 8 |
 | `Sleitnick__Knit` | MIT | clean | modern | 0.93 | — | — |
 | `Sleitnick__RbxCameraShaker` | MIT | clean | — | 0.67 | — | 5 |
+| `Sleitnick__RbxUtil` | MIT | clean | modern | 1.00 | — | — |
 | `Starstruck-Studios-Developers__framer` | Apache-2.0 | clean | — | 0.92 | — | — |
 | `afrxo__roblox-agent-skills` | MIT | clean | modern | 0.79 | — | 4 |
+| `centau__vide` | MIT | clean | modern | 0.93 | 3 | — |
 | `chriscerie__roact-spring` | MIT | clean | modern | 1.00 | — | 7 |
 | `ddust1n__CameraShaker` | MIT | clean | — | 0.67 | — | — |
+| `dphfox__Fusion` | MIT | clean | modern | 1.00 | — | — |
+| `evaera__Cmdr` | MIT | clean | modern | 0.79 | — | — |
 | `evaera__roblox-lua-promise` | MIT | clean | modern | 0.86 | — | — |
+| `ffrostfall__ByteNet` | MIT | clean | modern | 0.79 | — | — |
 | `gcaptn__cyan-ui` | MIT | clean | modern | 0.64 | — | 3 |
+| `gue-hub__roblox-tycoon-kit` | MIT | clean | modern | 0.71 | — | — |
 | `howmanysmall__Janitor` | MIT | clean | modern | 0.93 | — | — |
+| `littensy__charm` | MIT | clean | modern | 0.93 | — | — |
 | `loneka__onyx-ui` | MIT | clean | modern | 0.79 | — | 5 |
 | `luau-lang__site` | MIT | clean | — | 0.75 | — | — |
+| `matter-ecs__matter` | MIT | clean | modern | 1.00 | — | — |
 | `nightcycle__synthetic` | Apache-2.0 | clean | modern | 1.00 | — | 7 |
+| `phocodes__rice-simulator` | Apache-2.0 | clean | legacy | 0.43 | 38 | — |
+| `red-blox__zap` | MIT | clean | — | 1.00 | — | — |
 | `stravant__goodsignal` | MIT | clean | — | 0.67 | — | — |
 | `tijnepema__lucide-roblox` | MIT | clean | — | 0.58 | — | 7 |
 | `zhsj0089944__roblox-free-assets.skill` | MIT | clean | — | 0.67 | — | 3 |
 
-14 of 23 checkouts have had patterns extracted from them.
+14 of 38 checkouts have had patterns extracted from them.
 The empty cells in that last column are the most useful thing in this document: a
 licence-clear, security-scanned source that has taught Golem nothing yet is exactly where the
 remaining value is, and it is cheaper to reach than a new source.
@@ -97,37 +112,43 @@ The boundary these kinds encode is a licence boundary, not a citation style:
 
 ## 4. What has NOT been fetched
 
-747 sources are classified `COMMERCIAL_REUSABLE` and have never been checked
-out. They are lawful to use and currently teach nothing.
+732 source records are classified `COMMERCIAL_REUSABLE` and have never been
+checked out. They are lawful to use and currently teach nothing.
+
+Those records collapse to **497 distinct repositories**, and that is the number that
+measures the remaining work. A registry index publishes one record per PACKAGE, so a monorepo
+arrives many times over — `roblox/react-lua` alone accounts for 19 of them. Counting records
+here would overstate what is left to fetch by roughly a third, in a section whose entire job is to
+say how much is left.
 
 | id | licence | category | url |
 | --- | --- | --- | --- |
-| `gh-evaera-cmdr` | MIT | engineering | https://github.com/evaera/Cmdr |
 | `gh-ffrostfall-bridgenet2` | MIT | engineering | https://github.com/ffrostfall/BridgeNet2 |
-| `gh-ffrostfall-bytenet` | MIT | engineering | https://github.com/ffrostfall/ByteNet |
-| `gh-littensy-charm` | MIT | engineering | https://github.com/littensy/charm |
 | `gh-littensy-reflex` | MIT | engineering | https://github.com/littensy/reflex |
-| `gh-madstudioroblox-profilestore` | Apache-2.0 | engineering | https://github.com/MadStudioRoblox/ProfileStore |
 | `gh-madstudioroblox-replica` | Apache-2.0 | engineering | https://github.com/MadStudioRoblox/Replica |
-| `gh-matter-ecs-matter` | MIT | engineering | https://github.com/matter-ecs/matter |
-| `gh-quenty-nevermoreengine` | MIT | engineering | https://github.com/Quenty/NevermoreEngine |
-| `gh-red-blox-zap` | MIT | engineering | https://github.com/red-blox/zap |
-| `gh-sleitnick-rbxutil` | MIT | engineering | https://github.com/Sleitnick/RbxUtil |
-| `gh-dlinacre-slime-factory-tycoon` | MIT | full-game | https://github.com/DLinacre/slime-factory-tycoon |
 | `gh-glitchifyed-tunicus-placement-v3` | MIT | full-game | https://github.com/glitchifyed/Tunicus-Placement-v3 |
-| `gh-gue-hub-roblox-tycoon-kit` | MIT | full-game | https://github.com/gue-hub/roblox-tycoon-kit |
 | `gh-isaaccarrington-roblox-obby` | Apache-2.0 | full-game | https://github.com/isaaccarrington/roblox-obby |
 | `gh-jason-lee88-roblox-gym-tycoon` | MIT | full-game | https://github.com/jason-lee88/roblox-gym-tycoon |
 | `gh-phocodes-clicking-mania` | Apache-2.0 | full-game | https://github.com/phocodes/clicking-mania |
-| `gh-phocodes-rice-simulator` | Apache-2.0 | full-game | https://github.com/phocodes/rice-simulator |
 | `gh-raymondwzeng-simulator-in-roblox-studio` | MIT | full-game | https://github.com/raymondwzeng/Simulator-In-Roblox-Studio |
 | `gh-awesome-roblox-awesome-roblox` | CC0-1.0 | official | https://github.com/awesome-roblox/awesome-roblox |
+| `gh-luau-lang-luau` | MIT | official | https://github.com/luau-lang/luau |
+| `gh-pesde-pkg-pesde` | MIT | official | https://github.com/pesde-pkg/pesde |
+| `gh-afrxo-fusion-component` | MIT | ui-framework | https://github.com/afrxo/fusion-component |
+| `gh-afrxo-fusion-router` | MIT | ui-framework | https://github.com/afrxo/fusion-router |
+| `gh-ambergracerblx-pract` | Unlicense | ui-framework | https://github.com/AmberGraceRblx/pract |
+| `gh-bjlarouche-uiblox-rbxts` | MIT | ui-framework | https://github.com/bjlarouche/uiblox-rbxts |
+| `gh-creepersaur-quark` | MIT | ui-framework | https://github.com/creepersaur/quark |
+| `gh-cruzeht915-roblox-ui-component-library` | MIT | ui-framework | https://github.com/cruzeht915/roblox-ui-component-library |
+| `gh-cuteappi-coldfusion` | MIT | ui-framework | https://github.com/Cuteappi/ColdFusion |
+| `gh-egomoose-rbx-gui-library` | MIT | ui-framework | https://github.com/EgoMoose/Rbx-Gui-Library |
+| `gh-evaera-plasma` | MIT | ui-framework | https://github.com/evaera/plasma |
 
-…and 727 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
+…and 712 more. Full list: `pnpm --filter @golem/corpus fetch -- --list`.
 
 ## 5. Security
 
-24 of 1240 sources carry a scan verdict.
+58 of 1240 sources carry a scan verdict.
 
 The ordering is load-bearing and `docs/SOURCE-INTELLIGENCE.md` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an

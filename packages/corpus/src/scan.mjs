@@ -40,9 +40,38 @@ const SCANNABLE = /\.(luau?|lua|js|mjs|ts|py|sh|bash|json|md|txt|toml|ya?ml)$/i;
  *  trees that are not what this repository is being judged on. */
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', 'out', '.github', 'Packages', '_Index']);
 
+//[[ GENERATED DEPENDENCY METADATA IS NOT SHIPPED CONTENT, AND IS NOT SCANNED.
+//
+//   A lockfile is machine-written, contains no executable Roblox code, and is opaque by
+//   construction — which is precisely what the `unscannable` signal fires on. Scanning
+//   them disqualified `evaera/Cmdr` on its `package-lock.json`, and the register above
+//   already carries a hand-written acceptance for `Roblox/creator-docs`'s lockfile
+//   saying the same thing in prose: "build tooling rather than shipped content".
+//
+//   Accepting them one source at a time would mean a human review per lockfile, forever,
+//   for a file class whose contents nothing in this pipeline will ever learn from.
+//   `hash.mjs` already excludes exactly this list, for the analogous reason that two
+//   forks differing only in a lockfile are the same content.
+//
+//   This is deliberately NARROW: four exact filenames, no globs, no directory rules. It
+//   does not exempt `docs/bench/data.json` or any other large generated blob, because
+//   those cannot be recognised by name and a human deciding about them is correct. And
+//   it is reported below rather than applied silently.
+//
+//   The register above used to carry a hand-written `package-lock.json` acceptance for
+//   `Roblox/creator-docs`. It has been REMOVED rather than left in place: with the file
+//   class excluded upstream the entry can never fire, and an accepted-path entry that
+//   cannot fire claims a human reviewed something the scanner no longer reaches. ]]
+const SKIP_FILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'sourcemap.json']);
+
+let skippedGenerated = 0;
+
 function walk(dir, base = dir, acc = []) {
   for (const name of readdirSync(dir)) {
-    if (SKIP_DIRS.has(name)) continue;
+    if (SKIP_DIRS.has(name) || SKIP_FILES.has(name)) {
+      if (SKIP_FILES.has(name)) skippedGenerated += 1;
+      continue;
+    }
     const full = path.join(dir, name);
     let st;
     try {
@@ -92,8 +121,6 @@ const ACCEPTED = {
         'The API reference page for getfenv/setfenv. Documenting a language built-in is not calling it.',
       'content/en-us/reference/cloud/openapi.json':
         'A 3.35 MB generated OpenAPI specification. Reported unscannable rather than dangerous: too large to examine in full, and a partial pass cannot clear a file.',
-      'package-lock.json':
-        'A 738 KB npm lockfile. Unscannable for the same reason, and it is build tooling rather than shipped content.',
     },
   },
 };
@@ -268,6 +295,9 @@ async function main() {
   }
 
   console.log(`[scan] ${names.length} checkout(s), ${unsafe} unsafe, ${review} needing review`);
+  if (skippedGenerated > 0) {
+    console.log(`[scan] ${skippedGenerated} generated lockfile(s) not scanned (machine-written, no shipped code)`);
+  }
   if (sharedVerdicts > 0) {
     console.log(`[scan] ${sharedVerdicts} record(s) share a provenance id with a scanned checkout and inherited its verdict`);
   }

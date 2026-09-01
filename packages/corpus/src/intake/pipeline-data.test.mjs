@@ -30,18 +30,51 @@ test('a scanned source carries its verdict on the provenance record too', { skip
   assert.deepEqual(offenders, [], `verdict written to only one of two places:\n  ${offenders.join('\n  ')}`);
 });
 
-test('every content record with a checkout is reachable by retrieval', { skip: !HAVE_DATA }, () => {
-  // Rank 0 means "excluded from every use". If a licence-clear, security-clean
-  // source ranks 0, that is a plumbing failure wearing a policy decision's clothes.
+test('retrieval excludes exactly what policy excludes, and nothing else', { skip: !HAVE_DATA }, () => {
+  //[[ Rank 0 means "excluded from every use", and there are two ways to arrive there.
+  //
+  //   One is policy: §4 says an excluded source is out of every use, retrieval included,
+  //   and §3 says quarantine stays unused until a human resolves it. Those zeroes are
+  //   the system working. `Quenty/NevermoreEngine` is one — it ships a Studio bridge
+  //   whose purpose is executing arbitrary code, so `remote-payload-loader` is an
+  //   accurate verdict on a well-regarded library, and it must rank 0.
+  //
+  //   The other is plumbing, which is what F-47 was: a licence-clear, security-clean
+  //   source ranking 0 because a verdict was written where retrieval could not read it.
+  //   That is a failure wearing a policy decision's clothes.
+  //
+  //   Asserting only "nothing ranks 0" could not tell those apart, and it started
+  //   failing the moment the scanner correctly excluded something. So assert BOTH
+  //   directions against the same policy the ranker applies. ]]
   const content = load('content.json');
   const sources = load('sources.json');
   const prov = Object.values(sources.records).map((r) => r.provenance).filter(Boolean);
-  const dead = content.records.filter((r) => retrievalRank(r, prov) === 0);
+  const byId = new Map(prov.map((p) => [p.id, p]));
+  const NOT_RETRIEVABLE = new Set(['UNSAFE_EXCLUDED', 'UNCLEAR_QUARANTINE']);
+
+  const shouldRank = (r) =>
+    r.observedIn.some((id) => {
+      const p = byId.get(id);
+      return p?.security?.safe === true && !NOT_RETRIEVABLE.has(p?.licence?.class);
+    });
+
+  const deadButClear = content.records.filter((r) => shouldRank(r) && retrievalRank(r, prov) === 0);
   assert.deepEqual(
-    dead.map((r) => r.observedIn[0]),
+    deadButClear.map((r) => r.observedIn[0]),
     [],
-    'these content records rank 0 and so are retrievable by nothing',
+    'licence-clear, security-clean records that rank 0 — a verdict written where retrieval cannot read it',
   );
+
+  const rankedButExcluded = content.records.filter((r) => !shouldRank(r) && retrievalRank(r, prov) > 0);
+  assert.deepEqual(
+    rankedButExcluded.map((r) => r.observedIn[0]),
+    [],
+    'records that rank despite having no observing location that clears both gates',
+  );
+
+  // And the sample must be big enough for either half to mean anything.
+  const ranked = content.records.filter((r) => retrievalRank(r, prov) > 0);
+  assert.ok(ranked.length >= 20, `only ${ranked.length} records rank at all; retrieval may be dead again`);
 });
 
 test('the domain and quality stages have actually run', { skip: !HAVE_DATA }, () => {
