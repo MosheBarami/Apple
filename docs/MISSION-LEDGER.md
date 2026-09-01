@@ -41,8 +41,8 @@ Last reconciled: **2026-09-01** (second pass).
 | 27 | UI Labs or equivalent isolated UI harness | **PROVEN** | `Stories.luau` renders states in isolation at 1.00 and 0.72 and MEASURES touch targets; found a real mobile trap · `evidence/2026-09-01-ui-stories-harness.md` |
 | 28 | Icon intelligence from strong free sources | **PARTIAL** | original icon family ships; not sourced from a vetted library |
 | 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | `MotionProbe.luau` + 4 motion rules in the library; still one game's patterns |
-| 30 | Studs/classic a first-class art language | **UNPROVEN** | not attempted |
-| 31 | Broad non-simulator UI/game patterns represented | **UNPROVEN** | single genre only |
+| 30 | Studs/classic a first-class art language | **PARTIAL** | 10 studs-classic + 9 retro-roblox rules, 12 sourced from creator-docs (CC-BY-4.0); no studs world built yet |
+| 31 | Broad non-simulator UI/game patterns represented | **PARTIAL** | 51 rules over 17 of 23 families; 6 still empty (fantasy, sci-fi, modern, battleground-fps, social, dialogue-story) and the coverage test names them |
 | 32 | Hugging Face pipeline measured and privacy-safe | **PARTIAL** | landscape characterised, licences read, duplicates identified; nothing uploaded/downloaded/trained · `evidence/2026-09-01-huggingface-luau-landscape.md` |
 | 33 | No user project is training data without opt-in | **PROVEN** | standing policy, unchanged |
 | 34 | Cost controls intact | **PROVEN** | no purchases; caps untouched |
@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (second pass).
 
 ## Tally
 
-PROVEN 25 · PARTIAL 10 · UNPROVEN 4 · BLOCKED 1 · REJECTED 0
+PROVEN 25 · PARTIAL 12 · UNPROVEN 2 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
