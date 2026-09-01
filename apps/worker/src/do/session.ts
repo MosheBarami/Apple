@@ -59,6 +59,8 @@ type PollResponse = PluginPollResponse & { client?: PluginCompatibility };
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
+  /** the run's unforgeable fence id; optional so a run persisted by an older deploy still loads */
+  fenceId?: string;
   mode: GolemMode;
   msgId: string;
   llm: GatewayRequest['messages'];
@@ -584,6 +586,11 @@ export class SessionDO extends DurableObject<Env> {
     // same reason: both are free, both are deterministic, and both are true of this request
     // before a single token has been spent. See runIntentFor.
     const intent = runIntentFor(text);
+    //[[ The run's fence id. Random per run, named in the system prompt, and used on every
+    //   tool fence below, so a closing tag forged by tool content cannot match it. Tool output
+    //   is NOT escaped — mangling it would corrupt the evidence the agent reasons from — so the
+    //   tag carries a secret instead of relying on the content not containing one. ]]
+    const fenceId = crypto.randomUUID().slice(0, 8);
     const sys = systemPrompt({
       mode,
       studioConnected,
@@ -600,6 +607,7 @@ export class SessionDO extends DurableObject<Env> {
       //   style families §L asks for, and padding a thin match into a prompt would
       //   spend tokens on every step to tell the model what it did not need. ]]
       uiBrief: traits.uiDesignTask && mode !== 'clay' ? (designBrief(text)?.text ?? null) : null,
+      fenceId,
     });
 
     const history = (
@@ -614,6 +622,7 @@ export class SessionDO extends DurableObject<Env> {
       status: 'running',
       mode,
       msgId,
+      fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
@@ -982,7 +991,7 @@ export class SessionDO extends DurableObject<Env> {
       // fence tool output as untrusted data — it can contain attacker-authored text
       agent.llm.push({
         role: 'tool',
-        content: `[${call.name}]\n<untrusted-tool-output tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
+        content: `[${call.name}]\n<untrusted-tool-output id="${agent.fenceId ?? ''}" tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
         toolCallId: call.id,
         name: call.name,
       });

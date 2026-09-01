@@ -161,25 +161,52 @@ end
 local InstantTween = {}
 InstantTween.__index = InstantTween
 
-function InstantTween.new(target: Instance, goal: { [string]: any })
+function InstantTween.new(target: Instance, goal: { [string]: any }, info: TweenInfo?)
 	local signal = Instance.new("BindableEvent")
 	return setmetatable({
 		_target = target,
 		_goal = goal,
+		_info = info,
 		_signal = signal,
+		_done = false,
 		Completed = signal.Event,
 		PlaybackState = Enum.PlaybackState.Begin,
 	}, InstantTween)
 end
 
-function InstantTween:Play()
-	for property, value in pairs(self._goal) do
-		-- pcall so one unsettable property cannot strand the whole goal, which a
-		-- real tween would also survive.
-		pcall(function()
-			(self._target :: any)[property] = value
-		end)
+--[[ A REVERSING LOOP HAS NO END STATE AT THE GOAL — it rests where it started.
+
+	 `TweenInfo.new(0.55, Sine, InOut, -1, true)` is the pack-full pulse: it runs
+	 forever and returns to its origin on every cycle. Applying its GOAL under
+	 reduced motion parks the sell plate permanently at Scale 1.14 — a UI stuck
+	 mid-gesture, which is a worse outcome than the animation it replaced.
+
+	 So the goal is applied only for tweens that actually settle on it. A looping
+	 reverse is simply not played, which is the honest reduced-motion answer: the
+	 gesture conveyed attention, and attention is exactly what a player asking for
+	 less motion has opted out of. The STATE it decorated is unaffected. ]]
+local function settlesOnGoal(info: TweenInfo?): boolean
+	if not info then
+		return true
 	end
+	local repeats = info.RepeatCount
+	return not (info.Reverses and repeats ~= 0)
+end
+
+function InstantTween:Play()
+	if settlesOnGoal(self._info) then
+		for property, value in pairs(self._goal) do
+			-- pcall so one unsettable property cannot strand the whole goal, which a
+			-- real tween would also survive.
+			pcall(function()
+				(self._target :: any)[property] = value
+			end)
+		end
+	end
+	if self._done then
+		return
+	end
+	self._done = true
 	self.PlaybackState = Enum.PlaybackState.Completed
 	local signal = self._signal
 	task.defer(function()
@@ -187,8 +214,23 @@ function InstantTween:Play()
 	end)
 end
 
+--[[ Cancel must REPORT, not just stop.
+
+	 `Theme.close` hides the panel in its Completed handler and returns early when
+	 the state is anything but Completed — "cancelled by a re-open; that open owns
+	 the panel now". A Cancel that fires nothing leaves that guard unable to fire,
+	 so under reduced motion a re-open's panel would be hidden by the close it
+	 interrupted. The guard exists precisely for this and was unreachable here. ]]
 function InstantTween:Cancel()
 	self.PlaybackState = Enum.PlaybackState.Cancelled
+	if self._done then
+		return
+	end
+	self._done = true
+	local signal = self._signal
+	task.defer(function()
+		signal:Fire(Enum.PlaybackState.Cancelled)
+	end)
 end
 
 function InstantTween:Pause() end
@@ -198,7 +240,7 @@ function InstantTween:Pause() end
 Theme.motion = {
 	Create = function(_self, target: Instance, info: TweenInfo, goal: { [string]: any })
 		if Theme.reducedMotion() then
-			return InstantTween.new(target, goal)
+			return InstantTween.new(target, goal, info)
 		end
 		return RealTweenService:Create(target, info, goal)
 	end,

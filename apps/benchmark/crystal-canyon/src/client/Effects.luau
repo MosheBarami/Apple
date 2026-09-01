@@ -440,7 +440,19 @@ function Effects.countTo(label: TextLabel, from: number, to: number, options: Co
 		return ok
 	end
 
-	if jump == 0 or duration <= 0 then
+	--[[ REDUCED MOTION REACHES HERE TOO, and it did not before.
+
+		 `Theme.motion` is a drop-in replacement for TweenService, so it converts
+		 every TWEEN in the client at once — and is structurally incapable of
+		 covering anything that is not a tween. This function is the one thing that
+		 is not: a hand-rolled per-frame loop with a cubic ease, driving the most
+		 motion-heavy element on screen. A player who asked their device for less
+		 motion still got rolling numbers.
+
+		 Snapping is the right reduced-motion answer here rather than skipping: the
+		 NUMBER is the information, the roll was only the decoration. Same rule the
+		 gate follows everywhere else — remove the travel, keep the outcome. ]]
+	if jump == 0 or duration <= 0 or Theme.reducedMotion() then
 		write(target)
 		if countClaims[label] == claim then
 			countClaims[label] = nil
