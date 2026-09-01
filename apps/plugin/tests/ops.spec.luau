@@ -103,7 +103,7 @@ end)
 	the OBSERVABLE consequence: with no op in flight, setProp must refuse. ]]
 
 H.test("outside any op, no asset id may be referenced", function()
-	local part = Instance.new("Part")
+	local part = Instance.new("MeshPart")
 	H.raises(function()
 		Paths.setProp(part, "MeshId", { t = "string", v = "rbxassetid://123" })
 	end, "not verified in this session", "setProp outside an op")
@@ -111,7 +111,7 @@ end)
 
 H.test("the policy is shut again after a handler raises", function()
 	reply("create_instances") -- raises inside the handler
-	local part = Instance.new("Part")
+	local part = Instance.new("MeshPart")
 	H.raises(function()
 		Paths.setProp(part, "MeshId", { t = "string", v = "rbxassetid://123" })
 	end, "not verified in this session", "setProp after a raising op")
@@ -119,7 +119,7 @@ end)
 
 H.test("the policy is shut again after a handler returns normally", function()
 	reply("ping")
-	local part = Instance.new("Part")
+	local part = Instance.new("MeshPart")
 	H.raises(function()
 		Paths.setProp(part, "MeshId", { t = "string", v = "rbxassetid://456" })
 	end, "not verified in this session", "setProp after a clean op")
@@ -141,7 +141,7 @@ end
 
 H.test("an envelope-verified id is referenceable, and only for that op", function()
 	-- set_props reads verifiedAssetIds off the op ENVELOPE, which the worker builds.
-	local target = Instance.new("Part", game:GetService("Workspace"))
+	local target = Instance.new("MeshPart", game:GetService("Workspace"))
 	target.Name = "PolicyProbe"
 	local r = Ops.execute("t2", {
 		op = "set_props",
@@ -154,14 +154,14 @@ H.test("an envelope-verified id is referenceable, and only for that op", functio
 	H.eq(contains(r.data.set, "MeshId"), true, "MeshId reported as set")
 	H.eq(target.MeshId, "rbxassetid://777", "and actually assigned")
 	-- And the grant does not outlive the op.
-	local other = Instance.new("Part")
+	local other = Instance.new("MeshPart")
 	H.raises(function()
 		Paths.setProp(other, "MeshId", { t = "string", v = "rbxassetid://777" })
 	end, "not verified in this session", "the grant leaked past its op")
 end)
 
 H.test("verifiedAssetIds is read off the envelope, never out of props", function()
-	local target = Instance.new("Part", game:GetService("Workspace"))
+	local target = Instance.new("MeshPart", game:GetService("Workspace"))
 	target.Name = "SmuggleProbe"
 	-- The model authors `props`. If the policy ever read ids from there, MeshId would land.
 	local r = Ops.execute("t3", {
@@ -181,7 +181,7 @@ end)
 H.test("a refused asset reference is reported, not silently dropped", function()
 	-- An agent that reads only `ok` would believe this worked. `propIssues` is the
 	-- only signal that it did not, so it has to be present and it has to be readable.
-	local target = Instance.new("Part", game:GetService("Workspace"))
+	local target = Instance.new("MeshPart", game:GetService("Workspace"))
 	target.Name = "ReportProbe"
 	local r = Ops.execute("t4", {
 		op = "set_props",
@@ -227,22 +227,71 @@ H.test("the refusal tells the agent what to do instead", function()
 end)
 
 H.test("a loop that yields is allowed through", function()
-	-- Each of these is a DISTINCT entry in the YIELDS list, asserted separately so a
-	-- pattern that stops matching is caught rather than covered for by a neighbour.
+	-- Each is a DISTINCT entry in the YIELDS list, asserted separately so a pattern
+	-- that stops matching is caught rather than covered for by a neighbour.
 	--
-	-- Noted while building the mutation check: `task%.wait` is redundant. The generic
-	-- `%f[%w]wait%s*%(` already matches `task.wait(`, because the frontier is
-	-- satisfied by the dot. Removing the specific entry changes no behaviour. It is
-	-- harmless and left alone; the entries below it are not redundant and are pinned.
+	-- `task%.wait` is redundant: the generic `%f[%w]wait%s*%(` already matches
+	-- `task.wait(` because the frontier is satisfied by the dot. Kept for legibility,
+	-- and recorded here so it is not rediscovered as a finding.
 	H.eq(refusedFor("while true do task.wait() end"), false, "task.wait")
 	H.eq(refusedFor("while true do wait(1) end"), false, "bare wait()")
-	H.eq(refusedFor("while true do task.delay(1, f) end"), false, "task.delay")
-	H.eq(refusedFor("while true do task.spawn(f) end"), false, "task.spawn")
-	H.eq(refusedFor("while true do task.defer(f) end"), false, "task.defer")
 	H.eq(refusedFor("while true do part.Touched:Wait() end"), false, ":Wait()")
-	H.eq(refusedFor("while true do RunService.Heartbeat:Wait() end"), false, "RunService")
+	H.eq(refusedFor("while true do RunService.Heartbeat:Wait() end"), false, "RunService:Wait")
 	H.eq(refusedFor("while true do store:GetAsync(k) end"), false, ":GetAsync")
-	H.eq(refusedFor("while true do HttpService:RequestAsync(r) end"), false, "HttpService")
+	H.eq(refusedFor("while true do HttpService:RequestAsync(r) end"), false, ":RequestAsync")
+end)
+
+--[[ THE THREE THAT LOOK LIKE YIELDS AND ARE NOT.
+
+	 An earlier version of this spec asserted these were ALLOWED, because `YIELDS`
+	 listed them. That was wrong in the module and the test locked it in — the worst
+	 shape a test can take, since it makes the defect look deliberate.
+
+	 None of the three suspends the caller: task.spawn resumes f on a NEW thread,
+	 task.defer and task.delay schedule and return. So each of these loops spins
+	 forever AND spawns unbounded threads — strictly worse than a plain busy-wait,
+	 and exactly the freeze the gate exists to prevent. ]]
+H.test("task.spawn, task.defer and task.delay do not count as yields", function()
+	H.eq(refusedFor("while true do task.spawn(f) end"), true, "task.spawn")
+	H.eq(refusedFor("while true do task.defer(f) end"), true, "task.defer")
+	H.eq(refusedFor("while true do task.delay(1, f) end"), true, "task.delay")
+end)
+
+H.test("the refusal says so, because the mistake is an easy one to repeat", function()
+	local r = runCode("while true do task.spawn(f) end")
+	H.ok(string.find(r.error, "task.spawn", 1, true), "names the trap: " .. tostring(r.error))
+end)
+
+--[[ THE BODY IS THE LOOP'S BODY, not the rest of the file.
+
+	 The gate used to take everything after the loop header as its body, so a yield
+	 anywhere later in the script satisfied it. All four of these passed before. ]]
+H.test("a yield after the loop does not rescue the loop", function()
+	H.eq(refusedFor("while true do end\ntask.wait()"), true, "yield on the next line")
+	H.eq(refusedFor("while true do end\nwhile true do task.wait() end"), true, "a later guarded loop")
+end)
+
+H.test("every loop is checked, not just the first", function()
+	H.eq(refusedFor("while true do task.wait() end\nwhile true do end"), true, "second loop unguarded")
+end)
+
+H.test("a nested block does not end the loop early", function()
+	-- blockEnd counts openers, so the `if` inside must not be mistaken for the end.
+	H.eq(refusedFor("while true do if x then y() end end\ntask.wait()"), true, "nested if")
+	H.eq(refusedFor("while true do if x then task.wait() end end"), false, "yield inside a nested if")
+	H.eq(refusedFor("while true do for i = 1, 3 do task.wait() end end"), false, "yield inside a nested for")
+end)
+
+H.test("parentheses around the condition are not a bypass", function()
+	H.eq(refusedFor("while (true) do end"), true, "while (true) do")
+	H.eq(refusedFor("while ( true ) do end"), true, "with spaces")
+end)
+
+H.test("merely naming a service is not a yield", function()
+	-- A bare "RunService" substring used to satisfy the gate, so printing the service
+	-- inside an infinite loop passed.
+	H.eq(refusedFor("while true do print(RunService) end"), true, "RunService mentioned, not awaited")
+	H.eq(refusedFor("while true do local h = HttpService end"), true, "HttpService mentioned")
 end)
 
 H.test("`repeat` is only refused when it cannot terminate", function()
@@ -257,6 +306,10 @@ H.test("a loop keyword inside a string literal is not a loop", function()
 	H.eq(refusedFor("print('while true do')"), false, "single-quoted")
 	H.eq(refusedFor("-- while true do\nprint(1)"), false, "line comment")
 	H.eq(refusedFor("--[[ while true do ]]\nprint(1)"), false, "block comment")
+	-- Long-bracket STRINGS were not stripped, so printing one that happened to contain
+	-- a loop keyword was refused as though the literal were code.
+	H.eq(refusedFor("print([[while true do]])"), false, "long-bracket string")
+	H.eq(refusedFor("local s = [[repeat]]\nprint(s)"), false, "long-bracket with repeat")
 end)
 
 H.test("code with no loop at all is never refused", function()

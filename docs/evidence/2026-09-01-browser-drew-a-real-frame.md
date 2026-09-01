@@ -1,6 +1,6 @@
 # The browser decoder drew a real Studio frame
 
-**Date:** 2026-09-01 · closes the outstanding half of ledger gate 18.
+**Date:** 2026-09-01 · closes ONE of ledger gate 18's three outstanding items.
 
 ## What was still missing
 
@@ -40,8 +40,14 @@ pixels.
    | non-black | 16,000 |
    | distinct colours read back off the canvas | **141** |
 
-   The canvas colour count matches Node's count of the same bytes exactly, so the
-   decode is byte-identical rather than merely plausible.
+   The canvas colour count matches Node's count of the same bytes exactly.
+
+   That is a distinct-colour CARDINALITY, and it is worth being exact about what it
+   buys: 141 = 141 is strong evidence the browser decoded the same image, and it is not
+   proof of byte equality — two different buffers can share a histogram size. An
+   earlier draft of this file said "byte-identical rather than merely plausible", which
+   claimed more than the measurement supports. A hash of the decoded buffer on both
+   sides would earn that word; a colour count earns "consistent with".
 
 The rendered frame is committed beside this file as
 `2026-09-01-playtest-frame-parkour.png`. It is recognisably the world: sky, the
@@ -50,7 +56,12 @@ canyon's red rock, green ground cover, a pale path.
 ## What this proves, and what it does not
 
 **Proven:** the shipped browser decoder turns a real, live-place Studio frame into
-correct pixels in a real browser. Gate 18's last hop is closed.
+pixels in a real browser, with the right byte count and a colour histogram matching
+the source. Gate 18's browser-decode item is closed.
+
+**Gate 18 has three outstanding items**, not one: the browser decoder, the card not
+being deployed, and `run_and_check` not driving the capture loop. This closes the
+first. The other two are untouched.
 
 **Not proven here, and deliberately not claimed:** this ran against the decoder
 module directly rather than through a signed-in `PlaytestCard` in the deployed app.

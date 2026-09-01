@@ -68,8 +68,30 @@ export function planBootstrap(lock, classOf, present = new Map()) {
     const url = typeof entry.url === 'string' ? entry.url.replace(/\.git$/, '') : null;
     const sha = typeof entry.sha === 'string' && /^[0-9a-f]{40}$/.test(entry.sha) ? entry.sha : null;
 
+    //[[ THE KEY BECOMES A DIRECTORY, so it is validated like one.
+    //
+    //   `name` comes straight from the lock's object keys and was used as
+    //   `path.join(RAW, name)` unchecked. A key of `../../../../tmp/pwn` resolves
+    //   outside packages/corpus/raw/ and this would then git-init a third-party tree
+    //   there. It needs a hostile manifest to reach — a tracked, generated, 544-line
+    //   JSON file, which is exactly the kind a reviewer skims. ]]
+    if (!/^[A-Za-z0-9._-]+$/.test(name) || name === '.' || name === '..') {
+      plan.refused.push({ name, why: 'the checkout name is not a plain directory name' });
+      continue;
+    }
     if (!url) {
       plan.refused.push({ name, why: 'the lock records no url, so there is nothing to fetch' });
+      continue;
+    }
+    //[[ AND THE URL IS A URL, not a git transport.
+    //
+    //   Only the licence class was checked, never the scheme. Git's `ext::` transport
+    //   RUNS its argument as a command during fetch, which would have falsified this
+    //   file's own header claim that it executes nothing it downloads. The two-file
+    //   agreement gate is a licence control, not an authentication one, and both files
+    //   are editable in one PR. ]]
+    if (!/^https:\/\//.test(url)) {
+      plan.refused.push({ name, why: `the url is not https (${url.slice(0, 24)}…), so it is not a repository to clone` });
       continue;
     }
     if (!sha) {

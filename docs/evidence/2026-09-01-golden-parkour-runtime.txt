@@ -1,0 +1,74 @@
+Runtime verification of the parkour feature Golem built
+=======================================================
+Studio instance d99c6fb8-badc-4dda-a586-535878541a3e, place 116648235878426.
+A SEPARATE session from the build transcript, which ends at 212.2s on the step-limit
+reply. The Luau below that drives the feature is Claude-authored throwaway; the code
+under test is Golem's.
+
+--- Edit mode, before Play -------------------------------------------------------
+Workspace            parts=956   scripts=6   instances=1071
+ServerScriptService  parts=0     scripts=14  instances=14
+StarterPlayer        parts=0     scripts=10  instances=12
+Workspace children: GolemPlugin<Script>, Terrain<Terrain>, Camera<Camera>,
+                    __AxisProbe<Folder>, Canyon<Folder>, ParkourCourse<Model>
+ServerScriptService.ParkourTimer: EXISTS <Script> 94 lines, 2787 chars
+StarterPlayer.StarterPlayerScripts.ParkourTimerUI: EXISTS <LocalScript> 96 lines, 2850 chars
+
+ParkourCourse <Model>
+  StartPad    10,1,10 @ 60,4,0        StartRim   11,0,11 @ 60,3,0
+  Platform1    6,1,6  @ 74,6,0        Trim1       4,0,4  @ 74,5,0
+  Platform2    6,1,6  @ 88,7,7        Trim2       4,0,4  @ 88,6,7
+  Platform3    6,1,6  @ 102,8,14      Trim3       4,0,4  @ 102,8,14   <-- same Y as its platform
+  Platform4    6,1,6  @ 116,10,7      Trim4       4,0,4  @ 116,10,7   <-- same
+  Platform5    6,1,6  @ 130,12,0      Trim5       4,0,4  @ 130,12,0   <-- same
+  Platform6    6,1,6  @ 144,14,0      Trim6       4,0,4  @ 144,14,0   <-- same
+  Platform7    6,1,6  @ 157,16,8      Trim7       4,0,4  @ 157,16,8   <-- same
+  Platform8    6,1,6  @ 170,18,0      Trim8       4,0,4  @ 170,18,0   <-- same
+  FinishPad   10,1,10 @ 184,20,0      FinishRim  11,0,11 @ 184,20,0   <-- same
+  FinishBeam   2,34,2 @ 184,38,0
+All anchored. Trim1/Trim2 sit 1 stud below; Trim3..Trim8 and FinishRim do not.
+
+--- Edit mode: the remote does not exist yet -------------------------------------
+direct child of ReplicatedStorage: false
+ParkourSync NOT FOUND anywhere in ReplicatedStorage
+(expected: the server script creates it at runtime)
+
+--- Play started, ~20s to initialise ---------------------------------------------
+console:
+  [ParkourTimer] ready - start/finish pads hooked          <-- Golem's script, clean
+  [CrystalCanyon] CRYSTAL CANYON v1.0.0 server online
+  Workspace.GolemPlugin:15  cannot call 'IsEdit' (lacking capability Plugin)   [pre-existing dev artifact]
+  [CrystalCanyon] no gate part for zone "meadow"                                [pre-existing]
+  user_AgileBootstrap...  Http requests can only be executed by game server     [third-party plugin]
+  user_AgileBootstrap...  loadstring() is not available                         [third-party plugin]
+No error from ParkourTimer or ParkourTimerUI.
+
+--- Server datamodel -------------------------------------------------------------
+ParkourSync at RUNTIME: game.ReplicatedStorage.CrystalCanyon.Remotes.ParkourSync
+is a DIRECT child of ReplicatedStorage: false
+ParkourCourse present at runtime: true   StartPad=true FinishPad=true
+
+  => the client does ReplicatedStorage:WaitForChild("ParkourSync", 10) FIRST, which
+     therefore always times out before its recursive fallback succeeds. 10s stall.
+
+--- Client datamodel -------------------------------------------------------------
+ParkourTimerGui present: true
+TimerPlate size={0, 240}, {0, 74}  pos={0.5, 0}, {0, 14}
+TimeLabel text="0.00" visible=true
+BestLabel text="Best: --"
+client sees direct ParkourSync: false
+client sees deep   ParkourSync: true
+
+--- Character onto StartPad (60, 4, 0) -------------------------------------------
+player=Herobrine583522 teleported to StartPad
+timer sampled twice 1.5s apart: "7.53" then "9.02"   (delta 1.49s)
+colour = 0.313726, 0.784314, 0.470588  = RGB 80,200,120 = the GREEN constant
+best   = "Best: --"                     RUNNING=true
+
+--- Character onto FinishPad (184, 20.5, 0) --------------------------------------
+timer sampled twice 2s apart: "16.73" then "16.73"   STOPPED=true
+colour = 1.00, 0.77, 0.24  = RGB 255,196,60 = the GOLD constant
+best   = "Best: 16.73s"
+
+--- Play stopped -----------------------------------------------------------------
+Game Stopped

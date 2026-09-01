@@ -17,16 +17,51 @@ local function policy(...)
 	Paths.setAssetPolicy({ allow = allow, preexisting = false })
 end
 
-local function assign(propName, value, tag)
-	local part = Instance.new("Part")
-	Paths.setProp(part, propName, { t = tag or "string", v = value })
-	return part
+--[[ THE CLASS HAS TO ACTUALLY HAVE THE PROPERTY.
+
+	 These helpers used to assign everything to a `Part`. That passed, because the
+	 harness accepted any property name — and `Part.MeshId` RAISES in real Roblox, a
+	 Part having no such member. So eleven assertions here were green on a write the
+	 engine rejects, and would have inverted in Studio. The stub now refuses unknown
+	 members (see run.mjs), which turned all eleven red and is why this exists.
+
+	 Each property is assigned to a class that genuinely has it. ]]
+local CLASS_FOR = {
+	MeshId = "MeshPart", TextureID = "MeshPart",
+	Image = "ImageLabel", HoverImage = "ImageLabel",
+	SoundId = "Sound",
+	Texture = "Decal",
+	Text = "TextLabel",
+	Transparency = "Part", ZIndex = "Frame",
+	Face = "HumanoidDescription", HatAccessory = "HumanoidDescription",
+}
+
+local function assign(propName, value, tag, className)
+	local inst = Instance.new(className or CLASS_FOR[propName] or "Part")
+	Paths.setProp(inst, propName, { t = tag or "string", v = value })
+	return inst
 end
 
---- True when assigning `value` to `propName` is refused under the current policy.
-local function refused(propName, value, tag)
-	local ok = pcall(assign, propName, value, tag)
-	return not ok
+--[[ "Refused" means THE GATE refused, not that anything failed.
+
+	 The old helper returned `not ok` from a pcall, which conflated the gate's refusal
+	 with any other error — including "not a valid member", which is now reachable. A
+	 test that cannot tell those apart passes when the gate is broken and the write
+	 merely failed for an unrelated reason.
+
+	 So it keys on the refusals' own text. Both messages are user-facing and asserted
+	 elsewhere in this file, so pinning them here is not a second source of truth. ]]
+local GATE_MARKERS = { "not verified in this session", "cannot be read" }
+
+local function refused(propName, value, tag, className)
+	local ok, err = pcall(assign, propName, value, tag, className)
+	if ok then return false end
+	local msg = tostring(err)
+	for _, marker in GATE_MARKERS do
+		if string.find(msg, marker, 1, true) then return true end
+	end
+	-- Something else went wrong. Surface it rather than reporting it as a refusal.
+	error(("%s: expected either a clean assignment or a gate refusal, got: %s"):format(propName, msg), 2)
 end
 
 -- --------------------------------------------------------- verified vs not --
@@ -119,7 +154,8 @@ end)
 H.test("a URI-shaped string is gated on an ordinary property too", function()
 	policy()
 	H.eq(refused("Text", "rbxassetid://22"), true, "a URI is a reference wherever it appears")
-	H.eq(refused("SomeFutureProperty", "rbxassetid://23"), true, "including on a property nothing knows about")
+	H.eq(refused("Value", "rbxassetid://23", "string", "StringValue"), true,
+		"including on a property that is not in ASSET_PROPS")
 end)
 
 H.test("a non-URI string on an ordinary property is inert", function()
@@ -137,8 +173,10 @@ H.test("the Content tag makes any property name a content property", function()
 	-- tagged one. This is the tier-two discriminator — a bare digit string, which is
 	-- an asset id only when the property is content.
 	policy()
-	H.eq(refused("SomeFutureProperty", "1234", "Content"), true, "tagged Content")
-	H.eq(refused("SomeFutureProperty", "1234", "string"), false, "untagged, unknown name")
+	-- Assigned to a StringValue's `Value`, which exists, so the only thing that can
+	-- differ between these two lines is the codec tag.
+	H.eq(refused("Value", "1234", "Content", "StringValue"), true, "tagged Content")
+	H.eq(refused("Value", "1234", "string", "StringValue"), false, "untagged, unknown name")
 end)
 
 H.test("clearing a content property imports nothing", function()

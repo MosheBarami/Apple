@@ -191,6 +191,9 @@ Enum = setmetatable({}, {
 -- Paths.setProp land in the same table a spec reads back, so a spec asserts on the
 -- EFFECT of a call rather than on its return value.
 local __InstanceMT = {}
+-- Forward declaration: __newInstance's __newindex closes over this, and the property
+-- model that defines it is declared below (beside Instance.new, where it reads best).
+local __hasProp
 local function __newInstance(className, name)
 	local children = {}
 	local attributes = {}
@@ -293,11 +296,96 @@ local function __newInstance(className, name)
 				return
 			end
 			if k == "Name" then fields.Name = v return end
+			if not __hasProp(fields.ClassName, k) then
+				error((k .. " is not a valid member of " .. fields.ClassName), 2)
+			end
 			props[k] = v
 		end,
 		__tostring = function() return fields.Name end,
 	})
 	return proxy
+end
+
+--[[ WHICH PROPERTIES EACH CLASS ACTUALLY HAS.
+
+	 Added 2026-09-01 after a review found the sharpest kind of stub infidelity: the
+	 proxy accepted ANY property name, so \`Instance.new("Part").MeshId = "..."\`
+	 succeeded here and raises in Studio (a Part has no MeshId). That made the single
+	 most load-bearing positive assertion about the asset gate — "the verified id was
+	 actually assigned" — pass on a write real Roblox rejects, and it would have
+	 inverted in the engine.
+
+	 This is not the full property model and is not trying to be. It is the set the
+	 specs assign, plus the shared BasePart/GuiObject surfaces, so that a spec naming a
+	 property the class does not have fails LOUDLY instead of quietly proving nothing.
+	 Anything missing is a one-line addition beside its class. ]]
+local __COMMON = { Name = true, Parent = true, Archivable = true }
+local __BASEPART = {
+	Size = true, CFrame = true, Position = true, Orientation = true, Anchored = true,
+	Transparency = true, Reflectance = true, Color = true, BrickColor = true,
+	Material = true, CanCollide = true, CanTouch = true, CastShadow = true, Massless = true,
+}
+local __GUI = {
+	Size = true, Position = true, AnchorPoint = true, BackgroundColor3 = true,
+	BackgroundTransparency = true, BorderSizePixel = true, Visible = true, ZIndex = true,
+	LayoutOrder = true, Rotation = true,
+}
+local __PROPS = {
+	Part = __BASEPART,
+	WedgePart = __BASEPART,
+	MeshPart = { MeshId = true, TextureID = true, DoubleSided = true },
+	SpecialMesh = { MeshId = true, TextureId = true, Scale = true, MeshType = true },
+	Decal = { Texture = true, Transparency = true, Face = true },
+	Texture = { Texture = true, Transparency = true, StudsPerTileU = true },
+	ParticleEmitter = { Texture = true, Rate = true, Lifetime = true },
+	Sound = { SoundId = true, Volume = true, Looped = true, PlaybackSpeed = true },
+	SurfaceAppearance = { ColorMap = true, NormalMap = true, MetalnessMap = true, RoughnessMap = true },
+	ImageLabel = { Image = true, HoverImage = true, PressedImage = true, ImageColor3 = true, ImageTransparency = true },
+	ImageButton = { Image = true, HoverImage = true, PressedImage = true, AutoButtonColor = true },
+	TextLabel = { Text = true, TextColor3 = true, TextSize = true, Font = true, TextScaled = true, TextWrapped = true },
+	TextButton = { Text = true, TextColor3 = true, TextSize = true, Font = true, AutoButtonColor = true },
+	Frame = {},
+	ScreenGui = { ResetOnSpawn = true, IgnoreGuiInset = true, DisplayOrder = true, Enabled = true },
+	UICorner = { CornerRadius = true },
+	UIStroke = { Thickness = true, Color = true, Transparency = true },
+	UIPadding = { PaddingTop = true, PaddingBottom = true, PaddingLeft = true, PaddingRight = true },
+	UIListLayout = { Padding = true, FillDirection = true, SortOrder = true },
+	Model = { PrimaryPart = true, WorldPivot = true },
+	Folder = {},
+	Camera = { CFrame = true, CameraType = true, FieldOfView = true, Focus = true },
+	Script = { Source = true, Enabled = true, RunContext = true },
+	LocalScript = { Source = true, Enabled = true },
+	ModuleScript = { Source = true },
+	StringValue = { Value = true },
+	IntValue = { Value = true },
+	NumberValue = { Value = true },
+	BoolValue = { Value = true },
+	ObjectValue = { Value = true },
+	Attachment = { CFrame = true, Position = true, Visible = true },
+	PointLight = { Brightness = true, Range = true, Color = true },
+	Humanoid = { WalkSpeed = true, JumpPower = true, Health = true, MaxHealth = true },
+	Configuration = {},
+	RemoteEvent = {},
+	RemoteFunction = {},
+	-- Names avatar assets by bare number, which is the tier-2 gate's most important case.
+	HumanoidDescription = {
+		Face = true, Head = true, Torso = true, LeftArm = true, RightArm = true,
+		LeftLeg = true, RightLeg = true, Shirt = true, Pants = true, GraphicTShirt = true,
+		HatAccessory = true, HairAccessory = true, FaceAccessory = true, NeckAccessory = true,
+		ShoulderAccessory = true, FrontAccessory = true, BackAccessory = true, WaistAccessory = true,
+	},
+}
+
+__hasProp = function(className, key)
+	if __COMMON[key] then return true end
+	local own = __PROPS[className]
+	if own and own[key] then return true end
+	-- Every Gui* class shares the GuiObject surface.
+	if (__PROPS[className] ~= nil) and (string.find(className, "Label") or string.find(className, "Button")
+		or string.find(className, "Frame") or string.find(className, "Gui")) then
+		return __GUI[key] == true
+	end
+	return false
 end
 
 -- Class names the engine refuses. Instance.new must raise on a bad className,
@@ -311,6 +399,7 @@ local __KNOWN_CLASSES = {
 	Frame = true, TextLabel = true, TextButton = true, ImageLabel = true, ImageButton = true,
 	UICorner = true, UIListLayout = true, UIPadding = true, UIStroke = true, Camera = true,
 	Texture = true, ParticleEmitter = true, PointLight = true, SurfaceAppearance = true,
+	HumanoidDescription = true, WedgePart = true,
 }
 Instance = {
 	new = function(className, parent)

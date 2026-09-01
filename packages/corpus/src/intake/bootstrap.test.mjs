@@ -123,3 +123,39 @@ test('a .git suffix does not hide a source from its classification', () => {
     { sources: { ok: { url: 'https://github.com/o/ok.git', sha: SHA_A } } }, classOf);
   assert.equal(plan.clone.length, 1, 'the .git suffix must be normalised before the lookup');
 });
+
+// --- the lock is data, and data can be hostile ---------------------------------
+// `raw/manifest.json` is tracked and generated, which makes it exactly the kind of
+// file a reviewer skims. Both of these were reachable before 2026-09-01.
+
+test('a checkout name that escapes raw/ is refused', () => {
+  const plan = planBootstrap(
+    { sources: { '../../../../tmp/pwn': { url: 'https://github.com/o/ok', sha: SHA_A } } }, classOf);
+  assert.equal(plan.clone.length, 0);
+  assert.match(plan.refused[0].why, /plain directory name/);
+});
+
+test('a checkout name with a path separator is refused', () => {
+  for (const bad of ['a/b', 'a\\b', '..', '.', 'a b']) {
+    const plan = planBootstrap({ sources: { [bad]: { url: 'https://github.com/o/ok', sha: SHA_A } } }, classOf);
+    assert.equal(plan.clone.length, 0, `${bad} should not be cloneable`);
+  }
+});
+
+test('a non-https url is refused, including git transports that execute', () => {
+  // `ext::` runs its argument as a command during fetch. Cloning one would falsify
+  // this module's own claim that it executes nothing it downloads.
+  const hostile = new Map([['ext::sh -c whoami', 'COMMERCIAL_REUSABLE'], ['http://github.com/o/ok', 'COMMERCIAL_REUSABLE']]);
+  for (const url of ['ext::sh -c whoami', 'http://github.com/o/ok']) {
+    const plan = planBootstrap({ sources: { ok: { url, sha: SHA_A } } }, hostile);
+    assert.equal(plan.clone.length, 0, `${url} should not be cloneable`);
+    assert.match(plan.refused[0].why, /not https/);
+  }
+});
+
+test('the real tracked lock passes both checks', () => {
+  // The guards must not have made the actual corpus unreproducible.
+  const plan = planBootstrap(lock, loadClassOf(), new Map());
+  assert.deepEqual(plan.refused, []);
+  assert.equal(plan.clone.length, Object.keys(lock.sources).length);
+});

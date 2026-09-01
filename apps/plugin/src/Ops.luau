@@ -319,38 +319,116 @@ end
 	 guard against real samples rather than by reading it. The DataStore and HTTP calls
 	 are here for the same reason: they yield, so a loop containing one keeps Studio
 	 responsive however long it runs. ]]
+--[[ CALLS THAT ACTUALLY YIELD THE CALLING THREAD.
+	 Three entries were removed on 2026-09-01 because they do not, and their presence
+	 made the gate wave through the exact freeze it exists to catch:
+
+	   task.spawn  resumes f on a NEW thread and returns immediately
+	   task.defer  schedules f for the next resumption point and returns immediately
+	   task.delay  schedules f for later and returns immediately
+
+	 None of them suspends the caller, so `while true do task.spawn(f) end` spins
+	 forever AND spawns unbounded threads. Verified by running the gate over it.
+
+	 A bare "RunService" was removed for a different reason: it matched the mere
+	 MENTION of the service, so `while true do print(RunService) end` passed. The
+	 form that genuinely yields — `RunService.Heartbeat:Wait()` — is already caught
+	 by the `:Wait(` entry below, so nothing is lost.
+
+	 `task.wait` is kept although `%f[%w]wait%s*%(` already matches it through the
+	 dot: it is the clearest thing to read here, and the redundancy is now stated
+	 rather than rediscovered. ]]
 local YIELDS = {
 	"task%.wait",
-	"task%.delay",
-	"task%.spawn",
-	"task%.defer",
 	"%f[%w]wait%s*%(",
 	":Wait%w*%s*%(",
-	"RunService",
 	":GetAsync", ":SetAsync", ":UpdateAsync", ":IncrementAsync",
-	"HttpService", ":RequestAsync",
+	":RequestAsync",
+}
+
+--[[ Where the block opened just before `from` closes.
+
+	 The old gate took `stripped:sub(to + 1)` — EVERYTHING after the loop header — as
+	 the loop's body, so a yield anywhere later in the file satisfied it and
+	 `while true do end` followed by a `task.wait()` on the next line passed. Measured,
+	 not theorised.
+
+	 Counting is by block opener rather than by `do`/`then` pairs, because
+	 `if/elseif/else` share ONE `end`: `if` opens, `then` is ignored, and the single
+	 `end` closes it. Openers are `if`, `do`, `function`, `repeat`; closers are `end`
+	 and `until`. `while x do` and `for x do` are covered because their `do` is the
+	 opener. Strings and comments are already gone by the time this runs. ]]
+local function blockEnd(src: string, from: number): number
+	local depth = 1
+	local i = from
+	while i <= #src do
+		local s, e, word = string.find(src, "%f[%a](%a+)%f[%A]", i)
+		if not s then break end
+		if word == "if" or word == "do" or word == "function" or word == "repeat" then
+			depth += 1
+		elseif word == "end" or word == "until" then
+			depth -= 1
+			if depth == 0 then return (s :: number) - 1 end
+		end
+		i = (e :: number) + 1
+	end
+	return #src
+end
+
+local LOOP_HEADS = {
+	-- `while (true) do` is the same loop; the optional parens were previously a bypass.
+	{ pat = "while%s*%(?%s*true%s*%)?%s*do%f[%W]", kind = "while" },
+	{ pat = "while%s*%(?%s*1%s*%)?%s*do%f[%W]", kind = "while" },
+	{ pat = "repeat%f[%W]", kind = "repeat" },
 }
 
 local function refuseNonYieldingLoop(code: string): string?
 	-- Strip strings and comments first, so a loop keyword inside a literal is not a hit.
-	local stripped = code:gsub("%-%-%[%[.-%]%]", " "):gsub("%-%-[^\n]*", " "):gsub('"[^"\n]*"', '""'):gsub("'[^'\n]*'", "''")
-	local patterns = { "while%s+true%s+do", "while%s+1%s+do", "repeat%f[%W]" }
-	for _, loopPat in patterns do
-		local from, to = stripped:find(loopPat)
-		if from then
-			local body = stripped:sub(to + 1)
-			-- `repeat` only hangs on `until false`; anything else may terminate.
-			if loopPat == "repeat%f[%W]" and not body:find("until%s+false") then
-				continue
-			end
-			for _, y in YIELDS do
-				if body:find(y) then
-					return nil
+	-- Long-bracket strings are stripped too: without that, printing a long-bracket
+	-- literal whose text happens to contain a loop keyword was refused as though the
+	-- literal were code. (Written as line comments on purpose — the example that
+	-- motivated it cannot be quoted inside a block comment without closing it.)
+	local stripped = code
+		:gsub("%-%-%[%[.-%]%]", " ")
+		:gsub("%-%-[^\n]*", " ")
+		:gsub("%[%[.-%]%]", " ")
+		:gsub('"[^"\n]*"', '""')
+		:gsub("'[^'\n]*'", "''")
+
+	--[[ EVERY loop, not just the first of each shape. The old code took one match per
+		 pattern and returned on it, so a guarded loop followed by an unguarded one
+		 reported the guarded verdict for both. ]]
+	for _, head in LOOP_HEADS do
+		local searchAt = 1
+		while true do
+			local from, to = stripped:find(head.pat, searchAt)
+			if not from then break end
+			searchAt = (to :: number) + 1
+
+			local closeAt = blockEnd(stripped, (to :: number) + 1)
+			local body = stripped:sub((to :: number) + 1, closeAt)
+
+			if head.kind == "repeat" then
+				-- `repeat` only hangs on `until false`; anything else may terminate.
+				local tail = stripped:sub(closeAt + 1)
+				if not tail:find("^%s*until%s+false%f[%W]") then
+					continue
 				end
 			end
-			return "refused: this code contains a loop with no yield in it (no task.wait, wait() or "
-				.. ":Wait()). Such a loop cannot be interrupted and would freeze Studio permanently. "
-				.. "Add a yield inside the loop, or give it a bounded counter."
+
+			local yields = false
+			for _, y in YIELDS do
+				if body:find(y) then
+					yields = true
+					break
+				end
+			end
+			if not yields then
+				return "refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+					.. ":Wait()). Such a loop cannot be interrupted and would freeze Studio permanently. "
+					.. "Add a yield inside the loop, or give it a bounded counter. Note that task.spawn, "
+					.. "task.defer and task.delay do NOT yield the thread that calls them."
+			end
 		end
 	end
 	return nil

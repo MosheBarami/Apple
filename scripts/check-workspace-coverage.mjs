@@ -36,7 +36,31 @@ const EXEMPT = {
 /** Workspace member directories, expanded from pnpm-workspace.yaml's globs. */
 function members() {
   const ws = readFileSync(join(ROOT, 'pnpm-workspace.yaml'), 'utf8');
-  const globs = [...ws.matchAll(/^\s*-\s*(\S+\/\*)\s*$/gm)].map((m) => m[1]);
+  // Only the `packages:` block. The file also has `allowBuilds:` and
+  // `minimumReleaseAgeExclude:` list items, and matching those would be nonsense.
+  const block = /^packages:\n((?:\s+-\s*.*\n)+)/m.exec(ws);
+  if (!block) throw new Error('no packages: block in pnpm-workspace.yaml');
+  const entries = [...block[1].matchAll(/^\s*-\s*(.+?)\s*$/gm)]
+    .map((m) => m[1].replace(/^['"]|['"]$/g, ''));   // quoted entries are valid YAML
+  //[[ AN ENTRY THIS CANNOT EXPAND IS AN ERROR, NOT A SKIP.
+  //
+  //   The first version matched only unquoted globs ending in `/*` and dropped
+  //   everything else silently, so `- 'apps/*'` — same meaning, still valid YAML, and
+  //   the quoting style this very file already uses three lines lower — would have
+  //   removed a whole tree from the check with no output. A checker whose failure mode
+  //   is a quiet pass is the defect it exists to catch. ]]
+  const globs = [];
+  const unhandled = [];
+  for (const e of entries) {
+    if (/\/\*$/.test(e)) globs.push(e);
+    else unhandled.push(e);
+  }
+  if (unhandled.length > 0) {
+    throw new Error(
+      `pnpm-workspace.yaml has package entries this check cannot expand: ${unhandled.join(', ')}. `
+      + 'Teach it that shape rather than letting those packages go unchecked.',
+    );
+  }
   if (globs.length === 0) throw new Error('no package globs found in pnpm-workspace.yaml');
   const out = [];
   for (const glob of globs) {
@@ -53,7 +77,9 @@ function members() {
 
 /** Source files whose behaviour a test could hold, ignoring the tests themselves. */
 function sourceFileCount(dir) {
-  const SRC = /\.(luau|lua|ts|tsx|mjs|js)$/;
+  // Widened after a review: a member whose source is Python or .jsx counted ZERO and
+  // passed with no manifest at all. scripts/secret-scan.py makes .py live in this repo.
+  const SRC = /\.(luau|lua|ts|tsx|mts|cts|mjs|cjs|js|jsx|py|rs|go|astro|vue|svelte)$/;
   const SKIP = new Set(['node_modules', 'dist', 'build', 'raw', '.astro', 'release', 'tests', 'test']);
   let n = 0;
   const walk = (d) => {
@@ -94,7 +120,17 @@ for (const dir of ALL) {
   }
 
   const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
-  const hasTest = typeof pkg.scripts?.test === 'string' && pkg.scripts.test.trim() !== '';
+  //[[ A `test` script that cannot fail is not coverage.
+  //
+  //   This checked only for a non-empty string, so `"test": "true"` would pass. It now
+  //   rejects the trivial no-ops. What it still CANNOT establish is whether the script
+  //   runs anything: apps/plugin's own test exits 0 with a SKIPPED message when the
+  //   Luau CLI is absent, so on a machine without it this reports the package covered
+  //   while zero assertions run. CI installs Luau in the same job as `pnpm -r test`,
+  //   so the CI claim is sound — but that is a fact about ci.yml, not something this
+  //   file proves, and it is written down here rather than assumed. ]]
+  const script = typeof pkg.scripts?.test === 'string' ? pkg.scripts.test.trim() : '';
+  const hasTest = script !== '' && !['true', ':', 'exit 0', 'echo'].includes(script);
   if (hasTest) {
     covered.push(rel);
     continue;

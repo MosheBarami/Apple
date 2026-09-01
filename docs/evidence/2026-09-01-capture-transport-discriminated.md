@@ -56,9 +56,15 @@ Then, in order:
 
 ## Finding
 
-**The capture transport is the fault, and the camera path is exonerated.** A capture
-that asks Studio to do nothing but read the framebuffer fails identically to one that
-also moves the camera. The prior conclusion was right; it is now supported by an
+**The camera path is exonerated.** A capture that asks Studio to do nothing but read
+the framebuffer fails identically to one that also moves the camera, so nothing about
+setting the camera is implicated.
+
+The stronger phrasing — "the capture transport is the fault" — is elimination over
+exactly two hypotheses, and a third was never varied: that this particular 934-part
+place is simply too heavy to finish inside the capture timeout. That predicts both
+results equally well. Testing it means capturing a near-empty place, which is a
+different experiment and was not run. The prior conclusion was right; it is now supported by an
 experiment that could have contradicted it rather than by five observations that
 could not.
 
@@ -67,8 +73,6 @@ does not help, because there is nothing wrong with setting the camera.
 
 ## What this does NOT establish
 
-- Whether restarting Studio or its MCP plugin clears the fault. Not attempted this
-  session; it remains the outstanding operational recovery step.
 - Whether restarting Studio or its MCP plugin clears the fault. That is now the ONLY
   remaining operational step, and it was not attempted this session: the same Studio
   instance was needed, paired and working, for the §9 golden creation test, and

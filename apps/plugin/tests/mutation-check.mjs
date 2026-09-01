@@ -58,11 +58,25 @@ const MUTATIONS = [
     replace: "\tlocal __p = opBody.props and opBody.props.verifiedAssetIds\n\tif __p and tonumber(__p.v) then allow[tonumber(__p.v)] = true end\n\tif type(opBody.verifiedAssetIds) == \"table\" then",
   },
   {
-    name: "the loop gate stops stripping strings and comments",
+    name: "long-bracket strings are no longer stripped",
     claim: "a loop keyword inside a literal is not a loop",
     module: "Ops",
-    find: "\tlocal stripped = code:gsub(\"%-%-%[%[.-%]%]\", \" \"):gsub(\"%-%-[^\\n]*\", \" \"):gsub('\"[^\"\\n]*\"', '\"\"'):gsub(\"'[^'\\n]*'\", \"''\")",
-    replace: "\tlocal stripped = code",
+    find: "\t\t:gsub(\"%[%[.-%]%]\", \" \")",
+    replace: "\t\t:gsub(\"NEVERMATCHESANYTHING\", \" \")",
+  },
+  {
+    name: "the loop body becomes the rest of the file again",
+    claim: "a yield after the loop does not rescue the loop",
+    module: "Ops",
+    find: "local function blockEnd(src: string, from: number): number",
+    replace: "local function blockEnd(src: string, from: number): number\n\tif true then return #src end",
+  },
+  {
+    name: "task.spawn is treated as a yield again",
+    claim: "task.spawn, task.defer and task.delay do not count as yields",
+    module: "Ops",
+    find: "\t\"task%.wait\",",
+    replace: "\t\"task%.wait\",\n\t\"task%.spawn\",",
   },
   {
     name: "the yield scan is disabled, so every loop is refused",

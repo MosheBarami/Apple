@@ -3,9 +3,13 @@
 **Date:** 2026-09-01 · **Mission §9.** The question this answers is not "does the code
 exist" but "does *Golem* build, rather than Claude building while developing Golem".
 
-**Claude authored one thing in this exercise: the user's sentence.** Every part,
-every line of Luau and every design decision below came out of Golem's own model
+**Claude authored one thing in the BUILD: the user's sentence.** Every part, every
+line of shipped Luau and every design decision below came out of Golem's own model
 output through its own tools. Nothing was hand-corrected, and nothing was retried.
+
+The verification afterwards is a different matter and is marked as such: driving the
+finished feature — teleporting a character onto each pad and sampling the timer — is
+Claude-authored throwaway Luau that touches nothing Golem built.
 
 ## The path that was exercised
 
@@ -43,18 +47,27 @@ different set of systems from the Crystal Canyon family.
 |---|---|
 | inspecting | `get_project_tree`, `list_scripts`, `read_script` ×2 |
 | checkpointing | `create_checkpoint` |
-| building | `run_luau` ×5 |
+| building | `run_luau` ×8 |
 | writing_luau | `edit_script` ×2 |
 | playtesting | `run_and_check` |
 | rendering | `render_view` ×2 |
 
-It **read the existing project before writing to it** — `CrystalCanyonServer` and
-`ReplicatedStorage.CrystalCanyon.Remotes` — and that reading changed what it built:
-the server script looks for the game's own `Remotes` folder and parents its remote
-there rather than inventing a parallel one. That is project comprehension, not
-template output.
+That table lists 18 calls and the transcript's own summary reports `tools=18`; an
+earlier draft of it said `run_luau ×5` and summed to 15, which is the kind of
+arithmetic nobody re-adds. The transcript is the source: `run_luau` at 113.1 s,
+198.7 s, 201.6 s, 209.7 s, 212.2 s and three more inside the build sequence.
 
-Full transcript: `2026-09-01-golden-parkour-transcript.log`.
+It **read the existing project before writing to it** — `CrystalCanyonServer` and
+`ReplicatedStorage.CrystalCanyon.Remotes` — and the script it then wrote looks for the
+game's own `Remotes` folder and parents its remote there rather than inventing a
+parallel one.
+
+Stated precisely, because the causal version of that sentence is an inference: what is
+observed is the reads in the transcript and the folder-aware code in the artifact. That
+the second followed from the first is the obvious reading and it is not proven by
+anything here.
+
+Full transcript: `2026-09-01-golden-parkour-transcript.txt`.
 
 ## What landed
 
@@ -72,6 +85,14 @@ Full transcript: `2026-09-01-golden-parkour-transcript.log`.
 ## PROVEN BY EXECUTION, not by reading
 
 The place was put into Play and the feature was driven through its real handlers.
+
+**This section is a SEPARATE Studio session from the transcript above**, which ends at
+212.2 s on the step-limit reply. The build was Golem's; this verification was not, and
+the Luau that teleported a character onto each pad was written by Claude. That does not
+weaken the result — the thing under test is the code Golem wrote, and driving it is how
+you find out whether it works — but the two must not be read as one continuous
+recording. The observations are transcribed in
+`2026-09-01-golden-parkour-runtime.txt`.
 
 | step | observation |
 |---|---|
