@@ -2748,3 +2748,22 @@
   .gx-pill__place { display: none; }
   .gx-pill__short { display: inline; }
 }
+
+/* Canonical status marks (components/status-icon.tsx). Tone is the status, so the
+   colour is chosen by the mark rather than by whoever placed it — a success drawn in
+   the failure colour is the drift the vocabulary exists to stop. */
+.st { flex: none; vertical-align: -0.15em; }
+.st--good   { color: var(--good); }
+.st--bad    { color: var(--bad); }
+.st--warn   { color: var(--warn); }
+.st--info   { color: var(--info); }
+.st--future { color: var(--acc-rune); }
+.st--muted  { color: var(--ink-3); }
+
+/* The status-mark specimen row in /ui-lab. */
+.lab-marks { display: flex; flex-wrap: wrap; gap: 1.1rem 1.6rem; align-items: center; }
+.lab-mark { display: flex; align-items: center; gap: 0.45rem; }
+/* I05 alone animates. `prefers-reduced-motion` stops it rather than hiding it: the
+   arc still reads as "not finished", which is the part that carries meaning. */
+.st--spin { animation: gx-spin 900ms linear infinite; transform-origin: 50% 50%; }
+@media (prefers-reduced-motion: reduce) { .st--spin { animation: none; } }

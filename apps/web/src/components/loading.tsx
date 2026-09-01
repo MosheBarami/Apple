@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 import { RunePulse } from './glyphs';
+import { StatusIcon } from './status-icon';
 
 const HEADLINE: Record<OperationKind, string> = {
   building: 'Golem is building',
@@ -72,8 +73,8 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
               key={step}
               className={`forge-step${i < index ? ' is-done' : ''}${i === index ? ' is-active' : ''}`}
             >
-              <span className="forge-step-mark" aria-hidden="true">
-                {i < index ? '✓' : ''}
+              <span className="forge-step-mark">
+                {i < index ? <StatusIcon status="success" size={12} /> : null}
               </span>
               {step}
             </li>
