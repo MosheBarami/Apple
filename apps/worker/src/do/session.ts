@@ -796,6 +796,18 @@ export class SessionDO extends DurableObject<Env> {
 
   private async runStep(agent: AgentState) {
     const bind = (await this.bind())!;
+    //[[ Re-established here, not only in startRunInner.
+    //
+    //   `currentMsgId` is an instance field, and a run outlives the instance: the Durable
+    //   Object can be evicted between steps and the alarm resumes the run on a fresh object
+    //   whose field is undefined. Everything that reads it then silently degrades — playtest
+    //   frames lose their message id, and worse, `execStudioOp` tags its ops with `undefined`,
+    //   which `dropOpsForEndedRuns` deliberately treats as "queued by an older deploy, keep
+    //   it". A5's protection would switch itself off after the first eviction, and nothing
+    //   would say so.
+    //
+    //   The run's own state carries the id across the eviction, so it is taken from there. ]]
+    this.currentMsgId = agent.msgId;
     agent.step += 1;
     agent.lastStepAt = Date.now();
 

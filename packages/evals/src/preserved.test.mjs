@@ -1235,3 +1235,22 @@ test('A5 a live run keeps its own ops', async () => {
 
   assert.equal(queueOf(h.session).length, 1, 'the running run must keep its queued work');
 });
+
+test('A5 an op queued after a Durable Object eviction is still tagged', async () => {
+  // `currentMsgId` is an INSTANCE field and a run outlives the instance: the object can be
+  // evicted between steps and the alarm resumes on a fresh one. If the id is only set in
+  // startRun, ops queued after that point carry runId: undefined -- which dropOpsForEndedRuns
+  // deliberately keeps, treating it as work from an older deploy. A5's protection would switch
+  // itself off after the first eviction and nothing would report it.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  const agent = h.store.get('agent');
+
+  // A fresh instance over the SAME storage is exactly what an eviction leaves behind.
+  const reborn = sessionHarness(h.store);
+  assert.equal(reborn.session.currentMsgId, undefined, 'the new instance starts with no run id');
+
+  reborn.store.set('pluginLastSeen', Date.now());
+  await reborn.session.runStep({ ...agent, step: 0 }).catch(() => {});
+  assert.equal(reborn.session.currentMsgId, agent.msgId, 'runStep must re-establish it from the run state');
+});

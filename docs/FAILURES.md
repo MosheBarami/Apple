@@ -188,6 +188,32 @@ plugin protocol change, not a worker one, and it is the shape any future attempt
 Until then, losing work is the cheaper mistake. The decision is written at the delivery site
 so the next reader finds it before reimplementing the retry.
 
+### F-34 · My own A5 fix switched itself off after a Durable Object eviction
+
+Found by re-reading this session's own diff rather than by a test, and worth recording because
+the failure mode is the one this session keeps meeting: a guard that stops guarding without
+saying so.
+
+`execStudioOp` tags each queued op with `this.currentMsgId` so `dropOpsForEndedRuns` can discard
+work belonging to a run that has ended. `currentMsgId` is an **instance** field, and it was set
+in exactly one place: `startRunInner`.
+
+A run outlives the instance. The Durable Object can be evicted between steps, and the alarm
+resumes the run on a fresh object whose field is `undefined`. Every op queued from that point
+carries `runId: undefined` — which `dropOpsForEndedRuns` **deliberately keeps**, on the
+reasoning that an unlabelled op was queued by a deploy predating the field and discarding work
+because it is unlabelled would be worse than the bug.
+
+So the two halves compose into a switch: one eviction and A5's protection is off for the rest
+of the run, silently, with the code reading exactly as it did when it worked.
+
+**Fix:** `runStep` re-establishes `currentMsgId` from `agent.msgId` on every step. The run's own
+state carries the id across an eviction; the instance field cannot. Two other readers —
+playtest frame ids — were quietly degraded the same way and are fixed by the same line.
+
+Covered by a test that builds a second `SessionDO` over the same storage map, which is what an
+eviction leaves behind.
+
 ### F-31 · A helper that called itself, so every save silently dropped the transcript
 
 **Self-inflicted, this session, in `a1b0261` — the commit that fixed four criticals.** The
