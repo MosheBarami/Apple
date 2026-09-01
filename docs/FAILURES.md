@@ -282,11 +282,40 @@ angle along the wall, with the world otherwise byte-identical: the baseline skyl
 horizontals stepping down in terraces; with the change the same masses carry diagonals. Zero
 parts, zero draws.
 
-**It is an improvement, and it does not close gate 2.** Head-on, the wall still reads as
-stacked boxes, because the cap is only 12–24 % of a segment's height and no decoration on top
-of a box changes the box. The answer F-19 named still stands: **more distinct rock
-silhouettes** in the palette, not more or better-shaped bricks. The one section of wall that
-already reads correctly in every capture is the one built from mesh modules.
+**It is an improvement, and it does not close gate 2 on its own.** Head-on, the wall still
+reads as stacked boxes, because the cap is only 12–24 % of a segment's height.
+
+### Also accepted: a weathering chamfer on every free course
+
+The terrace line is the tell — each course meets its own top at a sharp 90°, and the part of
+that top the next course does not cover is a flat ledge. Twenty of those in a row is a
+staircase however irregular the plan.
+
+A wedge along each free course's top-outer edge cuts that corner off. **Two attempts, and the
+first one is the instructive one:** sized at `h * 0.30` it was a 1.3-stud bevel on courses that
+turn out to be about 4 studs tall — roughly one percent of the image at playing distance — and
+the render was indistinguishable from the baseline. *A chamfer that cannot be measured in the
+render is not a chamfer, it is a part.* At `h * 0.75 × dd * 0.85` it reads.
+
+Restricted to `k > 1 and not useModule`: the sealing course must keep its full outward face or
+the ring leaks, and a course under a module sits behind a mesh already doing the silhouette.
+Every proportion is fixed rather than drawn, per F-32.
+
+**Cost: +29 primitives (482 → 511).** Still well under the 608 of the rejected blockout. At the
+grazing angle a player actually walks, the left scarp goes from a staircase of horizontals to a
+run of angled shoulders; head-on, the central mass's skyline breaks where it was a clean
+horizontal.
+
+### What all four experiments together say about gate 2
+
+F-19 (more mesh in front), F-33 (tilt the courses), the ramp reorientation and the chamfer are
+four attempts that keep the box-course vocabulary. Two changed nothing; two produced modest,
+real improvements. None of them made the wall stop reading as stacked boxes.
+
+**Decorating a box does not stop it reading as a box.** The vocabulary is the constraint, and
+with the acquisition route now costed and closed
+(`evidence/2026-09-01-rock-palette-supply.md`), what remains is generation or authored masses
+that are not courses at all.
 
 ### F-30 · A Studio spec that appeared to cover the softening and never reached it
 

@@ -2135,6 +2135,45 @@ local function cliffRun(
 			local cf = CFrame.lookAt(centre, centre + outward)
 				* CFrame.Angles(batter, math.rad(rand(-7, 7)), 0)
 			newPart(fCliffs, "CliffCourse", Vector3.new(w, h, dd), cf, toneAt(centre, toneOffset + k), true)
+
+			--[[ WEATHERING CHAMFER on the free courses. EXPERIMENT.
+
+				 What the eye reads as "stacked boxes" is not the courses' widths or offsets —
+				 those already vary a lot — it is the TERRACE LINE: every course presents a
+				 sharp 90° edge where its vertical outward face meets its horizontal top, and
+				 the part of that top the next course does not cover is a flat ledge. Twenty
+				 of those in a row is a staircase however irregular the plan.
+
+				 F-19 tried to hide it behind more mesh and failed; F-33 tried to tilt it away
+				 and failed, because tilting a rectangle leaves a rectangle. This cuts the edge
+				 off instead: a wedge along the top-outer edge, sloping down and outward, so
+				 the silhouette steps through a bevel rather than a corner.
+
+				 Only the free courses. The sealing course (k == 1) must keep its full outward
+				 face or the ring leaks, and a course under a module is behind a mesh that is
+				 already doing the silhouette.
+
+				 Every proportion here is FIXED, not drawn: this builder runs off one seeded
+				 stream, so a `rand()` here would re-roll the whole world and make the
+				 before/after screenshots incomparable. See F-32. ]]
+			if k > 1 and not useModule then
+				--[[ Sized to be SEEN. The first version was h * 0.30 on courses that turn out
+					 to be about 4 studs tall — a 1.3-stud bevel, roughly one percent of the
+					 image at playing distance, and it changed nothing. A chamfer that cannot
+					 be measured in the render is not a chamfer, it is a part. ]]
+				local cd = dd * 0.85
+				local ch2 = h * 0.75
+				local chamferAt = centre
+					+ outward * (dd / 2 - cd / 2)
+					+ Vector3.new(0, h / 2 + ch2 / 2, 0)
+				wedge(
+					fCliffs,
+					"CliffChamfer",
+					Vector3.new(w * 0.98, ch2, cd),
+					CFrame.lookAt(chamferAt, chamferAt + outward),
+					toneAt(centre, toneOffset + k)
+				)
+			end
 			y += h * 0.95
 			topY, topCentre, topWidth, topDepth = y, centre, w, dd
 		end
