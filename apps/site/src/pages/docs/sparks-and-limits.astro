@@ -41,7 +41,9 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>The daily reset</h2>
   <p>
-    Quotas reset every 24 hours per account, on a rolling clock. The workspace shows your exact
+    Quotas reset at midnight UTC — one fixed instant for every account, not a rolling window
+    that starts when you do. That is worth knowing if you build late in the UTC day: sparks
+    spent at 23:00 UTC are refilled an hour later. The workspace shows your exact
     reset time. Unused Sparks do not roll over — every day starts at your full allowance.
   </p>
 

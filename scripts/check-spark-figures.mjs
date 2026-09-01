@@ -17,6 +17,11 @@
  * This checks the chain end to end: COST-MODEL neurons -> the worker's own constants ->
  * the page's stated cost -> the slider attribute -> requests per day.
  *
+ * It also checks WHEN the quota resets, because that had drifted too: the site said
+ * "a rolling 24-hour clock per account" while QuotaDO does `setUTCHours(24, 0, 0, 0)`,
+ * one fixed instant shared by every account. The difference matters to anyone building
+ * late in the UTC day.
+ *
  * Usage: node scripts/check-spark-figures.mjs
  */
 import { readFileSync } from 'node:fs';
@@ -136,6 +141,20 @@ for (const file of PROSE) {
         problems.push(`${file}: "${m[0].trim()}" — ${mode} costs ${expected} spark(s)`);
       }
     }
+  }
+}
+
+// WHEN the quota resets. A rolling per-account window and a fixed midnight are
+// different promises, and the site made the wrong one.
+const quota = read('apps/worker/src/do/quota.ts');
+const fixedMidnight = /setUTCHours\(24, ?0, ?0, ?0\)/.test(quota);
+for (const file of ['apps/site/src/pages/pricing.astro', 'apps/site/src/pages/docs/sparks-and-limits.astro']) {
+  const text = read(file);
+  if (fixedMidnight && /rolling[^.]{0,30}(24|clock)/i.test(text)) {
+    problems.push(`${file} describes a rolling reset window; QuotaDO resets at a fixed midnight UTC`);
+  }
+  if (fixedMidnight && !/midnight UTC/.test(text)) {
+    problems.push(`${file} does not say when the quota resets; QuotaDO resets at midnight UTC`);
   }
 }
 
