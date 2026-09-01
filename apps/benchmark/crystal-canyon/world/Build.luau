@@ -396,40 +396,9 @@ end
 -- =========================================================================
 -- THE CURATED ASSET PALETTE
 -- =========================================================================
---[[ MeshParts sitting at ServerStorage.GolemPalette.<family>.<name>, acquired
-	 from the Roblox Creator Store, scripts stripped, normalised to one height per
-	 family (see assets/palette.json for provenance per asset).
-
-	 =====================  THE CULL  =====================
-
-	 The acquisition pass brought back 26 members across eight families and the
-	 world built from all 26 was rejected: "reads too much like multiple
-	 unrelated free assets placed into one map". 26 acquired is not 26 that must
-	 remain. A smaller coherent palette beats a larger incoherent one, so the
-	 palette is curated down to 15 by the ALLOWLIST below, and the reason for
-	 each exclusion is recorded in assets/palette.json.
-
-	 THE ALLOWLIST LIVES HERE, IN THE BUILDER, ON PURPOSE. ServerStorage is
-	 whatever the last acquisition run left behind; if the cull lived only in the
-	 JSON then a re-run of the broker would quietly put the culled assets back in
-	 the world. Curation that can be undone by a background job is not curation.
-	 A DENY list would have the same hole from the other side — a newly acquired
-	 asset nobody vetted would be admitted silently — so this is an ALLOWLIST and
-	 anything loaded that is not on it is excluded AND named in a warning, which
-	 is the operator's cue that the list needs a decision rather than a bypass.
-
-	 Members are keyed by name plus width because names collide inside a family
-	 (the tree_round family contains two members both literally called "Tree",
-	 13.1 and 29.8 studs wide — and it is the 29.8 one that is culled).
-
-	 =====================  TEXTURES  =====================
-
-	 MeshPart.Color has NO EFFECT where TextureID is non-empty. That is the
-	 mechanism behind two of the named hard fails: a textured mesh keeps whatever
-	 palette its author baked in, so "tint it cold" silently does nothing and the
-	 asset stands in the snow wearing its original green. `isTintable` measures
-	 it per member at load, the pools are split, and each biome decides per family
-	 whether an untintable member may be admitted at all. ]]
+--[[ MeshParts at ServerStorage.GolemPalette.<family>.<name>, acquired from the Creator Store
+	 under a recorded licence and curated by an allowlist in assets/palette.json. Fewer and
+	 coherent beats more and mixed. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 local PALETTE_ROOT_NAME = "GolemPalette"
 
@@ -511,33 +480,9 @@ local function isTintable(inst: any): boolean
 	return true
 end
 
---[[ TEXTURE IS A PROPERTY, NOT A FACT ABOUT THE MESH.
-
-	 The previous pass recorded "a Cube mesh is textured, so it cannot take the
-	 biome tint" as a hard constraint and paid for it twice: the frost wall kept
-	 its plain purple slabs, and three generated cliff mesas were rejected because
-	 their baked strata banding read as a candy stripe against flat-shaded rock.
-	 Both conclusions follow from treating TextureID as immutable. It is not.
-
-	 MEASURED, NOT ASSUMED. The same four crystal meshes were cloned twice, both
-	 copies set to Color = pure red, differing only in TextureID:
-	   TextureID kept    -> renders cyan / violet / teal. Color ignored.
-	   TextureID cleared -> renders pure red on all four. Color honoured.
-	 Geometry, normals and flat-shaded facets are untouched; only the baked colour
-	 is dropped. Evidence: docs/evidence/2026-09-01-detexture-ab.md
-
-	 So the policy is per family and turns on ONE question: does the texture carry
-	 INFORMATION, or only COLOUR?
-	   crystal, crystal_cube -> colour only, over geometry that is already
-	   faceted. Stripped. (`cliff_module` failed the second half of that test —
-	   see the note on DETEXTURE itself.)
-	   sign (glyphs), crate (painted panels), tree_* (canopy over trunk),
-	   kiosk (striped awning), landmark (the accepted hero gradient) -> the
-	   texture IS the art, and blanking it really would yield a white blob.
-
-	 Stripping happens on the CLONE, never on the ServerStorage original, so the
-	 acquired palette stays byte-for-byte as downloaded and the whole decision is
-	 reversible by editing this one table. ]]
+--[[ TEXTURE IS A PROPERTY, NOT A FACT ABOUT THE MESH. A mesh carrying a TextureID ignores
+	 `Color`, so it cannot join a tinted palette; the allowlist records which ones do and why.
+	 See docs/WORLD-BUILDER-HISTORY.md. ]]
 --[[ `cliff_module` WAS on this list and was taken off it by a render.
 
 	 The reasoning was that stripping the texture removes the candy-stripe banding
@@ -662,56 +607,10 @@ tintablePools.cliff_rock = tintablePools.rock
 -- =========================================================================
 -- THE CUBE FAMILIES — GOLEM-ORIGINATED, NOT CREATOR STORE
 -- =========================================================================
---[[ ServerStorage.GolemPalette also carries meshes this project GENERATED
-	 through Roblox's GenerationService (Cube), recorded in assets/palette.json
-	 under `cubeGenerated`. They are a different KIND of asset from the eight
-	 Creator Store families above and they load on a different path:
-
-	 1. NO ALLOWLIST, AND NOT MERELY BECAUSE IT IS UNNECESSARY. `CURATED` exists
-	    to decide which results of a keyword search may stand in this world. A
-	    Cube mesh was commissioned for this world by prompt and then accepted or
-	    rejected by RENDERING it — three of nine were rejected after rendering,
-	    including a landmark. That curation already happened, upstream, against
-	    the right question.
-
-	    Running these through `curatedFor` would also be actively wrong rather
-	    than redundant: it reads the trailing digits of an instance name as a
-	    Creator Store ASSET ID, and these instances are named `<family>_cube_1`
-	    ..`_cube_3`. They would match ids 1, 2 and 3 — ids no curated entry
-	    holds — so every one of them would be silently culled AND reported as an
-	    unvetted acquisition. The allowlist is untouched and still governs the
-	    third-party families; these simply are not third-party.
-
-	 2. TINT IS A CHOICE PER FAMILY, NOT A BLANKET NO.
-
-	    This rule used to read "NO TINT, EVER — every Cube mesh carries a texture,
-	    so Color has no effect on it", and it closed with the observation that "a
-	    family that can only live in half the map is a family the tint system
-	    would have handled for free." That was the right instinct and the wrong
-	    conclusion: the texture is a PROPERTY of the clone, and clearing it hands
-	    the mesh straight back to the tint system. See DETEXTURE above for the
-	    measured A/B.
-
-	    So a Cube family now declares which side of that line it sits on. The
-	    geode and the kiosk keep their textures, because their baked gradient and
-	    striped awning ARE the authored art. `crystal_cube` is stripped and tinted,
-	    because its texture only ever carried colour over geometry that is already
-	    faceted.
-
-	    `cliff_module` was tried on that same path and rejected a second time —
-	    see the note on DETEXTURE. Stripping it does remove the candy stripe, and
-	    what is left underneath is a smooth column with no facets at all. It stays
-	    out of this list, and the three meshes stay in ServerStorage so the reading
-	    can be re-taken.
-
-	 3. NO PRIMITIVE FALLBACK OF THEIR OWN, because they do not need one: the
-	    authored geometry each of them replaces still builds when the mesh is
-	    absent — the faceted spire under the geode, the pad's old dressing under
-	    the kiosk. Every placement below therefore consumes either ZERO rng or
-	    a FIXED number of draws taken BEFORE availability is tested, so the world
-	    lays out identically with or without GolemPalette and only the geometry
-	    standing at each point differs. That is the same contract `prop()` keeps.
-]]
+--[[ GolemPalette also carries meshes this project GENERATED through Roblox GenerationService
+	 (Cube). Six of nine were rejected — three on their own render, three more once they stood
+	 in the world — because a Cube mesh arrives TEXTURED and a textured mesh cannot be tinted
+	 into a flat-shaded palette. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 --[[ `cliff_module` is deliberately NOT in this list, and the three meshes are
 	 still in ServerStorage.GolemPalette so the rejection can be re-checked.
@@ -940,38 +839,9 @@ end
 -- =========================================================================
 -- BIOME ART BIBLES
 -- =========================================================================
---[[ THE FIX FOR CONTAMINATION, AND IT IS STRUCTURAL RATHER THAN A CONVENTION.
-
-	 The previous revision had the right intention written in its comments —
-	 "cold tint", "sub-alpine, essentially no round trees" — and still put
-	 bright warm-green trees and green bushes inside the snow biome, because the
-	 intention was expressed as arguments at each of ~90 call sites: every one of
-	 them could pass its own `tint`, and the frost copses used a 0.9 pine BIAS,
-	 which is a probability, not a rule. One in ten trees in the snow was a
-	 temperate round tree, exactly as commissioned.
-
-	 So the tint and the allowed families are no longer arguments. They are
-	 properties of the GROUND YOU ARE STANDING ON:
-
-	   MEADOW / CANYON   primary    warm green, sand, rust canyon
-	                     secondary  cream, warm grey
-	                     accent     crystal cyan
-	                     vegetation warm families only (pine, round, bush)
-	                     rock       WARM neutral — the palette's rocks skew pale
-	                                and are tinted warm here, which is what stops
-	                                them reading as frost rock in the canyon
-	   FROST HOLLOW      primary    snow white, ice blue, cool grey
-	                     secondary  deep pine, desaturated blue-green
-	                     accent     crystal violet
-	                     vegetation cold-compatible families only — tree_round is
-	                                NOT one, and is substituted for a pine before
-	                                a clone is drawn
-	                     rock       cool blue-grey
-
-	 `prop()` has no tint parameter. `place()` reads the tint from the biome under
-	 the placement. `pick()` resolves the family through the biome's rules. There
-	 is no argument a call site can pass to opt out, and adding one more prop()
-	 call cannot contaminate a biome. ]]
+--[[ THE FIX FOR CONTAMINATION IS STRUCTURAL. Biome is resolved where a prop STANDS, not
+	 where its group is anchored, because an offset large enough to cross the boundary put rust
+	 buttresses in the snow. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 type FamilyRule = {
 	role: string, -- which Tint entry paints it
@@ -1904,26 +1774,17 @@ end
 --[[ THE CANYON WALL. Named hard fail: "the orange/red perimeter is visibly repeated
 	 rectangular blocks. Reads as prototype terrain. Do NOT fix by adding more bricks."
 
-	 Seven attempts are recorded in docs/FAILURES.md (F-13 Cube mesas, F-19 mesh ratio, F-33
-	 batter, plus the buttress / broken crest / ramp cap / weathering chamfer, all now retired).
-	 Every one of them changed the wall's SILHOUETTE or its material and left its SHADING alone,
-	 and that is why every one of them failed: with `batter = -rand(0.035, 0.115)` and yaw at
-	 most +/-7 degrees, every authored face in the ring sat within an 11 % band of one Lambert
-	 value. A 500-stud surface rendering at one luminance is a flat panel with lines on it,
-	 whatever its outline does. The full derivation is on `facet`.
+	 Seven attempts are recorded in docs/FAILURES.md (F-13, F-19, F-33, plus the buttress,
+	 broken crest, ramp cap and weathering chamfer, all retired). Every one changed the wall's
+	 SILHOUETTE or its material and left its SHADING alone — every authored face sat within an
+	 11 % band of one Lambert value, and a 500-stud surface at one luminance is a flat panel
+	 whatever its outline does. The derivation is on `CW.facet`; the honest result of the
+	 replacement is F-39.
 
-	 So this construction is FACET-FIRST. Per segment:
-
-	   * ONE SEAL, full width, overlapping its neighbours, floored at 16 studs (F-36). It is not
-	     a face anybody looks at — it is the recessed back plane seen through the gullies
-	     between the forward masses, which is what a real cliff's back wall does.
-	   * ONE ARCHETYPE from a shuffled deck with adjacency repair, standing forward of the seal
-	     by a per-segment standoff in [-6, cap], so the wall's PLAN meanders instead of running
-	     as a fence. Negative standoff opens a gully.
-	   * Boulder masses, talus, planting and ledge rock below, all unchanged.
-
-	 The archetypes and the orientation model are on `cliffMass`. The determinism contract — how
-	 a wall this different costs the shared seeded stream nothing — is on `discard`. ]]
+	 Per segment: ONE SEAL, full width, overlapping its neighbours, floored at 16 studs and
+	 sized as the recessed back plane; ONE ARCHETYPE from a shuffled deck with adjacency repair,
+	 standing forward of it by a per-segment standoff so the plan meanders; then boulder masses,
+	 talus and planting below, unchanged. The determinism contract is on `CW.discard`. ]]
 
 type CliffOpts = {
 	talus: boolean?,
@@ -2363,10 +2224,8 @@ local function cliffRun(
 		--[[ `height` is not in scope yet, so the run's own size is tested at the
 			 placement below rather than here: this decision must be made from the
 			 draws already taken so the stream is consumed identically either way. ]]
-		--[[ 0.62, and raising it to 0.85 was tried and rejected on 2026-09-01: the arithmetic all
-			 improved and the pixels did not, because what the eye was reading was the authored
-			 COURSES behind the mesh. F-19. Left here so a later pass starts from the
-			 measurement rather than repeating it. ]]
+		--[[ 0.62. Raising it to 0.85 was tried and rejected: the arithmetic improved and the
+			 pixels did not (F-19). ]]
 		local useModule = (o.modules ~= false) and not saddle and modRoll < 0.62
 
 		local height = baseHeight * (if saddle then rand(0.34, 0.5) else rand(0.88, 1.5))
@@ -2389,36 +2248,18 @@ local function cliffRun(
 		for k = 1, courses do
 			local h = height * courseFraction[k] * rand(0.78, 1.28)
 			if k == 1 then
-				--[[ THE SEAL HAS A FLOOR, AND IT IS NOT DECORATION. F-36.
+				--[[ THE SEAL HAS A FLOOR (F-36) AND IT IS ALSO THE WALL'S HEIGHT (F-39).
 
-					 The course below promises "the ring is continuous at ground level and the
-					 world does not leak away". It was not true. Two multipliers stack on a
-					 saddle — `height = baseHeight * rand(0.34, 0.5)` and `courseFraction[1] =
-					 0.62` — and then the whole stack SINKS by `y = -rand(0.4, 3.0)`, the seal
-					 included. Worst case the seal's top lands at 34 · 0.34 · 0.62 · 0.78 − 3.0
-					 = **2.59 studs**, full width, with no boulder mass in front because
-					 `useModule` is false on a saddle.
+					 The floor: two multipliers stack on a saddle and the whole stack then SINKS, so the
+					 worst-case seal top was 2.59 studs against a 7.15-stud jump — a full-width doorway
+					 out of the world. 16 is comfortably past any unassisted jump.
 
-					 Measured, and then re-measured honestly. The first survey said 42 of 299
-					 perimeter samples cleared a 7.15-stud jump — but it counted samples where
-					 the player was standing ON THE CLIFF, and finding no wall beyond a wall you
-					 have already climbed is not a leak. Filtering to the playable floor
-					 (y <= 5) gives the real figure: **2 of 215 floor-level samples before, 1
-					 after**. The one that closed was at (-100, -150); the one that remains is at
-					 (165, 200), at the very corner where the grass ends, and is a ring-closure
-					 problem rather than this one.
+					 The height: the seal kept `courseFraction[1]` = 0.46 from a construction where it
+					 was the BOTTOM of a stack of courses. Those courses are gone, so on a low-archetype
+					 segment nothing reached above it and the wall came out a 16-stud band. It is the
+					 recessed BACK PLANE now, and a back plane is as tall as its wall.
 
-					 The stronger claim is the constructive one, because a 5-stud sample grid can
-					 miss the deepest saddle entirely: the worst-case seal top goes from **2.59
-					 studs to 16 by construction**. Probing outward from a breach found cliff
-					 mass to stand on for ~50 studs and then void — so the failure this prevents
-					 is a player jumping the sill, walking the cliff tops, and falling out of the
-					 world.
-
-					 A saddle stays a saddle: 16 studs against neighbours at 30–51 is still the
-					 dramatic skyline dip §7 asks for. What it stops being is a doorway.
-
-					 `math.max` takes no draw, so the seeded stream is untouched (F-32). ]]
+					 Neither multiplier is a draw, so the stream is untouched. ]]
 				--[[ AND IT IS ALSO THE WALL'S HEIGHT, which the first version of this rewrite got
 					 wrong and the render caught.
 
@@ -2635,10 +2476,9 @@ local function cliffRun(
 		local standoff = -6 + r:NextNumber() * (standoffMax + 6)
 		CW.mass(kind, r, anchor, dir, outward, segWidth, height, baseHeight, depth * depthMul, sink, standoff, toneAtY)
 
-		--[[ THE BOULDER MASS ITSELF. Curated rock meshes at the `cliff` tier, clamped to this
-			 run's mass height, stepped inward by `modInset` and spread by `modLat` so the group
-			 reads as one shouldered outcrop. `anywhere` because it stands on the cliff
-			 footprint; `collide` because a cliff mass is walked into, not through. ]]
+		--[[ THE BOULDER MASS. Curated rock meshes at the `cliff` tier, clamped to this run's mass
+			 height, stepped in by `modInset` and spread by `modLat` so the group reads as one
+			 shouldered outcrop rather than three rocks in a row. ]]
 		if useModule then
 			local masses = if modT < 0.45 then 2 else 3
 			for k = 1, masses do
@@ -2820,32 +2660,9 @@ cliffRun(Vector3.new(112, 0, -104), Vector3.new(112, 0, -140), Vector3.new(1, 0,
 -- =========================================================================
 -- 5. PRIMARY LANDMARK
 -- =========================================================================
---[[ Named hard fail: "tall rectangular crystal columns on a stacked rectangular
-	 pedestal. Still a blockout. It is the PRIMARY landmark and needs the highest
-	 quality in the map."
-
-	 That reading was correct. The pedestal was three tiers of two squares each
-	 (one at 0°, one at 45°), which is a stack of rectangles however it is
-	 described, and the spire was three full-height boxes of constant width,
-	 which is a rectangular column however it is tinted. Two changes:
-
-	 1. THE PEDESTAL IS A STEPPED OCTAGONAL DAIS OF RADIAL ASHLAR. Each tier is a
-	    ring of eight cut blocks laid tangentially around a circle, over a solid
-	    core, and the top tier carries a chamfer course of wedges. The silhouette
-	    is an eight-sided stepped drum with a bevelled lip; there is no elevation
-	    from which it reads as a stack of squares.
-	 2. THE SPIRE TAPERS AND TWISTS. Seven levels, each three facets at 0/60/120,
-	    the width falling 12.0 -> 3.6 and every level rotated a further 9°. A
-	    taper is what stops a shaft reading as a column, and the twist means no
-	    two levels present the same facet edge to the camera, which is what makes
-	    flat shading read as a cut gem.
-
-	 Height discipline still matters. The composition gate measures
-	 verticalDominance (tallest vertical ÷ second tallest) and fails below 1.25;
-	 docs/COMPOSITION.md records a live Studio run where six lamp posts as tall as
-	 a monument scored exactly 1.000 and failed. So every other vertical in this
-	 world — cliffs ~50, tall pines 34 at the top of the tree tier, secondary
-	 landmarks ~52 — is kept well under this monument's ~84. ]]
+--[[ Named hard fail: "tall rectangular crystal columns on a stacked rectangular pedestal".
+	 The crown is now a generated geode; the dais under it stays, because a stepped octagonal
+	 drum of radial ashlar is a plinth. See docs/WORLD-BUILDER-HISTORY.md. ]]
 
 local crystalHue = meadow.CrystalColor
 local frostHue = frost.CrystalColor
@@ -4492,6 +4309,255 @@ local function topOf(root: Instance): number
 	end
 	return m
 end
+
+-- =========================================================================
+-- 15. THE APRON — the answer to "the whole play space is one flat slab"
+-- =========================================================================
+--[[ V8, and the owner's §2: the play space is one 332 x 4 x 553 block of grass with everything
+	 standing on it. From the overlook camera the world reads as a tabletop diorama.
+
+	 WHY AN APRON AND NOT A HEIGHT FIELD OVER THE WHOLE WORLD. Making `groundTop(x, z)`
+	 continuous and re-datuming everything was designed and rejected on two grounds, both
+	 verified in this codebase rather than guessed:
+
+	   * `Collect.farEnough` compares crystal candidates in 3-D (`d:Dot(d)` on a Vector3). Today
+	     every candidate shares y = 6.4 so it behaves 2-D; give the ground relief and Y varies,
+	     rejection outcomes change, the number of `NextNumber` draws changes, and the whole
+	     34-crystal layout silently re-rolls. F-32 arriving through a rejection loop rather than
+	     through a draw site.
+	   * Reconciling a continuous field with collision geometry needs a run-length encoder whose
+	     cell boundaries do not line up with the field's own discontinuities, so field and
+	     collision disagree by a few studs — a player standing in the air.
+
+	 So the relief goes where it can be built as ordinary geometry and checked by looking: an
+	 apron of terraces rising from the meadow floor to the foot of the walls. It does the one
+	 thing a wall-only change cannot — the wall stops being a fence on a plane and becomes the
+	 top of a slope.
+
+	 Built AFTER every prop is placed, and it re-seats what it swallows (below). A post-pass
+	 takes no draws, so the fingerprint still matches the flat build.
+
+	 The collection field stays flat: §2 is explicit that navigation stays obvious and this is a
+	 simulator, not an obby. ]]
+--[[ A FUNCTION, not a `do` block, and the difference is not style. Luau allots 200 local
+	 registers per FUNCTION; a `do` block shares the enclosing chunk's, and this file is at that
+	 ceiling too (see the note on `CW`). Wrapping this section in a function gives it its own
+	 200. It is called immediately and returns nothing. ]]
+;(function()
+	local fApron = folder("Apron")
+	currentBucket = "authored"
+
+	--[[ Where the apron starts, per side. Inside these bounds the world is exactly as flat as it
+		 was, so the crystal AABBs (meadow |x| <= 96 / z 60..210, frost z -215..-70) and every
+		 pad, path and gate keep the ground they were placed on. ]]
+	local INNER_X, INNER_ZN, INNER_ZS = 100, 214, -220
+	local OUTER_X, OUTER_ZN, OUTER_ZS = 146, 252, -255
+	local STEP = 5.5 -- terrace rise, well under a 7.15-stud jump so every edge is steppable
+	local TERRACES = 3
+
+	--- How far out of the play area a point is, as 0..1 across the apron band.
+	local function outness(x: number, z: number): number
+		local ax = math.max(0, (math.abs(x) - INNER_X) / (OUTER_X - INNER_X))
+		local az = 0
+		if z > INNER_ZN then
+			az = (z - INNER_ZN) / (OUTER_ZN - INNER_ZN)
+		elseif z < INNER_ZS then
+			az = (INNER_ZS - z) / (INNER_ZS - OUTER_ZS)
+		end
+		return math.clamp(math.max(ax, az), 0, 1)
+	end
+
+	--- The apron's surface height at a point. Stepped, so it reads as terraces rather than a hill.
+	local function apronTop(x: number, z: number): number
+		local t = outness(x, z)
+		if t <= 0 then
+			return 0
+		end
+		return math.min(TERRACES, math.ceil(t * TERRACES)) * STEP
+	end
+
+	--[[ RAMPS. Four of them, one per side, on the axis the player actually walks: the meadow
+		 corridor runs north up x = 0 and the frost road runs south down x = 0, so those two are
+		 on the path. The east and west ramps sit at z = 130 and z = -140, which is where the
+		 collection loop turns.
+
+		 A ramp is a gap in the terrace edges plus a wedge, so the apron is reachable on foot
+		 without a jump anywhere. §2: keep navigation obvious. ]]
+	local RAMPS = {
+		{ x = 0, z = 1, at = 0 }, -- north, up the meadow corridor
+		{ x = 0, z = -1, at = 0 }, -- south, down the frost road
+		{ x = -1, z = 0, at = 130 },
+		{ x = 1, z = 0, at = -140 },
+	}
+	local RAMP_HALF = 16 -- half-width of a ramp
+
+	--[[ Build one terrace as a ring of slabs. Blocks rather than a single hollow shape because
+		 this world is flat-shaded primitives and a terrace edge catching light differently from
+		 its deck is the whole point — the same reason the wall rewrite exists. ]]
+	--[[ 92 rather than 46. A terrace is a plain ring and long slabs read identically to short
+		 ones from any camera, so the shorter version was buying nothing and spending ~50
+		 primitives — which matters when the whole claim of gate 2 is being materially under the
+		 608-part blockout. ]]
+	local SLAB = 92
+	local function bench(level: number)
+		local h = level * STEP
+		local prev = (level - 1) * STEP
+		-- The inner edge of THIS terrace, interpolated from the level.
+		local fx = INNER_X + (OUTER_X - INNER_X) * ((level - 1) / TERRACES)
+		local fzn = INNER_ZN + (OUTER_ZN - INNER_ZN) * ((level - 1) / TERRACES)
+		local fzs = INNER_ZS + (OUTER_ZS - INNER_ZS) * ((level - 1) / TERRACES)
+		local tint = biomeAt(0, 0).Cliff
+
+		local function slab(cx: number, cz: number, sx: number, sz: number, biomeZ: number)
+			--[[ NO GAPS. The first version cut a hole in each terrace where a ramp crosses, and
+				 the holes were cut at SLAB granularity (46 studs) rather than ramp granularity
+				 (32), so different levels' holes did not line up and left a 10.9-stud step the
+				 player could not climb — measured at (116, -168), against a 7.15-stud jump.
+
+				 The ring is solid and the ramps lie ON TOP of it. A wedge resting on terraces
+				 cannot open a hole in them, which makes the enclosure invariant structural
+				 rather than something the gap arithmetic has to get right. ]]
+			--[[ THE APRON CHANGES MATERIAL AS IT RISES, and the first version did not — every
+				 terrace took the biome's ground colour, so the overlook camera showed three
+				 bright green shelves that read as ski slopes rather than as the foot of a cliff.
+
+				 A real apron at the base of a wall is talus: ground at the bottom, rock at the
+				 top, because it is the wall's own debris. So the tone blends from the biome's
+				 ground toward its cliff tone across the terraces, which also ties the apron to
+				 the wall standing on it instead of leaving a colour seam at the join. ]]
+			local ground = biomeAt(cx, biomeZ).Ground
+			local rock = biomeAt(cx, biomeZ).Cliff
+			local base = if typeof(ground) == "Color3" then ground else Palette.World.Grass
+			local stone = if typeof(rock) == "table" then rock[#rock] else base
+			local blend = (level - 1) / math.max(1, TERRACES - 1)
+			local colour = base:Lerp(stone, 0.25 + blend * 0.6)
+			newPart(
+				fApron,
+				"ApronBench",
+				Vector3.new(sx, h + 4, sz),
+				CFrame.new(cx, (h + 4) / 2 - 4 + prev * 0, cz),
+				colour,
+				true
+			)
+		end
+
+		-- East and west runs.
+		for z = fzs, fzn, SLAB do
+			local sz = math.min(SLAB, fzn - z)
+			if sz > 6 then
+				slab(-(fx + (OUTER_X - fx) / 2), z + sz / 2, OUTER_X - fx, sz, z + sz / 2)
+				slab(fx + (OUTER_X - fx) / 2, z + sz / 2, OUTER_X - fx, sz, z + sz / 2)
+			end
+		end
+		-- North and south runs, spanning the corners.
+		for x = -OUTER_X, OUTER_X, SLAB do
+			local sx = math.min(SLAB, OUTER_X - x)
+			if sx > 6 then
+				slab(x + sx / 2, fzn + (OUTER_ZN - fzn) / 2, sx, OUTER_ZN - fzn, OUTER_ZN)
+				slab(x + sx / 2, fzs - (fzs - OUTER_ZS) / 2, sx, fzs - OUTER_ZS, OUTER_ZS)
+			end
+		end
+	end
+
+	for level = 1, TERRACES do
+		bench(level)
+	end
+
+	--[[ THE RAMPS THEMSELVES. One wedge per side, running the full rise, so the apron is
+		 reachable on foot. A wedge is thin on its LookVector side (measured — see `CW.facet`),
+		 so it is aimed INWARD to slope down toward the player. ]]
+	for _, r in RAMPS do
+		local rise = TERRACES * STEP
+		--[[ The ramp spans the WHOLE apron depth, so its foot is on the flat and its head is on
+			 the top terrace with nothing to step over at either end. A wedge is thin on its
+			 LookVector side (measured — see `CW.facet`), so it faces INWARD to slope down toward
+			 the player. ]]
+		local depthRun, innerEdge, outerEdge
+		if r.z ~= 0 then
+			innerEdge, outerEdge = INNER_ZN, OUTER_ZN
+		else
+			innerEdge, outerEdge = INNER_X, OUTER_X
+		end
+		depthRun = outerEdge - innerEdge
+		local mid = (innerEdge + outerEdge) / 2
+		local inward = Vector3.new(-r.x, 0, -r.z)
+		local at = if r.z ~= 0
+			then Vector3.new(r.at, rise / 2 - 2, r.z * mid)
+			else Vector3.new(r.x * mid, rise / 2 - 2, r.at)
+		wedge(
+			fApron,
+			"ApronRamp",
+			Vector3.new(RAMP_HALF * 2, rise + 4, depthRun),
+			CFrame.lookAt(at, at + inward),
+			Palette.World.Sand
+		)
+	end
+
+	--[[ RE-SEAT WHAT THE APRON SWALLOWED.
+
+		 Every prop already standing in the band is now inside a terrace. Rather than move the
+		 apron around them — which would make it a fence with holes — each is lifted to the
+		 surface directly above it. No draws, so the stream is untouched.
+
+		 Cliffs are excluded: they are supposed to be buried at the foot, that is what a wall
+		 standing on a slope looks like. So are Crystals and Pads, which the apron does not
+		 reach by construction. ]]
+	local LIFT_SKIP = { Apron = true, Cliffs = true, Crystals = true, Pads = true, Ground = true }
+	local lifted = 0
+	for _, f in canyon:GetChildren() do
+		if f:IsA("Folder") and not LIFT_SKIP[f.Name] then
+			for _, d in f:GetDescendants() do
+				if d:IsA("BasePart") then
+					local top = apronTop(d.Position.X, d.Position.Z)
+					if top > 0 then
+						local foot = d.Position.Y - d.Size.Y / 2
+						if foot < top then
+							d.Position = Vector3.new(d.Position.X, d.Position.Y + (top - foot), d.Position.Z)
+							lifted += 1
+						end
+					end
+				end
+			end
+		end
+	end
+	--[[ THE ENCLOSURE CAP, and it exists because the apron BROKE the enclosure.
+
+		 This is the exposure the design plan named and I still walked into: the apron lifts the
+		 player up to 16.5 studs at the wall's foot, and the wall does not rise with it. Surveyed
+		 from the top terrace: **122 of 256 perimeter samples cleared a 7.15-stud jump**, most of
+		 them by clearing it entirely. The apron turned a sealed canyon into a wall a player can
+		 step over — a strictly worse world than the flat one it replaced, and no capture would
+		 ever have shown it because the player has to climb up there to find out.
+
+		 Four invisible slabs, one per side, standing on the top terrace and rising 70 studs. The
+		 enclosure invariant becomes STRUCTURAL rather than emergent from whatever heights the
+		 archetype deck happened to deal — which is what it should have been before the apron
+		 too, since the pre-existing buttress-and-stepped-courses construction was already a
+		 staircase.
+
+		 Invisible rather than solid because the wall is the thing the player should see; a
+		 visible 70-stud extension would be a box on top of the geology. `CanCollide` on,
+		 `Transparency` 1, and they are charged to the authored bucket like any other terrain. ]]
+	local capBase = TERRACES * STEP
+	local CAP_H = 70
+	for _, side in { { x = 1, z = 0 }, { x = -1, z = 0 }, { x = 0, z = 1 }, { x = 0, z = -1 } } do
+		local at, size
+		if side.x ~= 0 then
+			at = Vector3.new(side.x * (OUTER_X + 2), capBase + CAP_H / 2, (OUTER_ZN + OUTER_ZS) / 2)
+			size = Vector3.new(4, CAP_H, OUTER_ZN - OUTER_ZS + 16)
+		else
+			local zEdge = if side.z > 0 then OUTER_ZN else OUTER_ZS
+			at = Vector3.new(0, capBase + CAP_H / 2, zEdge + side.z * 2)
+			size = Vector3.new(OUTER_X * 2 + 16, CAP_H, 4)
+		end
+		local cap = newPart(fApron, "EnclosureCap", size, CFrame.new(at), Palette.World.Grass, true)
+		cap.Transparency = 1
+		cap.CastShadow = false
+	end
+
+	print(("[Crystal Canyon] apron: %d terraces, %d ramps, %d props re-seated, 4 enclosure caps"):format(TERRACES, #RAMPS, lifted))
+	currentBucket = "authored"
+end)()
 
 local landmarkTop = topOf(fLandmark)
 local rivalTop = -math.huge

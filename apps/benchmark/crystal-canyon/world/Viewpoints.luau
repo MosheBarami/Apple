@@ -139,8 +139,16 @@ local SET: { Viewpoint } = {
 		name = "meadow-wall",
 		intent = "The west canyon wall at eye height. THE gate-2 shot: rock, or stacked boxes?",
 		at = Vector2.new(-36, 120),
-		look = Vector2.new(-150, 140),
-		targetRise = 14,
+		--[[ The target is the wall's FACE, not a point inside its footprint.
+
+			 It used to be x = -150, which is inside the cliff depth. `groundAt` deliberately
+			 does NOT exclude `Cliffs` — a camera standing on a ledge is a legitimate player-eye
+			 shot — so the target height resolved to whatever the cliff TOP happened to be, and
+			 when the wall rewrite raised those tops the shot tilted up and photographed the
+			 sky. A review camera whose aim depends on the height of the thing it is reviewing
+			 cannot compare two builds, which is the whole reason this file exists. ]]
+		look = Vector2.new(-116, 140),
+		targetRise = 12,
 	},
 	{
 		name = "sell-pads",
@@ -183,8 +191,9 @@ local SET: { Viewpoint } = {
 		name = "frost-wall",
 		intent = "The frost-side wall at eye height — the gate-2 question in the other biome.",
 		at = Vector2.new(-24, -170),
-		look = Vector2.new(-140, -180),
-		targetRise = 14,
+		-- Same correction as `meadow-wall`: aim at the face, not into the footprint.
+		look = Vector2.new(-116, -180),
+		targetRise = 12,
 	},
 	{
 		name = "overlook",

@@ -409,6 +409,70 @@ Confirmed in the live game, not only in the spec: using a flare with an empty pa
 `NOTHING TO SELL` and left the stock at 2. Two mutations guard the ordering, because it is
 exactly the shape a later refactor "tidies" back into the house order.
 
+### F-40 · Giving the world relief broke the thing that kept players inside it
+
+V8 and the owner's §2: "the whole play space is one flat slab; zero elevation change anywhere a
+player can walk." It was literally one `332 × 4 × 553` block of grass with everything standing
+on it, and from the overlook camera the world read as a tabletop diorama.
+
+#### Why an apron rather than a height field
+
+The obvious answer is to make `groundTop(x, z)` continuous and re-datum everything against it.
+That was designed and rejected on two grounds, both verified in this codebase:
+
+* **`Collect.farEnough` compares crystal candidates in 3-D** — `d:Dot(d)` on a `Vector3`. Today
+  every candidate shares `y = 6.4`, so it behaves 2-D. Give the ground relief and Y varies, so
+  rejection outcomes change, so the number of `NextNumber` draws changes, so the whole 34-crystal
+  layout silently re-rolls. That is F-32 arriving through a **rejection loop** rather than through
+  a draw site, which is why guarding draw order alone would not have caught it.
+* Reconciling a continuous field with collision geometry needs a run-length encoder whose cell
+  boundaries do not align with the field's own discontinuities — so field and collision disagree
+  by a few studs, which is a player standing in the air.
+
+So the relief went where it could be built as ordinary geometry and checked by looking: three
+terraces rising from the meadow floor to the foot of the walls, all the way round, with four
+ramps. Built **after** every prop is placed and re-seating what it swallows — a post-pass takes
+no draws, so the stream fingerprint still matches the flat build.
+
+#### And then it broke the enclosure
+
+The apron lifts the player up to **16.5 studs at the wall's foot, and the wall does not rise with
+it**. Surveyed from the top terrace: **122 of 256 perimeter samples cleared a 7.15-stud jump**,
+most of them clearing it entirely. The apron turned a sealed canyon into a wall you can step
+over — strictly worse than the flat world it replaced.
+
+**No capture would ever have shown this.** The player has to climb the apron and look outward to
+find it, and every screenshot in the pass was taken from the floor. It was found by re-running
+the F-36 enclosure survey from the new standable heights rather than from the old ones, which is
+the only reason to keep that survey as a script instead of as a memory.
+
+Fixed with four invisible 70-stud slabs on the top terrace. The enclosure invariant is now
+**structural** rather than emergent from whatever heights the archetype deck happened to deal —
+which it should have been before the apron too, since the old buttress-and-stepped-courses
+construction was already a staircase. After: **0 jumpable samples out of 512**, lowest barrier
+50 studs.
+
+#### Two smaller things the same survey caught
+
+The terrace ring originally cut a gap where each ramp crosses, and the gaps were cut at **slab
+granularity (46 studs) rather than ramp granularity (32)**, so different levels' holes did not
+line up and left a **10.9-stud unclimbable step** at (116, −168). The ring is now solid and the
+ramps lie on top of it, which makes a hole impossible rather than merely unlikely.
+
+And the first apron took the biome's ground colour at every level, so the overlook showed three
+bright green shelves that read as ski slopes. It now blends toward the biome's cliff tone as it
+rises, which is what talus at the foot of a wall actually is, and it ties the apron to the wall
+standing on it instead of leaving a colour seam at the join.
+
+#### The review instrument was wrong too
+
+`meadow-wall` and `frost-wall` aimed at `x = ±150`, which is **inside the cliff footprint**.
+`Viewpoints.groundAt` deliberately does not exclude `Cliffs` — standing on a ledge is a
+legitimate player-eye shot — so the target height resolved to the cliff TOP, and when the wall
+rewrite raised those tops the camera tilted up and photographed the sky. A review camera whose
+aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
+entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
+
 ### F-39 · The facet rewrite: the machinery is right and the picture is not
 
 The fifth attempt at gate 2 ("the orange/red perimeter is visibly repeated rectangular blocks").
