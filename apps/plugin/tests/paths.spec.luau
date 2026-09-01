@@ -320,4 +320,69 @@ H.test("an Instance value resolves through the same path rules", function()
 		"not found", "a missing instance is an error")
 end)
 
+--[[ ENCODE, the other direction, which nothing could reach until now.
+
+	 Paths.encode branches entirely on typeof(). The standalone Luau runtime answers
+	 "table" for every Roblox datatype, so until the harness grew a typeof() shim every
+	 encode call in every test took the generic-map branch — the codec was exercised
+	 thoroughly and on the wrong path. These are the branches that were unreachable. ]]
+
+H.test("each datatype encodes to the tag its decoder expects", function()
+	H.eq(Paths.encode("hi").t, "string", "string")
+	H.eq(Paths.encode(3).t, "number", "number")
+	H.eq(Paths.encode(true).t, "bool", "bool")
+	H.eq(Paths.encode(Vector3.new(1, 2, 3)).t, "Vector3", "Vector3")
+	H.eq(Paths.encode(Color3.new(0, 0.5, 1)).t, "Color3", "Color3")
+	H.eq(Paths.encode(UDim2.new(0, 1, 0, 2)).t, "UDim2", "UDim2")
+	H.eq(Paths.encode(UDim.new(0.5, 4)).t, "UDim", "UDim")
+	H.eq(Paths.encode(CFrame.new(1, 2, 3)).t, "CFrame", "CFrame")
+	H.eq(Paths.encode(Enum.Material.Neon).t, "EnumItem", "EnumItem")
+	H.eq(Paths.encode(nil).t, "nil", "nil")
+end)
+
+H.test("encode and decode are inverses for every value type", function()
+	-- The property that matters: a snapshot writes with encode and a restore reads with
+	-- decode, so any pair that disagrees silently changes the place on a rollback.
+	local v3 = Paths.decode(Paths.encode(Vector3.new(4, -5, 6)))
+	H.eq(v3.X, 4, "Vector3.X"); H.eq(v3.Y, -5, "Vector3.Y"); H.eq(v3.Z, 6, "Vector3.Z")
+
+	local c3 = Paths.decode(Paths.encode(Color3.new(0.25, 0.5, 0.75)))
+	H.eq(c3.R, 0.25, "Color3.R"); H.eq(c3.B, 0.75, "Color3.B")
+
+	local u2 = Paths.decode(Paths.encode(UDim2.new(0.5, 10, 0.25, 4)))
+	H.eq(u2.X.Scale, 0.5, "UDim2.X.Scale"); H.eq(u2.Y.Offset, 4, "UDim2.Y.Offset")
+
+	local e = Paths.decode(Paths.encode(Enum.Material.Neon))
+	H.eq(e.Name, "Neon", "EnumItem name"); H.eq(e.EnumType, "Material", "EnumItem type")
+
+	local cf = Paths.decode(Paths.encode(CFrame.new(7, 8, 9)))
+	H.eq(cf.Position.X, 7, "CFrame.X"); H.eq(cf.Position.Z, 9, "CFrame.Z")
+end)
+
+H.test("an Instance encodes as its path, not as its contents", function()
+	local ws2 = game:GetService("Workspace")
+	local f = Instance.new("Folder", ws2)
+	f.Name = "EncodeMe"
+	local enc = Paths.encode(f)
+	H.eq(enc.t, "Instance", "tagged Instance")
+	H.eq(enc.v, "game.Workspace.EncodeMe", "as a resolvable path")
+	H.eq(Paths.decode(enc), f, "and it resolves back to the same instance")
+end)
+
+H.test("a plain table encodes its entries, and stops at depth 4", function()
+	-- The cap exists so a cyclic or enormous value cannot make a snapshot unbounded.
+	local deep = { a = { b = { c = { d = { e = "too far" } } } } }
+	local enc = Paths.encode(deep)
+	H.eq(enc.a.b.c.d.t, "string", "depth 4 collapses to a string rather than recursing")
+end)
+
+H.test("a table with more than 40 keys is cut off rather than growing unbounded", function()
+	local wide = {}
+	for i = 1, 100 do wide["k" .. i] = i end
+	local enc = Paths.encode(wide)
+	local n = 0
+	for _ in enc do n += 1 end
+	H.ok(n <= 40, "expected at most 40 entries, got " .. tostring(n))
+end)
+
 H.report("plugin/paths")

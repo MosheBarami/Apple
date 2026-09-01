@@ -187,6 +187,16 @@ __cframe = function(px, py, pz, right, up, back)
 		end
 		return x, y, z
 	end
+	--- x, y, z then the rotation matrix in ROW-major order, which is the order
+	--- CFrame.new's twelve-argument form reads back. Paths.encode round-trips a CFrame
+	--- through exactly this pair, so getting the order wrong silently rotates every
+	--- restored part.
+	function self:GetComponents()
+		return p.X, p.Y, p.Z,
+			right.X, up.X, back.X,
+			right.Y, up.Y, back.Y,
+			right.Z, up.Z, back.Z
+	end
 	return self
 end
 
@@ -194,6 +204,14 @@ CFrame = {
 	new = function(a, b, c, ...)
 		if type(a) == "table" and a.__type == "Vector3" then
 			return __cframe(a.X, a.Y, a.Z)
+		end
+		local r = { ... }
+		if #r >= 9 then
+			-- The twelve-argument form: position then a row-major rotation matrix.
+			return __cframe(a, b, c,
+				__vec3(r[1], r[4], r[7]),
+				__vec3(r[2], r[5], r[8]),
+				__vec3(r[3], r[6], r[9]))
 		end
 		return __cframe(a or 0, b or 0, c or 0)
 	end,
@@ -227,8 +245,11 @@ Enum = setmetatable({}, {
 		if not items then
 			items = setmetatable({}, {
 				__index = function(t, itemName)
+					-- __type is what the typeof() shim reads. Without it an EnumItem
+					-- answered "table", so Paths.encode took its generic-map branch and
+					-- every Material and Shape in a snapshot came back undecodable.
 					local item = setmetatable(
-						{ Name = itemName, EnumType = enumName, Value = 0 },
+						{ __type = "EnumItem", Name = itemName, EnumType = enumName, Value = 0 },
 						{ __tostring = function(s) return ("Enum.%s.%s"):format(enumName, s.Name) end }
 					)
 					rawset(t, itemName, item)
@@ -277,6 +298,7 @@ local function __newInstance(className, name)
 		props.Size = __vec3(4, 1, 2)
 		props.CFrame = CFrame.new(0, 0, 0)
 		props.Anchored = false
+		if className == "Part" then props.Shape = Enum.PartType.Block end
 	end
 
 	local methods = {}
@@ -351,6 +373,10 @@ local function __newInstance(className, name)
 				return function(...) return methods[k](...) end
 			end
 			if fields[k] ~= nil then return fields[k] end
+			-- Position is DERIVED from CFrame in the engine, not stored beside it.
+			-- Serializer.tree reads inst.Position.X, so a stub that only stores CFrame
+			-- makes the reader look broken.
+			if k == "Position" and props.CFrame then return props.CFrame.Position end
 			return props[k]
 		end,
 		__newindex = function(_, k, v)
@@ -366,6 +392,12 @@ local function __newInstance(className, name)
 				return
 			end
 			if k == "Name" then fields.Name = v return end
+			-- Setting Position moves the CFrame, keeping the two consistent the way the
+			-- engine does; setting CFrame is what the plugin actually does.
+			if k == "Position" then
+				props.CFrame = CFrame.new(v.X, v.Y, v.Z)
+				return
+			end
 			if not __hasProp(fields.ClassName, k) then
 				error((k .. " is not a valid member of " .. fields.ClassName), 2)
 			end
@@ -400,8 +432,14 @@ local __GUI = {
 	BackgroundTransparency = true, BorderSizePixel = true, Visible = true, ZIndex = true,
 	LayoutOrder = true, Rotation = true,
 }
+-- Part has Shape on top of the shared BasePart surface; WedgePart does not. Kept
+-- apart because Serializer.propList reads Shape for Part specifically, and a shared
+-- table would have handed it to every BasePart.
+local __PART = { Shape = true }
+for k in __BASEPART do __PART[k] = true end
+
 local __PROPS = {
-	Part = __BASEPART,
+	Part = __PART,
 	WedgePart = __BASEPART,
 	MeshPart = { MeshId = true, TextureID = true, DoubleSided = true },
 	SpecialMesh = { MeshId = true, TextureId = true, Scale = true, MeshType = true },
@@ -579,6 +617,29 @@ game = __game
 
 -- \`workspace\` is a global alias in Roblox and some modules use it directly.
 workspace = __game:GetService("Workspace")
+
+--[[ typeof(), and why nothing worked without it.
+
+	 Paths.encode branches entirely on typeof(value). The standalone Luau runtime has
+	 no Roblox datatypes, so it answers "table" for every stub above — which sent every
+	 Vector3, CFrame, Color3 and EnumItem down the generic-table branch, encoded them as
+	 anonymous maps, and made restore fail to decode them. Twenty properties per
+	 five-part snapshot, all silently.
+
+	 This is exactly the class of stub infidelity that makes a passing test meaningless:
+	 the codec was being exercised, thoroughly, on the wrong branch. ]]
+local __rawtypeof = typeof
+function typeof(v)
+	if type(v) == "table" then
+		local tag = rawget(v, "__type")
+		if tag then return tag end
+		if rawget(v, "__children") ~= nil or rawget(v, "ClassName") ~= nil then return "Instance" end
+		-- The instance proxy keeps its fields behind a metatable, so ask it.
+		local ok, cn = pcall(function() return v.ClassName end)
+		if ok and type(cn) == "string" then return "Instance" end
+	end
+	return __rawtypeof(v)
+end
 
 -- ----------------------------------------------------------------- task/time --
 -- No scheduler exists here, and pretending otherwise would let a spec "prove" a
