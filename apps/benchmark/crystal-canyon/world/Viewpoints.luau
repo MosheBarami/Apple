@@ -55,6 +55,28 @@ local EYE = 5.4
 local PROBE_UP = 400
 local PROBE_DOWN = 800
 
+--[[ Folders the ground probe must ignore, because a downward ray does not know the difference
+	 between the floor and the ceiling.
+
+	 Found by testing rather than by reasoning: the `sell-pads` viewpoint resolved to a ground
+	 height of 57.96 and put the camera at y = 63, because the probe fell from 400 studs and hit
+	 the monument's crystal shafts on the way down. The shot would have been taken from inside
+	 the sky, and nothing about the resulting image would have said why.
+
+	 Everything listed here is scenery, overhead structure, or a collectible — never something a
+	 player stands on. `Cliffs` is deliberately NOT here: a cliff ledge is exactly the kind of
+	 elevated destination the topology pass adds, and a camera standing on one is a legitimate
+	 player-eye shot. ]]
+local NOT_GROUND = {
+	Landmark = true,
+	SecondaryLandmarks = true,
+	Flora = true,
+	Crystals = true,
+	Storytelling = true,
+	Signposting = true,
+	Rocks = true,
+}
+
 export type Viewpoint = {
 	--- Stable identifier, used as the capture id. It must not change between runs, because
 	--- comparing two runs is the whole point.
@@ -123,8 +145,18 @@ local SET: { Viewpoint } = {
 	{
 		name = "sell-pads",
 		intent = "The core-loop furniture — sell and upgrade pads — as the player returns to them.",
-		at = Vector2.new(4, 34),
-		look = Vector2.new(34, -6),
+		--- On the hub floor, 25 studs out from the sell pad at (32, -12).
+		---
+		--- It has been moved twice, both times because the ground probe found a ceiling. At
+		--- (4, 34) it stood directly beneath the monument and resolved to y = 63; at (52, -46)
+		--- it stood under the south cliff and resolved to y = 28. This position is verified
+		--- clear — ground 0.55, which is the hub floor.
+		---
+		--- The two pads are on OPPOSITE sides of the hub (sell at +32, upgrade at -38, 64 studs
+		--- apart), so no single eye-height shot contains both. This one frames the sell pad,
+		--- which is the one the core loop returns to.
+		at = Vector2.new(20, -34),
+		look = Vector2.new(32, -12),
 	},
 	{
 		name = "zone-transition",
@@ -181,6 +213,14 @@ function Viewpoints.groundAt(world: Workspace, x: number, z: number): number?
 	for _, plr in game:GetService("Players"):GetPlayers() do
 		if plr.Character then
 			table.insert(exclude, plr.Character)
+		end
+	end
+	local canyon = world:FindFirstChild("Canyon")
+	if canyon then
+		for _, child in canyon:GetChildren() do
+			if NOT_GROUND[child.Name] then
+				table.insert(exclude, child)
+			end
 		end
 	end
 	params.FilterDescendantsInstances = exclude
