@@ -25,6 +25,7 @@ import {
   checkGamepadReachability,
   checkPaletteCollisions,
   checkInertSurfaceFlags,
+  checkFocusFeedback,
   audit,
 } from './checks.mjs';
 import { RULES } from './rules.mjs';
@@ -383,6 +384,51 @@ test('malformed entries are skipped rather than crashing the audit', () => {
     { surface: 'shop footer pill', value: 'coins', animated: true },
   ]);
   assert.equal(findings.length, 1, 'the real disagreement still reports');
+});
+
+test('a hover response with no gamepad response is reported', () => {
+  // The real shape of the defect: one `hovering` boolean, fed only by the pointer.
+  const findings = checkFocusFeedback([
+    {
+      path: 'Theme.luau',
+      source: 'btn.MouseEnter:Connect(function() hovering = true refresh() end)',
+    },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].detail, /invisible to a controller/);
+  assert.equal(findings[0].ruleId, 'state.selection-gained-is-the-gamepad-s-hover');
+});
+
+test('a file that answers both signals is silent', () => {
+  assert.deepEqual(
+    checkFocusFeedback([
+      {
+        path: 'Theme.luau',
+        source: 'btn.MouseEnter:Connect(f)\nbtn.SelectionGained:Connect(f)',
+      },
+    ]),
+    [],
+  );
+});
+
+test('the harness that FIRES MouseEnter is not a missing gamepad response', () => {
+  // This case is why the check matches `:Connect` and not the bare name. Stories.luau drives
+  // its state grid by firing the connections it finds, so it mentions MouseEnter twice and
+  // subscribes to it never — and the first version of this check called that a defect. A
+  // check that reports the harness gets turned off, and then it is not checking anything.
+  assert.deepEqual(
+    checkFocusFeedback([
+      {
+        path: 'Stories.luau',
+        source: 'for _, conn in ipairs(getconnections(btn.MouseEnter)) do conn:Fire() end',
+      },
+    ]),
+    [],
+  );
+});
+
+test('a file with no hover at all is not asked for a focus response', () => {
+  assert.deepEqual(checkFocusFeedback([{ path: 'Config.luau', source: 'return {}' }]), []);
 });
 
 test('the enforced list matches the rules the checks actually reference', () => {

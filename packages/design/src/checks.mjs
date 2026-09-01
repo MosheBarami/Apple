@@ -31,6 +31,7 @@ export const ENFORCED_RULE_IDS = Object.freeze([
   'nav.every-destination-reachable-by-direction-alone',
   'studs.classic-palette-is-a-named-set-not-a-ramp',
   'studs.outlines-are-gone-and-no-surface-flag-brings-them-back',
+  'state.selection-gained-is-the-gamepad-s-hover',
 ]);
 
 function finding(ruleId, detail, extra = {}) {
@@ -409,6 +410,47 @@ export function checkInertSurfaceFlags(files = []) {
   return findings;
 }
 
+/**
+ * `state.selection-gained-is-the-gamepad-s-hover`
+ *
+ * A file that gives a control a pointer hover response must give it a gamepad focus response
+ * too. Mechanisable because it needs no taste: the question is whether the two signals reach
+ * the code at all, not whether what they do is attractive.
+ *
+ * The case it is built from shipped. Every visible hover response in Crystal Canyon hung off
+ * `MouseEnter`, `SelectionGained` appeared nowhere in the client, and `Selectable = false` was
+ * being set in Panels — so the selection graph was live and a controller player navigated a UI
+ * that never acknowledged them.
+ *
+ * This is deliberately NOT the same question as `checkGamepadReachability`, which proves the
+ * selection graph is connected. A graph can be perfectly connected and completely invisible;
+ * that is exactly what was shipping.
+ */
+export function checkFocusFeedback(files = []) {
+  const findings = [];
+  for (const file of files) {
+    const source = String(file.source ?? '');
+    //[[ `:Connect`, not a bare mention. Stories.luau — the isolated UI harness — drives its
+    //   states by FIRING the MouseEnter connections it finds with `getconnections`, and the
+    //   first version of this check reported that as a missing gamepad response. A check that
+    //   reports the test harness as a defect gets switched off, which is worse than not
+    //   having written it, so the signal is who SUBSCRIBES rather than who says the word. ]]
+    const hover = (source.match(/\bMouseEnter:Connect\b/g) ?? []).length;
+    if (hover === 0) continue;
+    const focus = (source.match(/\bSelectionGained:Connect\b/g) ?? []).length;
+    if (focus > 0) continue;
+    findings.push(
+      finding(
+        'state.selection-gained-is-the-gamepad-s-hover',
+        `${file.path} connects MouseEnter at ${hover} site(s) and SelectionGained at none, so every ` +
+          `hover response it draws is invisible to a controller`,
+        { path: file.path, hover, focus },
+      ),
+    );
+  }
+  return findings;
+}
+
 /** Run everything that applies to the inputs given. */
 /**
  * `currency.one-value-one-motion-policy` — every surface showing one value must agree about
@@ -463,6 +505,7 @@ export function audit({
     ...(files ? checkWaitContracts(files) : []),
     ...(files ? checkMotionGate(files) : []),
     ...(files ? checkInertSurfaceFlags(files) : []),
+    ...(files ? checkFocusFeedback(files) : []),
     ...(priceLayers ? checkPriceAgreement(priceLayers) : []),
     ...(screens ? checkSafeArea(screens) : []),
     ...(selection ? checkGamepadReachability(selection.nodes, { entry: selection.entry }) : []),
@@ -471,8 +514,8 @@ export function audit({
   ];
   //[[ `enforced` is the number of rules this audit can actually decide, and it is reported
   //   separately from the library size on purpose. Returning only `checked: RULES.length`
-  //   invited the reading that all 55 rules had been applied, when nine of them are
-  //   mechanised and the rest need a human and a rendered screenshot. §AK: a metric that
+  //   invited the reading that the whole library had been applied, when only the enforced
+  //   set is mechanised and the rest need a human and a rendered screenshot. §AK: a metric that
   //   flatters is worse than no metric. ]]
   return { ok: findings.length === 0, findings, enforced: ENFORCED_RULE_IDS.length, library: RULES.length };
 }

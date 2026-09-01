@@ -117,6 +117,16 @@ local function drive(btn: TextButton, state: string)
 		for _, conn in ipairs(getconnections and getconnections(btn.MouseEnter) or {}) do
 			conn:Fire()
 		end
+	elseif state == "focus" then
+		--[[ The gamepad's hover, driven the same way — and the point of having it here is
+			 that "selection is the controller's hover" is a CLAIM about appearance, so the
+			 harness that renders states side by side is the only place it can be seen to
+			 be true. If the focus tile ever stops matching the hover tile, these two lines
+			 are what shows it. ]]
+		btn.SelectionImageObject = nil
+		for _, conn in ipairs(getconnections and getconnections(btn.SelectionGained) or {}) do
+			conn:Fire()
+		end
 	elseif state == "pressed" then
 		for _, conn in ipairs(getconnections and getconnections(btn.MouseButton1Down) or {}) do
 			conn:Fire()
@@ -190,7 +200,7 @@ function Stories.mount(opts: { scale: number?, reducedMotionNote: boolean? }?): 
 		local slot = cell(buttons, f[1] :: string, 200, 56)
 		Theme.button(slot, string.upper(f[1] :: string), f[2] :: Color3, UDim2.fromOffset(190, 52))
 	end
-	for _, state in ipairs({ "default", "hover", "pressed", "disabled" }) do
+	for _, state in ipairs({ "default", "hover", "focus", "pressed", "disabled" }) do
 		local slot = cell(buttons, state, 200, 56)
 		local b = Theme.button(slot, string.upper(state), Palette.UI.HardCurrency, UDim2.fromOffset(190, 52))
 		if state == "disabled" then

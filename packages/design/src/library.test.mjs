@@ -192,16 +192,48 @@ test('the genre gap is PINNED, not merely non-empty', () => {
   //
   // 2026-09-01: social, battleground-fps and dialogue-story were closed from
   // Roblox/creator-docs (CC-BY-4.0) — each with an ENGINE FACT that constrains what a design
-  // for that family can do, not with an aesthetic guess. The three that remain are matters of
-  // taste, and the one licence-clear source documents behaviour rather than taste. Closing
-  // them needs a source that can teach taste and can prove a licence about itself; the corpus
-  // classification found none.
+  // for that family can do, not with an aesthetic guess. The three that remained were matters
+  // of taste, and creator-docs documents behaviour rather than taste.
+  //
+  // 2026-09-01, later: `modern` closed from the second corpus — synthetic (Apache-2.0),
+  // onyx-ui, cyan-ui and Iris (MIT), which are the modern idiom as practised in Roblox UI
+  // rather than descriptions of it. Six rules carry the family, and each was kept because its
+  // CONTENT would be different in a cartoon-simulator: a modular scale, surface/on-surface
+  // colour pairing, elevation as a diminishing tone step, type steps as bundles, a total
+  // interaction-state map, and press moving opposite to hover. A cartoon simulator gets depth
+  // from strokes and drop shadows, so the tone-step rule is not a neutral truth wearing a
+  // family label.
+  //
+  // The merge ARRIVED claiming `modern` on 25 rules and `fantasy` on 3, which is exactly the
+  // cheap close this test was written against. Nineteen `modern` claims were stripped as
+  // decoration on genre-neutral mechanics (GUI-inset arithmetic, z-order banding, UIScale
+  // resolution). All three `fantasy` claims were stripped: they are asset-SOURCING hygiene
+  // rules and none of them says what fantasy looks like.
+  //
+  // So `fantasy` and `sci-fi` remain open, and closing either still needs a source that can
+  // teach taste in that genre and prove a licence about itself.
   const c = coverage();
   assert.deepEqual(c.uncovered.styleFamilies, [
     'fantasy',
     'sci-fi',
-    'modern',
   ]);
+});
+
+test('`modern` is closed by rules that TEACH it, not by rules that merely list it', () => {
+  // The list above is a name check; this is the content check behind it. Deleting the six
+  // rules' bodies and keeping their family labels would pass the assertion above and would
+  // mean the library knows nothing about the genre. So: the modern rules must say something
+  // about colour, type, depth and state — the decisions that separate the idiom from a
+  // cartoon HUD — and they must come from the kits, not from Crystal Canyon.
+  const modern = RULES.filter((r) => r.styleFamilies.includes('modern'));
+  assert.ok(modern.length >= 6, `expected a language, got ${modern.length} rule(s)`);
+  const ids = modern.map((r) => r.id).join(' ');
+  for (const topic of ['scale-step', 'surface-colour', 'type-step', 'depth', 'interaction-states']) {
+    assert.match(ids, new RegExp(topic), `the modern language says nothing about ${topic}`);
+  }
+  for (const r of modern) {
+    assert.equal(r.provenance.kind, 'learned-pattern', `${r.id} claims modern but was authored here`);
+  }
 });
 
 test('§M is answered: studs/classic is an art language, not one rule', () => {
@@ -220,11 +252,36 @@ test('§M is answered: studs/classic is an art language, not one rule', () => {
   }
 });
 
-test('a rule learned from creator-docs cites the exact file, because CC-BY requires it', () => {
+test('every learned rule names its repo, its licence, and the path it was read at', () => {
+  // This test used to require `Roblox/creator-docs` by name, because that was the only
+  // licence-clear source in the corpus. Eleven more arrived, and the requirement it was
+  // really making is source-agnostic: a rule that claims to have LEARNED something must say
+  // from what, under what licence, and at which path — otherwise "learned-pattern" is an
+  // assertion nobody can check, and the licence boundary this library enforces on `tokens`
+  // rests on a provenance string nobody verified.
+  //
+  // The path may be a file or a directory. Four icon rules were measured ACROSS a directory
+  // (134 files sharing one keyline), and naming a single arbitrary file out of that set would
+  // be less honest than naming the set.
+  const REPO = /[\w.-]+\/[\w.-]+/;
+  const LICENCE = /\((MIT|Apache-2\.0|ISC|Unlicense|CC-BY-4\.0)[^)]*\)/;
+  const PATH = /[\w.-]+\/[\w.-]+|[\w.-]+\.(lua|luau|md|sh|py|rbxm)/;
+
   const learned = RULES.filter((r) => r.provenance.kind === 'learned-pattern');
   assert.ok(learned.length > 0, 'the second source should be in use');
   for (const r of learned) {
-    assert.match(r.provenance.source, /Roblox\/creator-docs/, `${r.id} is learned from an unnamed source`);
+    assert.match(r.provenance.source, REPO, `${r.id} is learned from an unnamed source`);
+    assert.match(r.provenance.source, LICENCE, `${r.id} does not carry the licence it was read under`);
+    assert.ok(
+      PATH.test(r.provenance.source) || PATH.test(r.provenance.validated),
+      `${r.id} names a repo but never says what was read inside it`,
+    );
+  }
+
+  // CC-BY is stricter than MIT here: attribution to the specific work is a CONDITION of the
+  // licence rather than good manners, so a creator-docs rule must cite the file in `source`
+  // itself, where the citation travels with the rule.
+  for (const r of learned.filter((x) => /creator-docs/.test(x.provenance.source))) {
     assert.match(r.provenance.source, /content\/en-us\//, `${r.id} cites the repo but not the file`);
     assert.match(r.provenance.source, /\(CC-BY-4\.0\)/, `${r.id} does not carry the licence`);
   }

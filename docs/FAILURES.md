@@ -356,6 +356,42 @@ copy of the module and the suite re-run: **8 of 8 tests fail**; against the fix,
 the same pass that was fixing critical bugs. Reviewing a diff is not the same as running it,
 and neither is a green suite that cannot reach the code in question.
 
+### F-37 · A controller could navigate the whole UI and never be told where it was
+
+Every visible hover response in the game hung off `MouseEnter`. `SelectionGained` appeared
+**zero times in the entire client**. Meanwhile `Panels.luau` sets `Selectable = false` in two
+places, which means the selection graph was live and deliberately curated — so a controller
+player really was moving through this UI, and nothing anywhere changed appearance while they
+did it.
+
+There were two hover implementations, not one: `Theme.luau` tweens fill, edge weight, glow and
+depth; `Panels.luau` separately tweens a `UIScale` lift. Both were pointer-only.
+
+`Theme.luau` also only recognised `MouseButton1` and `Touch` as a press, so a gamepad `ButtonA`
+fired `Activated` — the game responded — while the control never looked pressed. An input that
+works but does not acknowledge itself reads as an input that did not register.
+
+**Found by the design library, not by a human and not by a screenshot.** The rule is
+`state.selection-gained-is-the-gamepad-s-hover`, extracted from onyx-ui and synthetic, whose
+whole content is: feed `SelectionGained`/`SelectionLost` into the SAME value the pointer feeds,
+and every response already written for hover becomes a gamepad response for free. That is why
+the fix is nine lines in each file rather than a second visual state.
+
+The existing `checkGamepadReachability` could not have found it. It proves the selection graph
+is CONNECTED. A graph can be perfectly connected and completely invisible, and that is exactly
+what was shipping.
+
+**And the check that pins it was wrong the first time.** Written as a bare `MouseEnter` match,
+it reported `Stories.luau` — the isolated UI harness, which drives its state grid by FIRING the
+connections it finds with `getconnections` and subscribes to nothing. A check that reports the
+test harness as a defect gets switched off, and then it is not checking anything, so the signal
+is who **subscribes** (`MouseEnter:Connect`) rather than who says the word. With that, the check
+reports zero findings against the fixed client and still fails on the pre-fix source.
+
+Stories gained a `focus` tile beside `hover` in its state grid, because "selection is the
+controller's hover" is a claim about APPEARANCE, and the harness that renders states side by
+side is the only place it can be seen to be true.
+
 ### F-36 · The sealing course promised the world could not leak, and it could
 
 `cliffRun`'s sealing course carries this comment, and has since it was written:

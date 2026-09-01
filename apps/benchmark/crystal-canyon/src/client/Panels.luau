@@ -589,6 +589,20 @@ local function lift(btn: TextButton)
 		held = false
 		refresh()
 	end)
+	--[[ The controller's hover, into the same value — see the longer note in
+		 Theme.luau's `wireFeedback`. This is the SECOND hover implementation in the
+		 game (Theme tweens fill, edge and depth; this one tweens a UIScale lift), and
+		 that is exactly why the check that found it works on every client file rather
+		 than on the one everybody remembers. ]]
+	btn.SelectionGained:Connect(function()
+		hovering = true
+		refresh()
+	end)
+	btn.SelectionLost:Connect(function()
+		hovering = false
+		held = false
+		refresh()
+	end)
 	btn.InputBegan:Connect(function(input: InputObject)
 		if
 			input.UserInputType == Enum.UserInputType.MouseButton1

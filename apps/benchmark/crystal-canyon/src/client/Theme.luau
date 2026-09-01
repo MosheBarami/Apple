@@ -1070,6 +1070,18 @@ local function wireFeedback(btn: TextButton, fill: Color3, parts: SurfaceParts, 
 	local hovering = false
 	local held = false
 
+	--[[ What counts as a press, across the three devices.
+
+		 ButtonA is the gamepad's activate, and it arrives through InputBegan on the
+		 button itself once that button holds selection. Without it the controller
+		 path fired `Activated` — so the game responded — while the control never
+		 looked pressed, which reads as an input that did not register. ]]
+	local function isPress(input: InputObject): boolean
+		return input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+			or input.KeyCode == Enum.KeyCode.ButtonA
+	end
+
 	local function refresh()
 		if held then
 			state(pressFill, Theme.Edge.Pressed, math.min(1, restGlow + 0.25))
@@ -1091,20 +1103,51 @@ local function wireFeedback(btn: TextButton, fill: Color3, parts: SurfaceParts, 
 		held = false
 		refresh()
 	end)
+
+	--[[ Gamepad focus is the controller's hover, and it drives the SAME value.
+
+		 Not a new visual state: every response already written for hover — the fill
+		 tween, the edge weight, the glow, the sink — becomes a response to gamepad
+		 focus for free, and cannot drift from it later, because there is only one
+		 `hovering` and one `refresh`.
+
+		 This was a real hole rather than a missing nicety. `Selectable = false` is
+		 set in two places in Panels, so the selection graph is live and a controller
+		 player genuinely navigates this UI — they simply received no feedback while
+		 doing it. Every visible response in the game was connected to MouseEnter,
+		 and `SelectionGained` appeared nowhere in the client.
+
+		 Found by `state.selection-gained-is-the-gamepad-s-hover` in
+		 packages/design/src/rules.mjs, learned from onyx-ui and synthetic. The
+		 existing `checkGamepadReachability` could not have caught it: it proves the
+		 selection graph is CONNECTED, not that anything happens when you move
+		 through it. ]]
+	btn.SelectionGained:Connect(function()
+		hovering = true
+		refresh()
+	end)
+	btn.SelectionLost:Connect(function()
+		hovering = false
+		held = false
+		refresh()
+	end)
+
 	btn.InputBegan:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
+		if isPress(input) then
 			held = true
 			refresh()
 		end
 	end)
 	btn.InputEnded:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
+		if isPress(input) then
+			--[[ Returning to `hovering` is right for BOTH devices here, which is only
+				 true because selection feeds the same value. A pointer release returns
+				 the control to hover because the cursor is still on it; a gamepad
+				 release returns it to its SELECTED appearance because the focus has not
+				 moved. Those are different sentences about the same variable, and the
+				 rule they satisfy — `state.a-press-returns-to-the-state-the-device-
+				 actually-left-it-in` — is the reason to write that down rather than to
+				 discover later that one device was returning to the other's state. ]]
 			held = false
 			refresh()
 		end
