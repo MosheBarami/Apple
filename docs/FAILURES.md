@@ -499,6 +499,45 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### F-56 · A measured limitation, deliberately not fixed
+
+Recorded because a known limitation with a number on it is worth more than a rushed change to an
+error-severity rule, and because the next person to look will otherwise measure it again.
+
+`busy-wait-loop` fires on `while true do` whose body contains no yield. Over the 2,646 files
+fetched this session it produced **39 error-severity findings, and 30 of them contain a `break` or
+`return`** — pure-computation loops that terminate on a computed condition. The first three are a
+thousand-separator formatter, elliptic-curve modular arithmetic, and friend-list pagination:
+
+```luau
+while true do
+	local lFormatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", delimiterSubStr)
+	formatted = lFormatted
+	if k == 0 then break end
+end
+```
+
+That is the normal way to write a fixed-point iteration and it terminates in a handful of passes.
+On the numbers above the rule's precision on real code is roughly **23 %**.
+
+**Why this is not fixed here.** Exempting every loop with a `break` would let the real case through,
+because a spin-wait has one too:
+
+```luau
+while true do
+	if flag then break end   -- polls external state; pins the thread exactly as the rule warns
+end
+```
+
+The distinction is whether the exit condition depends on state the loop itself advances or on
+something outside it, and that is not decidable from a regex. Five rule changes landed today, each
+with paired tests; a sixth requiring a judgement I cannot make reliably, at the end of a long
+session, is precisely the shape of change this file keeps recording as a failure.
+
+The 9 findings with no exit at all are the rule working. What is needed is either a real reaching
+analysis or splitting the rule so a loop with an exit reports at `warn` — and a per-finding
+severity is not something the current shape supports, since severity is a property of the rule.
+
 ### F-55 · Three false-positive classes in one rule, found by running it over 2,646 real files
 
 The fifteen repositories fetched this session are 2,646 Luau files of real, licence-clear code —
