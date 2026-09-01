@@ -163,7 +163,6 @@ export function selectProvider(env: Env, opts: AutoSelectOptions = {}): AutoSele
   }
 
   if (!eligible.length) {
-    const names = [...new Set(rejected.map((r) => r.provider))].join(', ');
     return {
       ok: false,
       reasoning: `No provider can serve ${task}: ${rejected.map((r) => `${r.provider} (${r.why})`).join('; ')}.`,

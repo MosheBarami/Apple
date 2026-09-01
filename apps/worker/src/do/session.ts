@@ -22,7 +22,6 @@ import type {
   PlaytestRun,
   RenderViewResult,
 } from '@golem/shared';
-import { MODE_INFO } from '@golem/shared';
 import {
   admitFrame,
   FrameRate,
@@ -138,7 +137,6 @@ const MUTATING_TOOLS = new Set([
 const MAX_NUDGES = 2;
 /** Output token budget per step before the effort multiplier — matches the gateway model config. */
 const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 1600, stone: 4400, rune: 5200 };
-const PLUGIN_TIMEOUT_MS = 9000;
 const STEP_STALE_MS = 180_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
@@ -823,7 +821,10 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private async runStep(agent: AgentState) {
-    const bind = (await this.bind())!;
+    // The RESULT is unused; the call is kept because reading the binding refreshes
+    // `boundProjectId` on an instance revived mid-run. The constructor restores it too,
+    // so this is belt and braces rather than the only path — see the note there.
+    await this.bind();
     //[[ Re-established here, not only in startRunInner.
     //
     //   `currentMsgId` is an instance field, and a run outlives the instance: the Durable
