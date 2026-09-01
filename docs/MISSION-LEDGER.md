@@ -13,7 +13,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | # | Outcome (§AS) | Status | Evidence / note |
 |---:|---|---|---|
 | 1 | Branch + Draft PR coherent and reviewable | **PROVEN** | `feature/roblox-creation-intelligence`, PR #1 Draft, CI green |
-| 2 | Benchmark materially beyond the rejected blockout | **PARTIAL** | 482 primitives vs 608 blockout; cliff faces now battered, not terraced; Glacier Heart still not a payoff from the gate |
+| 2 | Benchmark materially beyond the rejected blockout | **PARTIAL** | 511 primitives vs the 608 blockout. Four experiments this session establish that **decorating a box does not stop it reading as a box** (F-19, F-33, the ramp, the chamfer), and the acquisition route for more silhouettes is costed and closed. The landmark plinth IS fixed — inscribed by corner, one tone per tier — and Frost Hollow now matches the meadow's saturation. The walls remain the open half |
 | 3 | Frost Hollow primitive fallback resolved | **PROVEN** | 0 → 22 crystal meshes · `evidence/2026-09-01-detexture-ab.md` |
 | 4 | Glacier Heart no longer a box stack | **PROVEN** | radial crystal burst; dais geometry fixed · same file |
 | 5 | UI visual quality passes rendered review | **PARTIAL** | The visual critic calls the UI kit **"the strongest thing in the build, by a distance"** — 4 px outlines throughout, FredokaOne uppercase with a 3 px stroke, panels at 60 % of viewport (§5.6 wants 50–70), **no text overflow across 149 rendered strings**. Three real defects against it: V6 (a shadow 91 px oversized and offset the wrong way in all four panels), V7 (SHOP duplicates UPGRADES), V9 (nav tiles square where §6 says circular). Still not reviewed as PIXELS in play mode — `screen_capture` returns magenta there |
@@ -51,7 +51,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 37 | No auto feature-branch production deploy | **PROVEN** | no deploy step in any workflow |
 | 38 | No purchases / new paid services | **PROVEN** | none made |
 | 39 | PR #1 carries honest evidence incl. rejections | **PROVEN** | body updated 2026-09-01 |
-| 40 | Independent critic agrees it is not prototype | **UNPROVEN** | A **visual** critic has now run — the fourth, first with eyes — and its verdict is **"Prototype. A carefully-dressed prototype with a genuinely shipped-quality UI kit bolted onto a world that is still a blockout."** 11 findings recorded as V1–V11 in `FAILURES.md`, four of them new and serious. Honest answer: this gate is not PARTIAL, it is failed, and the ledger should say so |
+| 40 | Independent critic agrees it is not prototype | **UNPROVEN** | A **visual** critic ran — the fourth, first with eyes — and returned **"Prototype"**. 11 findings, **8 now closed** (V1–V6, V9, V11) including the one that was broken rather than ugly: a price label 100 % occluded on the whole walking approach. Three remain and each is a design decision rather than a defect: V7 (SHOP duplicates UPGRADES), V8 (the world is one flat slab), V10 (§6's top-centre slot is empty after onboarding). **The gate stays UNPROVEN until a critic sees it again** — fixing findings is not the same as passing |
 
 ## Tally
 
