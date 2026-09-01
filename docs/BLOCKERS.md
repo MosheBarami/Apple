@@ -53,7 +53,29 @@ suitable for an automated pixel-diff harness.
 
 ---
 
-## 3. Creator Store public distribution of the plugin
+## 3. Two live account passwords are recoverable from git history — ROTATE THEM
+
+**Status:** HUMAN-ONLY. Found by the independent security review, 2026-09-01.
+
+| value | account | removed in |
+|---|---|---|
+| `golem-e2e-Passw0rd!` | `e2e-test@golem.internal` | `d8cfafa` |
+| `golem-load-Passw0rd!` | `load{i}@golem.internal` | `5b6896a` |
+
+Both are gone from the working tree and both are still in history. `d8cfafa` is
+reachable from `origin/main`, `origin/HEAD`, this feature branch and all three
+dependabot branches, so **anyone with read access to the private repository has
+them**. The commits titled "get a real account password out of the source tree"
+removed the source, not the exposure.
+
+**A commit cannot un-leak a credential.** The only fix is rotating both accounts,
+which requires the owner. History rewriting is not proposed: it would break every
+existing clone and the credentials would still exist in anyone's local copy.
+
+`scripts/secret-scan.py` does catch these — and emits `::warning::` with exit 0, so
+CI reminds forever and never blocks.
+
+## 4. Creator Store public distribution of the plugin
 
 **Status:** HUMAN-ONLY GATE. Inherited, not re-verified this session.
 
@@ -67,7 +89,7 @@ listing is gated.
 
 ---
 
-## 4. Dependabot: 27 advisories on the default branch
+## 5. Dependabot: 27 advisories on the default branch
 
 **Status:** OPEN, previously triaged, not re-triaged this session.
 

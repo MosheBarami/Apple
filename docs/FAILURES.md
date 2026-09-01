@@ -73,6 +73,95 @@ landscape phone makes it worse.
 **Caught by:** measuring `AbsolutePosition`/`AbsoluteSize` rather than judging the
 screenshot.
 
+### F-20 · A budget that could not see the field that overflows it
+**Believed:** `trimTranscript` bounded the persisted agent state.
+**True:** `contentChars` measured `m.content` only, never `toolCalls[].arguments` — which
+holds whole script bodies and is routinely the largest string in the transcript. Over the
+Durable Object's 128 KiB value limit the `put` rejected, the catch path attempted the SAME
+put and rejected again, the alarm handler died, and the platform retried it from the state
+persisted BEFORE the step — **re-running the paid LLM call and re-executing every mutating
+tool against the user's place.**
+**Fixed:** budget counts arguments; `seenCalls`/`lastCalls` bounded; `persistAgent` sheds
+transcript rather than dying.
+**Rule:** when a failure mode is duplicate mutation, finishing with less history always beats
+handing the platform a state it will replay.
+
+### F-21 · A nil undo recording was treated as "no recording needed"
+**Believed:** "every AI action is natively undoable" (the file's own header).
+**True:** `TryBeginRecording` returns nil when one is already open — after a leaked poll loop
+or an op cancelled mid-yield. The handler ran anyway and both Commit and Cancel were skipped,
+so the place was modified un-undoably, and `create_instances` (which parents as it goes) could
+throw on item 5 of 10 with 1-4 already placed and nothing to roll back.
+**Fixed:** a mutating op with no recording is refused. Losing an op is recoverable; an
+un-undoable partial mutation is not.
+
+### F-22 · The restore path could not report failure, after destroying the tree
+**Believed:** `restored = true` meant restored.
+**True:** it was a literal, and `scriptsRestored` reported the SNAPSHOT's count rather than
+what was written back — a number that could not decrease however badly the restore went. Every
+write is pcall'd with the result discarded, and `Ops.execute` only fails an op carrying an
+`error` key. So a restore that recreated almost nothing looked identical to one that worked —
+on the highest-stakes operation in the product, the "undo a bad AI build" path.
+**Fixed:** counts failures, reports scripts WRITTEN, errors when materially incomplete.
+
+### F-23 · A timeout was sent for four months and never read
+**Believed:** `run_code` was bounded by the server's `timeoutMs: 10_000`.
+**True:** the plugin never read it, and could not honour it — `pcall(require, module)` runs on
+Studio's main thread with no instruction budget, and a non-yielding loop never lets a watchdog
+run. `while true do end` hard-freezes Studio; the only recovery is killing it and losing
+unsaved work. The server timing out stops it WAITING, not Studio spinning.
+**Fixed, partially and honestly:** non-yielding loops are refused before they run. This is
+syntactic, not an analysis — a loop whose exit condition is merely never satisfied still hangs,
+and that limit is stated rather than papered over.
+**And the guard was wrong on first test:** it refused `workspace:WaitForChild("X")`, because
+`:Wait%s*%(` cannot match `:WaitForChild(`. Caught by running it against 13 real samples rather
+than by reading it. A guard that refuses correct code is a guard people route around.
+
+### F-24 · The untrusted fence used a constant tag
+**Believed:** fencing tool output made it inert.
+**True:** `JSON.stringify` escapes quotes and backslashes but **not angle brackets**, so a
+payload containing a literal closing tag reached the transcript verbatim and closed the fence
+early — after which the system prompt's own wording placed the attacker's text OUTSIDE the
+markers. Worse, `remember` wrote model-supplied text into the SYSTEM prompt, uncapped and
+unfenced, on every future run of the project, and `MEMORY_UPDATE_PROMPT` carried no
+untrusted-content warning at all.
+**Fixed:** per-run random fence id, memory capped and fenced, warning added.
+**Rule:** do not sanitise evidence to make it safe — make the container unforgeable instead.
+
+### F-25 · Three reduced-motion defects in a gate added the same day
+A reversing infinite tween has no end state at its goal, so applying the goal parked the sell
+plate permanently mid-gesture. `Cancel` never reported `Cancelled`, leaving `Theme.close`'s
+guard — which exists precisely for a re-open — unreachable. And the gate is a drop-in
+TweenService replacement, so it was structurally incapable of covering `Effects.countTo`, a
+hand-rolled per-frame loop driving the most motion-heavy element on screen.
+**All three fired only for users who had turned reduced motion on**, which is to say never
+during testing. That is the general hazard of an accessibility path: it is the one branch the
+author never sees.
+
+---
+
+## Found by the critics and NOT yet fixed
+
+Recorded so they are not rediscovered as new. Severity is the critics' own.
+
+| id | severity | finding |
+|---|---|---|
+| H1 | high | The per-player zone gate is published by the server (`zone_<id>` attribute) and **read by nobody**. A player who pays 2,500 coins sees the gate unchanged; one who has not pays walks through and collects nothing with **zero feedback**. |
+| H2 | high | A live server **does** silently degrade to no-persistence: `DataService:463` is not Studio-gated, so a `GetDataStore` throw at boot hands every joiner a blank profile at `state = ready`. The docstring asserts the opposite of the code. |
+| H3 | high | Losing the session lock mid-play sets `persist = false` and continues. The HUD keeps crediting coins; every write is discarded. `Notify` is wired and used elsewhere and fires on neither this path nor H2. |
+| H4 | high | Teleport farming works. `MaxPerTick` caps the instantaneous pickup, not the round trip, and there is no server-side movement validation — a ~6-8× economy advantage against the comment's claim of "the same rate as walking". |
+| A2 | high | The **stop button** can be silently lost: `webSocketMessage` does a read-modify-write of `agent` while `runStep` holds its own copy and writes `status: 'running'` at the tail. |
+| A3 | high | Concurrent `startRun` double-charges a Spark, inserts two user rows, and orphans a message that never gets `msg_end`. |
+| A4 | high | `createCheckpoint` throwing inside `startRun` leaves `status: 'running'` with **no alarm scheduled**, so nothing can ever recover it before the 180 s staleness bypass. |
+| A5/A6 | medium | Ops queued by a dead run are still delivered and executed; op delivery is at-most-once with no ack or redelivery. |
+| B5 | high | `plugin:Unloading` is never handled — nothing disconnects. After a plugin reload there are two live poll loops draining the same queue, which is also how F-21's nil recording arises. |
+| B6 | high | Reconnect calls `task.cancel` on a possibly-dead thread, and if the old loop is mid-yield it dies inside `Ops.execute`, leaving the ChangeHistory recording open forever and the asset policy stuck open. |
+| M6 | medium | The **HUD** is drawn under the Roblox topbar (`IgnoreGuiInset = true`, and `GetGuiInset` appears nowhere). The modal was fixed this session; the wallet column was not. |
+| M9 | medium | `Config.Codes` claims "the client never sees this table" and the client requires `Config`. `Codes.luau` says the opposite and is correct. |
+| L8 | medium | **Zero automated tests exercise the game's Luau.** 1,412 tests cover the surrounding TypeScript. `Profile.sanitize` is pure, total, security-critical and untested. |
+
+---
+
 ### F-19 · Raising the cliff wall's mesh ratio improved every number and no pixels
 **Believed:** the canyon wall reads as stacked boxes because only 62% of masses get
 a rock-mesh silhouette; raise the threshold and the wall stops reading as prototype.

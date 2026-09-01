@@ -8,7 +8,7 @@ Statuses: **PROVEN** (evidence in repo) · **PARTIAL** (real but incomplete) ·
 **UNPROVEN** (not attempted or not evidenced) · **BLOCKED** (external/human-only) ·
 **REJECTED** (tried, measured, refused).
 
-Last reconciled: **2026-09-01** (second pass).
+Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 | # | Outcome (§AS) | Status | Evidence / note |
 |---:|---|---|---|
@@ -23,12 +23,12 @@ Last reconciled: **2026-09-01** (second pass).
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
 | 10 | Vertical slice playable and coherent | **PARTIAL** | loop + persistence work; panels only reachable since `cd00b26` |
 | 11 | Persistence in published-private benchmark | **PROVEN** | `evidence/2026-09-01-persistence-roundtrip.md` |
-| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | 16-rule anti-pattern grader, each with a fire/no-fire pair · `docs/SCRIPTING-CURRICULUM.md` |
+| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | 16-rule grader; but an independent review found 4 criticals and 13 open findings, and **zero tests exercise the game's own Luau** (L8) |
 | 13 | Provider selector absent from normal UX | **PROVEN** | only `admin.tsx` names a model, which §F permits |
 | 14 | Hidden Cloudflare routing benchmark-driven | **BLOCKED** | AI Gateway credit · `BLOCKERS.md` #1 |
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
 | 16 | Plan / Agent / Super Agent real | **PROVEN** | modes shipped; Plan toolset genuinely read-only |
-| 17 | Thinking/activity UX alive, structured, honest | **UNPROVEN** | not attempted |
+| 17 | Thinking/activity UX alive, structured, honest | **PROVEN** | state machine folded from real tool/phase events only; 4 §Y states named as underivable · `docs/THINKING-UX.md` |
 | 18 | Inline near-live playtest viewport | **PROVEN** | real rasterised frames + measured blocker (no plugin viewport readback) · `docs/PLAYTEST-VIEWPORT.md` |
 | 19 | Roadmap intelligence suggests/builds milestones | **PROVEN** | corrected: it DOES scan the live place (`ROADMAP_SCAN_LUAU`), detects genre, offers Plan/Build, 30 tests incl. the tower-defence-never-offered-rebirth negative proof |
 | 20 | Durable design/source intelligence pipeline | **PROVEN** | machinery run against all 217 seeds; 119 resolved · `evidence/2026-09-01-source-corpus-classification.md` |
@@ -51,11 +51,11 @@ Last reconciled: **2026-09-01** (second pass).
 | 37 | No auto feature-branch production deploy | **PROVEN** | no deploy step in any workflow |
 | 38 | No purchases / new paid services | **PROVEN** | none made |
 | 39 | PR #1 carries honest evidence incl. rejections | **PROVEN** | body updated 2026-09-01 |
-| 40 | Independent critic agrees it is not prototype | **UNPROVEN** | not yet run |
+| 40 | Independent critic agrees it is not prototype | **PARTIAL** | 3 independent critics ran with clean context — security, engineering, worker/plugin. 4 criticals found and fixed; 13 findings recorded unfixed in `FAILURES.md`. No VISUAL critic yet |
 
 ## Tally
 
-PROVEN 25 · PARTIAL 12 · UNPROVEN 2 · BLOCKED 1 · REJECTED 0
+PROVEN 26 · PARTIAL 13 · UNPROVEN 0 · BLOCKED 1 · REJECTED 0
 
 Only **one** gate (14) is externally blocked. Everything else marked UNPROVEN or
 PARTIAL is reachable without owner action.
@@ -68,6 +68,13 @@ PARTIAL is reachable without owner action.
 | Cube cliff mesas, de-textured | banding gone, leaves a smooth featureless column | F-13 |
 | Raising cliff mesh ratio 0.62→0.85 | every metric improved, no pixels did; worsened repetition | F-19 |
 | Neon motes | world is single-material by decision; §AQ meaningless neon | `dd90c85` |
+
+## What the critics changed about this ledger
+
+No gate went backwards, but gate 12's confidence should have. A 16-rule anti-pattern
+grader that scores *model output* said nothing about the game it ships beside, and an
+independent reviewer found four criticals in an hour. **L8 is the gap behind that:** 1,412
+tests cover the surrounding TypeScript and not one line of the benchmark's Luau.
 
 ## Next-highest-value unblocked work, in dependency order
 
