@@ -113,6 +113,11 @@ jobs:
       - name: Build web app
         run: pnpm --filter @golem/web build
 
+      - name: Internal links resolve
+        # Nineteen pages that cross-reference each other, and a dead href is valid HTML —
+        # the build succeeds and the 404 ships. 577 links today.
+        run: node scripts/check-site-links.mjs
+
       - name: Landing payload budget
         # The root route is meant to be one viewport of HTML and CSS with no
         # JavaScript at all. This fails if that regresses, because a budget
