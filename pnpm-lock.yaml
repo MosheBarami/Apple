@@ -111,7 +111,11 @@ importers:
 
   packages/design: {}
 
-  packages/evals: {}
+  packages/evals:
+    dependencies:
+      '@golem/design':
+        specifier: workspace:*
+        version: link:../design
 
   packages/shared: {}
 

@@ -1,17 +1,19 @@
 // Grading: check evaluation + per-task scoring.
-// Check shape: {type: 'contains'|'not_contains'|'regex'|'luau_syntax'|'no_antipattern',
+// Check shape: {type: 'contains'|'not_contains'|'regex'|'luau_syntax'|'no_antipattern'|'no_design_violation',
 //               value?, pattern?, flags?, target: 'text'|'code', weight?, rules?, context?}
 //  - contains:     literal `value` must appear in the target.
 //  - not_contains: literal `value` (or regex `pattern`) must NOT appear/match.
 //  - regex:        `pattern` (+optional `flags`) must match the target.
 //  - luau_syntax:  target (normally 'code') must parse as Luau via the local CLI.
 //  - no_antipattern: target (normally 'code') must contain none of the named Roblox anti-patterns.
+//  - no_design_violation: target must violate none of the design library's text-decidable rules.
 //      `luau_syntax` and the text checks together cannot distinguish a shop that debits the server's
 //      balance from one that trusts a price the client sent — both parse and both mention
 //      RemoteEvent. This check reads the code instead of its vocabulary; see roblox-antipatterns.mjs.
 // Task score = weighted fraction of checks passed (check.weight defaults to 1).
 import { checkLuauSyntax } from './luau.mjs';
 import { checkNoAntipattern } from './roblox-antipatterns.mjs';
+import { checkNoDesignViolation } from './design-checks.mjs';
 
 const FENCE_RE = /```[ \t]*[A-Za-z0-9_+-]*[ \t]*\r?\n([\s\S]*?)```/g;
 
@@ -64,6 +66,11 @@ function evalCheck(check, text, code, luauCheck) {
     }
     case 'no_antipattern': {
       return checkNoAntipattern(t, { rules: check.rules, context: check.context });
+    }
+    case 'no_design_violation': {
+      // The design library's mechanised rules, pointed at what the MODEL wrote rather than at
+      // this repository's own source — which is the difference gate 26 turns on.
+      return checkNoDesignViolation(t, { rules: check.rules, path: check.path });
     }
     default:
       return { passed: false, detail: `unknown check type: ${check.type}` };

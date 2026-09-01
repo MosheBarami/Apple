@@ -11,5 +11,8 @@
     "run": "node src/run.mjs",
     "compare": "node src/compare.mjs",
     "report": "node src/report.mjs"
+  },
+  "dependencies": {
+    "@golem/design": "workspace:*"
   }
 }
