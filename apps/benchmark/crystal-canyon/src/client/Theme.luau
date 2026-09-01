@@ -590,6 +590,56 @@ local function attachShadow(target: GuiObject, radius: UDim, offset: Vector2, tr
 		end)
 	end
 
+	--[[ AND NEITHER IS THE SIZE, FOR THE SAME REASON. V6.
+
+		 `sync` copies `target.Size`, which is the size the target ASKED for — not the size it
+		 got. A `UISizeConstraint` on the target clamps the target and not the plate, so the
+		 two diverge silently and the shadow renders at the unclamped figure.
+
+		 That shipped in all four panels. The balance pill is `UDim2.new(0.5, 0, 0, 42)` capped
+		 at 268px; on a 754px panel the half-width is 359px, so the plate drew 359 wide behind a
+		 268-wide counter — and with `AnchorPoint (1, 0.5)` the surplus 91px hangs off the LEFT,
+		 where every other shadow in this kit offsets down-right. A dark tab sticking out of one
+		 side of the coin counter, on every panel.
+
+		 Mirroring the constraint fixes it for every caller rather than for this one, which
+		 matters because the divergence is invisible until someone measures the two frames. ]]
+	--[[ The constraint usually is not there yet, which is the whole reason this is a listener
+		 and not a lookup.
+
+		 `Theme.counter` builds the pill AND attaches its shadow, and only then does the caller
+		 parent a `UISizeConstraint` to the pill — `balanceStrip` does exactly that. A shadow
+		 that only checked at construction would find nothing, mirror nothing, and be wrong from
+		 the moment the caller finished the job. The first version of this fix did precisely
+		 that and changed nothing, which the measurement caught. ]]
+	local plateCap: UISizeConstraint? = nil
+	local function mirrorCap(hostCap: UISizeConstraint)
+		if plateCap then
+			return
+		end
+		local cap = Instance.new("UISizeConstraint")
+		cap.MaxSize = hostCap.MaxSize
+		cap.MinSize = hostCap.MinSize
+		cap.Parent = plate
+		plateCap = cap
+		hostCap:GetPropertyChangedSignal("MaxSize"):Connect(function()
+			cap.MaxSize = hostCap.MaxSize
+		end)
+		hostCap:GetPropertyChangedSignal("MinSize"):Connect(function()
+			cap.MinSize = hostCap.MinSize
+		end)
+	end
+
+	local existingCap = target:FindFirstChildOfClass("UISizeConstraint")
+	if existingCap then
+		mirrorCap(existingCap)
+	end
+	target.ChildAdded:Connect(function(child: Instance)
+		if child:IsA("UISizeConstraint") then
+			mirrorCap(child)
+		end
+	end)
+
 	local function sync()
 		local p = target.Position
 		plate.Position = UDim2.new(p.X.Scale, p.X.Offset + offset.X, p.Y.Scale, p.Y.Offset + offset.Y)

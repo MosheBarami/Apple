@@ -2960,7 +2960,19 @@ box(gate, "LockShackle", Vector3.new(6, 6, 3), Vector3.new(0, 22, GATE_Z - 6), P
 gate.PrimaryPart = barrier
 -- Reads the price out of Config so the sign can never advertise a cost the
 -- server would not charge.
-billboard(barrier, `{frost.Name} — {Util.comma(frost.UnlockCost)} COINS`, P.Gate, 46, 9, 30)
+--[[ LIFTED CLEAR OF THE GATE'S OWN LINTEL. V1.
+	 At a lift of 30 the label's centre sat at Y 46, spanning 41.5–50.5 — and the Lintel spans
+	 37.5–44.5 at the SAME Z with `AlwaysOnTop = false`, so the gate occluded its own sign. The
+	 visual critic raycast 27 points across the label face from a third-person camera and found
+	 it 67% occluded at 56 studs and **100% occluded from 36 studs all the way in**. It renders
+	 perfectly from directly overhead, which is how it passed review.
+
+	 Nothing in the gate reaches above the Lintel's 44.5, so a lift of 40 — centre 56, bottom
+	 51.5 — clears every part by 7 studs, and does so by height rather than by a world-space
+	 nudge toward the player, which would only be correct for a gate facing this way.
+
+	 The approach angle is not made worse: 42° at 56 studs against the 41° it had before. ]]
+billboard(barrier, `{frost.Name} — {Util.comma(frost.UnlockCost)} COINS`, P.Gate, 46, 9, 40)
 
 -- =========================================================================
 -- 9. GUIDANCE LANGUAGE
