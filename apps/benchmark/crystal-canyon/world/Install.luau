@@ -34,6 +34,7 @@ local MANIFEST = {
 
 	{ "src/server/init.server.luau", "serverRoot", "CrystalCanyonServer", "Script" },
 	{ "src/server/Profile.luau", "server", "Profile", "ModuleScript" },
+	{ "src/server/Movement.luau", "server", "Movement", "ModuleScript" },
 	{ "src/server/DataService.luau", "server", "DataService", "ModuleScript" },
 	{ "src/server/Economy.luau", "server", "Economy", "ModuleScript" },
 	{ "src/server/Upgrades.luau", "server", "Upgrades", "ModuleScript" },

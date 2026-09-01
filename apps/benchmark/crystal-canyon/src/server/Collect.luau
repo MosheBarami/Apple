@@ -29,6 +29,7 @@ local Shared = ReplicatedStorage:WaitForChild("CrystalCanyon")
 local Config = require(Shared:WaitForChild("Config"))
 local Util = require(Shared:WaitForChild("Util"))
 local Palette = require(Shared:WaitForChild("Palette"))
+local Movement = require(script.Parent.Movement)
 
 -- Services are reached through ctx only; the three modules above are shared
 -- data with no init order of their own, so requiring them directly is safe and
@@ -108,6 +109,11 @@ local lastFullNotify: { [Player]: number } = {}
 -- one continuous mistake, not a repeated one.
 local LOCKED_NOTIFY_COOLDOWN = 8
 local lastLockedNotify: { [Player]: number } = {}
+
+--[[ Where each player was at the previous sweep, so the next one can ask whether they could
+	 have walked here. Cleared on death and on leaving, because a respawn is a legitimate
+	 teleport and a stale sample would flag the first tick after it. ]]
+local lastStep: { [Player]: { x: number, z: number, t: number } } = {}
 
 local FLIP = CFrame.Angles(math.pi, 0, 0)
 
@@ -354,18 +360,51 @@ local function sweep(now: number)
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 
+			if not (root and root:IsA("BasePart") and humanoid and humanoid.Health > 0) then
+				-- No character, or a dead one. Drop the sample: whatever position they
+				-- reappear at is a respawn, not a step.
+				lastStep[player] = nil
+			end
+
 			if root and root:IsA("BasePart") and humanoid and humanoid.Health > 0 then
 				local upgrades = profile.upgrades
 				local radius = Config.upgradeValue("magnet", (upgrades and upgrades.magnet) or 0)
 				local radiusSq = radius * radius
 				local origin = root.Position
 
-				-- MaxPerTick is the teleport guard. A client that flings itself
-				-- across a zone can put every crystal inside its magnet radius
-				-- in a single frame; capping the awards per tick means such a
-				-- jump pays out at the same rate as walking, so the exploit buys
-				-- position, never currency.
-				local budget = Config.Collect.MaxPerTick
+				--[[ Two guards, and they bound different things.
+
+					 MaxPerTick bounds a single tick: a client that flings itself
+					 across a zone can put every crystal inside its magnet radius
+					 in one frame, and this stops that frame paying out all of
+					 them.
+
+					 It does NOT, as this comment used to claim, make the jump pay
+					 "at the same rate as walking". What limits a walking player is
+					 travel time — crystals are 9 studs apart at minimum, so 16
+					 studs/s arrives at roughly 1.8 a second — while a teleporting
+					 client pays no travel time and banks the full cap on every
+					 tick, 30 a second. See H4 in docs/FAILURES.md.
+
+					 So the second guard is the one that actually binds the exploit:
+					 a player who covered more ground than their own top speed
+					 allows did not walk here, and is awarded nothing this tick. The
+					 crystals are left standing, so the cost of a false positive is
+					 one tenth of a second. ]]
+				local entitledSpeed = Config.upgradeValue("speed", (upgrades and upgrades.speed) or 0)
+				local step = lastStep[player]
+				local teleported = false
+				if step then
+					teleported = Movement.isImpossibleStep(
+						origin.X - step.x,
+						origin.Z - step.z,
+						now - step.t,
+						entitledSpeed
+					)
+				end
+				lastStep[player] = { x = origin.X, z = origin.Z, t = now }
+
+				local budget = if teleported then 0 else Config.Collect.MaxPerTick
 				local gained = 0
 				local packFull = false
 
@@ -483,6 +522,7 @@ function Collect.init(context: Ctx)
 	Players.PlayerRemoving:Connect(function(player)
 		lastFullNotify[player] = nil
 		lastLockedNotify[player] = nil
+		lastStep[player] = nil
 	end)
 
 	local interval = 1 / Config.Collect.TickRate

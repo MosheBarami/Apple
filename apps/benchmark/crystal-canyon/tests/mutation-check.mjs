@@ -135,6 +135,34 @@ const MUTATIONS = [
     find: "\t)\n\treturn true\nend",
     replace: "\t)\n\treturn false\nend",
   },
+  {
+    name: "the allowance stops scaling with the interval",
+    claim: "a server hitch is judged over the interval it actually covers",
+    module: "Movement",
+    find: "\tlocal allowance = math.max((entitled * SPEED_TOLERANCE + EXTRA_SPEED) * dt, MIN_ALLOWANCE)",
+    replace: "\tlocal allowance = math.max(entitled * SPEED_TOLERANCE + EXTRA_SPEED, MIN_ALLOWANCE)",
+  },
+  {
+    name: "the headroom over a flat walk is removed",
+    claim: "a slope or a shove must not look like a teleport",
+    module: "Movement",
+    find: "\tlocal allowance = math.max((entitled * SPEED_TOLERANCE + EXTRA_SPEED) * dt, MIN_ALLOWANCE)",
+    replace: "\tlocal allowance = math.max(entitled * dt, MIN_ALLOWANCE)",
+  },
+  {
+    name: "a hostile speed is trusted",
+    claim: "a corrupt speed cannot widen the allowance",
+    module: "Movement",
+    find: "\tlocal entitled = if type(speed) == \"number\" and speed == speed and speed > 0 and speed ~= math.huge\n\t\tthen speed\n\t\telse 0",
+    replace: "\tlocal entitled = speed",
+  },
+  {
+    name: "a NaN position is waved through",
+    claim: "a NaN coordinate is not a legal position",
+    module: "Movement",
+    find: "\tif movedSq ~= movedSq then",
+    replace: "\tif false then",
+  },
 ];
 
 try {
