@@ -365,6 +365,34 @@ local function __newInstance(className, name)
 		return c
 	end
 	function methods.GetFullName() return fields.Name end
+	--- Model:GetBoundingBox, computed from the BasePart descendants the way the engine
+	--- does. Generation.boundsOf pcalls it and silently reports zero bounds without it,
+	--- so every scale and bounds check in inspect() measured nothing.
+	function methods.GetBoundingBox()
+		local lo, hi
+		local function consider(node)
+			for _, c in node.__children do
+				local ok = pcall(function() return c.ClassName end)
+				if ok and (c.ClassName == "Part" or c.ClassName == "MeshPart" or c.ClassName == "WedgePart") then
+					local pos = c.CFrame and c.CFrame.Position or __vec3(0, 0, 0)
+					local sz = c.Size or __vec3(0, 0, 0)
+					local a = __vec3(pos.X - sz.X / 2, pos.Y - sz.Y / 2, pos.Z - sz.Z / 2)
+					local b = __vec3(pos.X + sz.X / 2, pos.Y + sz.Y / 2, pos.Z + sz.Z / 2)
+					if lo then
+						lo = __vec3(math.min(lo.X, a.X), math.min(lo.Y, a.Y), math.min(lo.Z, a.Z))
+						hi = __vec3(math.max(hi.X, b.X), math.max(hi.Y, b.Y), math.max(hi.Z, b.Z))
+					else
+						lo, hi = a, b
+					end
+				end
+				consider(c)
+			end
+		end
+		consider(fields)
+		if not lo then return CFrame.new(0, 0, 0), __vec3(0, 0, 0) end
+		local centre = __vec3((lo.X + hi.X) / 2, (lo.Y + hi.Y) / 2, (lo.Z + hi.Z) / 2)
+		return CFrame.new(centre.X, centre.Y, centre.Z), __vec3(hi.X - lo.X, hi.Y - lo.Y, hi.Z - lo.Z)
+	end
 
 	proxy = setmetatable(self, {
 		__index = function(_, k)

@@ -86,6 +86,20 @@ const MUTATIONS = [
     replace: "\t\t\t",
   },
   {
+    name: "a failing check only warns, so a broken model reads as acceptable",
+    claim: "a fail is never downgraded by later passing checks",
+    module: "Generation",
+    find: "\t\t\tworst = \"fail\"",
+    replace: "\t\t\tworst = \"warn\"",
+  },
+  {
+    name: "a loose part stops failing the verdict",
+    claim: "an unanchored part FAILS unless it was declared a physics assembly",
+    module: "Generation",
+    find: "\tif measurements.unanchoredParts > 0 then",
+    replace: "\tif false then",
+  },
+  {
     name: "the assetId shape check is removed",
     claim: "an assetId that is not a positive integer is refused before anything loads",
     module: "Generation",
