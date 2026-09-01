@@ -102,3 +102,23 @@ test('the only hand-written block states are the two that have no canonical form
     'a route is hand-writing a block empty state. If it maps to an M01–M10 state, use '
     + '<EmptyState>. If it genuinely does not, add it here with the reason.');
 });
+
+// --- the Studio pill's two labels ---------------------------------------------
+// Not an empty state, but it lives or dies by the same rule: exactly one of a pair is
+// shown, and the CSS is what decides. If the breakpoint rule is deleted the markup
+// still renders — both labels at once — and nothing else would notice.
+
+test('the Studio pill has both labels, and CSS shows exactly one', () => {
+  const tsx = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
+  assert.match(tsx, /gx-pill__place/, 'the place-name label is gone');
+  assert.match(tsx, /gx-pill__short/, 'the short label is gone');
+
+  const css = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
+  // Default: short hidden, place shown.
+  assert.match(css, /\.gx-pill__short\s*\{\s*display:\s*none/, 'the short label is not hidden by default');
+  // Narrow: the swap. Both halves must be present or the pill shows two labels.
+  const narrow = /@media \(max-width: 860px\) \{[^}]*\.gx-pill__place\s*\{\s*display:\s*none[^}]*\}[^@]*?\.gx-pill__short\s*\{\s*display:\s*inline/s;
+  assert.match(css, narrow,
+    'the narrow-viewport swap is missing: at 860px the place name and the project title '
+    + 'are both truncated to the same unreadable prefix, so the topbar says the same name twice');
+});

@@ -208,7 +208,14 @@ export function WorkspacePage() {
           {studioStatus === 'connected' ? (
             <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
-              {studio.state?.placeName ?? 'Studio'}
+              {/* The PLACE name, which is worth showing: it says which place is paired,
+                  and that is not always the project you are looking at. Below 860px it
+                  is hidden in favour of the word "Studio" — at that width it sat beside
+                  a project title of the same name and BOTH truncated, so the topbar
+                  showed the same name twice and neither legibly. The full name stays in
+                  the title attribute at every width. */}
+              <span className="gx-pill__place">{studio.state?.placeName ?? 'Studio'}</span>
+              <span className="gx-pill__short">Studio</span>
             </span>
           ) : studioStatus === 'connecting' ? (
             // No answer from the worker yet. Not a claim either way.

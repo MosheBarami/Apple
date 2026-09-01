@@ -2738,3 +2738,13 @@
   text-transform: uppercase;
   color: var(--ink-3);
 }
+
+/* The Studio pill's two labels. The place name is the useful one and wins at desktop
+   width; below the sidebar breakpoint it and the project title were both truncating to
+   the same unreadable prefix, so the short form takes over. Exactly one is ever shown,
+   so the pill never changes height. */
+.gx-pill__short { display: none; }
+@media (max-width: 860px) {
+  .gx-pill__place { display: none; }
+  .gx-pill__short { display: inline; }
+}
