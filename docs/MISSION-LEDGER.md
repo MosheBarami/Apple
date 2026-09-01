@@ -23,7 +23,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
 | 10 | Vertical slice playable and coherent | **PARTIAL** | loop + persistence work; panels only reachable since `cd00b26` |
 | 11 | Persistence in published-private benchmark | **PROVEN** | `evidence/2026-09-01-persistence-roundtrip.md` |
-| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | 16-rule grader, **plus 76 tests running the game's own Luau and 20 mutations proving they can fail**; L8 closed and **all four high-severity game findings (H1–H4) closed with Studio-measured evidence**. 8 findings remain, none in the game itself: A2–A6 (worker), B5–B6 (plugin), M6, M9. Writing the tests surfaced 5 more defects (F-26..F-30), all fixed |
+| 12 | Luau/architecture passes functional + security gates | **PROVEN** | 16-rule grader, **78 Luau tests over the game's own modules, 20 mutations all caught**, and **every one of the independent review's 13 findings closed or explicitly rejected** — 9 high-severity among them. Writing the tests surfaced 6 more defects (F-26..F-31), all fixed |
 | 13 | Provider selector absent from normal UX | **PROVEN** | only `admin.tsx` names a model, which §F permits |
 | 14 | Hidden Cloudflare routing benchmark-driven | **BLOCKED** | AI Gateway credit · `BLOCKERS.md` #1 |
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
@@ -76,42 +76,52 @@ grader that scores *model output* said nothing about the game it ships beside, a
 independent reviewer found four criticals in an hour. **L8 was the gap behind that:** 1,412
 tests covered the surrounding TypeScript and not one line of the benchmark's Luau.
 
-**L8 is now closed** (`f89609b`), and so are **H1, H2, H3 and H4** — every high-severity
-finding the critics raised against the game itself.
+**Every finding from the independent review is now closed or explicitly rejected** — 13 of
+them, 9 high-severity, across the game, the worker and the plugin.
 
-76 Luau tests run the shipped modules byte-for-byte in the standalone CLI, and a mutation
-check injects 20 known bugs to prove the suite goes red rather than merely staying green.
-Writing them found five defects a reader had missed (F-26..F-30), including
-`upgradeCost("pack", -50)` returning **0** — a free upgrade — and a Studio spec that appeared
-to cover a fallback it never reached.
+| where | findings | outcome |
+|---|---|---|
+| game (Luau) | H1–H4, M6, M9, L8 | closed; each measured in a running Studio session |
+| worker (TS) | A2, A3, A4, A5 | closed; behavioural tests through the real `SessionDO` |
+| worker (TS) | A6 | **rejected**, with the reasoning written at the delivery site |
+| plugin (Luau) | B5, B6 | closed |
 
-Every one of the four fixes was measured in a running Studio session rather than asserted:
+A6 is the one that is not a fix. It asked for redelivery on the op channel; the plugin
+acknowledges by reporting results *after* execution, so an unacknowledged batch is not evidence
+it did not run, and re-sending would install duplicate mutation on the one path that touches
+the user's place directly. That is the failure this worker is built around avoiding. The
+decision, and what would change it (idempotency in the plugin), is recorded rather than left
+for someone to rediscover.
 
-| finding | what was measured |
+**Six defects were found by writing the tests**, not by reading the code:
+
+| id | what it was |
 |---|---|
-| H1 | gate locked 232,62,62 @ T=0.350, unlocked 70,200,85 @ T=0.880, an 8-frame eased fade; the locked notice firing 2×/8s inside the zone, 0× in an owned one |
-| H2/H3 | 18 tests across a production and a Studio chunk, because `IsStudio()` is read once at load |
-| H4 | A/B against the pre-fix code: **1.95 → 0.08 crystals/s**, with walking (0.15/s) now out-earning teleporting |
+| F-26 | `upgradeCost("pack", -50)` returned **0** — a free upgrade |
+| F-27 | `math.clamp` passes NaN through, so a comment promising otherwise was false |
+| F-28 | the HUD's only number formatter could render `-0` |
+| F-29 | H1's first fix painted **zero parts** and looked exactly like success |
+| F-30 | three Studio tests covered a fallback they never reached |
+| F-31 | **self-inflicted**: `persistAgent` called itself, so every save silently dropped the run's transcript |
 
-Two of those measurements contradicted something I had already written down, which is the
-argument for making them: H1's first fix painted zero parts and looked identical to success
-(F-29), and the H4 harness had to be rebuilt twice before it reproduced the exploit at all.
+F-31 was written by the same pass that was fixing four criticals, and F-29 was the first
+attempt at fixing H1. Three of the six are working-looking code that did nothing at all. That
+is the argument for the harness and the mutation check, and against trusting a diff review or
+a green suite that cannot reach the code in question.
 
-**A correction to the record:** the commit closing H4 says "88 Luau tests". The real figure is
-76. The count in this table is the one to trust.
+One claim in this session was wrong and is corrected in the record: I asserted that a
+`DurableObject` subclass cannot be instantiated outside the Workers runtime, and wrote
+source-level assertions on that basis. `packages/evals` had been constructing one over a fake
+storage map since B10. "Untestable" needed the same evidence as any other claim.
 
 ## Next-highest-value unblocked work, in dependency order
 
-1. **A2–A4, the three high-severity worker findings** — a lost stop button, a
-   double-charged Spark on concurrent `startRun`, and a wedged run when `createCheckpoint`
-   throws. These sit in TypeScript with 1,416 tests already around them, so they need no new
-   harness — only the failing tests written first.
-2. **B5–B6 (plugin lifecycle)** — no `plugin:Unloading`, and `task.cancel` on a possibly-dead
-   thread. F-21's nil recording comes from the same place.
-3. **M6** — the topbar inset, now confirmed on three surfaces (modal fixed, wallet column and
-   notification layer not).
-4. **UI motion coverage (6)** — harness proven, 6 of 14 categories still unmeasured.
-5. **Cliff wall (2)** — needs a materially different approach than F-19.
+1. **UI motion coverage (6)** — the harness is proven and 6 of §O's 14 categories are still
+   unmeasured. The largest remaining gap with no external blocker.
+2. **Cliff wall (2)** — needs a materially different approach than F-19: more distinct rock
+   silhouettes, or authored courses rather than flat slabs.
+3. **Thinking UX (17)** and **playtest viewport (18)**.
+4. **Asset provenance ledger** — the logic is tested; nothing populates it yet.
 
-Superseded: source corpus ingestion (21→24) and design retrieval (25) are landed; H1–H4 are
-closed.
+Superseded: source corpus ingestion (21→24) and design retrieval (25) are landed; every
+review finding is closed or rejected.
