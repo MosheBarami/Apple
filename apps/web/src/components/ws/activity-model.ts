@@ -27,6 +27,14 @@
  * `node --test`: this module imports types only.
  */
 import type { AgentPhase } from '@golem/shared';
+import {
+  ACTIVITY,
+  ACTIVITY_LABEL,
+  ACTIVITY_NOT_MODELLED,
+  kindForTool,
+  labelForTool,
+  type ActivityKind,
+} from './tool-vocabulary.ts';
 
 /* ---------------------------------------------------------------- states --- */
 
@@ -38,86 +46,10 @@ import type { AgentPhase } from '@golem/shared';
  * the honest floor. Adding a prettier guess here is the exact failure this
  * module exists to prevent.
  */
-export type ActivityKind =
-  | 'understanding'
-  | 'planning'
-  | 'inspecting'
-  | 'searching_assets'
-  | 'generating'
-  | 'building'
-  | 'writing_luau'
-  | 'rendering'
-  | 'critiquing'
-  | 'playtesting'
-  | 'debugging'
-  | 'repairing'
-  | 'verifying'
-  | 'saving'
-  | 'remembering'
-  | 'working';
-
-export const ACTIVITY_LABEL: Record<ActivityKind, string> = {
-  understanding: 'Understanding',
-  planning: 'Planning',
-  inspecting: 'Inspecting',
-  searching_assets: 'Searching assets',
-  generating: 'Generating',
-  building: 'Building world',
-  writing_luau: 'Writing Luau',
-  rendering: 'Rendering',
-  critiquing: 'Evaluating',
-  playtesting: 'Playtesting',
-  debugging: 'Reading the output',
-  repairing: 'Repairing',
-  verifying: 'Verifying',
-  saving: 'Saving',
-  remembering: 'Noting what changed',
-  working: 'Working',
-};
-
-/**
- * Tool → activity state. The tool NAME is the strongest signal we get, and it
- * is the only way to separate states that `agent_status` collapses together:
- * the worker reports `search_asset_library` as phase `inspecting`, so without
- * this table "Searching assets" would be unreachable.
- */
-const TOOL_KIND: Record<string, ActivityKind> = {
-  get_project_tree: 'inspecting',
-  list_scripts: 'inspecting',
-  read_script: 'inspecting',
-  search_scripts: 'inspecting',
-  search_docs: 'inspecting',
-  inspect_model: 'inspecting',
-
-  choose_asset_source: 'searching_assets',
-  search_asset_library: 'searching_assets',
-  find_verified_asset: 'searching_assets',
-
-  generate_model: 'generating',
-
-  create_instances: 'building',
-  set_properties: 'building',
-  delete_instances: 'building',
-  insert_asset: 'building',
-  run_luau: 'building',
-
-  edit_script: 'writing_luau',
-  render_view: 'rendering',
-
-  check_composition: 'critiquing',
-  inspect_visually: 'critiquing',
-  visual_critique: 'critiquing',
-
-  run_and_check: 'playtesting',
-  get_output_logs: 'debugging',
-  create_checkpoint: 'saving',
-  remember: 'remembering',
-};
-
-export function kindForTool(tool: string | undefined): ActivityKind {
-  if (!tool) return 'working';
-  return TOOL_KIND[tool] ?? 'working';
-}
+// The vocabulary now lives in one module, with the worker's tool registry as its
+// checked reference. See tool-vocabulary.ts for why there used to be three copies.
+export { ACTIVITY, ACTIVITY_LABEL, ACTIVITY_NOT_MODELLED, kindForTool, labelForTool as stepLabel };
+export type { ActivityKind };
 
 /**
  * `agent_status.phase` → activity state. `done` maps to null because it is not
@@ -460,7 +392,7 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
     return {
       key: `tool:${r.toolId}`,
       kind: kindForTool(r.tool),
-      label: stepLabel(r.tool),
+      label: labelForTool(r.tool),
       detail: r.summary && r.summary !== r.tool ? r.summary : undefined,
       state,
       toolId: r.toolId,
@@ -611,38 +543,6 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
  * its own underscored name rather than to invented prose, so a tool added in
  * the worker shows up as itself instead of as a lie.
  */
-const STEP_LABEL: Record<string, string> = {
-  get_project_tree: 'Read the project tree',
-  list_scripts: 'Listed scripts',
-  read_script: 'Read a script',
-  search_scripts: 'Searched scripts',
-  search_docs: 'Searched the Roblox docs',
-  edit_script: 'Edited a script',
-  create_instances: 'Created instances',
-  set_properties: 'Set properties',
-  delete_instances: 'Deleted instances',
-  insert_asset: 'Inserted an asset',
-  generate_model: 'Generated a model',
-  run_luau: 'Ran Luau',
-  render_view: 'Rendered the scene',
-  check_composition: 'Checked composition and intent',
-  inspect_visually: 'Looked at the result',
-  visual_critique: 'Judged the render',
-  run_and_check: 'Ran the game and checked it',
-  get_output_logs: 'Read the output log',
-  create_checkpoint: 'Saved a checkpoint',
-  remember: 'Noted a fact about the project',
-  choose_asset_source: 'Chose an asset source',
-  search_asset_library: 'Searched the asset library',
-  find_verified_asset: 'Looked for a verified asset',
-  inspect_model: 'Inspected a model',
-};
-
-export function stepLabel(tool: string | undefined): string {
-  // No tool name means the `tool_start` never arrived. Say that, do not guess.
-  if (!tool) return 'A step with no reported name';
-  return STEP_LABEL[tool] ?? tool.replace(/_/g, ' ');
-}
 
 /* -------------------------------------------------------------- duration --- */
 

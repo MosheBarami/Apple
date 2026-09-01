@@ -163,13 +163,43 @@ test('adjacent steps of the same kind merge into one phase; a different kind ope
   const r = run([
     start('a', 'get_project_tree', T0),
     end('a', T0 + 100, { durationMs: 100 }),
-    start('b', 'read_script', T0 + 200),
+    start('b', 'inspect_model', T0 + 200),
     end('b', T0 + 300, { durationMs: 100 }),
     start('c', 'create_instances', T0 + 400),
     end('c', T0 + 500, { durationMs: 100 }),
   ]);
   assert.deepEqual(kinds(r), ['inspecting', 'building']);
   assert.equal(r.phases[0].steps.length, 2);
+});
+
+test('reading the project and reading its scripts are different activities', () => {
+  // §16.1 Board C separates C02 "Inspecting project" from C06 "Reading scripts",
+  // and it is a real distinction: the instance tree and the code answer different
+  // questions. This fixture used to be the merge case above, which is how the two
+  // came to share one heading.
+  const r = run([
+    start('a', 'get_project_tree', T0),
+    end('a', T0 + 100, { durationMs: 100 }),
+    start('b', 'read_script', T0 + 200),
+    end('b', T0 + 300, { durationMs: 100 }),
+  ]);
+  assert.deepEqual(kinds(r), ['inspecting', 'reading_scripts']);
+});
+
+test('searching the Roblox docs is not inspecting the user project', () => {
+  // C04. `search_docs` reads Roblox's documentation, which is not in the place at
+  // all — calling that "Inspecting project" told the user the wrong thing about
+  // where Golem was looking.
+  assert.equal(kindForTool('search_docs'), 'searching_knowledge');
+  assert.equal(kindForTool('get_project_tree'), 'inspecting');
+});
+
+test('changing what exists is editing; adding to the world is building', () => {
+  // C08 against C09.
+  assert.equal(kindForTool('set_properties'), 'editing');
+  assert.equal(kindForTool('delete_instances'), 'editing');
+  assert.equal(kindForTool('create_instances'), 'building');
+  assert.equal(kindForTool('insert_asset'), 'building');
 });
 
 test('a tool name separates states that agent_status collapses together', () => {
@@ -281,7 +311,9 @@ test('a phase whose starts were all observed reports wall time, gaps included', 
   const r = run([
     start('a', 'get_project_tree', T0),
     end('a', T0 + 100, { durationMs: 100 }),
-    start('b', 'read_script', T0 + 900),
+    // Same kind on purpose: this measures ONE phase's clock, so both tools have
+    // to land in one phase. `read_script` used to sit here and now opens its own.
+    start('b', 'inspect_model', T0 + 900),
     end('b', T0 + 1000, { durationMs: 100 }),
   ]);
   assert.equal(r.phases[0].elapsed.basis, 'wall');
@@ -294,7 +326,7 @@ test('a phase whose starts were replayed reports measured tool time, and says so
   const events = eventsFromTurn({
     tools: [
       { toolId: 'a', tool: 'get_project_tree', summary: 's', ok: true, startedAt: T0, durationMs: 100, done: true, startObserved: false },
-      { toolId: 'b', tool: 'read_script', summary: 's', ok: true, startedAt: T0, durationMs: 400, done: true, startObserved: false },
+      { toolId: 'b', tool: 'inspect_model', summary: 's', ok: true, startedAt: T0, durationMs: 400, done: true, startObserved: false },
     ],
   });
   const r = run(events);

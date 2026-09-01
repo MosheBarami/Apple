@@ -1,0 +1,154 @@
+/**
+ * ONE TABLE OF TOOLS, AND THE ACTIVITY VOCABULARY THEY MAP ONTO.
+ *
+ * There were three copies of the tool table: `TOOL_KIND` and `STEP_LABEL` in
+ * activity-model, and `TOOL_LABEL` in thinking-model. The two label tables were
+ * word-for-word identical across 23 entries, which is the strongest possible
+ * evidence that they were one table wearing two names.
+ *
+ * They had already drifted in both available directions:
+ *
+ *   - all three were missing `generate_image`, so a run that generated an image
+ *     showed the underscore-stripped fallback, "generate image", where every
+ *     other step showed a written sentence;
+ *   - two of them carried `visual_critique`, which is not a tool at all — it is
+ *     the name of a JSON schema in the worker's vision.ts. Vocabulary for a tool
+ *     that cannot run reads like coverage and is worth less than nothing.
+ *
+ * `tool-vocabulary.test.mjs` now checks this table against the worker's own TOOLS
+ * registry in both directions, so neither kind of drift can return.
+ *
+ * §16.1 Board C names the canonical activity vocabulary, C01-C18. `canonical` on
+ * each entry is that identifier. Three entries have no C number and say so: a
+ * `null` is a deliberate statement that the product needed a word the reference
+ * set does not have, which is a different thing from an unlabelled guess.
+ */
+
+/** The C-series, plus the three states this product needs beyond it. */
+export const ACTIVITY = {
+  understanding: { canonical: 'C01', label: 'Understanding' },
+  inspecting: { canonical: 'C02', label: 'Inspecting project' },
+  planning: { canonical: 'C03', label: 'Planning' },
+  searching_knowledge: { canonical: 'C04', label: 'Searching the Roblox docs' },
+  searching_assets: { canonical: 'C05', label: 'Searching assets' },
+  reading_scripts: { canonical: 'C06', label: 'Reading scripts' },
+  writing_luau: { canonical: 'C07', label: 'Writing Luau' },
+  editing: { canonical: 'C08', label: 'Editing project' },
+  building: { canonical: 'C09', label: 'Building world' },
+  generating: { canonical: 'C11', label: 'Generating' },
+  rendering: { canonical: 'C13', label: 'Rendering' },
+  playtesting: { canonical: 'C14', label: 'Playtesting' },
+  // C15 is "Diagnosing". The product says what the step actually did, because
+  // reading a log is the concrete thing and "diagnosing" is the claim about it.
+  debugging: { canonical: 'C15', label: 'Reading the output' },
+  repairing: { canonical: 'C16', label: 'Repairing' },
+  verifying: { canonical: 'C17', label: 'Verifying' },
+  saving: { canonical: 'C18', label: 'Saving project' },
+
+  // --- beyond the reference set ------------------------------------------
+  // Judging a render for quality. Not C17: verifying asks whether the change
+  // landed, this asks whether it is any good, and they disagree often enough
+  // that collapsing them would hide the interesting half.
+  critiquing: { canonical: null, label: 'Evaluating' },
+  // Writing project memory. C18 is saving the PLACE, which is `create_checkpoint`.
+  remembering: { canonical: null, label: 'Noting what changed' },
+  // The honest fallback for a tool this build has never heard of.
+  working: { canonical: null, label: 'Working' },
+} as const;
+
+export type ActivityKind = keyof typeof ACTIVITY;
+
+/**
+ * Two canonical activities this product cannot honestly show, recorded here so
+ * their absence is a decision on the record rather than an oversight — the same
+ * treatment M06 gets in `empty-state-model.ts`.
+ */
+export const ACTIVITY_NOT_MODELLED: Record<string, string> = {
+  C10: 'Creating UI. There is no signal for it: `tool_start` on the wire carries a tool '
+    + 'name and a free-text summary, and no arguments, so nothing distinguishes creating a '
+    + 'ScreenGui from creating a wall. Deriving it by string-matching the summary would be a '
+    + 'guess wearing a canonical label. It needs the class names on the wire first.',
+  C12: 'Connecting Studio. Not an activity in a run at all — pairing happens outside the '
+    + 'agent loop and has its own surface in connect-studio.tsx and the M04/M05 states. '
+    + 'Putting it in the activity stream would claim the agent did something it never did.',
+};
+
+/**
+ * Tool -> the activity it is, and how to say what it did.
+ *
+ * `label` is past tense: it is read in a finished list far more often than while
+ * the step is running.
+ */
+export const TOOL = {
+  // C02 — reading the world.
+  get_project_tree: { kind: 'inspecting', label: 'Read the project tree' },
+  inspect_model: { kind: 'inspecting', label: 'Inspected a model' },
+
+  // C06 — reading the code. Distinct from C02: a project's scripts and its
+  // instance tree answer different questions and fail in different ways.
+  list_scripts: { kind: 'reading_scripts', label: 'Listed scripts' },
+  read_script: { kind: 'reading_scripts', label: 'Read a script' },
+  search_scripts: { kind: 'reading_scripts', label: 'Searched scripts' },
+
+  // C04 — reading the docs is not inspecting the user's project.
+  search_docs: { kind: 'searching_knowledge', label: 'Searched the Roblox docs' },
+
+  // C05
+  choose_asset_source: { kind: 'searching_assets', label: 'Chose an asset source' },
+  search_asset_library: { kind: 'searching_assets', label: 'Searched the asset library' },
+  find_verified_asset: { kind: 'searching_assets', label: 'Looked for a verified asset' },
+
+  // C11
+  generate_model: { kind: 'generating', label: 'Generated a model' },
+  generate_image: { kind: 'generating', label: 'Generated an image' },
+
+  // C09 — adding to the world.
+  create_instances: { kind: 'building', label: 'Created instances' },
+  insert_asset: { kind: 'building', label: 'Inserted an asset' },
+  // Arbitrary Luau against the place can do anything; `building` is the coarsest
+  // honest answer rather than a specific claim about which.
+  run_luau: { kind: 'building', label: 'Ran Luau' },
+
+  // C08 — changing what is already there, which is not the same act as building it.
+  set_properties: { kind: 'editing', label: 'Set properties' },
+  delete_instances: { kind: 'editing', label: 'Deleted instances' },
+
+  // C07
+  edit_script: { kind: 'writing_luau', label: 'Edited a script' },
+
+  // C13
+  render_view: { kind: 'rendering', label: 'Rendered the scene' },
+
+  // beyond the C-series
+  check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },
+  inspect_visually: { kind: 'critiquing', label: 'Looked at the result' },
+
+  // C14 / C15 / C18
+  run_and_check: { kind: 'playtesting', label: 'Ran the game and checked it' },
+  get_output_logs: { kind: 'debugging', label: 'Read the output log' },
+  create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint' },
+  remember: { kind: 'remembering', label: 'Noted a fact about the project' },
+} as const satisfies Record<string, { kind: ActivityKind; label: string }>;
+
+export type ToolName = keyof typeof TOOL;
+
+/** Tool -> activity. `working` for a name this build does not know. */
+export function kindForTool(tool: string | undefined): ActivityKind {
+  if (!tool) return 'working';
+  return (TOOL as Record<string, { kind: ActivityKind }>)[tool]?.kind ?? 'working';
+}
+
+/**
+ * Tool -> a sentence. An unknown tool is de-underscored rather than hidden: the
+ * run really did do something, and printing the raw name is more honest than
+ * dropping the step or inventing a description of it.
+ */
+export function labelForTool(tool: string | undefined): string {
+  if (!tool) return 'A step with no reported name';
+  return (TOOL as Record<string, { label: string }>)[tool]?.label ?? tool.replace(/_/g, ' ');
+}
+
+/** The activity labels, keyed by kind. */
+export const ACTIVITY_LABEL = Object.fromEntries(
+  Object.entries(ACTIVITY).map(([k, v]) => [k, v.label]),
+) as Record<ActivityKind, string>;

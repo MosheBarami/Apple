@@ -298,6 +298,13 @@ export type AgentPhase =
 /**
  * Which phase a tool represents. Used by the worker to announce the stage and
  * by the web app to group activity. Kept here so both sides cannot drift.
+ *
+ * The `default` is for a name this build has never heard of — a plugin or worker
+ * one version ahead. It is NOT a resting place for a registered tool: every key of
+ * the worker's TOOLS registry must appear in a `case` above, and
+ * `apps/worker/tests/phase-coverage.test.mjs` fails the build if one does not.
+ * `generate_image` had been sitting on the default and reporting "Building",
+ * which happened to be the phase it wanted — a right answer nobody had chosen.
  */
 export function phaseForTool(tool: string): AgentPhase {
   switch (tool) {
@@ -318,6 +325,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'delete_instances':
     case 'insert_asset':
     case 'generate_model':
+    case 'generate_image':
     case 'run_luau':
       return 'building';
     case 'render_view':
