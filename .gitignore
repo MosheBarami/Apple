@@ -17,7 +17,15 @@ secrets/
 # DIRECTORY, so a negation below it can never match. Ignoring the CONTENTS is
 # what makes the exception reachable.
 packages/corpus/data/*
-packages/corpus/raw/
+packages/corpus/raw/*
+# ...except the CHECKOUT LOCK. The comment above has always said the corpus is
+# "re-fetchable from raw/manifest.json" — but `packages/corpus/raw/` (with the
+# trailing slash this file's own note warns against, four lines up) ignored the
+# directory, so the manifest went with it and a fresh clone had nothing to fetch
+# FROM. It pins a url and a commit SHA per checkout: our metadata about third-party
+# repositories, not their content, so tracking it redistributes nothing. It is what
+# `pnpm --filter @golem/corpus bootstrap` reads.
+!packages/corpus/raw/manifest.json
 # ...except the source LEDGER. sources.json is 0.4MB of derived provenance and
 # licence verdicts, and §H requires that metadata be preserved rather than
 # regenerated on demand — a classification nobody can diff is one nobody reviews.

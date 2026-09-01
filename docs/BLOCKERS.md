@@ -66,10 +66,21 @@ suitable for an automated pixel-diff harness.
 
 **Status:** HUMAN-ONLY. Found by the independent security review, 2026-09-01.
 
-| value | account | removed in |
+| account | now supplied by | removed from source in |
 |---|---|---|
-| `golem-e2e-Passw0rd!` | `e2e-test@golem.internal` | `d8cfafa` |
-| `golem-load-Passw0rd!` | `load{i}@golem.internal` | `5b6896a` |
+| `e2e-test@golem.internal` | `GOLEM_E2E_PASSWORD` | `d8cfafa` |
+| `load{i}@golem.internal` | `GOLEM_LOAD_PASSWORD` | `5b6896a` |
+
+**The values are deliberately not written here.** They were, until 2026-09-01, in
+this very table — which meant the document recording the leak was republishing it,
+in a file tracked in the same repository whose history is the exposure. Worse, it
+was invisible: `scripts/secret-scan.py` reports the working tree clean, because both
+of its credential rules require a `password`/`secret` keyword followed by `=` or `:`
+and then a QUOTED value, and a Markdown table cell has neither the assignment
+operator nor the quotes. The register and the scanner disagreed and nothing said so.
+
+Rotation does not need the old value. It needs the account, which is above.
+
 
 Both are gone from the working tree and both are still in history. `d8cfafa` is
 reachable from `origin/main`, `origin/HEAD`, this feature branch and all three

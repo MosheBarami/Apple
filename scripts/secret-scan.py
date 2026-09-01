@@ -7,12 +7,27 @@ is still a leaked secret, so scanning the working tree alone would be theatre.
 Exit 0 = clean, exit 1 = something needs a human. Findings are reported by
 pattern and path; the matched value is truncated so the scanner's own output
 never becomes the leak.
+
+FAIL-CLOSED ON ANYTHING NEW. A credential in the working tree has always failed
+the build. A credential surviving only in HISTORY used to warn and exit 0 — for
+every finding, forever — which meant a credential committed and then removed in
+the same session was permanently downgraded to a warning nobody reads. Now a
+history-only finding fails too, UNLESS its blob is named in the register at
+scripts/known-exposures.json.
+
+The register is keyed by blob SHA and holds no values. A new leak is a new blob,
+so it cannot inherit an existing acceptance, and re-committing a known-leaked file
+produces a new blob as well. A register entry that stops matching anything fails
+the run rather than lingering as a comment claiming a review it no longer covers.
+
+Record the current state after rotating with:  secret-scan.py --record-exposures
 """
 from __future__ import annotations
 
 import base64
 import collections
 import json
+import pathlib
 import re
 import subprocess
 import sys
@@ -47,6 +62,18 @@ ALLOW = re.compile(
 
 SKIP_EXT = (b".glb", b".png", b".jpg", b".jpeg", b".webp", b".woff", b".woff2",
             b".ico", b".pdf", b".zip", b".gz", b".rbxm", b".mp4")
+
+# Historical exposures the owner has seen and accepted as "known, pending rotation".
+# Keyed by blob SHA so an acceptance cannot generalise: it covers exactly the bytes
+# that were reviewed and nothing else. Holds no credential values.
+REGISTER_PATH = pathlib.Path(__file__).resolve().parent / "known-exposures.json"
+
+
+def load_register() -> dict:
+    if not REGISTER_PATH.exists():
+        return {}
+    data = json.loads(REGISTER_PATH.read_text())
+    return {e["blob"]: e for e in data.get("accepted", [])}
 
 
 def sh(*args: str) -> bytes:
@@ -110,6 +137,7 @@ def main() -> int:
                         path.decode("utf8", "replace"),
                         value[:16].decode("utf8", "replace"),
                         sha.decode() in live,
+                        sha.decode(),
                     )
                 )
 
@@ -123,22 +151,68 @@ def main() -> int:
     history_only = {n: [h for h in hits if not h[2]] for n, hits in findings.items()}
     history_only = {n: h for n, h in history_only.items() if h}
 
+    if "--record-exposures" in sys.argv:
+        accepted = sorted(
+            ({"blob": b, "pattern": n, "path": p} for n, hits in history_only.items()
+             for p, _, _, b in hits),
+            key=lambda e: (e["path"], e["pattern"], e["blob"]),
+        )
+        REGISTER_PATH.write_text(json.dumps({
+            "note": "Historical credential exposures the owner has seen. Keyed by blob SHA; "
+                    "holds no values. An entry here makes secret-scan.py warn instead of fail "
+                    "for exactly those bytes. Rotation is still required — see docs/BLOCKERS.md.",
+            "accepted": accepted,
+        }, indent=2) + "\n")
+        print(f"\nrecorded {len(accepted)} historical exposure(s) to {REGISTER_PATH.name}")
+        return 0
+
+    register = load_register()
+    unregistered = {}
     if history_only:
         print("\nHISTORY ONLY — not in the current tree, so nothing to delete.")
         print("These cannot be un-leaked by a commit. ROTATE THEM.")
         for name, hits in history_only.items():
-            paths = sorted({p for p, _, _ in hits})
-            print(f"::warning::[{name}] {len(hits)} historical hit(s) in {', '.join(paths[:5])}")
+            paths = sorted({p for p, _, _, _ in hits})
+            new = [h for h in hits if h[3] not in register]
+            state = "known" if not new else f"{len(new)} UNREGISTERED"
+            print(f"::warning::[{name}] {len(hits)} historical hit(s) in {', '.join(paths[:5])} ({state})")
+            if new:
+                unregistered[name] = new
+
+    # An acceptance for bytes that no longer exist is a comment pretending to be a
+    # review. It fails rather than lingering.
+    seen_blobs = {b for hits in findings.values() for _, _, _, b in hits}
+    stale = [b for b in register if b not in seen_blobs]
 
     if in_tree:
         print("\nRESULT: CREDENTIALS IN THE CURRENT TREE")
         for name, hits in in_tree.items():
             print(f"::error::[{name}] {len(hits)} hit(s)")
-            for path, fragment, _ in sorted(set(hits))[:10]:
+            for path, fragment, _, _ in sorted(set(hits))[:10]:
                 print(f"   {path}  ~  {fragment}...")
         return 1
 
+    if unregistered:
+        print("\nRESULT: A CREDENTIAL WAS LEAKED THAT NOBODY HAS ACCEPTED")
+        print("Removing it from the tree does not un-leak it. Rotate the credential, then")
+        print("record the exposure with:  python3 scripts/secret-scan.py --record-exposures")
+        for name, hits in unregistered.items():
+            print(f"::error::[{name}] {len(hits)} unregistered historical hit(s)")
+            for path, fragment, _, blob in sorted(set(hits))[:10]:
+                print(f"   {path}  ~  {fragment}...  blob {blob[:12]}")
+        return 1
+
+    if stale:
+        print("\nRESULT: THE EXPOSURE REGISTER IS STALE")
+        print("These blobs are accepted but no longer match anything. Re-record the register.")
+        for b in sorted(stale)[:10]:
+            e = register[b]
+            print(f"::error::[{e['pattern']}] stale acceptance for {e['path']}  blob {b[:12]}")
+        return 1
+
     print("\nRESULT: current tree is clean")
+    if history_only:
+        print(f"        {sum(len(h) for h in history_only.values())} historical exposure(s), all on the register")
     return 0
 
 

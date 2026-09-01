@@ -1,0 +1,544 @@
+{
+  "recordedAt": "2026-09-01T16:03:31.432Z",
+  "note": "Every git checkout present in raw/, described from git and from its own LICENSE file. Written unconditionally so that a checkout this tool did not create still keeps its provenance.",
+  "counts": {
+    "checkouts": 38,
+    "classified": 38,
+    "licenceConflicts": 0,
+    "fetchableInCorpus": 771
+  },
+  "sources": {
+    "Crabzzai__SimpleDialogue": {
+      "url": "https://github.com/Crabzzai/SimpleDialogue",
+      "sha": "25bb85f5e17eb7a26989c664c63891d0eec40329",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-crabzzai-simpledialogue",
+      "category": "ux-system",
+      "classified": true
+    },
+    "DLinacre__slime-factory-tycoon": {
+      "url": "https://github.com/DLinacre/slime-factory-tycoon",
+      "sha": "c471a2ef7d8b9d880178b99bf132bc57a4c7d8ab",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-dlinacre-slime-factory-tycoon",
+      "category": "full-game",
+      "classified": true
+    },
+    "Diabetoss__NotificationSystem": {
+      "url": "https://github.com/Diabetoss/NotificationSystem",
+      "sha": "38a47898a27444a99a82ecdb90ba7cd4b5ef6f09",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-diabetoss-notificationsystem",
+      "category": "ux-system",
+      "classified": true
+    },
+    "LolplePlays__framer": {
+      "url": "https://github.com/LolplePlays/framer",
+      "sha": "ca5886eab186c05ecdd90065cfe762bda1810cbb",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-lolpleplays-framer",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "MadStudioRoblox__ProfileService": {
+      "url": "https://github.com/MadStudioRoblox/ProfileService",
+      "sha": "d736800444eda6bf75b18397f77dfb2c8f31f60f",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-madstudioroblox-profileservice",
+      "category": "engineering",
+      "classified": true
+    },
+    "MadStudioRoblox__ProfileStore": {
+      "url": "https://github.com/MadStudioRoblox/ProfileStore",
+      "sha": "45c9847cbcf1fc260369c50eb335aba7c35aecdd",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-madstudioroblox-profilestore",
+      "category": "engineering",
+      "classified": true
+    },
+    "Quenty__NevermoreEngine": {
+      "url": "https://github.com/Quenty/NevermoreEngine",
+      "sha": "22ecce3068464d33ab5aedeafde9d959cdd3d0de",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-quenty-nevermoreengine",
+      "category": "engineering",
+      "classified": true
+    },
+    "Reselim__Flipper": {
+      "url": "https://github.com/Reselim/Flipper",
+      "sha": "41380da19278a14ed2c5a34db4f958d090b1994a",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-reselim-flipper",
+      "category": "motion",
+      "classified": true
+    },
+    "Roblox__creator-docs": {
+      "url": "https://github.com/Roblox/creator-docs",
+      "sha": "529a24ff2aa9896dad50fc12268717210ba3127d",
+      "licence": {
+        "ok": true,
+        "detail": "CC-BY-4.0",
+        "spdx": "CC-BY-4.0",
+        "classifiedAs": "ATTRIBUTION_REQUIRED",
+        "classifiedSpdx": "CC-BY-4.0"
+      },
+      "corpusId": "gh-roblox-creator-docs",
+      "category": "official",
+      "classified": true
+    },
+    "Roblox__otter": {
+      "url": "https://github.com/Roblox/otter",
+      "sha": "ffcb1be528f4f9bade0bcebbba80fa7ec292ec9a",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-roblox-otter",
+      "category": "motion",
+      "classified": true
+    },
+    "Roblox__react-luau": {
+      "url": "https://github.com/Roblox/react-luau",
+      "sha": "9351444c2db37caa08b38ad5de90f438db9221ea",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-roblox-react-luau",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "Roblox__roact": {
+      "url": "https://github.com/Roblox/roact",
+      "sha": "1676d95c4886d51ee2b21bfcd55c6e50ece799e5",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-roblox-roact",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "SirMallard__Iris": {
+      "url": "https://github.com/SirMallard/Iris",
+      "sha": "801973f1c3e0df5e788f26a824fa64a2a42e4054",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-sirmallard-iris",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "Sleitnick__Knit": {
+      "url": "https://github.com/Sleitnick/Knit",
+      "sha": "bb1ecf3dea69ca89147b9abe802a8c14399cb5e5",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-sleitnick-knit",
+      "category": "engineering",
+      "classified": true
+    },
+    "Sleitnick__RbxCameraShaker": {
+      "url": "https://github.com/Sleitnick/RbxCameraShaker",
+      "sha": "15412099389d746af13a2a661ec1196f980d726b",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-sleitnick-rbxcamerashaker",
+      "category": "motion",
+      "classified": true
+    },
+    "Sleitnick__RbxUtil": {
+      "url": "https://github.com/Sleitnick/RbxUtil",
+      "sha": "31f9120fca021e3dec275b42bc7047d626962082",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-sleitnick-rbxutil",
+      "category": "engineering",
+      "classified": true
+    },
+    "Starstruck-Studios-Developers__framer": {
+      "url": "https://github.com/Starstruck-Studios-Developers/framer",
+      "sha": "fe07a202d9d619ce3d93802d202256cb3ef7a71d",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-starstruck-studios-developers-framer",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "afrxo__roblox-agent-skills": {
+      "url": "https://github.com/afrxo/roblox-agent-skills",
+      "sha": "ff50be7a8a000a24c0f85254e1747a0eb35d857f",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-afrxo-roblox-agent-skills",
+      "category": "ui-tooling",
+      "classified": true
+    },
+    "centau__vide": {
+      "url": "https://github.com/centau/vide",
+      "sha": "f3bfc65607834370ce84a6e16722282c4d30316c",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-centau-vide",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "chriscerie__roact-spring": {
+      "url": "https://github.com/chriscerie/roact-spring",
+      "sha": "0334ee5d9d562e2cc09d7614a6a14d0939775ac2",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-chriscerie-roact-spring",
+      "category": "motion",
+      "classified": true
+    },
+    "ddust1n__CameraShaker": {
+      "url": "https://github.com/ddust1n/CameraShaker",
+      "sha": "d4ab467eea25e480cd1381375184bf984a1f8269",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-ddust1n-camerashaker",
+      "category": "motion",
+      "classified": true
+    },
+    "dphfox__Fusion": {
+      "url": "https://github.com/dphfox/Fusion",
+      "sha": "2790f7b6272bdf7cd0bbfee259a2f9d79ea20810",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-dphfox-fusion",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "evaera__Cmdr": {
+      "url": "https://github.com/evaera/Cmdr",
+      "sha": "505abc937b94e053af89c2ac12f9c173c30a13f1",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-evaera-cmdr",
+      "category": "engineering",
+      "classified": true
+    },
+    "evaera__roblox-lua-promise": {
+      "url": "https://github.com/evaera/roblox-lua-promise",
+      "sha": "031d429c82ee458a849e79fa523523bd349d7695",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-evaera-roblox-lua-promise",
+      "category": "engineering",
+      "classified": true
+    },
+    "ffrostfall__ByteNet": {
+      "url": "https://github.com/ffrostfall/ByteNet",
+      "sha": "fbdb156b6dafdd9ba58741ded20610215de3a39e",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-ffrostfall-bytenet",
+      "category": "engineering",
+      "classified": true
+    },
+    "gcaptn__cyan-ui": {
+      "url": "https://github.com/gcaptn/cyan-ui",
+      "sha": "11cfcedd77f32e46a6e8b7e659f6739e5b7a0275",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-gcaptn-cyan-ui",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "gue-hub__roblox-tycoon-kit": {
+      "url": "https://github.com/gue-hub/roblox-tycoon-kit",
+      "sha": "13bbda651d369f6be5fb6a79ad389ad99fb3ebe7",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-gue-hub-roblox-tycoon-kit",
+      "category": "full-game",
+      "classified": true
+    },
+    "howmanysmall__Janitor": {
+      "url": "https://github.com/howmanysmall/Janitor",
+      "sha": "47acf39d7b265fad409e438e976affa9468ff0a2",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-howmanysmall-janitor",
+      "category": "engineering",
+      "classified": true
+    },
+    "littensy__charm": {
+      "url": "https://github.com/littensy/charm",
+      "sha": "b05f3a9de6fc5b784ad95681908c52d1ee418cc0",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-littensy-charm",
+      "category": "engineering",
+      "classified": true
+    },
+    "loneka__onyx-ui": {
+      "url": "https://github.com/loneka/onyx-ui",
+      "sha": "978b53c5e1d25cc51acef0a6282365a52ed21f99",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-loneka-onyx-ui",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "luau-lang__site": {
+      "url": "https://github.com/luau-lang/site",
+      "sha": "81c1c1858c407d1c9ee6dd414eaf7b3e728581a1",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-luau-lang-site",
+      "category": "official",
+      "classified": true
+    },
+    "matter-ecs__matter": {
+      "url": "https://github.com/matter-ecs/matter",
+      "sha": "f31981ba5dbc481f637c08e9fa3765419d566501",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-matter-ecs-matter",
+      "category": "engineering",
+      "classified": true
+    },
+    "nightcycle__synthetic": {
+      "url": "https://github.com/nightcycle/synthetic",
+      "sha": "1a0c0d5bb16b9838567e49bfb405eaa6eda691bf",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-nightcycle-synthetic",
+      "category": "ui-framework",
+      "classified": true
+    },
+    "phocodes__rice-simulator": {
+      "url": "https://github.com/phocodes/rice-simulator",
+      "sha": "73be294dcefb31c4d2165b70753a174f598aec73",
+      "licence": {
+        "ok": true,
+        "detail": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "Apache-2.0"
+      },
+      "corpusId": "gh-phocodes-rice-simulator",
+      "category": "full-game",
+      "classified": true
+    },
+    "red-blox__zap": {
+      "url": "https://github.com/red-blox/zap",
+      "sha": "8cd17ab78192217600eec6f688ed8f8aab18d707",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-red-blox-zap",
+      "category": "engineering",
+      "classified": true
+    },
+    "stravant__goodsignal": {
+      "url": "https://github.com/stravant/goodsignal",
+      "sha": "99497c8cd6e5b50c5f4f12796d4ebc3e7dbf9d1f",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-stravant-goodsignal",
+      "category": "engineering",
+      "classified": true
+    },
+    "tijnepema__lucide-roblox": {
+      "url": "https://github.com/tijnepema/lucide-roblox",
+      "sha": "793dcaedc8055269487537255f57401a85a0b8a1",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-tijnepema-lucide-roblox",
+      "category": "ui-tooling",
+      "classified": true
+    },
+    "zhsj0089944__roblox-free-assets.skill": {
+      "url": "https://github.com/zhsj0089944/roblox-free-assets.skill",
+      "sha": "f48d055028a1e98a0f2dd919822e54980e08dde0",
+      "licence": {
+        "ok": true,
+        "detail": "MIT",
+        "spdx": "MIT",
+        "classifiedAs": "COMMERCIAL_REUSABLE",
+        "classifiedSpdx": "MIT"
+      },
+      "corpusId": "gh-zhsj0089944-roblox-free-assets-skill",
+      "category": "ui-tooling",
+      "classified": true
+    }
+  }
+}

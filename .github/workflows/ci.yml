@@ -16,8 +16,19 @@ name: CI
 on:
   push:
     branches: [main]
+  # EVERY pull request, whatever it targets.
+  #
+  # This was `branches: [main]`, which covered PR #1 only because PR #1 happens to
+  # target main. A stacked PR — a product branch based on a feature branch, which is
+  # the normal shape once one long-lived branch exists — would have silently run no
+  # CI at all, and a PR that reported nothing looks identical to one that passed.
+  #
+  # Widening it is safe HERE specifically because this workflow cannot deploy and
+  # cannot spend: no job in this file is given repository secrets, and no job has a
+  # deploy step (see the cost policy above). Running it on a feature branch therefore
+  # creates no production path. Do not add a deploy step to this file; if one is ever
+  # needed it belongs in a separate workflow gated on `push: [main]`.
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 # A newer push supersedes an in-flight run for the same ref.
@@ -172,6 +183,13 @@ jobs:
 
       - name: Syntax-check eval scripts
         run: pnpm --filter @golem/evals check
+
+      - name: Every package is reachable from `pnpm -r test`
+        # apps/plugin shipped for the whole of Phase IV with no package.json, so the
+        # canonical test command could not see 2,901 lines of load-bearing Luau. A
+        # package pnpm cannot see produces no output, so nothing went red. This
+        # derives the check from pnpm-workspace.yaml rather than a second list.
+        run: node scripts/check-workspace-coverage.mjs
 
       - name: Formatting drift (report only)
         run: npx --yes prettier@3 --check "apps/**/*.{ts,tsx,css,astro}" || echo "::warning::prettier reported formatting drift"
