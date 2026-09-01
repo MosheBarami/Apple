@@ -14,6 +14,7 @@ import type {
   StudioEventLog,
   StudioEventState,
 } from '@golem/shared';
+import type { PhaseMark } from '../components/ws/activity-model';
 import { fetchCheckpoints, fetchMessages } from './api';
 import {
   MOCK_MODE,
@@ -36,6 +37,16 @@ export interface ToolEvent {
   startedAt: number;
   durationMs?: number;
   done: boolean;
+  /**
+   * Whether `startedAt` is a clock THIS client observed at `tool_start`.
+   *
+   * False for message history (which carries no start time) and for a
+   * `run_state` replay (which stamps every tool with the RUN's start, not its
+   * own). The activity timeline keys its elapsed figures off this: with an
+   * unobserved start it reports measured tool time instead of wall time, rather
+   * than presenting arithmetic as a measurement.
+   */
+  startObserved?: boolean;
   /**
    * Structured result payload from `tool_end`. Untrusted: it is only ever fed to
    * the generative-UI validator, never rendered directly.
@@ -97,6 +108,18 @@ export interface ProjectSocket {
   studio: { connected: boolean; state: StudioEventState | null; everConnected: boolean };
   quota: QuotaState | null;
   agentStatus: AgentStatus | null;
+  /**
+   * Every distinct `agent_status.phase` this client has seen on the CURRENT
+   * run, in arrival order, with the time it arrived.
+   *
+   * `agentStatus` alone is only the latest phase, so phase durations were
+   * previously unrecoverable — the transition that ended a phase was overwritten
+   * by the one that began the next. Two honesty caveats travel with this list
+   * and are spelled out in `docs/THINKING-UX.md`: the timestamps are client
+   * receipt times, not the worker's clock, and `agent_status` carries no
+   * `msgId`, so marks can only ever be attributed to the run in flight.
+   */
+  phaseMarks: PhaseMark[];
   running: boolean;
   logs: StudioEventLog[];
   /** Recent frames rasterised inside Studio. Capped — these are large. */
@@ -113,6 +136,8 @@ export interface ProjectSocket {
 }
 
 const MAX_LOGS = 300;
+/** A long run announces a lot of phases; the card only needs the recent shape. */
+const MAX_PHASE_MARKS = 120;
 /** Each frame is ~207KB of base64 at the default 288x180. Keep very few. */
 const MAX_FRAMES = 8;
 let localIdCounter = 0;
@@ -130,31 +155,48 @@ function mockHistory(): ChatItem[] {
       tool: t.tool,
       summary: t.summary,
       ok: t.ok,
+      // History carries no start time at all, so 0 is a placeholder, not a clock.
       startedAt: 0,
+      startObserved: false,
       durationMs: t.durationMs,
       done: true,
     })),
     streaming: false,
     createdAt: new Date(m.createdAt).getTime(),
   }));
+  // The fixture run's clock. `mockLiveTools` simulates a run this client
+  // watched, so its tools carry observed starts laid end to end — that is what
+  // exercises the activity timeline's wall-time path. Everything above it is
+  // reloaded history and correctly has no clock at all.
+  const runStart = Date.now() - 60_000;
+  let cursor = runStart;
   base.push({
     id: 'm4',
     role: 'assistant',
     mode: 'stone',
+    stopReason: 'done',
     content:
       "I rendered all five angles and ran the visual gate. It scored **6.5/10** — the portal and lighting read well, but the floor is one flat plate and the top-down view shows a lot of empty ground.\n\nI've already retextured the floor into alternating Concrete tiles. The composition fix (seating and planters) is bigger — say the word and I'll lay it out.",
-    tools: mockLiveTools().map((t, i) => ({
-      toolId: `m4-t${i}`,
-      tool: t.tool,
-      summary: t.summary,
-      ok: t.ok,
-      startedAt: 0,
-      durationMs: t.durationMs,
-      done: true,
-      detail: t.detail,
-    })),
+    tools: mockLiveTools().map((t, i) => {
+      // A 900ms gap between tools stands in for the model's own time, so the
+      // fixture shows wall time exceeding the sum of tool durations — the
+      // distinction the timeline's two elapsed bases exist to keep.
+      const startedAt = cursor;
+      cursor += t.durationMs + 900;
+      return {
+        toolId: `m4-t${i}`,
+        tool: t.tool,
+        summary: t.summary,
+        ok: t.ok,
+        startedAt,
+        startObserved: true,
+        durationMs: t.durationMs,
+        done: true,
+        detail: t.detail,
+      };
+    }),
     streaming: false,
-    createdAt: Date.now() - 60_000,
+    createdAt: runStart,
     // Only this fixture carries an intent, exactly as only a run that actually
     // emitted `run_intent` would. The earlier turns above deliberately have
     // none, so mock mode shows both shapes of the Thinking card side by side.
@@ -178,6 +220,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
+  const [phaseMarks, setPhaseMarks] = useState<PhaseMark[]>([]);
   const [running, setRunning] = useState(false);
   const [logs, setLogs] = useState<StudioEventLog[]>([]);
   const [frames, setFrames] = useState<StudioFrame[]>([]);
@@ -216,7 +259,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             tool: t.tool,
             summary: t.summary,
             ok: t.ok,
+            // See mockHistory: a reloaded conversation has no per-tool clock.
             startedAt: 0,
+            startObserved: false,
             durationMs: t.durationMs,
             done: true,
           })),
@@ -285,6 +330,10 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         break;
       case 'msg_start':
         setRunning(true);
+        // A new run's phases are its own. Carrying the previous run's marks over
+        // would attribute its timings to this one, and `agent_status` has no
+        // msgId with which to catch the mistake later.
+        setPhaseMarks([]);
         setMessages((list) => {
           const existing = list.findIndex((m) => m.id === msg.msgId);
           if (existing !== -1) {
@@ -341,7 +390,15 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             ...item,
             tools: [
               ...item.tools,
-              { toolId: msg.toolId, tool: msg.tool, summary: msg.summary, startedAt: Date.now(), done: false },
+              {
+                toolId: msg.toolId,
+                tool: msg.tool,
+                summary: msg.summary,
+                startedAt: Date.now(),
+                // The one path where the start really is our own clock.
+                startObserved: true,
+                done: false,
+              },
             ],
           };
           return next;
@@ -417,6 +474,15 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         });
         break;
       case 'agent_status':
+        // Record the transition, not just the latest value. Only a CHANGE of
+        // phase is a mark: the worker re-announces the same phase within a step,
+        // and treating a re-announcement as a new state would chop one phase
+        // into several and restart its clock each time.
+        setPhaseMarks((marks) => {
+          const last = marks[marks.length - 1];
+          if (last && last.phase === msg.phase) return marks;
+          return [...marks, { phase: msg.phase, at: Date.now() }].slice(-MAX_PHASE_MARKS);
+        });
         // Carry forward the last known effort: the policy announces it once per
         // step, but the phase changes several times within a step.
         setAgentStatus((prev) => ({
@@ -435,10 +501,16 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         if (!msg.run) {
           setRunning(false);
           setAgentStatus(null);
+          setPhaseMarks([]);
           break;
         }
         const run = msg.run;
         setRunning(true);
+        // The snapshot carries the CURRENT phase and no history of the earlier
+        // ones — they ended before this socket existed. So the mark list starts
+        // here, and the phases before the refresh are honestly gone rather than
+        // reconstructed from the tool list.
+        setPhaseMarks([{ phase: run.phase, at: Date.now() }]);
         setAgentStatus({
           phase: run.phase,
           step: run.step,
@@ -457,7 +529,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
               tool: t.tool,
               summary: t.summary,
               ok: t.ok,
+              // Every replayed tool gets the RUN's start, because that is all
+              // the snapshot has. Flagged so the timeline reports measured tool
+              // time for these rather than a wall clock it never watched.
               startedAt: run.startedAt,
+              startObserved: false,
               durationMs: t.durationMs,
               done: true,
               detail: t.detail,
@@ -653,6 +729,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     studio,
     quota,
     agentStatus,
+    phaseMarks,
     running,
     logs,
     frames,
