@@ -179,30 +179,38 @@ export function RoadmapPage() {
 
       {/* ------------------------------------------- no place to read from */}
       {roadmap.isError && needsStudio && (
-        <div className="empty-state rm-empty">
-          <EmptyRoadmapMark />
-          <h2>Golem needs your place open</h2>
-          <p>
-            The roadmap is read out of the project itself — what is built, what is missing, what genre it
-            is turning into. With Studio disconnected there is nothing to read, and a plan invented without
-            it would be a generic checklist wearing your project&rsquo;s name.
-          </p>
-          <p className="rm-empty__detail">{(err as ApiError).message}</p>
-          <Link to={`/projects/${projectId}`} className="btn btn-primary">
-            Connect Studio in the conversation
-          </Link>
-        </div>
+        <EmptyState
+          state="studioDisconnected"
+          illustration={<EmptyRoadmapMark />}
+          detail={
+            <>
+              <p className="es__body">
+                The roadmap is read out of the project itself — what is built, what is missing, what genre
+                it is turning into. With Studio disconnected there is nothing to read, and a plan invented
+                without it would be a generic checklist wearing your project&rsquo;s name.
+              </p>
+              <p className="rm-empty__detail">{(err as ApiError).message}</p>
+            </>
+          }
+          action={
+            <Link to={`/projects/${projectId}`} className="btn btn-primary">
+              Connect Studio in the conversation
+            </Link>
+          }
+        />
       )}
 
       {/* ------------------------------------------------------------ error */}
       {roadmap.isError && !needsStudio && (
-        <div className="empty-state" role="alert">
-          <h2>Couldn&rsquo;t read the roadmap</h2>
-          <p>{(err as Error).message}</p>
-          <button type="button" className="btn" onClick={() => void roadmap.refetch()}>
-            Try again
-          </button>
-        </div>
+        <EmptyState
+          state="connectionFailed"
+          detail={<p className="es__body">{(err as Error).message}</p>}
+          action={
+            <button type="button" className="btn" onClick={() => void roadmap.refetch()}>
+              Try again
+            </button>
+          }
+        />
       )}
 
       {/* ------------------------------------------------------------ empty */}

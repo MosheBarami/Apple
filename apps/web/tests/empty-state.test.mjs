@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -81,4 +81,24 @@ test('a state says what it is and what to do about it', () => {
     // "Something went wrong" is the generic SaaS empty state §16.3 forbids.
     assert.ok(!/something went wrong/i.test(spec.body), `${name} is a generic placeholder`);
   }
+});
+
+// --- no route quietly hand-writes a state that has a canonical form ------------
+// The point of the vocabulary is that a surface PICKS a state rather than inventing
+// prose. That only holds while new full-block empty states go through the component,
+// and the cheapest way for it to stop holding is someone copying the old markup.
+
+test('the only hand-written block states are the two that have no canonical form', () => {
+  const routes = join(WEB, 'src', 'routes');
+  const offenders = [];
+  for (const f of readdirSync(routes).filter((n) => n.endsWith('.tsx'))) {
+    const src = readFileSync(join(routes, f), 'utf8');
+    if (/className="empty-state/.test(src)) offenders.push(f);
+  }
+  // not-found: a 404 is a routing state, not a product state — M01–M10 has no entry
+  //   for it and inventing one would be the drift, not the fix.
+  // admin: "this area is for operators" is an authorization notice, same reasoning.
+  assert.deepEqual(offenders.sort(), ['admin.tsx', 'not-found.tsx'],
+    'a route is hand-writing a block empty state. If it maps to an M01–M10 state, use '
+    + '<EmptyState>. If it genuinely does not, add it here with the reason.');
 });

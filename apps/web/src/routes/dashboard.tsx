@@ -11,6 +11,7 @@ import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
 import { useToast } from '../components/toast';
+import { EmptyState } from '../components/empty-state';
 
 async function fetchProjects(): Promise<ProjectRow[]> {
   if (MOCK_MODE) return mockProjects;
@@ -239,24 +240,28 @@ export function DashboardPage() {
       )}
 
       {projects.isError && (
-        <div className="empty-state" role="alert">
-          <h2>Couldn&rsquo;t load your projects</h2>
-          <p>{(projects.error as Error).message}</p>
-          <button type="button" className="btn" onClick={() => void projects.refetch()}>
-            Try again
-          </button>
-        </div>
+        <EmptyState
+          state="connectionFailed"
+          detail={<p className="es__body">{(projects.error as Error).message}</p>}
+          action={
+            <button type="button" className="btn" onClick={() => void projects.refetch()}>
+              Try again
+            </button>
+          }
+        />
       )}
 
       {projects.isSuccess && projects.data.length === 0 && (
-        <div className="empty-state">
-          <SummonIllustration />
-          <h2>Summon your first project</h2>
-          <p>Describe the game you want — an obby, a tycoon, a story world — and Golem starts carving.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            Summon a project
-          </button>
-        </div>
+        <EmptyState
+          state="noProjects"
+          illustration={<SummonIllustration />}
+          detail={<p className="es__body">Describe the game you want — an obby, a tycoon, a story world — and Golem starts carving.</p>}
+          action={
+            <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+              Summon a project
+            </button>
+          }
+        />
       )}
 
       {projects.isSuccess && projects.data.length > 0 && (

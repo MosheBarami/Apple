@@ -23,6 +23,7 @@ import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
+import { EmptyState } from '../components/empty-state';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -276,27 +277,33 @@ export function WorkspacePage() {
       <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
         <div className="gx-thread">
           {historyState === 'error' && (
-            <div className="gx-empty">
-              <p>Couldn&rsquo;t load this conversation.</p>
-              <button type="button" className="gx-btn gx-btn--outline" onClick={reloadHistory}>
-                Try again
-              </button>
-            </div>
+            <EmptyState
+              state="connectionFailed"
+              detail={<p className="es__body">Couldn&rsquo;t load this conversation. Nothing in your project was changed.</p>}
+              action={
+                <button type="button" className="gx-btn gx-btn--outline" onClick={reloadHistory}>
+                  Try again
+                </button>
+              }
+            />
           )}
 
           {historyState === 'ready' && messages.length === 0 && (
-            <div className="gx-empty">
-              <p style={{ fontSize: '1rem', color: 'var(--gx-ink-2)' }}>
-                Tell me what you want to build and I&rsquo;ll make it in your place.
-              </p>
-              <div style={{ display: 'grid', gap: '0.4rem', marginTop: '1.1rem', textAlign: 'left' }}>
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} type="button" className="gx-row" onClick={() => setSeed(s)} style={{ cursor: 'pointer' }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <EmptyState
+              state="noConversation"
+              detail={
+                <p className="es__body">Tell me what you want to build and I&rsquo;ll make it in your place.</p>
+              }
+              action={
+                <div className="gx-seeds">
+                  {SUGGESTIONS.map((s) => (
+                    <button key={s} type="button" className="gx-row" onClick={() => setSeed(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
           )}
 
           {messages.map((item) => (
@@ -378,7 +385,9 @@ export function WorkspacePage() {
             Connect Studio to save or restore a checkpoint.
           </p>
         )}
-        {checkpointsState === 'loading' && <p className="gx-empty">Loading…</p>}
+        {checkpointsState === 'loading' && (
+          <p className="gx-empty">Reading the checkpoints Golem has taken…</p>
+        )}
         {checkpointsState === 'ready' && checkpoints.length === 0 && (
           <p className="gx-empty">
             No checkpoints yet. Golem takes one automatically before it changes anything.

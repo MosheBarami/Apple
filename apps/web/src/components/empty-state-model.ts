@@ -77,8 +77,12 @@ export const EMPTY_STATES = {
   },
   studioDisconnected: {
     canonical: 'M05',
-    title: 'Studio disconnected',
-    body: 'The plugin stopped answering. Reopen your place — everything Golem has done is saved.',
+    // Action, not status. "Studio disconnected" was the first draft and it is a worse
+    // title: it names the condition and leaves the user to work out the remedy. This
+    // phrasing came from the roadmap's own hand-written state, which had been through
+    // review, and it reads correctly in every surface that shows M05.
+    title: 'Golem needs your place open',
+    body: 'The roadmap and the build both read the project itself. Reopen your place in Studio — everything Golem has already done is saved.',
     tone: 'studio',
   },
   connectionFailed: {

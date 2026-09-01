@@ -2721,3 +2721,20 @@
   .es { animation: es-in var(--dur) var(--ease-out) both; }
   @keyframes es-in { from { opacity: 0; } to { opacity: 1; } }
 }
+
+/* The seed prompts under the conversation zero-state. They are the state's ACTION,
+   so they sit in `.es__action` and inherit its spacing rather than carrying their own
+   inline styles, which is what they had. */
+.gx-seeds { display: grid; gap: 0.4rem; text-align: left; }
+.gx-seeds .gx-row { cursor: pointer; }
+
+/* The canonical-state specimen grid in /ui-lab. Two columns so a tone that fights its
+   meaning is visible against its neighbours rather than only in isolation. */
+.lab-states { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
+.lab-state { display: flex; flex-direction: column; gap: 0.4rem; }
+.lab-state-id {
+  font: 500 0.7rem/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
