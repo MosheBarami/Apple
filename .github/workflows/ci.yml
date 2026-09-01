@@ -53,11 +53,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Install Luau analyzer
-        # The eval selftest verifies its Luau grader against a real checker.
-        # Without one those assertions fail rather than silently pass, which is
-        # the correct design — so CI has to supply the binary. Pinned upstream
-        # release, no third-party action.
+      - name: Install Luau toolchain
+        # Two consumers, both of which fail loudly rather than silently skip:
+        #   luau-analyze — the eval selftest verifies its Luau grader against a real checker.
+        #   luau         — runs the Crystal Canyon Luau specs and their mutation check.
+        # Pinned upstream release, no third-party action.
         env:
           LUAU_VERSION: '0.663'
         run: |
@@ -65,7 +65,7 @@ jobs:
           curl -fsSL -o luau.zip \
             "https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}/luau-ubuntu.zip"
           unzip -q luau.zip -d "$RUNNER_TEMP/luau"
-          chmod +x "$RUNNER_TEMP/luau/luau-analyze"
+          chmod +x "$RUNNER_TEMP/luau/luau-analyze" "$RUNNER_TEMP/luau/luau"
           echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
           echo "LUAU_CHECK_BIN=$RUNNER_TEMP/luau/luau-analyze" >> "$GITHUB_ENV"
 

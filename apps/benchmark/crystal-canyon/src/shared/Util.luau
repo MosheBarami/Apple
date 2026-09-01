@@ -17,7 +17,10 @@ function Util.comma(n: number): string
 			out = "," .. out
 		end
 	end
-	return (n < 0 and "-" or "") .. out
+	-- Only sign a non-zero magnitude. A fraction between -1 and 0 truncates to "0",
+	-- and "-0" is not a number any player can hold.
+	local negative = n < 0 and whole ~= "0"
+	return (negative and "-" or "") .. out
 end
 
 --[[ Deterministic scatter. A seeded RNG means the world builder produces the

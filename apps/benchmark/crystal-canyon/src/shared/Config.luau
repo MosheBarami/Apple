@@ -182,6 +182,31 @@ function Config.zoneById(id: string)
 	return nil
 end
 
+--[[ Coerce a level from an untrusted profile into [0, max].
+
+	 math.clamp alone is not enough: it passes NaN straight through, so the old
+	 `math.clamp(math.floor(level), 0, MaxLevel)` returned NaN for a NaN level and
+	 the "degrades to a legal value" promise below was false. Non-finite input is
+	 handled explicitly, and NaN is detected with `v ~= v` because it is the only
+	 value that is not equal to itself.
+
+	 +inf saturates to max and -inf to 0, which is what a clamp means; NaN carries
+	 no magnitude at all, so it becomes 0 — the same asymmetry Profile.count makes,
+	 and for the same reason: corruption must never be a route to a better outcome
+	 than the player earned. ]]
+local function levelIn(level: any, max: number): number
+	if type(level) ~= "number" or level ~= level then
+		return 0
+	end
+	if level == math.huge then
+		return max
+	end
+	if level == -math.huge then
+		return 0
+	end
+	return math.clamp(math.floor(level), 0, max)
+end
+
 --[[ Effective stat value at a level. Clamped so a corrupt profile with an
 	 out-of-range level degrades to a legal value instead of an absurd one. ]]
 function Config.upgradeValue(id: string, level: number): number
@@ -189,8 +214,7 @@ function Config.upgradeValue(id: string, level: number): number
 	if not up then
 		return 0
 	end
-	local lvl = math.clamp(math.floor(level or 0), 0, up.MaxLevel)
-	return up.BaseValue + up.PerLevel * lvl
+	return up.BaseValue + up.PerLevel * levelIn(level, up.MaxLevel)
 end
 
 --[[ Price to go from `level` to `level + 1`. Returns nil at max level, which
@@ -200,7 +224,12 @@ function Config.upgradeCost(id: string, level: number): number?
 	if not up then
 		return nil
 	end
-	local lvl = math.floor(level or 0)
+	-- The same clamp upgradeValue uses. Without the lower bound, a negative level
+	-- priced the next upgrade at CostGrowth^level of base — cost("pack", -50) was
+	-- 0, a free upgrade for anyone who could get a negative level into a profile.
+	-- Profile.sanitize floors levels at 0, so this is defence in depth; it is here
+	-- because the guarantee lived in a different module than the arithmetic.
+	local lvl = levelIn(level, up.MaxLevel)
 	if lvl >= up.MaxLevel then
 		return nil
 	end

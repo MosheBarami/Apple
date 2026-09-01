@@ -158,9 +158,72 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 | B6 | high | Reconnect calls `task.cancel` on a possibly-dead thread, and if the old loop is mid-yield it dies inside `Ops.execute`, leaving the ChangeHistory recording open forever and the asset policy stuck open. |
 | M6 | medium | The **HUD** is drawn under the Roblox topbar (`IgnoreGuiInset = true`, and `GetGuiInset` appears nowhere). The modal was fixed this session; the wallet column was not. |
 | M9 | medium | `Config.Codes` claims "the client never sees this table" and the client requires `Config`. `Codes.luau` says the opposite and is correct. |
-| L8 | medium | **Zero automated tests exercise the game's Luau.** 1,412 tests cover the surrounding TypeScript. `Profile.sanitize` is pure, total, security-critical and untested. |
+| ~~L8~~ | ~~medium~~ | **CLOSED 2026-09-01.** 33 Luau tests now run the game's own modules in the standalone Luau CLI, plus a 7-mutation check proving the suite can fail. Finding F-26..F-28 below were found by writing them. See `apps/benchmark/crystal-canyon/tests/`. |
 
 ---
+
+### F-26 · `upgradeCost` priced negative levels as a discount — down to free
+
+`Config.upgradeValue` clamped its level to `[0, MaxLevel]`. Its sibling
+`Config.upgradeCost`, six lines below, did not:
+
+```luau
+local lvl = math.floor(level or 0)          -- no lower bound
+return math.floor(up.BaseCost * (up.CostGrowth ^ lvl))
+```
+
+`CostGrowth ^ lvl` for a negative `lvl` is a *fraction*, so the price fell as the
+level went down. Measured against the shipped table:
+
+| level | `upgradeCost("pack", level)` |
+|---|---|
+| 0 | 50 |
+| -5 | 4 |
+| -50 | **0** |
+
+A free upgrade, and `upgradeValue` would still hand back the level-0 stat because
+*it* clamped. The two functions disagreed about what a level is.
+
+**Reachability:** `Profile.sanitize` floors levels at 0, so this was not live — the
+guarantee simply lived in a different module from the arithmetic that depended on
+it, with nothing stating the dependency. That is the shape of a bug that arrives
+later, when someone adds a second way to set a level.
+
+**Fix:** one `levelIn` helper, used by both functions.
+**How it was found:** writing `config.spec.luau`, by asking what `upgradeCost`
+does with the inputs `upgradeValue` explicitly defends against.
+
+### F-27 · `math.clamp` does not sanitise NaN, and a comment promised it did
+
+> "Clamped so a corrupt profile with an out-of-range level degrades to a legal
+> value instead of an absurd one."
+
+`math.clamp(0/0, 0, 12)` returns **NaN**. So `upgradeValue("pack", nan)` returned
+NaN, which then propagated into WalkSpeed, magnet radius and pack capacity. The
+comment was not describing the code.
+
+NaN is the one value that survives a clamp precisely because every comparison
+against it is false — the same reason `Profile.count` detects it with `v ~= v`
+rather than a range check. That guard existed in `Profile` and not in `Config`.
+
+**Fix:** `levelIn` rejects non-finite input explicitly — `+inf` saturates to max,
+`-inf` and NaN go to 0. NaN carries no magnitude, so it gets the pessimistic end,
+matching `Profile.count`'s stated asymmetry: corruption must never be a route to a
+better outcome than the player earned.
+
+### F-28 · The HUD could render "-0"
+
+`Util.comma` signs by testing the input, but truncates by magnitude:
+
+```luau
+local whole = tostring(math.floor(math.abs(n)))   -- "0"
+return (n < 0 and "-" or "") .. out               -- "-0"
+```
+
+Any value in `(-1, 0)` formatted as `-0`. Cosmetic and low-reachability — balances
+are non-negative integers after sanitisation — but `comma` is the only formatter
+the HUD uses, so every number a player ever sees goes through it, and "-0" is not a
+number anyone can hold. **Fix:** sign only a non-zero magnitude.
 
 ### F-19 · Raising the cliff wall's mesh ratio improved every number and no pixels
 **Believed:** the canyon wall reads as stacked boxes because only 62% of masses get
