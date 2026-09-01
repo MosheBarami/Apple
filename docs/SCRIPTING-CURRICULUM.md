@@ -26,7 +26,7 @@ parses, contains `OnServerEvent`, contains `leaderstats`, avoids every deprecate
 lets any client send `price = -99999` and mint currency. Under the old check types it scores 1.0.
 
 So the curriculum ships with a fifth check type, `no_antipattern`, backed by
-`packages/evals/src/roblox-antipatterns.mjs`: eighteen static rules that read the code rather than
+`packages/evals/src/roblox-antipatterns.mjs`: nineteen static rules that read the code rather than
 its vocabulary. `src/selftest.mjs` grades exactly the snippet above and requires it to score 0.
 
 ## Weighting

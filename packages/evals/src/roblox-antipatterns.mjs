@@ -220,6 +220,65 @@ export const RULES = [
     },
   },
   {
+    //[[ Extracted from a corpus source's own validation layer, which is what the corpus is
+    //   for. `DLinacre/slime-factory-tycoon`'s `Validate.finite` rejects NaN and infinity
+    //   with a one-line reason: they "break every comparison".
+    //
+    //   That is not a stylistic point. A NaN compares FALSE against everything, itself
+    //   included, so a guard written the obvious way lets it straight through:
+    //
+    //       if typeof(amount) ~= "number" then return end
+    //       if amount <= 0 or amount > 1000 then return end   -- both false for NaN
+    //
+    //   Infinity is caught here — `inf > 1000` is true — so the bound that looks like it
+    //   covers both covers exactly one. What the value then does depends on where it
+    //   lands: NaN written to a leaderstat displays as "nan" and poisons every later sum;
+    //   passed to `ScaleTo` or a CFrame it can wedge a character's physics.
+    //
+    //   Nothing in this file caught it. `unvalidated-remote-arg` sees a `typeof` and is
+    //   satisfied — correctly, by its own terms — and the handler that only range-checks
+    //   fires no rule at all.
+    //
+    //   PRECISION. This fires only when a remote handler BOTH type-checks a parameter as
+    //   a number AND relation-compares it, which is the shape that looks validated. A
+    //   handler with no checks is already `unvalidated-remote-arg`'s finding and is not
+    //   reported twice. Four guards clear it, including `math.floor` equality — an
+    //   integer check rejects NaN for free, because `math.floor(nan) == nan` is false. ]]
+    id: 'range-check-admits-nan',
+    severity: 'error',
+    contexts: ['server'],
+    title: 'Numeric range check on a remote argument admits NaN',
+    why: 'every comparison against NaN is false, so a min/max guard passes it; reject non-finite values explicitly',
+    find({ src }) {
+      const out = [];
+      // `x == x` / `x ~= x` is the canonical NaN test; math.huge names infinity directly;
+      // a math.floor equality rejects NaN as a side effect; a `finite` helper is the
+      // shape the corpus source itself uses.
+      const GUARDED = /(\b\w+)\s*(?:==|~=)\s*\1\b|\bmath\.huge\b|\bmath\.floor\s*\(|\bfinite\b|\bisNaN\b/i;
+      //[[ `OnServerEvent` only, and not by oversight. `connectedBodies` interpolates the
+      //   pattern's source directly into a larger regex, so an alternation written here
+      //   binds loosely and silently loses the capture group that carries the parameter
+      //   list — the first version of this rule threw on its own first test. And
+      //   `OnServerInvoke` is ASSIGNED rather than `:Connect`ed, so it was never a body
+      //   this helper could find. ]]
+      for (const h of connectedBodies(src, /OnServerEvent/)) {
+        if (h.params.length < 2) continue;
+        if (GUARDED.test(h.body)) continue;
+        for (const param of h.params.slice(1)) {
+          const typed = new RegExp(`typeof\\s*\\(\\s*${param}\\s*\\)\\s*[=~]=\\s*["']number["']`).test(h.body);
+          if (!typed) continue;
+          const compared = new RegExp(`\\b${param}\\s*(?:<=?|>=?)|(?:<=?|>=?)\\s*${param}\\b`).test(h.body);
+          if (!compared) continue;
+          out.push({
+            line: lineOf(src, h.index),
+            detail: `${param} is type-checked and range-checked, and NaN passes both — add a finite check`,
+          });
+        }
+      }
+      return out;
+    },
+  },
+  {
     id: 'busy-wait-loop',
     severity: 'error',
     contexts: null,

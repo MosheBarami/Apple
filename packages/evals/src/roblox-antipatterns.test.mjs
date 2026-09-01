@@ -538,6 +538,37 @@ end)
 buyRemote.Parent = ReplicatedStorage
 `,
   },
+  'range-check-admits-nan': {
+    context: 'server',
+    // Type-checked and range-checked, which is what "validated" usually means — and NaN
+    // passes both, because every comparison against it is false.
+    bad: `
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local scaleRemote = ReplicatedStorage:WaitForChild("SetScale", 5)
+scaleRemote.OnServerEvent:Connect(function(player, scale)
+\tif typeof(scale) ~= "number" then return end
+\tif scale < 0.5 or scale > 4 then return end
+\tlocal character = player.Character
+\tif character then
+\t\tcharacter:ScaleTo(scale)
+\tend
+end)
+`,
+    // The same handler with the guard the corpus source uses: a self-comparison rejects
+    // NaN, and the upper bound already rejects infinity.
+    good: `
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local scaleRemote = ReplicatedStorage:WaitForChild("SetScale", 5)
+scaleRemote.OnServerEvent:Connect(function(player, scale)
+\tif typeof(scale) ~= "number" or scale ~= scale then return end
+\tif scale < 0.5 or scale > 4 then return end
+\tlocal character = player.Character
+\tif character then
+\t\tcharacter:ScaleTo(scale)
+\tend
+end)
+`,
+  },
 };
 
 // ------------------------------------------------------------------ the pairing contract
