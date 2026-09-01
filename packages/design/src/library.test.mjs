@@ -364,3 +364,32 @@ test('a rule learned from a shipped game does not claim to be documented behavio
     assert.ok(!/genre standard|consensus|every tycoon/i.test(r.rule), 'n=1 cannot establish a genre consensus');
   }
 });
+
+test('the styling rules quote selectors the engine reference actually defines', () => {
+  // These tokens are the whole value of the rule — a generator reaching for
+  // `@PreferredInputGamepad` needs the name to be right, and a name that drifted
+  // would fail silently as a selector that matches nothing.
+  const rule = RULES.find((r) => r.id === 'style.accessibility-and-input-are-selectors-the-engine-already-has');
+  const named = Object.values(rule.tokens).join(' ');
+  for (const sel of [
+    '@ReducedMotionEnabledTrue', '@ReducedMotionEnabledFalse',
+    '@PreferredInputGamepad', '@PreferredInputKeyboardAndMouse', '@PreferredInputTouch',
+    '@PreferredTextSizeMedium', '@PreferredTextSizeLargest',
+    '@ViewportDisplaySizeSmall', '@ViewportDisplaySizeLarge',
+  ]) {
+    assert.ok(named.includes(sel), `missing built-in selector ${sel}`);
+  }
+});
+
+test('a rule from documentation does not claim to have been built', () => {
+  // retrieve() gives +2 only to rules seen to work, so overstating `validated` would
+  // rank documented grammar above grammar that shipped. §8's first question is
+  // answered from the engine reference because no checked-out game uses the API.
+  const documented = RULES.filter((r) => /^style\./.test(r.id));
+  assert.equal(documented.length, 3);
+  for (const r of documented) {
+    assert.equal(r.provenance.kind, 'learned-pattern');
+    assert.match(r.provenance.source, /creator-docs/);
+    assert.match(r.provenance.validated, /not yet built in a Golem fixture/);
+  }
+});

@@ -56,7 +56,7 @@ modern, because a summary is not a suppression.
 | `MadStudioRoblox__ProfileStore` | Apache-2.0 | clean | modern | 0.79 | 2 | — |
 | `Quenty__NevermoreEngine` | MIT | **remote-payload-loader** | modern | 0.79 | — | — |
 | `Reselim__Flipper` | MIT | clean | — | 0.92 | 1 | 7 |
-| `Roblox__creator-docs` | CC-BY-4.0 | clean | — | 0.58 | — | 16 |
+| `Roblox__creator-docs` | CC-BY-4.0 | clean | — | 0.58 | — | 19 |
 | `Roblox__otter` | MIT | clean | modern | 0.93 | — | 8 |
 | `Roblox__react-luau` | MIT | **unscannable** | modern | 0.57 | 1 | — |
 | `Roblox__roact` | Apache-2.0 | clean | transitional | 0.86 | 4 | — |
@@ -66,7 +66,7 @@ modern, because a summary is not a suppression.
 | `Sleitnick__RbxUtil` | MIT | clean | modern | 1.00 | — | — |
 | `Starstruck-Studios-Developers__framer` | Apache-2.0 | clean | — | 0.92 | — | — |
 | `afrxo__roblox-agent-skills` | MIT | clean | modern | 0.79 | — | 4 |
-| `centau__vide` | MIT | clean | modern | 0.93 | 3 | — |
+| `centau__vide` | MIT | clean | modern | 0.93 | — | — |
 | `chriscerie__roact-spring` | MIT | clean | modern | 1.00 | — | 7 |
 | `ddust1n__CameraShaker` | MIT | clean | — | 0.67 | — | — |
 | `dphfox__Fusion` | MIT | clean | modern | 1.00 | — | — |
@@ -94,12 +94,12 @@ remaining value is, and it is cheaper to reach than a new source.
 
 ## 3. What was extracted
 
-110 rules in `packages/design/src/rules.mjs`, by provenance kind:
+113 rules in `packages/design/src/rules.mjs`, by provenance kind:
 
 | kind | rules | share |
 | --- | --- | --- |
-| `golem-authored` | 41 | 37 % |
-| `learned-pattern` | 66 | 60 % |
+| `golem-authored` | 41 | 36 % |
+| `learned-pattern` | 69 | 61 % |
 | `reference-only` | 3 | 3 % |
 
 The boundary these kinds encode is a licence boundary, not a citation style:

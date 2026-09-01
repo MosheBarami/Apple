@@ -1615,6 +1615,58 @@ export const RULES = Object.freeze([
     provenance: TYCOON('src/shared/GameConfig.luau (Zones: requiredLifetime)'),
     tokens: { gateOn: 'lifetime earned, monotonically increasing', neverGateOn: 'current spendable balance' },
   },
+
+  // ------------------------------------------------------- engine styling
+  //[[ docs/SOURCE-INTELLIGENCE.md §8's FIRST question: "What does a shop panel look
+  //   like built on StyleSheet/StyleRule rather than hand-set properties on every
+  //   instance?" It went unanswered longer than the other two because no checked-out
+  //   GAME uses the API — it is recent and the corpus skews older — so the answer comes
+  //   from the engine reference rather than from a shipped build, and `validated` says
+  //   so. That is the honest ordering: a documented grammar outranks nothing, and
+  //   `retrieve()` withholds its +2 from rules that have not been seen to work.
+  //
+  //   The second rule below is the one worth having. Several rules already in this
+  //   library hand-roll conditions the engine can SELECT on — reduced motion, gamepad
+  //   input, text size, viewport size — and none of them knew the selectors existed. ]]
+  {
+    id: 'style.a-shared-look-is-a-sheet-and-a-link-not-a-property-set-on-every-instance',
+    component: 'panel',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'modern', 'minimalist'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Express a look that more than one instance shares as a StyleSheet of StyleRules, linked to a subtree by a StyleLink under its root, rather than by assigning the same properties on every instance as it is built.',
+    because: 'A StyleLink placed under a ScreenGui styles that ScreenGui and its descendants, so the look is declared once and applies to instances that did not exist when it was written. Properties assigned at construction cannot: every later instance is a new place for the look to be re-typed, and a panel built that way has no representation of its own style that anything can read, diff, or re-theme.',
+    prevents: 'A shop panel whose plate colour is written at eleven construction sites, so a theme change lands at ten of them and the eleventh is found by a player.',
+    provenance: DOCS('classes/StyleLink.yaml, classes/StyleSheet.yaml (StyleLink applies its sheet to the parent and its descendants)'),
+    tokens: { sheet: 'StyleSheet holding StyleRule children', link: 'StyleLink under the subtree root, StyleSheet property set', cascade: 'higher StyleRule.Priority wins on the same property' },
+  },
+  {
+    id: 'style.accessibility-and-input-are-selectors-the-engine-already-has',
+    component: 'layout',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'modern', 'minimalist', 'mobile-first'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'Reach for the built-in StyleQuery selectors — reduced motion, preferred input, preferred text size, viewport size — before writing a runtime branch that recomputes the same condition.',
+    because: 'The engine already resolves these and exposes them as selectors a StyleRule can match, so the condition is evaluated in one place and re-evaluated when it changes. A hand-written branch has to be re-read at every call site that cares, and the sites that forget are exactly the ones nobody notices: a control that keeps its pointer-only hover on a gamepad, or an animation that keeps travelling for a player who asked for less of it.',
+    prevents: 'Reduced motion honoured at the call sites someone remembered and not at the ones they did not, which is the same failure the service-level motion gate exists to prevent, arriving one layer lower.',
+    provenance: DOCS('classes/StyleRule.yaml (Selector: built-in @StyleQuery selectors)'),
+    tokens: {
+      reducedMotion: '@ReducedMotionEnabledTrue, @ReducedMotionEnabledFalse',
+      preferredInput: '@PreferredInputGamepad, @PreferredInputKeyboardAndMouse, @PreferredInputTouch',
+      textSize: '@PreferredTextSizeMedium, @PreferredTextSizeLarge, @PreferredTextSizeLarger, @PreferredTextSizeLargest',
+      viewport: '@ViewportDisplaySizeSmall, @ViewportDisplaySizeMedium, @ViewportDisplaySizeLarge',
+      state: ':Hover and the other GuiState selectors',
+    },
+  },
+  {
+    id: 'style.swappable-themes-must-define-the-same-token-set',
+    component: 'panel',
+    styleFamilies: ['modern', 'minimalist', 'cartoon-simulator'],
+    platforms: ['desktop', 'mobile'],
+    rule: 'Give every theme in a swappable set exactly the same token names, and define a token on the theme sheet rather than only where it is used.',
+    because: 'Themes are swapped wholesale, and a token a rule references but the incoming theme does not define has nothing to resolve to. The gap only appears in the theme that omits it, in the states that read it, so it is invisible on the theme that was developed against and shows up on the one that was added last.',
+    prevents: 'A dark theme that is correct everywhere except the two surfaces whose token only the light theme ever defined.',
+    provenance: GUIDE('ui/styling/index.md (themes as token sets on a StyleSheet; related themes must define the same tokens)'),
+    tokens: { tokensAreAttributes: 'attributes on a token StyleSheet', themeParity: 'every theme in a set defines every token name in that set' },
+  },
 ]);
 
 /**

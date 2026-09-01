@@ -1,4 +1,4 @@
-# The corpus answers two of the three questions it was built for
+# The corpus answers all three questions it was built for
 
 `docs/SOURCE-INTELLIGENCE.md` §8 says the corpus is judged by one thing — *"does the
 simulator/tycoon build get better?"* — and names three questions it must answer
@@ -126,11 +126,48 @@ opening the file it pointed at rather than trusting the count — after doc comm
 TypeScript declarations, and a library's own `Signal:connect`. Every one of them inflated
 a claim about someone else's code, and the last one inflated a claim about ours.
 
-## The one question still open
+## §8's first question, answered from the reference rather than from a build
 
 > What does a shop panel look like built on `StyleSheet`/`StyleRule` rather than
 > hand-set properties on every instance?
 
-Not answered. No checked-out source uses `StyleSheet`/`StyleRule` — it is recent engine
-API and the corpus skews to libraries older than it. This is a discovery gap with a known
-shape rather than an unknown, which is the useful kind to be left with.
+This one went unanswered longest, and the reason is worth keeping: **no checked-out
+game uses the API.** It is recent, and the corpus skews to libraries older than it. So
+the answer comes from `Roblox/creator-docs` — checked out, CC-BY-4.0, security-clean —
+rather than from a shipped build, and `provenance.validated` says *"not yet built in a
+Golem fixture"*. `retrieve()` withholds its +2 from rules that have not been seen to
+work, so documented grammar correctly ranks below grammar that shipped.
+
+Three rules:
+
+- `style.a-shared-look-is-a-sheet-and-a-link-not-a-property-set-on-every-instance`
+- `style.accessibility-and-input-are-selectors-the-engine-already-has`
+- `style.swappable-themes-must-define-the-same-token-set`
+
+**The second is the one worth having.** The engine ships built-in `StyleQuery`
+selectors for conditions this library was already hand-rolling:
+
+| condition | selector | rule that hand-rolls it |
+| --- | --- | --- |
+| reduced motion | `@ReducedMotionEnabledTrue` / `False` | `motion.gate-at-the-service-not-the-call-site` |
+| gamepad input | `@PreferredInputGamepad` | `state.selection-gained-is-the-gamepad-s-hover` |
+| touch input | `@PreferredInputTouch` | `layout.touch-floor-from-smallest-target` |
+| text size | `@PreferredTextSizeLarge…` | `typography.a-scaled-label-must-not-be-told-not-to-wrap` |
+| viewport size | `@ViewportDisplaySizeSmall…` | `layout.a-ui-scale-is-meaningless-without-a-declared-design-resolution` |
+
+Five rules in this library resolve conditions the engine will already select on, and
+none of them knew the selectors existed. That is precisely the failure §G describes —
+inventing from a blank canvas — showing up not in generated output but in the library
+that exists to prevent it.
+
+The selector names are pinned by a test, because a name that drifted would fail
+silently: a selector that matches nothing looks exactly like a style that did not apply.
+
+---
+
+## Where that leaves §8
+
+All three questions have answers. Two came from a shipped game and the engine
+reference respectively; one — the progression curve — is the only one whose answer
+contradicts something this build already decided, and it has deliberately not been
+acted on.
