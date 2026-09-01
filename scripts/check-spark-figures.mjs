@@ -144,6 +144,47 @@ for (const file of PROSE) {
   }
 }
 
+// THE APP'S OWN FIGURE. The composer renders `MODE_INFO[...].typicalSparks` as
+// "Typically N Sparks", so the app makes the same claim the site does and had drifted
+// from it in the same direction: Plan read "~1" where every measured Plan question is
+// 2 sparks, and Agent read "2-15" against a measured 4-18. The site and the app must
+// agree with COST-MODEL, not merely with each other.
+/**
+ * Comments stripped. This is the fourth guard in one session to be fooled by prose
+ * describing the very thing it forbids — the sparksPerRequest check below matched the
+ * comment that explains why sparksPerRequest was removed. A guard that reads source text
+ * must read the source, not the commentary on it.
+ */
+const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+const shared = stripComments(read('packages/shared/src/index.ts'));
+const SPECIALIST = { Plan: 'clay', Agent: 'stone', 'Super Agent': 'rune' };
+const RANGE = {
+  Plan: ['Clay question (Studio attached)'],
+  Agent: [
+    'Stone, targeted edit + read-back verify in Studio',
+    'Stone, full build + edit + verify in Studio',
+  ],
+};
+for (const [mode, rows] of Object.entries(RANGE)) {
+  const sparks = rows.map((r) => neuronsFor(r)).filter((n) => n !== null).map(sparksFor);
+  if (sparks.length === 0) continue;
+  const lo = Math.min(...sparks);
+  const hi = Math.max(...sparks);
+  const want = lo === hi ? String(lo) : `${lo}-${hi}`;
+  const line = new RegExp(`${SPECIALIST[mode]}: \\{[^}]*typicalSparks: '([^']+)'`).exec(shared);
+  if (!line) {
+    problems.push(`packages/shared has no typicalSparks for ${SPECIALIST[mode]}`);
+  } else if (line[1] !== want) {
+    problems.push(`MODE_INFO.${SPECIALIST[mode]}.typicalSparks is '${line[1]}'; COST-MODEL gives '${want}' for ${mode}`);
+  }
+}
+
+// The dead constant must not come back: nothing charges from it, and its comment used
+// to say otherwise.
+if (/sparksPerRequest/.test(shared)) {
+  problems.push('packages/shared names sparksPerRequest again — the worker charges 1 upfront and settles from neurons');
+}
+
 // WHEN the quota resets. A rolling per-account window and a fixed midnight are
 // different promises, and the site made the wrong one.
 const quota = read('apps/worker/src/do/quota.ts');
