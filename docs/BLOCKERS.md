@@ -101,6 +101,30 @@ The difference matters for what happens next: the second and third clear themsel
 with time and work inside this environment. This one cannot, at any amount of effort,
 without the owner.
 
+### What actually depends on these two accounts
+
+Established 2026-09-01 by searching every workflow, script and source file. Recorded
+because it scopes the exposure, and because the owner's decision about the merge gate
+turns on it:
+
+| consumer | uses them |
+|---|---|
+| `.github/workflows/ci.yml` | **no** — zero references in any workflow |
+| the deployed worker, web app, site, plugin | **no** — no shipped code reads either variable |
+| `infra/smoke.mjs`, `infra/pair-helper.mjs`, `infra/checkpoint-test.mjs`, `infra/store-validation.mjs` | yes — operator scripts run by hand |
+
+So the exposure is two Supabase **test** accounts used by local operator tooling. It is
+still a live-credential exposure and still has to be fixed: anyone reading this public
+history can sign in as either account against the real project, and `load{i}@` is a
+family of them.
+
+What this does *not* settle is the merge gate, and this document does not settle it
+either. §5.1's wording is "a release that still relies on known live credentials"; on
+the narrow reading nothing in the release relies on them, and on the broad reading the
+repository being merged is the one carrying the exposure. That is the owner's call to
+make, not this environment's, and it is recorded here as a question rather than
+answered in the direction that happens to unblock the work.
+
 ### Why this session did not rotate them
 
 §5.1 permits rotation *"if authorized connected access allows rotation without
