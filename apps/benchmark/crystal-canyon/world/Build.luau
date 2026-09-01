@@ -2146,11 +2146,30 @@ local function cliffRun(
 			 legible along the run. ]]
 		local capCentre = Vector3.new(topCentre.X, topY, topCentre.Z) + outward * (depth * depthMul * rand(0.02, 0.12))
 		local ch = height * rand(0.12, 0.24)
+		--[[ THE RAMP SLOPES ALONG THE WALL, NOT INTO IT. EXPERIMENT.
+
+			 A WedgePart's slope runs along its local Z. Pointing that at `outward` — which is
+			 what this did — chamfers the top across the wall's DEPTH, and depth is the one
+			 axis the camera cannot see from outside the canyon. From the front the silhouette
+			 was still the wedge's high edge: a horizontal line, which is the exact thing the
+			 courses were already producing.
+
+			 Pointing local Z along the RUN instead puts the slope in the skyline, where a
+			 diagonal replaces a horizontal. X becomes the depth, Z the width along the run. ]]
+		--[[ Derived from the segment index, NOT from `chance()`.
+
+			 This builder is deterministic from one seeded stream, so ADDING a random draw
+			 here re-rolls every draw after it and rebuilds the whole world differently. The
+			 first version of this change did exactly that: the trees, the props and the
+			 landmark all moved, and the before/after screenshots stopped being a comparison
+			 of one variable. A parity test costs no draw and leaves the rest of the world
+			 byte-identical. See F-32. ]]
+		local rampDir = if toneOffset % 2 == 0 then dir else -dir
 		wedge(
 			fCliffs,
 			"CliffRamp",
-			Vector3.new(topWidth * rand(0.72, 0.98), ch, topDepth * rand(0.85, 1.05)),
-			CFrame.lookAt(capCentre + Vector3.new(0, ch / 2, 0), capCentre + Vector3.new(0, ch / 2, 0) + outward)
+			Vector3.new(topDepth * rand(0.85, 1.05), ch, topWidth * rand(0.72, 0.98)),
+			CFrame.lookAt(capCentre + Vector3.new(0, ch / 2, 0), capCentre + Vector3.new(0, ch / 2, 0) + rampDir)
 				* CFrame.Angles(0, math.rad(rand(-12, 12)), 0),
 			toneAt(capCentre, toneOffset + courses + 1)
 		)

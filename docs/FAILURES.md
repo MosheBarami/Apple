@@ -240,6 +240,54 @@ copy of the module and the suite re-run: **8 of 8 tests fail**; against the fix,
 the same pass that was fixing critical bugs. Reviewing a diff is not the same as running it,
 and neither is a green suite that cannot reach the code in question.
 
+### F-32 · Adding one random draw to the world builder rebuilt the entire world
+
+`Build.luau` is deterministic from a single seeded stream. The cliff experiment below added
+`chance(0.5)` to pick a ramp direction — one draw, in the middle of the run — and every draw
+after it shifted by one. The trees moved. The props moved. The landmark moved. The before and
+after screenshots were of two different worlds, and the one variable under test was no longer
+the only thing that had changed.
+
+Caught immediately, because the whole point of the capture was to compare, and the comparison
+was visibly nonsense. The part count is the cheap tell: it went 172 → 179 → 172 as the draw was
+added and then removed.
+
+**Rule this establishes:** a change to this builder that is meant to be A/B'd must consume the
+same number of draws as the code it replaces. The fix here was a parity test on an index that
+already existed (`toneOffset % 2`), which costs no draw and left the rest of the world
+byte-identical. If a future change genuinely needs randomness, it needs its OWN `Random`
+instance seeded separately, not a draw from the shared one.
+
+### F-33 · Raising the cliff batter 2× changed no pixels
+
+The courses' backward lean was 2.0°–6.6°. Raising it to 5.7°–12.6° — the cheapest hypothesis
+for why the wall still reads as stacked boxes — produced a capture indistinguishable from the
+baseline.
+
+**Why it could not have worked, in hindsight:** what the camera sees head-on is each course's
+FRONT face, and tilting a rectangle backwards leaves it a rectangle. The batter foreshortens
+the face; it does not change the silhouette, and the silhouette is what reads as a box.
+F-19 already said the courses themselves are the problem; this confirms that no amount of
+tilting them is the answer. **Reverted.**
+
+### Accepted, on the same evidence standard: the ramp cap now slopes ALONG the wall
+
+A `WedgePart`'s slope runs along its local Z. The cap pointed that at `outward`, chamfering the
+top across the wall's **depth** — the one axis the camera cannot see from outside the canyon.
+From the front, the silhouette was still the wedge's high edge: a horizontal line, which is
+exactly what the courses were already producing.
+
+Pointing local Z along the **run** puts the slope in the skyline. Measured A/B at a grazing
+angle along the wall, with the world otherwise byte-identical: the baseline skyline is
+horizontals stepping down in terraces; with the change the same masses carry diagonals. Zero
+parts, zero draws.
+
+**It is an improvement, and it does not close gate 2.** Head-on, the wall still reads as
+stacked boxes, because the cap is only 12–24 % of a segment's height and no decoration on top
+of a box changes the box. The answer F-19 named still stands: **more distinct rock
+silhouettes** in the palette, not more or better-shaped bricks. The one section of wall that
+already reads correctly in every capture is the one built from mesh modules.
+
 ### F-30 · A Studio spec that appeared to cover the softening and never reached it
 
 Three tests asserted that an unreachable DataStore stays playable in Studio. All three
