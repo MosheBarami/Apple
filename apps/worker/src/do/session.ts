@@ -47,6 +47,7 @@ import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
+import { partitionOpsByRun } from '../op-attribution';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -1143,6 +1144,23 @@ export class SessionDO extends DurableObject<Env> {
     await clearStop(this.ctx.storage);
     // Nothing this run queued may still be applied to the place now that it has ended.
     const abandoned = await this.dropOpsForEndedRuns(undefined);
+    //[[ AND THE RUN STOPS OWNING OPS QUEUED AFTER IT.
+    //
+    //   `execStudioOp` tags every op with `currentMsgId`, and this field used to survive the
+    //   run that set it. So the next op queued with NO run in flight — a checkpoint from
+    //   POST /api/projects/:id/checkpoints, or the automatic snapshot taken as the next run
+    //   starts — inherited a DEAD run's id, and the next poll discarded it with "The run this
+    //   change belonged to has ended".
+    //
+    //   Seen twice against the deployed Worker on 2026-09-01, in both golden creation
+    //   exercises. The costly one is the automatic pre-run checkpoint: that is the undo point
+    //   the product promises before it changes anything, and it silently was not taken.
+    //
+    //   Clearing it here puts those ops back on the `runId === undefined` path, which
+    //   partitionOpsByRun keeps — an op that belonged to no run cannot belong to an ended one.
+    //   A5 is untouched: ops queued DURING a run still carry that run's id, and runStep
+    //   re-establishes the field on every step, so an eviction mid-run cannot land here. ]]
+    this.currentMsgId = undefined;
     if (abandoned > 0) {
       console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
     }
@@ -1451,12 +1469,7 @@ export class SessionDO extends DurableObject<Env> {
    * discarding work because it is unlabelled would be a worse bug than the one this fixes.
    */
   private async dropOpsForEndedRuns(liveRunId: string | undefined): Promise<number> {
-    const keep: PendingOp[] = [];
-    const dropped: PendingOp[] = [];
-    for (const op of this.opQueue) {
-      if (op.runId === undefined || op.runId === liveRunId) keep.push(op);
-      else dropped.push(op);
-    }
+    const { keep, drop: dropped } = partitionOpsByRun(this.opQueue, liveRunId);
     if (dropped.length === 0) return 0;
 
     this.opQueue = keep;
