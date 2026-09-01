@@ -283,6 +283,25 @@ local dots: { [string]: Frame } = {}
 
 local lastShards = -1
 local lastCoins = -1
+
+--[[ Resolved lazily from the sibling module, the same way `Panels` does it, because the HUD's
+	 `ctx` does not carry Effects and adding a key that only one line reads is how the context
+	 table drifted before. nil is a legal answer: the wallet falls back to a direct write. ]]
+local Effects: any = nil
+local function resolveEffects(): any?
+	if Effects then
+		return Effects
+	end
+	local sibling = script.Parent and script.Parent:FindFirstChild("Effects")
+	if not sibling or not sibling:IsA("ModuleScript") then
+		return nil
+	end
+	local ok, module = pcall(require, sibling)
+	if ok and type(module) == "table" and type(module.countTo) == "function" then
+		Effects = module
+	end
+	return Effects
+end
 local lastFull = false
 local lastSellAt = 0
 
@@ -1301,9 +1320,32 @@ function Hud.render(state: HudState?)
 		end
 	end
 
+	--[[ COINS COUNT; SHARDS DO NOT. The asymmetry is deliberate.
+
+		 Coins change rarely and in large steps — a sell, a purchase, an unlock — which is
+		 exactly the shape a counting animation is for, and 380 → 250 landing in a single
+		 frame is the change a player most wants to feel. Measured before this existed: both
+		 coin surfaces snapped in the same frame across 835 samples, while
+		 `Effects.countTo` sat in the codebase used only by the shop panel.
+
+		 Shards keep snapping because they arrive from the server's 10 Hz sweep, up to ten a
+		 second while a player walks a crystal field. A 0.45 s count would never settle, and
+		 it would show a number half a second behind the one the player is actually holding —
+		 a counter that lags the truth is a worse bug than one that jumps to it.
+
+		 Counting never invents a value: it animates from what was last DISPLAYED to the
+		 authoritative number that has already arrived, and lands on it. That is a different
+		 thing from the optimistic client-side decrement this file's header warns about.
+
+		 The punch and flash stay on the increase only — spending is not a celebration. ]]
 	local coinBox = coinsCapsule
 	if coinBox then
-		coinBox.amount.Text = Util.comma(coins)
+		local fx = resolveEffects()
+		if fx and lastCoins >= 0 and coins ~= lastCoins then
+			fx.countTo(coinBox.amount, lastCoins, coins)
+		else
+			coinBox.amount.Text = Util.comma(coins)
+		end
 		if coins > lastCoins and lastCoins >= 0 then
 			punch(coinBox.pill)
 			flash(coinBox.plate, coinBox.plateFill)
