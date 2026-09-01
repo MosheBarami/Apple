@@ -499,6 +499,65 @@ rewrite raised those tops the camera tilted up and photographed the sky. A revie
 aim depends on the height of the thing it is reviewing cannot compare two builds, which is the
 entire reason `Viewpoints.luau` exists. Both now aim at the wall's face.
 
+### THE FACET PATH IS CLOSED — 2026-09-01, by owner decision
+
+Gate 2 has now had **five** distinct approaches and every one of them is closed. Written here as
+a single list so the sixth attempt starts from the boundary rather than from the beginning:
+
+| # | approach | outcome | why it failed |
+|---|---|---|---|
+| 1 | Cube-generated mesa meshes | **closed** (F-13) | a generated mesh arrives TEXTURED, and a textured mesh cannot be tinted into a flat-shaded palette — so it is either already in the world's language or it cannot be made to be. Rejected on sight in-world after rendering well alone. |
+| 2 | Raise the mesh:primitive ratio | **closed** (F-19) | 0.62 → 0.85 improved every number (Cliffs 157 → 136, world 497 → 482) and changed no pixels, because what the eye reads is the authored courses BEHIND the mesh. |
+| 3 | Raise the batter | **closed** (F-33) | 2.0–6.6° → 5.7–12.6° moved the Lambert MEAN 15 % and left the SPREAD at 15 %. Every face brightened together, so nothing separated from anything. |
+| 4 | Decorate the box — weathering chamfer, broken crest, buttress, ramp cap | **closed** | four separate additions to a stack of slabs; the stack was still what the eye read. The owner's §4 closed this family explicitly. |
+| 5 | **Oriented facets over a wide pitch/yaw/roll spread** | **closed here** | the geometry did exactly what it promised — `N·L` from an 11 % band to [0.10, 0.94] — and the wall still rendered as a flat panel across five captures. |
+
+#### What #5 actually established, since it is not nothing
+
+The diagnosis was right and is now measured rather than argued: the old wall's faces sat inside
+an **11 % band of one Lambert value**, and that is a complete explanation of why #2, #3 and #4
+all failed. Any future attempt that adjusts one shared parameter across all faces will fail the
+same way, and now there is a number for it.
+
+What #5 disproved is the **inference** drawn from that diagnosis — that spreading the normals
+would therefore spread the pixels. It does not, because `N·L` is not the delivered pixel: under
+`OutdoorAmbient (146,152,158)`, `Ambient (112,116,122)`, `EnvironmentDiffuseScale 0.55` and
+`Brightness 3`, the ambient floor compresses a 9.5× geometric range into something far flatter on
+screen. Baking the pitch into the **albedo** instead is measurable (58 % / 91 % value spread) and
+still not sufficient.
+
+**So the closed claim is specific: orientation is not the lever for gate 2 in this lighting.** It
+is not "faceting is wrong" in general — it is that this world's ambient floor will flatten any
+purely geometric answer, and a sixth attempt must therefore move something that ambient light
+cannot compress.
+
+#### The code stays, and that is a separate decision from the path
+
+Closing the path does not mean reverting the construction, because the construction carries wins
+that are independent of the picture:
+
+- **enclosure 1 floor-level breach → 0** (and 0 of 512 samples after the apron)
+- **Cliffs 164 → 136 primitives**, world 513 → 485 before the apron
+- **the dominance ceiling is now enforced** (`CW.FACET_MAX_TOP`) where before nothing capped a
+  cliff's height at all — the ratio held at 1.32 against a 1.25 gate *because* of that cap
+- **the stream fingerprint**, which is a new capability the whole file now benefits from
+- the F-36 seal floor and the seal-as-back-plane sizing, both of which the apron's ramps were
+  then surveyed against
+
+Reverting would give back a flat 11 % wall, one live escape route, 28 more primitives, no
+dominance cap, and would invalidate the ramp corridor survey. The picture is a wash; everything
+else is better. It stays.
+
+#### What is left untried, for whoever picks this up
+
+The evidence points away from geometry and toward **the frame** rather than the surface: in the
+canonical capture the wall is roughly 50 studs away and each facet is 20–40 studs, so the camera
+sees a handful of large quads however they are angled. The untried levers are composition
+(how much of the frame the wall occupies, and what stands in front of it), and surface detail at
+a scale smaller than a facet. Neither is a variation on #1–#5.
+
+---
+
 ### F-39 · The facet rewrite: the machinery is right and the picture is not
 
 The fifth attempt at gate 2 ("the orange/red perimeter is visibly repeated rectangular blocks").
