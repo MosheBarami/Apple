@@ -2520,9 +2520,23 @@ local function stoneDais(
 
 			 Now measured on `rr`, and 1.06 rather than 1.14 — enough overlap to close
 			 a mitre, not enough to balloon one. ]]
+		--[[ INSCRIBED BY CORNER, NOT BY FACE. V3.
+
+			 Putting the outer FACE on `radius` is the intuitive construction and it is wrong: a
+			 chord's ends are further from the centre than its midpoint, so every block threw its
+			 corners past its neighbour's face. Measured by the visual critic at `1.054 · R` —
+			 a **1.2-stud sawtooth** all the way round the base tier, three tiers over, which is
+			 most of why the plinth still read as loose blocks after F-14 fixed the pinwheel.
+
+			 A regular polygon is defined the other way round: corners on the circumradius, faces
+			 on the apothem `R·cos(π/n)`, edges `2R·sin(π/n)`. Built that way the corners land at
+			 1.003 · R — a 0.07-stud sawtooth on the base tier instead of 1.2 — and the overlap
+			 factor drops to 1.02, because at 1.06 it was compensating for a chord measured on
+			 the wrong circle and would now re-introduce the very overshoot this removes. ]]
 		local dep = radius * 0.36
-		local rr = radius - dep / 2
-		local chord = 2 * rr * math.sin(math.pi / SIDES) * 1.06
+		local apothem = radius * math.cos(math.pi / SIDES)
+		local rr = apothem - dep / 2
+		local chord = 2 * radius * math.sin(math.pi / SIDES) * 1.02
 		--[[ Half a sector of twist per tier, so each step presents a FACE where the
 			 tier below presents a CORNER. Without it all three tiers stack their
 			 corners on one line and the drum reads as a single extruded prism. ]]
@@ -2535,7 +2549,12 @@ local function stoneDais(
 				"DaisBlock",
 				Vector3.new(chord, h, dep),
 				CFrame.new(at) * CFrame.Angles(0, -(ang + math.pi / 2), 0),
-				if k % 2 == 0 then tone else Palette.lift(tone, 0.10)
+				--[[ ONE TONE PER TIER, not one per block. The alternating `k % 2` lift painted a
+					 light/dark stripe onto every individual box, so the eye could not fuse eight
+					 blocks into one drum however well they met — it was counting them for you.
+					 The tiers still differ from each other, which is where the banding §7 asks
+					 for belongs: across courses, not around them. ]]
+				tone
 			)
 		end
 		top += h
@@ -2546,8 +2565,8 @@ local function stoneDais(
 	-- Same two corrections as the ashlar ring above: chord measured on the circle
 	-- the wedges actually stand on, and tangential yaw rather than radial. The
 	-- twist matches the crown tier's so the chamfer sits square on its own course.
-	local rr = cr - cr * 0.14
-	local chord = 2 * rr * math.sin(math.pi / SIDES) * 1.06
+	local rr = cr * math.cos(math.pi / SIDES) - cr * 0.14
+	local chord = 2 * cr * math.sin(math.pi / SIDES) * 1.02
 	local twist = (#tiers - 1) * (math.pi / SIDES)
 	for k = 1, SIDES do
 		local ang = (k / SIDES) * math.pi * 2 + twist
