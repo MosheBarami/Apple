@@ -608,6 +608,18 @@
   min-height: 36px;
 }
 
+/* An icon is not text and must never be squeezed to make room for some.
+   At 390px the Roadmap and Checkpoints buttons rendered as EMPTY rounded rectangles:
+   their SVGs are flex items, default `0 1 auto`, and the row shrank them to exactly
+   0px wide. The button kept its border, so the failure looked like a styling choice
+   rather than a missing control. */
+.gx-btn > svg,
+.gx-icon-btn > svg,
+.gx-pill > svg,
+.gx-chip > svg {
+  flex: none;
+}
+
 /* --------------------------------------------------------------------------
    6. Status pill — Studio connection
    -------------------------------------------------------------------------- */
@@ -618,6 +630,12 @@
   gap: 0.42rem;
   min-height: 32px;
   max-width: 42vw;
+  /* Never squeezed below its own content. On a 390px phone the row asked this pill for
+     53px when it needed 73, and because the label lives in a CHILD span the ellipsis
+     below could not apply — so "Studio" was cut to "Stud" and the glyphs ran out
+     through the rounded border. The title beside it is the element designed to absorb
+     that pressure: it has min-width 0 and its own ellipsis. */
+  flex: none;
   padding: 0 0.7rem;
   border-radius: 999px;
   border: 1px solid var(--gx-line);
@@ -2293,6 +2311,24 @@
     display: none;
   }
 
+  /* TWO ROWS, because six controls and a project name do not fit on one.
+     Measured at 390px: with every icon rendering at its true size the row fits, but
+     only by squeezing the title to 20px — "F…" — and on a phone the rail is collapsed,
+     so that title is the ONLY thing saying which project you are in. Nothing here is
+     hidden or moved behind a menu; the actions simply take their own line. */
+  .gx-top {
+    flex-wrap: wrap;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    row-gap: 0.4rem;
+  }
+
+  .gx-top__actions {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
   .gx-turn--agent {
     grid-template-columns: 28px minmax(0, 1fr);
     gap: 0.6rem;
@@ -2743,6 +2779,15 @@
    width; below the sidebar breakpoint it and the project title were both truncating to
    the same unreadable prefix, so the short form takes over. Exactly one is ever shown,
    so the pill never changes height. */
+.gx-pill__place,
+.gx-pill__short {
+  /* The pill's own text-overflow cannot reach text inside a child element. If this ever
+     is squeezed despite `flex: none`, it has to end in an ellipsis rather than a
+     half-drawn letter. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .gx-pill__short { display: none; }
 @media (max-width: 860px) {
   .gx-pill__place { display: none; }
