@@ -51,6 +51,7 @@
 	   is repeated deliberately everywhere it applies below.
 ]]
 
+local GuiService = game:GetService("GuiService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -643,8 +644,29 @@ end
 
 -- Toasts ------------------------------------------------------------------
 
+--[[ How far down the usable screen starts.
+
+	 The root ScreenGui these toasts live on is `IgnoreGuiInset = true`, which it has to be:
+	 a modal backdrop that stopped below the topbar would look like a rendering mistake. The
+	 consequence is that y = 0 here is the top of the SCREEN, not the top of the area Roblox
+	 leaves free, so a toast at TOAST_MARGIN draws behind the topbar.
+
+	 Measured during the H1 playtest at an inset of 0,58: the notice
+	 "FROST HOLLOW IS LOCKED — 2,500 COINS" rendered with "IS LOCKED" cut off above the
+	 viewport. See M6 in docs/FAILURES.md.
+
+	 Read per layout rather than cached: the inset is not constant. It differs between
+	 desktop and mobile and changes when the topbar is hidden, and a cached value would be
+	 wrong for the rest of the session. ]]
+local function topInset(): number
+	local ok, inset = pcall(function()
+		return GuiService:GetGuiInset()
+	end)
+	return if ok and inset then inset.Y else 0
+end
+
 local function toastY(slot: number): UDim2
-	local y = TOAST_MARGIN + (slot - 1) * (TOAST_HEIGHT + TOAST_GAP)
+	local y = topInset() + TOAST_MARGIN + (slot - 1) * (TOAST_HEIGHT + TOAST_GAP)
 	return UDim2.new(1, -TOAST_MARGIN, 0, y)
 end
 
@@ -710,7 +732,7 @@ local function showToast(kind: string, text: string)
 		HighlightThickness = 4,
 		HighlightTransparency = 0.76,
 		Shadow = Theme.Shadow.Offset,
-	}, UDim2.fromOffset(TOAST_WIDTH, TOAST_HEIGHT), UDim2.new(1, TOAST_WIDTH + TOAST_MARGIN, 0, TOAST_MARGIN))
+	}, UDim2.fromOffset(TOAST_WIDTH, TOAST_HEIGHT), UDim2.new(1, TOAST_WIDTH + TOAST_MARGIN, 0, topInset() + TOAST_MARGIN))
 	frame.Name = "Toast"
 	frame.AnchorPoint = Vector2.new(1, 0)
 	frame.ZIndex = 40

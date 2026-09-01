@@ -131,13 +131,11 @@ Config.Collect = {
 }
 
 -- Codes -------------------------------------------------------------------
--- Server-only truth. The client never sees this table; it posts a string and
--- is told yes or no.
-Config.Codes = {
-	WELCOME = { Reward = { coins = 250 }, Message = "Welcome to the canyon!" },
-	CANYON = { Reward = { coins = 500 }, Message = "The canyon rewards you." },
-	GOLEM = { Reward = { coins = 1000 }, Message = "Built by Golem." },
-}
+-- The code TABLE is deliberately not here: this module replicates to every client, so a
+-- list living here is a published list. It is in server/CodeTable.luau. See M9.
+--
+-- What stays is the input rule, because the client has to know it: the code box trims to
+-- MaxLength so the interface never promises something the server will refuse.
 Config.CodeInput = {
 	MaxLength = 24,
 	CooldownSeconds = 1.5,

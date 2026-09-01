@@ -21,6 +21,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.CrystalCanyon.Config)
+local CodeTable = require(script.Parent.CodeTable)
 
 local Profile = {}
 
@@ -123,12 +124,12 @@ function Profile.sanitize(raw: any): ProfileData
 	-- every promo we ever run, while zones are a short fixed list the UI
 	-- enumerates and therefore wants explicit false entries.
 	--
-	-- Consequence worth knowing: retiring a code from Config forgets who
+	-- Consequence worth knowing: retiring a code from CodeTable forgets who
 	-- redeemed it, so re-adding a retired code re-grants it to everyone. Ship a
 	-- new code id instead of resurrecting an old one.
 	local rawCodes = asTable(src.codes)
 	local codes: { [string]: boolean } = {}
-	for code in Config.Codes do
+	for code in CodeTable do
 		if rawCodes[code] == true then
 			codes[code] = true
 		end

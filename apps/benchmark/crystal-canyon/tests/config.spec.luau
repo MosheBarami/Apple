@@ -174,4 +174,28 @@ H.test("every objective is reachable", function()
 	end
 end)
 
+-- ------------------------------------------------------------- what must NOT be here (M9)
+
+H.test("no promo code table replicates to the client", function()
+	-- Config is required by the client on boot, so anything in it is published. The code table
+	-- used to be here behind a comment claiming "the client never sees this table". It lives in
+	-- server/CodeTable.luau now, and this is the guard against it drifting back.
+	H.eq(Config.Codes, nil, "Config must not carry the code table")
+	for key, value in Config do
+		if type(value) == "table" and type(key) == "string" then
+			H.ok(
+				not key:lower():find("code") or key == "CodeInput",
+				"suspicious code-ish table on Config: " .. key
+			)
+		end
+	end
+end)
+
+H.test("the input rule the client needs is still shared", function()
+	-- The other half of M9: moving the secret must not take the client's trimming rule with
+	-- it, or the code box stops matching what the server will accept.
+	H.ok(Config.CodeInput.MaxLength >= 4, "the box must allow a real code")
+	H.ok(Config.CodeInput.CooldownSeconds > 0, "and rate-limit guessing")
+end)
+
 H.report("config.spec")

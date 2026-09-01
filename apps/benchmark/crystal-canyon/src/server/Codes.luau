@@ -2,10 +2,12 @@
 --[[
 	Crystal Canyon — promo code redemption.
 
-	Codes are a server-only truth. `Config.Codes` lives in a ModuleScript that
-	the client also holds, so treat the *list* as public; what stays server-side
-	is the decision. The client posts a raw string and is told yes or no, and
-	nothing here reads a client-supplied amount.
+	Codes are a server-only truth, and as of M9 that is true of the LIST as well as the
+	decision. The table used to live in `Config`, which replicates to every client — this
+	file said so and treated the list as public, while Config's own comment claimed the
+	opposite. It now lives in `CodeTable.luau` under ServerScriptService and does not
+	replicate. The client posts a raw string and is told yes or no, and nothing here reads a
+	client-supplied amount.
 
 	The validation order in `redeem` is the security-relevant part of this file
 	and it is deliberate:
@@ -19,6 +21,8 @@
 ]]
 
 local Players = game:GetService("Players")
+
+local CodeTable = require(script.Parent.CodeTable)
 
 local Codes = {}
 
@@ -114,7 +118,7 @@ function Codes.redeem(player: Player, code: string): (boolean, string)
 		return false, MSG_NOT_READY
 	end
 
-	local entry = Config.Codes[normalised]
+	local entry = CodeTable[normalised]
 	if not entry then
 		return false, MSG_UNKNOWN
 	end

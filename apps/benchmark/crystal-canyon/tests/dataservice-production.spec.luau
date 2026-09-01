@@ -1,5 +1,5 @@
 --!nocheck
---!modules Config=shared/Config,Profile=server/Profile,DataService=server/DataService
+--!modules Config=shared/Config,CodeTable=server/CodeTable,Profile=server/Profile,DataService=server/DataService
 --!studio false
 --[[
 	Crystal Canyon — DataService on a LIVE server.

@@ -1,5 +1,5 @@
 --!nocheck
---!modules Config=shared/Config,Profile=server/Profile
+--!modules Config=shared/Config,CodeTable=server/CodeTable,Profile=server/Profile
 --[[
 	`Profile.sanitize` — the function every save and every load passes through.
 
