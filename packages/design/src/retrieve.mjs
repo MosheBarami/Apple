@@ -10,7 +10,7 @@
 // score that will quietly start returning the wrong grammar. Every point a rule
 // earns is attributable to one clause of the brief.
 
-import { RULES, COMPONENTS, STYLE_FAMILIES } from './rules.mjs';
+import { RULES, COMPONENTS, STYLE_FAMILIES, PLATFORMS } from './rules.mjs';
 
 /** A rule scores only for things the brief actually asked about. */
 export function score(rule, brief = {}) {
@@ -43,7 +43,16 @@ export function score(rule, brief = {}) {
 
   // A rule that has been SEEN to work outranks one that has only been written
   // down. This is the same standard §A applies to capabilities.
-  if (rule.provenance?.validated && !/not yet/i.test(rule.provenance.validated)) {
+  //
+  // It is a TIE-BREAK AMONG RULES THAT ALREADY MATCHED, never an entry ticket.
+  // Awarding it unconditionally was a real defect and it only became visible once
+  // the library knew more than one genre: every validated rule cleared `minPoints`
+  // on its own, so a `horror` brief returned two horror rules followed by ten
+  // cartoon-simulator ones, and `composeBrief` handed all twelve to the generator.
+  // That is §L's overfitting failure arriving through the retrieval layer instead
+  // of through the rule set — the library would have taught the simulator look to
+  // every genre that asked it a question.
+  if (points > 0 && rule.provenance?.validated && !/not yet/i.test(rule.provenance.validated)) {
     points += 2;
     why.push('validated');
   }
@@ -71,6 +80,11 @@ export function retrieve(brief = {}, { rules = RULES, limit = 12, minPoints = 1 
   }
   if (brief.styleFamily && !STYLE_FAMILIES.includes(brief.styleFamily)) {
     throw new Error(`retrieve: unknown style family "${brief.styleFamily}"`);
+  }
+  // A typo'd platform silently scores nothing, which looks exactly like "no rule
+  // covers this platform" — the one answer this library must never give by accident.
+  if (brief.platform && !PLATFORMS.includes(brief.platform)) {
+    throw new Error(`retrieve: unknown platform "${brief.platform}"`);
   }
   return rules
     .map((rule) => ({ rule, ...score(rule, brief) }))

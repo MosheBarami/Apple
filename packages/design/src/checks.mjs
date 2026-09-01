@@ -172,13 +172,248 @@ export function checkMotionGate(files = []) {
   return findings;
 }
 
+/**
+ * `layout.safe-area-is-opt-out-for-decoration-only`
+ *
+ * Screens are `{ name, ignoreGuiInset, screenInsets, interactive }`. Opting out of
+ * the core-UI safe area is documented as a decision for NONINTERACTIVE content
+ * ("you should only use None for a ScreenGui that contains noninteractive content
+ * like background images"), so a surface that opts out while carrying controls is
+ * a defect with an unambiguous right answer — no taste required.
+ *
+ * When another screen in the same UI kept the inset, that is said out loud. It is
+ * the same evidence the wait-contract check relies on: one consumer has already
+ * demonstrated the inset is load-bearing here, so the disagreement is the finding
+ * rather than a matter of opinion.
+ */
+export function checkSafeArea(screens = []) {
+  const optedOut = (s) => s.screenInsets === 'None' || s.ignoreGuiInset === true;
+  const kept = screens.filter((s) => !optedOut(s)).map((s) => s.name);
+
+  const findings = [];
+  for (const s of screens) {
+    if (!optedOut(s)) continue;
+    const controls = typeof s.interactive === 'number' ? s.interactive : s.interactive ? 1 : 0;
+    if (controls === 0) continue; // decoration: exactly what opting out is for
+    findings.push(
+      finding(
+        'layout.safe-area-is-opt-out-for-decoration-only',
+        `${s.name} opts out of the core-UI safe area but carries interactive content` +
+          (typeof s.interactive === 'number' ? ` (${controls} control site(s))` : '') +
+          `, so its controls may render under the Roblox top bar or a device camera cutout` +
+          (kept.length
+            ? `. ${kept.join(', ')} in the same UI kept the inset, so the inset demonstrably matters here.`
+            : '.'),
+        { screen: s.name, controls, keptInsetIn: kept },
+      ),
+    );
+  }
+  return findings;
+}
+
+/**
+ * `nav.every-destination-reachable-by-direction-alone`
+ *
+ * Nodes are `{ name, selectable, selectionOrder, next: { up, down, left, right } }`.
+ *
+ * Three defects, all with a right answer that is a fact about the graph rather
+ * than a judgement about the design:
+ *
+ *   1. a link pointing at an element that does not exist;
+ *   2. a link pointing at an element that is not `Selectable` — the engine accepts
+ *      this ("this property can be set to a GUI element even if it is not
+ *      Selectable"), and the player experiences it as a direction that does nothing;
+ *   3. a selectable element that no sequence of directions reaches from the entry.
+ *
+ * What this check does NOT do is judge the SHAPE of the graph. Whether a rail
+ * should wrap, whether left should mirror right, whether the order matches the
+ * visual order — those are design decisions, and §AK says they stay with the human.
+ */
+export function checkGamepadReachability(nodes = [], { entry = null } = {}) {
+  const findings = [];
+  if (nodes.length === 0) return findings;
+
+  const byName = new Map(nodes.map((n) => [n.name, n]));
+  const selectable = nodes.filter((n) => n.selectable !== false);
+
+  if (selectable.length === 0) {
+    findings.push(
+      finding(
+        'nav.every-destination-reachable-by-direction-alone',
+        `none of the ${nodes.length} element(s) are Selectable, so a gamepad cannot enter this navigation at all`,
+        { unreachable: nodes.map((n) => n.name) },
+      ),
+    );
+    return findings;
+  }
+
+  for (const n of nodes) {
+    for (const [dir, target] of Object.entries(n.next ?? {})) {
+      if (!target) continue;
+      const dest = byName.get(target);
+      if (!dest) {
+        findings.push(
+          finding(
+            'nav.every-destination-reachable-by-direction-alone',
+            `${n.name}.NextSelection${dir[0].toUpperCase()}${dir.slice(1)} points at "${target}", which is not in this navigation`,
+            { from: n.name, direction: dir, target, reason: 'unknown-target' },
+          ),
+        );
+      } else if (dest.selectable === false) {
+        findings.push(
+          finding(
+            'nav.every-destination-reachable-by-direction-alone',
+            `${n.name}.NextSelection${dir[0].toUpperCase()}${dir.slice(1)} points at "${target}", which is not Selectable — ` +
+              `the engine accepts the link and the player gets a direction that does nothing`,
+            { from: n.name, direction: dir, target, reason: 'not-selectable' },
+          ),
+        );
+      }
+    }
+  }
+
+  // SelectionOrder chooses the entry point and is documented not to affect
+  // directional navigation, so reachability is measured from the entry outward.
+  const start = entry
+    ? byName.get(entry)
+    : [...selectable].sort(
+        (a, b) => (a.selectionOrder ?? 0) - (b.selectionOrder ?? 0) || nodes.indexOf(a) - nodes.indexOf(b),
+      )[0];
+
+  if (!start) {
+    findings.push(
+      finding(
+        'nav.every-destination-reachable-by-direction-alone',
+        `the named entry point "${entry}" is not in this navigation`,
+        { entry, reason: 'unknown-entry' },
+      ),
+    );
+    return findings;
+  }
+
+  const seen = new Set([start.name]);
+  const queue = [start];
+  while (queue.length > 0) {
+    const n = queue.shift();
+    for (const target of Object.values(n.next ?? {})) {
+      const dest = target && byName.get(target);
+      if (!dest || dest.selectable === false || seen.has(dest.name)) continue;
+      seen.add(dest.name);
+      queue.push(dest);
+    }
+  }
+
+  const stranded = selectable.filter((n) => !seen.has(n.name)).map((n) => n.name);
+  if (stranded.length > 0) {
+    findings.push(
+      finding(
+        'nav.every-destination-reachable-by-direction-alone',
+        `${stranded.join(', ')} ${stranded.length === 1 ? 'is' : 'are'} Selectable but unreachable from "${start.name}" ` +
+          `by any sequence of directions, so a controller player can never get there`,
+        { entry: start.name, unreachable: stranded, reason: 'unreachable' },
+      ),
+    );
+  }
+  return findings;
+}
+
+/**
+ * `studs.classic-palette-is-a-named-set-not-a-ramp`
+ *
+ * Converting a colour to a named brick colour returns the CLOSEST entry "by finding
+ * the BrickColor whose color has the smallest total distance (sum of absolute
+ * differences per channel)". That is arithmetic, not taste, so the question "do two
+ * colours I designed as different survive the conversion as different?" has one
+ * right answer and can be asked before anything is built.
+ *
+ * Both inputs are supplied by the caller. This library does not vendor the engine's
+ * colour table: the metric is the reusable part, and a check that carried a copy of
+ * someone else's data table would be doing the thing the whole package exists to
+ * avoid. Any consistent scale works, because the comparison is relative.
+ *
+ * Deliberately NOT checked: how far a colour moved. "Too far" is a judgement, and
+ * §AK is explicit that a metric which sounds reasonable is the dangerous kind. A
+ * COLLISION is different — two distinct intended colours becoming one rendered
+ * colour is a fact, and it is the failure that flattens a ramp.
+ */
+export function checkPaletteCollisions(intended = [], palette = []) {
+  if (palette.length === 0 || intended.length === 0) return [];
+  const distance = (a, b) =>
+    Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+
+  const landedOn = new Map(); // palette entry name -> [{ name, color }]
+  for (const item of intended) {
+    let best = null;
+    for (const entry of palette) {
+      const d = distance(item.color, entry.color);
+      if (best === null || d < best.d) best = { d, entry };
+    }
+    if (!landedOn.has(best.entry.name)) landedOn.set(best.entry.name, []);
+    landedOn.get(best.entry.name).push({ name: item.name, color: item.color, distance: best.d });
+  }
+
+  const findings = [];
+  for (const [entryName, arrivals] of landedOn) {
+    // Two swatches authored as the same colour are a duplicate, not a collision.
+    const distinct = new Set(arrivals.map((a) => a.color.join(',')));
+    if (arrivals.length < 2 || distinct.size < 2) continue;
+    findings.push(
+      finding(
+        'studs.classic-palette-is-a-named-set-not-a-ramp',
+        `${arrivals.map((a) => a.name).join(', ')} were designed as ${distinct.size} different colours and all convert to "${entryName}" — ` +
+          `the palette that renders has ${distinct.size - 1} fewer step(s) than the one that was designed`,
+        { entry: entryName, collapsed: arrivals.map((a) => a.name), distinctIntended: distinct.size },
+      ),
+    );
+  }
+  return findings;
+}
+
+/**
+ * `studs.outlines-are-gone-and-no-surface-flag-brings-them-back`
+ *
+ * `SmoothNoOutlines` is documented as "no longer relevant since outlines have been
+ * removed". Setting it is therefore provably a no-op — not a style disagreement, an
+ * instruction the engine discards. This is the narrowest possible check and that is
+ * the point: it fires on exactly one token, so it can never become the check that
+ * flags everything and gets muted.
+ */
+export function checkInertSurfaceFlags(files = []) {
+  const findings = [];
+  for (const file of files) {
+    const sites = (String(file.source ?? '').match(/SmoothNoOutlines/g) ?? []).length;
+    if (sites === 0) continue;
+    findings.push(
+      finding(
+        'studs.outlines-are-gone-and-no-surface-flag-brings-them-back',
+        `${file.path} sets SmoothNoOutlines at ${sites} site(s); outlines were removed from the engine, so this changes nothing ` +
+          `and the era cue it was reached for is still missing`,
+        { path: file.path, sites },
+      ),
+    );
+  }
+  return findings;
+}
+
 /** Run everything that applies to the inputs given. */
-export function audit({ clusters, files, priceLayers, viewportHeight } = {}) {
+export function audit({
+  clusters,
+  files,
+  priceLayers,
+  viewportHeight,
+  screens,
+  selection,
+  palette,
+} = {}) {
   const findings = [
     ...(clusters ? checkClusterOverlap(clusters, { viewportHeight }) : []),
     ...(files ? checkWaitContracts(files) : []),
     ...(files ? checkMotionGate(files) : []),
+    ...(files ? checkInertSurfaceFlags(files) : []),
     ...(priceLayers ? checkPriceAgreement(priceLayers) : []),
+    ...(screens ? checkSafeArea(screens) : []),
+    ...(selection ? checkGamepadReachability(selection.nodes, { entry: selection.entry }) : []),
+    ...(palette ? checkPaletteCollisions(palette.intended, palette.palette) : []),
   ];
   return { ok: findings.length === 0, findings, checked: RULES.length };
 }
