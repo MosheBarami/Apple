@@ -55,7 +55,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 ## Tally
 
-PROVEN 26 · PARTIAL 11 · UNPROVEN 4 · BLOCKED 1 · REJECTED 0
+PROVEN 25 · PARTIAL 12 · UNPROVEN 2 · BLOCKED 1 · REJECTED 0
 
 **Corrected 2026-09-01 by a ten-track independent audit** (`evidence/2026-09-01-mission-track-audit.md`)**, and the correction went the wrong
 way on purpose.** Five gates were downgraded: 6, 18, 19, 20 and 22 — three of them out of
@@ -72,11 +72,22 @@ kept. Each was true about the repository and false about the world, and each rea
 Gate 18 is the sharpest: it was flipped UNPROVEN → PROVEN **two minutes after the feature
 commit**, citing "real rasterised frames", when not one frame had been produced.
 
+**Since the correction, three of the five have been worked and two recovered.** Gate 22 went
+UNPROVEN → PARTIAL by replacing the counted-and-discarded enumeration with a committed
+enumerator, a real per-package list and a working handoff into classification (F-42); gate 20
+went from three of eight stages executing to six, by writing the runners for the security and
+content-hash stages, which found five defects in code that was tested and called by nothing
+(F-41); and gate 26's criticism — "the word doing the work is *evals*, and there is no eval" —
+was closed by making the design library's rules a grader check type.
+
+Gate 22 stopped at PARTIAL rather than returning to PROVEN, with 1,020 candidates still
+unresolved. Going straight back would be the same flattering arithmetic that produced the
+downgrade.
+
 Only **one** gate (14) is externally blocked, on AI Gateway credit. Everything else marked
 PARTIAL is reachable without owner action.
 
-The UNPROVEN four are gates 18, 22, 40 and — since the facet path closed — the wall half of
-gate 2. Gate 40 moved there *from* PARTIAL. A visual critic ran and
+The UNPROVEN two are gates 18 and 40. Gate 40 moved there *from* PARTIAL. A visual critic ran and
 returned "Prototype". Marking that PARTIAL because three other critics passed would be the
 flattering arithmetic this ledger keeps having to correct.
 
