@@ -116,8 +116,13 @@ storage map since B10. "Untestable" needed the same evidence as any other claim.
 
 ## Next-highest-value unblocked work, in dependency order
 
-1. **Cliff wall (2)** — needs a materially different approach than F-19: more distinct rock
-   silhouettes, or authored courses rather than flat slabs.
+1. **Cliff wall (2)** — the two routes F-19 named are now costed. "More distinct rock
+   silhouettes" is **not** a matter of searching harder: the free Creator Store's rock supply is
+   re-uploads of a small number of meshes distributed with scripts attached, and the one clean
+   tintable candidate duplicated a silhouette the palette already owns
+   (`evidence/2026-09-01-rock-palette-supply.md`). What remains is **generation** (the Cube path
+   that produced the accepted geode and six rejections) or **authored courses that are not
+   slabs** — built rather than acquired. Neither is blocked; both are larger than a search.
 2. **Thinking UX (17)** and **playtest viewport (18)**.
 3. **Asset provenance ledger** — the logic is tested; nothing populates it yet.
 
