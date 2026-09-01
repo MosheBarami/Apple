@@ -699,6 +699,17 @@ export function judgeAssetDetails(assetId: number, entry: unknown, opts: VerifyO
  * curated library; an id cannot be conjured.
  *
  * Never throws. Network failure is `fail_network`, which is a refusal like any other.
+ *
+ * `env` IS UNUSED, on purpose. Verification reads public endpoints and needs no
+ * credential; `AssetEnv` carries only `ROBLOX_API_KEY`, which `searchCreatorStore` uses
+ * for the documented v2 search. The parameter stays so this function has the same shape
+ * as the rest of the asset family — `verifyCreatorStoreAssets` and `searchCreatorStore`
+ * both take the env first — and dropping it from one of the three would make the odd one
+ * out look like the one that forgot.
+ *
+ * (`noUnusedParameters` was tried across the repo and found only this. One deliberate
+ * hit is not worth a compiler flag that would force a cosmetic rename, so it is off and
+ * this comment does the job instead. `noUnusedLocals` found five real ones and is on.)
  */
 export async function verifyCreatorStoreAsset(env: AssetEnv, assetId: number, opts: VerifyOptions = {}): Promise<AssetVerdict> {
   const now = (opts.now ?? (() => new Date()))();
