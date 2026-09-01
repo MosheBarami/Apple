@@ -74,6 +74,15 @@ const CC = (file) => ({
   validated: 'rendered and reviewed in Studio, 2026-09-01',
 });
 
+/** Stronger than CC: the behaviour was sampled on RenderStepped and the frames are recorded in
+ *  `docs/evidence/2026-09-01-ui-motion-frames.md`. A motion rule that was only LOOKED at is a
+ *  taste claim; one with a frame table behind it can be argued with. */
+const MEASURED = (file) => ({
+  kind: 'golem-authored',
+  source: `apps/benchmark/crystal-canyon/src/client/${file}`,
+  validated: 'sampled frame by frame in Studio, 2026-09-01 — see docs/evidence/2026-09-01-ui-motion-frames.md',
+});
+
 /**
  * `Roblox/creator-docs` is one of only two CC-BY-4.0 repositories in the whole
  * seed manifest, and the corpus intake already vetted it. That makes it a
@@ -734,6 +743,42 @@ export const RULES = Object.freeze([
     because: 'Two surfaces showing one number are read as one fact. When they disagree about motion the player sees the same value arrive twice, at two different times, and the slower one looks like it is lagging behind the truth rather than easing toward it.',
     prevents: 'A shop footer pill rolling 380 down to 250 while the HUD wallet beside it snaps, both showing "coins", in the same frame of the same screenshot.',
     provenance: CC('Hud.luau'),
+  },
+  //[[ MOTION RULES FROM MEASUREMENT, NOT FROM TASTE.
+  //
+  //   §AN asks for motion intelligence built on TESTED patterns. Each of these three came out
+  //   of a frame-by-frame sample of this game, and each states a property the frames show —
+  //   not a duration to copy. Durations do not transfer between games; the properties do. ]]
+  {
+    id: 'motion.a-reversible-transition-must-land-exactly-on-rest',
+    component: 'motion',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'minimalist', 'mobile-first'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'A transition that can be entered and left repeatedly — hover, focus, selection — must return to its resting values EXACTLY, not approximately.',
+    because: 'These states are entered hundreds of times in a session. A transition that lands near its rest value accumulates: the element drifts brighter or larger with every pass, and the drift is invisible in the single interaction anyone tests.',
+    prevents: 'A nav tile whose fill creeps away from the palette over a play session because leaving the hover state tweens toward a captured "current" value instead of the authored one.',
+    provenance: MEASURED('Theme.luau'),
+    tokens: { hoverSettleMs: 66 },
+  },
+  {
+    id: 'motion.progress-must-not-overshoot',
+    component: 'gauge',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'progression'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'A bar representing a quantity must ease with a decelerating curve and never overshoot its target, even where a panel or a button would.',
+    because: 'Overshoot on a gauge is a claim about the underlying number. A pack bar that springs past its value shows, for two frames, a capacity the player does not have — and unlike a panel, the bar IS the number rather than a container for it.',
+    prevents: 'A back-eased fill that reads as the player having briefly held more than the cap, on the one surface whose whole job is to say how full they are.',
+    provenance: MEASURED('Hud.luau'),
+  },
+  {
+    id: 'motion.a-celebration-is-one-gesture-not-several',
+    component: 'motion',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'progression', 'pets-collection'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'When a moment is announced on several channels at once — a wash, a ring, a banner, particles — they must share one start and one timing envelope.',
+    because: 'Channels that merely overlap read as several animations that happened to fire together, which is what a bug looks like. Channels that share an envelope read as one event with several parts, and the player attributes all of them to the thing they just did.',
+    prevents: 'An unlock where the screen flash, the shockwave and the banner each run their own duration, so the moment has three endings and none of them is the one the player remembers.',
+    provenance: MEASURED('Effects.luau'),
   },
 ]);
 

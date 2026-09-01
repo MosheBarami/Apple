@@ -362,3 +362,24 @@ inapplicable one is a gap in the list.
 **All 12 applicable categories carry a measurement**, plus reduced motion. Purchase was the
 last one, and it took two passes: the first found no motion at all, which was the finding; the
 second added the wallet count and measured it.
+
+---
+
+## What the frames became
+
+Three of this pass's measurements are now rules in `packages/design`, with a `MEASURED`
+provenance that is stronger than the library's usual `CC`: the behaviour was sampled on
+`RenderStepped` and the frame tables above are the evidence.
+
+Each states a transferable **property**, not a duration — durations do not survive a change of
+genre, and a rule that carries one will be cargo-culted the first time it does not fit:
+
+| rule | the frames it rests on |
+|---|---|
+| a reversible transition must land **exactly** on rest | hover leaves on 0.34 → 0.40 → 0.46 → 0.49 → 0.51 → **0.52**, the authored value, not near it |
+| a gauge must not overshoot | the pack fill is monotonic to 0.0398 with no spring, unlike the panel open which peaks at 1.018 |
+| a celebration is one gesture | the wash and the shockwave move on the same frames across 348 ms, not on two schedules that overlap |
+
+The fourth measurement — purchase — produced a rule too, but a different kind: it is mechanised
+as `currency.one-value-one-motion-policy` in `packages/design/src/checks.mjs`, because "do two
+surfaces showing one number agree about motion" has an unambiguous answer and needs no taste.
