@@ -8,9 +8,10 @@ no paid-per-token API dependency, no dependency on the dev Mac, tens of concurre
 The golem is a builder animated by words — exactly what the product is. Friendly to young creators
 (Minecraft golem association), serious enough for professionals. Company handle: Golem Labs.
 Tagline: "Describe it. Golem builds it in Studio."
-AI modes (user-facing, hide implementation): **Clay** (fast conversational edits), **Stone** (standard
-builder agent), **Rune** (deep agent: plan → build → verify → fix). Modes map internally to model+
-routing+tool policies, not to single models.
+AI modes: **Clay** (fast conversational edits), **Stone** (standard builder agent), **Rune** (deep
+agent: plan → build → verify → fix). Modes map internally to model+routing+tool policies, not to
+single models. *(These were user-facing names; superseded by ADR-018 — they are now internal
+specialist identities and the product offers Plan / Agent / Super Agent.)*
 
 ## ADR-002 — Platform: Cloudflare Workers as the spine
 - One Worker (Hono) serves: marketing site (static), app SPA (static), REST/WS API under /api.
@@ -313,3 +314,36 @@ plugin's version or asset id; the full member lists were enumerated to confirm i
 `VERSION` constant in `apps/plugin/src/init.server.luau`, already sent as `pluginVersion` on every
 poll, is the only mechanism available — and it cannot be retrofitted onto installs that already
 exist, which is why it ships before distribution rather than after.
+
+## ADR-018 — The three modes a user picks are Plan, Agent and Super Agent
+
+**Context.** ADR-001 named the modes Clay, Stone and Rune and called them user-facing. That
+changed, and the change was made in the code and in the mission without ever reaching this log:
+`packages/shared/src/index.ts` states that "Clay, Stone and Rune are internal specialist identities,
+not user-facing brands: nothing in normal product UI should name them", the master mission §15.3
+gives the primary modes as **Plan / Agent / Super Agent**, and the app implements exactly that —
+`PRODUCT_MODE_INFO`, the composer, the landing page, and a regex in
+`components/roadmap/model.ts` that strips the specialist names out of worker copy before rendering
+it.
+
+Everything except the documentation site, which went on teaching Clay, Stone and Rune in 96 places
+— the docs nav label, a page title, every mode heading, the pricing table, the calculator, the
+changelog and the FAQ. A reader learned "Clay", opened the app, and found no such thing.
+
+**Decision.** The public vocabulary is Plan, Agent and Super Agent. The specialist axis
+(`GolemMode`: clay/stone/rune) is preserved exactly as it is on the wire, in storage and in the
+Sparks ledger — `ClientMsg.chat` still carries `mode: GolemMode` — so no stored session changes
+meaning. Translation happens at the edge, through `PRODUCT_MODE_TO_SPECIALIST`.
+
+Internal documents keep the specialist names, and `docs/COST-MODEL.md` deliberately does: it
+measures specialists. `scripts/check-spark-figures.mjs` therefore reads a mode's neuron figure by
+its internal name and checks the published figure by its public one.
+
+**Consequence.** `scripts/check-site-semantics.mjs` fails the build if Clay, Stone or Rune appears
+in visible copy on any built page. The site was renamed on 2026-09-01; a mechanical substitution
+needed two follow-up passes for sentences it broke, since "Agent" is an ordinary word and "agent
+step" now reads as two things.
+
+**Recorded late, on purpose.** The decision predates this entry by some margin. Writing it down
+now rather than leaving ADR-001 standing is the point: a decision log that contradicts the shipped
+product is worse than one with a gap, because it is read as current.
