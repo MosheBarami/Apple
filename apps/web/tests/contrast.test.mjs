@@ -23,10 +23,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CSS = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '../src/styles/workspace.css'),
-  'utf8',
-);
+const HERE = dirname(fileURLToPath(import.meta.url));
+const CSS = readFileSync(join(HERE, '../src/styles/workspace.css'), 'utf8');
+// The marketing and docs surfaces have their own token sets and the same obligation.
+const SITE = readFileSync(join(HERE, '../../site/src/styles/global.css'), 'utf8');
+const LANDING = readFileSync(join(HERE, '../../site/src/styles/landing.css'), 'utf8');
 
 /** Relative luminance, WCAG 2.x. */
 function luminance(hex) {
@@ -91,5 +92,51 @@ test('the status tones are legible on the surfaces they are drawn on', () => {
     if (all.length === 0) continue; // defined elsewhere or as a function; not this test's business
     const r = contrast(all[0], token('gx-ground', 'dark'));
     assert.ok(r >= 3, `--${tone} on the dark ground is ${r.toFixed(2)}:1, below the 3:1 floor`);
+  }
+});
+
+/* ------------------------------------------------------------------ the site --- */
+
+/** Occurrences of one token in source order, from any stylesheet. */
+function occurrences(css, name) {
+  return [...css.matchAll(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`, 'g'))].map((m) => m[1]);
+}
+
+test('the docs site clears 4.5:1 in both themes, on every surface', () => {
+  // `--faint` styles 0.7rem uppercase mono labels and 0.78rem `.mono` — normal text by
+  // every definition, and it sat at 3.18:1 in light and 3.71:1 in dark. The same
+  // mistake as the app's tertiary ink and found the same way, by measuring.
+  //
+  // `--faint` is declared three times: light, [data-theme='dark'], and again inside a
+  // prefers-color-scheme block. Index 0 is light, 1 and 2 are the dark pair, and the
+  // last assertion here is what keeps those two from drifting apart.
+  const faint = occurrences(SITE, 'faint');
+  const muted = occurrences(SITE, 'muted');
+  assert.equal(faint.length, 3, 'three --faint declarations expected (light, dark, dark media)');
+  assert.equal(faint[1], faint[2], 'the two dark declarations must agree');
+
+  for (const [i, theme] of [[0, 'light'], [1, 'dark']]) {
+    for (const surface of ['paper', 'surface', 'surface-2']) {
+      const bg = occurrences(SITE, surface)[i];
+      const r = contrast(faint[i], bg);
+      assert.ok(r >= 4.5, `${theme}: --faint on --${surface} is ${r.toFixed(2)}:1, needs 4.5:1`);
+    }
+    // And the ramp must still descend: faint dimmer than muted.
+    const bg = occurrences(SITE, 'paper')[i];
+    assert.ok(
+      contrast(faint[i], bg) < contrast(muted[i], bg),
+      `${theme}: --faint is no dimmer than --muted; the hierarchy has collapsed`,
+    );
+  }
+});
+
+test('the landing already passed, and still does', () => {
+  // Recorded rather than assumed: the landing is where this ramp was right, and its
+  // --faint is what the app's corrected tertiary ink converged towards.
+  const [faint] = occurrences(LANDING, 'faint');
+  for (const surface of ['ground', 'surface', 'surface-2']) {
+    const [bg] = occurrences(LANDING, surface);
+    const r = contrast(faint, bg);
+    assert.ok(r >= 4.5, `--faint on --${surface} is ${r.toFixed(2)}:1`);
   }
 });
