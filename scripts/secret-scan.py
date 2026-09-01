@@ -109,13 +109,19 @@ PATTERNS = [
 #   NARROWED, and the hole it closed is worth keeping in view. This used to include
 #   `\.\.\.` and `<[a-z_]+>`, and it was applied to EVERY rule. So an ellipsis or any
 #   lowercase HTML tag within 70 bytes suppressed the finding — which meant a real
-#   `-----BEGIN RSA PRIVATE KEY-----` inside a `<pre>` block, or an `AKIA…` key above
+#   a real PEM private-key header inside a `<pre>` block, or an AWS access key id above
 #   a `# ... set in CI` comment, scanned clean. Both were reproduced against these
 #   exact objects before the change.
 #
 #   Two fixes, and the second matters more: the prose-shaped entries are gone, and
 #   this list is now applied ONLY to the keyword-heuristic rules (see HARD_SIGNATURE).
 #   A vendor-prefixed key is a key regardless of what is written near it.
+#
+#   THE EXAMPLES BELOW ARE DESCRIBED, NOT SPELLED OUT, and that is not squeamishness:
+#   the first version of this comment quoted a real PEM header, and because the
+#   private-key rule is now a HARD_SIGNATURE that ALLOW can no longer suppress, the
+#   scanner flagged its own documentation and CI went red. A scanner whose comments
+#   trip it is a scanner people start ignoring.
 #
 #   `SENTINEL` was added when the new Roblox rule correctly flagged
 #   packages/evals/src/security.test.mjs — a map of FABRICATED values whose entire
