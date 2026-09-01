@@ -1254,3 +1254,30 @@ test('A5 an op queued after a Durable Object eviction is still tagged', async ()
   await reborn.session.runStep({ ...agent, step: 0 }).catch(() => {});
   assert.equal(reborn.session.currentMsgId, agent.msgId, 'runStep must re-establish it from the run state');
 });
+
+test('F-35 a playtest survives a Durable Object eviction', async () => {
+  // playtestRun was instance-only, so an eviction mid-playtest lost it -- and the guard in
+  // finishRun that exists to stop "a card that sits there counting up the age of a frame from
+  // a playtest that is long over" then read a null and did nothing. That is precisely the
+  // state its own comment was written to prevent.
+  const h = sessionHarness();
+  h.session.playtestRun = { id: 'pt1', phase: 'running', startedAt: 1, frames: 0 };
+  await tick();
+
+  assert.ok(h.store.get('playtestRun'), 'assigning it must persist it');
+
+  // A second instance over the same storage is what an eviction leaves behind.
+  const reborn = sessionHarness(h.store);
+  await tick();
+  assert.equal(reborn.session.playtestRun?.id, 'pt1', 'the new instance must recover it');
+  assert.equal(reborn.session.playtestRun?.phase, 'running');
+});
+
+test('F-35 clearing a playtest persists the clear, not just the field', async () => {
+  const h = sessionHarness();
+  h.session.playtestRun = { id: 'pt1', phase: 'running', startedAt: 1, frames: 0 };
+  await tick();
+  h.session.playtestRun = null;
+  await tick();
+  assert.equal(h.store.get('playtestRun'), null, 'a cleared playtest must not come back after an eviction');
+});

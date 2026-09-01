@@ -214,6 +214,31 @@ playtest frame ids — were quietly degraded the same way and are fixed by the s
 Covered by a test that builds a second `SessionDO` over the same storage map, which is what an
 eviction leaves behind.
 
+### F-35 · A playtest card that outlived the state tracking it
+
+Found by applying F-34's reasoning to the rest of the file: which other instance fields carry
+something that outlives the instance?
+
+`playtestRun` was `private playtestRun: PlaytestRun | null = null` and was never persisted,
+while `agent`, `opQueue`, `seq`, `memory` and `pluginLastSeen` around it all were. An eviction
+mid-playtest therefore lost it, and two things followed:
+
+- the guard in `finishRun` — whose own comment says it exists to stop *"a card that sits there
+  counting up the age of a frame from a playtest that is long over"* — reads a null and does
+  nothing, leaving exactly the card it was written to prevent;
+- a client reconnecting after the eviction is sent no `playtest_state` at all, because the
+  handler only sends one when the field is set.
+
+**Fix, and why it is an accessor.** Six places advance a playtest, across four branches of one
+message handler. A `setPlaytestRun()` helper that all six must remember to call is a helper the
+seventh will not call — which is how this field came to be instance-only while everything
+around it was persisted. A private setter cannot be forgotten, so the field is backed by
+`playtestRunBacking` and assignment persists. The constructor writes the backing field directly,
+since going through the setter would immediately write back what it had just read.
+
+The write is fire-and-forget: losing a card's state is not worth failing a run over, and the
+next transition rewrites it.
+
 ### F-31 · A helper that called itself, so every save silently dropped the transcript
 
 **Self-inflicted, this session, in `a1b0261` — the commit that fixed four criticals.** The

@@ -256,6 +256,15 @@ export class SessionDO extends DurableObject<Env> {
       if (seq) this.seq = seq;
       const lastSeen = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
       this.pluginSeenRecently = Date.now() - lastSeen < 8000;
+      //[[ A playtest outlives the instance that started it, for the same reason a run does.
+      //
+      //   `playtestRun` was instance-only, so an eviction mid-playtest lost it — and the guard
+      //   in finishRun that exists to stop "a card that sits there counting up the age of a
+      //   frame from a playtest that is long over" then reads a null and does nothing. That is
+      //   precisely the state its own comment was written to prevent, and a reconnecting
+      //   client got nothing either. See F-35. ]]
+      const playtest = await this.ctx.storage.get<PlaytestRun>('playtestRun');
+      if (playtest) this.playtestRunBacking = playtest;
     });
   }
 
@@ -1288,7 +1297,25 @@ export class SessionDO extends DurableObject<Env> {
   private frames = new FrameRing();
   /** Rate + budget gate for the playtest currently streaming, if any. */
   private frameRate: FrameRate | null = null;
-  private playtestRun: PlaytestRun | null = null;
+  private playtestRunBacking: PlaytestRun | null = null;
+
+  private get playtestRun(): PlaytestRun | null {
+    return this.playtestRunBacking;
+  }
+
+  /** Persisting on assignment rather than at the call sites is the point.
+   *
+   *  There are six places that advance a playtest, in four branches of one message handler.
+   *  A helper every one of them has to remember to call is a helper the seventh will not, and
+   *  that is exactly how this state came to be instance-only while everything around it was
+   *  persisted. An accessor cannot be forgotten.
+   *
+   *  Fire-and-forget on the write: losing a card's state is not worth failing a run over, and
+   *  the next transition rewrites it. */
+  private set playtestRun(next: PlaytestRun | null) {
+    this.playtestRunBacking = next;
+    void this.ctx.storage.put('playtestRun', next).catch(() => {});
+  }
   private playtestSeq = 0;
 
   /**
