@@ -56,6 +56,36 @@ div, and the keydown listener is removed on close — a leaked one would keep fi
 primitive's source, because the behaviour needs a DOM these tests do not have. The
 browser pass above is the evidence; the test is what stops it regressing silently.
 
-**Not covered:** contrast ratios, screen-reader narration order, and the other routes
-(dashboard, roadmap, usage, settings). This was the workspace, which is where a user
-spends their time.
+## The other four routes, and two findings that were mine
+
+The sweep was extended to `/app`, `/app/projects/:id/roadmap`, `/app/usage`,
+`/app/settings` and `/app/ui-lab`:
+
+| route | buttons | unlabelled | bare SVG | unlabelled input | `<h1>` |
+|---|---:|---:|---:|---:|---:|
+| dashboard | 7 | 0 | 0 | 0 | 1 |
+| roadmap | 25 | 0 | 0 | 0 | 1 |
+| usage | 4 | 0 | 0 | 0 | 1 |
+| settings | 6 | 0 | 0 | 0 | 1 |
+| ui-lab | 10 | 0 | 0 | 0 | 1 |
+
+**Clean everywhere. It did not look that way at first, and both apparent defects were
+the audit being wrong rather than the code.**
+
+The first pass reported *"settings: 1 unlabelled input"*. The input is
+`<input type="checkbox" id="training-opt-in">` wrapped in a `<label>` — a valid
+implicit association that computes an accessible name correctly. My check looked only
+for `label[for=…]` and could not see a wrapping label.
+
+The second reported *"roadmap: 18 bare SVGs"*. All eighteen sit inside
+`<span className="rm-weight" aria-hidden="true">`, and `aria-hidden` hides the whole
+subtree. My check asked each `<svg>` for its own attribute and never looked up the
+tree. Corrected to `!!e.closest('[aria-hidden="true"]')`, the count is **0 of 48**.
+
+Both were caught by looking before fixing. Either "fix" would have added a redundant
+attribute and, worse, been written up as a defect this code never had — which is the
+same overstatement class as calling code existence execution, pointed at someone else's
+work instead of my own.
+
+**Not covered:** contrast ratios and screen-reader narration order. Those need a real
+assistive-technology pass, not a DOM audit.
