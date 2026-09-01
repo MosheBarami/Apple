@@ -37,7 +37,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 23 | Licences/provenance preserved | **PROVEN** | `data/sources.json` tracked; SHA + SPDX + evidence path per source |
 | 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence; security scanner still has nothing downloaded to scan |
 | 25 | Golem stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
-| 26 | Corpus materially improves UI/world evals | **PARTIAL** | 4 rules mechanised as checks; caught a real remaining defect (Icons contract) and it was fixed |
+| 26 | Corpus materially improves UI/world evals | **PARTIAL** | **9 of 55 rules mechanised as executable checks**, each validated against geometry that actually shipped broken. `audit()` now reports `enforced` separately from `library` — the old `checked: RULES.length` invited the reading that all of them had been applied. The rest need a human and a rendered screenshot, and §AK says a check that guesses at beauty is worse than none |
 | 27 | UI Labs or equivalent isolated UI harness | **PROVEN** | `Stories.luau` renders states in isolation at 1.00 and 0.72 and MEASURES touch targets; found a real mobile trap · `evidence/2026-09-01-ui-stories-harness.md` |
 | 28 | Icon intelligence from strong free sources | **PARTIAL** | original icon family ships; not sourced from a vetted library |
 | 29 | Motion intelligence uses tested reusable patterns | **PARTIAL** | `MotionProbe.luau` + 4 motion rules in the library; still one game's patterns |

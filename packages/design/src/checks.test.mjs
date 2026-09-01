@@ -15,6 +15,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  ENFORCED_RULE_IDS,
+  checkCounterMotionAgreement,
   checkClusterOverlap,
   checkWaitContracts,
   checkPriceAgreement,
@@ -25,6 +27,7 @@ import {
   checkInertSurfaceFlags,
   audit,
 } from './checks.mjs';
+import { RULES } from './rules.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
@@ -313,4 +316,97 @@ test('every client module that tweens is routed through the gate', () => {
   const tweening = files.filter((f) => /TweenService:Create/.test(f.source));
   assert.ok(tweening.length >= 5, `expected all five modules to tween, saw ${tweening.length}`);
   assert.deepEqual(checkMotionGate(files), []);
+});
+
+// ---------------------------------------------------------------------------
+// currency.one-value-one-motion-policy
+//
+// Built from a case that shipped: Panels.luau routed the shop footer pill through
+// Effects.countTo while Hud.luau assigned the wallet text directly, so the same coin total
+// rolled in one place and jumped in another, side by side in the same frame.
+// ---------------------------------------------------------------------------
+
+test('the shipped disagreement is caught', () => {
+  const findings = checkCounterMotionAgreement([
+    { surface: 'HUD wallet', value: 'coins', animated: false },
+    { surface: 'shop footer pill', value: 'coins', animated: true },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, 'currency.one-value-one-motion-policy');
+  assert.deepEqual(findings[0].animated, ['shop footer pill']);
+  assert.deepEqual(findings[0].snapped, ['HUD wallet']);
+});
+
+test('agreeing surfaces are silent, whichever way they agree', () => {
+  assert.deepEqual(
+    checkCounterMotionAgreement([
+      { surface: 'HUD wallet', value: 'coins', animated: true },
+      { surface: 'shop footer pill', value: 'coins', animated: true },
+    ]),
+    [],
+    'both counting is agreement',
+  );
+  assert.deepEqual(
+    checkCounterMotionAgreement([
+      { surface: 'HUD shards', value: 'shards', animated: false },
+      { surface: 'pack gauge label', value: 'shards', animated: false },
+    ]),
+    [],
+    'both snapping is also agreement — the rule is about consistency, not about counting',
+  );
+});
+
+test('different values are judged independently', () => {
+  // Crystal Canyon's actual policy: coins count, shards snap. That is two values with two
+  // policies and no disagreement, and the check must not conflate them into one.
+  const findings = checkCounterMotionAgreement([
+    { surface: 'HUD wallet', value: 'coins', animated: true },
+    { surface: 'shop footer pill', value: 'coins', animated: true },
+    { surface: 'HUD shards', value: 'shards', animated: false },
+    { surface: 'pack gauge label', value: 'shards', animated: false },
+  ]);
+  assert.deepEqual(findings, []);
+});
+
+test('a value shown once cannot disagree with itself', () => {
+  assert.deepEqual(
+    checkCounterMotionAgreement([{ surface: 'HUD wallet', value: 'coins', animated: false }]),
+    [],
+  );
+});
+
+test('malformed entries are skipped rather than crashing the audit', () => {
+  const findings = checkCounterMotionAgreement([
+    null,
+    { surface: 'x' },
+    { surface: 'HUD wallet', value: 'coins', animated: false },
+    { surface: 'shop footer pill', value: 'coins', animated: true },
+  ]);
+  assert.equal(findings.length, 1, 'the real disagreement still reports');
+});
+
+test('the enforced list matches the rules the checks actually reference', () => {
+  // Guards the number in the ledger. A check deleted or a rule id renamed would otherwise
+  // leave `ENFORCED_RULE_IDS` claiming coverage the module no longer has.
+  const src = readFileSync(new URL('./checks.mjs', import.meta.url), 'utf8');
+  const referenced = new Set([...src.matchAll(/finding\(\s*'([^']+)'/g)].map((m) => m[1]));
+  assert.deepEqual(
+    [...ENFORCED_RULE_IDS].sort(),
+    [...referenced].sort(),
+    'ENFORCED_RULE_IDS must be exactly the rules the checks report against',
+  );
+});
+
+test('every enforced id is a real rule', () => {
+  const ids = new Set(RULES.map((r) => r.id));
+  for (const id of ENFORCED_RULE_IDS) {
+    assert.ok(ids.has(id), `${id} is enforced but is not in the library`);
+  }
+});
+
+test('audit reports what it enforced, not the size of the library', () => {
+  const result = audit({});
+  assert.equal(result.enforced, ENFORCED_RULE_IDS.length);
+  assert.equal(result.library, RULES.length);
+  assert.ok(result.library > result.enforced, 'most rules still need a human; saying otherwise flatters');
 });

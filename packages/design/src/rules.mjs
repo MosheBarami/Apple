@@ -725,6 +725,16 @@ export const RULES = Object.freeze([
     prevents: 'A conversation that becomes unreachable when the player stands close enough for the camera to clip behind geometry, with no feedback distinguishing it from an NPC that has nothing to say.',
     provenance: GUIDE('ui/proximity-prompts.md'),
   },
+  {
+    id: 'currency.one-value-one-motion-policy',
+    component: 'counter',
+    styleFamilies: ['cartoon-simulator', 'tycoon', 'incremental', 'progression'],
+    platforms: ['desktop', 'mobile', 'gamepad'],
+    rule: 'Every surface showing the same currency must agree on whether that number animates. Either all of them count to the new value or none of them do.',
+    because: 'Two surfaces showing one number are read as one fact. When they disagree about motion the player sees the same value arrive twice, at two different times, and the slower one looks like it is lagging behind the truth rather than easing toward it.',
+    prevents: 'A shop footer pill rolling 380 down to 250 while the HUD wallet beside it snaps, both showing "coins", in the same frame of the same screenshot.',
+    provenance: CC('Hud.luau'),
+  },
 ]);
 
 /**

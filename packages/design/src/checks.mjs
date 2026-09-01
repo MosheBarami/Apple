@@ -19,6 +19,20 @@ import { RULES } from './rules.mjs';
 
 const ruleById = new Map(RULES.map((r) => [r.id, r]));
 
+/** The rules this module can decide without a human. Kept as data so a test can assert it
+ *  matches what the checks actually reference, rather than letting the two drift. */
+export const ENFORCED_RULE_IDS = Object.freeze([
+  'layout.cluster-origin-agreement',
+  'layout.safe-area-is-opt-out-for-decoration-only',
+  'icon.a-module-not-installed-is-a-module-absent',
+  'motion.gate-at-the-service-not-the-call-site',
+  'currency.never-restate-a-price-in-two-layers',
+  'currency.one-value-one-motion-policy',
+  'nav.every-destination-reachable-by-direction-alone',
+  'studs.classic-palette-is-a-named-set-not-a-ramp',
+  'studs.outlines-are-gone-and-no-surface-flag-brings-them-back',
+]);
+
 function finding(ruleId, detail, extra = {}) {
   const rule = ruleById.get(ruleId);
   return {
@@ -396,6 +410,44 @@ export function checkInertSurfaceFlags(files = []) {
 }
 
 /** Run everything that applies to the inputs given. */
+/**
+ * `currency.one-value-one-motion-policy` — every surface showing one value must agree about
+ * whether it animates.
+ *
+ * Unambiguous, which is why it belongs here: two surfaces either both count or both snap, and
+ * no taste is required to tell which. The case it is built from shipped — `Panels.luau` routed
+ * the shop footer through `Effects.countTo` while `Hud.luau` assigned the wallet text directly,
+ * so the same number rolled in one place and jumped in another, side by side.
+ *
+ * `surfaces` is a list of `{ surface, value, animated }`. A value shown on exactly one surface
+ * cannot disagree with itself and is never reported.
+ */
+export function checkCounterMotionAgreement(surfaces = []) {
+  const byValue = new Map();
+  for (const s of surfaces) {
+    if (!s || typeof s.value !== 'string') continue;
+    if (!byValue.has(s.value)) byValue.set(s.value, []);
+    byValue.get(s.value).push(s);
+  }
+
+  const findings = [];
+  for (const [value, shown] of byValue) {
+    if (shown.length < 2) continue;
+    const animated = shown.filter((s) => s.animated === true);
+    const snapped = shown.filter((s) => s.animated !== true);
+    if (animated.length === 0 || snapped.length === 0) continue;
+    findings.push(
+      finding(
+        'currency.one-value-one-motion-policy',
+        `"${value}" animates on ${animated.map((s) => s.surface).join(', ')} and snaps on ` +
+          `${snapped.map((s) => s.surface).join(', ')}`,
+        { value, animated: animated.map((s) => s.surface), snapped: snapped.map((s) => s.surface) },
+      ),
+    );
+  }
+  return findings;
+}
+
 export function audit({
   clusters,
   files,
@@ -404,6 +456,7 @@ export function audit({
   screens,
   selection,
   palette,
+  counters,
 } = {}) {
   const findings = [
     ...(clusters ? checkClusterOverlap(clusters, { viewportHeight }) : []),
@@ -414,6 +467,12 @@ export function audit({
     ...(screens ? checkSafeArea(screens) : []),
     ...(selection ? checkGamepadReachability(selection.nodes, { entry: selection.entry }) : []),
     ...(palette ? checkPaletteCollisions(palette.intended, palette.palette) : []),
+    ...(counters ? checkCounterMotionAgreement(counters) : []),
   ];
-  return { ok: findings.length === 0, findings, checked: RULES.length };
+  //[[ `enforced` is the number of rules this audit can actually decide, and it is reported
+  //   separately from the library size on purpose. Returning only `checked: RULES.length`
+  //   invited the reading that all 55 rules had been applied, when nine of them are
+  //   mechanised and the rest need a human and a rendered screenshot. §AK: a metric that
+  //   flatters is worse than no metric. ]]
+  return { ok: findings.length === 0, findings, enforced: ENFORCED_RULE_IDS.length, library: RULES.length };
 }
