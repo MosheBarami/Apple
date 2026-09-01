@@ -91,3 +91,44 @@ test('an unaccounted key can never be mistaken for a library id', () => {
 // report's own tests, because provenance.ts imports asset-library.ts extensionlessly and
 // has to be bundled before node can load it. Splitting it here rather than duplicating
 // the bundle: same feature, tested where the toolchain for it already exists.
+
+test('the route returns exactly the keys the browser declares', () => {
+  // The web app hand-mirrors every worker response type — MeResponse, SpendReport,
+  // RoadmapResponse and now AttributionResponse are all declared a second time in
+  // apps/web. That is the codebase's convention and this test does not change it, but
+  // it does mean a rename on this side is invisible until a panel renders undefined.
+  //
+  // Only source drift is checked here. VERSION drift — a deployed worker older than the
+  // browser — is a different problem and is handled where it has to be, at the reader:
+  // see copyableCredits in credits-model.ts.
+  const worker = readFileSync(join(ROOT, 'apps/worker/src/index.ts'), 'utf8');
+  const route = worker.slice(worker.indexOf("app.get('/api/projects/:id/attribution'"));
+  // The LAST c.json in the handler is the payload. The first is the 404 guard, and
+  // anchoring on that made the test read `{ error: 'not found' }` as the response shape.
+  const handler = route.slice(0, route.indexOf('\n});'));
+  const payload = handler.slice(handler.lastIndexOf('c.json({'));
+  // Split rather than match: a regex that consumes the leading `{` or `,` eats the
+  // delimiter the NEXT key needs, so it finds every other key and reports the ones it
+  // skipped as missing. The first version of this test did exactly that and accused the
+  // route of not sending `commercialUse`, which it sends.
+  const sent = new Set(
+    payload
+      .slice(payload.indexOf('{') + 1)
+      .split(',')
+      .map((part) => /^\s*(\w+)/.exec(part)?.[1])
+      .filter(Boolean),
+  );
+
+  const model = readFileSync(join(ROOT, 'apps/web/src/components/ws/credits-model.ts'), 'utf8');
+  const iface = model.slice(model.indexOf('export interface AttributionResponse {'));
+  const declared = new Set(
+    [...iface.slice(0, iface.indexOf('\n}')).matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]),
+  );
+
+  assert.ok(declared.size >= 3, `parsed ${declared.size} declared fields; the check would be vacuous`);
+  assert.deepEqual(
+    [...declared].filter((k) => !sent.has(k)),
+    [],
+    'the browser declares a field the route does not send',
+  );
+});
