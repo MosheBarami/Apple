@@ -329,6 +329,40 @@ It should be re-run before this branch merges.
 
 ---
 
+## The live site is serving the figures this branch corrected
+
+**Not a blocker on the branch. It is a statement about production, checked 2026-09-01
+22:56Z against `https://golem.moshe-barami111.workers.dev`.**
+
+The marketing site is served by the worker out of D1, so the site only changes when it is
+deployed. Everything corrected on `feature/golem-product-experience` is still wrong in
+production right now:
+
+```
+GET /pricing  ->  "Clay · 1 spark"   "Stone · 4 sparks"   "Rune · 10 sparks"
+```
+
+That is the wrong Plan figure (it is 2 sparks, so 30 requests a free day, not 60) and the
+internal specialist names that `packages/shared` says must never appear in product UI. The
+rolling-quota claim, the 3.18:1 tertiary text and the phone topbar defects are all live
+too.
+
+**This session did not deploy it.** The changes are low-risk on their own, but the batch
+also carries the Clay/Stone/Rune → Plan/Agent/Super Agent rename, which is a visible
+vocabulary change to the public site and is listed above as the owner's call. Shipping it
+as a side effect of fixing a spark figure would be deciding that question quietly.
+
+The pricing figure is the part with a clock on it: a reader planning around "60 questions
+a day" hits the limit at 30. If that should go out before the rename is settled, it can be
+cherry-picked — `852430d` and `2d4e2b8` are the two commits, and neither touches the mode
+names.
+
+Verified healthy at the same time: `/api/health` answers 200 in 145 ms, and the status
+page's relative `fetch('/api/health')` resolves correctly because the site and the API
+share an origin.
+
+---
+
 ## HUMAN-ONLY — the Privacy Policy promised to be updated before this shipped
 
 **Found 2026-09-01. Not touched, because it is legal text and a consent control.**
