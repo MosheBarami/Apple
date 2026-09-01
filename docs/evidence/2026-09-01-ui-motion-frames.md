@@ -297,9 +297,40 @@ Pass 2's "currency gain — shard label rolled 15 → 16 → 17 → 18 → 19" i
 and was not a counting animation: those are five separate awards from the sweep arriving one at
 a time, with the pill punching on each. The measured travel was the punch.
 
-**This is a gap against §O, recorded rather than closed.** Whether the wallet *should* count is
-a design call — a counter that lags the truth is its own problem — but "purchase" currently has
-no motion of its own, and this document should not have implied otherwise.
+**This was a gap against §O. It is now closed** — see below.
+
+## Purchase, second look — the wallet counts, and shards deliberately do not
+
+The design question the gap raised is not "should numbers animate" but *which* numbers. The
+answer the code now encodes:
+
+- **Coins count.** They change rarely and in large steps — a sell, a purchase, an unlock — which
+  is the shape a counting animation is for, and `380 → 250` landing in one frame is the change
+  a player most wants to feel.
+- **Shards keep snapping.** They arrive from the server's 10 Hz sweep, up to ten a second while
+  walking a crystal field. A 0.45 s count would never settle, and would show a number half a
+  second behind the one the player is actually holding. **A counter that lags the truth is a
+  worse bug than one that jumps to it.**
+
+Counting never invents a value: it animates from what was last *displayed* to the authoritative
+number that has already arrived, and lands on it. That is a different thing from the optimistic
+client-side decrement `Hud.luau`'s own header warns about.
+
+Measured after the change, on a real purchase driven through the `Purchase` remote:
+
+| t (ms) | coins | | t (ms) | coins |
+|---|---|---|---|---|
+| 553.9 | 258 | | 785.2 | 77 |
+| 567.6 | 237 | | 833.2 | 65 |
+| 600.7 | 198 | | 885.3 | 57 |
+| 651.6 | 150 | | 918.9 | 55 |
+| 701.0 | 115 | | 952.2 | **54** |
+| 751.9 | 89 | | | |
+
+**25 distinct values over ~400 ms**, monotonic and decelerating (steps of 19, 21, 18, 18, 15,
+15, 12, 13, 10, 10, 9, 7, 7, 5, 5, 4, 3, 4, 2, 2, 1, 1, 1), landing exactly on 54 — the
+level-3 pack price is `floor(50 × 1.6³) = 204`, and `258 − 204 = 54`. The shard counter stayed
+put throughout, as intended.
 
 ## Two categories that name surfaces this game does not have
 
@@ -325,8 +356,9 @@ inapplicable one is a gap in the list.
 | currency gain · notification · error · success pulse | measured (pass 2) |
 | reduced-motion | implemented and proven (pass 2) |
 | **hover · loading/progress · unlock burst** | **measured (pass 3)** |
-| **purchase** | **measured — no motion exists; recorded as a §O gap** |
+| **purchase** | **measured, gap found, gap closed** — the wallet now counts on spend (~400 ms, 25 steps); shards deliberately still snap |
 | tab transition · roadmap transition | **not applicable — no such surface in this game** |
 
-**11 of 12 applicable categories carry a measurement**, plus reduced motion. The twelfth
-(purchase) is measured and found empty, which is a finding rather than a curve.
+**All 12 applicable categories carry a measurement**, plus reduced motion. Purchase was the
+last one, and it took two passes: the first found no motion at all, which was the finding; the
+second added the wallet count and measured it.
