@@ -65,6 +65,14 @@ __vec3MT = {
 		if k == "Magnitude" then
 			return math.sqrt(rawget(v, "X") ^ 2 + rawget(v, "Y") ^ 2 + rawget(v, "Z") ^ 2)
 		end
+		if k == "Dot" then
+			return function(a, b) return a.X * b.X + a.Y * b.Y + a.Z * b.Z end
+		end
+		if k == "Cross" then
+			return function(a, b)
+				return __vec3(a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X)
+			end
+		end
 		if k == "Unit" then
 			local m = v.Magnitude
 			if m == 0 then return __vec3(0, 0, 0) end
@@ -102,47 +110,86 @@ UDim = { new = function(s, o) return { __type = "UDim", Scale = s or 0, Offset =
 UDim2 = { new = function(xs, xo, ys, yo) return { __type = "UDim2", X = UDim.new(xs, xo), Y = UDim.new(ys, yo) } end }
 BrickColor = { new = function(v) return { __type = "BrickColor", Name = tostring(v) } end }
 
--- CFrame. Position and the three basis vectors are real, because Render.viewpoints
--- composes them and a spec has to be able to check where a camera ended up. Rotation
--- maths beyond lookAt is NOT modelled: CFrame.Angles returns identity, so any spec
--- that needs a real rotation would visibly get the wrong answer rather than a
--- plausible one.
+--[[ CFrame, with a REAL rotation basis.
+
+	 This was translation-only, and PointToWorldSpace raised on anything rotated — an
+	 honest limit at the time, and the thing that made Render.renderView untestable:
+	 the rasteriser transforms every corner of every part into camera space, so without
+	 rotation there is nothing to test it against.
+
+	 Stored the way Roblox stores it: a position and three column vectors. The columns
+	 are RightVector, UpVector and BACK, where back = -LookVector — that sign is the
+	 one thing worth getting right, because a camera that looks down +Z renders the
+	 world behind it and every assertion still passes. ]]
 local __cframe
 local function __sub(a, b) return __vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end
+local function __dot(a, b) return a.X * b.X + a.Y * b.Y + a.Z * b.Z end
 local function __norm(v)
-	local m = math.sqrt(v.X * v.X + v.Y * v.Y + v.Z * v.Z)
+	local m = math.sqrt(__dot(v, v))
 	if m == 0 then return __vec3(0, 0, 0) end
 	return __vec3(v.X / m, v.Y / m, v.Z / m)
 end
 local function __cross(a, b)
 	return __vec3(a.Y * b.Z - a.Z * b.Y, a.Z * b.X - a.X * b.Z, a.X * b.Y - a.Y * b.X)
 end
-__cframe = function(px, py, pz, look, up, right)
+
+__cframe = function(px, py, pz, right, up, back)
 	local p = __vec3(px, py, pz)
+	right = right or __vec3(1, 0, 0)
+	up = up or __vec3(0, 1, 0)
+	back = back or __vec3(0, 0, 1)
 	local self = {
 		__type = "CFrame",
 		Position = p, p = p,
 		X = p.X, Y = p.Y, Z = p.Z,
-		LookVector = look or __vec3(0, 0, -1),
-		UpVector = up or __vec3(0, 1, 0),
-		RightVector = right or __vec3(1, 0, 0),
+		RightVector = right,
+		UpVector = up,
+		LookVector = __vec3(-back.X, -back.Y, -back.Z),
 	}
-	-- Correct for an unrotated frame, and LOUD otherwise. Render.bounds walks a
-	-- part's eight corners through this, and quietly returning the unrotated answer
-	-- for a rotated part would make a bounds spec agree with a wrong implementation.
+	--- world = position + R * v, R's columns being right/up/back.
 	function self:PointToWorldSpace(v)
-		local r, u, l = self.RightVector, self.UpVector, self.LookVector
-		local identity = r.X == 1 and r.Y == 0 and r.Z == 0
-			and u.X == 0 and u.Y == 1 and u.Z == 0
-			and l.X == 0 and l.Y == 0 and l.Z == -1
-		if not identity then
-			error("PointToWorldSpace: this harness models translation only. A spec that "
-				.. "needs a rotated part belongs in Studio.", 2)
+		return __vec3(
+			p.X + right.X * v.X + up.X * v.Y + back.X * v.Z,
+			p.Y + right.Y * v.X + up.Y * v.Y + back.Y * v.Z,
+			p.Z + right.Z * v.X + up.Z * v.Y + back.Z * v.Z
+		)
+	end
+	--- Same, without the translation.
+	function self:VectorToWorldSpace(v)
+		return __vec3(
+			right.X * v.X + up.X * v.Y + back.X * v.Z,
+			right.Y * v.X + up.Y * v.Y + back.Y * v.Z,
+			right.Z * v.X + up.Z * v.Y + back.Z * v.Z
+		)
+	end
+	--- The inverse: R is orthonormal, so its transpose is its inverse and this is
+	--- three dot products rather than a matrix solve.
+	function self:PointToObjectSpace(w)
+		local d = __sub(w, p)
+		return __vec3(__dot(d, right), __dot(d, up), __dot(d, back))
+	end
+	function self:VectorToObjectSpace(v)
+		return __vec3(__dot(v, right), __dot(v, up), __dot(v, back))
+	end
+	--- Y-X-Z extraction, matching the engine's convention. Render uses it only to
+	--- decide whether a part is axis-aligned, so the branch cut at +-pi/2 is not
+	--- exercised; it is implemented rather than stubbed so it cannot quietly be wrong.
+	function self:ToEulerAnglesYXZ()
+		local m21 = up.Z
+		local x = math.asin(math.clamp(-m21, -1, 1))
+		local y, z
+		if math.abs(m21) < 0.9999 then
+			y = math.atan2(right.Z, back.Z)
+			z = math.atan2(up.X, up.Y)
+		else
+			y = math.atan2(-back.X, right.X)
+			z = 0
 		end
-		return __vec3(self.Position.X + v.X, self.Position.Y + v.Y, self.Position.Z + v.Z)
+		return x, y, z
 	end
 	return self
 end
+
 CFrame = {
 	new = function(a, b, c, ...)
 		if type(a) == "table" and a.__type == "Vector3" then
@@ -150,17 +197,25 @@ CFrame = {
 		end
 		return __cframe(a or 0, b or 0, c or 0)
 	end,
-	-- Real lookAt, because a viewpoint whose camera faces the wrong way is exactly
-	-- the defect a viewpoints spec exists to catch.
 	lookAt = function(from, target, upHint)
 		local look = __norm(__sub(target, from))
 		local up = upHint or __vec3(0, 1, 0)
 		local right = __norm(__cross(look, up))
 		local trueUp = __cross(right, look)
-		return __cframe(from.X, from.Y, from.Z, look, trueUp, right)
+		-- back = -look, which is the column the engine actually stores.
+		return __cframe(from.X, from.Y, from.Z, right, trueUp, __vec3(-look.X, -look.Y, -look.Z))
 	end,
-	Angles = function() return __cframe(0, 0, 0) end,
-	fromEulerAnglesXYZ = function() return __cframe(0, 0, 0) end,
+	--- Y-X-Z composition, the order Roblox's CFrame.Angles uses.
+	Angles = function(rx, ry, rz)
+		local cx, sx = math.cos(rx or 0), math.sin(rx or 0)
+		local cy, sy = math.cos(ry or 0), math.sin(ry or 0)
+		local cz, sz = math.cos(rz or 0), math.sin(rz or 0)
+		local right = __vec3(cy * cz + sy * sx * sz, cx * sz, -sy * cz + cy * sx * sz)
+		local up = __vec3(-cy * sz + sy * sx * cz, cx * cz, sy * sz + cy * sx * cz)
+		local back = __vec3(sy * cx, -sx, cy * cx)
+		return __cframe(0, 0, 0, right, up, back)
+	end,
+	fromEulerAnglesXYZ = function(rx, ry, rz) return CFrame.Angles(rx, ry, rz) end,
 }
 
 -- Enum. Any Enum.Foo.Bar resolves to a distinct, comparable token that remembers its
@@ -209,6 +264,21 @@ local function __newInstance(className, name)
 		__props = props,
 		__destroyed = false,
 	}
+	--[[ Engine defaults for the properties the rasteriser reads unconditionally.
+		 Without these a freshly-made Part has Color = nil and Render.renderView dies on
+		 base.R — which is exactly what real Roblox does NOT do, so a stub without
+		 them makes the rasteriser look broken when it is not. Values are Roblox's own
+		 defaults: medium stone grey, Plastic, fully opaque. ]]
+	if className == "Part" or className == "MeshPart" or className == "WedgePart" then
+		props.Color = Color3.fromRGB(163, 162, 165)
+		props.Material = Enum.Material.Plastic
+		props.Transparency = 0
+		props.Reflectance = 0
+		props.Size = __vec3(4, 1, 2)
+		props.CFrame = CFrame.new(0, 0, 0)
+		props.Anchored = false
+	end
+
 	local methods = {}
 	function methods.IsA(_, want)
 		if fields.ClassName == want then return true end

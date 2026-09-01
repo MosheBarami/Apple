@@ -149,6 +149,27 @@ const MUTATIONS = [
     replace: "\tlocal contentProp = pv.t == \"Content\"",
   },
   {
+    name: "the view-depth sign is flipped",
+    claim: "a lookAt camera puts its subject in FRONT of it, not behind",
+    module: "Render",
+    find: "\t\t\t\tlocal z = -p.Z",
+    replace: "\t\t\t\tlocal z = p.Z",
+  },
+  {
+    name: "the near-plane cull is disabled",
+    claim: "a part BEHIND the camera is counted off-camera, not drawn",
+    module: "Render",
+    find: "\t\t\t\tif z <= 0.05 then",
+    replace: "\t\t\t\tif false then",
+  },
+  {
+    name: "the perspective divide is dropped from the projection",
+    claim: "a nearer part covers more of the frame than a further one",
+    module: "Render",
+    find: "\t\t\t\t\t((p.X / (z * tanHalf * aspect)) * 0.5 + 0.5) * width,",
+    replace: "\t\t\t\t\t((p.X / (tanHalf * aspect)) * 0.5 + 0.5) * width,",
+  },
+  {
     name: "the ground plane is no longer excluded from bounds",
     claim: "a baseplate does not dominate the frame and shrink the subject",
     module: "Render",
