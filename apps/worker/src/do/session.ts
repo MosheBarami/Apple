@@ -1120,6 +1120,11 @@ export class SessionDO extends DurableObject<Env> {
     // The signal belongs to the run it was pressed during. Leaving it set would stop the
     // user's NEXT message before its first step.
     await clearStop(this.ctx.storage);
+    // Nothing this run queued may still be applied to the place now that it has ended.
+    const abandoned = await this.dropOpsForEndedRuns(undefined);
+    if (abandoned > 0) {
+      console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
+    }
 
     // A playtest cannot outlive the run that started it.
     //
@@ -1391,12 +1396,56 @@ export class SessionDO extends DurableObject<Env> {
     };
   }
 
+  /**
+   * Discard queued ops belonging to a run that is no longer the live one.
+   *
+   * A5: ops queued by a dead run were still delivered and executed. The user presses stop, the
+   * run ends, and the plugin's next poll collects whatever was already in the queue and applies
+   * it to their place — mutations from a run they explicitly cancelled, arriving after the UI
+   * said it had stopped.
+   *
+   * Anything dropped resolves its waiter rather than being deleted quietly, so an
+   * `execStudioOp` still holding on does not sit out its full 30-second timeout to learn the
+   * same thing.
+   *
+   * An op with no `runId` is KEPT: it was queued by a deploy that predates the field, and
+   * discarding work because it is unlabelled would be a worse bug than the one this fixes.
+   */
+  private async dropOpsForEndedRuns(liveRunId: string | undefined): Promise<number> {
+    const keep: PendingOp[] = [];
+    const dropped: PendingOp[] = [];
+    for (const op of this.opQueue) {
+      if (op.runId === undefined || op.runId === liveRunId) keep.push(op);
+      else dropped.push(op);
+    }
+    if (dropped.length === 0) return 0;
+
+    this.opQueue = keep;
+    await this.ctx.storage.put('opQueue', this.opQueue);
+    for (const op of dropped) {
+      const waiter = this.opWaiters.get(op.id);
+      if (waiter) {
+        this.opWaiters.delete(op.id);
+        waiter({ id: op.id, ok: false, error: 'The run this change belonged to has ended' });
+      }
+    }
+    return dropped.length;
+  }
+
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
       return { id: 'none', ok: false, error: 'Studio is not connected' };
     }
     this.seq += 1;
-    const op: PendingOp = { id: `op_${this.seq}_${Date.now().toString(36)}`, seq: this.seq, studioOp };
+    // Tagged with the run that asked for it. A queued op outlives the request that made it —
+    // it sits here until the plugin's next poll, which can be seconds away — and a run can end
+    // in that gap, by the user pressing stop or by the step limit. See dropOpsForEndedRuns.
+    const op: PendingOp = {
+      id: `op_${this.seq}_${Date.now().toString(36)}`,
+      seq: this.seq,
+      studioOp,
+      runId: this.currentMsgId,
+    };
     this.opQueue.push(op);
     await this.ctx.storage.put({ opQueue: this.opQueue, seq: this.seq });
     this.pollWaiter?.();
@@ -1522,6 +1571,33 @@ export class SessionDO extends DurableObject<Env> {
       });
     }
 
+    // Backstop for the purge in finishRun. The queue is persisted, so a Durable Object that
+    // restarts between a run ending and the next poll would otherwise hand the plugin ops from
+    // a run nobody is waiting on.
+    await this.dropOpsForEndedRuns(agent?.status === 'running' ? agent.msgId : undefined);
+
+    //[[ DELIVERY IS AT-MOST-ONCE, AND THAT IS THE DECISION RATHER THAN AN OVERSIGHT.
+    //
+    //   A6 asked for an ack and redelivery. Splicing hands these ops to the plugin and forgets
+    //   them, so a plugin that dies between receiving a batch and running it loses that batch.
+    //
+    //   Redelivery would trade that for duplicate mutation, and the two are not equal. The
+    //   plugin acknowledges by reporting RESULTS on its next poll — after execution — so a
+    //   batch that goes unacknowledged is not evidence it did not run. Studio may have applied
+    //   every op and died before reporting. Re-sending would then create the parts a second
+    //   time, or run the same `edit_script` again over a file it already wrote. This codebase
+    //   treats duplicate mutation as the worst outcome available (see the alarm-retry chain in
+    //   transcript.ts and persist.ts), and an at-least-once op channel would install exactly
+    //   that, by design, on the path that touches the user's place directly.
+    //
+    //   The loss is not silent: `execStudioOp` holds a waiter that resolves with "Studio did
+    //   not respond within 30s", so the run is told and can decide what to do. A lost op
+    //   surfaces as a failed tool call, which the agent already knows how to handle.
+    //
+    //   What WOULD make redelivery safe is idempotency — a plugin that recognises an op id it
+    //   has already applied and replies with the earlier result instead of re-running it. That
+    //   is a plugin protocol change, not a worker one, and it is the shape any future attempt
+    //   at this should take. Until then, losing work is the cheaper mistake. ]]
     const ops = this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
     const running = agent?.status === 'running';

@@ -201,6 +201,13 @@ export interface PendingOp {
   id: string; // opaque, unique per op
   seq: number;
   studioOp: StudioOp;
+  /**
+   * The run that queued this op, so ops belonging to a run that has since ended can be
+   * discarded instead of executed. Optional because an op persisted by an older deploy has
+   * no runId, and an op with no runId is delivered — silently dropping work from a version
+   * that predates the field would be a worse failure than the one this prevents. See A5.
+   */
+  runId?: string;
 }
 
 export interface OpResult {

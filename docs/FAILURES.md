@@ -153,14 +153,40 @@ Recorded so they are not rediscovered as new. Severity is the critics' own.
 | ~~A2~~ | ~~high~~ | **CLOSED 2026-09-01.** The stop moved to its own key with one writer and one reader (`src/stop-signal.ts`), so neither write can erase the other. The race ran both ways: the run's tail write erased the stop, *and* the stop's stale blob erased the step's own transcript, inviting a replay of a step whose paid call had already run. 9 unit tests + 4 behavioural tests through the real `SessionDO`. |
 | ~~A3~~ | ~~high~~ | **CLOSED 2026-09-01.** `src/single-flight.ts` — a gate set **synchronously**, before any await, because the storage read that decides "is a run in flight" is one of the things `startRun` awaits. 7 unit tests + a behavioural test that starts two runs without awaiting between them and asserts exactly one `msg_start`. |
 | ~~A4~~ | ~~high~~ | **CLOSED 2026-09-01.** The pre-run checkpoint is wrapped and `setAlarm` sits outside the wrapper, so a throw can no longer skip it — and `alarm()`'s staleness rescue could not have helped, since it requires `step > 0`. The discarded `{ error }` return is now surfaced too. 3 behavioural tests covering throw, returned-error, and the healthy path. |
-| A5/A6 | medium | Ops queued by a dead run are still delivered and executed; op delivery is at-most-once with no ack or redelivery. |
+| ~~A5~~ | ~~medium~~ | **CLOSED 2026-09-01.** Ops carry the run that queued them; `finishRun` discards what an ended run left behind and the poll path re-checks as a backstop, since the queue is persisted and a restart could otherwise deliver them. Dropped ops resolve their waiter with a reason instead of leaving the caller to time out. An op with no `runId` — queued by a deploy predating the field — is kept. 5 tests through the real `SessionDO`. |
 | ~~B5~~ | ~~high~~ | **CLOSED 2026-09-01.** `plugin.Unloading` now clears `connected` and retires the loop, so a reloaded plugin's predecessor stops instead of continuing to drain the same queue with the same token. Cooperative, never cancelled — the old loop finishes its op and closes its recording on the way out. |
 | ~~B6~~ | ~~high~~ | **CLOSED 2026-09-01.** `task.cancel` is gone from the plugin entirely, along with the thread handle that invited it. Each poll loop carries its own generation and exits when a newer one exists, which retires it without killing it mid-op. 9 tests in `packages/evals/src/plugin-lifecycle.test.mjs`. |
 | ~~M6~~ | ~~medium~~ | **CLOSED 2026-09-01.** The notification layer now offsets by `GuiService:GetGuiInset()`; measured in Studio, the toast moved from y=16 to y=74 against a 58 px inset and `FROST HOLLOW IS LOCKED — 2,500 COINS` renders in full where it was previously clipped to `FROST HOLLOW — 2,500`. The wallet column was already clear: `Hud` builds its own ScreenGui with `IgnoreGuiInset = false`, confirmed in the same capture. The modal was fixed earlier this session. |
 | ~~M9~~ | ~~medium~~ | **CLOSED 2026-09-01.** Rather than soften the claim to match the code, the code now matches the claim: the table moved to `server/CodeTable.luau`, which does not replicate. Verified from a live client — `Config.Codes` is `nil` and no reward amount or message is reachable by walking `Config`. `Config.CodeInput` stays shared, because the code box has to trim to the length the server will accept. |
-| ~~L8~~ | ~~medium~~ | **CLOSED 2026-09-01.** 33 Luau tests now run the game's own modules in the standalone Luau CLI, plus a 7-mutation check proving the suite can fail. Finding F-26..F-28 below were found by writing them. See `apps/benchmark/crystal-canyon/tests/`. |
+| ~~L8~~ | ~~medium~~ | **CLOSED 2026-09-01.** 78 Luau tests now run the game's own modules in the standalone Luau CLI, plus a 20-mutation check proving the suite can fail. Finding F-26..F-28 below were found by writing them. See `apps/benchmark/crystal-canyon/tests/`. |
 
 ---
+
+### A6 · REJECTED — at-most-once op delivery is the right trade, not a gap
+
+A6 asked for an ack and redelivery on the op channel: the poll splices ops out of the queue
+and forgets them, so a plugin that dies between receiving a batch and executing it loses that
+batch.
+
+**Rejected, and the reasoning is the same one the rest of this codebase runs on.** The plugin
+acknowledges by reporting RESULTS on its next poll — *after* execution — so an unacknowledged
+batch is not evidence it did not run. Studio may have applied every op and died before
+reporting. Re-sending would then create the parts a second time, or re-run an `edit_script`
+over a file it has already written.
+
+Duplicate mutation is the failure this worker is built to avoid: it is why `trimTranscript`
+counts tool arguments, why `persistWithShedding` sheds rather than throws, and why A4's fix
+guarantees an alarm. An at-least-once op channel would install that same failure deliberately,
+on the one path that touches the user's place directly.
+
+The loss is not silent. `execStudioOp` holds a waiter that resolves with "Studio did not
+respond within 30s", so the run is told and the agent handles it as a failed tool call.
+
+**What would change the answer:** idempotency in the plugin — recognising an op id it has
+already applied and replying with the earlier result rather than re-running it. That is a
+plugin protocol change, not a worker one, and it is the shape any future attempt should take.
+Until then, losing work is the cheaper mistake. The decision is written at the delivery site
+so the next reader finds it before reimplementing the retry.
 
 ### F-31 · A helper that called itself, so every save silently dropped the transcript
 

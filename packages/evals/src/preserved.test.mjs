@@ -1148,3 +1148,90 @@ test('A4 a healthy checkpoint reports nothing and still schedules the run', asyn
   assert.equal(errorsIn(h.sent, 'checkpoint').length, 0, 'and nothing is reported when it works');
   assert.equal(h.alarms.length, 1);
 });
+
+// ---------------------------------------------------------------------------
+// A5 — ops queued by a run that has ended must not reach the place.
+//
+// A queued op outlives the request that made it: it sits in the queue until the plugin's next
+// poll, which can be seconds away, and a run can end in that gap — the user presses stop, or
+// the step limit is reached. The plugin then collected whatever was in the queue and applied it,
+// so mutations from a cancelled run arrived after the UI had said it stopped.
+// ---------------------------------------------------------------------------
+
+/** Reach the private queue the way the DO does, so these test the real structure. */
+const queueOf = (session) => session.opQueue;
+
+/** Let the enqueue's own awaits settle. execStudioOp checks pluginConnected() before it
+ *  queues anything, so the op is not in the queue until at least one microtask has run. */
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test('A5 an op is tagged with the run that queued it', async () => {
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  h.store.set('pluginLastSeen', Date.now());
+
+  // Not awaited: execStudioOp resolves only when the plugin answers, which never happens here.
+  void h.session.execStudioOp({ op: 'create_instances', payload: {} }, 50);
+  await tick();
+  const queued = queueOf(h.session);
+
+  assert.equal(queued.length, 1, 'the op must be queued');
+  assert.equal(queued[0].runId, h.store.get('agent').msgId, 'and carry the run that asked for it');
+});
+
+test('A5 finishing a run discards the ops it left behind', async () => {
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  h.store.set('pluginLastSeen', Date.now());
+  void h.session.execStudioOp({ op: 'create_instances', payload: {} }, 50);
+  await tick();
+  assert.equal(queueOf(h.session).length, 1);
+
+  await h.session.finishRun(h.store.get('agent'), 'stopped');
+
+  assert.equal(queueOf(h.session).length, 0, 'a stopped run may not leave work behind to be applied');
+});
+
+test('A5 the caller is told, rather than left to time out', async () => {
+  // Dropping the op quietly would leave execStudioOp holding for its full 30s to learn the
+  // same thing, and the run would look hung to anyone watching.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  h.store.set('pluginLastSeen', Date.now());
+
+  const pending = h.session.execStudioOp({ op: 'create_instances', payload: {} }, 30_000);
+  await tick();
+  await h.session.finishRun(h.store.get('agent'), 'stopped');
+  const result = await pending;
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /has ended/, 'the reason must say what happened');
+});
+
+test('A5 an unlabelled op is kept, not discarded', async () => {
+  // An op persisted by a deploy that predates runId has none. Dropping work because it is
+  // unlabelled would be a worse failure than the one this prevents.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  queueOf(h.session).push({ id: 'legacy_1', seq: 999, studioOp: { op: 'create_instances', payload: {} } });
+
+  await h.session.finishRun(h.store.get('agent'), 'done');
+
+  const remaining = queueOf(h.session);
+  assert.equal(remaining.length, 1, 'the unlabelled op survives');
+  assert.equal(remaining[0].id, 'legacy_1');
+});
+
+test('A5 a live run keeps its own ops', async () => {
+  // The obvious way to get this wrong: purge on every poll and starve the run that is running.
+  const h = sessionHarness();
+  await h.session.startRun(h.bind, TAVERN_BRIEF, 'stone');
+  h.store.set('pluginLastSeen', Date.now());
+  void h.session.execStudioOp({ op: 'create_instances', payload: {} }, 50);
+  await tick();
+
+  const agent = h.store.get('agent');
+  await h.session.dropOpsForEndedRuns(agent.msgId);
+
+  assert.equal(queueOf(h.session).length, 1, 'the running run must keep its queued work');
+});
