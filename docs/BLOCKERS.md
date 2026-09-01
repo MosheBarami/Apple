@@ -329,6 +329,29 @@ It should be re-run before this branch merges.
 
 ---
 
+## For the owner to review — a published figure was corrected
+
+**Not a blocker, and not a price change, but §33 says public pricing is the owner's, so
+this is surfaced rather than left in a commit message.**
+
+The pricing page stated **Clay · 1 spark** and **60 requests a free day**. The worker
+charges `sparksForNeurons(n) = max(1, ceil(n / 30))`, and `docs/COST-MODEL.md` measures a
+Clay question at 37–43 neurons — so it is **2 sparks and 30 requests a day**. Stone
+(111 → 4) and Rune (297 → 10) were both correct.
+
+Corrected on 2026-09-01, with `scripts/check-spark-figures.mjs` now checking the whole
+chain in CI. Nothing about what anyone is charged changed: the free tier is 60 sparks a
+day at $0 and Pro remains an unpriced waitlist. What changed is a claim about consumption
+that the code contradicted, and the reason not to leave it is that a reader planning
+around "60 questions a day" hits the limit at 30.
+
+**If the intent was that a Clay question should cost 1 spark**, that is a change to the
+worker — `NEURONS_PER_SPARK`, or a per-mode floor — and not to the page. This correction
+assumed the code is right and the page was wrong, because the code is what actually
+charges people. Say if that assumption is backwards.
+
+---
+
 ## Not blockers, though previously believed to be
 
 - **Persistence needed a published place.** It did not: the benchmark place is
