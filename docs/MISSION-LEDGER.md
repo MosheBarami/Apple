@@ -23,7 +23,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
 | 10 | Vertical slice playable and coherent | **PARTIAL** | loop + persistence work; panels only reachable since `cd00b26` |
 | 11 | Persistence in published-private benchmark | **PROVEN** | `evidence/2026-09-01-persistence-roundtrip.md` |
-| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | 16-rule grader; but an independent review found 4 criticals and 13 open findings, and **zero tests exercise the game's own Luau** (L8) |
+| 12 | Luau/architecture passes functional + security gates | **PARTIAL** | 16-rule grader, **plus 33 tests now running the game's own Luau and a 7-mutation check proving they can fail** (L8 closed, `f89609b`); 12 open findings remain, and writing the tests surfaced 3 more (F-26..F-28, all fixed) |
 | 13 | Provider selector absent from normal UX | **PROVEN** | only `admin.tsx` names a model, which §F permits |
 | 14 | Hidden Cloudflare routing benchmark-driven | **BLOCKED** | AI Gateway credit · `BLOCKERS.md` #1 |
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
@@ -73,13 +73,26 @@ PARTIAL is reachable without owner action.
 
 No gate went backwards, but gate 12's confidence should have. A 16-rule anti-pattern
 grader that scores *model output* said nothing about the game it ships beside, and an
-independent reviewer found four criticals in an hour. **L8 is the gap behind that:** 1,412
-tests cover the surrounding TypeScript and not one line of the benchmark's Luau.
+independent reviewer found four criticals in an hour. **L8 was the gap behind that:** 1,412
+tests covered the surrounding TypeScript and not one line of the benchmark's Luau.
+
+**L8 is now closed** (`f89609b`). 33 Luau tests run the shipped modules byte-for-byte in
+the standalone CLI, and a mutation check injects seven known bugs to prove the suite goes
+red rather than merely staying green. Writing them immediately found three defects a
+reader had missed — including `upgradeCost("pack", -50)` returning **0**, a free upgrade —
+which is the argument for the gate rather than a coincidence: the critics' four criticals
+came from reading code, and reading does not scale. What it does not yet cover is the
+`Player`-coupled server surface (`Economy`, `Zones`, `Upgrades`, `Codes`), where the four
+open high-severity findings (H1–H4) live; those need a `Player`/`DataStore` stub the
+prelude does not have yet.
 
 ## Next-highest-value unblocked work, in dependency order
 
-1. **Source corpus ingestion (21→24)** — unblocks 20, 25, 26, 28, 29, 30, 31.
-2. **Design intelligence retrieval (25)** — the owner's stated major requirement.
-3. **UI motion coverage (6)** — harness proven, 12 categories remain.
-4. **Cliff wall (2)** — needs a materially different approach than F-19.
-5. **Thinking UX (17)** and **playtest viewport (18)**.
+1. **H1–H4, the four open high-severity game findings** — now testable: the Luau harness
+   exists, and extending its prelude with a `Player` stub turns each into a red test
+   before a fix, the way F-26..F-28 went.
+2. **UI motion coverage (6)** — harness proven, 6 of 14 categories still unmeasured.
+3. **Cliff wall (2)** — needs a materially different approach than F-19.
+4. **Thinking UX (17)** and **playtest viewport (18)**.
+
+Superseded: source corpus ingestion (21→24) and design retrieval (25) are landed.
