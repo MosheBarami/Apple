@@ -12,6 +12,7 @@ import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@go
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
+import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
@@ -51,7 +52,7 @@ export function WorkspacePage() {
   const navigate = useNavigate();
 
   const [showPairing, setShowPairing] = useState(false);
-  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory'>(null);
+  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory' | 'credits'>(null);
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
@@ -240,6 +241,20 @@ export function WorkspacePage() {
             <Icon d={PATH.brain} />
           </button>
 
+          {/* What the project owes before it can be published. An icon button
+              rather than a fourth named control: it is read once, near the end,
+              and giving it the weight of Roadmap would put a rare pre-publish
+              check in front of the thing people are here to do. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('credits')}
+            aria-label="Credits and clearance to publish"
+            title="What this project owes"
+          >
+            <Icon d={PATH.licence} />
+          </button>
+
           {/* The way into the plan. The conversation says what is happening
               now; the roadmap says what is worth doing next, so it sits beside
               Checkpoints — forward and back from the same row.
@@ -423,6 +438,12 @@ export function WorkspacePage() {
             </button>
           </div>
         ))}
+      </Drawer>
+
+      <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
+        {/* Mounted only while open so the request is made when a user asks the
+            question, not on every workspace load for everyone who never will. */}
+        {drawer === 'credits' && <CreditsPanel projectId={projectId} />}
       </Drawer>
 
       <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Golem remembers">

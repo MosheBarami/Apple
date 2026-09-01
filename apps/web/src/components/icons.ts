@@ -45,6 +45,9 @@ export const ICON_PATH = {
    *  merge into a solid block below about 20px. */
   docs: 'M7 3h7l5 5v13H7zM14 3v5h5',
   shield: 'M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z',
+  /** Credits and clearance to publish — a document with a seal. Deliberately NOT
+   *  `shield`, which already means Admin, and not `docs`, which means the manual. */
+  licence: 'M6 3h9l4 4v8H6zM15 3v4h4M9.5 18.5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zM7.9 18.2 7 22l2.5-1.4L12 22l-.9-3.8',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4',
   moon: 'M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z',
