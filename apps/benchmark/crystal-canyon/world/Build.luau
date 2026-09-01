@@ -2866,10 +2866,24 @@ end
 -- 6. SPAWN
 -- =========================================================================
 
-disc(fGround, "SpawnRing", 13, 0.8, SPAWN.X, SPAWN.Z, 0.75, Palette.Outline.Color)
+--[[ THE SPAWN IS DRESSED LIKE A PAD, BECAUSE IT IS THE FIRST THING ANYONE SEES. V2.
+
+	 It used to be a bare `SpawnLocation` — a cream 20×20 square, no outline, no bevel, sitting
+	 1.5 studs proud of the sand — on a single ∅26 ring. The square's half-diagonal is 14.14
+	 against the ring's 13, so its four corners projected 1.14 studs past the ring and read as
+	 four black crescent lobes: a rendering fault, in the highest-traffic 20×20 studs in the
+	 game. §9's automatic-fail list names an undressed default `Frame` for UI; this was the
+	 world-geometry equivalent.
+
+	 Two changes. The square is 16×16, whose 11.3 half-diagonal sits comfortably INSIDE the
+	 ring, so no corner can escape it again at any ring size. And it gets the halo/ring stack
+	 `buildPad` gives every other floor marker, so the outline rule §2 applies here too. ]]
+disc(fGround, "SpawnHalo", 15.5, 0.6, SPAWN.X, SPAWN.Z, 0.64, Palette.Outline.Color)
+disc(fGround, "SpawnRing", 14, 0.7, SPAWN.X, SPAWN.Z, 0.70, Palette.shade(W.Sand, 0.32))
+disc(fGround, "SpawnEdge", 11.5, 0.8, SPAWN.X, SPAWN.Z, 0.75, Palette.Outline.Color)
 local spawn = Instance.new("SpawnLocation")
 spawn.Name = "Spawn"
-spawn.Size = Vector3.new(20, 1.2, 20)
+spawn.Size = Vector3.new(16, 1.2, 16)
 -- lookAt aims the spawn's LookVector at the monument, so a fresh character is
 -- already facing the landmark and the path beyond it.
 spawn.CFrame = CFrame.lookAt(Vector3.new(SPAWN.X, 0.9, SPAWN.Z), Vector3.new(LANDMARK.X, 0.9, LANDMARK.Z))
