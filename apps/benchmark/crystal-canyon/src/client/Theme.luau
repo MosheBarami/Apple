@@ -1596,7 +1596,31 @@ function Theme.panel(
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.5)
+	--[[ CENTRED IN THE VISIBLE AREA, NOT IN THE SCREEN.
+
+		 The two ScreenGuis in this client disagree about the safe area, and until
+		 now the wrong one won for interactive content. `CrystalCanyonHud` sets
+		 `IgnoreGuiInset = false` with the comment "keep the top row clear of the
+		 Roblox topbar". `CrystalCanyonUI` — the layer Panels parents its modal to,
+		 carrying every close button and every purchase control — sets it TRUE.
+
+		 Opting out is correct for the BACKDROP: a dimming scrim wants to be
+		 full-bleed, and a strip of undimmed world above the topbar would read as a
+		 rendering fault. It is wrong for the PANEL, which is interactive, and on a
+		 device with a tall topbar or a camera cutout the header — and therefore the
+		 close button — can sit underneath it.
+
+		 So the scrim keeps its full bleed and the panel is centred on the visible
+		 region instead: shifted down by half the top inset, which is exactly the
+		 offset that puts its middle in the middle of what the player can see. Read
+		 live rather than assumed, because the inset differs by device and changes
+		 when the topbar does. ]]
+	local function centreInSafeArea()
+		local topLeft = GuiService:GetGuiInset()
+		panel.Position = UDim2.new(0.5, 0, 0.5, topLeft.Y / 2)
+	end
+	centreInSafeArea()
+	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(centreInSafeArea)
 	panel.BackgroundColor3 = Palette.UI.Body
 	panel.BorderSizePixel = 0
 	-- Clipping is what lets a square header bar inherit the panel's rounded top
