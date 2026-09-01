@@ -1221,8 +1221,19 @@ test('A5 STATIC CHECK — every tool result entering the transcript is fenced as
   let fenced = 0;
   for (const p of toolPushes) {
     if (p.includes('out.resultForLlm')) {
-      assert.match(p, /<untrusted-tool-output tool="\$\{call\.name\}">/, 'a tool result reaches the transcript without an opening fence');
+      assert.match(p, /<untrusted-tool-output /, 'a tool result reaches the transcript without an opening fence');
       assert.match(p, /<\/untrusted-tool-output>/, 'the untrusted fence is never closed');
+      //[[ THE FENCE MUST CARRY A SECRET, and this assertion is the reason the check was
+      //   tightened rather than merely updated. The tag used to be a CONSTANT
+      //   `tool="${call.name}"`, and tool results are JSON.stringify'd — which escapes
+      //   quotes and backslashes but NOT angle brackets. So a payload containing a literal
+      //   closing tag reached the transcript verbatim (asserted by the very next test, and
+      //   correct: mangling evidence is worse) and closed the fence early, putting the
+      //   attacker's text outside the markers by the system prompt's own definition.
+      //
+      //   A per-run random id fixes that without touching the payload. Asserting only
+      //   "there is a fence" would pass against a constant tag again. ]]
+      assert.match(p, /id="\$\{agent\.fenceId/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
       fenced++;
     } else {
       // The only other tool-role push is Golem's own static refusal text; it must interpolate
