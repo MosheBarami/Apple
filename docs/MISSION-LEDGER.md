@@ -17,7 +17,7 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 3 | Frost Hollow primitive fallback resolved | **PROVEN** | 0 → 22 crystal meshes · `evidence/2026-09-01-detexture-ab.md` |
 | 4 | Glacier Heart no longer a box stack | **PROVEN** | radial crystal burst; dais geometry fixed · same file |
 | 5 | UI visual quality passes rendered review | **PARTIAL** | The visual critic calls the UI kit **"the strongest thing in the build, by a distance"** — 4 px outlines throughout, FredokaOne uppercase with a 3 px stroke, panels at 60 % of viewport (§5.6 wants 50–70), **no text overflow across 149 rendered strings**. Three real defects against it: V6 (a shadow 91 px oversized and offset the wrong way in all four panels), V7 (SHOP duplicates UPGRADES), V9 (nav tiles square where §6 says circular). Still not reviewed as PIXELS in play mode — `screen_capture` returns magenta there |
-| 6 | UI motion passes frame review | **PROVEN** | **all 12 applicable categories measured**, plus reduced motion. Two of the original 14 name surfaces this game does not have (no tab bar; the roadmap is a web surface). Measuring the last one found the wallet had no counting animation at all — now added and measured at ~400 ms over 25 steps, with shards deliberately still snapping · `evidence/2026-09-01-ui-motion-frames.md` |
+| 6 | UI motion passes frame review | **PARTIAL — downgraded from PROVEN** | An independent audit found "measured" doing three different jobs in one sentence. **Only 6 of the 14 categories have a per-frame time series**; the rest were reviewed by eye or asserted from constants. `MotionProbe.luau` — the frame-sampling harness the claim rests on — has no recorded execution, and no raw frame data is persisted anywhere, so the samples cannot be re-derived. The reduced-motion gate and the motion rules in `packages/design` ARE wired into the product and tested. Restated: 6 measured, 6 reviewed, 2 not applicable |
 | 7 | Creator Store asset intelligence used in real builds | **PROVEN** | 326 curated clones in the built world |
 | 8 | Style-coherence gate rejects incompatible assets | **PROVEN** | mesas rejected twice, 7 of 9 Cube generations refused |
 | 9 | Cube used where it improves; bad generations rejected | **PROVEN** | geode kept, cliffs rejected · `CUBE-GENERATION.md` |
@@ -29,15 +29,15 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 15 | Separate provider keys not required | **PROVEN** | routing verified keyless · `PHASE4-MODEL-ROUTING.md` |
 | 16 | Plan / Agent / Super Agent real | **PROVEN** | modes shipped; Plan toolset genuinely read-only |
 | 17 | Thinking/activity UX alive, structured, honest | **PROVEN** | state machine folded from real tool/phase events only; 4 §Y states named as underivable · `docs/THINKING-UX.md` |
-| 18 | Inline near-live playtest viewport | **PROVEN** | real rasterised frames + measured blocker (no plugin viewport readback) · `docs/PLAYTEST-VIEWPORT.md` |
-| 19 | Roadmap intelligence suggests/builds milestones | **PROVEN** | corrected: it DOES scan the live place (`ROADMAP_SCAN_LUAU`), detects genre, offers Plan/Build, 30 tests incl. the tower-defence-never-offered-rebirth negative proof |
-| 20 | Durable design/source intelligence pipeline | **PROVEN** | machinery run against all 217 seeds; 119 resolved · `evidence/2026-09-01-source-corpus-classification.md` |
+| 18 | Inline near-live playtest viewport | **UNPROVEN — downgraded from PROVEN** | The worker frame bus, adaptive RLE24 packing, the SessionDO capture ring with reconnect replay, the browser decoder and the PlaytestCard are all built and wired. **Not one frame has ever been produced.** The gate was flipped UNPROVEN → PROVEN two minutes after the feature commit, citing "real rasterised frames", with no end-to-end validation against live Studio and no deployment of the card to users. The machinery is real; the claim was about output that does not exist |
+| 19 | Roadmap intelligence suggests/builds milestones | **PARTIAL — downgraded from PROVEN** | The deterministic engine (scan → features → genre → milestones), the worker routes, the web UI and 30 tests including the tower-defence-never-offered-rebirth negative proof are all real and wired into the product. But "it DOES scan the live place" was a **code-existence claim written as an execution claim**: `ROADMAP_SCAN_LUAU` is a 92-line payload that has never run against a real place file. The transport exists; the scan has not happened |
+| 20 | Durable design/source intelligence pipeline | **PARTIAL — downgraded from PROVEN** | Of the eight stages §7 names, **three had executed** when this was rated PROVEN: provenance, rights, and — by agents reading checkouts BY HAND, not by any code in `packages/corpus` — pattern extraction and retrieval. Since the audit: the SECURITY stage now runs (20 of 20 checkouts scanned, verdicts written back). Still never run: **content hashing and near-duplicate dedupe — 784 lines of tested production code that no non-test file imports**, with `contentHash` null in 119/119 provenance records. Still missing entirely: quality score, domain tag, engineEra, and **playbooks (L3), for which one grep hit exists in the whole repo and it is the doc's own table row** |
 | 21 | Free UI/cartoon/studs/icon/motion/world kits classified | **PROVEN** | 217 classified: 68 reusable, 8 copyleft, 2 attribution, 139 quarantined |
-| 22 | Discovery expands beyond the seed manifest | **PROVEN** | Wally 5,807 + Pesde 781 packages enumerated in full — 30x the 217-URL floor · `evidence/2026-09-01-registry-enumeration.md` |
+| 22 | Discovery expands beyond the seed manifest | **UNPROVEN — downgraded from PROVEN** | **Nothing was expanded.** All 217 records carry `origin: "seed-manifest"`; the corpus is exactly the seed floor. The Wally 5,807 + Pesde 781 enumeration was a **one-off measurement that fed nothing** — there is no committed re-runnable enumerator, no registry→intake handoff, and the 6,588 packages appear in no classification record. Fork/upstream expansion is designed only; DevForum and Creator Store corpus discovery do not exist. What is real is the seed resolution and licence classification of those 217 |
 | 23 | Licences/provenance preserved | **PROVEN** | `data/sources.json` tracked; SHA + SPDX + evidence path per source |
-| 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence. The **asset** gate is now calibrated against a real dated sample rather than invented fixtures: four free Creator Store "low poly rock" listings inserted and inspected in Studio — **half carried scripts**, two were the same mesh under different ids and creators, one was 419 primitives and no mesh. All four refused; the *type* rule alone stopped them before the script check. The corpus scanner still has nothing downloaded to scan |
+| 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence. **The security scanner now runs**: 20 of 20 checkouts scanned, verdicts written back to `sources.json`, where 0 of 217 carried one before. The ledger's previous justification — "the corpus scanner still has nothing downloaded to scan" — was already false when written, and running it found a bug in the scanner rather than in the corpus (F: a bare `HttpGet(` matched any function of that name and condemned `evaera/roblox-lua-promise` as an executor). Three attacks on the proposed fix each found a working hole, so the fix went narrow. Still true: 197 of 217 sources are unscanned because they are unfetched |
 | 25 | Golem stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
-| 26 | Corpus materially improves UI/world evals | **PARTIAL** | **11 of 107 rules mechanised as executable checks**, each validated against geometry or source that actually shipped broken. Two were added this pass and BOTH found live defects the moment they ran: `checkFocusFeedback` reported that every hover response in the game hung off `MouseEnter` while `SelectionGained` appeared nowhere, so a controller navigated a live selection graph that never acknowledged them (F-37); `checkTextScaleOrder` pins F-38, where `TextScaled = true` followed by `TextWrapped = false` left **105 labels** carrying a size constraint that did nothing. Neither was findable by looking — the second is invisible in every screenshot taken at the design resolution. `audit()` reports `enforced` separately from `library` |
+| 26 | Corpus materially improves UI/world evals | **PARTIAL — the word doing the work is *evals*, and there is no eval** | 11 of 107 rules are mechanised as executable checks and two of them found live defects the moment they ran (F-37, F-38) — that part is real and verified. But **`packages/evals` does not import `@golem/design` at all**, and `packages/evals/results/` holds only model baselines from 2026-08-30, predating the library. So the checks improve THIS REPOSITORY'S shipped source, which is worth something, and they have never been applied to model-generated output, which is what the gate says |
 | 27 | UI Labs or equivalent isolated UI harness | **PROVEN** | `Stories.luau` renders states in isolation at 1.00 and 0.72 and MEASURES touch targets; found a real mobile trap · `evidence/2026-09-01-ui-stories-harness.md` |
 | 28 | Icon intelligence from strong free sources | **PROVEN** | 10 icon/asset rules extracted from `tijnepema/lucide-roblox` (MIT; SVGs ISC) and two agent-skill corpora, MEASURED in the checkout rather than read off prose — the square keyline is 18×18 at (3,3) in 134 files and the circle r10 deliberately overshoots it by one unit per side, which is the optical-vs-geometric-area correction stated as grammar. The shipped family stays original; what was taken is the construction rule, per §K |
 | 29 | Motion intelligence uses tested reusable patterns | **PROVEN** | 7 golem-authored rules (three from frame-by-frame samples) **plus 13 extracted from four independent MIT motion libraries** — Flipper, otter, roact-spring, RbxCameraShaker. The second source is what closes this: three libraries AGREEING that a retarget inherits velocity is grammar, and their DISAGREEMENT on what a stop does is recorded as a decision to be made rather than smoothed into a false consensus |
@@ -55,12 +55,28 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 
 ## Tally
 
-PROVEN 28 · PARTIAL 10 · UNPROVEN 1 · BLOCKED 1 · REJECTED 0
+PROVEN 26 · PARTIAL 11 · UNPROVEN 4 · BLOCKED 1 · REJECTED 0
+
+**Corrected 2026-09-01 by a ten-track independent audit** (`evidence/2026-09-01-mission-track-audit.md`)**, and the correction went the wrong
+way on purpose.** Five gates were downgraded: 6, 18, 19, 20 and 22 — three of them out of
+PROVEN entirely. The audit ran one auditor per track and then a SECOND agent whose only job was
+to refute that auditor's own weakest claim, and the two refutations that landed were both
+against claims *I* had written.
+
+The pattern in all five is the same and it is worth naming, because it will recur: **a
+code-existence claim written as an execution claim.** `ROADMAP_SCAN_LUAU` exists and has never
+run. The playtest frame bus exists and has never produced a frame. The registry enumerator
+counted 6,588 packages and fed them to nothing. `MotionProbe.luau` exists and no frame data was
+kept. Each was true about the repository and false about the world, and each read as PROVEN.
+
+Gate 18 is the sharpest: it was flipped UNPROVEN → PROVEN **two minutes after the feature
+commit**, citing "real rasterised frames", when not one frame had been produced.
 
 Only **one** gate (14) is externally blocked, on AI Gateway credit. Everything else marked
 PARTIAL is reachable without owner action.
 
-The UNPROVEN one is gate 40, and it moved there *from* PARTIAL. A visual critic ran and
+The UNPROVEN four are gates 18, 22, 40 and — since the facet path closed — the wall half of
+gate 2. Gate 40 moved there *from* PARTIAL. A visual critic ran and
 returned "Prototype". Marking that PARTIAL because three other critics passed would be the
 flattering arithmetic this ledger keeps having to correct.
 
