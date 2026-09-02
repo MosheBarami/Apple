@@ -459,6 +459,33 @@ candidates, most false positives, two real.
    that state honestly instead of handing the model raw SQL. Creating the tables lazily
    was refused: it would turn a loud failure into "the library has nothing like that".
 
+### The second creation exercise (§11 gate 2) — PARTIAL, and the cost it revealed
+
+Run 2026-09-02 at the Spark reset. An ore-mining tycoon loop, the simulator family against
+the first exercise's parkour: economy, per-player state, a carry limit, persistence, a HUD
+and a purchase. Golem checkpointed, wrote server, client and HUD Luau, playtested, read its
+own output and iterated on `OreTycoonServer` twice more — then **hit the 16-step limit and
+stopped**.
+
+**Recorded as PARTIAL, not met.** It shows the agent works on a second, genuinely different
+family, which is what the gate is about. It does not show a working feature, and the first
+exercise was only accepted because the finished result was driven and verified. That
+verification was impossible here: the Studio MCP bridge disconnected, the run took the whole
+Spark allowance, and the local `ADMIN_KEY` is stale against the deployed secret.
+
+**The cost is the finding.** 60 Sparks — the entire free daily allowance — for one request
+that did not finish, against a published *"Agent · 4 sparks · ≈15 requests a free day"*.
+Corroborated by the ledger: 60/17 events today, 60/23 yesterday, 62/38 on the 30th.
+
+Earlier the same day I corrected the Plan figure and wired a CI guard enforcing the whole
+table against COST-MODEL — which **locked in** the Agent figure and now reports agreement
+on it. The guard is faithful to its source; the source under-represents a real feature
+build by more than an order of magnitude. Not republished from one data point; raised at
+the top of `BLOCKERS.md` as the owner's call.
+
+Third sighting of the `currentMsgId` checkpoint defect, this time against the **deployed**
+Worker, which lacks the branch's fix — corroboration for deploying it, not a new bug.
+
 ### The critic pass (§11 gate 3)
 
 Two adversarial passes over the session's own work, briefed separately for correctness

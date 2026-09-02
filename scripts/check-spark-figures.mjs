@@ -22,6 +22,17 @@
  * one fixed instant shared by every account. The difference matters to anyone building
  * late in the UTC day.
  *
+ * WHAT THIS CHECK DOES NOT DO, stated because it was over-read once already. It proves
+ * the site, the app and the worker AGREE with docs/COST-MODEL.md. It cannot prove
+ * COST-MODEL is representative. On 2026-09-02 a measured Agent run — the §9.1 tycoon
+ * exercise, through the real product path — consumed 60 Sparks and did not finish, against
+ * a published "Agent · 4 sparks" that this file happily reports as agreeing. The 4 is
+ * `ceil(111 / 30)` from the "targeted edit" row, and COST-MODEL's largest Stone row is 511
+ * neurons where that run was roughly 1,800. See BLOCKERS.md and
+ * evidence/2026-09-02-second-creation-exercise.md.
+ *
+ * A guard that says "these agree" is not a guard that says "this is true".
+ *
  * Usage: node scripts/check-spark-figures.mjs
  */
 import { readFileSync } from 'node:fs';

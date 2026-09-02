@@ -329,6 +329,60 @@ It should be re-run before this branch merges.
 
 ---
 
+## URGENT for the owner — one Agent request costs the whole free day
+
+**Measured 2026-09-02 00:00–00:05Z, through the real product path. Not a code defect: a
+published commercial claim that the product contradicts.**
+
+The §9.1 second creation exercise — *"add an ore-mining tycoon loop"* — consumed **60
+Sparks, the entire free daily allowance, in one request**, and stopped at the step limit
+without finishing. Full account in `evidence/2026-09-02-second-creation-exercise.md`.
+
+The usage ledger corroborates it: 2026-09-02 **60 sparks / 17 events**, 2026-09-01 60/23,
+2026-08-30 62/38. A free day is about one substantial Agent run.
+
+### What the site says
+
+> **Agent · 4 sparks** — Builds features across your project · ≈15 requests a free day
+
+The measured cost of an Agent request doing exactly that is **60**. The published number
+is 15× out for the use the mode is advertised for.
+
+The 4 is not invented — it is `ceil(111 / 30)` from `COST-MODEL.md`'s *"Stone, targeted
+edit + read-back verify"* row. A targeted edit is a real thing Agent does; it is not the
+thing described beside the number.
+
+### What this session did about it, and got wrong
+
+Earlier today I corrected the Plan figure from 1 spark to 2 and wired
+`scripts/check-spark-figures.mjs` into CI to enforce the table against COST-MODEL. That
+guard now reports agreement — and in doing so **locks in the Agent figure**. The guard is
+faithful to its source; the source under-represents a real feature build by more than an
+order of magnitude. A check that says "these agree" is not a check that says "this is
+true", and I presented it closer to the second than it deserved.
+
+### Why it is not fixed here
+
+One instrumented measurement is one data point. Choosing a replacement number from it
+would repeat exactly the mistake that produced the current one. What the measurement does
+establish is that the present number cannot stand beside the words next to it.
+
+§33 makes public pricing the owner's, and this is more consequential than the Plan
+correction: it bears on whether the free tier delivers what the page promises.
+
+### The minimal owner action
+
+1. Decide whether the published figure should describe a *targeted edit* (4, accurate, and
+   then the label beside it must stop saying "builds features across your project") or a
+   *feature build* (measured once at 60, and then "≈15 requests a free day" becomes
+   roughly one).
+2. If a real distribution is wanted before republishing, more measured Agent runs are
+   needed than one — and each costs a full day of the free allowance to obtain.
+3. `COST-MODEL.md`'s largest Stone row is 511 neurons. This run was roughly 1,800. The
+   cost model's own measurements may need extending to cover what users actually ask for.
+
+---
+
 ## The live site is serving the figures this branch corrected
 
 **Not a blocker on the branch. It is a statement about production, checked 2026-09-01
