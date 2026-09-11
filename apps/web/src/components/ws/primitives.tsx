@@ -16,40 +16,11 @@ export function Icon({ d, size = 16 }: { d: string; size?: number }) {
   );
 }
 
-export const PATH = {
-  plus: 'M12 5v14M5 12h14',
-  chevronRight: 'M9 6l6 6-6 6',
-  /** Leaves Golem for somewhere else — same glyph the landing uses. */
-  arrowUpRight: 'M7 17 17 7m0 0H8.5M17 7v8.5',
-  chevronDown: 'M6 9l6 6 6-6',
-  /** Collapse / expand the rail. */
-  panelLeft: 'M4 5h16v14H4zM10 5v14',
-  /** New chat. */
-  compose: 'M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z M13.5 6.5l4 4',
-  /** View all chats. */
-  listAll: 'M4 7h16M4 12h16M4 17h9',
-  /** Checkpoints — stacked project states. */
-  layers: 'M12 3l8 4.5-8 4.5-8-4.5zM4 12l8 4.5 8-4.5M4 16.5L12 21l8-4.5',
-  /** The Thinking card's mark. Amber, static. */
-  sparkle: 'M12 3.5l1.7 4.8 4.8 1.7-4.8 1.7L12 16.5l-1.7-4.8L5.5 10l4.8-1.7z',
-  attach:
-    'M20 11.5l-8.1 8.1a4.6 4.6 0 0 1-6.5-6.5l8.6-8.6a3.1 3.1 0 0 1 4.4 4.4l-8.6 8.6a1.6 1.6 0 0 1-2.2-2.2l7.9-7.9',
-  mic: 'M12 3.5a2.8 2.8 0 0 1 2.8 2.8v5.4a2.8 2.8 0 0 1-5.6 0V6.3A2.8 2.8 0 0 1 12 3.5zM5.5 11.2a6.5 6.5 0 0 0 13 0M12 17.7V21',
-  history: 'M3 12a9 9 0 1 0 3-6.7M3 4v4h4',
-  brain: 'M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5.8V16a3 3 0 0 1-4 2.8M12 4v15',
-  close: 'M6 6l12 12M18 6L6 18',
-  send: 'M12 19V5M5 12l7-7 7 7',
-  stop: 'M8 8h8v8H8z',
-  menu: 'M4 7h16M4 12h16M4 17h16',
-  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
-  gauge: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1',
-  docs: 'M7 3h7l5 5v13H7zM14 3v5h5',
-  shield: 'M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z',
-  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
-  sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4',
-  moon: 'M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z',
-  camera: 'M4 8h3l1.5-2h7L17 8h3v11H4zM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
-};
+// Re-exported so every existing call site keeps working, and imported because this
+// module draws with it too.
+import { ICON_PATH } from '../icons';
+
+export const PATH = ICON_PATH;
 
 /* ------------------------------------------------------------ popover ---- */
 

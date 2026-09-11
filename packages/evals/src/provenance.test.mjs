@@ -495,3 +495,93 @@ test('recording a use is idempotent per (project, asset) and a live-API credit o
   assert.match(sql, /via_live_api=max\(/, 'a credit already owed must not be cleared by a later cached placement');
   assert.deepEqual(binds, [PROJECT, 'kenney/nature-kit/tree-pine-01', '2026-08-31T10:00:00.000Z', '2026-08-31T10:00:00.000Z', 1, 'forest']);
 });
+
+
+/* ============================================================================
+ * THE PRODUCER — added when insert_asset was finally wired to this ledger.
+ *
+ * Every test above feeds the report assets by hand. That is the right way to test the
+ * report, and it is exactly why the missing producer went unnoticed for so long:
+ * `recordAssetUse` had no caller in the worker, so on the real path the table was
+ * always empty — and an empty table produces a CLEAN report. The feature's failure
+ * mode was to say "you owe nothing", confidently, always.
+ * ==========================================================================*/
+
+/**
+ * A WRITABLE stand-in, unlike `fakeD1` above.
+ *
+ * `fakeD1(rows)` hands the report a fixed result set, which is what the report's own
+ * tests want. These tests are about the round trip — a write, then the read that has to
+ * find it — so this one actually stores rows and implements the upsert's conflict arm.
+ */
+function writableD1() {
+  const rows = [];
+  return {
+    rows,
+    exec: async () => {},
+    prepare() {
+      return {
+        bind(...args) {
+          return {
+            run: async () => {
+              const [projectId, assetId, first, last, live, context] = args;
+              const existing = rows.find((r) => r.project_id === projectId && r.asset_id === assetId);
+              if (existing) {
+                existing.last_used_at = last;
+                existing.uses += 1;
+                existing.via_live_api = Math.max(existing.via_live_api, live);
+                existing.context = context ?? existing.context;
+              } else {
+                rows.push({ project_id: projectId, asset_id: assetId, first_used_at: first, last_used_at: last, uses: 1, via_live_api: live, context });
+              }
+            },
+            // The report's LEFT join. No library rows exist here, so every column from
+            // `l` comes back null — which is the unaccounted case being exercised.
+            all: async () => ({
+              results: rows
+                .filter((r) => r.project_id === args[0])
+                .map((r) => ({ ...r, name: null, kind: null, source: null, source_url: null, licence: null, licence_url: null, commercial_use: null, attribution_required: null, author: null, retrieved_at: null, imported_at: null, modifications: null, roblox_asset_id: null, tags: null, sha256: null })),
+            }),
+            first: async () => null,
+          };
+        },
+      };
+    },
+  };
+}
+
+test('a recorded use reaches the report, and an unaccounted asset is named rather than hidden', async () => {
+  const env = { CORPUS: writableD1() };
+  await recordAssetUse(env, 'p1', 'unaccounted:roblox:998877', { context: 'game.Workspace.Lobby' });
+
+  const assets = await projectAssets(env, 'p1');
+  assert.equal(assets.length, 1, 'the row must survive the join');
+  assert.equal(assets[0].provenance, null, 'with no library row, provenance is unknown');
+  assert.equal(assets[0].use.context, 'game.Workspace.Lobby');
+
+  assert.deepEqual(attributionReport('p1', assets).unaccounted, ['unaccounted:roblox:998877']);
+
+  const compliance = commercialUseReport('p1', assets);
+  assert.equal(compliance.counts.unknown, 1);
+  assert.equal(compliance.ok, false, 'an asset with no known licence cannot be cleared to ship');
+});
+
+test('re-placing the same asset counts twice but is one obligation', async () => {
+  const env = { CORPUS: writableD1() };
+  await recordAssetUse(env, 'p1', 'unaccounted:roblox:1', { context: 'a' });
+  await recordAssetUse(env, 'p1', 'unaccounted:roblox:1', { context: 'b' });
+  const assets = await projectAssets(env, 'p1');
+  assert.equal(assets.length, 1, 'usage is a set, not a log');
+  assert.equal(assets[0].use.uses, 2);
+});
+
+test('an empty ledger reports nothing owed, which is why the producer matters', async () => {
+  // The state the feature was ALWAYS in before insert_asset called it. On the record so
+  // the pass is legible: a clean report from an empty table is indistinguishable from a
+  // clean report from a genuinely compliant project.
+  const env = { CORPUS: writableD1() };
+  const assets = await projectAssets(env, 'p-never-built');
+  assert.deepEqual(assets, []);
+  assert.deepEqual(attributionReport('p-never-built', assets).required, []);
+  assert.equal(commercialUseReport('p-never-built', assets).ok, true);
+});

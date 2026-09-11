@@ -26,7 +26,23 @@
  * Pure and DOM-free so `tests/activity-model.test.mjs` can run it under
  * `node --test`: this module imports types only.
  */
-import type { AgentPhase } from '@golem/shared';
+import { phaseForTool, type AgentPhase } from '@golem/shared';
+import {
+  ACTIVITY,
+  ACTIVITY_LABEL,
+  ACTIVITY_NOT_MODELLED,
+  isKnownTool,
+  kindForTool,
+  labelForTool,
+  type ActivityKind,
+} from './tool-vocabulary.ts';
+
+/**
+ * How close an announcement must sit to the tool that follows for it to be that tool's
+ * own announcement. See the note at the filter that uses it.
+ */
+const ANNOUNCE_WINDOW_MS = 1000;
+
 
 /* ---------------------------------------------------------------- states --- */
 
@@ -38,86 +54,10 @@ import type { AgentPhase } from '@golem/shared';
  * the honest floor. Adding a prettier guess here is the exact failure this
  * module exists to prevent.
  */
-export type ActivityKind =
-  | 'understanding'
-  | 'planning'
-  | 'inspecting'
-  | 'searching_assets'
-  | 'generating'
-  | 'building'
-  | 'writing_luau'
-  | 'rendering'
-  | 'critiquing'
-  | 'playtesting'
-  | 'debugging'
-  | 'repairing'
-  | 'verifying'
-  | 'saving'
-  | 'remembering'
-  | 'working';
-
-export const ACTIVITY_LABEL: Record<ActivityKind, string> = {
-  understanding: 'Understanding',
-  planning: 'Planning',
-  inspecting: 'Inspecting',
-  searching_assets: 'Searching assets',
-  generating: 'Generating',
-  building: 'Building world',
-  writing_luau: 'Writing Luau',
-  rendering: 'Rendering',
-  critiquing: 'Evaluating',
-  playtesting: 'Playtesting',
-  debugging: 'Reading the output',
-  repairing: 'Repairing',
-  verifying: 'Verifying',
-  saving: 'Saving',
-  remembering: 'Noting what changed',
-  working: 'Working',
-};
-
-/**
- * Tool → activity state. The tool NAME is the strongest signal we get, and it
- * is the only way to separate states that `agent_status` collapses together:
- * the worker reports `search_asset_library` as phase `inspecting`, so without
- * this table "Searching assets" would be unreachable.
- */
-const TOOL_KIND: Record<string, ActivityKind> = {
-  get_project_tree: 'inspecting',
-  list_scripts: 'inspecting',
-  read_script: 'inspecting',
-  search_scripts: 'inspecting',
-  search_docs: 'inspecting',
-  inspect_model: 'inspecting',
-
-  choose_asset_source: 'searching_assets',
-  search_asset_library: 'searching_assets',
-  find_verified_asset: 'searching_assets',
-
-  generate_model: 'generating',
-
-  create_instances: 'building',
-  set_properties: 'building',
-  delete_instances: 'building',
-  insert_asset: 'building',
-  run_luau: 'building',
-
-  edit_script: 'writing_luau',
-  render_view: 'rendering',
-
-  check_composition: 'critiquing',
-  inspect_visually: 'critiquing',
-  visual_critique: 'critiquing',
-
-  run_and_check: 'playtesting',
-  get_output_logs: 'debugging',
-  create_checkpoint: 'saving',
-  remember: 'remembering',
-};
-
-export function kindForTool(tool: string | undefined): ActivityKind {
-  if (!tool) return 'working';
-  return TOOL_KIND[tool] ?? 'working';
-}
+// The vocabulary now lives in one module, with the worker's tool registry as its
+// checked reference. See tool-vocabulary.ts for why there used to be three copies.
+export { ACTIVITY, ACTIVITY_LABEL, ACTIVITY_NOT_MODELLED, kindForTool, labelForTool as stepLabel };
+export type { ActivityKind };
 
 /**
  * `agent_status.phase` → activity state. `done` maps to null because it is not
@@ -218,6 +158,8 @@ export interface Elapsed {
 export interface ActivityStep {
   key: string;
   kind: ActivityKind;
+  /** The wire phase this step was announced as, for phase steps only. */
+  phase?: AgentPhase;
   label: string;
   /** The worker's own one-line summary of what the step returned. */
   detail?: string;
@@ -460,7 +402,7 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
     return {
       key: `tool:${r.toolId}`,
       kind: kindForTool(r.tool),
-      label: stepLabel(r.tool),
+      label: labelForTool(r.tool),
       detail: r.summary && r.summary !== r.tool ? r.summary : undefined,
       state,
       toolId: r.toolId,
@@ -502,6 +444,9 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
     phaseSteps.push({
       key: `phase:${e.phase}:${e.at}:${i}`,
       kind,
+      // The raw wire phase, kept so the suppression below can be exact rather than
+      // approximate. See the note there.
+      phase: e.phase,
       label: ACTIVITY_LABEL[kind],
       state: 'done',
       startedAt: e.at,
@@ -520,10 +465,47 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
   // and hangs a ~0ms clock on the first of them. When an announcement is
   // followed straight away by a tool in the same state, the tool is the row: it
   // carries the same fact and a duration that was actually measured.
+  //
+  // COMPARE THE PHASE, NOT THE KIND. The worker sets `agent.phase = phaseForTool(name)`
+  // on the line before it broadcasts `tool_start`, so an announcement is redundant
+  // exactly when it is the one DERIVED FROM the tool that follows it.
+  //
+  // This used to compare `next.kind === s.kind`, which was the same test only while the
+  // web's vocabulary and the wire's phases were one-to-one. Splitting C04/C06/C08 out of
+  // `inspecting` and `building` broke that: the wire still announces `building` before
+  // `set_properties`, the web now calls that tool `editing`, the kinds no longer matched,
+  // and the announcement survived as an EMPTY "Building world" heading immediately above
+  // "Editing project · Set properties" — reintroducing, as its own row, the very claim
+  // the split was made to remove.
   const steps = merged.filter((s, i) => {
     if (s.toolId !== undefined) return true;
     const next = merged[i + 1];
-    return !(next && next.toolId !== undefined && next.kind === s.kind);
+    if (!next || next.toolId === undefined) return true;
+
+    // TWO conditions the first version of this fix left out, both found by re-reading
+    // what the worker actually broadcasts.
+    //
+    // PROXIMITY. This comment has always justified itself by "broadcast immediately
+    // BEFORE the tool_start it describes" — and the code only ever checked adjacency in
+    // the merged array. They are not the same thing: session.ts re-broadcasts the
+    // STICKY previous phase at the top of every step, before the model call, and the
+    // derived one only when the tool starts. So an announcement can sit seconds of real
+    // model thinking away from the tool that follows it, and deleting it deletes a
+    // measured duration the user is entitled to see. The window is a threshold and
+    // therefore a judgement: two messages sent back to back over one socket arrive a
+    // few milliseconds apart, so a second is generous by three orders of magnitude and
+    // still nowhere near a model call.
+    //
+    // KNOWN TOOL. `phaseForTool` answers 'building' for any name it does not recognise,
+    // and its own JSDoc says the default is "for a name this build has never heard of"
+    // and is "NOT a resting place". Comparing against it for an unknown tool means a
+    // browser one version behind a worker silently eats real "Building world"
+    // announcements whenever the default happens to coincide.
+    const close =
+      s.startedAt !== undefined && next.startedAt !== undefined && next.startedAt - s.startedAt <= ANNOUNCE_WINDOW_MS;
+    if (close && s.phase !== undefined && isKnownTool(next.tool)) return s.phase !== phaseForTool(next.tool!);
+    if (!close) return true;
+    return next.kind !== s.kind;
   });
 
   for (let i = 0; i < steps.length; i += 1) {
@@ -611,38 +593,6 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
  * its own underscored name rather than to invented prose, so a tool added in
  * the worker shows up as itself instead of as a lie.
  */
-const STEP_LABEL: Record<string, string> = {
-  get_project_tree: 'Read the project tree',
-  list_scripts: 'Listed scripts',
-  read_script: 'Read a script',
-  search_scripts: 'Searched scripts',
-  search_docs: 'Searched the Roblox docs',
-  edit_script: 'Edited a script',
-  create_instances: 'Created instances',
-  set_properties: 'Set properties',
-  delete_instances: 'Deleted instances',
-  insert_asset: 'Inserted an asset',
-  generate_model: 'Generated a model',
-  run_luau: 'Ran Luau',
-  render_view: 'Rendered the scene',
-  check_composition: 'Checked composition and intent',
-  inspect_visually: 'Looked at the result',
-  visual_critique: 'Judged the render',
-  run_and_check: 'Ran the game and checked it',
-  get_output_logs: 'Read the output log',
-  create_checkpoint: 'Saved a checkpoint',
-  remember: 'Noted a fact about the project',
-  choose_asset_source: 'Chose an asset source',
-  search_asset_library: 'Searched the asset library',
-  find_verified_asset: 'Looked for a verified asset',
-  inspect_model: 'Inspected a model',
-};
-
-export function stepLabel(tool: string | undefined): string {
-  // No tool name means the `tool_start` never arrived. Say that, do not guess.
-  if (!tool) return 'A step with no reported name';
-  return STEP_LABEL[tool] ?? tool.replace(/_/g, ' ');
-}
 
 /* -------------------------------------------------------------- duration --- */
 

@@ -21,8 +21,10 @@
  * data means an absent row, never a greyed-out promise.
  *
  * It lives apart from the React component so that rule is testable under
- * `node --test` without a DOM: this module imports types only.
+ * `node --test` without a DOM. Its one value import, the shared tool vocabulary,
+ * is plain data and imports nothing itself, so that stays true.
  */
+import { labelForTool } from './tool-vocabulary.ts';
 import type { AgentPhase, RunIntent } from '@golem/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
 
@@ -46,32 +48,12 @@ export const PHASE_LABEL: Record<AgentPhase, string> = {
   done: 'Done',
 };
 
-/** A friendlier name per tool, for the Actions checklist. */
-export const TOOL_LABEL: Record<string, string> = {
-  get_project_tree: 'Read the project tree',
-  list_scripts: 'Listed scripts',
-  read_script: 'Read a script',
-  search_scripts: 'Searched scripts',
-  search_docs: 'Searched the Roblox docs',
-  edit_script: 'Edited a script',
-  create_instances: 'Created instances',
-  set_properties: 'Set properties',
-  delete_instances: 'Deleted instances',
-  insert_asset: 'Inserted an asset',
-  generate_model: 'Generated a model',
-  run_luau: 'Ran Luau',
-  render_view: 'Rendered the scene',
-  check_composition: 'Checked composition and intent',
-  inspect_visually: 'Looked at the result',
-  run_and_check: 'Ran the game and checked it',
-  get_output_logs: 'Read the output log',
-  create_checkpoint: 'Saved a checkpoint',
-  remember: 'Noted a fact about the project',
-  choose_asset_source: 'Chose an asset source',
-  search_asset_library: 'Searched the asset library',
-  find_verified_asset: 'Looked for a verified asset',
-  inspect_model: 'Inspected a model',
-};
+/**
+ * The Actions checklist used to hold its own copy of this table, identical to the
+ * activity card's across all 23 shared entries and missing the same tool. One table,
+ * checked against the worker registry, now serves both.
+ */
+export { TOOL as TOOL_VOCABULARY, labelForTool } from './tool-vocabulary.ts';
 
 /* --------------------------------------------------------------- types ---- */
 
@@ -151,7 +133,7 @@ export function buildActions(input: TimelineInput): ActionRow[] {
   for (const tool of input.tools) {
     rows.push({
       key: tool.toolId,
-      label: TOOL_LABEL[tool.tool] ?? tool.tool.replace(/_/g, ' '),
+      label: labelForTool(tool.tool),
       // The worker's own one-line summary of what the tool returned.
       detail: tool.summary && tool.summary !== tool.tool ? tool.summary : undefined,
       state: !tool.done ? 'active' : tool.ok === false ? 'failed' : 'done',

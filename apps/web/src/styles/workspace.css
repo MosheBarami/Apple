@@ -24,7 +24,14 @@
   --gx-ink: #f5f2ec;
   --gx-ink-warm: #c9c0b2;
   --gx-ink-2: #9a938a;
-  --gx-ink-3: #6e6862;
+  /* 4.71:1 on --gx-raise-2, the lightest surface this sits on, and 5.15:1 on the
+     ground. It was #6e6862 — 3.29:1 — which clears the 3:1 that covers large text and
+     non-text UI but not the 4.5:1 that normal text needs, and every use of it is small
+     text: timestamps, detail lines, the credits notes. The 2026-09-01 accessibility
+     pass said in its own words that contrast ratios were "not covered"; this is what
+     measuring them found. It also converges on the landing's --faint (#918b82, 5.86:1),
+     which had the same role and had been getting it right. */
+  --gx-ink-3: #88817a;
 
   --gx-line: rgba(245, 242, 236, 0.08);
   --gx-line-2: rgba(245, 242, 236, 0.14);
@@ -68,7 +75,9 @@
   --gx-ink: #191713;
   --gx-ink-warm: #4b4438;
   --gx-ink-2: #5f584c;
-  --gx-ink-3: #7a7264;
+  /* Light theme, same rule: 4.66:1 on --gx-ground. Was #7a7264 at 4.21:1 — closer than
+     the dark theme was, and still short. */
+  --gx-ink-3: #736b5e;
   --gx-line: rgba(25, 23, 19, 0.12);
   --gx-line-2: rgba(25, 23, 19, 0.2);
   --gx-amber: #9c621d;
@@ -608,6 +617,18 @@
   min-height: 36px;
 }
 
+/* An icon is not text and must never be squeezed to make room for some.
+   At 390px the Roadmap and Checkpoints buttons rendered as EMPTY rounded rectangles:
+   their SVGs are flex items, default `0 1 auto`, and the row shrank them to exactly
+   0px wide. The button kept its border, so the failure looked like a styling choice
+   rather than a missing control. */
+.gx-btn > svg,
+.gx-icon-btn > svg,
+.gx-pill > svg,
+.gx-chip > svg {
+  flex: none;
+}
+
 /* --------------------------------------------------------------------------
    6. Status pill — Studio connection
    -------------------------------------------------------------------------- */
@@ -618,6 +639,12 @@
   gap: 0.42rem;
   min-height: 32px;
   max-width: 42vw;
+  /* Never squeezed below its own content. On a 390px phone the row asked this pill for
+     53px when it needed 73, and because the label lives in a CHILD span the ellipsis
+     below could not apply — so "Studio" was cut to "Stud" and the glyphs ran out
+     through the rounded border. The title beside it is the element designed to absorb
+     that pressure: it has min-width 0 and its own ellipsis. */
+  flex: none;
   padding: 0 0.7rem;
   border-radius: 999px;
   border: 1px solid var(--gx-line);
@@ -2293,6 +2320,24 @@
     display: none;
   }
 
+  /* TWO ROWS, because six controls and a project name do not fit on one.
+     Measured at 390px: with every icon rendering at its true size the row fits, but
+     only by squeezing the title to 20px — "F…" — and on a phone the rail is collapsed,
+     so that title is the ONLY thing saying which project you are in. Nothing here is
+     hidden or moved behind a menu; the actions simply take their own line. */
+  .gx-top {
+    flex-wrap: wrap;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    row-gap: 0.4rem;
+  }
+
+  .gx-top__actions {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
   .gx-turn--agent {
     grid-template-columns: 28px minmax(0, 1fr);
     gap: 0.6rem;
@@ -2657,3 +2702,171 @@
     transition: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Canonical empty, waiting and failed states  (components/empty-state.tsx)
+
+   There were fourteen of these across two incompatible CSS layers — `.empty-state`
+   in styles.css and `.gx-empty` here — some of them considered, one of them a bare
+   `<p>Loading…</p>`. A user meets these on their worst days, so they get one
+   treatment.
+
+   TONE IS SEMANTIC, per the visual system's §16.2 colour grammar: amber is creation
+   and Golem's own identity, blue is Studio and transport, green is proven, violet is
+   future or in-progress, red is failure. The tone comes from the state id in the
+   component and is not a prop a caller can pass, because a state whose colour
+   contradicts its meaning is exactly the drift §16.3 names.
+   -------------------------------------------------------------------------- */
+
+.es {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  /* A hairline in the state's own colour, rather than a filled panel. The workspace
+     is already a lane of cards; one more filled box reads as content, not as
+     absence. */
+  border: 1px solid var(--es-edge, var(--line));
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--es-tint, transparent) 5%, transparent);
+}
+
+.es__art { margin-bottom: 0.25rem; opacity: 0.9; }
+
+.es__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.es__body {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+}
+
+.es__action { margin-top: 0.5rem; }
+
+.es--creation { --es-edge: color-mix(in srgb, var(--acc-ember) 30%, var(--line)); --es-tint: var(--acc-ember); }
+.es--studio   { --es-edge: color-mix(in srgb, var(--acc-stone) 30%, var(--line)); --es-tint: var(--acc-stone); }
+.es--proven   { --es-edge: color-mix(in srgb, var(--good) 32%, var(--line));      --es-tint: var(--good); }
+.es--future   { --es-edge: color-mix(in srgb, var(--acc-rune) 30%, var(--line));  --es-tint: var(--acc-rune); }
+.es--failure  { --es-edge: color-mix(in srgb, var(--bad) 34%, var(--line));       --es-tint: var(--bad); }
+
+/* Motion is a fade only. These appear when something did NOT happen; sliding them in
+   dramatises a non-event. */
+@media (prefers-reduced-motion: no-preference) {
+  .es { animation: es-in var(--dur) var(--ease-out) both; }
+  @keyframes es-in { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* The seed prompts under the conversation zero-state. They are the state's ACTION,
+   so they sit in `.es__action` and inherit its spacing rather than carrying their own
+   inline styles, which is what they had. */
+.gx-seeds { display: grid; gap: 0.4rem; text-align: left; }
+.gx-seeds .gx-row { cursor: pointer; }
+
+/* The canonical-state specimen grid in /ui-lab. Two columns so a tone that fights its
+   meaning is visible against its neighbours rather than only in isolation. */
+.lab-states { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); }
+.lab-state { display: flex; flex-direction: column; gap: 0.4rem; }
+.lab-state-id {
+  font: 500 0.7rem/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* The Studio pill's two labels. The place name is the useful one and wins at desktop
+   width; below the sidebar breakpoint it and the project title were both truncating to
+   the same unreadable prefix, so the short form takes over. Exactly one is ever shown,
+   so the pill never changes height. */
+.gx-pill__place,
+.gx-pill__short {
+  /* The pill's own text-overflow cannot reach text inside a child element. If this ever
+     is squeezed despite `flex: none`, it has to end in an ellipsis rather than a
+     half-drawn letter. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gx-pill__short { display: none; }
+@media (max-width: 860px) {
+  .gx-pill__place { display: none; }
+  .gx-pill__short { display: inline; }
+}
+
+/* Canonical status marks (components/status-icon.tsx). Tone is the status, so the
+   colour is chosen by the mark rather than by whoever placed it — a success drawn in
+   the failure colour is the drift the vocabulary exists to stop. */
+.st { flex: none; vertical-align: -0.15em; }
+.st--good   { color: var(--good); }
+.st--bad    { color: var(--bad); }
+.st--warn   { color: var(--warn); }
+.st--info   { color: var(--info); }
+.st--future { color: var(--acc-rune); }
+.st--muted  { color: var(--ink-3); }
+
+/* The status-mark specimen row in /ui-lab. */
+.lab-marks { display: flex; flex-wrap: wrap; gap: 1.1rem 1.6rem; align-items: center; }
+.lab-mark { display: flex; align-items: center; gap: 0.45rem; }
+/* I05 alone animates. `prefers-reduced-motion` stops it rather than hiding it: the
+   arc still reads as "not finished", which is the part that carries meaning. */
+.st--spin { animation: gx-spin 900ms linear infinite; transform-origin: 50% 50%; }
+@media (prefers-reduced-motion: reduce) { .st--spin { animation: none; } }
+
+/* ---------------------------------------------------------------------------
+   Credits and clearance (components/ws/credits-panel.tsx).
+   A reading surface: generous line length, one action, no cards competing with
+   the verdict at the top.
+   ------------------------------------------------------------------------ */
+.cr { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.cr-verdict {
+  display: flex; gap: 0.7rem; align-items: flex-start;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface-2);
+}
+.cr-verdict__mark { display: flex; padding-top: 0.15rem; }
+.cr-verdict--good   { border-color: color-mix(in srgb, var(--good) 34%, var(--line)); }
+.cr-verdict--bad    { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+.cr-verdict--warn   { border-color: color-mix(in srgb, var(--warn) 34%, var(--line)); }
+.cr-verdict--muted  { border-color: var(--line); }
+.cr-verdict--good  .cr-verdict__mark { color: var(--good); }
+.cr-verdict--bad   .cr-verdict__mark { color: var(--bad); }
+.cr-verdict--warn  .cr-verdict__mark { color: var(--warn); }
+.cr-verdict--muted .cr-verdict__mark { color: var(--ink-3); }
+.cr-verdict__title { margin: 0 0 0.2rem; font-size: 0.95rem; font-weight: 600; color: var(--ink-1); }
+.cr-verdict__body { margin: 0; font-size: 0.82rem; line-height: 1.5; color: var(--ink-2); }
+
+.cr-group { display: flex; flex-direction: column; gap: 0.55rem; }
+.cr-group__head {
+  margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.cr-note { margin: 0; font-size: 0.79rem; line-height: 1.5; color: var(--ink-3); }
+
+.cr-entries, .cr-findings, .cr-ids { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.cr-entry { display: flex; flex-direction: column; gap: 0.15rem; }
+.cr-entry__line { font-size: 0.84rem; line-height: 1.45; color: var(--ink-1); }
+.cr-entry__links { display: flex; gap: 0.8rem; font-size: 0.74rem; }
+.cr-entry__links a { color: var(--ink-3); }
+.cr-entry__links a:hover { color: var(--acc-studio); }
+
+.cr-finding { display: flex; flex-direction: column; gap: 0.2rem; padding-left: 0.7rem; border-left: 2px solid var(--line); }
+.cr-finding.is-blocker { border-left-color: var(--bad); }
+.cr-finding__name { font-size: 0.84rem; font-weight: 600; color: var(--ink-1); }
+.cr-finding__why, .cr-finding__fix { font-size: 0.79rem; line-height: 1.5; color: var(--ink-2); }
+.cr-finding__fix { color: var(--ink-3); }
+
+.cr-ids { gap: 0.25rem; font-size: 0.8rem; color: var(--ink-2); }
+
+.cr-stamp { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--ink-3); }

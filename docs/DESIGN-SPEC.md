@@ -245,10 +245,12 @@ A rounded `--surface` box with a `--line-2` border.
 - Below the box, centred, `--faint`, ~12px: the mistakes disclaimer.
 
 > The reference renders the model chip as `Golem 1.5`. In this product that
-> control is the **provider** picker and the mode chip is **Clay / Stone /
-> Rune**. Keep the reference's *form* — two chips, model-ish on the left, mode
-> beside it — and this product's *meaning*. Never invent a provider name or show
-> a provider as available when it is not.
+> control is the **provider** picker and the mode chip is **Plan / Agent / Super
+> Agent** (ADR-018 — this line said Clay / Stone / Rune until 2026-09-01, which
+> are the internal specialist identities and must never appear in product UI).
+> Keep the reference's *form* — two chips, model-ish on the left, mode beside it
+> — and this product's *meaning*. Never invent a provider name or show a provider
+> as available when it is not.
 
 ---
 

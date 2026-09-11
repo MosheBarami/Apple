@@ -522,6 +522,10 @@ body {
 }
 
 .strip__title {
+  /* An h2 since the cells became a labelled region rather than a footer, and it needs
+     nothing added for that: the reset at the top of this file already zeroes heading
+     margins, and measurement at 375x812 confirms the page stays exactly one viewport
+     either way — the hero is the 1fr row and absorbs the difference. */
   color: var(--ink);
   font-size: 0.9rem;
   font-weight: 600;

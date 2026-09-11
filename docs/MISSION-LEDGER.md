@@ -423,6 +423,124 @@ Two further rulings that change how the rest of the mission is run:
   stays UNPROVEN until a **fresh** critic — one that has not seen the implementation narrative,
   and is told nothing about tests, parts, meshes or hours — judges revised player-eye pixels.
 
+## Session of 2026-09-01 (evening) — Phase H/I product work
+
+Branch `feature/golem-product-experience`, PR #5. Every item below has evidence in
+`docs/evidence/` and a guard that fails if it regresses.
+
+### The canonical visual system (§16)
+
+| what | was | now |
+|---|---|---|
+| status marks (I-series) | a `✓` character in four places, drawn four ways | one `StatusIcon`, I01–I06/I09/I10/I12, tone owned by the status |
+| activity vocabulary (Board C) | one tool table copied FOUR times | one `ws/tool-vocabulary.ts`, canonical C ids, checked against the worker registry both ways |
+| landing structure | three product claims inside a `<footer>`, titles as `<span>` | `main` is the frame, claims are a labelled `<section>` with `<h2>` |
+
+The C-series work fixed a live mislabel: `set_properties` was reported as "Building
+world", and because adjacent same-kind steps merge, "Set properties" was drawn *inside*
+the Building heading — the transcript said Golem was building the world while it
+recoloured a floor. C04 (searching docs) and C06 (reading scripts) were likewise
+collapsed into "Inspecting project". C10 and C12 are declared not-modelled with reasons.
+
+### Two features that were fully tested and never called
+
+Found by auditing every export in the worker and web app for production callers — 38
+candidates, most false positives, two real.
+
+1. **Attribution ledger.** 500 lines, 20 tests, no producer. An empty table yields a
+   CLEAN report, so it answered "you owe nothing" every time and nothing could tell that
+   apart from a compliant project. `insert_asset` now records the use;
+   `GET /api/projects/:id/attribution` reads it; a drawer in the workspace shows it, and
+   never reads an empty ledger as a clearance to publish.
+2. **Curated asset library — HUMAN_BLOCKED, `BLOCKERS.md` §4b.** Its entire write path
+   has no caller, so the tables were never created. Production D1 has no `asset_library`
+   at all, and `search_asset_library` — which the system prompt tells the model to try
+   FIRST — has returned `no such table` for the life of the deployment. It now reports
+   that state honestly instead of handing the model raw SQL. Creating the tables lazily
+   was refused: it would turn a loud failure into "the library has nothing like that".
+
+### The second creation exercise (§11 gate 2) — PARTIAL, and the cost it revealed
+
+Run 2026-09-02 at the Spark reset. An ore-mining tycoon loop, the simulator family against
+the first exercise's parkour: economy, per-player state, a carry limit, persistence, a HUD
+and a purchase. Golem checkpointed, wrote server, client and HUD Luau, playtested, read its
+own output and iterated on `OreTycoonServer` twice more — then **hit the 16-step limit and
+stopped**.
+
+**Recorded as PARTIAL, not met.** It shows the agent works on a second, genuinely different
+family, which is what the gate is about. It does not show a working feature, and the first
+exercise was only accepted because the finished result was driven and verified. That
+verification was impossible here: the Studio MCP bridge disconnected, the run took the whole
+Spark allowance, and the local `ADMIN_KEY` is stale against the deployed secret.
+
+**The cost is the finding.** 60 Sparks — the entire free daily allowance — for one request
+that did not finish, against a published *"Agent · 4 sparks · ≈15 requests a free day"*.
+Corroborated by the ledger: 60/17 events today, 60/23 yesterday, 62/38 on the 30th.
+
+Earlier the same day I corrected the Plan figure and wired a CI guard enforcing the whole
+table against COST-MODEL — which **locked in** the Agent figure and now reports agreement
+on it. The guard is faithful to its source; the source under-represents a real feature
+build by more than an order of magnitude. Not republished from one data point; raised at
+the top of `BLOCKERS.md` as the owner's call.
+
+Third sighting of the `currentMsgId` checkpoint defect, this time against the **deployed**
+Worker, which lacks the branch's fix — corroboration for deploying it, not a new bug.
+
+### The critic pass (§11 gate 3)
+
+Two adversarial passes over the session's own work, briefed separately for correctness
+and for whether the product claims more than it establishes. **Nine real defects**, two
+severe, all fixed — `evidence/2026-09-01-critic-pass-two.md`.
+
+The two severe ones were both in work I had written and documented as sound hours
+earlier:
+
+- the credits feature **500s in production**, because the read path joins the
+  `asset_library` table this same session proved does not exist — a case I had handled
+  in `search_asset_library` and not carried across;
+- the panel told **every user with a placed asset** that their game could not ship
+  commercially, because with no library every asset is unaccounted and
+  `missing_provenance` is graded a blocker. Golem never made that determination.
+
+A third was a regression from this session's own C-series split: the reducer's
+announcement suppression compared kinds, which was the right test only while the web
+vocabulary and the wire phases were one-to-one. `b2fb1f8`'s commit message described
+the resulting transcript as clean. It was not — an empty "Building world" heading sat
+directly above "Editing project · Set properties" — and the evidence file corrects
+that claim rather than quietly fixing the code.
+
+### The published-claims audit
+
+Every claim on the public site that the repository can settle, checked against the code
+(`evidence/2026-09-01-published-claims-audit.md`). Four wrong, six right — and the six are
+written down, because reporting only failures would make an audit look like fault-finding.
+
+| claim | verdict |
+|---|---|
+| a Plan request costs 1 spark | **wrong** — 2, from `ceil(43/30)`. In six places, plus three inside the calculator |
+| the modes are Clay, Stone, Rune | **wrong** — those are internal identities `packages/shared` forbids surfacing. 96 occurrences |
+| quota resets on a rolling 24h clock | **wrong** — `QuotaDO` fixes midnight UTC for everyone |
+| the Privacy Policy will be updated before an opt-in program exists | **wrong** — the toggle already ships. HUMAN-ONLY |
+| pairing codes: 6 chars, no O/I/L/1, 10 min, single use, case- and punctuation-insensitive | all six hold |
+| the status page checks the live API from your browser | holds — relative fetch, same origin, 200 in 145 ms |
+| our servers hold no master key | holds — no `service_role` key anywhere |
+| the plugin cannot act on places you did not connect | holds, enforced by Studio's per-DataModel plugin model |
+| deleting a project removes chat, checkpoints and pairing forever | holds — settled against Cloudflare's docs, not intuition |
+
+**Production is still serving the wrong ones.** The site is D1-backed and only changes on
+deploy; `BLOCKERS.md` records what is live and why this session did not ship it (the batch
+carries the mode rename, which is the owner's call).
+
+### Three mistakes of mine worth keeping
+
+- A guard that flagged its own documentation, twice (the Unicode-mark check and the
+  lazy-creation check) — both fixed by matching what the code *does*, not what a comment
+  *says*.
+- A CSS comment asserting a constraint I had not measured. Removing the rule and
+  re-measuring showed the page unchanged; the rule was redundant and the comment false.
+- A guard written to catch a specific defect that did not catch it. Verified by
+  reverting the defect and re-running, rather than assuming.
+
 ## Next-highest-value unblocked work, in dependency order
 
 1. **Cliff wall (2)** — the two routes F-19 named are now costed. "More distinct rock
@@ -433,7 +551,14 @@ Two further rulings that change how the rest of the mission is run:
    that produced the accepted geode and six rejections) or **authored courses that are not
    slabs** — built rather than acquired. Neither is blocked; both are larger than a search.
 2. **Thinking UX (17)** and **playtest viewport (18)**.
-3. **Asset provenance ledger** — the logic is tested; nothing populates it yet.
+3. ~~**Asset provenance ledger** — the logic is tested; nothing populates it yet.~~
+   **CLOSED 2026-09-01.** `insert_asset` now writes the usage row and
+   `GET /api/projects/:id/attribution` reads it
+   (`evidence/2026-09-01-provenance-producer.md`). The failure mode was that an empty
+   table produces a CLEAN report, so the feature answered "you owe nothing" every
+   time and nothing distinguished that from a compliant project. Still not recorded:
+   `generate_model` / `generate_image`, which the report classifies separately and
+   which carry no third-party licence obligation.
 
 Superseded: source corpus ingestion (21→24) and design retrieval (25) are landed; every
 review finding is closed or rejected.

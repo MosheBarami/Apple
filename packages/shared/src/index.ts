@@ -298,6 +298,13 @@ export type AgentPhase =
 /**
  * Which phase a tool represents. Used by the worker to announce the stage and
  * by the web app to group activity. Kept here so both sides cannot drift.
+ *
+ * The `default` is for a name this build has never heard of — a plugin or worker
+ * one version ahead. It is NOT a resting place for a registered tool: every key of
+ * the worker's TOOLS registry must appear in a `case` above, and
+ * `apps/worker/tests/phase-coverage.test.mjs` fails the build if one does not.
+ * `generate_image` had been sitting on the default and reporting "Building",
+ * which happened to be the phase it wanted — a right answer nobody had chosen.
  */
 export function phaseForTool(tool: string): AgentPhase {
   switch (tool) {
@@ -318,6 +325,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'delete_instances':
     case 'insert_asset':
     case 'generate_model':
+    case 'generate_image':
     case 'run_luau':
       return 'building';
     case 'render_view':
@@ -692,10 +700,28 @@ export interface GatewayResponse {
  * are *typical measured* costs shown in the UI, not fixed prices. Measured 2026-08-30:
  * Clay ~29 neurons, Stone answer-only ~139, Stone full build+verify in Studio ~1,266.
  */
-export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; sparksPerRequest: number; typicalSparks: string }> = {
-  clay: { name: 'Clay', blurb: 'Fast answers and small edits', sparksPerRequest: 1, typicalSparks: '~1' },
-  stone: { name: 'Stone', blurb: 'Builds features across your project', sparksPerRequest: 2, typicalSparks: '2-15' },
-  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', sparksPerRequest: 3, typicalSparks: '10-30' },
+/**
+ * `sparksPerRequest` is GONE, deliberately.
+ *
+ * It used to be the upfront charge — `quotaSpend(owner, MODE_INFO[mode].sparksPerRequest)`
+ * — and the site's published "Clay 1 · Stone 4 · Rune 10" came from exactly those
+ * numbers. The charging model then changed: session.ts now takes ONE spark upfront
+ * whatever the mode, and settles the difference from measured neurons
+ * (`sparksForNeurons(agent.neuronsUsed) - agent.sparksSpent`). Nothing has read
+ * `sparksPerRequest` since, while the comment below PRODUCT_MODE_INFO still called it
+ * "the balance a client must hold before it may send" and told the reader to "change a
+ * price in MODE_INFO or nowhere". Someone following that instruction would have changed
+ * a number that charges nobody.
+ *
+ * `typicalSparks` is different: the composer renders it, as "Typically N Sparks". It is
+ * derived from docs/COST-MODEL.md through `ceil(neurons / 30)`, the same arithmetic the
+ * worker bills with, and `scripts/check-spark-figures.mjs` checks it against those
+ * measurements.
+ */
+export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typicalSparks: string }> = {
+  clay: { name: 'Clay', blurb: 'Fast answers and small edits', typicalSparks: '2' },
+  stone: { name: 'Stone', blurb: 'Builds features across your project', typicalSparks: '4-18' },
+  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalSparks: '10-30' },
 };
 
 // ---------------------------------------------------------------------------
@@ -748,34 +774,30 @@ export const SPECIALIST_TO_PRODUCT_MODE: Record<GolemMode, ProductMode> = {
 /**
  * User-facing copy and cost for each product mode.
  *
- * The Spark figures are NOT restated here — they are read out of MODE_INFO
- * through the mapping above, because `sparksPerRequest` is the balance a client
- * must hold before it may send, and the ledger charges the specialist. A
- * product-mode number that drifted above its specialist's would lock users out
- * of sends the worker would have served; one that drifted below would promise a
- * send the quota then refuses. Change a price in MODE_INFO or nowhere.
+ * The Spark figure is NOT restated here — it is read out of MODE_INFO through the
+ * mapping above, so a product-mode number cannot drift from its specialist's. What it
+ * is has changed: it is `typicalSparks`, a range measured in docs/COST-MODEL.md, and
+ * not a price the client enforces. The worker takes one spark upfront whatever the mode
+ * and settles the rest from the neurons actually used.
  */
 export const PRODUCT_MODE_INFO: Record<
   ProductMode,
-  { name: string; blurb: string; sparksPerRequest: number; typicalSparks: string }
+  { name: string; blurb: string; typicalSparks: string }
 > = {
   plan: {
     name: 'Plan',
     blurb: 'Inspects your project and designs the work. Proposes; does not change anything.',
-    sparksPerRequest: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].sparksPerRequest,
     typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.plan].typicalSparks,
   },
   agent: {
     name: 'Agent',
     blurb: 'Builds, tests and repairs. The normal way to work.',
-    sparksPerRequest: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].sparksPerRequest,
     typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.agent].typicalSparks,
   },
   super: {
     name: 'Super Agent',
     blurb:
       'Long-horizon autonomous creation. Decomposes, builds, playtests, critiques and iterates through many stages without asking routine questions.',
-    sparksPerRequest: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].sparksPerRequest,
     typicalSparks: MODE_INFO[PRODUCT_MODE_TO_SPECIALIST.super].typicalSparks,
   },
 };

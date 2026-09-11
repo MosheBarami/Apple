@@ -13,6 +13,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ProductMode } from '@golem/shared';
+import { EmptyState } from '../components/empty-state';
 import { ApiError, fetchMilestoneBrief, fetchNextMilestones, fetchRoadmap } from '../lib/api';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { relativeTime } from '../lib/format';
@@ -178,46 +179,61 @@ export function RoadmapPage() {
 
       {/* ------------------------------------------- no place to read from */}
       {roadmap.isError && needsStudio && (
-        <div className="empty-state rm-empty">
-          <EmptyRoadmapMark />
-          <h2>Golem needs your place open</h2>
-          <p>
-            The roadmap is read out of the project itself — what is built, what is missing, what genre it
-            is turning into. With Studio disconnected there is nothing to read, and a plan invented without
-            it would be a generic checklist wearing your project&rsquo;s name.
-          </p>
-          <p className="rm-empty__detail">{(err as ApiError).message}</p>
-          <Link to={`/projects/${projectId}`} className="btn btn-primary">
-            Connect Studio in the conversation
-          </Link>
-        </div>
+        <EmptyState
+          state="studioDisconnected"
+          illustration={<EmptyRoadmapMark />}
+          detail={
+            <>
+              <p className="es__body">
+                The roadmap is read out of the project itself — what is built, what is missing, what genre
+                it is turning into. With Studio disconnected there is nothing to read, and a plan invented
+                without it would be a generic checklist wearing your project&rsquo;s name.
+              </p>
+              <p className="rm-empty__detail">{(err as ApiError).message}</p>
+            </>
+          }
+          action={
+            <Link to={`/projects/${projectId}`} className="btn btn-primary">
+              Connect Studio in the conversation
+            </Link>
+          }
+        />
       )}
 
       {/* ------------------------------------------------------------ error */}
       {roadmap.isError && !needsStudio && (
-        <div className="empty-state" role="alert">
-          <h2>Couldn&rsquo;t read the roadmap</h2>
-          <p>{(err as Error).message}</p>
-          <button type="button" className="btn" onClick={() => void roadmap.refetch()}>
-            Try again
-          </button>
-        </div>
+        <EmptyState
+          state="connectionFailed"
+          detail={<p className="es__body">{(err as Error).message}</p>}
+          action={
+            <button type="button" className="btn" onClick={() => void roadmap.refetch()}>
+              Try again
+            </button>
+          }
+        />
       )}
 
       {/* ------------------------------------------------------------ empty */}
       {roadmap.isSuccess && layout.progress.total === 0 && (
-        <div className="empty-state rm-empty">
-          <EmptyRoadmapMark />
-          <h2>Nothing to plan yet</h2>
-          <p>
-            Golem read your place and found nothing it recognises well enough to plan around yet. Build
-            something in the conversation — a spawn, a first room — and the plan fills in as the project
-            takes shape.
-          </p>
-          <Link to={`/projects/${projectId}`} className="btn btn-primary">
-            Back to the conversation
-          </Link>
-        </div>
+        /* M03. The copy is kept verbatim through `detail`: it is more specific than any
+           shared default could be, and the canonical state supplies the identity — title,
+           tone, the M03 marker — rather than replacing what was already good. */
+        <EmptyState
+          state="noRoadmap"
+          illustration={<EmptyRoadmapMark />}
+          detail={
+            <p className="es__body">
+              Golem read your place and found nothing it recognises well enough to plan around yet. Build
+              something in the conversation — a spawn, a first room — and the plan fills in as the project
+              takes shape.
+            </p>
+          }
+          action={
+            <Link to={`/projects/${projectId}`} className="btn btn-primary">
+              Back to the conversation
+            </Link>
+          }
+        />
       )}
 
       {/* ------------------------------------------------------------- plan */}

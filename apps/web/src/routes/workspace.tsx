@@ -12,6 +12,7 @@ import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@go
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
+import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
@@ -23,6 +24,7 @@ import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
+import { EmptyState } from '../components/empty-state';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -50,7 +52,7 @@ export function WorkspacePage() {
   const navigate = useNavigate();
 
   const [showPairing, setShowPairing] = useState(false);
-  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory'>(null);
+  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory' | 'credits'>(null);
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
@@ -207,7 +209,14 @@ export function WorkspacePage() {
           {studioStatus === 'connected' ? (
             <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
-              {studio.state?.placeName ?? 'Studio'}
+              {/* The PLACE name, which is worth showing: it says which place is paired,
+                  and that is not always the project you are looking at. Below 860px it
+                  is hidden in favour of the word "Studio" — at that width it sat beside
+                  a project title of the same name and BOTH truncated, so the topbar
+                  showed the same name twice and neither legibly. The full name stays in
+                  the title attribute at every width. */}
+              <span className="gx-pill__place">{studio.state?.placeName ?? 'Studio'}</span>
+              <span className="gx-pill__short">Studio</span>
             </span>
           ) : studioStatus === 'connecting' ? (
             // No answer from the worker yet. Not a claim either way.
@@ -230,6 +239,20 @@ export function WorkspacePage() {
             title="Project memory"
           >
             <Icon d={PATH.brain} />
+          </button>
+
+          {/* What the project owes before it can be published. An icon button
+              rather than a fourth named control: it is read once, near the end,
+              and giving it the weight of Roadmap would put a rare pre-publish
+              check in front of the thing people are here to do. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('credits')}
+            aria-label="Credits and clearance to publish"
+            title="What this project owes"
+          >
+            <Icon d={PATH.licence} />
           </button>
 
           {/* The way into the plan. The conversation says what is happening
@@ -276,27 +299,33 @@ export function WorkspacePage() {
       <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
         <div className="gx-thread">
           {historyState === 'error' && (
-            <div className="gx-empty">
-              <p>Couldn&rsquo;t load this conversation.</p>
-              <button type="button" className="gx-btn gx-btn--outline" onClick={reloadHistory}>
-                Try again
-              </button>
-            </div>
+            <EmptyState
+              state="connectionFailed"
+              detail={<p className="es__body">Couldn&rsquo;t load this conversation. Nothing in your project was changed.</p>}
+              action={
+                <button type="button" className="gx-btn gx-btn--outline" onClick={reloadHistory}>
+                  Try again
+                </button>
+              }
+            />
           )}
 
           {historyState === 'ready' && messages.length === 0 && (
-            <div className="gx-empty">
-              <p style={{ fontSize: '1rem', color: 'var(--gx-ink-2)' }}>
-                Tell me what you want to build and I&rsquo;ll make it in your place.
-              </p>
-              <div style={{ display: 'grid', gap: '0.4rem', marginTop: '1.1rem', textAlign: 'left' }}>
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} type="button" className="gx-row" onClick={() => setSeed(s)} style={{ cursor: 'pointer' }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <EmptyState
+              state="noConversation"
+              detail={
+                <p className="es__body">Tell me what you want to build and I&rsquo;ll make it in your place.</p>
+              }
+              action={
+                <div className="gx-seeds">
+                  {SUGGESTIONS.map((s) => (
+                    <button key={s} type="button" className="gx-row" onClick={() => setSeed(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
           )}
 
           {messages.map((item) => (
@@ -378,7 +407,9 @@ export function WorkspacePage() {
             Connect Studio to save or restore a checkpoint.
           </p>
         )}
-        {checkpointsState === 'loading' && <p className="gx-empty">Loading…</p>}
+        {checkpointsState === 'loading' && (
+          <p className="gx-empty">Reading the checkpoints Golem has taken…</p>
+        )}
         {checkpointsState === 'ready' && checkpoints.length === 0 && (
           <p className="gx-empty">
             No checkpoints yet. Golem takes one automatically before it changes anything.
@@ -407,6 +438,12 @@ export function WorkspacePage() {
             </button>
           </div>
         ))}
+      </Drawer>
+
+      <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
+        {/* Mounted only while open so the request is made when a user asks the
+            question, not on every workspace load for everyone who never will. */}
+        {drawer === 'credits' && <CreditsPanel projectId={projectId} />}
       </Drawer>
 
       <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Golem remembers">

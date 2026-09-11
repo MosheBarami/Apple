@@ -3,21 +3,34 @@ import Base from '../layouts/Base.astro';
 import SparkMeter from '../components/SparkMeter.astro';
 import FAQ from '../components/FAQ.astro';
 
-// Figures are fixed by docs/COST-MODEL.md and are not changed here:
+// Figures come from docs/COST-MODEL.md through the SAME arithmetic the worker uses,
+// `sparksForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
 // Free 60 sparks/day (900/month) · Pro (designed, waitlist) 400/day (6,000/month)
-// Clay 1 · Stone 4 · Rune 10 (+1 per extra agent step)
+//
+//   Plan         37-43 neurons -> ceil(43/30)  =  2 sparks
+//   Agent        111 neurons   -> ceil(111/30) =  4 sparks  (targeted edit + read-back verify)
+//   Super Agent  297 neurons   -> ceil(297/30) = 10 sparks  (+1 per extra step)
+//
+// COST-MODEL.md names these by their INTERNAL specialist identities — Clay, Stone, Rune
+// — which is correct there and wrong here: packages/shared says those "are internal
+// specialist identities, not user-facing brands: nothing in normal product UI should
+// name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
+//
+// Plan was published as 1 spark, and 60 requests a free day. It is 2 and 30. Agent and
+// Super Agent were both right, which is what makes the Plan figure an arithmetic slip
+// rather than a different model of pricing: whoever wrote them divided correctly.
 // "≈ requests / free day" is simply 60 ÷ cost.
 const modeRows = [
   {
-    mode: 'Clay',
+    mode: 'Plan',
     cls: 'is-clay',
-    cost: '1 spark',
+    cost: '2 sparks',
     extra: '',
     does: 'Fast answers and small edits',
-    perDay: '60',
+    perDay: '30',
   },
   {
-    mode: 'Stone',
+    mode: 'Agent',
     cls: 'is-stone',
     cost: '4 sparks',
     extra: '',
@@ -25,7 +38,7 @@ const modeRows = [
     perDay: '15',
   },
   {
-    mode: 'Rune',
+    mode: 'Super Agent',
     cls: 'is-rune',
     cost: '10 sparks',
     extra: '+1 per extra step',
@@ -37,7 +50,7 @@ const modeRows = [
 const limitFaq = [
   {
     q: 'What happens when I run out of Sparks?',
-    a: `<p>Golem tells you plainly, mid-conversation, and shows when your quota resets (daily, on a rolling 24-hour clock per account). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
+    a: `<p>Golem tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
   },
   {
     q: 'Why is there a limit at all?',
@@ -48,8 +61,8 @@ const limitFaq = [
     a: `<p>No. Sparks reset to your full daily amount every day. Rollover sounds nice but pushes people to hoard; a fresh daily allowance keeps the math simple and the queue fair.</p>`,
   },
   {
-    q: 'Can one Rune request cost more than 10 Sparks?',
-    a: `<p>Yes, and it is metered transparently. Rune requests start at 10 Sparks and add 1 Spark per extra agent step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Golem warns before starting work it estimates will be expensive.</p>`,
+    q: 'Can one Super Agent request cost more than 10 Sparks?',
+    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Sparks and add 1 Spark per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Golem warns before starting work it estimates will be expensive.</p>`,
   },
   {
     q: 'What is a Spark, underneath?',
@@ -86,7 +99,7 @@ const limitFaq = [
           </header>
           <ul class="plan__list">
             <li><strong>60 Sparks</strong> per day · 900 a month</li>
-            <li>All three modes — Clay, Stone, Rune</li>
+            <li>All three modes — Plan, Agent, Super Agent</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
             <li>Studio plugin included</li>
@@ -191,7 +204,7 @@ const limitFaq = [
       </div>
 
       <p class="tfoot" data-reveal>
-        A Rune request includes its base steps; each additional agent step beyond
+        A Super Agent request includes its base steps; each additional step beyond
         them costs 1 extra Spark, metered live so you always see where you
         stand. Golem's own housekeeping does not count against your quota.
       </p>

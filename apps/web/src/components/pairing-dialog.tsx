@@ -22,6 +22,7 @@ import { createPairingCode } from '../lib/api';
 import { countdownTo } from '../lib/format';
 import { Modal } from './modal';
 import { Forge } from './loading';
+import { StatusIcon } from './status-icon';
 
 interface PairingDialogProps {
   projectId: string;
@@ -70,8 +71,8 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
     <Modal title="Pair with Studio" onClose={onClose}>
       {studioConnected ? (
         <div className="pairing-success" role="status">
-          <span className="pairing-success-icon" aria-hidden="true">
-            ✓
+          <span className="pairing-success-icon">
+            <StatusIcon status="success" size={22} />
           </span>
           <h3>Studio connected</h3>
           <p className="muted">Golem can now build directly in your place.</p>

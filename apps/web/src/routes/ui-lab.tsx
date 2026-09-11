@@ -9,6 +9,10 @@ import { GenerativeUIPanel } from '../lib/generative-ui/render';
 import { BLOCK_TYPES } from '../lib/generative-ui/schema';
 import { validateDocument } from '../lib/generative-ui/validate';
 import { mockRender } from '../lib/mock';
+import { EmptyState } from '../components/empty-state';
+import { EMPTY_STATES, M06_NOT_MODELLED, type EmptyStateName } from '../components/empty-state-model';
+import { StatusIcon } from '../components/status-icon';
+import { STATUS, type StatusName } from '../components/status-icon-model';
 
 interface Specimen {
   id: string;
@@ -372,6 +376,57 @@ export function UiLabPage() {
           </p>
         </div>
       </div>
+
+      {/* ------------------------------------------------ the status marks -----
+         Side by side because that is the only way to see whether they read as one
+         family — and whether success and error are distinguishable by SHAPE and not
+         only by colour, which is the property that matters to anyone who cannot tell
+         the two colours apart. */}
+      <section className="lab-specimen" aria-label="Status marks">
+        <header className="lab-specimen-head">
+          <span className="lab-specimen-name">STATUS MARKS · I-series</span>
+          <span className="lab-specimen-note">
+            {Object.keys(STATUS).length} marks. Tone is the status, not a prop.
+          </span>
+        </header>
+        <div className="lab-specimen-body lab-marks">
+          {(Object.keys(STATUS) as StatusName[]).map((name) => (
+            <div key={name} className="lab-mark">
+              <StatusIcon status={name} size={18} />
+              <code className="lab-state-id">{STATUS[name].canonical} · {name}</code>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ------------------------------------------------ the canonical states --
+         The nine empty/waiting/failed states, rendered together. Apart they are easy
+         to get subtly wrong — a failure toned like a success, two titles that say the
+         same thing differently — and those mistakes are only visible side by side.
+         The tenth, M06, is listed as reserved rather than drawn, because the browser
+         cannot observe whether a Studio plugin is installed. */}
+      <section className="lab-specimen" aria-label="Canonical states">
+        <header className="lab-specimen-head">
+          <span className="lab-specimen-name">CANONICAL STATES · M01–M10</span>
+          <span className="lab-specimen-note">
+            {Object.keys(EMPTY_STATES).length} rendered, 1 reserved. Tone is a property of the state, not a prop.
+          </span>
+        </header>
+        <div className="lab-specimen-body lab-states">
+          {(Object.keys(EMPTY_STATES) as EmptyStateName[]).map((name) => (
+            <div key={name} className="lab-state">
+              <code className="lab-state-id">
+                {EMPTY_STATES[name].canonical} · {name} · {EMPTY_STATES[name].tone}
+              </code>
+              <EmptyState state={name} />
+            </div>
+          ))}
+          <div className="lab-state">
+            <code className="lab-state-id">{M06_NOT_MODELLED.canonical} · reserved</code>
+            <p className="lab-specimen-note">{M06_NOT_MODELLED.reason}</p>
+          </div>
+        </div>
+      </section>
 
       <div className="lab-layout">
         <nav className="lab-nav" aria-label="Specimens">

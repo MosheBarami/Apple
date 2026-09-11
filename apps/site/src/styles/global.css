@@ -62,7 +62,10 @@
   --ink: #171512; /* body + headline */
   --ink-2: #56504533; /* (unused alpha guard) */
   --muted: #6b6357; /* secondary text */
-  --faint: #8d8578; /* tertiary text */
+  --faint: #716a60; /* tertiary text. 4.65:1 on --paper, its worst surface; it was
+                       #8d8578 at 3.18:1 — the large-text floor, and this is 0.7rem
+                       and 0.78rem mono. Still lighter than --muted (5.15:1), so the
+                       ramp still descends. */
   --line: rgba(23, 21, 18, 0.14);
   --line-strong: rgba(23, 21, 18, 0.26);
   --hairline: rgba(23, 21, 18, 0.08);
@@ -116,7 +119,7 @@
   --surface-2: #232019;
   --ink: #f3efe6;
   --muted: #a89f90;
-  --faint: #7f7869;
+  --faint: #8e8676; /* 4.51:1 on --surface-2, its worst surface; was #7f7869 at 3.71:1 */
   --line: rgba(243, 239, 230, 0.13);
   --line-strong: rgba(243, 239, 230, 0.26);
   --hairline: rgba(243, 239, 230, 0.07);
@@ -169,7 +172,7 @@
     --surface-2: #232019;
     --ink: #f3efe6;
     --muted: #a89f90;
-    --faint: #7f7869;
+    --faint: #8e8676; /* kept in step with the [data-theme] block above */
     --line: rgba(243, 239, 230, 0.13);
     --line-strong: rgba(243, 239, 230, 0.26);
     --hairline: rgba(243, 239, 230, 0.07);

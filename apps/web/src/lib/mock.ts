@@ -22,6 +22,7 @@ import type {
   StudioFrame,
 } from '@golem/shared';
 import type { MeResponse, UsageDay } from './api';
+import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';
 
 const FLAG = import.meta.env.VITE_GOLEM_MOCK === '1';
@@ -747,5 +748,96 @@ export function mockPlaytest(): { run: PlaytestRun; frames: StudioFrame[] } {
       lastFrameAt: now,
     },
     frames,
+  };
+}
+
+/**
+ * A project mid-flight: one asset that cannot ship, one that owes a credit, one CC0,
+ * and one Golem placed by Roblox id that the library cannot account for.
+ *
+ * Deliberately NOT the happy path. The empty and the clean cases are one line each and
+ * are exercised by `tests/credits-model.test.mjs`; what a fixture is for is the state
+ * that is hard to reach by hand and easy to draw wrong.
+ */
+export async function mockAttribution(): Promise<AttributionResponse> {
+  return {
+    attribution: {
+      projectId: 'p-tycoon',
+      generatedAt: new Date().toISOString(),
+      original: [],
+      userGenerated: [],
+      required: [
+        {
+          assetId: 'ambientcg/rock-cliff-04',
+          name: 'Rock Cliff 04',
+          author: 'ambientCG',
+          licence: 'CC-BY-4.0',
+          licenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+          sourceUrl: 'https://ambientcg.com/view?id=Rock044',
+          modifications: ['rescaled to 6 studs', 'tinted to the canyon palette'],
+        },
+      ],
+      courtesy: [
+        {
+          assetId: 'kenney/nature-kit/tree-pine-01',
+          name: 'Tree Pine 01',
+          author: 'Kenney',
+          licence: 'CC0-1.0',
+          licenceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+          sourceUrl: 'https://kenney.nl/assets/nature-kit',
+          modifications: [],
+        },
+      ],
+      sourceCredits: [
+        {
+          text: 'Powered by Poly Haven',
+          url: 'https://polyhaven.com',
+          when: 'live_api',
+          why: 'CC0 requires no attribution, but Poly Haven asks for this credit wherever its live API is used',
+        },
+      ],
+      unaccounted: ['unaccounted:roblox:7042118891'],
+    },
+    // As the worker's renderAttribution writes it, INCOMPLETE section and all.
+    credits: [
+      'Credits',
+      '=======',
+      '',
+      'Third-party assets — attribution required by their licence',
+      '  - Rock Cliff 04 by ambientCG — CC-BY-4.0 (modified: rescaled to 6 studs, tinted to the canyon palette)',
+      '',
+      'Credits required by the sources themselves',
+      '  - Powered by Poly Haven — https://polyhaven.com',
+      '',
+      'Third-party assets — no attribution required, credited anyway with thanks',
+      '  - Tree Pine 01 by Kenney — CC0-1.0',
+      '',
+      'INCOMPLETE — these assets have no provenance record and could not be credited:',
+      '  - unaccounted:roblox:7042118891',
+    ].join('\n'),
+    commercialUse: {
+      projectId: 'p-tycoon',
+      ok: false,
+      checked: 4,
+      counts: { third_party: 2, original: 0, user_generated: 0, unknown: 1 },
+      findings: [
+        {
+          assetId: 'unaccounted:roblox:7042118891',
+          name: 'Roblox asset 7042118891',
+          code: 'missing_provenance',
+          severity: 'blocker',
+          why: 'This asset has no provenance record, so its licence is unknown and cannot be assumed permissive.',
+          remediation: 'Replace it with a library asset, or record where it came from and under what licence.',
+        },
+        {
+          assetId: 'ambientcg/rock-cliff-04',
+          name: 'Rock Cliff 04',
+          code: 'attribution_required',
+          severity: 'warning',
+          why: 'CC-BY-4.0 requires the author to be credited wherever the work appears.',
+          remediation: 'Ship the credit line below in your game description.',
+        },
+      ],
+    },
   };
 }

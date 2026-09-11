@@ -45,6 +45,7 @@ const end = (toolId, at, over = {}) => ({
 });
 
 const kinds = (r) => r.phases.map((p) => p.kind);
+const phase = (name, at) => ({ type: 'phase', at, phase: name });
 const labels = (r) => r.phases.flatMap((p) => p.steps.map((s) => s.label));
 
 // ---------------------------------------------------------------------------
@@ -163,13 +164,43 @@ test('adjacent steps of the same kind merge into one phase; a different kind ope
   const r = run([
     start('a', 'get_project_tree', T0),
     end('a', T0 + 100, { durationMs: 100 }),
-    start('b', 'read_script', T0 + 200),
+    start('b', 'inspect_model', T0 + 200),
     end('b', T0 + 300, { durationMs: 100 }),
     start('c', 'create_instances', T0 + 400),
     end('c', T0 + 500, { durationMs: 100 }),
   ]);
   assert.deepEqual(kinds(r), ['inspecting', 'building']);
   assert.equal(r.phases[0].steps.length, 2);
+});
+
+test('reading the project and reading its scripts are different activities', () => {
+  // §16.1 Board C separates C02 "Inspecting project" from C06 "Reading scripts",
+  // and it is a real distinction: the instance tree and the code answer different
+  // questions. This fixture used to be the merge case above, which is how the two
+  // came to share one heading.
+  const r = run([
+    start('a', 'get_project_tree', T0),
+    end('a', T0 + 100, { durationMs: 100 }),
+    start('b', 'read_script', T0 + 200),
+    end('b', T0 + 300, { durationMs: 100 }),
+  ]);
+  assert.deepEqual(kinds(r), ['inspecting', 'reading_scripts']);
+});
+
+test('searching the Roblox docs is not inspecting the user project', () => {
+  // C04. `search_docs` reads Roblox's documentation, which is not in the place at
+  // all — calling that "Inspecting project" told the user the wrong thing about
+  // where Golem was looking.
+  assert.equal(kindForTool('search_docs'), 'searching_knowledge');
+  assert.equal(kindForTool('get_project_tree'), 'inspecting');
+});
+
+test('changing what exists is editing; adding to the world is building', () => {
+  // C08 against C09.
+  assert.equal(kindForTool('set_properties'), 'editing');
+  assert.equal(kindForTool('delete_instances'), 'editing');
+  assert.equal(kindForTool('create_instances'), 'building');
+  assert.equal(kindForTool('insert_asset'), 'building');
 });
 
 test('a tool name separates states that agent_status collapses together', () => {
@@ -281,7 +312,9 @@ test('a phase whose starts were all observed reports wall time, gaps included', 
   const r = run([
     start('a', 'get_project_tree', T0),
     end('a', T0 + 100, { durationMs: 100 }),
-    start('b', 'read_script', T0 + 900),
+    // Same kind on purpose: this measures ONE phase's clock, so both tools have
+    // to land in one phase. `read_script` used to sit here and now opens its own.
+    start('b', 'inspect_model', T0 + 900),
     end('b', T0 + 1000, { durationMs: 100 }),
   ]);
   assert.equal(r.phases[0].elapsed.basis, 'wall');
@@ -294,7 +327,7 @@ test('a phase whose starts were replayed reports measured tool time, and says so
   const events = eventsFromTurn({
     tools: [
       { toolId: 'a', tool: 'get_project_tree', summary: 's', ok: true, startedAt: T0, durationMs: 100, done: true, startObserved: false },
-      { toolId: 'b', tool: 'read_script', summary: 's', ok: true, startedAt: T0, durationMs: 400, done: true, startObserved: false },
+      { toolId: 'b', tool: 'inspect_model', summary: 's', ok: true, startedAt: T0, durationMs: 400, done: true, startObserved: false },
     ],
   });
   const r = run(events);
@@ -470,4 +503,87 @@ test('with no motion preference the timeline may travel', () => {
   assert.equal(moving.travel, true);
   assert.equal(moving.feedback, true);
   assert.equal(moving.className, 'is-moving');
+});
+
+test('the announcement derived from a tool is dropped even when their vocabularies differ', () => {
+  // THE REGRESSION THE C-SERIES SPLIT CAUSED, and the reason the suppression compares
+  // the wire PHASE rather than the web's kind.
+  //
+  // The worker sets `agent.phase = phaseForTool(name)` on the line before it broadcasts
+  // tool_start, so the announcement is redundant exactly when it was derived from the
+  // tool that follows. Comparing kinds was the same test only while the two vocabularies
+  // were one-to-one. After C04/C06/C08 were split out, the wire still announced
+  // `building` before set_properties while the web called that tool `editing`, so the
+  // announcement survived — as an EMPTY "Building world" heading directly above
+  // "Editing project · Set properties", reinstating as its own row the exact claim the
+  // split was made to remove.
+  const r = run([
+    phase('inspecting', T0),
+    start('a', 'get_project_tree', T0 + 10),
+    end('a', T0 + 100, { durationMs: 90 }),
+    phase('building', T0 + 200),
+    start('b', 'set_properties', T0 + 210),
+    end('b', T0 + 300, { durationMs: 90 }),
+    phase('inspecting', T0 + 400),
+    start('c', 'read_script', T0 + 410),
+    end('c', T0 + 500, { durationMs: 90 }),
+  ]);
+
+  assert.deepEqual(kinds(r), ['inspecting', 'editing', 'reading_scripts']);
+
+  // The real signature of the phantom, and NOT `steps.length > 0`: every ActivityPhase
+  // is built with one step already in it, so a zero-step phase is unrepresentable and
+  // that assertion could never fire. What the phantom actually looked like was
+  // "Building world :: Building world" — a phase whose only step was the ANNOUNCEMENT
+  // itself, which is a step with no toolId.
+  for (const phase of r.phases) {
+    for (const step of phase.steps) {
+      assert.ok(
+        step.toolId !== undefined,
+        `"${phase.label}" contains the announcement "${step.label}" as a step — it was not suppressed`,
+      );
+    }
+  }
+});
+
+test('an announcement separated from the next tool by real thinking time is kept', () => {
+  // The suppression's justification has always been that the announcement is broadcast
+  // immediately before the tool_start it describes. session.ts also re-broadcasts the
+  // STICKY previous phase at the top of every step, before the model call — so an
+  // announcement can sit seconds of measured model time away from the tool that
+  // follows, and deleting it deletes a duration the user is entitled to see.
+  const r = run([
+    phase('building', T0),
+    start('a', 'set_properties', T0 + 45_000),
+    end('a', T0 + 45_100, { durationMs: 100 }),
+  ]);
+  assert.equal(r.phases.length, 2, 'the announcement is its own row when it carries real time');
+  assert.equal(r.phases[0].label, 'Building world');
+  assert.ok(r.phases[0].elapsed.ms >= 44_000, `kept only ${r.phases[0].elapsed?.ms}ms of thinking`);
+});
+
+test('an unknown tool does not eat a real announcement through the phase default', () => {
+  // phaseForTool answers 'building' for any name it does not recognise, and its own
+  // JSDoc calls that "for a name this build has never heard of" and "NOT a resting
+  // place". Comparing against it for an unknown tool would let a browser one version
+  // behind a worker silently drop "Building world" whenever the default coincided.
+  const r = run([
+    phase('building', T0),
+    start('a', 'some_tool_from_a_newer_worker', T0 + 10),
+    end('a', T0 + 100, { durationMs: 90 }),
+  ]);
+  const labels = r.phases.map((p) => p.label);
+  assert.ok(labels.includes('Building world'), `announcement was eaten; got ${labels.join(', ')}`);
+});
+
+test('the announcement window has an edge, and it is where the code says it is', () => {
+  // ANNOUNCE_WINDOW_MS is a judgement, not a measurement — two messages sent back to
+  // back over one socket arrive a few milliseconds apart, and a second is generous by
+  // three orders of magnitude while still nowhere near a model call. A threshold nobody
+  // pins is a threshold that drifts, so both sides of it are asserted here.
+  const at = (gap) =>
+    run([phase('building', T0), start('a', 'set_properties', T0 + gap), end('a', T0 + gap + 90, { durationMs: 90 })]);
+
+  assert.deepEqual(kinds(at(1000)), ['editing'], 'exactly at the edge counts as the tool\'s own announcement');
+  assert.deepEqual(kinds(at(1001)), ['building', 'editing'], 'one millisecond past it is a row of its own');
 });

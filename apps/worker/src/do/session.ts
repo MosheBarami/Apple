@@ -22,7 +22,6 @@ import type {
   PlaytestRun,
   RenderViewResult,
 } from '@golem/shared';
-import { MODE_INFO } from '@golem/shared';
 import {
   admitFrame,
   FrameRate,
@@ -138,7 +137,6 @@ const MUTATING_TOOLS = new Set([
 const MAX_NUDGES = 2;
 /** Output token budget per step before the effort multiplier — matches the gateway model config. */
 const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 1600, stone: 4400, rune: 5200 };
-const PLUGIN_TIMEOUT_MS = 9000;
 const STEP_STALE_MS = 180_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
@@ -266,13 +264,30 @@ export class SessionDO extends DurableObject<Env> {
       //   client got nothing either. See F-35. ]]
       const playtest = await this.ctx.storage.get<PlaytestRun>('playtestRun');
       if (playtest) this.playtestRunBacking = playtest;
+      //[[ The binding, for the same reason as the playtest above.
+      //
+      //   The agent loop is driven by `alarm()`, which never calls `bind()` — so on an
+      //   instance revived after eviction mid-run, `boundProjectId` was null, and
+      //   `recordPlacedAsset` returned on its first line. Every insert_asset for the rest
+      //   of that run recorded nothing, and an empty ledger reads CLEAN. That is the exact
+      //   bug the producer was written to fix, re-entering through the recovery path. ]]
+      const bound = await this.ctx.storage.get<{ projectId: string }>('bind');
+      if (bound) this.boundProjectId = bound.projectId;
     });
   }
 
   // ------------------------------------------------------------------ helpers
   private async bind(): Promise<{ projectId: string; projectName: string; ownerId: string } | null> {
-    return (await this.ctx.storage.get('bind')) ?? null;
+    const b = (await this.ctx.storage.get<{ projectId: string; projectName: string; ownerId: string }>('bind')) ?? null;
+    // Cached for `agentCtx`, which is synchronous and needs the project id to
+    // attribute asset use. Every path that runs the agent reads the binding first
+    // — the socket does it in `hello` — so by the time a tool runs this is set.
+    if (b) this.boundProjectId = b.projectId;
+    return b;
   }
+
+  /** The project this session is bound to, or null before the binding has been read. */
+  private boundProjectId: string | null = null;
 
   private broadcast(msg: ServerMsg) {
     const data = JSON.stringify(msg);
@@ -301,6 +316,7 @@ export class SessionDO extends DurableObject<Env> {
       const existing = await this.bind();
       if (existing && existing.ownerId !== body.ownerId) return json({ error: 'owner mismatch' }, 403);
       await this.ctx.storage.put('bind', { projectId: body.projectId, projectName: body.projectName, ownerId: body.ownerId });
+      this.boundProjectId = body.projectId;
       return json({ ok: true });
     }
 
@@ -805,7 +821,10 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private async runStep(agent: AgentState) {
-    const bind = (await this.bind())!;
+    // The RESULT is unused; the call is kept because reading the binding refreshes
+    // `boundProjectId` on an instance revived mid-run. The constructor restores it too,
+    // so this is belt and braces rather than the only path — see the note there.
+    await this.bind();
     //[[ Re-established here, not only in startRunInner.
     //
     //   `currentMsgId` is an instance field, and a run outlives the instance: the Durable
@@ -1275,6 +1294,7 @@ export class SessionDO extends DurableObject<Env> {
   private agentCtx(): AgentCtx {
     return {
       env: this.env,
+      projectId: this.boundProjectId ?? undefined,
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),

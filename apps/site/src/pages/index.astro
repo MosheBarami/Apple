@@ -114,7 +114,15 @@ const icons: Record<string, string> = {
   </div>
 
   {/* ---------------------------------------------------- the frame ------ */}
-  <div class="frame">
+  {/* `main` is the FRAME, not the hero.
+      The hero was the main landmark and the three value cells sat in a `footer`
+      beside it — an element chosen for where it is on the screen rather than what it
+      says. That put the product's three claims into `contentinfo`, which announces
+      them as site boilerplate, and left "Skip to content" landing above content that
+      was not in `main`.
+      Element names only: `.frame` is a three-row grid and every rule here is
+      class-based, so the box tree is byte-for-byte what it was. */}
+  <main class="frame" id="main">
     <header class="nav">
       <a href="/" class="brand" aria-label="Golem — home">
         <GolemMark size={32} />
@@ -145,7 +153,7 @@ const icons: Record<string, string> = {
       </a>
     </header>
 
-    <main class="hero" id="main">
+    <div class="hero">
       <p class="eyebrow reveal reveal-1">
         <span class="eyebrow__dash" aria-hidden="true"></span>
         AI builder for Roblox
@@ -203,9 +211,11 @@ const icons: Record<string, string> = {
         Free to start <span aria-hidden="true">·</span> No card required
         <span aria-hidden="true">·</span> Works in your project
       </p>
-    </main>
+    </div>
 
-    <footer class="strip">
+    {/* A labelled region, not a footer: these are the page's claims, not its
+        colophon. */}
+    <section class="strip" aria-label="What Golem does">
       {
         cells.map((cell) => (
           <div class="strip__cell">
@@ -225,11 +235,11 @@ const icons: Record<string, string> = {
                 stroke-linejoin="round"
               />
             </svg>
-            <span class="strip__title">{cell.title}</span>
+            <h2 class="strip__title">{cell.title}</h2>
             <span class="strip__sub">{cell.sub}</span>
           </div>
         ))
       }
-    </footer>
-  </div>
+    </section>
+  </main>
 </Landing>

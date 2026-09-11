@@ -28,9 +28,19 @@ import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
+import { ensureProvenanceTables, recordAssetUse } from './provenance';
 
 export interface AgentCtx {
   env: Env;
+  /**
+   * The project these tools are acting on, when there is one.
+   *
+   * Optional because two callers genuinely have no project: the eval harness and the
+   * admin `/run-tool` route build an AgentCtx directly to exercise a tool in isolation.
+   * Attribution is recorded per project, so those callers record nothing — there is
+   * nothing to attribute it to, which is different from failing to record it.
+   */
+  projectId?: string;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
@@ -630,6 +640,88 @@ export function refuseLuauIngress(code: string): { error: string; blocked: strin
   };
 }
 
+/**
+ * Write the attribution row for an asset that has just been placed.
+ *
+ * The ledger keys on `asset_library.id` — a namespaced slug like
+ * `kenney/city-kit-suburban/building-a-01` — because a Roblox id says nothing about
+ * where the bytes came from or under what licence. A Creator Store asset that is not
+ * in the curated library therefore has no key, and inventing one that LOOKS like a
+ * library id would be worse than having none: the report's left join would match a
+ * real library row one day and credit the wrong author.
+ *
+ * So an unaccounted asset is keyed `unaccounted:roblox:<id>`, which contains a colon
+ * and can never satisfy the library's own id pattern. The join always misses, the
+ * report renders it as provenance-unknown, and that is the honest answer — it is the
+ * one state `provenance: null` exists to express.
+ *
+ * Returns the key it wrote, or null when there was nothing to write it against.
+ */
+/**
+ * Isolate-scoped, not global: a fresh isolate pays for one extra
+ * `create table if not exists` and every insertion after it pays nothing. Getting this
+ * wrong costs three cheap DDL statements, never correctness — which is why the flag is
+ * set AFTER the call rather than before it, so a failed creation is retried.
+ */
+let provenanceTablesReady = false;
+
+async function recordPlacedAsset(
+  ctx: AgentCtx,
+  assetId: number,
+  parent: string,
+): Promise<{ assetId: string; accounted: boolean; recorded?: false; why?: string } | null> {
+  if (!ctx.projectId) return null;
+  try {
+    if (!provenanceTablesReady) {
+      await ensureProvenanceTables(ctx.env);
+      provenanceTablesReady = true;
+    }
+    // The library is asked about EVERY id, not only ones this session's search returned.
+    // Gating the lookup on `fromLibrary` — which is session membership — meant a library
+    // asset whose id arrived any other way was recorded as unaccounted and then reported
+    // to the customer as an asset Golem could not account for. Both of the other arrival
+    // routes are supported paths: an id the user pasted, and one carried over from an
+    // earlier session. The query below answers correctly for any id, and provenance is a
+    // property of the ASSET, not of how its number reached this function.
+    let key: string | null = null;
+    try {
+      const row = await ctx.env.CORPUS.prepare('select id from asset_library where roblox_asset_id = ? limit 1')
+        .bind(assetId)
+        .first<{ id: string }>();
+      key = row?.id ?? null;
+    } catch (e) {
+      // ONLY the missing table. The first version of this catch swallowed everything,
+      // which made it do the very thing the read path in provenance.ts refuses to do —
+      // and worse, durably. A transient D1 error would fall through and write a
+      // PERMANENT `unaccounted:` row for an asset that is in the library; the row
+      // outlives the blip, and because the primary key is (project_id, asset_id) a
+      // later correct placement writes a SECOND row under the real library id, so one
+      // physical asset appears in the report twice — once as unaccounted, once
+      // credited. A missing table is a known state of the world; anything else is a
+      // fault, and a fault must not be recorded as an answer.
+      if (!String(e instanceof Error ? e.message : e).includes('no such table')) throw e;
+      key = null;
+    }
+    const accounted = key !== null;
+    // `viaLiveApi` is false here and it is a claim, not a default: the only source that
+    // asks for a live-API credit is Poly Haven, and nothing on this path calls it. A
+    // library asset was ingested offline by an operator and re-uploaded under Golem's
+    // account; the insertion touches Roblox, not the origin's API.
+    await recordAssetUse(ctx.env, ctx.projectId, key ?? `unaccounted:roblox:${assetId}`, {
+      viaLiveApi: false,
+      context: parent,
+    });
+    return { assetId: key ?? `unaccounted:roblox:${assetId}`, accounted };
+  } catch (e) {
+    // The reason travels back with the failure. A bare `catch { return null }` reported a
+    // permanent schema mistake — a renamed column in `recordAssetUse` — exactly like a
+    // one-off D1 blip, which is the same "well-covered logic, nothing watches the wiring"
+    // shape this producer was written to fix. The placement still stands; only the record
+    // is lost, and now it says what lost it.
+    return { assetId: `unaccounted:roblox:${assetId}`, accounted: false, recorded: false, why: scrubEngineIdentity(String(e instanceof Error ? e.message : e)).slice(0, 160) };
+  }
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -990,7 +1082,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Golem's curated CC0 asset library. Every hit is licence-cleared and safe to insert. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+        "Search Golem's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
       parameters: S(
         {
           query: { type: 'string' },
@@ -1002,12 +1094,36 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
-        kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
-        maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-        insertableOnly: true,
-        k: 8,
-      });
+      let hits;
+      try {
+        hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
+          kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
+          maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
+          insertableOnly: true,
+          k: 8,
+        });
+      } catch (e) {
+        // THE LIBRARY NOT EXISTING IS NOT THE SAME FACT AS THE LIBRARY HAVING NO MATCH,
+        // and this deployment is in the first state: nothing in the repository calls
+        // `ensureAssetTables` or `upsertAssets`, so `asset_library` has never been
+        // created and every call here raised `no such table: asset_library_fts`. The
+        // model saw a raw SQL string it could do nothing with.
+        //
+        // Returning [] instead would be worse than the raw error, not better: it would
+        // read as "the curated library has nothing like that", which is a claim about
+        // an empty table nobody has ever filled. So the state is named, and the model
+        // is told to take the Creator Store path DELIBERATELY rather than by accident.
+        if (String(e instanceof Error ? e.message : e).includes('no such table')) {
+          return {
+            error:
+              'the curated asset library is not available in this deployment — it has never been '
+              + 'populated, so this is not a statement that it has nothing matching your query. '
+              + 'Use find_verified_asset for the Creator Store instead, or build the thing from '
+              + 'Parts with create_instances.',
+          };
+        }
+        throw e;
+      }
       // Recorded as provenance, on both sets. A library hit is still resolved and gated before it
       // may be inserted — the library says an id is LICENSED, not that it is safe.
       for (const h of hits) {
@@ -1102,9 +1218,29 @@ export const TOOLS: Record<string, ToolImpl> = {
       ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
       const placed = await insertAndProveClean(ctx, assetId, parent);
       if (typeof placed !== 'object' || placed === null || 'error' in placed) return placed;
+
+      // AFTER the asset is proven clean and in the place, and never before: the ledger
+      // records what a project actually uses, and an insertion that was refused is not
+      // a use. Failures here are swallowed on purpose — an attribution row is a record
+      // ABOUT the build, and losing one must not undo a placement that succeeded.
+      //
+      // WHAT A LOST WRITE ACTUALLY COSTS, stated correctly. An earlier version of this
+      // comment claimed it "degrades into a visible unaccounted" — it does not. The
+      // report reads `project_asset_use`, so a row that was never written is not
+      // unaccounted, it is ABSENT, and the asset simply does not appear. The key-space
+      // argument covers a row that was written with a sentinel; it cannot cover a row
+      // that does not exist. `recorded: false` therefore goes into the tool result, so
+      // the loss is at least visible in the transcript and the audit log rather than
+      // nowhere, and the panel's footer says a clean result covers only what is listed.
+      const recorded = await recordPlacedAsset(ctx, assetId, parent);
+
       return {
         ...placed,
         provenance,
+        // `null` means there was no project to attribute to at all — the eval harness
+        // and the admin run-tool route. Saying "recorded: false" there would report a
+        // failure that never happened.
+        ...(recorded ? { attribution: recorded } : {}),
         ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
       };
     },

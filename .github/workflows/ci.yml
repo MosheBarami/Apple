@@ -118,6 +118,25 @@ jobs:
         # the build succeeds and the 404 ships. 577 links today.
         run: node scripts/check-site-links.mjs
 
+      - name: Published spark figures match what the worker charges
+        # The pricing page stated Clay at 1 spark and 60 requests a free day. The worker
+        # charges ceil(neurons / 30) and Clay measures 37-43, so it is 2 and 30. Stone
+        # and Rune were right, which is what made it an arithmetic slip rather than a
+        # different pricing model — and nothing connected the page to the arithmetic.
+        run: node scripts/check-spark-figures.mjs
+
+      - name: Heading hierarchy and landmarks
+        # Structure is invisible until someone navigates by it. The landing shipped with
+        # its three claims inside a <footer> and their titles as <span>, which looks
+        # identical in a screenshot and gives a screen reader one stop for the page.
+        run: node scripts/check-site-semantics.mjs
+
+      - name: Web app bundle budget
+        # The landing had a budget and the app had none, so it drifted the way bundles
+        # always do — by accumulating pages nobody visits. /ui-lab is a specimen book and
+        # /admin renders only for is_admin, and both were downloaded by everyone.
+        run: node scripts/check-app-bundle.mjs
+
       - name: Landing payload budget
         # The root route is meant to be one viewport of HTML and CSS with no
         # JavaScript at all. This fails if that regresses, because a budget

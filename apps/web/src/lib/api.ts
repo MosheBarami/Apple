@@ -2,8 +2,9 @@
 // user's Supabase access token as a Bearer header.
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
+import type { AttributionResponse } from '../components/ws/credits-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -106,6 +107,15 @@ export const fetchRoadmap = (projectId: string, polish = false): Promise<Roadmap
     : request<RoadmapResponse>(
         `/api/projects/${encodeURIComponent(projectId)}/roadmap${polish ? '?polish=1' : ''}`,
       );
+
+/**
+ * What this project owes and whether it can ship. Both reports come from one request
+ * because they read the same asset set and must not be able to disagree.
+ */
+export const fetchAttribution = (projectId: string): Promise<AttributionResponse> =>
+  MOCK_MODE
+    ? mockAttribution()
+    : request<AttributionResponse>(`/api/projects/${encodeURIComponent(projectId)}/attribution`);
 
 /** §32: the small contextual set on its own, without the whole timeline. */
 export const fetchNextMilestones = (projectId: string): Promise<NextResponse> =>

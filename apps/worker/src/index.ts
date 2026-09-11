@@ -10,6 +10,7 @@ import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
 import { refuseLuauIngress } from './tools';
+import { ensureProvenanceTables, exportProjectAttribution } from './provenance';
 import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
 
 export { SessionDO } from './do/session';
@@ -166,6 +167,34 @@ app.get('/api/projects/:id/checkpoints', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   return ctx.stub.fetch('https://do/checkpoints');
+});
+
+/**
+ * What this project owes, and to whom.
+ *
+ * Read-only and computed on demand from the usage ledger `insert_asset` writes. It is
+ * one route rather than two because a caller asking "can I publish this?" and one
+ * asking "what do I credit?" are asking about the same set of assets, and answering
+ * them from two requests invites them to disagree.
+ *
+ * `unaccounted` is not an error and does not 500. A project can genuinely contain an
+ * asset the library has no provenance for — anything inserted by Roblox id that was
+ * never ingested — and the honest response is to name it, which is what the report
+ * does. Hiding it behind a failure would leave the customer thinking nothing is owed.
+ */
+app.get('/api/projects/:id/attribution', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const projectId = c.req.param('id');
+  await ensureProvenanceTables(c.env);
+  // `exportProjectAttribution` is the module's own composition point and it reads the
+  // asset set ONCE for all three outputs. Re-deriving them here — which the first
+  // version of this route did — would have been a second implementation of the same
+  // composition, free to drift from the one the module tests.
+  const { attribution, commercial, text } = await exportProjectAttribution(c.env, projectId);
+  // `text` is the renderable credits artefact, shipped so the browser pastes what the
+  // worker rendered rather than reassembling its own version of the same document.
+  return c.json({ attribution, commercialUse: commercial, credits: text });
 });
 
 app.post('/api/projects/:id/checkpoints', async (c) => {

@@ -40,6 +40,7 @@ import type {
   VisualCritiqueBlock,
 } from './schema';
 import { validateDocument, type ValidateOptions } from './validate';
+import { StatusIcon, type StatusName } from '../../components/status-icon';
 
 // ---------------------------------------------------------------------------
 // Token → class resolution. The ONLY place a token becomes a visual decision.
@@ -625,7 +626,9 @@ function PropertyInspectorView({ block }: { block: PropertyInspectorBlock }) {
 // test_report
 // ---------------------------------------------------------------------------
 
-const CASE_MARK: Record<string, string> = { pass: '✓', fail: '✗', skip: '–' };
+/** Test-case marks. Were `✓ ✗ –` as literal characters, which render in whatever the
+ *  font decides and are read aloud as "check mark" beside the text they duplicate. */
+const CASE_STATUS: Record<string, StatusName> = { pass: 'success', fail: 'error', skip: 'skipped' };
 
 function TestReportView({ block }: { block: TestReportBlock }) {
   const total = block.passed + block.failed + (block.skipped ?? 0);
@@ -657,8 +660,8 @@ function TestReportView({ block }: { block: TestReportBlock }) {
       <ul className="gu-case-list">
         {block.cases.map((c, i) => (
           <li key={i} className={`gu-case gu-case--${c.status}`}>
-            <span className="gu-case-mark" aria-hidden="true">
-              {CASE_MARK[c.status]}
+            <span className="gu-case-mark">
+              <StatusIcon status={CASE_STATUS[c.status] ?? 'skipped'} size={12} />
             </span>
             <span className="gu-case-name">{c.name}</span>
             {c.durationMs !== undefined && (
@@ -724,7 +727,13 @@ function AssetPickerView({ block }: { block: AssetPickerBlock }) {
 // build_plan
 // ---------------------------------------------------------------------------
 
-const STEP_MARK: Record<string, string> = { done: '✓', active: '', pending: '', blocked: '!' };
+/** Build-plan step marks. `done` and `blocked` were a Unicode tick and an exclamation
+ *  mark; the rest fall through to the step NUMBER, which is the useful thing to show
+ *  for a step that has not run. */
+const STEP_STATUS: Record<string, StatusName | undefined> = {
+  done: 'success',
+  blocked: 'warning',
+};
 
 function BuildPlanView({ block }: { block: BuildPlanBlock }) {
   const done = block.steps.filter((s) => s.status === 'done').length;
@@ -740,7 +749,9 @@ function BuildPlanView({ block }: { block: BuildPlanBlock }) {
         {block.steps.map((step, i) => (
           <li key={i} className={`gu-step gu-step--${step.status}`}>
             <span className="gu-step-node" aria-hidden="true">
-              {STEP_MARK[step.status] || i + 1}
+              {STEP_STATUS[step.status]
+                ? <StatusIcon status={STEP_STATUS[step.status]!} size={12} />
+                : i + 1}
             </span>
             <div className="gu-step-body">
               <span className="gu-step-title">{step.title}</span>

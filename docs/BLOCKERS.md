@@ -81,7 +81,7 @@ operator nor the quotes. The register and the scanner disagreed and nothing said
 
 Rotation does not need the old value. It needs the account, which is above.
 
-### This blocks the merge, and it is the only thing that does
+### This blocks the merge, and it is the only gate the owner alone can clear
 
 Master mission §5.1 is explicit: *"do not merge a release that still relies on known
 live credentials exposed in repository history."* §11 lists "historical exposed live
@@ -94,12 +94,36 @@ class this project keeps correcting in itself. Three are open as of 2026-09-01:
 | §11 gate | state |
 |---|---|
 | historical exposed live credentials invalidated | **HUMAN-ONLY** — this entry |
-| at least two fresh creation exercises demonstrate generality | **one done**, second quota-blocked until the daily Spark reset — capability is proven, allowance is not available |
+| at least two fresh creation exercises demonstrate generality | **one done**, second quota-blocked until the daily Spark reset. The gate asks for two *because one cannot demonstrate generality* — so this is not "nearly met", it is half-evidenced |
 | no unresolved release-blocking critic finding | **the final independent pass has not run** |
 
 The difference matters for what happens next: the second and third clear themselves
 with time and work inside this environment. This one cannot, at any amount of effort,
 without the owner.
+
+### What actually depends on these two accounts
+
+Established 2026-09-01 by searching every workflow, script and source file. Recorded
+because it scopes the exposure, and because the owner's decision about the merge gate
+turns on it:
+
+| consumer | uses them |
+|---|---|
+| `.github/workflows/ci.yml` | **no** — zero references in any workflow |
+| the deployed worker, web app, site, plugin | **no** — no shipped code reads either variable |
+| `infra/smoke.mjs`, `infra/pair-helper.mjs`, `infra/checkpoint-test.mjs`, `infra/store-validation.mjs` | yes — operator scripts run by hand |
+
+So the exposure is two Supabase **test** accounts used by local operator tooling. It is
+still a live-credential exposure and still has to be fixed: anyone reading this public
+history can sign in as either account against the real project, and `load{i}@` is a
+family of them.
+
+What this does *not* settle is the merge gate, and this document does not settle it
+either. §5.1's wording is "a release that still relies on known live credentials"; on
+the narrow reading nothing in the release relies on them, and on the broad reading the
+repository being merged is the one carrying the exposure. That is the owner's call to
+make, not this environment's, and it is recorded here as a question rather than
+answered in the direction that happens to unblock the work.
 
 ### Why this session did not rotate them
 
@@ -194,6 +218,101 @@ listing is gated.
 
 ---
 
+## 4b. The curated asset library has never existed — HUMAN-BLOCKED
+
+**Found 2026-09-01**, by auditing for exported code with no production caller — the same
+audit that found the attribution ledger had none.
+
+### What is true
+
+`apps/worker/src/asset-library.ts` has a complete read path, a provenance validator, and a
+20-entry `SEED_MANIFEST`. It also has `ensureAssetTables`, `upsertAssets`,
+`recordVerification`, `staleAssets` and `markHealth` — **none of which is called by
+anything**, verified across `apps/`, `packages/`, `scripts/` and `.github/`.
+
+The tables were therefore never created. Production D1 `golem-corpus`
+(`32c9471e-a7d7-49ee-a8fe-0a7def2c68bd`) contains `chunks`, `chunks_fts*`, `static_assets`
+and `static_chunks`. There is no `asset_library` and no `asset_library_fts`:
+
+```
+select l.id, bm25(asset_library_fts) as rank from asset_library_fts
+  join asset_library l on l.id = asset_library_fts.asset_id ...
+-> 7500 no such table: asset_library_fts: SQLITE_ERROR
+```
+
+The system prompt tells the model to prefer this tool **first** ("Ids come from
+search_asset_library (curated, licence-cleared, try this first)"). Every one of those
+calls has failed, in production, for the life of the deployment, and the model received
+the raw SQLite string.
+
+`staleAssets` is documented as feeding "the nightly health-check cron". There is no cron
+trigger in `wrangler.jsonc` and no `scheduled` handler in `index.ts`.
+
+### What was fixed without the owner
+
+`search_asset_library` now recognises the missing-table case and returns a plain
+statement of it, naming `find_verified_asset` and `create_instances` as the deliberate
+alternatives. Anything that is not the missing-table case is still thrown.
+
+**Deliberately NOT done:** calling `ensureAssetTables` lazily. It would create the tables,
+the search would return `[]`, and the model would read "the curated library has nothing
+like that" — a claim about a table nobody has ever filled. That is the same defect as an
+attribution report giving a clean bill from an empty ledger, and it would be harder to
+find the second time. `apps/worker/tests/asset-library-availability.test.mjs` pins this,
+including a guard that fails the moment a write-path caller appears, so this section
+cannot quietly go stale.
+
+### Why the owner has to do the rest
+
+Populating the library is not a code change. Every `SEED_MANIFEST` entry is a *pre-ingest
+candidate* with `robloxAssetId: null`, and `SEED_MANIFEST_NOTE` states what ingest must
+do: re-read each licence string live, then fill `sha256`, `triangles`,
+`textureResolution`, `boundsStuds` and `robloxAssetId` **after importing to Studio**.
+
+That last step means downloading third-party binaries and uploading them to Roblox under
+Golem's own account. That is an outward-facing operation on a real account with real
+credentials, and it is not one to take unilaterally.
+
+### Steps for the owner
+
+1. Decide whether the curated library is still wanted. The alternative is to delete the
+   read path and the seed manifest and let `find_verified_asset` be the only asset route
+   — smaller and honest. Roughly 1,000 lines would go.
+2. If it is wanted: run an ingest that, per `SEED_MANIFEST_NOTE`, re-reads each licence
+   live, downloads the binaries, imports each to Studio, uploads under the Golem account,
+   and records `robloxAssetId` + `sha256`.
+3. Call `ensureAssetTables` then `upsertAssets` with the ingested records against
+   `golem-corpus`.
+4. Add a `scheduled` handler and a cron trigger so `staleAssets` / `markHealth` run, or
+   delete the sentence in `staleAssets` that promises a cron that does not exist.
+5. Nothing further in the ingest itself. The extra step this list used to need — dropping a `fromLibrary`
+   guard in `recordPlacedAsset` that keyed a library asset as *unaccounted* whenever
+   its id had not come from this session's own search — was fixed in code on
+   2026-09-01, so the ingest alone is now sufficient.
+6. Re-run `apps/worker/tests/asset-library-availability.test.mjs`; the last test is
+   expected to fail once step 3 lands, and that failure is the signal to rewrite this
+   section.
+
+### Impact while it stands
+
+Every asset acquisition falls through to the Creator Store — the path with unverified
+creators and script-bearing models, which the insertion gate then has to catch. The
+library exists to avoid needing that gate so often, and has never once been available.
+
+**And every asset Golem places is recorded as unaccounted.** The attribution ledger keys
+on `asset_library.id`; with no library there is no key, so every placement writes the
+`unaccounted:` sentinel and the compliance report grades each one `missing_provenance`,
+which it treats as a blocker. That is correct as a fact — Golem checked the asset was
+free, publicly visible, script-free and from a trusted creator, and then genuinely did
+not know its licence — but the credits panel first rendered it as a red *"N assets cannot
+ship commercially"*, a determination nobody made. The panel now distinguishes a finding
+against an asset from the absence of one and says the second in amber. Until this blocker
+clears, the honest state of the credits surface for every project is "Golem cannot account
+for these", and that is what it says.
+
+This does not invalidate `evidence/2026-09-01-rock-palette-supply.md`, which searched the
+Creator Store directly and whose conclusion stands on its own.
+
 ## 5. Dependabot: 27 advisories on the default branch
 
 **Status:** OPEN, previously triaged, not re-triaged this session.
@@ -207,6 +326,195 @@ Dependabot PRs #2 (esbuild), #3 (astro) and #4 (vite) are open against `main`.
 
 **Not a mission blocker,** but it is noise on every push and the triage is a day old.
 It should be re-run before this branch merges.
+
+---
+
+## URGENT for the owner — one Agent request costs the whole free day
+
+**Measured 2026-09-02 00:00–00:05Z, through the real product path. Not a code defect: a
+published commercial claim that the product contradicts.**
+
+The §9.1 second creation exercise — *"add an ore-mining tycoon loop"* — consumed **60
+Sparks, the entire free daily allowance, in one request**, and stopped at the step limit
+without finishing. Full account in `evidence/2026-09-02-second-creation-exercise.md`.
+
+The usage ledger corroborates it: 2026-09-02 **60 sparks / 17 events**, 2026-09-01 60/23,
+2026-08-30 62/38. A free day is about one substantial Agent run.
+
+### What the site says
+
+> **Agent · 4 sparks** — Builds features across your project · ≈15 requests a free day
+
+The measured cost of an Agent request doing exactly that is **60**. The published number
+is 15× out for the use the mode is advertised for.
+
+The 4 is not invented — it is `ceil(111 / 30)` from `COST-MODEL.md`'s *"Stone, targeted
+edit + read-back verify"* row. A targeted edit is a real thing Agent does; it is not the
+thing described beside the number.
+
+### What this session did about it, and got wrong
+
+Earlier today I corrected the Plan figure from 1 spark to 2 and wired
+`scripts/check-spark-figures.mjs` into CI to enforce the table against COST-MODEL. That
+guard now reports agreement — and in doing so **locks in the Agent figure**. The guard is
+faithful to its source; the source under-represents a real feature build by more than an
+order of magnitude. A check that says "these agree" is not a check that says "this is
+true", and I presented it closer to the second than it deserved.
+
+### Why it is not fixed here
+
+One instrumented measurement is one data point. Choosing a replacement number from it
+would repeat exactly the mistake that produced the current one. What the measurement does
+establish is that the present number cannot stand beside the words next to it.
+
+§33 makes public pricing the owner's, and this is more consequential than the Plan
+correction: it bears on whether the free tier delivers what the page promises.
+
+### The minimal owner action
+
+1. Decide whether the published figure should describe a *targeted edit* (4, accurate, and
+   then the label beside it must stop saying "builds features across your project") or a
+   *feature build* (measured once at 60, and then "≈15 requests a free day" becomes
+   roughly one).
+2. If a real distribution is wanted before republishing, more measured Agent runs are
+   needed than one — and each costs a full day of the free allowance to obtain.
+3. `COST-MODEL.md`'s largest Stone row is 511 neurons. This run was roughly 1,800. The
+   cost model's own measurements may need extending to cover what users actually ask for.
+
+---
+
+## The live site is serving the figures this branch corrected
+
+**Not a blocker on the branch. It is a statement about production, checked 2026-09-01
+22:56Z against `https://golem.moshe-barami111.workers.dev`.**
+
+The marketing site is served by the worker out of D1, so the site only changes when it is
+deployed. Everything corrected on `feature/golem-product-experience` is still wrong in
+production right now:
+
+```
+GET /pricing  ->  "Clay · 1 spark"   "Stone · 4 sparks"   "Rune · 10 sparks"
+```
+
+That is the wrong Plan figure (it is 2 sparks, so 30 requests a free day, not 60) and the
+internal specialist names that `packages/shared` says must never appear in product UI. The
+rolling-quota claim, the 3.18:1 tertiary text and the phone topbar defects are all live
+too.
+
+**This session did not deploy it.** The changes are low-risk on their own, but the batch
+also carries the Clay/Stone/Rune → Plan/Agent/Super Agent rename, which is a visible
+vocabulary change to the public site and is listed above as the owner's call. Shipping it
+as a side effect of fixing a spark figure would be deciding that question quietly.
+
+The pricing figure is the part with a clock on it: a reader planning around "60 questions
+a day" hits the limit at 30. If that should go out before the rename is settled, it can be
+cherry-picked — `852430d` and `2d4e2b8` are the two commits, and neither touches the mode
+names.
+
+Verified healthy at the same time: `/api/health` answers 200 in 145 ms, and the status
+page's relative `fetch('/api/health')` resolves correctly because the site and the API
+share an origin.
+
+---
+
+## HUMAN-ONLY — the Privacy Policy promised to be updated before this shipped
+
+**Found 2026-09-01. Not touched, because it is legal text and a consent control.**
+
+`/privacy`, the governing policy, says:
+
+> Your private project data is never used to train AI models. **If we ever build an
+> opt-in program for contributing examples, it will be a separate, explicit,
+> off-by-default choice — and this policy will be updated before it exists.**
+
+That program already exists in the product. `apps/web/src/routes/settings.tsx:146` renders
+a toggle — *"Contribute anonymised snippets to improve Golem — optional, off by default,
+revocable any time"* — writing `profiles.training_opt_in`, a column in
+`infra/supabase/migrations/0001_init.sql:9`. The policy's own precondition has been
+passed: the mechanism shipped and the policy was not updated.
+
+`/docs/privacy-and-data` is separately inconsistent with the product, in stronger terms:
+
+> your projects ... are never used to train models. Not your scripts, not your chats, not
+> your checkpoints. **There is no fine-print exception.**
+
+A reader is told no such mechanism exists, then finds the switch in Settings.
+
+### What is *not* wrong
+
+No project data has been used for training, and none can be. Searching
+`apps/worker/src`, `packages/evals/src` and `packages/corpus/src` finds **no reader of
+`training_opt_in` at all** — the toggle records a preference that nothing consumes. The
+column defaults to `false`, and the RLS trigger at migration line 119 lets a user edit it
+while blocking `plan` and `is_admin`. So this is a consent-and-documentation
+inconsistency, not a data-handling failure. Mission §33's rule — no training on user
+projects without explicit opt-in — is not violated.
+
+### Why this session did not fix it
+
+Three plausible fixes, and choosing between them is the owner's:
+
+1. **Update the policy** to describe the opt-in that exists. It is the governing legal
+   document; writing it is not this environment's to do.
+2. **Remove the toggle** until the policy is updated, which makes the product match the
+   promise. Conservative, but it discards any preference a user has already set.
+3. **Leave both and correct only the docs page**, which would still leave `/privacy`
+   saying the program does not exist while it does.
+
+Editing consent copy or removing a consent control on the owner's behalf is exactly the
+kind of change that should not happen autonomously, in either direction.
+
+### The minimal owner action
+
+Decide 1, 2 or 3. If 1: `/privacy` and `/docs/privacy-and-data` both need the opt-in
+described, and "there is no fine-print exception" has to go. If 2: hide the control in
+`settings.tsx` and leave the column, so existing values survive the decision.
+
+---
+
+## For the owner to review — a published figure was corrected
+
+**Not a blocker, and not a price change, but §33 says public pricing is the owner's, so
+this is surfaced rather than left in a commit message.**
+
+The pricing page stated **Clay · 1 spark** and **60 requests a free day**. The worker
+charges `sparksForNeurons(n) = max(1, ceil(n / 30))`, and `docs/COST-MODEL.md` measures a
+Clay question at 37–43 neurons — so it is **2 sparks and 30 requests a day**. Stone
+(111 → 4) and Rune (297 → 10) were both correct.
+
+Corrected on 2026-09-01, with `scripts/check-spark-figures.mjs` now checking the whole
+chain in CI. Nothing about what anyone is charged changed: the free tier is 60 sparks a
+day at $0 and Pro remains an unpriced waitlist. What changed is a claim about consumption
+that the code contradicted, and the reason not to leave it is that a reader planning
+around "60 questions a day" hits the limit at 30.
+
+**If the intent was that a Plan question should cost 1 spark**, that is a change to the
+worker — `NEURONS_PER_SPARK`, or a per-mode floor — and not to the page. This correction
+assumed the code is right and the page was wrong, because the code is what actually
+charges people. Say if that assumption is backwards.
+
+### And the public site was naming the internal specialists
+
+Found while fixing the above. `packages/shared/src/index.ts` states it plainly:
+
+> Clay, Stone and Rune are internal specialist identities, not user-facing brands:
+> nothing in normal product UI should name them.
+
+Mission §15.3 gives the public modes as **Plan / Agent / Super Agent**, the app offers
+exactly those, and `apps/web/src/components/roadmap/model.ts` goes as far as
+regex-replacing the specialist names out of worker copy before rendering it. The
+documentation site named them **96 times** across nine files — including the docs nav
+label, a page title and every mode heading — so a reader learned "Clay", went to the app,
+and found no such thing.
+
+Renamed on 2026-09-01: Clay → Plan, Stone → Agent, Rune → Super Agent, across the site
+only. `docs/COST-MODEL.md` keeps the specialist names, which is correct — it is internal.
+`check-site-semantics.mjs` now fails if any of the three appears in visible copy on a
+built page.
+
+**This is a vocabulary change to public documentation**, so it is recorded here rather
+than only in a commit. It aligns the docs with §15.3 and with the product; it does not
+change any behaviour, price or URL.
 
 ---
 

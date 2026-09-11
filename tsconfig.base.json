@@ -9,6 +9,7 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "noUncheckedIndexedAccess": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "noUnusedLocals": true
   }
 }
