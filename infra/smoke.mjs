@@ -68,10 +68,9 @@ check('auth — /api/me returns the account', Boolean(me?.profile || me?.user), 
 const provRes = await fetch(`${BASE}/api/providers`, { headers: { Authorization: `Bearer ${jwt}` } });
 if (provRes.ok) {
   const providers = await provRes.json();
-  const enabled = providers.models.filter((m) => m.available).map((m) => m.id);
-  const disabled = providers.models.filter((m) => !m.available).map((m) => m.id);
-  check('providers — route is behind user auth and returns a capability table', providers.models.length > 0,
-    `${enabled.length} available, ${disabled.length} disabled`);
+  check('providers — route is behind user auth and returns inference readiness',
+    providers.ready === true && Array.isArray(providers.models) && providers.models.length === 0,
+    `ready=${String(providers.ready)}, public catalog ${providers.models?.length ?? 'missing'} models`);
   const blob = JSON.stringify(providers);
   check('providers — no credential material in the response',
     !/sk-|AIza|Bearer\s|api[_-]?key["']?\s*[:=]/i.test(blob));
