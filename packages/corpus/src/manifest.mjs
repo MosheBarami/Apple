@@ -1,0 +1,267 @@
+#!/usr/bin/env node
+// manifest.mjs — generate docs/SOURCE_MANIFEST.md from the corpus's own data.
+//
+// WHY THIS IS GENERATED AND NOT WRITTEN.
+//
+// Mission §7: "Do not merely make SOURCE_MANIFEST a link dump. Convert useful material into:
+// provenance -> rights -> security -> classification -> pattern extraction -> retrieval ->
+// Golem-owned primitives/playbooks -> evals."
+//
+// A hand-written manifest answers that once and is wrong by the next commit. This one is
+// derived from the three files that actually hold the truth — `data/sources.json` (what was
+// discovered and classified), `raw/manifest.json` (what is checked out, at which SHA, under
+// which licence, with which security verdict) and `packages/design/src/rules.mjs` (what was
+// EXTRACTED) — so the chain from a URL to a rule is a join over real records rather than a
+// claim in prose.
+//
+// The join is the point. "We learned this from that, lawfully" is only checkable if the rule
+// and the source are linked by data, and the most useful column in the whole document is the
+// one that shows a licence-clear checked-out source from which NOTHING has been extracted,
+// because that is where the remaining value is.
+
+import { existsSync, readFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const CORPUS = path.resolve(HERE, '..');
+const REPO = path.resolve(CORPUS, '..', '..');
+const OUT = path.join(REPO, 'docs', 'SOURCE_MANIFEST.md');
+
+const read = (p) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null);
+
+const sources = read(path.join(CORPUS, 'data', 'sources.json'));
+const checkouts = read(path.join(CORPUS, 'raw', 'manifest.json'));
+const content = read(path.join(CORPUS, 'data', 'content.json'));
+
+// contentRecord.observedIn holds `github.com/Owner/Repo@sha`; checkout directories are
+// `Owner__Repo`. Join on that, so the era and quality a checkout was tagged with appear
+// beside the licence and security verdicts it was already carrying.
+const contentByDir = new Map(
+  (content?.records ?? []).flatMap((r) => {
+    const m = /github\.com\/([^/]+)\/([^/@]+)/.exec(String(r.observedIn?.[0] ?? ''));
+    return m ? [[`${m[1]}__${m[2]}`, r]] : [];
+  }),
+);
+
+async function loadRules() {
+  try {
+    const mod = await import(path.join(REPO, 'packages', 'design', 'src', 'rules.mjs'));
+    return mod.RULES ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Which rules name this checkout in their provenance. The link that makes §7's chain real.
+ *
+ *  Checkout directories are `owner__repo` (unique per source — two owners share a repo name far
+ *  more often than is comfortable), while a rule cites `Owner/repo`. Match on the repo half and
+ *  confirm the owner separately, so `LolplePlays__framer` and
+ *  `Starstruck-Studios-Developers__framer` cannot claim each other's rules. */
+function rulesFrom(rules, name) {
+  const [owner, repo] = name.includes('__') ? name.split('__') : [null, name];
+  const r1 = repo.toLowerCase();
+  const o1 = owner?.toLowerCase() ?? null;
+  return rules.filter((r) => {
+    const src = (r.provenance?.source ?? '').toLowerCase();
+    if (!src.includes(r1)) return false;
+    return o1 == null || src.includes(`${o1}/${r1}`) || !src.includes('/');
+  });
+}
+
+const pct = (n, d) => (d === 0 ? '0' : ((n / d) * 100).toFixed(0));
+
+function table(rows, headers) {
+  const line = (cells) => `| ${cells.join(' | ')} |`;
+  return [line(headers), line(headers.map(() => '---')), ...rows.map(line)].join('\n');
+}
+
+async function main() {
+  const rules = await loadRules();
+  const records = sources ? Object.values(sources.records) : [];
+  const byClass = {};
+  for (const r of records) byClass[r.licence?.class ?? 'unknown'] = (byClass[r.licence?.class ?? 'unknown'] ?? 0) + 1;
+
+  const co = checkouts?.sources ?? {};
+  const coNames = Object.keys(co).sort();
+  const scannedRecords = records.filter((r) => r.security?.class && r.security.class !== 'unscanned');
+  const extractedFrom = new Set();
+  for (const n of coNames) if (rulesFrom(rules, n).length > 0) extractedFrom.add(n);
+
+  const reusable = records.filter((r) => r.licence?.class === 'COMMERCIAL_REUSABLE');
+  const fetchedUrls = new Set(Object.values(co).map((s) => (s.url ?? '').replace(/\.git$/, '')));
+  const notFetched = reusable.filter((r) => !fetchedUrls.has(r.url.replace(/\.git$/, '')));
+
+// Records collapse to repositories: a registry index publishes one record per package, so a
+// monorepo appears once per package it ships. `roblox/react-lua` is 19 records and one clone.
+const repoKey = (u) => {
+  const m = /github\.com\/([^/]+)\/([^/#?]+)/.exec(String(u ?? ''));
+  return m ? `${m[1]}/${m[2]}`.replace(/\.git$/, '').toLowerCase() : null;
+};
+const unfetchedRepos = new Set(notFetched.map((r) => repoKey(r.url)).filter(Boolean)).size;
+
+//[[ The worst-case duplicate, DERIVED. The first version of this section named
+//   `roblox/react-lua` and the literal `19`, hardcoded in a template string where every
+//   neighbouring number was interpolated — so the example was frozen at the moment it
+//   was written, and it was already not the largest: `roblox/jest-roblox` publishes 34
+//   records against one repository. A hand-written number beside generated ones is the
+//   one that goes stale silently, which is the whole reason this file is generated. ]]
+const unfetchedByRepo = new Map();
+for (const r of notFetched) {
+  const k = repoKey(r.url);
+  if (k) unfetchedByRepo.set(k, (unfetchedByRepo.get(k) ?? 0) + 1);
+}
+const [worstRepo, worstCount] = [...unfetchedByRepo.entries()].sort(
+  (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+)[0] ?? ['—', 0];
+const recordInflation = unfetchedRepos > 0 ? notFetched.length / unfetchedRepos : 1;
+
+  const doc = `# Golem — source manifest
+
+**Generated by \`packages/corpus/src/manifest.mjs\`. Do not edit by hand.**
+
+Regenerate with \`pnpm --filter @golem/corpus manifest\`. It is generated because a hand-written
+manifest is right on the day it is written and wrong by the next commit, and because the claim
+this document exists to support — *"every pattern Golem learned came from a source we may
+lawfully learn from"* — is only checkable if the rule and the source are joined by data rather
+than asserted in prose.
+
+The join runs left to right: **discovered → classified → checked out at a SHA → security
+scanned → patterns extracted → retrievable**. A source that stops partway is visible as a source
+that stopped partway.
+
+---
+
+## 1. The corpus
+
+${records.length} sources discovered, ${records.filter((r) => r.resolved).length} resolved.
+
+${table(
+    Object.entries(byClass)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => [`\`${k}\``, String(v), `${pct(v, records.length)} %`]),
+    ['classification', 'sources', 'share'],
+  )}
+
+\`UNCLEAR_QUARANTINE\` is the largest class and that is the honest outcome, not a backlog.
+The corpus classification found that of the free cartoon UI kits and low-poly world packs in the
+seed manifest, **none can prove a licence about itself** — every one is a forum thread, and a
+thread is a claim, not a licence. Absence of evidence is not permission, so those sources are
+quarantined and stay quarantined until evidence exists.
+
+## 2. What is checked out
+
+${coNames.length} checkouts, each pinned to a commit SHA. The licence column is read from the
+checkout's **own LICENSE file**, independently of what classification decided; a disagreement
+would appear here as a conflict rather than be resolved silently.
+
+> **The checkouts themselves are not in this repository.** \`packages/corpus/raw/\` is gitignored,
+> so a fresh clone has none of them and every stage downstream of fetch — scan, hash, tag, and this
+> document — would run against an empty tree. The tracked artefacts are the *derived* ones:
+> \`data/sources.json\`, \`data/content.json\` and this file, which describe checkouts a reader
+> cannot see. To reproduce them, run \`pnpm --filter @golem/corpus fetch -- <ids>\` first; the SHA
+> column is what makes that reproduction exact.
+
+**era** is decided by the density of dated engine markers, not by their presence — a maintained
+library with one five-year-old \`wait()\` is not legacy, and \`—\` means the checkout gave too
+little evidence either way rather than that it passed. **quality** scores engineering hygiene —
+tested, typed, documented, licensed, CI-gated, current — and deliberately not whether the patterns
+inside are good ones; stars and forks are excluded, because popularity already enters retrieval
+ranking and counting it twice while calling the second count quality is how a score stops meaning
+anything. **deprecated** counts dated constructs found, and is reported even where the era reads
+modern, because a summary is not a suppression.
+
+${table(
+    coNames.map((n) => {
+      const s = co[n];
+      const rec = records.find((r) => (r.url ?? '').replace(/\.git$/, '') === (s.url ?? '').replace(/\.git$/, ''));
+      const sec = rec?.security;
+      const secCell = !sec || sec.class === 'unscanned' ? '**unscanned**' : sec.safe ? 'clean' : `**${sec.class}**`;
+      const rs = rulesFrom(rules, n);
+      const cr = contentByDir.get(n);
+      const dep = (cr?.deprecatedPatterns ?? []).reduce((t, d) => t + d.count, 0);
+      return [
+        `\`${n}\``,
+        s.licence?.spdx ?? '?',
+        secCell,
+        cr?.engineEra && cr.engineEra !== 'unknown' ? cr.engineEra : '—',
+        typeof cr?.qualityScore === 'number' ? cr.qualityScore.toFixed(2) : '—',
+        dep > 0 ? String(dep) : '—',
+        rs.length > 0 ? String(rs.length) : '—',
+      ];
+    }),
+    ['checkout', 'licence', 'security', 'era', 'quality', 'deprecated', 'rules'],
+  )}
+
+${extractedFrom.size} of ${coNames.length} checkouts have had patterns extracted from them.
+The empty cells in that last column are the most useful thing in this document: a
+licence-clear, security-scanned source that has taught Golem nothing yet is exactly where the
+remaining value is, and it is cheaper to reach than a new source.
+
+## 3. What was extracted
+
+${rules.length} rules in \`packages/design/src/rules.mjs\`, by provenance kind:
+
+${table(
+    Object.entries(
+      rules.reduce((a, r) => {
+        a[r.provenance.kind] = (a[r.provenance.kind] ?? 0) + 1;
+        return a;
+      }, {}),
+    ).map(([k, v]) => [`\`${k}\``, String(v), `${pct(v, rules.length)} %`]),
+    ['kind', 'rules', 'share'],
+  )}
+
+The boundary these kinds encode is a licence boundary, not a citation style:
+
+- \`golem-authored\` — written for this project, owned outright, safe to reproduce.
+- \`learned-pattern\` — a general grammar observed in a licence-clear source. May carry concrete
+  \`tokens\`, because a grammar is not the source.
+- \`reference-only\` — observed in a source we may READ but may not copy. **May never carry
+  \`tokens\`**, and \`assertLicenceSafety()\` fails the build if one does.
+
+## 4. What has NOT been fetched
+
+${notFetched.length} source records are classified \`COMMERCIAL_REUSABLE\` and have never been
+checked out. They are lawful to use and currently teach nothing.
+
+Those records collapse to **${unfetchedRepos} distinct repositories**, and that is the number that
+measures the remaining work. A registry index publishes one record per PACKAGE, so a monorepo
+arrives many times over — \`${worstRepo}\` alone accounts for ${worstCount} of them. Counting
+records here would overstate what is left to fetch by ${((recordInflation - 1) * 100).toFixed(0)} %,
+in a section whose entire job is to say how much is left.
+
+${table(
+    notFetched.slice(0, 20).map((r) => [`\`${r.id}\``, r.licence?.spdx ?? '?', r.category ?? '—', r.url]),
+    ['id', 'licence', 'category', 'url'],
+  )}
+${notFetched.length > 20 ? `\n…and ${notFetched.length - 20} more. Full list: \`pnpm --filter @golem/corpus fetch -- --list\`.\n` : ''}
+## 5. Security
+
+${scannedRecords.length} of ${records.length} sources carry a scan verdict.
+
+The ordering is load-bearing and \`docs/SOURCE-INTELLIGENCE.md\` says so: *"Security scanning
+happens before extraction, not after. A malicious loader must never reach a chunker, an
+embedder, or a reviewer's clipboard."* The scanner existing and the scanner having run are
+different facts, and only the second one is a safety property — which is why this section counts
+verdicts rather than describing the scanner.
+
+---
+
+*Generated ${new Date().toISOString().slice(0, 10)} from \`data/sources.json\`, \`raw/manifest.json\` and \`packages/design/src/rules.mjs\`.*
+`;
+
+  await writeFile(OUT, doc);
+  console.log(`[manifest] wrote docs/SOURCE_MANIFEST.md`);
+  console.log(
+    `[manifest] ${records.length} sources, ${coNames.length} checkouts, ${extractedFrom.size} extracted from, ` +
+      `${rules.length} rules, ${unfetchedRepos} reusable repos unfetched (${notFetched.length} records)`,
+  );
+}
+
+main().catch((err) => {
+  console.error('[manifest] fatal:', err);
+  process.exit(1);
+});

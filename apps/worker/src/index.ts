@@ -8,7 +8,9 @@ import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
-import type { RenderViewResult } from '@golem/shared';
+import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
+import { refuseLuauIngress } from './tools';
+import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -197,6 +199,106 @@ app.post('/api/projects/:id/pairing', async (c) => {
   });
 });
 
+// ---------------------------------------------------------------- game roadmap (manifest §30-§33)
+/**
+ * The roadmap is READ FROM THE PROJECT, so every route here needs Studio attached.
+ *
+ * That is a real constraint and it is stated rather than worked around: with no plugin connected
+ * there is no place file to inspect, and the only thing that could be returned is the generic
+ * template §31 exists to forbid. So these routes 409 with the reason instead of guessing.
+ *
+ * Ownership is checked by `withOwnedProject` exactly as it is for messages and checkpoints; the
+ * DO's /studio-op path is reached only after that check passes.
+ */
+function studioProbeFor(stub: DurableObjectStub): StudioProbe {
+  return async (op: StudioOp, timeoutMs?: number): Promise<OpResult> => {
+    const res = await stub.fetch('https://do/studio-op', {
+      method: 'POST',
+      body: JSON.stringify({ op, timeoutMs: timeoutMs ?? 30_000 }),
+    });
+    return (await res.json()) as OpResult;
+  };
+}
+
+app.get('/api/projects/:id/roadmap', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const out = await roadmapForProject(studioProbeFor(ctx.stub));
+  if (!out.ok) return c.json({ error: out.error }, 409);
+  void count(c.env, 'roadmap_read');
+
+  // The deterministic roadmap is the product (§39). The model pass is opt-in, costs a Spark, and
+  // can only reorder and rephrase what the scan already decided — so every failure below leaves a
+  // complete roadmap on the wire, with `polished: false` saying plainly that it did not run.
+  if (c.req.query('polish') !== '1') return c.json({ projectId: ctx.project.id, ...out.roadmap, shape: publicShape(out.shape) });
+  const user = c.get('user');
+  const spend = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
+    method: 'POST',
+    body: JSON.stringify({ sparks: 1, kind: 'roadmap_rank' }),
+  });
+  const { ok } = (await spend.json()) as { ok: boolean };
+  if (!ok) {
+    return c.json({
+      projectId: ctx.project.id,
+      ...out.roadmap,
+      shape: publicShape(out.shape),
+      notes: [...out.roadmap.notes, 'Daily Sparks are used up, so this is the unranked roadmap.'],
+    });
+  }
+  const chat: RoadmapChat = async ({ system, user: prompt }) => {
+    const res = await llmChat(
+      c.env,
+      { model: 'clay', messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], maxTokens: 700 },
+      { kind: 'roadmap:rank', cacheTtl: 300 },
+    );
+    return res.text;
+  };
+  const ranked = await polishRoadmap(out.roadmap, out.shape, chat);
+  return c.json({
+    projectId: ctx.project.id,
+    ...ranked,
+    shape: publicShape(out.shape),
+    notes: ranked.polished ? ranked.notes : [...ranked.notes, 'The ranking pass did not run; this is the roadmap read straight from the project.'],
+  });
+});
+
+/** §32: the small contextual set, for a UI that wants the next steps and not the whole timeline. */
+app.get('/api/projects/:id/roadmap/next', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const out = await roadmapForProject(studioProbeFor(ctx.stub));
+  if (!out.ok) return c.json({ error: out.error }, 409);
+  return c.json({
+    projectId: ctx.project.id,
+    genre: out.roadmap.genre,
+    genreLabel: out.roadmap.genreLabel,
+    genreConfidence: out.roadmap.genreConfidence,
+    next: out.roadmap.next,
+    notes: out.roadmap.notes,
+  });
+});
+
+/**
+ * §33: turn a milestone into something Plan or Agent can actually build.
+ *
+ * The brief is regenerated from a fresh scan rather than from a roadmap the client sends back:
+ * a client-supplied brief would let any caller hand the builder arbitrary instructions attributed
+ * to Golem's own roadmap. Only the milestone id crosses the wire.
+ */
+app.post('/api/projects/:id/roadmap/brief', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const body = await c.req.json<{ milestoneId?: string }>().catch(() => null);
+  const milestoneId = (body?.milestoneId ?? '').slice(0, 64);
+  if (!milestoneId) return c.json({ error: 'milestoneId required' }, 400);
+  const out = await roadmapForProject(studioProbeFor(ctx.stub));
+  if (!out.ok) return c.json({ error: out.error }, 409);
+  const brief = executionBrief(out.shape, out.roadmap, milestoneId);
+  if (!brief) return c.json({ error: 'no such milestone for this project' }, 404);
+  void count(c.env, 'roadmap_brief');
+  return c.json(brief);
+});
+
 // ---------------------------------------------------------------- studio plugin endpoints (token auth, not JWT)
 app.post('/api/studio/claim', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
@@ -253,50 +355,45 @@ app.post('/api/studio/poll', async (c) => {
 
 // ---------------------------------------------------------------- me
 /**
- * The model providers this deployment can actually reach.
+ * Service reachability for the signed-in app. Deliberately says nothing about
+ * WHICH model or provider serves a request.
  *
- * Availability is computed from the environment on every request, never
- * cached and never hardcoded, so the picker in the composer cannot show a
- * provider as usable when no credential for it exists. A provider that is
- * unavailable is still listed — with the reason — because silently hiding it
- * would leave the user wondering why the product advertises four models and
- * offers one.
+ * ==========================================================================
+ * DECISION (worker owner) — read this before changing the web client.
+ * ==========================================================================
+ * Manifest §1: users must never choose a foundation model, and provider
+ * identity is an implementation detail that must not appear in normal product
+ * UX. This route used to return model ids, provider names, per-model token
+ * costs and per-provider health to every signed-in user, and the web app
+ * rendered it as a model picker. That is precisely the payload §1 forbids.
+ *
+ * WHAT I CHOSE: the path is KEPT and still returns 200 to any authenticated
+ * user, but the payload is now minimal and non-provider-identifying. The full
+ * capability table, costs, auto-routing rationale and provider health moved
+ * verbatim to `GET /api/admin/model-routing`, behind the ADMIN_KEY — §1
+ * explicitly wants the routing layer kept for admin/diagnostics.
+ *
+ * WHY KEPT AND NOT DELETED:
+ *   - Deleting it would 404 every browser still running a cached bundle. A
+ *     200 with an empty model list degrades to "there is nothing to pick",
+ *     which is the correct end state anyway.
+ *   - `infra/smoke.mjs` probes this path as a liveness check.
+ *   - The product genuinely needs ONE bit here that is not provider identity:
+ *     whether this deployment can serve inference at all. That is `ready`.
+ *
+ * FOR THE WEB CLIENT AGENT: stop calling this for anything picker-shaped.
+ * `models` and `auto` are deprecated tombstones kept only so an unmigrated
+ * bundle degrades instead of throwing on `providers.models.filter(...)`;
+ * they are always empty/null and will be deleted once no client reads them.
+ * Read `ready` if you want to disable the composer when the service cannot
+ * serve. Everything else you may have been rendering is now admin-only.
  */
 app.get('/api/providers', async (c) => {
-  const rows = capabilityTable(c.env);
-  const auto = selectProvider(c.env, {});
-  return c.json({
-    models: rows.map((r) => ({
-      id: r.id,
-      provider: r.provider,
-      label: r.displayName,
-      available: r.available,
-      reason: r.available ? null : r.availabilityDetail,
-      unsupportedModelKeys: r.unsupportedModelKeys ?? [],
-      supportsTools: r.supportsTools,
-      supportsVision: r.supportsVision,
-      inputCostPer1M: r.inputCostPer1M,
-      outputCostPer1M: r.outputCostPer1M,
-      unverifiedFields: r.unverifiedFields ?? [],
-    })),
-    auto: auto.ok ? { model: auto.model.id, reasoning: auto.reasoning } : { model: null, reasoning: auto.reasoning },
-    // Only the error KIND and when it happened. `lastError.message` is the
-    // upstream provider's own string, verbatim and length-uncapped — an
-    // authentication failure from a provider can quote the key it rejected.
-    // Harmless while the only credentialed provider is the key-less Workers AI
-    // binding; a credential leak to every signed-in user the day a provider
-    // secret is added. This route is new, so this egress path is new too.
-    health: providerHealth().map((h) => ({
-      provider: h.provider,
-      calls: h.calls,
-      ok: h.ok,
-      failed: h.failed,
-      lastLatencyMs: h.lastLatencyMs,
-      medianLatencyMs: h.medianLatencyMs,
-      lastAt: h.lastAt,
-      lastError: h.lastError ? { kind: h.lastError.kind, at: h.lastError.at } : null,
-    })),
-  });
+  // `selectProvider` is a pure function of `env` — no network, no cache. Its
+  // `reasoning` string names providers and is therefore NOT returned; only
+  // the boolean survives.
+  const ready = selectProvider(c.env, {}).ok;
+  return c.json({ ready, models: [], auto: { model: null, reasoning: '' } });
 });
 
 app.get('/api/me', async (c) => {
@@ -378,6 +475,70 @@ app.post('/api/admin/model-test', async (c) => {
 });
 
 app.get('/api/admin/models', async (c) => c.json(await getModels(c.env)));
+
+/**
+ * The routing layer, in full — ADMIN ONLY.
+ *
+ * This is where `GET /api/providers` used to publish model ids, provider
+ * names, per-1M token costs, auto-selection rationale and provider health to
+ * every signed-in user. Manifest §1 keeps that information for
+ * admin/diagnostics and takes it out of normal product UX, so it lives here,
+ * behind ADMIN_KEY, and nowhere else.
+ *
+ * Named `model-routing` rather than `providers` on purpose: `/api/providers`
+ * still exists as a user route, and two paths differing only by an `/admin/`
+ * segment is exactly the kind of pair that gets mixed up in a client.
+ *
+ * Availability is computed from `env` on every request — never cached, never
+ * hardcoded — so this cannot report a provider as usable when no credential
+ * for it exists. Fields are whitelisted one by one rather than spread: a
+ * future field on CapabilityRow must be reviewed before it can egress, even
+ * to an admin.
+ *
+ * `lastError.message` is STILL withheld, admin surface or not. It is the
+ * upstream provider's own string, verbatim and length-uncapped, and a
+ * provider's 401 body can quote the key it rejected. Moving this behind the
+ * admin key was not a licence to start echoing credentials into a response
+ * body; `kind` plus `at` is what diagnostics actually needs, and
+ * /api/admin/raw-probe already exists for reproducing a specific failure.
+ */
+app.get('/api/admin/model-routing', async (c) => {
+  const rows = capabilityTable(c.env);
+  const auto = selectProvider(c.env, {});
+  return c.json({
+    models: rows.map((r) => ({
+      id: r.id,
+      provider: r.provider,
+      label: r.displayName,
+      available: r.available,
+      // both halves of availability: the machine-readable reason and the
+      // human detail. Admins are the audience that needs to know WHY.
+      unavailableReason: r.available ? null : r.unavailableReason,
+      reason: r.available ? null : r.availabilityDetail,
+      unsupportedModelKeys: r.unsupportedModelKeys ?? [],
+      supportsTools: r.supportsTools,
+      supportsVision: r.supportsVision,
+      contextWindow: r.contextWindow,
+      maxOutput: r.maxOutput,
+      inputCostPer1M: r.inputCostPer1M,
+      outputCostPer1M: r.outputCostPer1M,
+      unverifiedFields: r.unverifiedFields ?? [],
+    })),
+    auto: auto.ok
+      ? { model: auto.model.id, provider: auto.provider, reasoning: auto.reasoning, rejected: auto.rejected }
+      : { model: null, provider: null, reasoning: auto.reasoning, rejected: auto.rejected },
+    health: providerHealth().map((h) => ({
+      provider: h.provider,
+      calls: h.calls,
+      ok: h.ok,
+      failed: h.failed,
+      lastLatencyMs: h.lastLatencyMs,
+      medianLatencyMs: h.medianLatencyMs,
+      lastAt: h.lastAt,
+      lastError: h.lastError ? { kind: h.lastError.kind, at: h.lastError.at } : null,
+    })),
+  });
+});
 
 /**
  * Raw provider response, for adapting the normalizer to a new model's shape.
@@ -629,10 +790,77 @@ app.post('/api/admin/run-tool/:id', async (c) => {
   return c.json(await res.json(), res.status as 200);
 });
 
+/**
+ * Ops this diagnostics route may forward. An allowlist rather than a denylist, so a new op is
+ * unreachable from here until somebody decides it belongs.
+ *
+ * The route existed to let the smoke test, the store validation and the visual benchmark drive a
+ * paired plugin without an agent loop, and it forwarded whatever JSON it was given — so an admin
+ * key was enough to post `{op:'insert_asset'}` and put an arbitrary asset id into a place, skipping
+ * the metadata gate, the post-insertion script scan and the audit row that `insert_asset` the TOOL
+ * runs. `insert_asset` and `generate_model` are the two ops that bring content in from outside the
+ * place, and they are precisely the two an unvalidated bypass must not reach; both are still
+ * available through /api/admin/run-tool, which goes through the gate.
+ *
+ * The list is what the harnesses in infra/ and packages/evals actually send, and no more.
+ */
+const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([
+  'ping',
+  'get_tree',
+  'get_instance',
+  'list_scripts',
+  'read_script',
+  'search_scripts',
+  'get_logs',
+  'get_selection',
+  'select',
+  'camera_focus',
+  'viewport_info',
+  'render_view',
+  'screenshot',
+  'create_instances',
+  'set_props',
+  'delete_instances',
+  'move_instances',
+  'undo_waypoint',
+  'run_code',
+]);
+
 app.post('/api/admin/studio-op/:id', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { op?: StudioOp; timeoutMs?: number } | null;
+  const kind = body?.op?.op;
+  if (!kind || !ADMIN_STUDIO_OPS.has(kind)) {
+    return c.json(
+      {
+        error: `${kind ?? 'that'} is not a diagnostics op. This route forwards inspection and build ops only; anything that brings an asset into the place goes through /api/admin/run-tool so it passes the same gate the agent does.`,
+      },
+      400,
+    );
+  }
+  // `run_code` here is the same channel as the run_luau tool, so it gets the same filter: an admin
+  // key is a key to the diagnostics surface, not a way around the asset gate.
+  if (kind === 'run_code') {
+    const refusal = refuseLuauIngress(String((body?.op as { code?: unknown }).code ?? ''));
+    if (refusal) return c.json(refusal, 400);
+  }
+  /* The plugin reads MORE off the op than the StudioOp union declares.
+     `Ops.assetPolicyFor` honours `op.verifiedAssetIds`, which is how the worker
+     tells the plugin an asset id has already been through the gate. This route
+     hands the plugin untyped JSON, so a caller could include that field inside
+     the op and grant themselves any id they liked — turning an admin key into a
+     way around the asset gate rather than a key to the diagnostics surface.
+
+     Stripped rather than rejected, because a diagnostics caller has no reason to
+     assert that anything was verified: the only honest value here is "nothing
+     was". Note this is a property of the OP, not the envelope — the first
+     version of this fix rebuilt the envelope and left the field untouched inside
+     `op`, which closed nothing. The comment above about assets going through
+     /api/admin/run-tool is only true with this in place. */
+  const { verifiedAssetIds: _dropped, ...safeOp } = (body?.op ?? {}) as Record<string, unknown>;
+  const forwarded = { op: safeOp, timeoutMs: body?.timeoutMs };
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/studio-op', {
     method: 'POST',
-    body: JSON.stringify(await c.req.json()),
+    body: JSON.stringify(forwarded),
   });
   return c.json(await res.json(), res.status as 200);
 });

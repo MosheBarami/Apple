@@ -1,12 +1,13 @@
 // /login and /signup — a carved split layout with email/password auth.
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MODE_INFO, type GolemMode } from '@golem/shared';
+import { safeInternalPath } from '../lib/safe-redirect';
+import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import { GolemGlyph } from '../components/glyphs';
 
-const MODES: GolemMode[] = ['clay', 'stone', 'rune'];
+const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 
 function ThemeCorner() {
   const { theme, setTheme } = useTheme();
@@ -46,7 +47,7 @@ function AuthHero() {
           {MODES.map((m) => (
             <li key={m}>
               <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
-              <strong>{MODE_INFO[m].name}</strong> — {MODE_INFO[m].blurb}
+              <strong>{PRODUCT_MODE_INFO[m].name}</strong> — {PRODUCT_MODE_INFO[m].blurb}
             </li>
           ))}
         </ul>
@@ -72,7 +73,9 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  // Validated, not trusted: the catch-all route sits INSIDE AuthGuard, so this
+  // path may have been chosen by whoever sent the link. See lib/safe-redirect.
+  const from = safeInternalPath((location.state as { from?: string } | null)?.from);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();

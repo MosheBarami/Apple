@@ -1,0 +1,1454 @@
+{
+  "note": "Seed manifest extracted from Master Mission Appendix A. \u00a7J: this is a DISCOVERY FLOOR, not the corpus ceiling. Every entry starts UNCLEAR_QUARANTINE until the classifier examines real licence evidence. A `path` means the seed points at a file or subtree of interest inside a repo that is resolved once.",
+  "extractedAt": "2026-09-01",
+  "count": 217,
+  "byCategory": {
+    "engineering": 16,
+    "full-game": 33,
+    "generation": 6,
+    "huggingface": 16,
+    "motion": 17,
+    "official": 24,
+    "studs": 3,
+    "ui-framework": 48,
+    "ui-kit": 11,
+    "ui-tooling": 15,
+    "ux-system": 15,
+    "world-pack": 13
+  },
+  "byKind": {
+    "repo": 121,
+    "huggingface": 19,
+    "devforum": 64,
+    "official-docs": 11,
+    "registry": 2
+  },
+  "entries": [
+    {
+      "url": "https://github.com/evaera/Cmdr",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "evaera/Cmdr",
+      "id": "gh-evaera-cmdr"
+    },
+    {
+      "url": "https://github.com/evaera/roblox-lua-promise",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "evaera/roblox-lua-promise",
+      "id": "gh-evaera-roblox-lua-promise"
+    },
+    {
+      "url": "https://github.com/ffrostfall/BridgeNet2",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "ffrostfall/BridgeNet2",
+      "id": "gh-ffrostfall-bridgenet2"
+    },
+    {
+      "url": "https://github.com/ffrostfall/ByteNet",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "ffrostfall/ByteNet",
+      "id": "gh-ffrostfall-bytenet"
+    },
+    {
+      "url": "https://github.com/howmanysmall/Janitor",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "howmanysmall/Janitor",
+      "id": "gh-howmanysmall-janitor"
+    },
+    {
+      "url": "https://github.com/littensy/charm",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "littensy/charm",
+      "id": "gh-littensy-charm"
+    },
+    {
+      "url": "https://github.com/littensy/reflex",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "littensy/reflex",
+      "id": "gh-littensy-reflex"
+    },
+    {
+      "url": "https://github.com/MadStudioRoblox/ProfileService",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "MadStudioRoblox/ProfileService",
+      "id": "gh-madstudioroblox-profileservice"
+    },
+    {
+      "url": "https://github.com/MadStudioRoblox/ProfileStore",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "MadStudioRoblox/ProfileStore",
+      "id": "gh-madstudioroblox-profilestore"
+    },
+    {
+      "url": "https://github.com/MadStudioRoblox/Replica",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "MadStudioRoblox/Replica",
+      "id": "gh-madstudioroblox-replica"
+    },
+    {
+      "url": "https://github.com/matter-ecs/matter",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "matter-ecs/matter",
+      "id": "gh-matter-ecs-matter"
+    },
+    {
+      "url": "https://github.com/Quenty/NevermoreEngine",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "Quenty/NevermoreEngine",
+      "id": "gh-quenty-nevermoreengine"
+    },
+    {
+      "url": "https://github.com/red-blox/zap",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "red-blox/zap",
+      "id": "gh-red-blox-zap"
+    },
+    {
+      "url": "https://github.com/Sleitnick/Knit",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "Sleitnick/Knit",
+      "id": "gh-sleitnick-knit"
+    },
+    {
+      "url": "https://github.com/Sleitnick/RbxUtil",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "Sleitnick/RbxUtil",
+      "id": "gh-sleitnick-rbxutil"
+    },
+    {
+      "url": "https://github.com/stravant/goodsignal",
+      "category": "engineering",
+      "kind": "repo",
+      "repo": "stravant/goodsignal",
+      "id": "gh-stravant-goodsignal"
+    },
+    {
+      "url": "https://github.com/AccidentallyFunStudio/Roblox-Tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "AccidentallyFunStudio/Roblox-Tycoon",
+      "id": "gh-accidentallyfunstudio-roblox-tycoon"
+    },
+    {
+      "url": "https://github.com/Aeronautiac/ffRpgLuau",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "Aeronautiac/ffRpgLuau",
+      "id": "gh-aeronautiac-ffrpgluau"
+    },
+    {
+      "url": "https://github.com/Artpupser/primitive_village_tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "Artpupser/primitive_village_tycoon",
+      "id": "gh-artpupser-primitive-village-tycoon"
+    },
+    {
+      "url": "https://github.com/aseemsahoocodes/roblox-simulator-engine",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "aseemsahoocodes/roblox-simulator-engine",
+      "id": "gh-aseemsahoocodes-roblox-simulator-engine"
+    },
+    {
+      "url": "https://github.com/blazickjp/roblox-clicker-simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "blazickjp/roblox-clicker-simulator",
+      "id": "gh-blazickjp-roblox-clicker-simulator"
+    },
+    {
+      "url": "https://github.com/chris-hjelmfelt/RobloxFarmSimulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "chris-hjelmfelt/RobloxFarmSimulator",
+      "id": "gh-chris-hjelmfelt-robloxfarmsimulator"
+    },
+    {
+      "url": "https://github.com/colewilshire/laser-tag-tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "colewilshire/laser-tag-tycoon",
+      "id": "gh-colewilshire-laser-tag-tycoon"
+    },
+    {
+      "url": "https://github.com/ConMur/StonkSimulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "ConMur/StonkSimulator",
+      "id": "gh-conmur-stonksimulator"
+    },
+    {
+      "url": "https://github.com/DLinacre/slime-factory-tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "DLinacre/slime-factory-tycoon",
+      "id": "gh-dlinacre-slime-factory-tycoon"
+    },
+    {
+      "url": "https://github.com/dx1r/Destruction-Simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "dx1r/Destruction-Simulator",
+      "id": "gh-dx1r-destruction-simulator"
+    },
+    {
+      "url": "https://github.com/glitchifyed/Tunicus-Placement-v3",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "glitchifyed/Tunicus-Placement-v3",
+      "id": "gh-glitchifyed-tunicus-placement-v3"
+    },
+    {
+      "url": "https://github.com/gue-hub/roblox-tycoon-kit",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "gue-hub/roblox-tycoon-kit",
+      "id": "gh-gue-hub-roblox-tycoon-kit"
+    },
+    {
+      "url": "https://github.com/isaaccarrington/roblox-obby",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "isaaccarrington/roblox-obby",
+      "id": "gh-isaaccarrington-roblox-obby"
+    },
+    {
+      "url": "https://github.com/jason-lee88/roblox-gym-tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "jason-lee88/roblox-gym-tycoon",
+      "id": "gh-jason-lee88-roblox-gym-tycoon"
+    },
+    {
+      "url": "https://github.com/jhmitchell/grid-placement-framework",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "jhmitchell/grid-placement-framework",
+      "id": "gh-jhmitchell-grid-placement-framework"
+    },
+    {
+      "url": "https://github.com/Lavelius/Roller-Dome-Tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "Lavelius/Roller-Dome-Tycoon",
+      "id": "gh-lavelius-roller-dome-tycoon"
+    },
+    {
+      "url": "https://github.com/LucaZTX/Infinite-Tycoon---Roblox",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "LucaZTX/Infinite-Tycoon---Roblox",
+      "id": "gh-lucaztx-infinite-tycoon-roblox"
+    },
+    {
+      "url": "https://github.com/masonwyatt23/food-factory-tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "masonwyatt23/food-factory-tycoon",
+      "id": "gh-masonwyatt23-food-factory-tycoon"
+    },
+    {
+      "url": "https://github.com/masonwyatt23/galaxy-empire-simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "masonwyatt23/galaxy-empire-simulator",
+      "id": "gh-masonwyatt23-galaxy-empire-simulator"
+    },
+    {
+      "url": "https://github.com/novareals/Roblox-Tower-Defense",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "novareals/Roblox-Tower-Defense",
+      "id": "gh-novareals-roblox-tower-defense"
+    },
+    {
+      "url": "https://github.com/oh-ashen-one/roblox-infected",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "oh-ashen-one/roblox-infected",
+      "id": "gh-oh-ashen-one-roblox-infected"
+    },
+    {
+      "url": "https://github.com/phocodes/clicking-mania",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "phocodes/clicking-mania",
+      "id": "gh-phocodes-clicking-mania"
+    },
+    {
+      "url": "https://github.com/phocodes/rice-simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "phocodes/rice-simulator",
+      "id": "gh-phocodes-rice-simulator"
+    },
+    {
+      "url": "https://github.com/PowerLives/PunchWorldSimulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "PowerLives/PunchWorldSimulator",
+      "id": "gh-powerlives-punchworldsimulator"
+    },
+    {
+      "url": "https://github.com/raymondwzeng/Simulator-In-Roblox-Studio",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "raymondwzeng/Simulator-In-Roblox-Studio",
+      "id": "gh-raymondwzeng-simulator-in-roblox-studio"
+    },
+    {
+      "url": "https://github.com/Soul774/Mining-Simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "Soul774/Mining-Simulator",
+      "id": "gh-soul774-mining-simulator"
+    },
+    {
+      "url": "https://github.com/Stevontavius/Submarine-Simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "Stevontavius/Submarine-Simulator",
+      "id": "gh-stevontavius-submarine-simulator"
+    },
+    {
+      "url": "https://github.com/TargetZero1/Fusion-Merge-Simulator",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "TargetZero1/Fusion-Merge-Simulator",
+      "id": "gh-targetzero1-fusion-merge-simulator"
+    },
+    {
+      "url": "https://github.com/Thanuflora/Obby-Game",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "Thanuflora/Obby-Game",
+      "id": "gh-thanuflora-obby-game"
+    },
+    {
+      "url": "https://github.com/TheFormid/Toy-Factory-Tycoon-Core",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "TheFormid/Toy-Factory-Tycoon-Core",
+      "id": "gh-theformid-toy-factory-tycoon-core"
+    },
+    {
+      "url": "https://github.com/turtlesoupy/robloquake",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "turtlesoupy/robloquake",
+      "id": "gh-turtlesoupy-robloquake"
+    },
+    {
+      "url": "https://github.com/venolab-Games/Scrapyard-Tycoon",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "venolab-Games/Scrapyard-Tycoon",
+      "id": "gh-venolab-games-scrapyard-tycoon"
+    },
+    {
+      "url": "https://github.com/ZeroTixDev/tower-defense",
+      "category": "full-game",
+      "kind": "repo",
+      "repo": "ZeroTixDev/tower-defense",
+      "id": "gh-zerotixdev-tower-defense"
+    },
+    {
+      "url": "https://github.com/Roblox/cube",
+      "category": "generation",
+      "kind": "repo",
+      "repo": "Roblox/cube",
+      "id": "gh-roblox-cube"
+    },
+    {
+      "url": "https://github.com/Roblox/cube/tree/main/cube3d",
+      "category": "generation",
+      "kind": "repo",
+      "repo": "Roblox/cube",
+      "path": "cube3d",
+      "id": "gh-roblox-cube--cube3d"
+    },
+    {
+      "url": "https://github.com/Roblox/cube/tree/main/cubepart",
+      "category": "generation",
+      "kind": "repo",
+      "repo": "Roblox/cube",
+      "path": "cubepart",
+      "id": "gh-roblox-cube--cubepart"
+    },
+    {
+      "url": "https://huggingface.co/Roblox/cube3d-v0.5",
+      "category": "generation",
+      "kind": "huggingface",
+      "id": "hf-roblox-cube3d-v0-5"
+    },
+    {
+      "url": "https://huggingface.co/Roblox/cubepart",
+      "category": "generation",
+      "kind": "huggingface",
+      "id": "hf-roblox-cubepart"
+    },
+    {
+      "url": "https://huggingface.co/spaces/Roblox/cubepart-demo",
+      "category": "generation",
+      "kind": "huggingface",
+      "id": "hf-spaces-roblox-cubepart-demo"
+    },
+    {
+      "url": "https://huggingface.co/datasets/487798RGW/Roblox-Luau-Reasoning-v1.0",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-487798rgw-roblox-luau-reasoning-v1-0"
+    },
+    {
+      "url": "https://huggingface.co/datasets/Hash0x/Luau-roblox",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-hash0x-luau-roblox"
+    },
+    {
+      "url": "https://huggingface.co/datasets/jayras/roblox-luau-dataset",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-jayras-roblox-luau-dataset"
+    },
+    {
+      "url": "https://huggingface.co/datasets/Pinkstack/luau-pretrain-corpus-filtered",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-pinkstack-luau-pretrain-corpus-filtered"
+    },
+    {
+      "url": "https://huggingface.co/datasets/Pinkstack/luau-pretrain-corpus-unfiltered",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-pinkstack-luau-pretrain-corpus-unfiltered"
+    },
+    {
+      "url": "https://huggingface.co/datasets/Pinkstack/roblox-luau-corpus-text",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-pinkstack-roblox-luau-corpus-text"
+    },
+    {
+      "url": "https://huggingface.co/datasets/Roblox/luau_corpus",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-datasets-roblox-luau-corpus"
+    },
+    {
+      "url": "https://huggingface.co/luminousresearch/L0-Luau-1B-Instruct",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-luminousresearch-l0-luau-1b-instruct"
+    },
+    {
+      "url": "https://huggingface.co/luminousresearch/L0-Luau-4B-Instruct",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-luminousresearch-l0-luau-4b-instruct"
+    },
+    {
+      "url": "https://huggingface.co/n9krypt/qwen3-4b-roblox-luau-reasoning",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-n9krypt-qwen3-4b-roblox-luau-reasoning"
+    },
+    {
+      "url": "https://huggingface.co/TorpedoSoftware/Gemma-3-1B-Roblox-Luau",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-torpedosoftware-gemma-3-1b-roblox-luau"
+    },
+    {
+      "url": "https://huggingface.co/TorpedoSoftware/Gemma-3-27B-Roblox-Luau",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-torpedosoftware-gemma-3-27b-roblox-luau"
+    },
+    {
+      "url": "https://huggingface.co/TorpedoSoftware/Luau-Devstral-24B-Instruct-v0.2",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-torpedosoftware-luau-devstral-24b-instruct-v0-2"
+    },
+    {
+      "url": "https://huggingface.co/TorpedoSoftware/Luau-Qwen3-4B-FIM-v0.1",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-torpedosoftware-luau-qwen3-4b-fim-v0-1"
+    },
+    {
+      "url": "https://huggingface.co/TorpedoSoftware/R1-Distill-Qwen-1.5B-Roblox-Luau",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-torpedosoftware-r1-distill-qwen-1-5b-roblox-luau"
+    },
+    {
+      "url": "https://huggingface.co/TorpedoSoftware/R1-Distill-Qwen-14B-Roblox-Luau",
+      "category": "huggingface",
+      "kind": "huggingface",
+      "id": "hf-torpedosoftware-r1-distill-qwen-14b-roblox-luau"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/roui2-gui-animations-made-simple/1164565",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-1164565"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/roui3-create-beautiful-complex-ui-animations/2077085",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-2077085"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/update-020-lumina-a-custom-particle-system/2963557",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-2963557"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/bitframes-animating-ui-never-been-that-easy-before/4179161",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4179161"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/231-cascade-ui-animator-a-keyframe-based-ui-animator-try-the-free-version/4186565",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4186565"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/twinkle-free-powerful-ui-animator-module/4512304",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4512304"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/plugin-xocoatl-animate-your-ui-elements-with-keyframes-free/4514586",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4514586"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/springservice-a-roblox-ui-spring-animation-solution/4634284",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4634284"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/ez-camera-shake-v2-a-refresh-of-a-popular-preferred-module-for-applying-camera-shake-effects/4671745",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4671745"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/gg-camera-shake-screenshake-that-doesnt-suck/4731267",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4731267"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/plugin-spark2d-make-particleemitter-style-effects-work-inside-a-screengui/4830864",
+      "category": "motion",
+      "kind": "devforum",
+      "id": "df-4830864"
+    },
+    {
+      "url": "https://github.com/chriscerie/roact-spring",
+      "category": "motion",
+      "kind": "repo",
+      "repo": "chriscerie/roact-spring",
+      "id": "gh-chriscerie-roact-spring"
+    },
+    {
+      "url": "https://github.com/ddust1n/CameraShaker",
+      "category": "motion",
+      "kind": "repo",
+      "repo": "ddust1n/CameraShaker",
+      "id": "gh-ddust1n-camerashaker"
+    },
+    {
+      "url": "https://github.com/prooheckcp/RoactMotion",
+      "category": "motion",
+      "kind": "repo",
+      "repo": "prooheckcp/RoactMotion",
+      "id": "gh-prooheckcp-roactmotion"
+    },
+    {
+      "url": "https://github.com/Reselim/Flipper",
+      "category": "motion",
+      "kind": "repo",
+      "repo": "Reselim/Flipper",
+      "id": "gh-reselim-flipper"
+    },
+    {
+      "url": "https://github.com/Roblox/otter",
+      "category": "motion",
+      "kind": "repo",
+      "repo": "Roblox/otter",
+      "id": "gh-roblox-otter"
+    },
+    {
+      "url": "https://github.com/Sleitnick/RbxCameraShaker",
+      "category": "motion",
+      "kind": "repo",
+      "repo": "Sleitnick/RbxCameraShaker",
+      "id": "gh-sleitnick-rbxcamerashaker"
+    },
+    {
+      "url": "https://github.com/awesome-roblox/awesome-roblox",
+      "category": "official",
+      "kind": "repo",
+      "repo": "awesome-roblox/awesome-roblox",
+      "id": "gh-awesome-roblox-awesome-roblox"
+    },
+    {
+      "url": "https://github.com/elevenpassin/awesome-roblox",
+      "category": "official",
+      "kind": "repo",
+      "repo": "elevenpassin/awesome-roblox",
+      "id": "gh-elevenpassin-awesome-roblox"
+    },
+    {
+      "url": "https://github.com/luau-lang/luau",
+      "category": "official",
+      "kind": "repo",
+      "repo": "luau-lang/luau",
+      "id": "gh-luau-lang-luau"
+    },
+    {
+      "url": "https://github.com/luau-lang/rfcs",
+      "category": "official",
+      "kind": "repo",
+      "repo": "luau-lang/rfcs",
+      "id": "gh-luau-lang-rfcs"
+    },
+    {
+      "url": "https://github.com/luau-lang/site",
+      "category": "official",
+      "kind": "repo",
+      "repo": "luau-lang/site",
+      "id": "gh-luau-lang-site"
+    },
+    {
+      "url": "https://github.com/pesde-pkg/index",
+      "category": "official",
+      "kind": "repo",
+      "repo": "pesde-pkg/index",
+      "id": "gh-pesde-pkg-index"
+    },
+    {
+      "url": "https://github.com/pesde-pkg/pesde",
+      "category": "official",
+      "kind": "repo",
+      "repo": "pesde-pkg/pesde",
+      "id": "gh-pesde-pkg-pesde"
+    },
+    {
+      "url": "https://github.com/Roblox/creator-docs",
+      "category": "official",
+      "kind": "repo",
+      "repo": "Roblox/creator-docs",
+      "id": "gh-roblox-creator-docs"
+    },
+    {
+      "url": "https://github.com/UpliftGames/wally",
+      "category": "official",
+      "kind": "repo",
+      "repo": "UpliftGames/wally",
+      "id": "gh-upliftgames-wally"
+    },
+    {
+      "url": "https://github.com/UpliftGames/wally-index",
+      "category": "official",
+      "kind": "repo",
+      "repo": "UpliftGames/wally-index",
+      "id": "gh-upliftgames-wally-index"
+    },
+    {
+      "url": "https://create.roblox.com/docs/production/publishing/adaptive-design",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-04d41eb6a7"
+    },
+    {
+      "url": "https://devforum.roblox.com/c/resources/community-resources/74",
+      "category": "official",
+      "kind": "devforum",
+      "id": "web-18999e3843"
+    },
+    {
+      "url": "https://create.roblox.com/docs/",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-1afdf3bda0"
+    },
+    {
+      "url": "https://create.roblox.com/docs/reference/engine/classes/GenerationService",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-429bf7fd19"
+    },
+    {
+      "url": "https://create.roblox.com/docs/ui/styling",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-4bdf2302b1"
+    },
+    {
+      "url": "https://create.roblox.com/store/",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-7a37059d8a"
+    },
+    {
+      "url": "https://create.roblox.com/docs/production/creator-store",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-87fbb08409"
+    },
+    {
+      "url": "https://create.roblox.com/docs/ui",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-a810b4364c"
+    },
+    {
+      "url": "https://docs.pesde.dev/guides/roblox/",
+      "category": "official",
+      "kind": "registry",
+      "id": "web-be543dba08"
+    },
+    {
+      "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-ccf3c90b0c"
+    },
+    {
+      "url": "https://create.roblox.com/docs/cloud/reference/features/creator-store",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-f03bd10dcd"
+    },
+    {
+      "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-fc6560b707"
+    },
+    {
+      "url": "https://www.wally.run/",
+      "category": "official",
+      "kind": "registry",
+      "id": "web-fcc1dcea53"
+    },
+    {
+      "url": "https://create.roblox.com/docs/projects/assets/api",
+      "category": "official",
+      "kind": "official-docs",
+      "id": "web-fe69e4e5d6"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/resurface-converter-apply-classic-studs-and-more-to-parts-meshes-and-unions/1226536",
+      "category": "studs",
+      "kind": "devforum",
+      "id": "df-1226536"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/studs-building-pack/3899139",
+      "category": "studs",
+      "kind": "devforum",
+      "id": "df-3899139"
+    },
+    {
+      "url": "https://github.com/Roblox/creator-docs/blob/main/content/en-us/reference/engine/enums/SurfaceType.yaml",
+      "category": "studs",
+      "kind": "repo",
+      "repo": "Roblox/creator-docs",
+      "path": "content/en-us/reference/engine/enums/SurfaceType.yaml",
+      "id": "gh-roblox-creator-docs--content-en-us-reference-engine-enums-surfacetype-yaml"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/open-source-modern-game-ui/1175952",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-1175952"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/lynx-a-simple-to-use-ui-framework/2412135",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-2412135"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/rex-modern-reactive-ui-framework-for-roblox/3778193",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-3778193"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/katalyst-%E2%80%93-a-simple-small-but-powerful-ui-framework/3976315",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-3976315"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/cascade-ui-library/4456775",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-4456775"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/general-ui-kit-complete-roblox-ui-framework-for-roblox-games-tag-based-no-script-editing/4533783",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-4533783"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/uiutils-zero-code-ui-framework/4542481",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-4542481"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/interfaceworks-a-reactive-ui-library-that-just-works/4614952",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-4614952"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/open-source-viiui-%E2%80%94-lightweight-ui-framework/4658120",
+      "category": "ui-framework",
+      "kind": "devforum",
+      "id": "df-4658120"
+    },
+    {
+      "url": "https://github.com/1Estatic/flore",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "1Estatic/flore",
+      "id": "gh-1estatic-flore"
+    },
+    {
+      "url": "https://github.com/7kayoh/Lydie",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "7kayoh/Lydie",
+      "id": "gh-7kayoh-lydie"
+    },
+    {
+      "url": "https://github.com/abovefolks/RBX-UI",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "abovefolks/RBX-UI",
+      "id": "gh-abovefolks-rbx-ui"
+    },
+    {
+      "url": "https://github.com/afrxo/fusion-component",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "afrxo/fusion-component",
+      "id": "gh-afrxo-fusion-component"
+    },
+    {
+      "url": "https://github.com/afrxo/fusion-router",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "afrxo/fusion-router",
+      "id": "gh-afrxo-fusion-router"
+    },
+    {
+      "url": "https://github.com/alexmercier25/Enoria",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "alexmercier25/Enoria",
+      "id": "gh-alexmercier25-enoria"
+    },
+    {
+      "url": "https://github.com/AmberGraceRblx/pract",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "AmberGraceRblx/pract",
+      "id": "gh-ambergracerblx-pract"
+    },
+    {
+      "url": "https://github.com/bjlarouche/uiblox-rbxts",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "bjlarouche/uiblox-rbxts",
+      "id": "gh-bjlarouche-uiblox-rbxts"
+    },
+    {
+      "url": "https://github.com/centau/vide",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "centau/vide",
+      "id": "gh-centau-vide"
+    },
+    {
+      "url": "https://github.com/codesenseAye/Fusion-Editor",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "codesenseAye/Fusion-Editor",
+      "id": "gh-codesenseaye-fusion-editor"
+    },
+    {
+      "url": "https://github.com/creepersaur/quark",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "creepersaur/quark",
+      "id": "gh-creepersaur-quark"
+    },
+    {
+      "url": "https://github.com/cruzeht915/roblox-ui-component-library",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "cruzeht915/roblox-ui-component-library",
+      "id": "gh-cruzeht915-roblox-ui-component-library"
+    },
+    {
+      "url": "https://github.com/Cuteappi/ColdFusion",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "Cuteappi/ColdFusion",
+      "id": "gh-cuteappi-coldfusion"
+    },
+    {
+      "url": "https://github.com/debxylen/Rui",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "debxylen/Rui",
+      "id": "gh-debxylen-rui"
+    },
+    {
+      "url": "https://github.com/dphfox/Fusion",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "dphfox/Fusion",
+      "id": "gh-dphfox-fusion"
+    },
+    {
+      "url": "https://github.com/EgoMoose/Rbx-Gui-Library",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "EgoMoose/Rbx-Gui-Library",
+      "id": "gh-egomoose-rbx-gui-library"
+    },
+    {
+      "url": "https://github.com/evaera/plasma",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "evaera/plasma",
+      "id": "gh-evaera-plasma"
+    },
+    {
+      "url": "https://github.com/ffrostfall/fluid",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "ffrostfall/fluid",
+      "id": "gh-ffrostfall-fluid"
+    },
+    {
+      "url": "https://github.com/FilteredAsync/fusion-framework-blueprint",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "FilteredAsync/fusion-framework-blueprint",
+      "id": "gh-filteredasync-fusion-framework-blueprint"
+    },
+    {
+      "url": "https://github.com/Finchasaurus/UIBlox",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "Finchasaurus/UIBlox",
+      "id": "gh-finchasaurus-uiblox"
+    },
+    {
+      "url": "https://github.com/frappedevs/FusionRouter",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "frappedevs/FusionRouter",
+      "id": "gh-frappedevs-fusionrouter"
+    },
+    {
+      "url": "https://github.com/gcaptn/cyan-ui",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "gcaptn/cyan-ui",
+      "id": "gh-gcaptn-cyan-ui"
+    },
+    {
+      "url": "https://github.com/imacodr/Construct",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "imacodr/Construct",
+      "id": "gh-imacodr-construct"
+    },
+    {
+      "url": "https://github.com/kotdes/Koute",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "kotdes/Koute",
+      "id": "gh-kotdes-koute"
+    },
+    {
+      "url": "https://github.com/LolplePlays/framer",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "LolplePlays/framer",
+      "id": "gh-lolpleplays-framer"
+    },
+    {
+      "url": "https://github.com/loneka/onyx-ui",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "loneka/onyx-ui",
+      "id": "gh-loneka-onyx-ui"
+    },
+    {
+      "url": "https://github.com/matter-ecs/plasma",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "matter-ecs/plasma",
+      "id": "gh-matter-ecs-plasma"
+    },
+    {
+      "url": "https://github.com/nightcycle/synthetic",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "nightcycle/synthetic",
+      "id": "gh-nightcycle-synthetic"
+    },
+    {
+      "url": "https://github.com/ProCode-Software/Forge",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "ProCode-Software/Forge",
+      "id": "gh-procode-software-forge"
+    },
+    {
+      "url": "https://github.com/rniraclefire/Stellar",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "rniraclefire/Stellar",
+      "id": "gh-rniraclefire-stellar"
+    },
+    {
+      "url": "https://github.com/Roblox/react-luau",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "Roblox/react-luau",
+      "id": "gh-roblox-react-luau"
+    },
+    {
+      "url": "https://github.com/Roblox/roact",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "Roblox/roact",
+      "id": "gh-roblox-roact"
+    },
+    {
+      "url": "https://github.com/SirMallard/Iris",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "SirMallard/Iris",
+      "id": "gh-sirmallard-iris"
+    },
+    {
+      "url": "https://github.com/spin-the-hexagon/rover",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "spin-the-hexagon/rover",
+      "id": "gh-spin-the-hexagon-rover"
+    },
+    {
+      "url": "https://github.com/Starlight-Solutions-Inc/StarGaze",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "Starlight-Solutions-Inc/StarGaze",
+      "id": "gh-starlight-solutions-inc-stargaze"
+    },
+    {
+      "url": "https://github.com/Starstruck-Studios-Developers/framer",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "Starstruck-Studios-Developers/framer",
+      "id": "gh-starstruck-studios-developers-framer"
+    },
+    {
+      "url": "https://github.com/SyncOfficialSpec/Axil",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "SyncOfficialSpec/Axil",
+      "id": "gh-syncofficialspec-axil"
+    },
+    {
+      "url": "https://github.com/VanPotent/Or2Field",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "VanPotent/Or2Field",
+      "id": "gh-vanpotent-or2field"
+    },
+    {
+      "url": "https://github.com/visualized-node/nebulous-framework",
+      "category": "ui-framework",
+      "kind": "repo",
+      "repo": "visualized-node/nebulous-framework",
+      "id": "gh-visualized-node-nebulous-framework"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/tommyz-free-cartoon-ui-pack-1/1223202",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-1223202"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-simulator-ui-kit-framedblake/1471212",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-1471212"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-cartoon-themed-guis/1754465",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-1754465"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/6-free-and-simple-ui-designs-for-any-use/1931725",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-1931725"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-cartoon-ui-pack/219831",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-219831"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/shop-ui-free-graphics-tutorial/2297542",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-2297542"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/gamepass-shop-ui/2667149",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-2667149"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/simulator-ui-pack-free/2806095",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-2806095"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/i-think-you-need-a-little-advanced-gamepass-shop-gui/4557876",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-4557876"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-storeui-an-animated-modern-gamepass-store-ui/632073",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-632073"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-full-game-cartoon-ui-pack-v2-psd-roblox-file/900668",
+      "category": "ui-kit",
+      "kind": "devforum",
+      "id": "df-900668"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/builder-icon-set-a-plugin-containing-maybe-all-of-robloxs-ui-icons/4137956",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4137956"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/atlantas-ui-free-roblox-studio-ui-plugin-beta/4169799",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4169799"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/quick-menu-open-source-plugin-multi-tool/4432374",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4432374"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/figbloxui-%E2%80%94-figma-to-roblox-ui-in-seconds/4446977",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4446977"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-gamepass-badge-icons-pack-vectors-included-100-icons/4603719",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4603719"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-plugin-ui-plus-advanced-and-free-ui-tools/4678479",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4678479"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/guiforge-roblox-ui-editorfigma-export/4834077",
+      "category": "ui-tooling",
+      "kind": "devforum",
+      "id": "df-4834077"
+    },
+    {
+      "url": "https://github.com/afrxo/roblox-agent-skills",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "afrxo/roblox-agent-skills",
+      "id": "gh-afrxo-roblox-agent-skills"
+    },
+    {
+      "url": "https://github.com/D-M-dev/Luix",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "D-M-dev/Luix",
+      "id": "gh-d-m-dev-luix"
+    },
+    {
+      "url": "https://github.com/ericplane/Luix",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "ericplane/Luix",
+      "id": "gh-ericplane-luix"
+    },
+    {
+      "url": "https://github.com/latte-soft/lucide-roblox",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "latte-soft/lucide-roblox",
+      "id": "gh-latte-soft-lucide-roblox"
+    },
+    {
+      "url": "https://github.com/notmagniill/LucideRoblox",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "notmagniill/LucideRoblox",
+      "id": "gh-notmagniill-lucideroblox"
+    },
+    {
+      "url": "https://github.com/PepeElToro41/ui-labs",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "PepeElToro41/ui-labs",
+      "id": "gh-pepeeltoro41-ui-labs"
+    },
+    {
+      "url": "https://github.com/tijnepema/lucide-roblox",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "tijnepema/lucide-roblox",
+      "id": "gh-tijnepema-lucide-roblox"
+    },
+    {
+      "url": "https://github.com/zhsj0089944/roblox-free-assets.skill",
+      "category": "ui-tooling",
+      "kind": "repo",
+      "repo": "zhsj0089944/roblox-free-assets.skill",
+      "id": "gh-zhsj0089944-roblox-free-assets-skill"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/notification-service/2839081",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-2839081"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/open-source-easy-dialogue-system/3061677",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-3061677"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/quest-system-complete-v1-%E2%80%94-dailyweekly-quests-levels-rewards-currency-side-quest/4078638",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4078638"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/spotlightui-guided-focus-module/4267581",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4267581"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/beta-saferchat-a-free-and-open-source-safechat-system-03/4432601",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4432601"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/reactive-and-modern-notification-system/4460923",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4460923"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/novachat-v107-chat-update-part-2-a-modern-feature-rich-chat-replacement-update/4513813",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4513813"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/quick-chatmessages-system/4524169",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4524169"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/dialoguekit-free-drop-in-npc-dialogue-system/4636187",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4636187"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/tnotifs-notification-system-made-by-tr0llpojken/4672758",
+      "category": "ux-system",
+      "kind": "devforum",
+      "id": "df-4672758"
+    },
+    {
+      "url": "https://github.com/1ForeverHD/TopbarPlus",
+      "category": "ux-system",
+      "kind": "repo",
+      "repo": "1ForeverHD/TopbarPlus",
+      "id": "gh-1foreverhd-topbarplus"
+    },
+    {
+      "url": "https://github.com/Crabzzai/SimpleDialogue",
+      "category": "ux-system",
+      "kind": "repo",
+      "repo": "Crabzzai/SimpleDialogue",
+      "id": "gh-crabzzai-simpledialogue"
+    },
+    {
+      "url": "https://github.com/devbisonprogramming/Inventory-System",
+      "category": "ux-system",
+      "kind": "repo",
+      "repo": "devbisonprogramming/Inventory-System",
+      "id": "gh-devbisonprogramming-inventory-system"
+    },
+    {
+      "url": "https://github.com/Diabetoss/NotificationSystem",
+      "category": "ux-system",
+      "kind": "repo",
+      "repo": "Diabetoss/NotificationSystem",
+      "id": "gh-diabetoss-notificationsystem"
+    },
+    {
+      "url": "https://github.com/metricrb/skilltree",
+      "category": "ux-system",
+      "kind": "repo",
+      "repo": "metricrb/skilltree",
+      "id": "gh-metricrb-skilltree"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/iceys-low-poly-asset-pack/1113256",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1113256"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-low-poly-simulator-kit-and-map/1147111",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1147111"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/innos-asset-pack/1299995",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1299995"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/icys-low-poly-asset-pack-open-source/1416040",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1416040"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-the-ultimate-low-poly-asset-pack-added-more-assets/1772603",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1772603"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-low-poly-asset-pack/1846080",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1846080"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/low-poly-asset-pack/1945840",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-1945840"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/tycoon-map-and-assets/2188535",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-2188535"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/free-cartoonlow-poly-map/2393415",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-2393415"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/simulator-basics-asset-pack/2687510",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-2687510"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/egyptian-tile-set-mesh-pack-original-low-poly-open-source-21-models-now-with-hd-textures/3118401",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-3118401"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/open-source-low-poly-assets-27-items/748393",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-748393"
+    },
+    {
+      "url": "https://devforum.roblox.com/t/low-poly-asset-pack/964717",
+      "category": "world-pack",
+      "kind": "devforum",
+      "id": "df-964717"
+    }
+  ]
+}

@@ -46,6 +46,14 @@ export interface ReasoningSignals {
   visualDefectsFound?: boolean;
   /** the task is about how something LOOKS, or how a space is laid out */
   visualDesignTask?: boolean;
+  /**
+   * The task is about INTERFACE — a screen, a panel, a HUD, a button — as distinct from
+   * a world or a space. Separate from `visualDesignTask` because the two want different
+   * briefs: a world brief talks about landmark dominance and density rhythm, and none of
+   * that helps someone building a shop modal. They overlap often and that is fine; a
+   * request can honestly be both.
+   */
+  uiDesignTask?: boolean;
   /** the task spans several scripts or several interacting systems */
   multiSystemTask?: boolean;
   /** the request is under-specified and needs interpretation */
@@ -64,6 +72,17 @@ export interface ReasoningChoice {
 const VISUAL_RE =
   /\b(build|design|make|create|decorat|layout|scene|world|map|level|environment|theme|style|look|aesthetic|beautiful|pretty|ugly|polish|atmosphere|light(?:ing)?|colou?r|material|texture|plaza|lobby|room|interior|exterior|terrain|landscap|castle|shop|arena|dungeon|obby|spawn|prop|model)\w*/i;
 
+/**
+ * Words that mean the subject is an INTERFACE rather than a place.
+ *
+ * Deliberately narrower than VISUAL_RE. `shop` appears in both, because "build a shop" is
+ * genuinely ambiguous between a building and a screen — so both briefs are offered and the
+ * model picks. What is NOT here is anything spatial: a request about terrain or lighting
+ * must not drag a UI grammar brief into the prompt and pay for it.
+ */
+const UI_RE =
+  /\b(ui|gui|hud|screen|menu|panel|modal|dialog|button|icon|shops?\b|inventory|leaderboard|notification|toast|tooltip|popup|interface|layout|font|typography|currency|counter|gauge|progress ?bar|tab|nav(?:igation)?|onboarding|tutorial|codes?|settings|mobile|controller|touch|accessib)\w*/i;
+
 /** Words that mean several moving parts have to agree with each other. */
 const MULTI_SYSTEM_RE =
   /\b(system|architecture|refactor|integrat|pipeline|leaderboard|datastore|remote(?:event|function)|replicat|networking|matchmak|inventory|econom|save|load|state machine|multiplayer)\w*/i;
@@ -73,18 +92,28 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
 /** Cheap request classification, so the policy gets signals without paying a model for them. */
 export function classifyRequest(
   text: string,
-): Pick<ReasoningSignals, 'visualDesignTask' | 'multiSystemTask' | 'ambiguousRequest'> {
+): Pick<ReasoningSignals, 'visualDesignTask' | 'uiDesignTask' | 'multiSystemTask' | 'ambiguousRequest'> {
   return {
     visualDesignTask: VISUAL_RE.test(text),
+    uiDesignTask: UI_RE.test(text),
     multiSystemTask: MULTI_SYSTEM_RE.test(text),
     ambiguousRequest: AMBIGUOUS_RE.test(text) || text.trim().length < 25,
   };
 }
 
 /**
- * Baseline effort per mode, before escalation.
- *   Clay  — quick questions and single edits. Low: on trivial work `high` answers more tersely
- *           and buys nothing, and Clay's promise to the user is that it is instant.
+ * Baseline effort per mode, before escalation. (Clay is what the user picks as Plan, stone as
+ * Agent, rune as Super Agent.)
+ *   Clay  — Plan: inspection, architecture reasoning and proposals, with no mutating tools. Low is
+ *           the BASELINE, not the ceiling: a planning request that needs real judgement —
+ *           architecture, layout, an under-specified ask — escalates to `high` through the signals
+ *           below, and those signals fire on exactly the language such requests use. What the
+ *           baseline actually governs is the rest: "what does this script do", "where is X
+ *           defined". On lookups `high` has nothing to think about and buys nothing.
+ *           Note the older rationale here — that low keeps Plan feeling instant — does not survive
+ *           the table above: on the trivial probe `high` was FASTER (1.3s against 17.6s). Latency
+ *           is not the argument; having nothing to deliberate about is.
+ *           `irreversibleChange` never fires in this mode, because the mode cannot make one.
  *   Stone — the default builder. High: this is where design judgement happens, and on the design
  *           probe `high` cost 40.8 neurons against `low`'s 39.7 for a better answer. That is the
  *           whole argument — good judgement here is essentially free.

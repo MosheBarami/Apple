@@ -1,7 +1,9 @@
 // Typed fetch helpers for the Golem worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
-import { MOCK_MODE, mockCounters, mockMe, mockProviders, mockSpend, mockUsageDays } from './mock';
+import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
+import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
+import { MOCK_MODE, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -64,31 +66,11 @@ export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
 
 // ---------------------------------------------------------------- project session
 
-export interface ProviderModelDto {
-  id: string;
-  provider: string;
-  label: string;
-  available: boolean;
-  reason: string | null;
-  supportsTools: boolean;
-  supportsVision: boolean;
-  inputCostPer1M: number;
-  outputCostPer1M: number;
-  unverifiedFields: string[];
-}
-
-export interface ProvidersDto {
-  models: ProviderModelDto[];
-  auto: { model: string | null; reasoning: string };
-}
-
-/**
- * The model backends this deployment can actually reach. Availability is
- * computed server-side from the environment on every request, so the picker
- * cannot show a provider as usable when no credential for it exists.
- */
-export const fetchProviders = (): Promise<ProvidersDto> =>
-  MOCK_MODE ? Promise.resolve(mockProviders) : request<ProvidersDto>('/api/providers');
+// There is deliberately NO fetch for the model/provider roster here. Which
+// foundation model serves a request is chosen by the routing layer, not by the
+// user, so the product UI has nothing to render it with. The worker still
+// exposes that roster for ADMIN diagnostics; if it is ever needed on screen it
+// belongs behind /admin, never in the normal product surface.
 
 export const fetchMessages = (projectId: string, limit = 100) =>
   request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
@@ -103,6 +85,48 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
 
 export const purgeProject = (projectId: string) =>
   request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/purge`, { method: 'POST' });
+
+// ---------------------------------------------------------------- roadmap
+
+// The wire shapes live in components/roadmap/model.ts and are imported here as
+// types only, so this layer gains no runtime dependency on a component. That
+// module is also what `node --test` loads, which is why the types and the
+// layout that consumes them are written in one place: a field renamed on the
+// worker is renamed once, there, and every call below still typechecks against
+// the same definition the tests pin.
+//
+// All three routes read the roadmap FROM THE PROJECT and therefore need the
+// Studio plugin attached. With no place to inspect the worker returns 409 with
+// the reason rather than a generic template, so callers should surface
+// `ApiError.status === 409` as an explanation, not as a failure.
+
+export const fetchRoadmap = (projectId: string, polish = false): Promise<RoadmapResponse> =>
+  MOCK_MODE
+    ? mockRoadmap(polish)
+    : request<RoadmapResponse>(
+        `/api/projects/${encodeURIComponent(projectId)}/roadmap${polish ? '?polish=1' : ''}`,
+      );
+
+/** §32: the small contextual set on its own, without the whole timeline. */
+export const fetchNextMilestones = (projectId: string): Promise<NextResponse> =>
+  MOCK_MODE
+    ? mockNext()
+    : request<NextResponse>(`/api/projects/${encodeURIComponent(projectId)}/roadmap/next`);
+
+/**
+ * §33: turn one milestone into something a run can execute.
+ *
+ * Only the id crosses the wire. The worker rebuilds the brief from a fresh
+ * scan precisely so that a client cannot hand the builder arbitrary
+ * instructions wearing Golem's own roadmap as a disguise.
+ */
+export const fetchMilestoneBrief = (projectId: string, milestoneId: string): Promise<MilestoneBrief> =>
+  MOCK_MODE
+    ? mockBrief(milestoneId)
+    : request<MilestoneBrief>(`/api/projects/${encodeURIComponent(projectId)}/roadmap/brief`, {
+        method: 'POST',
+        body: JSON.stringify({ milestoneId }),
+      });
 
 // ---------------------------------------------------------------- admin (X-Admin-Key)
 

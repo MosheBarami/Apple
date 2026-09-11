@@ -8,8 +8,16 @@
     "fetch": "node src/fetch.mjs",
     "chunk": "node src/chunk.mjs",
     "upload": "node src/upload.mjs",
-    "all": "node src/fetch.mjs && node src/chunk.mjs && node src/upload.mjs",
-    "typecheck": "node --check src/fetch.mjs && node --check src/chunk.mjs && node --check src/upload.mjs"
+    "all": "node src/fetch.mjs --record-only && node src/scan.mjs && node src/hash.mjs && node src/tag.mjs && node src/chunk.mjs && node src/upload.mjs",
+    "test": "node --test src/intake/*.test.mjs",
+    "typecheck": "for f in src/*.mjs src/intake/*.mjs; do node --check \"$f\" || exit 1; done",
+    "scan": "node src/scan.mjs",
+    "record": "node src/fetch.mjs --record-only",
+    "manifest": "node src/manifest.mjs",
+    "hash": "node src/hash.mjs",
+    "enumerate": "node src/enumerate.mjs --emit-seeds",
+    "tag": "node src/tag.mjs",
+    "bootstrap": "node src/bootstrap.mjs"
   },
   "dependencies": {
     "yaml": "^2.6.1"

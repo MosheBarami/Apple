@@ -11,6 +11,8 @@ import type { ChatItem, ToolEvent } from './use-project-socket';
 
 export interface SurfacePanel {
   id: string;
+  /** The event this artifact came from, so a caller can match it to a step. */
+  toolId: string;
   tool: string;
   /** Short human label for the artifact header. */
   title: string;
@@ -42,6 +44,7 @@ export function panelFromTool(messageId: string, tool: ToolEvent, at: number): S
   if (!result || !result.ok) return null;
   return {
     id: `${messageId}:${tool.toolId}`,
+    toolId: tool.toolId,
     tool: tool.tool,
     title: titleFor(tool.tool, result.doc),
     at,

@@ -6,7 +6,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
+    "test": "node scripts/check-workspace-coverage.mjs && pnpm -r test",
     "e2e": "playwright test"
   },
   "devDependencies": {

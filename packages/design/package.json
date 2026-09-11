@@ -1,0 +1,18 @@
+{
+  "name": "@golem/design",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Golem's Roblox design intelligence: retrievable UI grammar, so a generated interface is composed from validated rules instead of invented from a blank ScreenGui.",
+  "scripts": {
+    "typecheck": "for f in src/*.mjs; do node --check \"$f\" || exit 1; done",
+    "test": "node --test src/*.test.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./rules": "./src/rules.mjs",
+    "./retrieve": "./src/retrieve.mjs",
+    "./checks": "./src/checks.mjs",
+    "./playbooks": "./src/playbooks.mjs"
+  }
+}

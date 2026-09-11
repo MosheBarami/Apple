@@ -31,22 +31,38 @@ const navLinks = [
   { href: '/changelog', label: 'Changelog' },
 ];
 
-/** The bottom strip: icon, bold title, faint subtitle. Three cells. */
+/** The bottom strip: icon, bold title, faint subtitle. Three cells.
+ *
+ * EVERY CLAIM HERE MUST BE ONE THE PRODUCT CAN KEEP TODAY.
+ *
+ * This strip used to read "Trusted by builders", "Loved by teams", "Indie devs to
+ * studios". Those are adoption claims, and Golem has no adoption to claim: the
+ * Creator Store plugin is not distributed yet (STUDIO_PLUGIN_STORE_LIVE is false,
+ * five lines of this same file route the install button at the docs instead). A
+ * visitor reading them was being told something untrue on the first screen, by a
+ * project whose whole evidence standard is that a capability is not proven because
+ * code for it exists.
+ *
+ * So they say what Golem actually does, and each one is a thing a first-time visitor
+ * can go and verify: the Studio connection is a real paired session, the build loop
+ * really does plan/build/playtest/repair, and the training-data promise is the
+ * standing policy in docs/SECURITY.md. If one of these ever stops being true, change
+ * it here rather than leaving it to age into the last set's problem. */
 const cells = [
   {
-    icon: 'shield',
-    title: 'Built for creators',
-    sub: 'Trusted by builders',
-  },
-  {
     icon: 'bolt',
-    title: 'Fast. Reliable. Consistent.',
-    sub: 'From idea to working prototype',
+    title: 'Plans, builds, playtests, repairs',
+    sub: 'Then shows you what it changed',
   },
   {
     icon: 'people',
-    title: 'Loved by teams',
-    sub: 'Indie devs to studios',
+    title: 'Works inside your Studio',
+    sub: 'Real scripts and instances, native undo',
+  },
+  {
+    icon: 'shield',
+    title: 'Your project stays yours',
+    sub: 'Never training data without your say-so',
   },
 ];
 

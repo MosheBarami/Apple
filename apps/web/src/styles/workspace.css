@@ -512,8 +512,8 @@
   color: var(--gx-ink);
 }
 
-/* A provider that cannot actually be reached is shown, but never as if it
-   were available. */
+/* An item that exists but cannot be chosen right now is shown, but never as
+   if it were available. */
 .gx-pop__item[aria-disabled='true'] {
   opacity: 0.55;
   cursor: not-allowed;
@@ -522,6 +522,20 @@
 .gx-pop__item[aria-disabled='true']:hover {
   background: transparent;
   color: var(--gx-ink-2);
+}
+
+/* The mode menu is a decision surface, not a list of shortcuts: each option
+   carries a sentence about what it will do on its own, and Super Agent needs
+   the room. Top-align so the swatch sits on the name's line instead of
+   floating in the middle of a wrapped paragraph. */
+.gx-pop__item--stack {
+  align-items: flex-start;
+  padding-top: 0.55rem;
+  padding-bottom: 0.6rem;
+}
+
+.gx-pop__item--stack .gx-chip__swatch {
+  margin-top: 0.34rem;
 }
 
 .gx-pop__sep {
@@ -1196,6 +1210,488 @@
   line-height: 1.55;
 }
 
+/* --- the activity timeline (Actions) --------------------------------------
+   Ordered phases, each with its own steps, elapsed time and evidence. Two
+   indents only: phase, then step. A third level would turn the card back into
+   the debug console this design replaced.
+   -------------------------------------------------------------------------- */
+
+.gx-act {
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-act__phase {
+  position: relative;
+  padding: 0 0 0.5rem 0.95rem;
+}
+
+.gx-act__phase:last-child {
+  padding-bottom: 0;
+}
+
+/* The hairline joining phase pips. Stops at the last one. */
+.gx-act__phase::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 13px;
+  bottom: 0;
+  width: 1px;
+  background: var(--gx-line);
+}
+
+.gx-act__pip {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gx-line-2);
+}
+
+.gx-act__phase.is-active .gx-act__pip {
+  background: var(--gx-amber);
+}
+
+.gx-act__phase.is-failed .gx-act__pip {
+  background: var(--gx-bad);
+}
+
+.gx-act__phase.is-unknown .gx-act__pip,
+.gx-act__phase.is-upcoming .gx-act__pip {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--gx-line-2);
+}
+
+.gx-act__phase-body {
+  min-width: 0;
+}
+
+.gx-act__phase-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.gx-act__phase-name {
+  color: var(--gx-ink-2);
+  font-size: 0.79rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.gx-act__phase.is-active .gx-act__phase-name {
+  color: var(--gx-ink);
+}
+
+/* Elapsed time. Tabular so a column of them does not shimmy as digits change. */
+.gx-act__ms {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Measured tool time, not wall time — see elapsedTitle() for why they differ.
+   Dotted underline so the distinction is visible, not only in the tooltip. */
+.gx-act__ms.is-tooltime {
+  border-bottom: 1px dotted var(--gx-line-2);
+}
+
+.gx-act__repaired {
+  color: var(--gx-warn);
+  font-size: 0.72rem;
+}
+
+.gx-act__steps {
+  margin: 0.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-act__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  color: var(--gx-ink-3);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.gx-act__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 20px;
+}
+
+.gx-act__step-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.gx-act__step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.gx-act__step.is-done {
+  color: var(--gx-ink-2);
+}
+
+.gx-act__step.is-active {
+  color: var(--gx-ink);
+}
+
+.gx-act__step.is-failed {
+  color: var(--gx-bad);
+}
+
+.gx-act__detail {
+  display: block;
+  margin-top: 0.05rem;
+  color: var(--gx-ink-3);
+  font-size: 0.77rem;
+  overflow-wrap: anywhere;
+}
+
+/* A step that started and never reported. Dashed, so it cannot be mistaken for
+   either a tick or a failure. */
+.gx-hollow--dashed circle {
+  stroke-dasharray: 3 2.5;
+}
+
+/* --- how the run ended ----------------------------------------------------
+   A stage row like Intent and Validation, not a step: it is a fact about the
+   whole run, and it sits after the gates because a gate result arrives while
+   the run is still going.
+   -------------------------------------------------------------------------- */
+
+.gx-term .gx-stage-row__bullet {
+  border-color: var(--gx-ink-3);
+}
+
+.gx-term.is-done .gx-stage-row__bullet,
+.gx-term.is-recovered .gx-stage-row__bullet {
+  border-color: var(--gx-good);
+  background: var(--gx-good);
+}
+
+.gx-term.is-recovered .gx-stage-row__name {
+  color: var(--gx-warn);
+}
+
+.gx-term.is-failed .gx-stage-row__bullet {
+  border-color: var(--gx-bad);
+  background: var(--gx-bad);
+}
+
+.gx-term.is-failed .gx-stage-row__name {
+  color: var(--gx-bad);
+}
+
+.gx-term.is-stopped .gx-stage-row__name,
+.gx-term.is-incomplete .gx-stage-row__name,
+.gx-term.is-quota .gx-stage-row__name {
+  color: var(--gx-ink-2);
+}
+
+/* --- evidence cards -------------------------------------------------------
+   Compact by design: the full artifact is already a panel below the prose, and
+   drawing it twice would make one result look like two.
+   -------------------------------------------------------------------------- */
+
+.gx-ev {
+  display: block;
+  margin: 0.35rem 0 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-sm);
+  background: var(--gx-raise-2);
+}
+
+.gx-ev__title {
+  display: block;
+  color: var(--gx-ink-2);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.gx-ev__msg,
+.gx-ev__note {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Mixed from the token rather than hard-coded, so the light theme's darker
+   `--gx-bad` does not become a heavy orange rule on cream. */
+.gx-ev.is-error {
+  border-color: color-mix(in srgb, var(--gx-bad) 32%, transparent);
+}
+
+.gx-ev.is-error .gx-ev__msg {
+  color: var(--gx-bad);
+}
+
+/* Loading. The bar is the ONLY thing that travels, and reduced motion parks it
+   at rest without removing it — a still bar plus the sentence still reports
+   "this has not finished". */
+.gx-ev__wait {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+}
+
+.gx-ev__bar {
+  display: block;
+  height: 2px;
+  margin-bottom: 0.3rem;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--gx-amber), transparent);
+  background-size: 45% 100%;
+  background-repeat: no-repeat;
+  background-position: 0% 0;
+  opacity: 0.75;
+}
+
+.gx-act.is-moving .gx-ev__bar {
+  animation: gx-ev-sweep 1.5s var(--gx-ease) infinite;
+}
+
+@keyframes gx-ev-sweep {
+  from {
+    background-position: -50% 0;
+  }
+  to {
+    background-position: 150% 0;
+  }
+}
+
+/* Render thumbnails. A grid rather than a wrapping row so the five camera
+   presets share one line instead of orphaning the last one onto its own. */
+.gx-ev__shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.gx-ev__shot {
+  margin: 0;
+  min-width: 0;
+}
+
+.gx-ev__shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--gx-r-sm);
+  border: 1px solid var(--gx-line);
+  /* These are 288x180 rasters upscaled into a thumbnail; smoothing them would
+     imply detail the rasteriser never produced. */
+  image-rendering: pixelated;
+}
+
+.gx-ev__shot figcaption {
+  margin-top: 0.15rem;
+  color: var(--gx-ink-3);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Diff. */
+.gx-ev__counts {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-family: var(--gx-mono);
+  font-size: 0.72rem;
+}
+
+.gx-ev__add {
+  color: var(--gx-good);
+}
+
+.gx-ev__del {
+  color: var(--gx-bad);
+}
+
+.gx-ev__lang {
+  color: var(--gx-ink-3);
+}
+
+.gx-ev__code {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  overflow-x: auto;
+  font-family: var(--gx-mono);
+  font-size: 0.71rem;
+  line-height: 1.55;
+}
+
+.gx-ev__line {
+  display: block;
+  white-space: pre;
+}
+
+.gx-ev__line.is-add {
+  color: var(--gx-good);
+}
+
+.gx-ev__line.is-del {
+  color: var(--gx-bad);
+}
+
+/* Test report. */
+.gx-ev__verdict {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gx-ink-2);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-ev__verdict.is-pass {
+  color: var(--gx-good);
+}
+
+.gx-ev__verdict.is-fail {
+  color: var(--gx-bad);
+}
+
+/* A ratio of counts the run reported. Never a progress bar. */
+.gx-ev__meter {
+  display: block;
+  height: 3px;
+  margin-top: 0.3rem;
+  border-radius: 2px;
+  background: var(--gx-line);
+  overflow: hidden;
+}
+
+.gx-ev__meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--gx-good);
+}
+
+.gx-act.is-moving .gx-ev__meter-fill {
+  transition: width var(--gx-t-move) var(--gx-ease);
+}
+
+.gx-ev__cases {
+  margin: 0.3rem 0 0;
+  padding-left: 1rem;
+  color: var(--gx-ink-2);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Asset preview. */
+.gx-ev__assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-ev__assets li {
+  width: 88px;
+}
+
+.gx-ev__assets img,
+.gx-ev__nothumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--gx-r-sm);
+  border: 1px solid var(--gx-line);
+  object-fit: cover;
+  background: var(--gx-raise);
+}
+
+.gx-ev__asset-name {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--gx-ink-2);
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- motion ---------------------------------------------------------------
+   Everything that TRAVELS is gated behind `.gx-act.is-moving`, a class only
+   `motionPlan(false)` produces. Under `prefers-reduced-motion` the class is
+   never applied, so the travel does not exist rather than being overridden —
+   and the reduce block further down re-asserts that even if a stale class
+   survives a render.
+
+   What reduced motion does NOT remove: the amber ring on an in-flight step, the
+   colour of a failure, the sweep bar's presence, the elapsed clock. Those are
+   the feedback. Deleting them would leave a viewer with vestibular sensitivity
+   with a timeline that appears never to change.
+   -------------------------------------------------------------------------- */
+
+/* A step arriving. One shot, 220ms, 3px of travel — enough to say "this is new",
+   not enough to drag the eye off the text. */
+.gx-act.is-moving .gx-act__step {
+  animation: gx-act-in 220ms var(--gx-ease) both;
+}
+
+@keyframes gx-act-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.gx-act.is-moving .gx-ev {
+  animation: gx-act-in 260ms var(--gx-ease) both;
+}
+
+/* The live phase. Moving: a slow halo that breathes. Still: the same amber ring
+   held at its widest, so "this one is running" survives with no motion at all. */
+.gx-act__phase.is-active .gx-act__pip {
+  box-shadow: 0 0 0 3px var(--gx-ember-soft);
+}
+
+.gx-act.is-moving .gx-act__phase.is-active .gx-act__pip {
+  animation: gx-act-pulse 1.8s var(--gx-ease) infinite;
+}
+
+@keyframes gx-act-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--gx-ember-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--gx-ember-soft);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .gx-msg-in {
     animation: gx-msg 320ms var(--gx-ease) both;
@@ -1631,6 +2127,30 @@
     animation: none;
     stroke-dasharray: 20 12;
   }
+
+  /* The activity timeline. `motionPlan` already withholds `.is-moving` here, so
+     these rules only matter if a stale class survives a render — which is
+     exactly the case worth defending against, because the failure it prevents
+     is a reduced-motion viewer being shown travel anyway.
+
+     Note what is NOT reset: the pip's `box-shadow` ring, the failure colours,
+     the sweep bar's gradient and the elapsed clock all stay. Reduced motion
+     removes travel, not feedback. */
+  .gx-act .gx-act__step,
+  .gx-act .gx-ev,
+  .gx-act .gx-ev__bar,
+  .gx-act .gx-act__phase.is-active .gx-act__pip {
+    animation: none;
+  }
+
+  .gx-act .gx-ev__meter-fill {
+    transition: none;
+  }
+
+  /* Parked at rest and still visibly an unfinished bar, rather than gone. */
+  .gx-act .gx-ev__bar {
+    background-position: 50% 0;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -1923,4 +2443,217 @@
 /* One border weight in the conversation, not two. */
 .gx-turn--agent .gu-doc {
   box-shadow: none;
+}
+
+/* ---------------------------------------------------------------- playtest
+   The inline playtest viewport.
+
+   The visual language carries the honesty rules, not just the copy: a stale
+   frame is DIMMED and veiled, a dead stream loses its accent colour entirely,
+   and the state chip's colour is bound to frame freshness rather than to the
+   run's phase — so the card cannot look live while the pixels are old. The
+   states themselves are decided in lib/playtest-view.ts. */
+.gx-playtest {
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-lg);
+  background: var(--gx-raise);
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.gx-playtest__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.gx-playtest__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--gx-ink-warm);
+  flex: none;
+}
+
+.gx-playtest__chip {
+  font-size: 0.7rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--gx-line-2);
+  color: var(--gx-ink-2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Only a genuinely fresh frame gets the live treatment. */
+.gx-playtest__chip--fresh {
+  color: var(--gx-good);
+  border-color: color-mix(in srgb, var(--gx-good) 40%, transparent);
+  background: color-mix(in srgb, var(--gx-good) 10%, transparent);
+}
+
+.gx-playtest__chip--stale {
+  color: var(--gx-warn);
+  border-color: color-mix(in srgb, var(--gx-warn) 40%, transparent);
+  background: color-mix(in srgb, var(--gx-warn) 10%, transparent);
+}
+
+.gx-playtest__chip--dead {
+  color: var(--gx-bad);
+  border-color: color-mix(in srgb, var(--gx-bad) 40%, transparent);
+  background: color-mix(in srgb, var(--gx-bad) 10%, transparent);
+}
+
+.gx-playtest__elapsed {
+  margin-left: auto;
+  font-family: var(--gx-mono);
+  font-size: 0.72rem;
+  color: var(--gx-ink-2);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.gx-playtest__stage {
+  background: var(--gx-ground);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+}
+
+.gx-playtest__frame {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  line-height: 0;
+  width: 100%;
+}
+
+.gx-playtest.is-expanded .gx-playtest__frame {
+  cursor: zoom-out;
+}
+
+.gx-playtest__canvas {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  /* Nearest-neighbour. These are 160x100 renders, and smoothing them would
+     invent detail the rasteriser never produced. */
+  image-rendering: pixelated;
+  transition:
+    opacity var(--gx-t-move) var(--gx-ease),
+    filter var(--gx-t-move) var(--gx-ease);
+}
+
+.gx-playtest.is-expanded .gx-playtest__canvas {
+  max-height: 520px;
+}
+
+/* Not-current pixels are visibly not-current. */
+.gx-playtest.is-dimmed .gx-playtest__canvas {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+
+.gx-playtest__veil {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  font-family: var(--gx-mono);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--gx-r-sm);
+  background: rgba(11, 10, 9, 0.82);
+  line-height: 1.4;
+}
+
+.gx-playtest__veil--stale {
+  color: var(--gx-warn);
+  border: 1px solid color-mix(in srgb, var(--gx-warn) 45%, transparent);
+}
+
+.gx-playtest__veil--dead {
+  color: var(--gx-bad);
+  border: 1px solid color-mix(in srgb, var(--gx-bad) 45%, transparent);
+}
+
+.gx-playtest__empty {
+  padding: 1.6rem 1rem;
+  text-align: center;
+  color: var(--gx-ink-3);
+  font-size: 0.8rem;
+}
+
+.gx-playtest__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-top: 1px solid var(--gx-line);
+}
+
+.gx-playtest__what {
+  font-size: 0.7rem;
+  color: var(--gx-ink-3);
+  line-height: 1.45;
+}
+
+.gx-playtest__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--gx-ink-2);
+}
+
+.gx-playtest__action {
+  color: var(--gx-ink-warm);
+  margin-right: auto;
+}
+
+.gx-playtest__count {
+  font-family: var(--gx-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--gx-ink-3);
+}
+
+.gx-playtest__count.is-error {
+  color: var(--gx-bad);
+}
+
+.gx-playtest__count.is-warn {
+  color: var(--gx-warn);
+}
+
+.gx-playtest__degraded {
+  font-size: 0.73rem;
+  line-height: 1.5;
+  color: var(--gx-ink-warm);
+  background: color-mix(in srgb, var(--gx-warn) 8%, transparent);
+  border-left: 2px solid var(--gx-warn);
+  padding: 0.4rem 0.55rem;
+  border-radius: 0 var(--gx-r-sm) var(--gx-r-sm) 0;
+  margin: 0;
+}
+
+.gx-playtest__open {
+  align-self: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-playtest__canvas {
+    transition: none;
+  }
 }

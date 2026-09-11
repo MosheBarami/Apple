@@ -1,0 +1,35 @@
+# §23 persistence / reconnect, against the deployed worker
+
+## 1. First connection — what the workspace is handed on open
+hello keys      : type, sessionId, studioConnected, quota
+sessionId       : b0766f21-7028-47cc-b9ab-e19198b144d2
+studioConnected : true
+sparksRemaining : 0
+
+## 2. Conversation history survives, and is served independently of the socket
+messages persisted : 32
+last role/at       : assistant · 2026-09-01T18:48:45.561Z
+last text (head)   :   That used the last of your Sparks for today. Everything so far is saved — they refill at
+
+## 3. Checkpoints — the undo points, across sessions
+checkpoints persisted : 19
+  Before GolemPlaza creation · 0 scripts · 13 instances · 2026-08-30T16:58:25.564Z
+  before Golem changes · 0 scripts · 13 instances · 2026-08-30T16:58:10.967Z
+  Before adding BeaconTower · 0 scripts · 3 instances · 2026-08-30T16:51:32.111Z
+  before Golem changes · 0 scripts · 3 instances · 2026-08-30T16:51:27.400Z
+
+## 4. Reconnect — a second socket, as a browser reload would make
+hello again     : yes
+sessionId       : b0766f21-7028-47cc-b9ab-e19198b144d2
+same session?   : true
+studioConnected : true
+
+## 5. `resume` — the frame a returning client sends to ask what is running
+run_state returned : yes
+run                : null
+
+## 6. History is identical after reconnect
+messages after reconnect : 32  (unchanged: true)
+
+## 6. History is identical after reconnect
+(run separately — the socket sessions above kept the process alive past the harness timeout)

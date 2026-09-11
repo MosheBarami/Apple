@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-09-01",
+  "note": "Registry enumeration per mission \u00a7J ('Enumerate Wally and Pesde indexes rather than relying only on search engines'). Licence strings are as DECLARED BY THE PUBLISHER in the index and are normalised for spelling only. A declared licence is a CLAIM (\u00a7H), not verified evidence: nothing here has had a LICENSE file read. Counts are of the LATEST version of each package.",
+  "registries": {
+    "wally": {
+      "source": "https://github.com/UpliftGames/wally-index",
+      "scopes": 1509,
+      "packages": 5807,
+      "versions": 28782,
+      "declaredLicences": {
+        "MIT": 3003,
+        "(none declared)": 2425,
+        "Apache-2.0": 163,
+        "MPL-2.0": 102,
+        "MIT OR Apache-2.0": 30,
+        "GPL-3.0": 29,
+        "Public domain / CC0": 14,
+        "LGPL": 9,
+        "AGPL-3.0": 5,
+        "BSD": 4,
+        "GNU General Public Licen": 3,
+        "WTFPL": 2,
+        "CC BY-SA 4.0": 2,
+        "PolyForm-Noncommercial-1": 2,
+        "VFX-DL-1.1": 2,
+        "AL 2.0": 1,
+        "ISC": 1,
+        "LicenseRef-CC-BY-ND-4.0": 1,
+        "BloxLibs": 1,
+        "0BSD": 1,
+        "CC": 1,
+        "CC-BY-NC 4.0": 1,
+        "Hot Potato": 1,
+        "https://raw.githubuserco": 1,
+        "SEE LICENSE IN LICENSE": 1,
+        "GPL v3.0": 1,
+        "GNU": 1
+      }
+    },
+    "pesde": {
+      "source": "https://github.com/pesde-pkg/index",
+      "scopes": 180,
+      "packages": 781,
+      "declaredLicences": {
+        "MIT": 490,
+        "(none declared)": 211,
+        "GPL-3.0": 42,
+        "Apache-2.0": 17,
+        "MPL-2.0": 11,
+        "BSD": 3,
+        "Public domain / CC0": 2,
+        "MIT OR Apache-2.0": 2,
+        "GPL-2.0": 1,
+        "CC BY-SA 4.0": 1,
+        "BloxLibs": 1
+      }
+    }
+  },
+  "expansion": {
+    "seedManifestUrls": 217,
+    "registryPackagesDiscovered": 6588,
+    "factor": 30.4
+  }
+}

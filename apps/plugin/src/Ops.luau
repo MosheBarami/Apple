@@ -20,6 +20,43 @@ local MUTATING = {
 	generate_model = true,
 }
 
+-- Ops that assign typed properties, and are therefore the two ways an asset id can enter a place
+-- without going through `insert_asset`. See the asset-policy section of Paths.luau.
+local PROPERTY_OPS = { create_instances = true, set_props = true }
+
+-- Ids this session has actually put through the gated insert path. `insert_asset` is the only op
+-- the worker emits after verifying an id, so an id that reached it is one the session has already
+-- imported: letting a later MeshId name it grants nothing the place does not already contain.
+local sessionVerifiedAssets: { [number]: boolean } = {}
+
+--- What the op may reference, opened for the duration of one op and closed after it. Spelled
+--- structurally rather than as `Paths.AssetPolicy` because luau-lsp cannot resolve the plugin's
+--- `script.Parent` requires outside Studio, and an unresolvable type name is a new analyze error.
+local function assetPolicyFor(kind: string, opBody: any): { allow: { [number]: boolean }, preexisting: boolean }?
+	if kind == "restore" then
+		-- A snapshot is a record of what was ALREADY here — Serializer.snapshot read it out of this
+		-- same place — so re-materialising it imports nothing. Refusing would make a rollback strip
+		-- the user's own MeshIds, which is destruction dressed up as caution.
+		return { allow = {}, preexisting = true }
+	end
+	if not PROPERTY_OPS[kind] then return nil end
+	local allow: { [number]: boolean } = {}
+	for id in sessionVerifiedAssets do
+		allow[id] = true
+	end
+	-- Read off the op ENVELOPE, never out of `items`/`props`. The worker builds the envelope; the
+	-- model authors the payload. That is the whole reason this list is trustworthy, and it is why a
+	-- worker tool must never spread model-supplied arguments into a StudioOp.
+	if type(opBody.verifiedAssetIds) == "table" then
+		for _, id in opBody.verifiedAssetIds do
+			if type(id) == "number" and id > 0 and id % 1 == 0 then
+				allow[id] = true
+			end
+		end
+	end
+	return { allow = allow, preexisting = false }
+end
+
 local SCRIPT_CONTAINERS = {
 	"Workspace", "ReplicatedStorage", "ServerScriptService", "ServerStorage",
 	"StarterGui", "StarterPack", "StarterPlayer", "ReplicatedFirst",
@@ -259,7 +296,149 @@ handlers.move_instances = function(op)
 	return { moved = moved }
 end
 
+--[[ NON-TERMINATING LOOPS CANNOT BE PREEMPTED, so they are refused before they run.
+
+	 The server sends `timeoutMs: 10_000` with every run_code op. This plugin has
+	 never read it, and could not honour it if it did: `pcall(require, module)` runs
+	 on Studio's main thread with no instruction budget, and a loop that never yields
+	 never gives a watchdog a chance to fire. `while true do end` hard-freezes Studio
+	 and the only recovery is killing it and losing unsaved work. The server giving up
+	 after 25s stops it WAITING; it does not stop Studio spinning.
+
+	 There is no in-engine fix for the general case, so this refuses the specific case
+	 that actually happens: an LLM emitting a loop with no yield in its body. A loop
+	 that calls task.wait / wait / RunService:Wait / :Wait() is fine — it yields, so
+	 Studio stays responsive and the op simply takes as long as it takes.
+
+	 Deliberately a narrow syntactic check, not an analysis. It catches the common
+	 mistake and says exactly why; it does not pretend to decide halting. A loop whose
+	 exit condition is merely never satisfied still hangs, and that limit is stated
+	 rather than papered over. ]]
+--[[ `:Wait%w*%(` rather than `:Wait%s*%(`: the narrow version refused
+	 `workspace:WaitForChild("X")`, which yields perfectly well — caught by testing the
+	 guard against real samples rather than by reading it. The DataStore and HTTP calls
+	 are here for the same reason: they yield, so a loop containing one keeps Studio
+	 responsive however long it runs. ]]
+--[[ CALLS THAT ACTUALLY YIELD THE CALLING THREAD.
+	 Three entries were removed on 2026-09-01 because they do not, and their presence
+	 made the gate wave through the exact freeze it exists to catch:
+
+	   task.spawn  resumes f on a NEW thread and returns immediately
+	   task.defer  schedules f for the next resumption point and returns immediately
+	   task.delay  schedules f for later and returns immediately
+
+	 None of them suspends the caller, so `while true do task.spawn(f) end` spins
+	 forever AND spawns unbounded threads. Verified by running the gate over it.
+
+	 A bare "RunService" was removed for a different reason: it matched the mere
+	 MENTION of the service, so `while true do print(RunService) end` passed. The
+	 form that genuinely yields — `RunService.Heartbeat:Wait()` — is already caught
+	 by the `:Wait(` entry below, so nothing is lost.
+
+	 `task.wait` is kept although `%f[%w]wait%s*%(` already matches it through the
+	 dot: it is the clearest thing to read here, and the redundancy is now stated
+	 rather than rediscovered. ]]
+local YIELDS = {
+	"task%.wait",
+	"%f[%w]wait%s*%(",
+	":Wait%w*%s*%(",
+	":GetAsync", ":SetAsync", ":UpdateAsync", ":IncrementAsync",
+	":RequestAsync",
+}
+
+--[[ Where the block opened just before `from` closes.
+
+	 The old gate took `stripped:sub(to + 1)` — EVERYTHING after the loop header — as
+	 the loop's body, so a yield anywhere later in the file satisfied it and
+	 `while true do end` followed by a `task.wait()` on the next line passed. Measured,
+	 not theorised.
+
+	 Counting is by block opener rather than by `do`/`then` pairs, because
+	 `if/elseif/else` share ONE `end`: `if` opens, `then` is ignored, and the single
+	 `end` closes it. Openers are `if`, `do`, `function`, `repeat`; closers are `end`
+	 and `until`. `while x do` and `for x do` are covered because their `do` is the
+	 opener. Strings and comments are already gone by the time this runs. ]]
+local function blockEnd(src: string, from: number): number
+	local depth = 1
+	local i = from
+	while i <= #src do
+		local s, e, word = string.find(src, "%f[%a](%a+)%f[%A]", i)
+		if not s then break end
+		if word == "if" or word == "do" or word == "function" or word == "repeat" then
+			depth += 1
+		elseif word == "end" or word == "until" then
+			depth -= 1
+			if depth == 0 then return (s :: number) - 1 end
+		end
+		i = (e :: number) + 1
+	end
+	return #src
+end
+
+local LOOP_HEADS = {
+	-- `while (true) do` is the same loop; the optional parens were previously a bypass.
+	{ pat = "while%s*%(?%s*true%s*%)?%s*do%f[%W]", kind = "while" },
+	{ pat = "while%s*%(?%s*1%s*%)?%s*do%f[%W]", kind = "while" },
+	{ pat = "repeat%f[%W]", kind = "repeat" },
+}
+
+local function refuseNonYieldingLoop(code: string): string?
+	-- Strip strings and comments first, so a loop keyword inside a literal is not a hit.
+	-- Long-bracket strings are stripped too: without that, printing a long-bracket
+	-- literal whose text happens to contain a loop keyword was refused as though the
+	-- literal were code. (Written as line comments on purpose — the example that
+	-- motivated it cannot be quoted inside a block comment without closing it.)
+	local stripped = code
+		:gsub("%-%-%[%[.-%]%]", " ")
+		:gsub("%-%-[^\n]*", " ")
+		:gsub("%[%[.-%]%]", " ")
+		:gsub('"[^"\n]*"', '""')
+		:gsub("'[^'\n]*'", "''")
+
+	--[[ EVERY loop, not just the first of each shape. The old code took one match per
+		 pattern and returned on it, so a guarded loop followed by an unguarded one
+		 reported the guarded verdict for both. ]]
+	for _, head in LOOP_HEADS do
+		local searchAt = 1
+		while true do
+			local from, to = stripped:find(head.pat, searchAt)
+			if not from then break end
+			searchAt = (to :: number) + 1
+
+			local closeAt = blockEnd(stripped, (to :: number) + 1)
+			local body = stripped:sub((to :: number) + 1, closeAt)
+
+			if head.kind == "repeat" then
+				-- `repeat` only hangs on `until false`; anything else may terminate.
+				local tail = stripped:sub(closeAt + 1)
+				if not tail:find("^%s*until%s+false%f[%W]") then
+					continue
+				end
+			end
+
+			local yields = false
+			for _, y in YIELDS do
+				if body:find(y) then
+					yields = true
+					break
+				end
+			end
+			if not yields then
+				return "refused: this code contains a loop with no yield in it (no task.wait, wait() or "
+					.. ":Wait()). Such a loop cannot be interrupted and would freeze Studio permanently. "
+					.. "Add a yield inside the loop, or give it a bounded counter. Note that task.spawn, "
+					.. "task.defer and task.delay do NOT yield the thread that calls them."
+			end
+		end
+	end
+	return nil
+end
+
 handlers.run_code = function(op)
+	local refusal = refuseNonYieldingLoop(tostring(op.code or ""))
+	if refusal then
+		return { error = refusal }
+	end
 	local module = Instance.new("ModuleScript")
 	module.Name = "GolemEval"
 	-- NOTE: long-bracket strings swallow a leading newline, so join segments explicitly
@@ -418,6 +597,8 @@ handlers.insert_asset = function(op)
 	local parent = Paths.resolve(op.parent or "game.Workspace")
 	local res = Generation.insertAsset(op.assetId, parent)
 	if not res.ok then return { error = res.error } end
+	-- Recorded only on success, and only here: this is the one op that carries a gate verdict.
+	sessionVerifiedAssets[op.assetId] = true
 	local placed = {}
 	for _, obj in res.instances do
 		table.insert(placed, Paths.fullPath(obj))
@@ -465,12 +646,41 @@ function Ops.execute(id: string, opBody: any): any
 		return { id = id, ok = false, error = "unknown op: " .. tostring(kind) }
 	end
 	local t0 = os.clock()
+	--[[ A MUTATING OP WITHOUT A RECORDING IS REFUSED, NOT PERFORMED.
+
+		 `TryBeginRecording` returns nil when a recording is already open — which
+		 happens for real: a poll loop leaked by a plugin reload, or an op cancelled
+		 mid-yield leaving its recording open forever. The old code took the nil,
+		 ran the handler anyway, and then skipped both Commit and Cancel, reporting
+		 ok = true. Two things followed, and the file's own header claim that "every
+		 AI action is natively undoable" was false on exactly this path:
+
+		   * NO UNDO. The place was modified and Ctrl+Z would not reverse it.
+		   * NO ROLLBACK. `create_instances` parents each item as it goes, so an
+		     invalid className on item 5 of 10 threw with items 1-4 already in the
+		     place and nothing to Cancel — a half-modified place with no undo point,
+		     which is the precise failure the recording exists to prevent.
+
+		 Refusing is strictly better than proceeding. The agent sees a clear error
+		 and can retry; the user's place is untouched. Losing an op is recoverable,
+		 an un-undoable partial mutation is not. ]]
 	local recording: string? = nil
 	if MUTATING[kind] then
-		local rec = ChangeHistoryService:TryBeginRecording("Golem: " .. kind)
-		recording = rec
+		recording = ChangeHistoryService:TryBeginRecording("Golem: " .. kind)
+		if not recording then
+			return {
+				id = id,
+				ok = false,
+				error = "could not open an undo recording (another one is already open), so this "
+					.. "mutation was refused rather than performed without one",
+			}
+		end
 	end
+	-- Opened immediately before the handler and closed immediately after, so every path out of the
+	-- handler — return, error, refusal — leaves the plugin back at "no asset may be referenced".
+	Paths.setAssetPolicy(assetPolicyFor(kind, opBody))
 	local ok, result = pcall(handler, opBody)
+	Paths.setAssetPolicy(nil)
 	if recording then
 		ChangeHistoryService:FinishRecording(recording, if ok then Enum.FinishRecordingOperation.Commit else Enum.FinishRecordingOperation.Cancel)
 	end

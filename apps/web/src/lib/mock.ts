@@ -14,13 +14,14 @@
 import type {
   CheckpointMeta,
   MessageDto,
+  PlaytestRun,
   QuotaState,
   RunIntent,
   StudioEventLog,
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
-import type { MeResponse, ProvidersDto, UsageDay } from './api';
+import type { MeResponse, UsageDay } from './api';
 import type { ProfileRow, ProjectRow } from './supabase';
 
 const FLAG = import.meta.env.VITE_GOLEM_MOCK === '1';
@@ -68,10 +69,16 @@ export function mockSpend() {
     },
     maxMonthlyUsd: 6.6,
     days,
+    // The `model` field carries a placeholder, not a real model id. §1 of the
+    // access manifest keeps provider and model identity out of normal product
+    // UX; /usage renders modes and sparks and never reads this field. Seeding a
+    // real id here would mean the day someone does render the breakdown, the
+    // product starts naming its engine by accident. Admin diagnostics is where
+    // real model ids belong.
     breakdown: [
-      { day: days[0]?.day ?? '', model: 'workers-ai/glm-5.3-flash', kind: 'agent', neurons: 4120, calls: 18, usd: 0 },
-      { day: days[0]?.day ?? '', model: 'workers-ai/glm-5.3-flash', kind: 'critique', neurons: 1810, calls: 6, usd: 0 },
-      { day: days[0]?.day ?? '', model: 'workers-ai/bge-m3', kind: 'embedding', neurons: 90, calls: 41, usd: 0 },
+      { day: days[0]?.day ?? '', model: 'engine', kind: 'agent', neurons: 4120, calls: 18, usd: 0 },
+      { day: days[0]?.day ?? '', model: 'engine', kind: 'critique', neurons: 1810, calls: 6, usd: 0 },
+      { day: days[0]?.day ?? '', model: 'embedding', kind: 'embedding', neurons: 90, calls: 41, usd: 0 },
     ],
   };
 }
@@ -216,59 +223,6 @@ export const mockMe: MeResponse = {
   email: 'builder@example.com',
   profile: { id: 'mock-user', plan: 'free', is_admin: true, display_name: 'Quarry' },
   quota: mockQuota,
-};
-
-/**
- * A stand-in for `GET /api/providers`.
- *
- * In the real product availability is computed server-side from the
- * credentials the deployment holds; the fixture keeps that shape faithfully,
- * including a backend that is NOT available with the reason attached, so the
- * picker's disabled state is exercised during design review.
- */
-export const mockProviders: ProvidersDto = {
-  models: [
-    {
-      id: 'workers-ai/glm-5.3-flash',
-      provider: 'workers-ai',
-      label: 'GLM 5.3 Flash',
-      available: true,
-      reason: null,
-      supportsTools: true,
-      supportsVision: false,
-      inputCostPer1M: 0,
-      outputCostPer1M: 0,
-      unverifiedFields: [],
-    },
-    {
-      id: 'google/gemini-2.5-flash',
-      provider: 'google',
-      label: 'Gemini 2.5 Flash',
-      available: true,
-      reason: null,
-      supportsTools: true,
-      supportsVision: true,
-      inputCostPer1M: 0.3,
-      outputCostPer1M: 2.5,
-      unverifiedFields: [],
-    },
-    {
-      id: 'deepseek/deepseek-v3',
-      provider: 'deepseek',
-      label: 'DeepSeek V3',
-      available: false,
-      reason: 'No API key configured for this deployment',
-      supportsTools: true,
-      supportsVision: false,
-      inputCostPer1M: 0.27,
-      outputCostPer1M: 1.1,
-      unverifiedFields: [],
-    },
-  ],
-  auto: {
-    model: 'workers-ai/glm-5.3-flash',
-    reasoning: 'Picks the cheapest model that can do the job, and escalates only when it cannot.',
-  },
 };
 
 export function mockUsageDays(): UsageDay[] {
@@ -456,10 +410,81 @@ export function mockBuildPlanDetail() {
   };
 }
 
+/**
+ * A script edit, as `edit_script` reports it. Feeds the activity timeline's diff
+ * evidence card — the counts on that card are derived from these lines, never
+ * written by hand.
+ */
+export function mockDiffDetail() {
+  return {
+    v: 1,
+    blocks: [
+      {
+        type: 'code_diff',
+        path: 'ServerScriptService/LobbyLighting',
+        language: 'luau',
+        summary: 'Warmed the key light and dropped the ambient floor bounce.',
+        hunks: [
+          {
+            header: '@@ -12,7 +12,9 @@',
+            lines: [
+              { kind: 'ctx', text: 'local Lighting = game:GetService("Lighting")', n: 12 },
+              { kind: 'del', text: 'Lighting.Ambient = Color3.fromRGB(90, 90, 90)', n: 13 },
+              { kind: 'add', text: 'Lighting.Ambient = Color3.fromRGB(58, 52, 44)', n: 13 },
+              { kind: 'add', text: 'Lighting.OutdoorAmbient = Color3.fromRGB(70, 62, 52)', n: 14 },
+              { kind: 'ctx', text: 'Lighting.Brightness = 2', n: 15 },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * A playtest, as `run_and_check` reports it. Feeds the test-result evidence card.
+ * One case fails on purpose: the failing path is the one worth being able to see.
+ */
+export function mockPlaytestDetail() {
+  return {
+    v: 1,
+    blocks: [
+      {
+        type: 'test_report',
+        title: 'Playtest · 8s server simulation',
+        passed: 4,
+        failed: 1,
+        skipped: 1,
+        durationMs: 8120,
+        cases: [
+          { name: 'Place loads with no errors', status: 'pass', durationMs: 1900 },
+          { name: 'Spawn point is inside the lobby', status: 'pass', durationMs: 240 },
+          { name: 'Portal teleport fires', status: 'pass', durationMs: 1100 },
+          { name: 'Floor has no gaps underfoot', status: 'pass', durationMs: 380 },
+          {
+            name: 'Seating is reachable from spawn',
+            status: 'fail',
+            durationMs: 2400,
+            message: 'Pathfinding could not reach the seating cluster: it has not been laid out yet.',
+          },
+          { name: 'Ambient audio loops', status: 'skip' },
+        ],
+      },
+    ],
+  };
+}
+
 /** The live (streaming) assistant turn, with a render + critique attached. */
 export function mockLiveTools(): MockToolDetail[] {
   return [
     { tool: 'get_project_tree', summary: 'Read 410 instances across 6 services', ok: true, durationMs: 580 },
+    {
+      tool: 'edit_script',
+      summary: 'Rewrote the lighting setup',
+      ok: true,
+      durationMs: 420,
+      detail: mockDiffDetail(),
+    },
     {
       tool: 'render_view',
       summary: 'Rendered 5 views of game.Workspace.Lobby',
@@ -475,6 +500,13 @@ export function mockLiveTools(): MockToolDetail[] {
       detail: mockInspectDetail(),
     },
     { tool: 'set_properties', summary: 'Floor → Concrete, 3 tones of grey', ok: true, durationMs: 260 },
+    {
+      tool: 'run_and_check',
+      summary: '4 passed, 1 failed',
+      ok: true,
+      durationMs: 8120,
+      detail: mockPlaytestDetail(),
+    },
     {
       tool: 'check_composition',
       summary: 'Published the remaining work',
@@ -626,4 +658,94 @@ export function mockFrames(): StudioFrame[] {
     { rgbBase64: build(0), width: W, height: H, view: 'hero', subject: 'Workspace.Lobby', capturedAt: now - 42_000 },
     { rgbBase64: build(1), width: W, height: H, view: 'eye', subject: 'Workspace.Lobby', capturedAt: now - 6_000 },
   ];
+}
+
+/** The playtest a mock session is pretending to be in the middle of. */
+export const MOCK_PLAYTEST_ID = 'pt_mock';
+
+/**
+ * A live playtest and the frames belonging to it, so the Playtest card can be
+ * looked at without a Studio session.
+ *
+ * The frames are stamped RELATIVE TO NOW and tagged with the playtest's id,
+ * which matters for what this fixture actually demonstrates: the card's
+ * staleness logic is driven by wall-clock age, so leaving mock mode open shows
+ * the real fresh -> stale -> dead progression rather than a frozen "live"
+ * badge. That transition is the whole point of the card and it should be
+ * observable, not just asserted in a test.
+ *
+ * Mock mode only; never reachable in a production build.
+ */
+export function mockPlaytest(): { run: PlaytestRun; frames: StudioFrame[] } {
+  const W = 160;
+  const H = 100;
+  const now = Date.now();
+
+  const build = (t: number): string => {
+    const bytes = new Uint8Array(W * H * 3);
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const i = (y * W + x) * 3;
+        let r: number;
+        let g: number;
+        let b: number;
+        if (y < H * 0.5) {
+          const k = y / (H * 0.5);
+          r = 28 + k * 26;
+          g = 26 + k * 24;
+          b = 24 + k * 20;
+        } else {
+          r = 56;
+          g = 53;
+          b = 46;
+        }
+        // A platform, and a block that moves between frames — the thing a
+        // playtest viewport exists to let you see.
+        if (y > H * 0.62 && y < H * 0.68 && x > 30 && x < 130) {
+          r = 120;
+          g = 108;
+          b = 86;
+        }
+        const bx = 44 + t * 22;
+        if (x > bx && x < bx + 20 && y > H * 0.44 && y < H * 0.62) {
+          r = 168;
+          g = 128;
+          b = 72;
+        }
+        bytes[i] = r;
+        bytes[i + 1] = g;
+        bytes[i + 2] = b;
+      }
+    }
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+    return btoa(binary);
+  };
+
+  const frames: StudioFrame[] = [0, 1, 2].map((t) => ({
+    rgbBase64: build(t),
+    width: W,
+    height: H,
+    view: 'eye',
+    subject: 'game.Workspace',
+    capturedAt: now - (2 - t) * 1500,
+    playtestRunId: MOCK_PLAYTEST_ID,
+    seq: t + 1,
+  }));
+
+  return {
+    run: {
+      id: MOCK_PLAYTEST_ID,
+      phase: 'running',
+      startedAt: now - 4600,
+      requestedSeconds: 8,
+      action: 'Run mode is live — capturing frames',
+      consoleErrors: 1,
+      consoleWarnings: 2,
+      framesDelivered: 3,
+      framesDropped: 1,
+      lastFrameAt: now,
+    },
+    frames,
+  };
 }

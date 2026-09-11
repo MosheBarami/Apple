@@ -5,7 +5,7 @@
 // figures are the measured typical range, not a price list.
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { MODE_INFO, type GolemMode } from '@golem/shared';
+import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { fetchMe, fetchUsage, type UsageDay } from '../lib/api';
 import { MOCK_MODE } from '../lib/mock';
 import { supabase } from '../lib/supabase';
@@ -13,7 +13,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { countdownTo } from '../lib/format';
 
-const MODES: GolemMode[] = ['clay', 'stone', 'rune'];
+const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 
 function SparksRing({ remaining, daily }: { remaining: number; daily: number }) {
   const r = 52;
@@ -220,9 +220,9 @@ export function UsagePage() {
               {MODES.map((m) => (
                 <li key={m} className="mode-cost">
                   <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
-                  <span className="mode-cost-name">{MODE_INFO[m].name}</span>
-                  <span className="mode-cost-blurb">{MODE_INFO[m].blurb}</span>
-                  <span className="mode-cost-value">{MODE_INFO[m].typicalSparks}</span>
+                  <span className="mode-cost-name">{PRODUCT_MODE_INFO[m].name}</span>
+                  <span className="mode-cost-blurb">{PRODUCT_MODE_INFO[m].blurb}</span>
+                  <span className="mode-cost-value">{PRODUCT_MODE_INFO[m].typicalSparks}</span>
                 </li>
               ))}
             </ul>

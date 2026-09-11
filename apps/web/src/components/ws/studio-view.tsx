@@ -21,43 +21,24 @@
 // brief rules out.
 import { useEffect, useRef, useState } from 'react';
 import type { StudioFrame } from '@golem/shared';
+import { paintFrame } from '../../lib/frame-decode';
 import { Icon, PATH } from './primitives';
 
-/** Paint one frame's packed RGB rows onto a canvas. */
+/**
+ * Paint one frame onto a canvas.
+ *
+ * The decode moved to lib/frame-decode.ts when the worker gained a second
+ * packing (run-length, chosen per frame when it is smaller). Both this card and
+ * the Playtest card share that decoder, so a frame can never be readable in one
+ * and garbage in the other. A frame that does not decode is not drawn.
+ */
 function useFrameCanvas(frame: StudioFrame | undefined) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || !frame) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let bytes: Uint8Array;
-    try {
-      const binary = atob(frame.rgbBase64);
-      bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    } catch {
-      return; // a malformed frame is simply not drawn
-    }
-
-    const { width, height } = frame;
-    if (bytes.length < width * height * 3) return;
-
-    // Packed 24-bit RGB in, RGBA out.
-    const image = ctx.createImageData(width, height);
-    for (let p = 0, s = 0, d = 0; p < width * height; p += 1) {
-      image.data[d] = bytes[s]!;
-      image.data[d + 1] = bytes[s + 1]!;
-      image.data[d + 2] = bytes[s + 2]!;
-      image.data[d + 3] = 255;
-      s += 3;
-      d += 4;
-    }
-    canvas.width = width;
-    canvas.height = height;
-    ctx.putImageData(image, 0, 0);
+    paintFrame(canvas, frame);
   }, [frame]);
 
   return ref;

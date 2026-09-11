@@ -12,8 +12,31 @@ build/
 !apps/plugin/release/*.rbxm
 .dev.vars
 secrets/
-packages/corpus/data/
-packages/corpus/raw/
+# Fetched corpus content — ~49MB, re-fetchable from raw/manifest.json.
+# NOTE the trailing /* rather than /: git does not descend into an ignored
+# DIRECTORY, so a negation below it can never match. Ignoring the CONTENTS is
+# what makes the exception reachable.
+packages/corpus/data/*
+packages/corpus/raw/*
+# ...except the CHECKOUT LOCK. The comment above has always said the corpus is
+# "re-fetchable from raw/manifest.json" — but `packages/corpus/raw/` (with the
+# trailing slash this file's own note warns against, four lines up) ignored the
+# directory, so the manifest went with it and a fresh clone had nothing to fetch
+# FROM. It pins a url and a commit SHA per checkout: our metadata about third-party
+# repositories, not their content, so tracking it redistributes nothing. It is what
+# `pnpm --filter @golem/corpus bootstrap` reads.
+!packages/corpus/raw/manifest.json
+# ...except the source LEDGER. sources.json is 0.4MB of derived provenance and
+# licence verdicts, and §H requires that metadata be preserved rather than
+# regenerated on demand — a classification nobody can diff is one nobody reviews.
+!packages/corpus/data/sources.json
+!packages/corpus/data/registries.json
+# The ContentRecord ledger: which sources are one idea, which diverged. Small, because the
+# per-file hashes it derives from are regenerable and are not persisted.
+!packages/corpus/data/content.json
+# The registry handoff: 1,082 resolvable candidates. Tracked so `discover --includeRegistry`
+# works without re-cloning 43MB of package indexes first.
+!packages/corpus/data/registry-seeds.json
 packages/evals/results/raw/
 
 # Playwright
@@ -22,3 +45,6 @@ playwright-report/
 
 # Throwaway measurement scaffolding
 measure-tmp.mjs
+
+# Agent worktrees — isolated checkouts, never part of the committed tree
+.claude/worktrees/

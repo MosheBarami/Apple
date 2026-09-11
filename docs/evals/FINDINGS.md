@@ -1,5 +1,11 @@
 # Golem model evaluation findings
 
+> **The suite these numbers came from no longer exists in this form.** Every score below was
+> measured against the 56-task suite. It has since grown to 84 tasks — the 28-task scripting
+> curriculum added weight-3/4 tasks that carry 57.8% of the total, plus a `no_antipattern` check
+> type the old runs never faced (see [SCRIPTING-CURRICULUM.md](../SCRIPTING-CURRICULUM.md)). A
+> future overall score is **not** comparable to the 98.9% below; re-baseline before comparing.
+
 ## Production model: `@cf/zai-org/glm-5.3-flash` (migrated 2026-08-30)
 
 Measured on the 56-task Roblox suite, **same corrected grader for both models**:

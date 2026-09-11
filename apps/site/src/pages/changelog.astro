@@ -4,7 +4,7 @@ import Base from '../layouts/Base.astro';
 
 <Base
   title="Changelog — Golem"
-  description="What shipped in Golem, release by release: the GLM-5.3-flash migration, and v0.1 — three modes, the Studio plugin, checkpoints, native undo and the Sparks free tier."
+  description="What shipped in Golem, release by release: the engine migration that made it better and cheaper at once, and v0.1 — three modes, the Studio plugin, checkpoints, native undo and the Sparks free tier."
 >
   <section class="section clog is-ember" aria-labelledby="cl-title">
     <div class="sheet-rails" aria-hidden="true"></div>
@@ -31,12 +31,13 @@ import Base from '../layouts/Base.astro';
             cheaper at once.
           </p>
 
-          <h3>The model</h3>
+          <h3>The engine</h3>
           <ul>
             <li>
-              <code>GLM-5.3-flash</code> on Cloudflare Workers AI now runs Clay,
-              Stone, Rune, memory and vision. 1M context, native tool calling,
-              multimodal.
+              One engine now runs planning, building, memory and vision — 1M
+              context, native tool calling, multimodal. Which engine that is, is
+              an implementation detail Golem chooses per step; you never pick it
+              and it can change without you noticing.
             </li>
             <li>
               Scored <strong>98.9</strong> on the Roblox eval suite against
@@ -58,8 +59,8 @@ import Base from '../layouts/Base.astro';
           <h3>Spend control</h3>
           <ul>
             <li>
-              The gateway now bills from Cloudflare's own reported neuron figure
-              per call rather than from an estimate.
+              The gateway now bills from the engine's own reported figure per call
+              rather than from an estimate.
             </li>
             <li>
               Sparks recalibrated: <strong>1 Spark = 30 neurons</strong>, so a

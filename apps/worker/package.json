@@ -5,16 +5,18 @@
   "scripts": {
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit",
-    "deploy:api": "node ../../infra/deploy.mjs"
+    "test": "node --test",
+    "deploy:api": "wrangler deploy"
   },
   "dependencies": {
+    "@golem/design": "workspace:*",
     "@golem/shared": "workspace:*",
     "hono": "^4.6.0",
     "jose": "^5.9.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260830.1",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.6.0",
     "wrangler": "^4.0.0"
   }

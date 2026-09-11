@@ -37,14 +37,50 @@ export const ASSET_SOURCE_SITES = [
   'kenney',
   'quaternius',
   'ambientcg',
+  'poly_haven',
   'poly_pizza',
   'opengameart',
+  'sketchfab',
   'roblox_official',
   'creator_store',
   'generated_roblox',
   'procedural',
 ] as const;
 export type AssetSourceSite = (typeof ASSET_SOURCE_SITES)[number];
+
+/**
+ * Who owns the thing. Manifest §42 turns on this distinction and nothing else: third-party
+ * material may be *used* under its licence but must never be presented as Golem's own work.
+ *
+ * `user_generated` is deliberately its own class rather than being folded into either side —
+ * GenerationService output is produced in the customer's own Studio session under their own
+ * account, so it is neither Golem's to claim nor a third party's to be credited.
+ */
+export const ASSET_ORIGINALITIES = ['golem_original', 'user_generated', 'third_party'] as const;
+export type AssetOriginality = (typeof ASSET_ORIGINALITIES)[number];
+
+/**
+ * Exhaustive by construction: `Record<AssetSourceSite, …>` means adding a source site to the list
+ * above fails the typecheck until someone decides, in writing, whose work it is. That is the point
+ * — an unclassified source would silently default to "ours", which is the exact mistake §42 names.
+ */
+export const ASSET_ORIGINALITY: Readonly<Record<AssetSourceSite, AssetOriginality>> = {
+  kenney: 'third_party',
+  quaternius: 'third_party',
+  ambientcg: 'third_party',
+  poly_haven: 'third_party',
+  poly_pizza: 'third_party',
+  opengameart: 'third_party',
+  sketchfab: 'third_party',
+  roblox_official: 'third_party',
+  creator_store: 'third_party',
+  generated_roblox: 'user_generated',
+  procedural: 'golem_original',
+};
+
+export function originalityOf(source: AssetSourceSite): AssetOriginality {
+  return ASSET_ORIGINALITY[source];
+}
 
 /**
  * The authoritative record for one library asset. Every field is required — a nullable field is
@@ -69,6 +105,22 @@ export interface AssetProvenance {
   author: string;
   /** ISO 8601 date-time, when the licence string and the file were observed. */
   retrievedAt: string;
+  /**
+   * ISO 8601, when the asset entered Golem's control as a Roblox asset — distinct from
+   * `retrievedAt`, which is when the source page was read. null until imported.
+   *
+   * Optional in the type only because rows written before this field existed do not carry one;
+   * `requireImportDate` promotes the missing-value warning to an error for new ingests.
+   */
+  importedAt?: string | null;
+  /**
+   * What Golem changed relative to the file the source published: `['decimated to 900 tris',
+   * 'retextured to 512px']`. An empty array means "used exactly as downloaded" — which is itself
+   * a claim, so it is recorded rather than assumed.
+   *
+   * Optional for the same backwards-compatibility reason as `importedAt`; absent reads as empty.
+   */
+  modifications?: string[];
   /** null until the asset has been imported into Studio and an Open Use id exists. */
   robloxAssetId: number | null;
   /** null when not yet measured (pre-ingest) or not applicable (an Image). */
@@ -126,6 +178,24 @@ export const LICENCES: Readonly<Record<string, LicenceRule>> = {
     allowedInLibrary: false,
     why: 'share-alike cannot be discharged inside a Roblox place — a customer would inherit an obligation they never agreed to',
   },
+  // The non-commercial family exists in the registry precisely so it can be *recognised and
+  // refused* rather than falling through normaliseLicence() as an unknown string. Sketchfab
+  // publishes per-asset licences (manifest §15) and NC is common there, so a record carrying one
+  // is an expected input, not a malformed one.
+  'CC-BY-NC-4.0': {
+    commercialUse: false,
+    attributionRequired: true,
+    shareAlike: false,
+    allowedInLibrary: false,
+    why: 'non-commercial: a Roblox experience with any monetisation, or eligible for the engagement payout, is a commercial use',
+  },
+  'CC-BY-NC-SA-4.0': {
+    commercialUse: false,
+    attributionRequired: true,
+    shareAlike: true,
+    allowedInLibrary: false,
+    why: 'non-commercial and share-alike — both obligations are undischargeable in a customer place',
+  },
   'GPL-3.0': { commercialUse: true, attributionRequired: true, shareAlike: true, allowedInLibrary: false, why: 'source-distribution obligation is undischargeable here' },
   'ROBLOX-TOU': {
     commercialUse: true,
@@ -153,8 +223,14 @@ export const LICENCES: Readonly<Record<string, LicenceRule>> = {
 export function normaliseLicence(verbatim: string): string | null {
   const t = verbatim.trim().toLowerCase().replace(/\s+/g, ' ');
   if (!t) return null;
-  // share-alike and copyleft are checked FIRST so 'CC BY-SA' cannot be matched as 'CC BY'
-  if (/\bsa\b|share[- ]?alike/.test(t) && /\bcc\b|creative commons/.test(t)) return 'CC-BY-SA-4.0';
+  // Restrictions are checked from most restrictive to least, so a longer id can never be matched
+  // by a shorter prefix of itself: 'CC BY-NC-SA' before 'CC BY-NC' before 'CC BY-SA' before 'CC BY'.
+  const isCc = /\bcc\b|creative commons/.test(t);
+  const nc = /\bnc\b|non[- ]?commercial/.test(t);
+  const sa = /\bsa\b|share[- ]?alike/.test(t);
+  if (isCc && nc && sa) return 'CC-BY-NC-SA-4.0';
+  if (isCc && nc) return 'CC-BY-NC-4.0';
+  if (isCc && sa) return 'CC-BY-SA-4.0';
   if (/\bgpl\b|general public license/.test(t)) return 'GPL-3.0';
   if (/\bcc0\b|creative commons zero|public domain dedication/.test(t)) return 'CC0-1.0';
   if (/\bcc[- ]?by\b|creative commons attribution/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
@@ -194,6 +270,12 @@ export interface ValidateOptions {
   seed?: boolean;
   /** v1 policy: refuse anything requiring attribution. */
   cc0Only?: boolean;
+  /**
+   * Manifest §16 requires an import date on every non-original external asset. It is a warning by
+   * default rather than an error so rows written before the field existed still validate; new
+   * ingests should pass this and get the hard gate.
+   */
+  requireImportDate?: boolean;
 }
 
 /**
@@ -255,6 +337,16 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
   if (typeof r.retrievedAt !== 'string' || !ISO_RE.test(r.retrievedAt) || Number.isNaN(Date.parse(r.retrievedAt))) {
     errors.push('retrievedAt must be an ISO 8601 date or date-time string');
   }
+  if (r.importedAt !== null && r.importedAt !== undefined) {
+    if (typeof r.importedAt !== 'string' || !ISO_RE.test(r.importedAt) || Number.isNaN(Date.parse(r.importedAt))) {
+      errors.push('importedAt must be an ISO 8601 date or date-time string, or null when not yet imported');
+    }
+  }
+  if (r.modifications !== undefined) {
+    if (!Array.isArray(r.modifications) || r.modifications.some((m) => typeof m !== 'string' || !m.trim())) {
+      errors.push('modifications must be an array of non-empty descriptions — omit it or use [] for "used exactly as downloaded"');
+    }
+  }
 
   const hasRobloxId = typeof r.robloxAssetId === 'number';
   if (r.robloxAssetId !== null && (!hasRobloxId || !Number.isInteger(r.robloxAssetId) || (r.robloxAssetId as number) <= 0)) {
@@ -290,12 +382,59 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
     if (r.sha256 === null || r.sha256 === undefined) errors.push('sha256 is required once robloxAssetId is set — we must know what we uploaded');
     if (r.triangles === null || r.triangles === undefined) warnings.push('triangles is unmeasured, so this asset cannot be budgeted against a scene');
     if (r.boundsStuds === null || r.boundsStuds === undefined) warnings.push('boundsStuds is unmeasured, so this asset cannot be scale-checked');
+    // §16: an imported third-party asset without an import date cannot answer "when did we take
+    // this, and under which version of that page's licence?" — which is the question provenance
+    // exists to answer.
+    if (!r.importedAt && typeof r.source === 'string' && ASSET_ORIGINALITY[r.source as AssetSourceSite] === 'third_party') {
+      const msg = 'importedAt is unrecorded for a third-party asset that is already live in Roblox (manifest §16)';
+      if (opts.requireImportDate) errors.push(msg);
+      else warnings.push(msg);
+    }
   }
   if (!hasRobloxId && !opts.seed) {
     warnings.push('robloxAssetId is null — this record is not yet insertable, it is an ingest candidate');
   }
 
   return { ok: errors.length === 0, errors, warnings, licenceId };
+}
+
+/** Product origin, matching apps/plugin/src/init.server.luau's DEFAULT_API. */
+const GOLEM_ORIGIN = 'https://golem.moshe-barami111.workers.dev';
+
+/**
+ * Build the provenance record for something Golem authored itself — procedural geometry written
+ * as Luau, with no third-party material anywhere in it.
+ *
+ * This exists so "original" is a *constructed* state rather than an omission. §42's failure mode
+ * is a third-party asset drifting into the library with no source recorded and being treated as
+ * Golem's own by default; a record that claims originality has to be built by this function, which
+ * can only produce `source: 'procedural'`.
+ */
+export function originalAsset(args: { id: string; name: string; kind: AssetKind; tags: string[]; createdAt: string; robloxAssetId?: number | null; sha256?: string | null }): AssetProvenance {
+  return {
+    id: args.id,
+    name: args.name,
+    kind: args.kind,
+    source: 'procedural',
+    // There is no source page for work nobody else published. Both URL fields carry the product
+    // origin — the thing that authored it — rather than a fabricated listing path that would 404
+    // the first time someone tried to check the provenance.
+    sourceUrl: GOLEM_ORIGIN,
+    licence: 'NONE-PROCEDURAL',
+    licenceUrl: GOLEM_ORIGIN,
+    commercialUse: true,
+    attributionRequired: false,
+    author: 'Golem',
+    retrievedAt: args.createdAt,
+    importedAt: args.robloxAssetId ? args.createdAt : null,
+    modifications: [],
+    robloxAssetId: args.robloxAssetId ?? null,
+    triangles: null,
+    textureResolution: null,
+    boundsStuds: null,
+    tags: args.tags,
+    sha256: args.sha256 ?? null,
+  };
 }
 
 /** Embedding + FTS input. Derived, never stored, so it cannot drift from the record. */
@@ -318,8 +457,18 @@ export function assetEmbeddingInput(rec: AssetProvenance): string {
  */
 export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   await env.CORPUS.exec(
-    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
+    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
   );
+  // Deployed databases predate these two columns, and `create table if not exists` will not add
+  // them. D1 has no `add column if not exists`, so the failure is caught: on an already-migrated
+  // database it is a duplicate-column error and nothing else, and swallowing it is the whole point.
+  for (const col of ['imported_at text', 'modifications text']) {
+    try {
+      await env.CORPUS.exec(`alter table asset_library add column ${col}`);
+    } catch {
+      // already present
+    }
+  }
   // A Roblox asset id may appear at most once. Partial index so many pending rows can share NULL.
   await env.CORPUS.exec(`create unique index if not exists idx_asset_roblox_id on asset_library(roblox_asset_id) where roblox_asset_id is not null`);
   await env.CORPUS.exec(`create index if not exists idx_asset_kind on asset_library(kind, status)`);
@@ -351,6 +500,8 @@ const COLUMNS = [
   'attribution_required',
   'author',
   'retrieved_at',
+  'imported_at',
+  'modifications',
   'roblox_asset_id',
   'triangles',
   'texture_resolution',
@@ -384,6 +535,8 @@ function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unk
     rec.attributionRequired ? 1 : 0,
     rec.author,
     rec.retrievedAt,
+    rec.importedAt ?? null,
+    JSON.stringify(rec.modifications ?? []),
     rec.robloxAssetId,
     rec.triangles,
     rec.textureResolution,
@@ -750,6 +903,9 @@ function seed(
     attributionRequired: false,
     author,
     retrievedAt: RETRIEVED,
+    // Nothing has been downloaded, so nothing has been imported and nothing has been altered.
+    importedAt: null,
+    modifications: [],
     robloxAssetId: null,
     triangles: null,
     textureResolution: null,

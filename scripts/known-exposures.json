@@ -1,0 +1,35 @@
+{
+  "note": "Historical credential exposures the owner has seen. Keyed by blob SHA; holds no values. An entry here makes secret-scan.py warn instead of fail for exactly those bytes. Rotation is still required \u2014 see docs/BLOCKERS.md.",
+  "accepted": [
+    {
+      "blob": "2deb9a05905f7380c3f9364b37611e3d40d60244",
+      "pattern": "Password literal",
+      "path": "infra/checkpoint-test.mjs"
+    },
+    {
+      "blob": "b976e7d6c278c92a23701e3c550b3f07cf6702c6",
+      "pattern": "Password literal",
+      "path": "infra/e2e.mjs"
+    },
+    {
+      "blob": "06d9cae99a437778c4ba13453e3bdd4ae2550c72",
+      "pattern": "Password literal",
+      "path": "infra/loadtest.mjs"
+    },
+    {
+      "blob": "de57c3ccacb47b0f67854152c088315df877b964",
+      "pattern": "Password literal",
+      "path": "infra/loadtest.mjs"
+    },
+    {
+      "blob": "9a2ccdcfa8525442343387b757be3e4b22de9a08",
+      "pattern": "Password literal",
+      "path": "infra/pair-helper.mjs"
+    },
+    {
+      "blob": "4a7ccc9805e9ea44485bf78413bbe6d6b8d8e8bc",
+      "pattern": "Password literal",
+      "path": "infra/real-chat.mjs"
+    }
+  ]
+}

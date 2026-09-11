@@ -22,7 +22,12 @@ end
 type Session = { token: string, projectId: string, projectName: string, apiBase: string }
 local session: Session? = nil
 local connected = false
-local pollThread: thread? = nil
+--[[ Which poll loop is the current one.
+
+	 Every loop captures the generation it was started with and exits as soon as it sees a
+	 newer one. That is how a reconnect retires the previous loop WITHOUT killing its thread —
+	 see stopPolling for why killing it is not an option. ]]
+local pollGeneration = 0
 local logBuffer: { any } = {}
 local recentOps: { string } = {}
 
@@ -246,6 +251,7 @@ end
 -- ---------------------------------------------------------------- poll loop
 local function disconnectSession(reason: string?)
 	connected = false
+	pollGeneration += 1 -- retire the loop; see stopPolling
 	session = nil
 	plugin:SetSetting("golem_session", nil)
 	projectLabel.Visible = false
@@ -253,10 +259,13 @@ local function disconnectSession(reason: string?)
 	setStatus(reason or "Not connected", COLORS.muted)
 end
 
-local function pollLoop()
+--[[ `generation` is the loop's own identity. A loop retired by a reconnect keeps running
+	 until it next reaches the top of this while — finishing any op it was in the middle of,
+	 which is exactly what makes the shutdown safe — and then stops. ]]
+local function pollLoop(generation: number)
 	local results: { any } = {}
 	local pollCount = 0
-	while connected and session do
+	while connected and session and generation == pollGeneration do
 		local s = session :: Session
 		local events = {}
 		for _, e in logBuffer do table.insert(events, e) end
@@ -293,8 +302,28 @@ local function pollLoop()
 	end
 end
 
+--[[ Retire the current poll loop, cooperatively.
+
+	 B6: this used to be `task.cancel(pollThread)`. Two things are wrong with that.
+
+	 First, `task.cancel` on a thread that has already finished RAISES, so a reconnect after
+	 the loop had exited on its own — a 401, a disconnect — threw from the click handler.
+
+	 Second and much worse, the loop is usually not sitting in a `task.wait`. It spends its
+	 time inside `Ops.execute`, which holds an open ChangeHistoryService recording and a
+	 relaxed asset policy for the length of an op. Killing the thread there unwinds neither:
+	 the recording stays open forever, so every later edit joins one undo entry the user
+	 cannot separate, and the asset policy stays open. Nothing in the plugin ever closes them
+	 again, because the code that would have is the code that was killed.
+
+	 So nothing is cancelled. The generation bump tells the loop to stop, and it stops after
+	 finishing whatever it was doing. ]]
+local function stopPolling()
+	pollGeneration += 1
+end
+
 local function startPolling()
-	if pollThread then task.cancel(pollThread) end
+	stopPolling()
 	connected = true
 	local s = session :: Session
 	setStatus("Connected", COLORS.green)
@@ -302,7 +331,12 @@ local function startPolling()
 	projectLabel.Visible = true
 	connectBtn.Text = "Disconnect"
 	setStatus("Connected · " .. s.projectName, COLORS.green)
-	pollThread = task.spawn(pollLoop)
+	-- The handle is deliberately not kept. Holding a thread reference implies something can be
+	-- done with it, and the only thing that could be is the cancel this fix exists to remove.
+	local generation = pollGeneration
+	task.spawn(function()
+		pollLoop(generation)
+	end)
 end
 
 local function claimCode(code: string)
@@ -339,6 +373,24 @@ end)
 if session then
 	startPolling()
 end
+
+--[[ B5: nothing handled plugin unload, and Studio does not kill a plugin's threads when it
+	 reloads one.
+
+	 So the previous script instance kept its `connected` upvalue at true and its poll loop
+	 kept running — against the same session token, draining the same op queue — while the
+	 freshly loaded instance started a second loop beside it. Each op then went to whichever
+	 loop happened to poll first, results came back from a script the user believes is gone,
+	 and F-21's nil recording is that same orphaned thread still executing inside `Ops`.
+
+	 Clearing the flags is deliberately all this does. The loop notices at its next check and
+	 exits after finishing whatever op it was in the middle of, which is what lets `Ops.execute`
+	 close its ChangeHistory recording and restore the asset policy on the way out. Cancelling
+	 the thread here would reintroduce exactly the leak B6 removes — see `stopPolling`. ]]
+plugin.Unloading:Connect(function()
+	connected = false
+	pollGeneration += 1
+end)
 
 -- Headless pairing (developer convenience, OFF by default).
 -- A place-resident script could otherwise drop a StringValue and silently re-point this

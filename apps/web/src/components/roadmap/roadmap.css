@@ -1,0 +1,866 @@
+/* ==========================================================================
+   ROADMAP — the plan, as a spine.
+
+   Same quarry material as the rest of the app: warm neutrals, engraved
+   hairlines, one accent per surface. The only thing this layer adds is a
+   per-milestone effort colour — green, amber, ember for small, medium and
+   large — and all three already exist in the palette. No new hues were
+   invented, and the saturated grammar of ROBLOX-STYLE-SPEC belongs to what
+   Golem builds inside Roblox, never to this app.
+
+   Status is never carried by colour alone. A landed card is quieter and its
+   node is ticked; the running card is lifted, accented and labelled; a waiting
+   card is drawn with a dashed border and a dashed node. Colour is the third
+   channel, not the first.
+
+   Prefixed `rm-`, loaded by the route, so it cannot collide with either
+   existing stylesheet.
+   ========================================================================== */
+
+/* Keep long-form reading at a sane measure without moving the scrollbar off
+   the edge of the page. */
+.rm-page > .page-head,
+.rm-page > .rm-summary,
+.rm-page > .rm-note,
+.rm-page > .rm-spine,
+.rm-page > .rm-loading,
+.rm-page > .rm-suggest {
+  max-width: 64rem;
+  margin-inline: auto;
+}
+
+.rm-head {
+  align-items: flex-start;
+}
+
+.rm-head__text {
+  min-width: 0;
+}
+
+.rm-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 0.35rem;
+}
+
+.rm-back:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.rm-back__chev {
+  display: inline-flex;
+  transform: rotate(180deg);
+}
+
+/* ------------------------------------------------------------- summary --- */
+
+.rm-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.rm-summary__meter {
+  flex: 1 1 18rem;
+  min-width: 12rem;
+}
+
+.rm-meter {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+
+.rm-meter__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--good), color-mix(in srgb, var(--good) 55%, var(--accent)));
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.rm-summary__label {
+  margin: 0.45rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.rm-summary__active {
+  color: var(--accent);
+}
+
+.rm-summary__now {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.rm-summary__now-link {
+  font: inherit;
+  font-weight: 560;
+  font-size: 0.9rem;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rm-summary__now-link:hover {
+  text-decoration: underline;
+}
+
+.rm-summary__stamp {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--faint);
+}
+
+/* A malformed plan is reported, never quietly straightened out. */
+.rm-note {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px solid color-mix(in srgb, var(--warn) 26%, transparent);
+  border-radius: var(--r-md);
+  padding: 0.55rem 0.8rem;
+}
+
+/* --------------------------------------------------------------- spine --- */
+
+.rm-spine {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rm-stage {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 0.95rem;
+}
+
+.rm-stage__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--faint);
+}
+
+.rm-stage.is-landed .rm-stage__rail {
+  color: var(--good);
+}
+
+.rm-stage.is-in-progress .rm-stage__rail {
+  color: var(--accent);
+}
+
+.rm-stage.is-ready .rm-stage__rail {
+  color: var(--muted);
+}
+
+.rm-stage__node {
+  display: inline-flex;
+  padding-top: 2px;
+}
+
+.rm-stage__line {
+  flex: 1;
+  width: 1px;
+  margin: 6px 0 0;
+  background: var(--line);
+}
+
+.rm-stage.is-landed .rm-stage__line {
+  background: color-mix(in srgb, var(--good) 40%, var(--line));
+}
+
+.rm-stage:last-child .rm-stage__line {
+  background: linear-gradient(var(--line), transparent);
+}
+
+.rm-stage__body {
+  padding-bottom: 1.7rem;
+  min-width: 0;
+}
+
+.rm-stage__label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0.2rem 0 0.65rem;
+}
+
+.rm-stage__count {
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------- card --- */
+
+.rm-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.95rem 1.05rem;
+  background: linear-gradient(172deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-1), var(--inset);
+  outline-offset: 3px;
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+
+.rm-card + .rm-card {
+  margin-top: 0.7rem;
+}
+
+/* Effort, as a carved edge rather than a fill. */
+.rm-card::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--rm-weight, var(--accent));
+  opacity: 0.85;
+}
+
+.rm-card.is-landed {
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.rm-card.is-landed::before {
+  opacity: 0.3;
+}
+
+.rm-card.is-landed .rm-card__title {
+  color: var(--muted);
+}
+
+.rm-card.is-in-progress {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  box-shadow: var(--lift-2), var(--inset);
+}
+
+.rm-card.is-waiting {
+  border-style: dashed;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.rm-card--skeleton {
+  gap: 0.55rem;
+}
+
+.rm-card--skeleton::before {
+  display: none;
+}
+
+.rm-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+/* Complexity, as a filled-slot weight mark plus its written label. The colour
+   is the same one the card's edge carries, so effort reads as one idea. */
+.rm-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  font-size: 0.72rem;
+  font-weight: 560;
+  letter-spacing: 0.02em;
+  padding: 0.16rem 0.55rem 0.16rem 0.42rem;
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--rm-weight, var(--accent)) 26%, transparent);
+  background: color-mix(in srgb, var(--rm-weight, var(--accent)) 10%, transparent);
+  color: var(--rm-weight, var(--accent));
+  white-space: nowrap;
+}
+
+.rm-weight {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5px;
+}
+
+.rm-card__heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.rm-card__title {
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.rm-card__summary {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.rm-status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  white-space: nowrap;
+  font-size: 0.73rem;
+  font-weight: 560;
+  padding: 0.16rem 0.55rem 0.16rem 0.34rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.rm-status.is-landed {
+  color: var(--good);
+  background: var(--good-soft);
+  border-color: color-mix(in srgb, var(--good) 32%, transparent);
+}
+
+.rm-status.is-in-progress {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.rm-status.is-ready {
+  color: var(--ink);
+}
+
+.rm-status.is-waiting {
+  color: var(--faint);
+  border-style: dashed;
+}
+
+/* Only the thing actually running breathes, and only lightly. */
+.rm-node--in-progress circle {
+  animation: rm-node-pulse 2.6s var(--ease-out) infinite;
+}
+
+@keyframes rm-node-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.rm-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* The scan found something like this already. Worth saying on the card, quietly
+   — it changes what the user should ask for, but it is not a status. */
+.rm-card__note {
+  font-size: 0.74rem;
+  color: var(--faint);
+  font-style: italic;
+}
+
+.rm-card__waiting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--faint);
+}
+
+.rm-card__waiting-label {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.rm-refs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.rm-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 0.12rem 0.55rem;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.rm-ref:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.rm-ref__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex: none;
+}
+
+.rm-ref.is-done .rm-ref__dot {
+  background: var(--good);
+}
+
+.rm-ref.is-active .rm-ref__dot {
+  background: var(--accent);
+}
+
+.rm-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.rm-card__spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.rm-disclose {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0.25rem 0;
+  cursor: pointer;
+}
+
+.rm-disclose:hover {
+  color: var(--accent);
+}
+
+.rm-disclose__chev {
+  display: inline-flex;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.rm-disclose__chev.is-open {
+  transform: rotate(90deg);
+}
+
+/* -------------------------------------------------------------- detail --- */
+
+.rm-detail {
+  display: grid;
+  gap: 0.6rem;
+  border-top: 1px solid var(--hairline);
+  padding-top: 0.75rem;
+}
+
+/* `display` here would otherwise beat the user-agent rule for [hidden], and a
+   collapsed panel that is still on screen makes `aria-expanded` a lie. */
+.rm-detail[hidden] {
+  display: none;
+}
+
+.rm-detail__row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.rm-detail__key {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-top: 0.18rem;
+}
+
+.rm-detail__val {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.rm-detail__list {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: grid;
+  gap: 0.22rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* A landed stage folds away behind its own label. */
+.rm-stage__label--toggle {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: none;
+  border: 0;
+  padding: 0.2rem 0 0.65rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rm-stage__label--toggle:hover {
+  color: var(--good);
+}
+
+.rm-stage__chev {
+  display: inline-flex;
+  margin-right: 0.4rem;
+  transition: transform var(--dur) var(--ease-out);
+  vertical-align: -1px;
+}
+
+.rm-stage__chev.is-open {
+  transform: rotate(90deg);
+}
+
+.rm-stage__parallel {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--faint);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-pill);
+  padding: 0.02rem 0.45rem;
+}
+
+.rm-stage__cards[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------- loading --- */
+
+.rm-loading__copy {
+  margin: 0 0 0.9rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.rm-loading .rm-card + .rm-card {
+  margin-top: 0.7rem;
+}
+
+.empty-state.rm-empty {
+  max-width: 38rem;
+}
+
+/* --------------------------------------------------------- suggestions --- */
+
+.rm-suggest {
+  margin-top: 2.2rem;
+  padding-top: 1.3rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.rm-suggest__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.9rem;
+}
+
+.rm-suggest__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.rm-suggest__sub {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  flex: 1 1 16rem;
+}
+
+.rm-suggest__dismiss {
+  margin-left: auto;
+}
+
+.rm-suggest__pending-copy {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 52ch;
+}
+
+.rm-suggest__error {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent);
+  background: var(--bad-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.rm-suggest__error p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--bad);
+  flex: 1 1 18rem;
+}
+
+.rm-suggest__none {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.rm-suggest__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17.5rem), 1fr));
+  gap: 0.8rem;
+  margin-top: 0.95rem;
+}
+
+.rm-sg {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem 0.95rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-1);
+}
+
+.rm-sg::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--rm-weight, var(--accent));
+  opacity: 0.7;
+}
+
+.rm-sg--skeleton {
+  gap: 0.55rem;
+}
+
+.rm-sg--skeleton::before {
+  opacity: 0.2;
+}
+
+.rm-sg__title {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.rm-sg__summary {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.rm-sg__why {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--faint);
+  border-left: 2px solid var(--line);
+  padding-left: 0.6rem;
+}
+
+.rm-sg__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.rm-sg__builds {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--faint);
+}
+
+.rm-sg__builds strong {
+  color: var(--muted);
+  font-weight: 560;
+}
+
+.rm-sg__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+}
+
+/* ---------------------------------------------------------- responsive --- */
+
+@media (max-width: 640px) {
+  .rm-stage {
+    grid-template-columns: 22px minmax(0, 1fr);
+    column-gap: 0.7rem;
+  }
+
+  .rm-card__head {
+    flex-wrap: wrap;
+  }
+
+  .rm-status {
+    order: 3;
+  }
+
+  .rm-detail__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2rem;
+  }
+
+  .rm-detail__key {
+    padding-top: 0;
+  }
+}
+
+.rm-detail__verify {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--warn);
+}
+
+.rm-empty__detail {
+  font-size: 0.82rem;
+  color: var(--faint);
+}
+
+/* -------------------------------------------------------------- brief --- */
+
+.rm-brief__lead {
+  margin: 0 0 0.9rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.rm-brief__blocked {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px solid color-mix(in srgb, var(--warn) 26%, transparent);
+  border-radius: var(--r-md);
+}
+
+.rm-brief__section {
+  margin-bottom: 0.9rem;
+}
+
+.rm-brief__key {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.rm-brief__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.rm-brief__touches {
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  color: var(--faint);
+}
+
+.rm-brief__touches strong {
+  color: var(--muted);
+  font-weight: 560;
+}
+
+.rm-brief__raw summary {
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.rm-brief__pre {
+  margin: 0.5rem 0 0;
+  padding: 0.7rem 0.8rem;
+  max-height: 15rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+}

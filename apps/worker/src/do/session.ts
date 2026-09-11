@@ -18,19 +18,36 @@ import type {
   ToolTraceEntry,
   QuotaState,
   RunIntent,
+  StudioFrame,
+  PlaytestRun,
+  RenderViewResult,
 } from '@golem/shared';
 import { MODE_INFO } from '@golem/shared';
+import {
+  admitFrame,
+  FrameRate,
+  FrameRing,
+  PLAYTEST_FRAME_HEIGHT,
+  PLAYTEST_FRAME_WIDTH,
+  type RawFrame,
+} from '../frame-bus';
+import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { sparksForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
-import { toolDefs, toolNames, runTool, type AgentCtx } from '../tools';
+import { designBrief } from '../design-brief';
+import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import { trimTranscript } from '../transcript';
+import { persistWithShedding } from '../persist';
+import { clearStop, requestStop, stopRequested } from '../stop-signal';
+import { singleFlight } from '../single-flight';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
+import { partitionOpsByRun } from '../op-attribution';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -46,6 +63,8 @@ type PollResponse = PluginPollResponse & { client?: PluginCompatibility };
 
 interface AgentState {
   status: 'idle' | 'running' | 'stopping';
+  /** the run's unforgeable fence id; optional so a run persisted by an older deploy still loads */
+  fenceId?: string;
   mode: GolemMode;
   msgId: string;
   llm: GatewayRequest['messages'];
@@ -238,6 +257,15 @@ export class SessionDO extends DurableObject<Env> {
       if (seq) this.seq = seq;
       const lastSeen = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
       this.pluginSeenRecently = Date.now() - lastSeen < 8000;
+      //[[ A playtest outlives the instance that started it, for the same reason a run does.
+      //
+      //   `playtestRun` was instance-only, so an eviction mid-playtest lost it — and the guard
+      //   in finishRun that exists to stop "a card that sits there counting up the age of a
+      //   frame from a playtest that is long over" then reads a null and does nothing. That is
+      //   precisely the state its own comment was written to prevent, and a reconnecting
+      //   client got nothing either. See F-35. ]]
+      const playtest = await this.ctx.storage.get<PlaytestRun>('playtestRun');
+      if (playtest) this.playtestRunBacking = playtest;
     });
   }
 
@@ -304,6 +332,18 @@ export class SessionDO extends DurableObject<Env> {
       // straight away rather than making it ask.
       const live = await this.runSnapshot();
       if (live) server.send(JSON.stringify({ type: 'run_state', run: live } satisfies ServerMsg));
+      // A playtest in flight, and the frames still in the ring. Without this, a
+      // user who refreshes during a playtest gets an empty card until the next
+      // capture tick — up to a rate-gate interval of looking at nothing while
+      // their game is running. The frames are replayed with their ORIGINAL
+      // capturedAt, so the staleness the card computes is the truth about when
+      // they were rendered, not about when this socket opened.
+      if (this.playtestRun) {
+        server.send(JSON.stringify({ type: 'playtest_state', run: this.playtestRun } satisfies ServerMsg));
+        for (const frame of this.frames.list()) {
+          server.send(JSON.stringify({ type: 'studio_frame', frame } satisfies ServerMsg));
+        }
+      }
       // browsers abort the handshake unless a requested subprotocol is echoed back
       return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'golem.v1' } });
     }
@@ -502,10 +542,13 @@ export class SessionDO extends DurableObject<Env> {
         await this.startRun(bind, msg.text.slice(0, 8000), msg.mode);
         return;
       case 'stop': {
+        // Written to its OWN key, never into the agent blob. The run holds a copy of that blob
+        // for the length of a step and writes it back at the tail, so a stop written into the
+        // same blob either gets erased by that write or erases the step's own progress,
+        // depending only on which lands last. See stop-signal.ts.
         const agent = await this.ctx.storage.get<AgentState>('agent');
-        if (agent && agent.status === 'running') {
-          agent.status = 'stopping';
-          await this.ctx.storage.put('agent', agent);
+        if (agent && agent.status !== 'idle') {
+          await requestStop(this.ctx.storage);
         }
         return;
       }
@@ -527,7 +570,37 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ agent run
+
+  /** Admits one startRun at a time. See the comment on startRun. */
+  private readonly startGate = singleFlight();
+
+  /**
+   * Start a run, at most one at a time.
+   *
+   * Durable Objects are single-threaded, but this function awaits — and the storage read that
+   * decides whether a run is already in flight is one of the things it awaits. Two `chat`
+   * frames arriving together both saw an idle agent, so both spent a Spark, both inserted a
+   * user row, and one of the two `msg_start` broadcasts never got its `msg_end`: a message
+   * that sits in the transcript spinning forever.
+   *
+   * The guard is an instance field set SYNCHRONOUSLY, before any await. That is the whole
+   * point of it — a guard that is itself established across an await is just a smaller race.
+   * In-memory is sufficient because the concurrency is within one instance: two frames on one
+   * socket, or two sockets on one Durable Object, are all the same object.
+   */
   private async startRun(
+    bind: { projectId: string; projectName: string; ownerId: string },
+    text: string,
+    mode: GolemMode,
+    forcedEffort?: Effort,
+  ) {
+    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort));
+    if (!attempt.ran) {
+      this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
+    }
+  }
+
+  private async startRunInner(
     bind: { projectId: string; projectName: string; ownerId: string },
     text: string,
     mode: GolemMode,
@@ -538,6 +611,11 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
       return;
     }
+    // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
+    // a stop that arrives in the moment a run is finishing can land after that clear, and it
+    // must not travel into the run the user starts next.
+    await clearStop(this.ctx.storage);
+
     // Sparks are billed from measured usage after each model call, so entering a run only
     // requires having some balance left — the user is never charged for an estimate.
     const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
@@ -559,6 +637,11 @@ export class SessionDO extends DurableObject<Env> {
     // same reason: both are free, both are deterministic, and both are true of this request
     // before a single token has been spent. See runIntentFor.
     const intent = runIntentFor(text);
+    //[[ The run's fence id. Random per run, named in the system prompt, and used on every
+    //   tool fence below, so a closing tag forged by tool content cannot match it. Tool output
+    //   is NOT escaped — mangling it would corrupt the evidence the agent reasons from — so the
+    //   tag carries a secret instead of relying on the content not containing one. ]]
+    const fenceId = crypto.randomUUID().slice(0, 8);
     const sys = systemPrompt({
       mode,
       studioConnected,
@@ -569,6 +652,13 @@ export class SessionDO extends DurableObject<Env> {
       // The art-direction brief is ~1,800 tokens on every step, so only visual requests pay for
       // it. The request text doubles as the scene-kind hint — resolveKind matches on substrings.
       sceneKind: traits.visualDesignTask && mode !== 'clay' ? text : undefined,
+      //[[ Same gate as sceneKind, on the trait that means INTERFACE rather than place.
+      //   `designBrief` returns null when the library has nothing useful for this
+      //   request, and null is a real answer: the library covers a fraction of the
+      //   style families §L asks for, and padding a thin match into a prompt would
+      //   spend tokens on every step to tell the model what it did not need. ]]
+      uiBrief: traits.uiDesignTask && mode !== 'clay' ? (designBrief(text)?.text ?? null) : null,
+      fenceId,
     });
 
     const history = (
@@ -583,6 +673,7 @@ export class SessionDO extends DurableObject<Env> {
       status: 'running',
       mode,
       msgId,
+      fenceId,
       // The original request is PINNED: the trim may never evict it. Losing it was the defect
       // trimTranscript documents — the agent kept working with no record of the task.
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
@@ -604,7 +695,7 @@ export class SessionDO extends DurableObject<Env> {
       // this out of runSnapshot() instead of losing the Intent and Plan rows.
       intent: intent ?? undefined,
     };
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
@@ -612,9 +703,35 @@ export class SessionDO extends DurableObject<Env> {
     agent.phase = mode === 'clay' ? 'understanding' : 'planning';
     this.broadcast({ type: 'agent_status', phase: agent.phase });
 
-    // auto-checkpoint before builder modes touch the project
+    // Auto-checkpoint before builder modes touch the project.
+    //
+    // Everything here is inside a try, and the alarm below is outside it, because a throw on
+    // this line used to skip `setAlarm` entirely — leaving the run at `status: 'running'` with
+    // nothing scheduled to advance it. The staleness bypass cannot rescue that one: it requires
+    // `agent.step > 0`, and no step has run. The user got a message that never finished and
+    // three minutes of "Golem is already working" before a new run could start.
+    //
+    // The returned error was also being discarded. A checkpoint is the user's undo point, so
+    // failing to take one is worth saying out loud — but it is not a reason to refuse to work,
+    // and silently pressing on is the thing this codebase keeps getting wrong.
     if (studioConnected && mode !== 'clay') {
-      await this.createCheckpoint('before Golem changes', 'pre_agent'); // broadcasts internally
+      try {
+        const checkpoint = await this.createCheckpoint('before Golem changes', 'pre_agent'); // broadcasts internally
+        if ('error' in checkpoint) {
+          this.broadcast({
+            type: 'error',
+            code: 'checkpoint',
+            message: `Couldn't snapshot your project before starting (${checkpoint.error}). Continuing without an undo point.`,
+          });
+        }
+      } catch (err) {
+        console.warn('[session] pre-run checkpoint threw', String(err).slice(0, 200));
+        this.broadcast({
+          type: 'error',
+          code: 'checkpoint',
+          message: "Couldn't snapshot your project before starting. Continuing without an undo point.",
+        });
+      }
     }
     await this.ctx.storage.setAlarm(Date.now() + 10);
   }
@@ -623,7 +740,8 @@ export class SessionDO extends DurableObject<Env> {
     const agent = await this.ctx.storage.get<AgentState>('agent');
     if (!agent) return;
     if (agent.status === 'idle') return;
-    if (agent.status === 'stopping') {
+    if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
+      agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
       return;
     }
@@ -688,6 +806,18 @@ export class SessionDO extends DurableObject<Env> {
 
   private async runStep(agent: AgentState) {
     const bind = (await this.bind())!;
+    //[[ Re-established here, not only in startRunInner.
+    //
+    //   `currentMsgId` is an instance field, and a run outlives the instance: the Durable
+    //   Object can be evicted between steps and the alarm resumes the run on a fresh object
+    //   whose field is undefined. Everything that reads it then silently degrades — playtest
+    //   frames lose their message id, and worse, `execStudioOp` tags its ops with `undefined`,
+    //   which `dropOpsForEndedRuns` deliberately treats as "queued by an older deploy, keep
+    //   it". A5's protection would switch itself off after the first eviction, and nothing
+    //   would say so.
+    //
+    //   The run's own state carries the id across the eviction, so it is taken from there. ]]
+    this.currentMsgId = agent.msgId;
     agent.step += 1;
     agent.lastStepAt = Date.now();
 
@@ -715,7 +845,7 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
     agent.llm = trimTranscript(agent.llm, MAX_PROMPT_CHARS);
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     // The opening phase of a step is 'understanding' on the first step and
     // otherwise carries whatever the previous tool left us in, until the next
     // tool call renames it. Never invent a stage the agent has not entered.
@@ -765,7 +895,9 @@ export class SessionDO extends DurableObject<Env> {
       // The DO id is per-project and opaque, so it is never shared across tenants.
       { kind: `${agent.mode}:step:${choice.effort}`, sessionId: this.ctx.id.toString() },
     );
-    agent.lastCalls = res.toolCalls;
+    //[[ Same reason as seenCalls: this holds raw tool arguments verbatim and is persisted.
+    //   Only the most recent turn's calls are ever read, so keeping more is pure weight. ]]
+    agent.lastCalls = (res.toolCalls ?? []).slice(-8);
     // Signals are recomputed from what actually happens each step, so an escalation lapses once
     // the problem it was bought for is resolved.
     agent.priorStepFailed = false;
@@ -861,7 +993,7 @@ export class SessionDO extends DurableObject<Env> {
               : `A visual review of the render you just produced did not pass:\n\n${critiqueToText(critique)}\n\n` +
                 'Fix the blocking and major defects in what you already built. Do not start over.',
           });
-          await this.ctx.storage.put('agent', agent);
+          await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
           return;
         }
@@ -876,7 +1008,7 @@ export class SessionDO extends DurableObject<Env> {
             'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
             'with a tool call, in this turn. If you were mid-sentence, carry out that action.',
         });
-        await this.ctx.storage.put('agent', agent);
+        await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
       }
@@ -916,6 +1048,13 @@ export class SessionDO extends DurableObject<Env> {
         continue;
       }
       agent.seenCalls.push(sig);
+      //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
+      //   the raw JSON — a full script body for edit_script. Unbounded, this array alone can
+      //   carry the persisted AgentState past the Durable Object's 128 KiB value limit, and
+      //   the failure mode is not a lost dedupe: the put rejects, the alarm dies, and the
+      //   retry re-runs the step's paid LLM call and its mutating tools. 40 is far more than
+      //   the duplicate-call guard needs — it only ever compares against the current run. ]]
+      if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
       // Announce the stage this tool actually represents, immediately before it
       // runs. The phase is derived from the tool, so the UI never claims a
       // stage the agent has not entered.
@@ -951,18 +1090,21 @@ export class SessionDO extends DurableObject<Env> {
       // fence tool output as untrusted data — it can contain attacker-authored text
       agent.llm.push({
         role: 'tool',
-        content: `[${call.name}]\n<untrusted-tool-output tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
+        content: `[${call.name}]\n<untrusted-tool-output id="${agent.fenceId ?? ''}" tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
         toolCallId: call.id,
         name: call.name,
       });
-      const current = await this.ctx.storage.get<AgentState>('agent');
-      if (current?.status === 'stopping') {
+      if (await stopRequested(this.ctx.storage)) {
         agent.status = 'stopping';
         break;
       }
     }
 
-    if (agent.status === 'stopping') {
+    // Checked again here, not only inside the tool loop: a stop that arrives after the last
+    // tool's check would otherwise be overwritten by this step's tail persist below, and the
+    // next alarm would carry on as though the button had never been pressed.
+    if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage))) {
+      agent.status = 'stopping';
       await this.finishRun(agent, 'stopped');
       return;
     }
@@ -976,8 +1118,19 @@ export class SessionDO extends DurableObject<Env> {
           'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
       });
     }
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
+  }
+
+  /**
+   * Persist the run state, shedding transcript rather than dying.
+   *
+   * The policy lives in `persist.ts` and is tested there; this supplies the storage and nothing
+   * else. It was a method here until that method was found calling ITSELF instead of storage,
+   * a bug no test happened to reach. See F-31.
+   */
+  private async persistAgent(agent: AgentState): Promise<void> {
+    await persistWithShedding((value) => this.ctx.storage.put('agent', value), agent);
   }
 
   private async finishRun(
@@ -986,6 +1139,53 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+    // The signal belongs to the run it was pressed during. Leaving it set would stop the
+    // user's NEXT message before its first step.
+    await clearStop(this.ctx.storage);
+    // Nothing this run queued may still be applied to the place now that it has ended.
+    const abandoned = await this.dropOpsForEndedRuns(undefined);
+    //[[ AND THE RUN STOPS OWNING OPS QUEUED AFTER IT.
+    //
+    //   `execStudioOp` tags every op with `currentMsgId`, and this field used to survive the
+    //   run that set it. So the next op queued with NO run in flight — a checkpoint from
+    //   POST /api/projects/:id/checkpoints, or the automatic snapshot taken as the next run
+    //   starts — inherited a DEAD run's id, and the next poll discarded it with "The run this
+    //   change belonged to has ended".
+    //
+    //   Seen twice against the deployed Worker on 2026-09-01, in both golden creation
+    //   exercises. The costly one is the automatic pre-run checkpoint: that is the undo point
+    //   the product promises before it changes anything, and it silently was not taken.
+    //
+    //   Clearing it here puts those ops back on the `runId === undefined` path, which
+    //   partitionOpsByRun keeps — an op that belonged to no run cannot belong to an ended one.
+    //   A5 is untouched: ops queued DURING a run still carry that run's id, and runStep
+    //   re-establishes the field on every step, so an eviction mid-run cannot land here. ]]
+    this.currentMsgId = undefined;
+    if (abandoned > 0) {
+      console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
+    }
+
+    // A playtest cannot outlive the run that started it.
+    //
+    // run_and_check reports its own terminal phase on every path it returns
+    // from, but it is not the only way this run can end: the tool can throw,
+    // the user can press stop, the budget can abort mid-loop. On any of those
+    // the record would be left saying 'running' and the card would sit there
+    // counting up the age of a frame from a playtest that is long over.
+    //
+    // Reported as 'failed' rather than 'finished' because that is what
+    // happened — the playtest did not complete, and saying it did would be the
+    // same category of lie the card exists to avoid.
+    if (this.playtestRun && !isTerminal(this.playtestRun.phase)) {
+      this.playtestRun = advance(this.playtestRun, {
+        phase: 'failed',
+        action: 'The run ended before the playtest finished',
+        error: error ?? (reason === 'stopped' ? 'stopped by you' : `the run ended (${reason})`),
+        now: Date.now(),
+      });
+      this.emitPlaytest();
+    }
+
     // 'incomplete' OVERRIDES the model's own text rather than appending to it, which is the whole
     // point: on the run this was written for, that text was the single word "Done." A reply that
     // reports work which did not happen is worse than an error, because the user has no reason to
@@ -1009,7 +1209,7 @@ export class SessionDO extends DurableObject<Env> {
       JSON.stringify(agent.trace),
       Date.now(),
     );
-    await this.ctx.storage.put('agent', agent);
+    await this.persistAgent(agent);
     this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error });
     // background memory distillation (only after substantive runs)
     if (agent.trace.length > 2 && reason === 'done') {
@@ -1082,10 +1282,12 @@ export class SessionDO extends DurableObject<Env> {
       // Frames go to the browser and nowhere else. They are deliberately not
       // persisted: a run's worth of uncompressed RGB would be tens of megabytes
       // in DO storage to show something the user was already watching. A client
-      // that reconnects mid-run gets the trace, not the pixels.
+      // that reconnects mid-run gets the trace, the ring buffer, and the pixels
+      // still in it — not the whole history.
       emitFrame: (frame) => {
-        this.broadcast({ type: 'studio_frame', frame: { ...frame, msgId: this.currentMsgId } });
+        this.publishFrame(frame, { recompress: false });
       },
+      playtest: this.playtestBus(),
       addMemoryFact: async (fact) => {
         const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
         memory.facts = [...memory.facts.filter((f) => f !== fact), fact].slice(-24);
@@ -1097,12 +1299,205 @@ export class SessionDO extends DurableObject<Env> {
   private pluginSeenRecently = false;
   private liveJwt: string | null = null;
 
+  // ------------------------------------------------------------------ frames
+  /**
+   * Recent frames, in memory only, bounded on both count and bytes.
+   *
+   * TENANT SCOPE IS STRUCTURAL, NOT CHECKED. This ring is a field of the
+   * SessionDO instance, and a SessionDO instance is addressed by project id
+   * (`idFromName(projectId)` in index.ts). There is exactly one of these per
+   * project and no code path that hands a frame to a different one, so frames
+   * cannot cross a tenant boundary without someone first routing an op to the
+   * wrong DO — at which point the frame is the least of it. The /ws handler
+   * already refuses any socket whose X-User-Id is not the bound owner, so the
+   * set of readers is the set of that project's owner's sockets.
+   */
+  private frames = new FrameRing();
+  /** Rate + budget gate for the playtest currently streaming, if any. */
+  private frameRate: FrameRate | null = null;
+  private playtestRunBacking: PlaytestRun | null = null;
+
+  private get playtestRun(): PlaytestRun | null {
+    return this.playtestRunBacking;
+  }
+
+  /** Persisting on assignment rather than at the call sites is the point.
+   *
+   *  There are six places that advance a playtest, in four branches of one message handler.
+   *  A helper every one of them has to remember to call is a helper the seventh will not, and
+   *  that is exactly how this state came to be instance-only while everything around it was
+   *  persisted. An accessor cannot be forgotten.
+   *
+   *  Fire-and-forget on the write: losing a card's state is not worth failing a run over, and
+   *  the next transition rewrites it. */
+  private set playtestRun(next: PlaytestRun | null) {
+    this.playtestRunBacking = next;
+    void this.ctx.storage.put('playtestRun', next).catch(() => {});
+  }
+  private playtestSeq = 0;
+
+  /**
+   * Admit a frame, then fan it out and remember it.
+   *
+   * Returns whether it was delivered, so a caller counting drops counts real
+   * ones. A refusal is logged to the oplog rather than thrown: a bad frame must
+   * degrade the picture, never the build.
+   */
+  private publishFrame(raw: RawFrame, opts: { recompress: boolean; playtestRunId?: string }): boolean {
+    const verdict = admitFrame(raw, { recompress: opts.recompress });
+    if (!verdict.ok) {
+      this.sql.exec(
+        `insert into oplog(op_id, kind, ok, summary, created_at) values(?,?,?,?,?)`,
+        'frame',
+        'frame_rejected',
+        0,
+        `${verdict.reason}: ${verdict.detail}`.slice(0, 200),
+        Date.now(),
+      );
+      return false;
+    }
+    const frame: StudioFrame = {
+      ...verdict.frame,
+      msgId: this.currentMsgId,
+      ...(opts.playtestRunId ? { playtestRunId: opts.playtestRunId, seq: (this.playtestSeq += 1) } : {}),
+    };
+    this.frames.push(frame);
+    this.broadcast({ type: 'studio_frame', frame });
+    return true;
+  }
+
+  /** Push the playtest record to every attached client. */
+  private emitPlaytest(): void {
+    this.broadcast({ type: 'playtest_state', run: this.playtestRun });
+  }
+
+  /**
+   * The channel run_and_check writes its progress to.
+   *
+   * Everything here is a report of something that already happened. The one
+   * method that acts — `captureFrame` — asks Studio for a render through the
+   * ordinary op queue and returns whether pixels actually came back, so a
+   * plugin that has gone away produces a recorded drop rather than a frame the
+   * card would otherwise keep showing as current.
+   */
+  private playtestBus(): PlaytestBus {
+    return {
+      begin: ({ requestedSeconds, action }) => {
+        const id = `pt_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+        this.frameRate = new FrameRate();
+        this.playtestSeq = 0;
+        this.playtestRun = startPlaytest({
+          id,
+          now: Date.now(),
+          requestedSeconds,
+          action,
+          msgId: this.currentMsgId,
+        });
+        this.emitPlaytest();
+        return id;
+      },
+      phase: (phase, action, error) => {
+        if (!this.playtestRun) return;
+        this.playtestRun = advance(this.playtestRun, { phase, action, error, now: Date.now() });
+        this.emitPlaytest();
+      },
+      console: (errors, warnings) => {
+        if (!this.playtestRun) return;
+        this.playtestRun = advance(this.playtestRun, { consoleErrors: errors, consoleWarnings: warnings });
+        this.emitPlaytest();
+      },
+      canCapture: () => {
+        if (!this.frameRate || !this.playtestRun) return false;
+        return this.frameRate.remaining > 0;
+      },
+      captureFrame: async () => {
+        const run = this.playtestRun;
+        const rate = this.frameRate;
+        if (!run || !rate) return false;
+        const gate = rate.take(Date.now());
+        if (!gate.ok) return false;
+
+        // 'eye' is roughly player eye height looking into the scene: the closest
+        // thing the rasteriser has to what someone standing in the game would
+        // see. The timeout is short on purpose — a render that takes longer than
+        // this has stalled the simulation the user is trying to watch, and the
+        // honest response is a dropped frame, not a longer freeze.
+        const res = await this.execStudioOp(
+          { op: 'render_view', view: 'eye', width: PLAYTEST_FRAME_WIDTH, height: PLAYTEST_FRAME_HEIGHT },
+          8000,
+        );
+        const data = res.ok ? (res.data as RenderViewResult & { error?: string }) : null;
+        const view = data?.views?.[0];
+        if (!view?.rgbBase64) {
+          this.playtestRun = advance(run, { droppedFrame: true });
+          this.emitPlaytest();
+          return false;
+        }
+        const delivered = this.publishFrame(
+          {
+            rgbBase64: view.rgbBase64,
+            width: view.meta.width,
+            height: view.meta.height,
+            view: view.name,
+            subject: data?.subject ?? 'game.Workspace',
+            capturedAt: Date.now(),
+          },
+          { recompress: true, playtestRunId: run.id },
+        );
+        this.playtestRun = advance(this.playtestRun ?? run, {
+          ...(delivered ? { deliveredFrame: true, lastFrameAt: Date.now() } : { droppedFrame: true }),
+        });
+        this.emitPlaytest();
+        return delivered;
+      },
+    };
+  }
+
+  /**
+   * Discard queued ops belonging to a run that is no longer the live one.
+   *
+   * A5: ops queued by a dead run were still delivered and executed. The user presses stop, the
+   * run ends, and the plugin's next poll collects whatever was already in the queue and applies
+   * it to their place — mutations from a run they explicitly cancelled, arriving after the UI
+   * said it had stopped.
+   *
+   * Anything dropped resolves its waiter rather than being deleted quietly, so an
+   * `execStudioOp` still holding on does not sit out its full 30-second timeout to learn the
+   * same thing.
+   *
+   * An op with no `runId` is KEPT: it was queued by a deploy that predates the field, and
+   * discarding work because it is unlabelled would be a worse bug than the one this fixes.
+   */
+  private async dropOpsForEndedRuns(liveRunId: string | undefined): Promise<number> {
+    const { keep, drop: dropped } = partitionOpsByRun(this.opQueue, liveRunId);
+    if (dropped.length === 0) return 0;
+
+    this.opQueue = keep;
+    await this.ctx.storage.put('opQueue', this.opQueue);
+    for (const op of dropped) {
+      const waiter = this.opWaiters.get(op.id);
+      if (waiter) {
+        this.opWaiters.delete(op.id);
+        waiter({ id: op.id, ok: false, error: 'The run this change belonged to has ended' });
+      }
+    }
+    return dropped.length;
+  }
+
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
       return { id: 'none', ok: false, error: 'Studio is not connected' };
     }
     this.seq += 1;
-    const op: PendingOp = { id: `op_${this.seq}_${Date.now().toString(36)}`, seq: this.seq, studioOp };
+    // Tagged with the run that asked for it. A queued op outlives the request that made it —
+    // it sits here until the plugin's next poll, which can be seconds away — and a run can end
+    // in that gap, by the user pressing stop or by the step limit. See dropOpsForEndedRuns.
+    const op: PendingOp = {
+      id: `op_${this.seq}_${Date.now().toString(36)}`,
+      seq: this.seq,
+      studioOp,
+      runId: this.currentMsgId,
+    };
     this.opQueue.push(op);
     await this.ctx.storage.put({ opQueue: this.opQueue, seq: this.seq });
     this.pollWaiter?.();
@@ -1228,6 +1623,33 @@ export class SessionDO extends DurableObject<Env> {
       });
     }
 
+    // Backstop for the purge in finishRun. The queue is persisted, so a Durable Object that
+    // restarts between a run ending and the next poll would otherwise hand the plugin ops from
+    // a run nobody is waiting on.
+    await this.dropOpsForEndedRuns(agent?.status === 'running' ? agent.msgId : undefined);
+
+    //[[ DELIVERY IS AT-MOST-ONCE, AND THAT IS THE DECISION RATHER THAN AN OVERSIGHT.
+    //
+    //   A6 asked for an ack and redelivery. Splicing hands these ops to the plugin and forgets
+    //   them, so a plugin that dies between receiving a batch and running it loses that batch.
+    //
+    //   Redelivery would trade that for duplicate mutation, and the two are not equal. The
+    //   plugin acknowledges by reporting RESULTS on its next poll — after execution — so a
+    //   batch that goes unacknowledged is not evidence it did not run. Studio may have applied
+    //   every op and died before reporting. Re-sending would then create the parts a second
+    //   time, or run the same `edit_script` again over a file it already wrote. This codebase
+    //   treats duplicate mutation as the worst outcome available (see the alarm-retry chain in
+    //   transcript.ts and persist.ts), and an at-least-once op channel would install exactly
+    //   that, by design, on the path that touches the user's place directly.
+    //
+    //   The loss is not silent: `execStudioOp` holds a waiter that resolves with "Studio did
+    //   not respond within 30s", so the run is told and can decide what to do. A lost op
+    //   surfaces as a failed tool call, which the agent already knows how to handle.
+    //
+    //   What WOULD make redelivery safe is idempotency — a plugin that recognises an op id it
+    //   has already applied and replies with the earlier result instead of re-running it. That
+    //   is a plugin protocol change, not a worker one, and it is the shape any future attempt
+    //   at this should take. Until then, losing work is the cheaper mistake. ]]
     const ops = this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
     const running = agent?.status === 'running';

@@ -16,8 +16,19 @@ name: CI
 on:
   push:
     branches: [main]
+  # EVERY pull request, whatever it targets.
+  #
+  # This was `branches: [main]`, which covered PR #1 only because PR #1 happens to
+  # target main. A stacked PR — a product branch based on a feature branch, which is
+  # the normal shape once one long-lived branch exists — would have silently run no
+  # CI at all, and a PR that reported nothing looks identical to one that passed.
+  #
+  # Widening it is safe HERE specifically because this workflow cannot deploy and
+  # cannot spend: no job in this file is given repository secrets, and no job has a
+  # deploy step (see the cost policy above). Running it on a feature branch therefore
+  # creates no production path. Do not add a deploy step to this file; if one is ever
+  # needed it belongs in a separate workflow gated on `push: [main]`.
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 # A newer push supersedes an in-flight run for the same ref.
@@ -53,11 +64,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Install Luau analyzer
-        # The eval selftest verifies its Luau grader against a real checker.
-        # Without one those assertions fail rather than silently pass, which is
-        # the correct design — so CI has to supply the binary. Pinned upstream
-        # release, no third-party action.
+      - name: Install Luau toolchain
+        # Two consumers, both of which fail loudly rather than silently skip:
+        #   luau-analyze — the eval selftest verifies its Luau grader against a real checker.
+        #   luau         — runs the Crystal Canyon Luau specs and their mutation check.
+        # Pinned upstream release, no third-party action.
         env:
           LUAU_VERSION: '0.663'
         run: |
@@ -65,7 +76,7 @@ jobs:
           curl -fsSL -o luau.zip \
             "https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}/luau-ubuntu.zip"
           unzip -q luau.zip -d "$RUNNER_TEMP/luau"
-          chmod +x "$RUNNER_TEMP/luau/luau-analyze"
+          chmod +x "$RUNNER_TEMP/luau/luau-analyze" "$RUNNER_TEMP/luau/luau"
           echo "$RUNNER_TEMP/luau" >> "$GITHUB_PATH"
           echo "LUAU_CHECK_BIN=$RUNNER_TEMP/luau/luau-analyze" >> "$GITHUB_ENV"
 
@@ -101,6 +112,11 @@ jobs:
 
       - name: Build web app
         run: pnpm --filter @golem/web build
+
+      - name: Internal links resolve
+        # Nineteen pages that cross-reference each other, and a dead href is valid HTML —
+        # the build succeeds and the 404 ships. 577 links today.
+        run: node scripts/check-site-links.mjs
 
       - name: Landing payload budget
         # The root route is meant to be one viewport of HTML and CSS with no
@@ -146,7 +162,15 @@ jobs:
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
-          name: golem-plugin
+          #[[ NAMED SO NOBODY INSTALLS IT BY MISTAKE.
+          #
+          #   plugin-release.yml tells a human to download "the artifact" and drop the
+          #   .rbxm into their local Plugins folder. THIS artifact is built from
+          #   whatever a pull request contains, including a fork's, and now that every
+          #   PR runs CI there are many more of them. It is a build check, not a
+          #   release. The release artifact comes from plugin-release.yml, which is
+          #   workflow_dispatch-only. ]]
+          name: golem-plugin-pr-unverified
           path: golem-plugin.rbxm
           retention-days: 7
 
@@ -173,8 +197,19 @@ jobs:
       - name: Syntax-check eval scripts
         run: pnpm --filter @golem/evals check
 
+      - name: Every package is reachable from `pnpm -r test`
+        # apps/plugin shipped for the whole of Phase IV with no package.json, so the
+        # canonical test command could not see 2,901 lines of load-bearing Luau. A
+        # package pnpm cannot see produces no output, so nothing went red. This
+        # derives the check from pnpm-workspace.yaml rather than a second list.
+        run: node scripts/check-workspace-coverage.mjs
+
       - name: Formatting drift (report only)
-        run: npx --yes prettier@3 --check "apps/**/*.{ts,tsx,css,astro}" || echo "::warning::prettier reported formatting drift"
+        # PINNED. `prettier@3` resolves the newest 3.x from npm on every run, including
+        # every fork PR — unpinned remote code execution, in a workflow whose other two
+        # toolchain installs are deliberately version-pinned so the supply chain is one
+        # fewer thing to trust. Same reasoning, same treatment.
+        run: npx --yes prettier@3.4.2 --check "apps/**/*.{ts,tsx,css,astro}" || echo "::warning::prettier reported formatting drift"
 
   # ------------------------------------------------------------- security ---
   security:

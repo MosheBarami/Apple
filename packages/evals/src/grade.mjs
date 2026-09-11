@@ -1,12 +1,53 @@
 // Grading: check evaluation + per-task scoring.
-// Check shape: {type: 'contains'|'not_contains'|'regex'|'luau_syntax',
-//               value?, pattern?, flags?, target: 'text'|'code', weight?}
+// Check shape: {type: 'contains'|'not_contains'|'regex'|'luau_syntax'|'no_antipattern'|'no_design_violation',
+//               value?, pattern?, flags?, target: 'text'|'code', weight?, rules?, context?}
 //  - contains:     literal `value` must appear in the target.
 //  - not_contains: literal `value` (or regex `pattern`) must NOT appear/match.
 //  - regex:        `pattern` (+optional `flags`) must match the target.
 //  - luau_syntax:  target (normally 'code') must parse as Luau via the local CLI.
+//  - no_antipattern: target (normally 'code') must contain none of the named Roblox anti-patterns.
+//  - no_design_violation: target must violate none of the design library's text-decidable rules.
+//  - playbook_complete: target must carry out every step of a task class's playbook. This is the
+//      only check that can fail code for what it does NOT do; the rest are violation detectors,
+//      and a bare Frame answering "build a shop panel" violates nothing.
+//      `luau_syntax` and the text checks together cannot distinguish a shop that debits the server's
+//      balance from one that trusts a price the client sent — both parse and both mention
+//      RemoteEvent. This check reads the code instead of its vocabulary; see roblox-antipatterns.mjs.
 // Task score = weighted fraction of checks passed (check.weight defaults to 1).
 import { checkLuauSyntax } from './luau.mjs';
+import { checkNoAntipattern } from './roblox-antipatterns.mjs';
+import { checkNoDesignViolation } from './design-checks.mjs';
+import { checkPlaybookComplete } from './playbook-checks.mjs';
+
+/**
+ * Every check type `evalCheck` below can actually dispatch.
+ *
+ *[[ Exported because `tasks.mjs` validates `check.type` against its OWN hand-written
+ *   set, and the two drifted: `no_design_violation` and `playbook_complete` were both
+ *   implemented, imported, unit-tested and dispatched here, while `tasks.mjs` rejected
+ *   them as `bad type`. A task file could not declare either one, so neither was
+ *   reachable from the eval suite at all.
+ *
+ *   That is the same defect this repository has now recorded four times — five design
+ *   checks that existed, passed their tests and were not exported (F-26 era);
+ *   `retrievalRank` reading a field `scan.mjs` never wrote (F-47); `includeRegistry`
+ *   accepted by `run()` and never passed by the CLI (gate 22). Each time the capability
+ *   was real, complete, and unreachable, and each time the only thing wrong was the
+ *   sentence connecting two correct halves.
+ *
+ *   So the two lists are bound rather than synchronised by hand: `tasks.mjs` imports
+ *   this, and `grade.test.mjs` asserts it matches the `case` labels in this file's own
+ *   source. Adding a `case` without adding it here now fails a test. ]]
+ */
+export const DISPATCHABLE_CHECK_TYPES = Object.freeze([
+  'contains',
+  'not_contains',
+  'regex',
+  'luau_syntax',
+  'no_antipattern',
+  'playbook_complete',
+  'no_design_violation',
+]);
 
 const FENCE_RE = /```[ \t]*[A-Za-z0-9_+-]*[ \t]*\r?\n([\s\S]*?)```/g;
 
@@ -56,6 +97,17 @@ function evalCheck(check, text, code, luauCheck) {
     }
     case 'luau_syntax': {
       return (luauCheck ?? checkLuauSyntax)(t);
+    }
+    case 'no_antipattern': {
+      return checkNoAntipattern(t, { rules: check.rules, context: check.context });
+    }
+    case 'playbook_complete': {
+      return checkPlaybookComplete(t, { playbook: check.playbook, path: check.path, allowManual: check.allowManual });
+    }
+    case 'no_design_violation': {
+      // The design library's mechanised rules, pointed at what the MODEL wrote rather than at
+      // this repository's own source — which is the difference gate 26 turns on.
+      return checkNoDesignViolation(t, { rules: check.rules, path: check.path });
     }
     default:
       return { passed: false, detail: `unknown check type: ${check.type}` };

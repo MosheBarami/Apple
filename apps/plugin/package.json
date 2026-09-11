@@ -1,0 +1,11 @@
+{
+  "name": "@golem/plugin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "check": "node --check tests/run.mjs && node --check tests/mutation-check.mjs && node --check tests/syntax-check.mjs",
+    "test": "node tests/run.mjs && node tests/mutation-check.mjs",
+    "typecheck": "node tests/syntax-check.mjs"
+  }
+}

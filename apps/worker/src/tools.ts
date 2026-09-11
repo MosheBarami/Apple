@@ -5,11 +5,29 @@ import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResu
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocs } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
-import { chooseAssetSource, verifyCreatorStoreAsset, findVerifiedAssets, type AssetNeed, type AssetKind } from './assets';
+import {
+  chooseAssetSource,
+  verifyCreatorStoreAsset,
+  findVerifiedAssets,
+  scanInsertedHierarchy,
+  summariseTree,
+  ACCEPTABLE_ASSET_TYPES,
+  SCAN_LIMITS,
+  type AssetNeed,
+  type AssetKind,
+  type AssetProvenanceSource,
+  type AssetVerdict,
+  type FetchLike,
+  type HttpResponseLike,
+  type ScannedScriptInput,
+} from './assets';
 import { searchAssetLibrary } from './asset-library';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
+import { countConsole, parseLogEntries } from './playtest-stream';
+import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
 import { semanticCheck, semanticLine } from './semantic';
+import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
 
 export interface AgentCtx {
   env: Env;
@@ -28,14 +46,64 @@ export interface AgentCtx {
    * tokens and tell it nothing it did not already get from the metadata.
    */
   emitFrame?(frame: StudioFrame): void;
+  /**
+   * The live playtest channel, when the caller provides one.
+   *
+   * Optional for the same reason everything else here is: the eval harness and
+   * the admin `run-tool` route build an AgentCtx directly, and a playtest they
+   * cannot watch should still RUN — the safety behaviour in run_and_check is
+   * the part that must never be conditional. Without this the tool does
+   * everything it always did and simply streams nothing.
+   */
+  playtest?: PlaytestBus;
   /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
   lastRender?: RenderViewResult;
   lastCritique?: VisualCritique;
   /**
-   * Asset ids that came out of a verified search in THIS session. The only ids insert_asset will
-   * accept: an id that only ever appeared in model output is never inserted.
+   * Asset ids that came out of a verified search in THIS session.
+   *
+   * Membership records PROVENANCE and nothing else — not permission, and not a skip. It used to
+   * double as a skip (an id in this set went to Studio without ever being resolved), which meant
+   * one bad row in the curated library could put an unverified Model into a customer's place.
+   *
+   * Nor is it an admission list: an id that is NOT here is not refused, it is simply the weakest
+   * provenance and waives nothing. Refusing it would need evidence this worker does not have —
+   * see the note at the provenance computation in `insert_asset`.
    */
   discoveredAssetIds?: Set<number>;
+  /**
+   * The subset of the above that came out of `asset_library` rather than the Creator Store.
+   *
+   * Held separately because it changes which assertions may be waived (see `securityBlockers`),
+   * never whether the gate runs.
+   */
+  libraryAssetIds?: Set<number>;
+}
+
+/**
+ * What run_and_check needs in order to be watchable, and nothing more.
+ *
+ * Every method is a REPORT of something that already happened, never a request
+ * to make something happen. `begin` is called after the checkpoint is taken,
+ * `phase` after the transition, `captureFrame` returns whether a frame was
+ * actually delivered. The tool cannot use this interface to tell the card a
+ * story that differs from what it did.
+ */
+export interface PlaytestBus {
+  /** A playtest has started. Returns its id. */
+  begin(opts: { requestedSeconds: number; action: string }): string;
+  /** Report the current phase and what is being done. */
+  phase(phase: 'preparing' | 'running' | 'stopping' | 'finished' | 'failed', action: string, error?: string): void;
+  /** Replace the console counts from a fresh log window. */
+  console(errors: number, warnings: number): void;
+  /**
+   * Ask Studio for one frame and forward it if it arrives.
+   * Resolves false when the rate gate, the budget or the plugin declined —
+   * which the caller records as a drop rather than retrying immediately.
+   */
+  captureFrame(): Promise<boolean>;
+  /** Whether the capture budget and rate gate would allow another frame now. */
+  canCapture(): boolean;
 }
 
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
@@ -87,6 +155,479 @@ async function renderViews(ctx: AgentCtx, target: string | undefined, view: stri
     }
   }
   return data;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Untrusted-asset brokerage — the half of the gate that only the customer's place can answer
+//
+// assets.ts builds the whole apparatus and states the one order that is safe. `insert_asset` used
+// none of it past the metadata gate: it resolved an id and handed the asset to Studio. That solves
+// the half of the problem that can be solved without touching a place — but `hasScripts` is a
+// third-party CLAIM about a third-party asset, made by an undocumented endpoint, about contents
+// that can change after they were inspected. Whether the thing that LANDED carries Luau is a
+// different question, and only the place can answer it.
+//
+// So every insertion now runs the broker's post-insertion sequence, and the ORDER is the security
+// property (assets.ts, `brokerAsset`):
+//
+//   insert -> enumerate the hierarchy -> read every script out of the place -> scan
+//          -> delete what the scan condemns -> RE-LIST to prove nothing survived
+//
+// Reordering any of it defeats it: an agent that inserts and then decides it is happy has already
+// run the attacker's code, and "we deleted the scripts we knew about" is bookkeeping, not proof.
+// Anything that cannot be proven clean is deleted WHOLE and the tool refuses.
+// ---------------------------------------------------------------------------------------------
+
+function rec(v: unknown): Record<string, unknown> {
+  return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+}
+
+function strOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v.length ? v : null;
+}
+
+/** Pull `{ scripts: [{ path, class }] }` out of a `list_scripts` result, defensively. */
+function scriptRows(data: unknown): { path: string; className: string }[] {
+  const rows = rec(data).scripts;
+  if (!Array.isArray(rows)) return [];
+  const out: { path: string; className: string }[] = [];
+  for (const r of rows) {
+    const path = strOrNull(rec(r).path);
+    if (path) out.push({ path, className: strOrNull(rec(r).class) ?? 'Script' });
+  }
+  return out;
+}
+
+/** The one endpoint whose payload the metadata gate believes, wrapped so absence can be seen. */
+const DETAILS_PATH = '/toolbox-service/v1/items/details';
+
+export interface DetailsIntegrity {
+  /** Fields the details response failed to report. Non-empty means the gate ran on a guess. */
+  missing: string[];
+}
+
+/**
+ * Wrap the details fetch so a MISSING field fails closed.
+ *
+ * `judgeAssetDetails` reads `asset.hasScripts === true`. That is correct against a documented
+ * schema and wrong against this one: `toolbox-service/v1/items/details` is undocumented, so a
+ * rename, a schema change or a partial response all arrive as "the field is not there" — and
+ * `undefined === true` is `false`, which reads as "this asset carries no scripts" and passes the
+ * single most important assertion in the system without a sound.
+ *
+ * The fix belongs at the trust boundary rather than inside the judge, which is pure and has no way
+ * to tell absent from false. Absence is recorded here and the entry is rewritten to
+ * `hasScripts: true`, so a silent schema change takes exactly the path a script-bearing asset takes.
+ * The caller reads `missing` and reports what actually happened, so the refusal is never dressed up
+ * as a script nobody saw.
+ */
+export function strictDetailsFetch(seen: DetailsIntegrity, base?: FetchLike): FetchLike {
+  const inner: FetchLike = base ?? ((url, init) => fetch(url, init as RequestInit) as unknown as Promise<HttpResponseLike>);
+  return async (url, init) => {
+    const res = await inner(url, init);
+    if (!url.includes(DETAILS_PATH) || !res.ok) return res;
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch (e) {
+      // A details response that will not parse is a refusal, not an empty one — hand the parse
+      // failure straight back so `verifyCreatorStoreAsset` records it as fail_network.
+      return { ok: res.ok, status: res.status, json: () => Promise.reject(e instanceof Error ? e : new Error(String(e))) };
+    }
+    const rows = rec(body).data;
+    if (Array.isArray(rows)) {
+      for (const row of rows) {
+        const asset = rec(row).asset;
+        // An absent `asset` is a not-found, which the judge already fails on. Only a present asset
+        // that declines to say anything about scripts is the silent-pass case this exists for.
+        if (typeof asset !== 'object' || asset === null) continue;
+        const a = asset as Record<string, unknown>;
+        if (typeof a.hasScripts !== 'boolean') {
+          seen.missing.push('hasScripts');
+          a.hasScripts = true;
+        }
+      }
+    }
+    return { ok: res.ok, status: res.status, json: async () => body };
+  };
+}
+
+/**
+ * The assertions no source of an id may waive, re-read off the verdict's own fields.
+ *
+ * `AssetVerdict.verdict` names only the FIRST failure. That is fine to branch on today because
+ * `judgeAssetDetails` evaluates security-first — but "fine because of the evaluation order inside
+ * another module" is not a property worth depending on for this, so the four facts that actually
+ * matter are asserted here directly.
+ */
+function securityBlockers(v: AssetVerdict): string[] {
+  const blocked: string[] = [];
+  if (!v.exists) blocked.push(`asset ${v.assetId} did not resolve to anything (${v.verdict})`);
+  if (v.hasScripts || v.scriptCount > 0) blocked.push('the Creator Store itself reports that this asset carries Luau');
+  if (v.shouldSandbox) blocked.push('Roblox flags this asset shouldSandbox');
+  if (v.assetTypeId === null || !ACCEPTABLE_ASSET_TYPES[v.assetTypeId]) {
+    blocked.push(`typeId ${v.assetTypeId ?? 'unknown'} is not insertable — a Model is refused because it is the container type that can carry scripts`);
+  }
+  if (v.visibilityStatus !== null && v.visibilityStatus !== 1) blocked.push(`visibilityStatus ${v.visibilityStatus} — not publicly visible`);
+  return blocked;
+}
+
+/**
+ * Insert one verified id and prove the place clean afterwards, or leave the place as it was found.
+ *
+ * Returns a tool result: small, and free of any line of the source it removed. An attacker's Luau
+ * belongs in the audit trail, not in the model's transcript where it becomes an instruction.
+ */
+async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: string): Promise<unknown> {
+  const inserted = await ctx.execStudioOp({ op: 'insert_asset', assetId, parent }, 45_000);
+  if (!inserted.ok) return { error: inserted.error ?? 'insert_asset failed' };
+  const raw = rec(inserted.data).inserted;
+  const paths = (Array.isArray(raw) ? raw : []).filter((p): p is string => typeof p === 'string');
+  if (!paths.length) return { error: `asset ${assetId} inserted nothing — nothing was added to the place` };
+
+  /** Remove the whole asset and refuse. Never leaves the place in the state the scan objected to. */
+  const discard = async (why: string): Promise<unknown> => {
+    const del = await ctx.execStudioOp({ op: 'delete_instances', paths }, 20_000);
+    return {
+      error: `asset ${assetId} was inserted, refused and removed: ${why}`,
+      ...(del.ok
+        ? { removedWholeAsset: paths }
+        : { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths }),
+    };
+  };
+
+  // 1. Enumerate. A subtree that cannot be walked is a subtree whose contents are unknown, and
+  //    unknown is never scored as empty.
+  const classes: string[] = [];
+  let enumerationFailed = false;
+  for (const p of paths) {
+    const tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: 12, maxNodes: 400 }, 20_000);
+    if (!tree.ok) {
+      enumerationFailed = true;
+      continue;
+    }
+    const sum = summariseTree(tree.data);
+    classes.push(...sum.classes);
+    if (sum.truncated) enumerationFailed = true;
+  }
+
+  // 2. Read the Luau back OUT OF THE PLACE. This is the whole point: the metadata said there was
+  //    none, and this is the only reading of that claim that is not the claimant's own.
+  const rows: { path: string; className: string }[] = [];
+  for (const p of paths) {
+    const listed = await ctx.execStudioOp({ op: 'list_scripts', root: p }, 20_000);
+    if (!listed.ok) {
+      enumerationFailed = true;
+      continue;
+    }
+    rows.push(...scriptRows(listed.data));
+  }
+  if (rows.length > SCAN_LIMITS.maxScripts) {
+    return discard(`${rows.length} scripts in one asset, over the ${SCAN_LIMITS.maxScripts} scan cap — refused on count alone rather than partially cleared`);
+  }
+  const scripts: ScannedScriptInput[] = [];
+  for (const s of rows) {
+    const read = await ctx.execStudioOp({ op: 'read_script', path: s.path }, 20_000);
+    // null, never '': a source that could not be read is the worst case, not the empty one.
+    scripts.push({ path: s.path, className: s.className, source: read.ok ? strOrNull(rec(read.data).source) : null });
+  }
+
+  // 3. Judge.
+  const scan = scanInsertedHierarchy({ rootPath: paths[0] as string, scripts, instanceClasses: classes, enumerationFailed });
+  if (scan.verdict === 'reject') return discard(scan.reasons[0] ?? 'the safety scan rejected this asset');
+
+  // 4. Strip what the scan condemned. A failed delete is a discard, not a warning.
+  if (scan.removePaths.length) {
+    const del = await ctx.execStudioOp({ op: 'delete_instances', paths: scan.removePaths }, 20_000);
+    if (!del.ok) return discard(`${scan.removePaths.length} condemned script(s) could not be deleted (${del.error ?? 'delete failed'})`);
+  }
+
+  // 5. PROVE it. Re-listing is the only step that says anything about the place rather than about
+  //    our own bookkeeping, so a listing that fails here is a refusal like any other.
+  const leftover: string[] = [];
+  for (const p of paths) {
+    const listed = await ctx.execStudioOp({ op: 'list_scripts', root: p }, 20_000);
+    if (!listed.ok) return discard('the post-removal script listing failed, so the place cannot be proven clean');
+    leftover.push(...scriptRows(listed.data).map((s) => s.path));
+  }
+  if (leftover.length) return discard(`${leftover.length} script(s) survived removal: ${leftover.slice(0, 6).join(', ')}`);
+
+  return {
+    assetId,
+    inserted: paths,
+    scan: scan.verdict,
+    // Codes and one-line reasons only. An excerpt of the removed Luau would put the attacker's text
+    // into the transcript, where the model reads it as prose.
+    stripped: scan.scripts
+      .filter((s) => s.action === 'remove')
+      .map((s) => ({ path: s.path, class: s.className, severity: s.severity, why: [...new Set(s.findings.map((f) => f.code))].join(', ') })),
+    ...(scan.findings.length ? { notes: scan.findings.slice(0, 6).map((f) => `${f.severity} ${f.code}: ${f.message}`) } : {}),
+    proven: `re-listed after removal: zero scripts remain under ${paths.join(', ')}`,
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// run_luau's asset-ingress filter
+//
+// `run_luau` hands the model's Luau to the plugin's `run_code`, which concatenates it into a
+// ModuleScript and requires it in PLUGIN context. That is a legitimate and load-bearing escape
+// hatch — loops for trim and railings, terrain, bulk property edits, measurement — and it was also,
+// verbatim, the primitive `insert_asset` is gated for: `game:GetObjects("rbxassetid://123")` is one
+// line, and it reached the same place with none of the verification, none of the post-insertion
+// scan, and no audit row.
+//
+// THE TRADE. Blocking the tool, or admitting only an allowlist of Luau, would cost far more than
+// the gap is worth: almost everything the agent builds well, it builds with a loop. So the filter
+// is narrow by construction — it refuses ASSET INGRESS and nothing else, and every refusal names
+// `insert_asset` as the way to do the thing the code was reaching for. Ordinary building Luau
+// contains none of these tokens, so the false-positive surface is close to zero.
+//
+// WHAT IT DOES NOT CLAIM. This is a pattern filter over source text, not a Luau evaluator, and a
+// determined model can still defeat it:
+//   * a string assembled through values the fold cannot resolve — a table of byte values, a loop
+//     over `string.sub`, arithmetic on character codes, `table.concat` of computed parts;
+//   * an ingress primitive reached through an alias captured before the call
+//     (`local f = game.GetObjects` is caught, `local f = game[k]` with a computed `k` is not — which
+//     is the whole reason computed indexing of `game` is refused outright);
+//   * `edit_script` writing a game Script that calls `GetObjects`, then `run_and_check` running it.
+//     That is a deliberate product capability — the user asked for a game — and is out of scope
+//     here; it is bounded by the user owning and reading the scripts Golem writes.
+//   * ASSIGNING A COMPUTED ASSET URI TO A CONTENT PROPERTY. `Paths.setProp` in the plugin refuses an
+//     unverified `MeshId` / `Texture` / `SoundId`, which closes this for `create_instances` and
+//     `set_properties` — but `run_code` executes Luau straight against the engine and never goes
+//     through `setProp`, so that policy does not apply here. Measured as still allowed:
+//     `m.MeshId = a .. b` through variables, `string.format("%s://%d", "rbxassetid", 999)`,
+//     `table.concat({"rbxasset", "id://999"})`. The literal-fold catches adjacent literals only.
+//     This is a LICENCE-AND-PROVENANCE hole, not code execution: those properties load inert media.
+//     Recorded because the asymmetry is the dangerous part — a reader who knows the plugin gates
+//     Content properties would reasonably assume all three ops are covered, and two of them are.
+// So this raises the cost of the direct path and makes the indirect ones look like what they are.
+// It is not a sandbox, and nothing downstream may be built as though it were one: the real
+// guarantee still comes from the post-insertion scan that `insert_asset` runs inside the place.
+// ---------------------------------------------------------------------------------------------
+
+/** One refusal: a stable code for the audit trail, and the sentence the model is shown. */
+export interface LuauIngressFinding {
+  code: string;
+  why: string;
+}
+
+/** End index of a `[[ … ]]` / `[==[ … ]==]` span starting at `i`, or null. Strings and comments both. */
+function longBracketAt(src: string, i: number): number | null {
+  if (src[i] !== '[') return null;
+  let j = i + 1;
+  let eq = 0;
+  while (src[j] === '=') {
+    eq += 1;
+    j += 1;
+  }
+  if (src[j] !== '[') return null;
+  const close = ']' + '='.repeat(eq) + ']';
+  const at = src.indexOf(close, j + 1);
+  return at < 0 ? src.length : at + close.length;
+}
+
+/**
+ * Remove comments, leaving string literals intact.
+ *
+ * String-aware on purpose. A naive "cut from `--` to end of line" is a bypass rather than a
+ * simplification: `local s = "--" game:GetObjects(id)` would lose the half of the line that
+ * matters. Comments are removed at all so that `-- never call game:GetObjects here` is not a
+ * refusal.
+ */
+function stripLuauComments(src: string): string {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i] as string;
+    if (ch === '-' && src[i + 1] === '-') {
+      const long = longBracketAt(src, i + 2);
+      if (long !== null) {
+        i = long;
+      } else {
+        while (i < src.length && src[i] !== '\n') i += 1;
+      }
+      out += ' ';
+      continue;
+    }
+    const long = longBracketAt(src, i);
+    if (long !== null) {
+      out += src.slice(i, long);
+      i = long;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      out += ch;
+      i += 1;
+      while (i < src.length) {
+        const c = src[i] as string;
+        out += c;
+        i += 1;
+        if (c === '\\') {
+          if (i < src.length) {
+            out += src[i];
+            i += 1;
+          }
+          continue;
+        }
+        if (c === ch) break;
+      }
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+
+/** Printable ASCII only. Decoding a control character helps nobody and could split a token. */
+function printableChar(code: number, fallback: string): string {
+  return code >= 32 && code <= 126 ? String.fromCharCode(code) : fallback;
+}
+
+/** `\65`, `\x41`, `\u{41}` → `A`. Applied per segment so an escaped backslash never starts one. */
+function decodeLuauEscapes(seg: string): string {
+  return seg
+    .replace(/\\(\d{1,3})/g, (m, d: string) => printableChar(parseInt(d, 10), m))
+    .replace(/\\x([0-9a-fA-F]{2})/g, (m, h: string) => printableChar(parseInt(h, 16), m))
+    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (m, h: string) => printableChar(parseInt(h, 16), m));
+}
+
+/**
+ * Undo the two evasions that are cheap to write and cheap to reverse: escape sequences, and
+ * strings assembled out of literals.
+ *
+ * `"\114bxassetid://"`, `"rbxasset" .. "id://"` and `string.char(114,98,120)` all mean one thing to
+ * the Luau parser, so they have to mean one thing here. The fold is textual and deliberately
+ * conservative: anything it cannot resolve is left exactly as written rather than guessed at, and
+ * the rules run over BOTH the original text and the folded text, so folding can only add findings.
+ */
+function foldLuauLiterals(src: string): string {
+  // Split on the escaped backslash rather than substituting a sentinel: `"\\120"` is a backslash
+  // followed by three digits, not the character `x`.
+  let s = src
+    .split('\\\\')
+    .map(decodeLuauEscapes)
+    .join('\\\\');
+
+  s = s.replace(/\bstring\.char\s*\(([^()]*)\)/g, (m, args: string) => {
+    const parts = args.split(',').map((p) => p.trim());
+    if (!parts.length || !parts.every((p) => /^\d{1,3}$/.test(p))) return m;
+    return '"' + parts.map((p) => printableChar(Number(p), '')).join('') + '"';
+  });
+
+  // Fixed point rather than a single pass: `"a" .. "b" .. "c"` needs two.
+  for (let pass = 0; pass < 8; pass += 1) {
+    const next = s
+      .replace(/(['"])([^'"\n]*)\1\s*\.\.\s*(['"])([^'"\n]*)\3/g, (_m, q: string, a: string, _q2: string, b: string) => q + a + b + q)
+      .replace(/(\d)\s*\.\.\s*(\d)/g, '$1$2');
+    if (next === s) return s;
+    s = next;
+  }
+  return s;
+}
+
+/**
+ * The tokens that mean "geometry from outside this place is about to arrive", plus the two that
+ * mean "the source above is not the code that will run".
+ */
+const LUAU_INGRESS_RULES: readonly { code: string; pattern: RegExp; why: string }[] = [
+  {
+    code: 'get_objects',
+    pattern: /\bGetObjects\b/,
+    why: 'game:GetObjects loads an arbitrary asset id straight into the place — it is the exact primitive insert_asset exists to gate',
+  },
+  {
+    code: 'insert_service',
+    pattern: /\bInsertService\b|\bLoadAssetVersion\b|\bLoadAsset\b/,
+    why: 'InsertService:LoadAsset / LoadAssetVersion insert a third-party asset with no verification',
+  },
+  {
+    code: 'asset_uri',
+    pattern: /rbx(?:assetid|thumb|http|gameasset):\/\//i,
+    why: 'an rbxassetid:// or rbxthumb:// literal references content that has not been through the asset gate',
+  },
+  {
+    code: 'content_from_asset',
+    pattern: /\bContent\s*\.\s*from(?:AssetId|Uri)\b/,
+    why: 'Content.fromAssetId / Content.fromUri hands an unverified asset id to AssetService',
+  },
+  {
+    code: 'dynamic_code',
+    pattern: /\bloadstring\s*\(|\bgetfenv\s*\(|\bsetfenv\s*\(/,
+    why: 'loadstring/getfenv decide at runtime what code runs, so nothing in the source above them can be checked',
+  },
+  {
+    code: 'computed_member',
+    pattern: /\bgame\s*\[\s*[^'"\]\s]/,
+    why: 'game[<computed>] hides which member is called; write game.Workspace or game:GetService("…") instead',
+  },
+];
+
+/** The argument text of every `require(…)` call, brackets balanced. */
+function requireArgs(src: string): string[] {
+  const out: string[] = [];
+  const re = /\brequire\s*\(/g;
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const from = i;
+    while (i < src.length && depth > 0) {
+      if (src[i] === '(') depth += 1;
+      else if (src[i] === ')') depth -= 1;
+      i += 1;
+    }
+    out.push(src.slice(from, depth === 0 ? i - 1 : src.length));
+  }
+  return out;
+}
+
+/**
+ * Everything `run_luau` refuses, as findings rather than a boolean, so the refusal can say WHICH
+ * primitive was reached for.
+ *
+ * `require` is judged by its argument. A numeric literal is the classic marketplace backdoor, and
+ * an argument with no path structure at all — a bare name, a call, `tonumber(s)` — cannot be read
+ * from the source, so it is indistinguishable from one. Anything that traverses a path is allowed
+ * (`require(script.Parent.Config)`, `require(SS.Modules.Config)` where `SS` is a service captured
+ * further up), because that is what the legitimate uses of this tool look like and refusing them
+ * would cost more than the rule is worth.
+ */
+export function scanLuauForAssetIngress(code: string): LuauIngressFinding[] {
+  const stripped = stripLuauComments(code);
+  const variants = [stripped, foldLuauLiterals(stripped)];
+  const found = new Map<string, string>();
+  for (const rule of LUAU_INGRESS_RULES) {
+    if (variants.some((v) => rule.pattern.test(v))) found.set(rule.code, rule.why);
+  }
+  for (const variant of variants) {
+    for (const arg of requireArgs(variant)) {
+      const a = arg.trim();
+      if (/^["']?\d/.test(a)) {
+        found.set('require_asset_id', 'require(<asset id>) pulls a module off the marketplace at runtime — the classic Roblox backdoor');
+      } else if (/\btonumber\b/.test(a) || !/[.:]/.test(a)) {
+        found.set('require_computed', `require(${a.slice(0, 40)}) resolves to something the source does not say, so what it loads is unknown; require a module by its path`);
+      }
+    }
+  }
+  return [...found].map(([code_, why]) => ({ code: code_, why }));
+}
+
+/**
+ * The refusal itself, shared by `run_luau` and by the admin diagnostics route, so the two cannot
+ * drift apart. Returns null when the code may run.
+ */
+export function refuseLuauIngress(code: string): { error: string; blocked: string[] } | null {
+  const findings = scanLuauForAssetIngress(code);
+  if (!findings.length) return null;
+  return {
+    error:
+      `this Luau was refused because it reaches for an asset-ingress primitive: ${findings.map((f) => f.why).join('; ')}. ` +
+      'Luau is not how assets enter a place. Find an id with search_asset_library or find_verified_asset and insert it with insert_asset, ' +
+      'which verifies the id and then reads the place back to prove nothing executable arrived with it. ' +
+      'Everything else run_luau does — loops, terrain, bulk property edits, measurement — is unaffected.',
+    blocked: findings.map((f) => f.code),
+  };
 }
 
 export const TOOLS: Record<string, ToolImpl> = {
@@ -177,11 +718,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_luau',
       description:
-        'Run a Luau snippet in Studio (edit-time, plugin context) for inspection, terrain, bulk edits, math. print() output and the returned value come back. No game scripts run. Use for anything the other tools cannot do.',
+        'Run a Luau snippet in Studio (edit-time, plugin context) for inspection, terrain, bulk edits, math. print() output and the returned value come back. No game scripts run. Use for anything the other tools cannot do. It may NOT be used to bring assets into the place: GetObjects, InsertService, rbxassetid://, Content.fromAssetId, loadstring and require of an asset id are refused here — use insert_asset, which verifies the id and scans the place afterwards.',
       parameters: S({ code: { type: 'string' } }, ['code']),
     },
     studio: true,
-    run: (ctx, a) => op(ctx, { op: 'run_code', code: String(a.code ?? ''), timeoutMs: 10_000 }, 25_000),
+    run: async (ctx, a) => {
+      const code = String(a.code ?? '');
+      // Refused BEFORE the op is queued. By the time an asset reaches the place its scripts have
+      // already had their chance to run, so there is no useful check on the far side of this.
+      return refuseLuauIngress(code) ?? (await op(ctx, { op: 'run_code', code, timeoutMs: 10_000 }, 25_000));
+    },
   },
   run_and_check: {
     def: {
@@ -200,12 +746,19 @@ export const TOOLS: Record<string, ToolImpl> = {
       const beforeRaw = await ctx.execStudioOp({ op: 'run_code', code: CENSUS_LUAU }, 30_000);
       const before = beforeRaw.ok ? parseCensus(beforeRaw.data) : null;
 
+      // The playtest becomes watchable from here. `begin` is deliberately AFTER the
+      // census and BEFORE the checkpoint, so a refusal below is reported to the card as
+      // a failed playtest the user can see the reason for, rather than as a playtest
+      // that never appeared to exist.
+      ctx.playtest?.begin({ requestedSeconds: secs, action: 'Taking a protective checkpoint' });
+
       // Protective checkpoint. If there is real work here and it cannot be protected, REFUSE — an
       // unprotected playtest is precisely the hazard, and declining costs the user nothing.
       let checkpointId: string | null = null;
       if (needsProtection(before)) {
         const cp = await ctx.createCheckpoint('before playtest', 'auto');
         if ('error' in cp) {
+          ctx.playtest?.phase('failed', 'Refused: the project could not be protected first', cp.error);
           return {
             error:
               `refused to playtest: could not take a protective checkpoint first (${cp.error}). ` +
@@ -216,10 +769,63 @@ export const TOOLS: Record<string, ToolImpl> = {
         checkpointId = cp.id;
       }
 
+      ctx.playtest?.phase('preparing', 'Starting run mode in Studio');
       const start = await ctx.execStudioOp({ op: 'run_mode', action: 'start' }, 20_000);
-      if (!start.ok) return { error: `could not start run mode: ${start.error}` };
-      await new Promise((r) => setTimeout(r, secs * 1000));
+      if (!start.ok) {
+        ctx.playtest?.phase('failed', 'Run mode would not start', start.error);
+        return { error: `could not start run mode: ${start.error}` };
+      }
+
+      // ------------------------------------------------------------- watch it run
+      //
+      // What replaced a blind `sleep(secs)`. The simulation runs for the same wall
+      // clock either way; the difference is that the user can now see it.
+      //
+      // The loop is driven by the CLOCK, not by a frame counter: each pass captures a
+      // frame if the rate gate allows one, and sleeps only for what is left of the
+      // interval. A rasterise that takes 800ms therefore costs the playtest nothing —
+      // it eats into the wait rather than extending the run past `secs`, so the
+      // playtest still lasts as long as the agent asked for and no longer.
+      //
+      // Frames are captured through the EXISTING `render_view` op, at a size the
+      // existing plugin already clamps to. No new op, no protocol bump, nothing that
+      // an installed plugin would fail on — which matters because Roblox has no
+      // automatic plugin updating and a new op would be broken for every current user
+      // until each of them clicked Update by hand.
+      const deadline = Date.now() + secs * 1000;
+      const pt = ctx.playtest;
+      if (pt) {
+        pt.phase('running', 'Run mode is live — capturing frames');
+        let logsSeen = 0;
+        while (Date.now() < deadline) {
+          const tickStart = Date.now();
+          if (pt.canCapture()) await pt.captureFrame();
+
+          // Console state is refreshed roughly every other capture. Reading it every
+          // pass would double the op traffic to show a number that changes slowly.
+          logsSeen += 1;
+          if (logsSeen % 2 === 0) {
+            const live = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 10_000);
+            if (live.ok) {
+              const counts = countConsole(parseLogEntries(live.data) ?? undefined);
+              pt.console(counts.errors, counts.warnings);
+            }
+          }
+
+          const spent = Date.now() - tickStart;
+          const wait = Math.min(PLAYTEST_FRAME_MIN_INTERVAL_MS - spent, deadline - Date.now());
+          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        }
+        pt.phase('stopping', 'Stopping run mode and checking what changed');
+      } else {
+        await new Promise((r) => setTimeout(r, secs * 1000));
+      }
+
       const logs = await ctx.execStudioOp({ op: 'get_logs', maxEntries: 120 }, 15_000);
+      if (logs.ok) {
+        const counts = countConsole(parseLogEntries(logs.data) ?? undefined);
+        ctx.playtest?.console(counts.errors, counts.warnings);
+      }
       const stop = await ctx.execStudioOp({ op: 'run_mode', action: 'stop' }, 20_000);
 
       // Census AFTER, and restore if the playtest ate anything.
@@ -239,6 +845,16 @@ export const TOOLS: Record<string, ToolImpl> = {
             ? 'the project was restored from the pre-playtest checkpoint, and the restore was verified by re-counting'
             : `THE RESTORE DID NOT FULLY SUCCEED (${res.error ?? stillLost.join('; ')}) — checkpoint ${checkpointId} still holds the pre-playtest state`;
       }
+
+      // The card's last word. A playtest that destroyed work says so even when the
+      // restore succeeded, because "it was put back" and "nothing happened" are
+      // different facts and the user is entitled to the first one.
+      ctx.playtest?.phase(
+        'finished',
+        lost.length
+          ? `Finished — the playtest destroyed committed work${restored ? ' and it was restored' : ''}`
+          : 'Finished',
+      );
 
       // Safety fields come FIRST. Tool results are truncated at MAX_RESULT_CHARS and the console log
       // is easily thousands of characters, so putting the destruction warning after it means the
@@ -392,7 +1008,13 @@ export const TOOLS: Record<string, ToolImpl> = {
         insertableOnly: true,
         k: 8,
       });
-      for (const h of hits) if (h.robloxAssetId !== null) (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
+      // Recorded as provenance, on both sets. A library hit is still resolved and gated before it
+      // may be inserted — the library says an id is LICENSED, not that it is safe.
+      for (const h of hits) {
+        if (h.robloxAssetId === null) continue;
+        (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
+        (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
+      }
       return hits.map((h) => ({ assetId: h.robloxAssetId, name: h.name, kind: h.kind, triangles: h.triangles, boundsStuds: h.boundsStuds, tags: h.tags }));
     },
   },
@@ -405,15 +1027,20 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const integrity: DetailsIntegrity = { missing: [] };
       const res = await findVerifiedAssets(ctx.env, String(a.query ?? ''), {
         category: 'mesh',
         robloxOnly: a.robloxOnly === true,
         maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
         want: 3,
+        fetchImpl: strictDetailsFetch(integrity),
       });
       for (const v of res.passed) (ctx.discoveredAssetIds ??= new Set()).add(v.assetId);
       return {
         note: res.search.note,
+        ...(integrity.missing.length
+          ? { schemaWarning: `the details endpoint stopped reporting ${[...new Set(integrity.missing)].join(', ')} for one or more candidates; those were refused rather than assumed script-free` }
+          : {}),
         passed: res.passed.map((v) => ({ assetId: v.assetId, name: v.name, type: v.assetType, triangles: v.triangles })),
         rejected: res.rejected.map((v) => ({ assetId: v.assetId, verdict: v.verdict, reasons: v.reasons })),
       };
@@ -423,20 +1050,63 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId. The id MUST have come from search_asset_library or find_verified_asset in this conversation — an id from anywhere else is refused, because guessed ids fail or insert something random, and unverified models can carry backdoor scripts. To create objects, build them from Parts with create_instances instead.',
+        'Insert an asset by numeric assetId. Use an id from search_asset_library or find_verified_asset, or one the USER gave you — never one you produced yourself: a made-up id resolves to something random or to nothing. Where the id came from does not decide whether it is checked. EVERY id is resolved against the Creator Store and must pass the full gate (free, publicly visible, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget), and every insertion is then scanned INSIDE the place: Luau that arrived with the asset is removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. To create objects, build them from Parts with create_instances instead.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
     run: async (ctx, a) => {
       const assetId = Number(a.assetId);
-      if (!ctx.discoveredAssetIds?.has(assetId)) {
-        const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance: 'user_supplied' });
-        if (!verdict.ok) {
-          return { error: `asset ${assetId} was not verified: ${verdict.verdict}. ${verdict.reasons.join(' ')}` };
-        }
-        ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      if (!Number.isInteger(assetId) || assetId <= 0) return { error: `${String(a.assetId)} is not a valid asset id` };
+      const parent = String(a.parent ?? 'game.Workspace');
+
+      // WHERE an id came from decides which assertions may be waived. It never decides whether the
+      // gate runs — a membership test is not a verification, and treating it as one is how a bad
+      // library row would have reached a place unresolved and unscanned.
+      //
+      // AND IT CANNOT DECIDE MORE THAN THAT, which the tool description used to claim it did: it
+      // promised that an id from outside this session's searches is refused. It was not, and the
+      // code could not have kept the promise. `verifyCreatorStoreAsset` refuses `model_output`, but
+      // nothing here assigns it, because nothing here can: an id the user pasted and an id the model
+      // invented arrive at this function as the same integer. The evidence that would separate them
+      // — the user's own message text — lives in the session Durable Object and is not passed to a
+      // tool, and adding a hook nobody fills in would be the same dead branch in a new place.
+      //
+      // So the description now states what this actually does, and `user_supplied` means exactly
+      // "not discovered in this session" — the LEAST trusted provenance, which waives nothing and
+      // faces the full gate plus the in-place scan below. Refusing it outright was considered and
+      // rejected: a user pasting an id they own is a real flow, and it is the flow that is hardest
+      // to work around when it is broken. The provenance is reported in the result so that an id
+      // nobody searched for is visible in the transcript and in the audit log rather than inferred.
+      const fromLibrary = ctx.libraryAssetIds?.has(assetId) === true;
+      const provenance: AssetProvenanceSource = fromLibrary ? 'library' : ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
+
+      const integrity: DetailsIntegrity = { missing: [] };
+      const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance, fetchImpl: strictDetailsFetch(integrity) });
+      if (integrity.missing.length) {
+        return {
+          error:
+            `asset ${assetId} was refused: the asset details response did not report ${[...new Set(integrity.missing)].join(', ')}, ` +
+            'so whether it carries scripts could not be checked. A field that is absent is treated as the worst case, never as false.',
+        };
       }
-      return op(ctx, { op: 'insert_asset', assetId, parent: String(a.parent ?? 'game.Workspace') }, 45_000);
+
+      // A curated-library id is an asset an operator ingested with a recorded licence, source URL
+      // and sha256, and uploaded under Golem's own account. It therefore has no marketplace price,
+      // no votes and no verified-creator badge by construction, and failing it on those three would
+      // refuse every asset in the library. Those three, and ONLY those three, are waived — the
+      // script, sandbox, type and moderation assertions are re-read field by field in
+      // `securityBlockers`, and the waiver is reported back so nobody has to infer it.
+      const blockers = fromLibrary ? securityBlockers(verdict) : verdict.ok ? [] : [`${verdict.verdict}. ${verdict.reasons.join(' ')}`];
+      if (blockers.length) return { error: `asset ${assetId} was not verified: ${blockers.join(' ')}` };
+
+      ctx.discoveredAssetIds = (ctx.discoveredAssetIds ?? new Set()).add(assetId);
+      const placed = await insertAndProveClean(ctx, assetId, parent);
+      if (typeof placed !== 'object' || placed === null || 'error' in placed) return placed;
+      return {
+        ...placed,
+        provenance,
+        ...(fromLibrary && !verdict.ok ? { waivedForLibraryAsset: verdict.reasons } : {}),
+      };
     },
   },
   generate_model: {
@@ -479,6 +1149,66 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'inspect_model', path: String(a.path ?? ''), intent: a.intent ? String(a.intent) : undefined }, 45_000),
+  },
+  generate_image: {
+    def: {
+      name: 'generate_image',
+      description:
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The pixels are parked under `imageKey` for an hour; there is NOT yet a path that uploads them to Roblox or applies them to a Decal, so never tell the user the image has been placed.",
+      parameters: S(
+        {
+          subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
+          target: { type: 'string', enum: ['ui_icon', 'decal', 'texture', 'thumbnail', 'concept'] },
+          palette: {
+            type: 'array',
+            description: 'Palette roles from the style spec, e.g. ["currency_soft"] for a coin or ["grass","dirt"] for ground.',
+            items: { type: 'string', enum: ['grass', 'dirt', 'stone', 'cliff', 'foliage', 'wood', 'sky', 'sand', 'accent', 'positive', 'danger', 'premium', 'currency_soft', 'currency_hard', 'locked'] },
+          },
+          outline: { type: 'string', enum: ['heavy', 'very_heavy'], description: 'default heavy; the style never uses a thin outline' },
+          lowPoly: { type: 'string', enum: ['flat_vector', 'chunky_low_poly', 'blocky'] },
+          lighting: { type: 'string', enum: ['flat', 'high_key', 'clear_daylight'] },
+          camera: { type: 'string', enum: ['straight_on', 'three_quarter', 'isometric', 'top_down'] },
+          background: { type: 'string', enum: ['flat_solid', 'soft_vignette_free', 'sky', 'plain_white'] },
+          aspect: { type: 'string', enum: ['1:1', '4:3', '3:4', '16:9', '9:16'], description: 'composition hint; the canvas itself is square' },
+          steps: { type: 'number', description: '1-8, default 4' },
+          seed: { type: 'number' },
+        },
+        ['subject', 'target'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const req: ImageRequest = {
+        subject: String(a.subject ?? ''),
+        target: (a.target as ImageRequest['target']) ?? 'ui_icon',
+        palette: Array.isArray(a.palette) ? (a.palette as PaletteRole[]) : undefined,
+        outline: a.outline as ImageRequest['outline'],
+        lowPoly: a.lowPoly as ImageRequest['lowPoly'],
+        lighting: a.lighting as ImageRequest['lighting'],
+        camera: a.camera as ImageRequest['camera'],
+        background: a.background as ImageRequest['background'],
+        aspect: a.aspect as ImageRequest['aspect'],
+        steps: a.steps ? Number(a.steps) : undefined,
+        seed: a.seed ? Number(a.seed) : undefined,
+      };
+      const res = await generateImage(ctx.env, req);
+      // A refusal is a result, not a crash: the model gets told what to do instead.
+      if ('refused' in res) return { error: res.message, reason: res.reason, offending: res.offending };
+      // The pixels never enter the transcript — a base64 PNG is ~230k characters of nothing the
+      // model can read. They go to KV under a key, exactly as render_view keeps frames out.
+      const imageKey = await storeImage(ctx.env, res.pngBase64);
+      return {
+        imageKey,
+        width: res.width,
+        height: res.height,
+        bytes: res.bytes,
+        steps: res.steps,
+        flatness: res.flatness.verdict,
+        flatnessNote: res.flatness.note,
+        aspectHonoured: res.aspectHonoured,
+        prompt: res.prompt,
+      };
+    },
   },
   search_docs: {
     def: {
@@ -583,8 +1313,43 @@ export async function runTool(
     return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed, detail: detailForUi(result) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return { summary: `${name} failed: ${msg.slice(0, 80)}`, resultForLlm: JSON.stringify({ error: msg }), ok: false };
+    /* §1: provider and model identity are implementation details and must not
+       reach a normal user. This catch used to put the RAW exception into the
+       summary, which is broadcast as `tool_end.summary` and rendered verbatim in
+       the Thinking card — so a Workers AI failure surfaced to anyone with an
+       ordinary account as:
+
+         generate_image failed: AiError: 3040: Request failed for model
+         @cf/black-forest-labs/flux-1-schnell on ...
+
+       naming both the model and the provider. The raw text still goes to the
+       server log, where admin/diagnostics can read it; what crosses the boundary
+       to the user and to the model is scrubbed. */
+    console.error(`[tool:${name}] ${msg}`);
+    return { summary: `✗ ${name}`, resultForLlm: JSON.stringify({ error: scrubEngineIdentity(msg) }), ok: false };
   }
+}
+
+/**
+ * Strip anything that names the engine behind Golem.
+ *
+ * Deliberately a denylist of shapes rather than an allowlist of safe text. An
+ * allowlist would also drop the actionable half of an error — "Studio
+ * disconnected", "asset not found" — and make the model worse at recovering from
+ * a failure it could otherwise handle. The shapes below cover every id this
+ * worker can emit: Workers AI model paths are always `@cf/vendor/model`, and the
+ * token-billed providers have fixed names.
+ *
+ * Adding a provider means adding it here. The security suite asserts that a tool
+ * error carrying a model id does not survive this function.
+ */
+export function scrubEngineIdentity(msg: string): string {
+  return msg
+    .replace(/@cf\/[\w.-]+\/[\w.-]+/g, 'the engine')
+    .replace(/\bfor model\s+\S+/gi, 'for the engine')
+    .replace(/\b(?:workers-ai|openai|google|deepseek|anthropic|gemini|gpt-[\w.-]+|glm-[\w.-]+)\b/gi, 'the engine')
+    .replace(/\bAiError\b/g, 'EngineError')
+    .slice(0, 300);
 }
 
 function summarize(name: string, args: Record<string, unknown>, failed: boolean): string {

@@ -255,14 +255,33 @@ test('a paid asset is refused, and so is a free-but-unpurchasable one', async ()
   assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(stuck))).verdict, 'fail_not_free');
 });
 
-test('a non-public asset is refused as moderated', async () => {
+/* RECALIBRATED 2026-08-31. These four tests used to assert that visibility,
+   creator verification and vote counts REJECT an asset. Together they rejected
+   100% of the live catalogue — measured: findVerifiedAssets('low poly tree')
+   returned 0 passed / 12 rejected — so the asset pipeline could never hand the
+   agent an insertable id and every prop in the benchmark world had to be built
+   from primitives.
+
+   The decisive measurement: asset 6434088676 reports `visibilityStatus: 0` and
+   `hasScripts: false`, and INSERTED SUCCESSFULLY into a real place with
+   `sandboxed: false`. A moderated asset does not do that. The field is a
+   ranking signal, not a safety one.
+
+   These now pin the opposite contract — quality signals RANK, they do not
+   reject — and the tests immediately below still pin the assertions that do
+   reject, which are the ones about safety and licensing. */
+test('a low-visibility asset is ACCEPTED and recorded as a quality signal, not refused', async () => {
   const f = fakeFetch(cleanMesh({ asset: { visibilityStatus: 0 } }));
-  assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(f))).verdict, 'fail_moderated');
+  const v = await verifyCreatorStoreAsset({}, 1, verifyOpts(f));
+  assert.equal(v.ok, true, v.reasons.join('; '));
+  assert.equal(v.qualitySignals?.surfaced, false, 'low visibility must still be RECORDED so ranking can prefer surfaced assets');
 });
 
-test('an unverified, unendorsed creator is refused', async () => {
+test('an unverified, unendorsed creator is accepted, and the fact is recorded', async () => {
   const f = fakeFetch(cleanMesh({ creator: { id: 42, name: 'RandomUser', isVerifiedCreator: false } }));
-  assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(f))).verdict, 'fail_unverified_creator');
+  const v = await verifyCreatorStoreAsset({}, 1, verifyOpts(f));
+  assert.equal(v.ok, true, v.reasons.join('; '));
+  assert.equal(v.qualitySignals?.unverifiedCreator, true);
 });
 
 test('an endorsed asset from an unverified creator is accepted', async () => {
@@ -276,16 +295,30 @@ test('Roblox-authored assets skip the vote gate, which would otherwise reject th
   assert.equal(v.ok, true, v.reasons.join('; '));
 });
 
-test('a third-party asset with too few votes is refused — a 100% rating on 2 votes means nothing', async () => {
+test('a low-vote asset is accepted by default — a new free mesh is not less SAFE than a popular one', async () => {
   const f = fakeFetch(cleanMesh({ voting: { upVotePercent: 100, voteCount: 2 } }));
   const v = await verifyCreatorStoreAsset({}, 1, verifyOpts(f));
-  assert.equal(v.verdict, 'fail_low_rating');
-  assert.match(v.reasons[0], /only 2 votes/);
+  assert.equal(v.ok, true, v.reasons.join('; '));
+  assert.equal(v.qualitySignals?.voteCount, 2);
 });
 
-test('a badly-rated asset is refused', async () => {
+test('vote thresholds still apply when a CALLER asks for them', async () => {
+  // The quality-sensitive path can opt back in; it is simply no longer the
+  // default, because the default was "reject everything".
   const f = fakeFetch(cleanMesh({ voting: { upVotePercent: 30, voteCount: 500 } }));
-  assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(f))).verdict, 'fail_low_rating');
+  const v = await verifyCreatorStoreAsset({}, 1, verifyOpts(f, { minUpVotePercent: 70 }));
+  assert.equal(v.verdict, 'fail_low_rating');
+});
+
+test('SAFETY assertions did not move: scripts, type and free still reject', async () => {
+  // The point of the recalibration was that quality heuristics were masquerading
+  // as security. These are the real ones and they must be untouched.
+  const scripted = fakeFetch(cleanMesh({ asset: { hasScripts: true } }));
+  assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(scripted))).verdict, 'fail_has_scripts');
+  const wrongType = fakeFetch(cleanMesh({ asset: { typeId: 10 } }));
+  assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(wrongType))).verdict, 'fail_wrong_type');
+  const paid = fakeFetch(cleanMesh({ fiatProduct: { isFree: false, purchasable: true } }));
+  assert.equal((await verifyCreatorStoreAsset({}, 1, verifyOpts(paid))).verdict, 'fail_not_free');
 });
 
 test('an asset over the remaining triangle budget is refused', async () => {
