@@ -90,10 +90,40 @@ test('the declared-entry exclusion is derived, not hard-coded', () => {
 /* --------------------------------------------------- what it MUST report --- */
 
 test('it finds a module nothing imports', () => {
-  // The real one: apps/web/src/components/plans.tsx, written mid-flight for w12 and never given an
-  // importer — by the same session that wrote this checker.
-  const r = run();
-  assert.match(r.out, /apps\/web\/src\/components\/plans\.tsx/);
+  // PLANTED INTO A CLONE, not borrowed from the repository and not written into it.
+  //
+  // This used to name a real file — apps/web/src/components/plans.tsx, written mid-flight for w12
+  // and never given an importer. That made the test a hostage to the repository staying broken in
+  // one specific way: the day a peer session wired plans.tsx, which is the outcome everyone
+  // wanted, this test went red reporting a checker that was working perfectly. A test whose
+  // fixture IS the defect it describes must be repaired every time the defect is fixed, and the
+  // cheapest repair is always to delete it.
+  //
+  // Planting into the real tree was the other option and is worse: the checker enumerates
+  // `git ls-files`, so the plant has to be added to a shared index while other sessions are
+  // working in it. Hence `--root`.
+  const dir = mkdtempSync(join(tmpdir(), 'deadends-'));
+  try {
+    for (const rel of ['apps/web/src/lib', 'docs/backlog', 'scripts']) mkdirSync(join(dir, rel), { recursive: true });
+    writeFileSync(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    writeFileSync(join(dir, 'docs', 'backlog', 'DEADENDS.md'), '# dead ends\n');
+    writeFileSync(join(dir, 'apps', 'web', 'src', 'lib', 'reached.ts'), "export const used = 1;\n");
+    writeFileSync(join(dir, 'apps', 'web', 'src', 'lib', 'entry.ts'), "import { used } from './reached';\nexport const app = used;\n");
+    writeFileSync(join(dir, 'apps', 'web', 'src', 'lib', 'orphan.ts'), 'export const nothingImportsThis = 1;\n');
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+    spawnSync('git', ['add', '-A'], { cwd: dir });
+
+    const p = spawnSync('node', [CHECKER, '--root', dir], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+    const out = `${p.stdout ?? ''}${p.stderr ?? ''}`;
+    assert.match(out, /orphan\.ts/, `a module with no importer must be named: ${out}`);
+    assert.match(out, /[1-9]\d* module\(s\) with no importer/, 'and counted');
+
+    // THE CONTROL. `reached.ts` has an importer and must NOT be reported, or the assertion above
+    // is satisfied by a checker that calls everything dead.
+    assert.doesNotMatch(out, /reached\.ts/, 'a module WITH an importer must not be reported');
+  } finally {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  }
 });
 
 test('it distinguishes "no importer" from "reached only by a test"', () => {
@@ -126,17 +156,34 @@ test('--gate passes only when every entry carries a disposition', () => {
 });
 
 test('--gate fails when an entry has none', () => {
-  // The accounting is what is mechanical; the judgement stays human. A finding with no WIRE,
-  // DELETE or STRUCTURALLY-BLOCKED beside it is one nobody has decided about.
-  const deadends = join(ROOT, 'docs/backlog/DEADENDS.md');
-  const before = readFileSync(deadends, 'utf8');
-  writeFileSync(deadends, before.replace(/plans\.tsx — WIRE/, 'plans.tsx — thinking about it'));
+  // HERMETIC, for the same reason as the plant above. This used to edit the REAL DEADENDS.md,
+  // swapping `plans.tsx — WIRE` for prose and restoring it afterwards. It depended on plans.tsx
+  // still being an undispositioned dead end, and it mutated a tracked ledger in a tree other
+  // sessions are working in — so a crash between the write and the finally would have left a
+  // corrupted ledger behind with no indication of why.
+  const dir = mkdtempSync(join(tmpdir(), 'deadends-gate-'));
   try {
-    const r = run(['--gate']);
-    assert.equal(r.exit, 1, r.out);
-    assert.match(r.out, /NO DISPOSITION: apps\/web\/src\/components\/plans\.tsx/);
+    mkdirSync(join(dir, 'apps/web/src/lib'), { recursive: true });
+    mkdirSync(join(dir, 'docs/backlog'), { recursive: true });
+    writeFileSync(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    writeFileSync(join(dir, 'apps', 'web', 'src', 'lib', 'orphan.ts'), 'export const nothingImportsThis = 1;\n');
+    writeFileSync(join(dir, 'docs', 'backlog', 'DEADENDS.md'), '# dead ends\n\n- apps/web/src/lib/orphan.ts — thinking about it\n');
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+    spawnSync('git', ['add', '-A'], { cwd: dir });
+
+    const undecided = spawnSync('node', [CHECKER, '--root', dir, '--gate'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+    const out = `${undecided.stdout ?? ''}${undecided.stderr ?? ''}`;
+    assert.equal(undecided.status, 1, out);
+    assert.match(out, /NO DISPOSITION: apps\/web\/src\/lib\/orphan\.ts/);
+
+    // THE CONTROL: one of the three words, and the same tree passes. Without it this would also
+    // pass against a --gate that failed unconditionally.
+    writeFileSync(join(dir, 'docs', 'backlog', 'DEADENDS.md'), '# dead ends\n\n- apps/web/src/lib/orphan.ts — WIRE into the workspace next pass\n');
+    spawnSync('git', ['add', '-A'], { cwd: dir });
+    const decided = spawnSync('node', [CHECKER, '--root', dir, '--gate'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+    assert.equal(decided.status, 0, `${decided.stdout}${decided.stderr}`);
   } finally {
-    writeFileSync(deadends, before);
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   }
 });
 

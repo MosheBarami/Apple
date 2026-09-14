@@ -24,13 +24,30 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const args = process.argv.slice(2);
+
+//[[ `--root <dir>` exists so this checker's own tests can plant a module and watch it be found.
+//
+//   Without it a test has to plant into the REAL repository and `git add` it so `git ls-files`
+//   sees it, which means touching a shared index while other sessions are working in the tree —
+//   and the alternative, naming a real file that happens to have no importer today, makes the test
+//   a hostage to the repository staying broken in that one way. The previous version named
+//   apps/web/src/components/plans.tsx; the day it was wired, which is the outcome everyone wanted,
+//   the test went red reporting a checker that was working. ]]
+const rootFlag = args.indexOf('--root');
+const ROOT = rootFlag === -1
+  ? join(dirname(fileURLToPath(import.meta.url)), '..')
+  : resolve(args[rootFlag + 1] ?? '.');
 const DISPOSITIONS = join(ROOT, 'docs', 'backlog', 'DEADENDS.md');
 
-const args = process.argv.slice(2);
-for (const a of args) {
-  if (a !== '--gate') { console.error(`check-deadends: unrecognised flag ${a}`); process.exit(2); }
+for (let i = 0; i < args.length; i += 1) {
+  const a = args[i];
+  if (a === '--gate') continue;
+  if (a === '--root') { i += 1; continue; }
+  console.error(`check-deadends: unrecognised flag ${a}`);
+  process.exit(2);
 }
+if (rootFlag !== -1 && !args[rootFlag + 1]) { console.error('check-deadends: --root needs a directory'); process.exit(2); }
 const GATE = args.includes('--gate');
 
 const git = (a) => {
