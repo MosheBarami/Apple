@@ -312,6 +312,35 @@ test('camera sensitivity is measured and bounded', () => {
 // The recorded report must not go stale
 // ---------------------------------------------------------------------------------------------
 
+/** The tightest tolerance that is still larger than float noise in a 3-decimal rounded figure. */
+const HEADLINE_TOLERANCE = 0.002;
+
+/**
+ * deepEqual, except two numbers within HEADLINE_TOLERANCE are the same number.
+ *
+ * Structure is compared exactly: a missing key, an extra key, a changed string or a changed
+ * length is a real difference and must still fail. Only the magnitude of a number is forgiving.
+ */
+function assertHeadlineMatches(fresh, saved, message, path = '') {
+  if (typeof fresh === 'number' && typeof saved === 'number') {
+    assert.ok(
+      Math.abs(fresh - saved) <= HEADLINE_TOLERANCE,
+      `${message}\n  ${path || 'value'}: fresh ${fresh} vs recorded ${saved} (tolerance ${HEADLINE_TOLERANCE})`,
+    );
+    return;
+  }
+  if (fresh === null || saved === null || typeof fresh !== 'object' || typeof saved !== 'object') {
+    assert.deepEqual(fresh, saved, `${message}\n  at ${path || 'root'}`);
+    return;
+  }
+  const keys = [...new Set([...Object.keys(fresh), ...Object.keys(saved)])].sort();
+  assert.deepEqual(
+    Object.keys(fresh).sort(), Object.keys(saved).sort(),
+    `${message}\n  the shape changed at ${path || 'root'}`,
+  );
+  for (const k of keys) assertHeadlineMatches(fresh[k], saved[k], message, path ? `${path}.${k}` : k);
+}
+
 test('the checked-in report matches a fresh measurement', () => {
   const path = join(OUT_DIR, 'report.json');
   assert.ok(existsSync(path), `missing ${path} — run: node src/composition-generalization.mjs`);
@@ -327,7 +356,21 @@ test('the checked-in report matches a fresh measurement', () => {
     metricAuc: Object.fromEntries(r.metricTable.map((m) => [m.metric, m.aucAll])),
     cameraFlips: r.cameraSensitivity.fixturesWhoseGateDecisionDependsOnCamera,
   });
-  assert.deepEqual(
+  // NUMBERS COMPARED WITHIN A TOLERANCE, everything else exactly.
+  //
+  // Every figure here is `Math.round(x * 1000) / 1000`, so a value sitting on a rounding boundary
+  // flips between 0.397 and 0.398 on a difference far below anything that means something. This
+  // guard failed exactly that way during a full `pnpm -r test` — interiorEdgeDensity's AUC — and
+  // passed 4/4 in isolation, which is the signature of noise rather than staleness.
+  //
+  // An intermittent staleness guard is worse than none: it teaches whoever meets it to re-run the
+  // generator and commit the new report, which is the one response that destroys the thing the
+  // guard exists to protect. The fix is not to loosen it into uselessness but to make its
+  // threshold the size of a change worth acting on.
+  //
+  // 0.002 is five times the observed noise and five times SMALLER than the 0.01 that would move
+  // any decision this report informs. A real drift still fails; a last-digit flip does not.
+  assertHeadlineMatches(
     headline(rep),
     headline(saved),
     'the recorded findings are stale — re-run `node src/composition-generalization.mjs` and REVIEW the diff before committing it',
