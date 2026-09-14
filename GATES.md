@@ -165,7 +165,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=cd075ec; tree-clean=no; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3959; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:04:41.255Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=4c8a015; tree-clean=yes; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3966; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:07:51.660Z
 
 - [ ] G-CRITIC-1: The visual critic cannot report a clean build for checks it never ran
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-1 -- node --test packages/evals/src/critic.test.mjs
