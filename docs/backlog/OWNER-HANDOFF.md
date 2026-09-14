@@ -80,6 +80,52 @@ when the ladder was.
 
 ---
 
+## OH-5 · Generated images are kept for one hour
+
+**The action.** Decide how long a generated image is retained, and either raise
+`IMAGE_TTL_SECONDS` or accept that images disappear from a conversation after an hour.
+
+**Approve-by test.** `node -e "import('./apps/worker/src/imagegen.ts').then(m => console.log(m.IMAGE_TTL_SECONDS))"`
+
+**Output that means done.** A value the owner has chosen, rather than the default.
+
+**Measured this pass (2026-09-14, UTC).** `IMAGE_TTL_SECONDS` is 3,600. The panel that displays an
+image lives as long as the conversation, which is unbounded. So scrolling back to yesterday's work
+is the NORMAL path for a returning user, not an edge case — and S12 is precisely the station that
+asks whether a returning user finds their session intact.
+
+**Rows it unblocks.** S12's image half. Not S12 itself: quota, conversation, memory and export have
+no retention logic at all, so they are true across a day boundary by construction.
+
+**Already built on this side.** The image is stored, scoped to its project, and served by an
+authenticated route; the client shows the alt text and says images are kept for an hour when the
+fetch fails, with that sentence checked against the constant so moving the TTL without moving the
+copy fails a test. Nothing here waits on the number.
+
+**The trade, costed.** KV storage against images up to ~1 MB each. At one image per build and the
+free tier's current allowance, a 30-day retention is under 1 GB per active free user per month.
+The number is yours because it is a storage bill, not an engineering constraint.
+
+---
+
+## OH-6 · One pixel metric, two implementations
+
+**The action.** None yet — this is recorded as a row so it is not lost, and the decision of which
+implementation survives is an engineering one this session will make. It is listed here because it
+is a DRIFT surface with no checker on it and no dead-end detector would find it: both copies have
+callers, which is exactly why they can disagree indefinitely.
+
+**Measured this pass.** `geometryMask` and `figureGroundContrast` exist in both
+`apps/worker/src/composition.ts` and `packages/evals/src/props.mjs`. One decides what the offline
+grader believes about a build; the other decides what the product would. They agree until they do
+not, and nothing would say when that happened.
+
+**Found by.** rbxai-a3, while declining to port five further pixel metrics into the product for the
+same reason — metrics derived by inference feed the critic confident wrong numbers, which is worse
+than a lens that honestly did not run.
+
+---
+
 ## OH-3 · Stripe live keys
 
 **The action.** Provide Stripe **live** publishable and secret keys, and the live webhook signing
