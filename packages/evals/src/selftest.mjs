@@ -43,11 +43,21 @@ const EXPECTED = {
   'scripting-persistence': 7,
   'scripting-systems': 7,
   'scripting-gameplay': 7,
+  // The door. The mandate makes the interactive door the first release gate, and these four cover
+  // the failures that were actually observed rather than imagined: a ProximityPrompt that is never
+  // connected, invented APIs (`doorService:GetDoorByHandle`, `Instance.new("Joint")`,
+  // `prompt.Visible`), client-trusted authority, and re-triggering mid-swing. The suite's ability
+  // to separate a good door from those is asserted in door-benchmark.test.mjs — a gate that passes
+  // everything is not a gate.
+  'door-mechanic': 4,
 };
 for (const [cat, n] of Object.entries(EXPECTED)) {
   check(`${cat} has ${n} tasks`, counts[cat] === n, `got ${counts[cat] ?? 0}`);
 }
-check('total task count is 84', tasks.length === 84, `got ${tasks.length}`);
+// Derived from the table above rather than restated, so adding a category cannot leave a stale
+// literal behind that has to be hunted down separately.
+const EXPECTED_TOTAL = Object.values(EXPECTED).reduce((a, b) => a + b, 0);
+check(`total task count is ${EXPECTED_TOTAL}`, tasks.length === EXPECTED_TOTAL, `got ${tasks.length}`);
 // Scripting is the highest-weight capability in the Master Mission, so it must be the heaviest
 // block in the score the runner actually prints — not merely the largest count of task files.
 const weightOf = (t) => t.weight ?? 1;

@@ -1,0 +1,117 @@
+[
+  {
+    "id": "door-01-proximity-open-close",
+    "category": "door-mechanic",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a server Script for a door model that opens when a player triggers a ProximityPrompt and closes again. The door should not be able to be triggered again while it is already moving.",
+    "weight": 3,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "no_antipattern", "target": "code" },
+      {
+        "type": "regex",
+        "pattern": "PromptTriggered[\\s\\S]{0,40}:Connect|:Connect\\s*\\(",
+        "target": "code",
+        "why": "A ProximityPrompt that is never connected is the Lemonade failure: parts exist, nothing happens."
+      },
+      {
+        "type": "not_contains",
+        "pattern": "\\.Visible\\s*=",
+        "target": "code",
+        "why": "ProximityPrompt has no Visible property. The untrained base invented one; it fails silently at runtime."
+      },
+      {
+        "type": "regex",
+        "pattern": "\\bdebounce\\b|\\bisMoving\\b|\\bisOpen\\b|\\bbusy\\b|\\bcooldown\\b|Enabled\\s*=\\s*false",
+        "target": "code",
+        "why": "Re-triggering mid-swing is the single most common door defect."
+      }
+    ]
+  },
+  {
+    "id": "door-02-no-invented-api",
+    "category": "door-mechanic",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a Luau function that opens a door by rotating it 90 degrees around its hinge, using only real Roblox APIs.",
+    "weight": 3,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      {
+        "type": "regex",
+        "pattern": "TweenService|CFrame|:PivotTo|SetPrimaryPartCFrame|HingeConstraint",
+        "target": "code",
+        "why": "Rotation has to happen through an API that exists."
+      },
+      {
+        "type": "not_contains",
+        "pattern": "doorService|DoorService|GetDoorByHandle|door:Open\\(\\)|door:Close\\(\\)",
+        "target": "code",
+        "why": "apple-v2 emitted doorService:GetDoorByHandle(doorHandle) — a service and a method that do not exist. Trained on library internals, it wrote code belonging inside a framework that was never defined. This check exists to catch exactly that regression."
+      },
+      {
+        "type": "not_contains",
+        "pattern": "Instance\\.new\\(\"Joint\"\\)",
+        "target": "code",
+        "why": "apple-v1 looped out seven of these. \"Joint\" is not a Roblox class."
+      }
+    ]
+  },
+  {
+    "id": "door-03-server-authority",
+    "category": "door-mechanic",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "A door should only open for players who own the key item. Write the server-side code that checks ownership and opens the door. A client asks to open it via a RemoteEvent.",
+    "weight": 3,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "no_antipattern", "target": "code" },
+      {
+        "type": "regex",
+        "pattern": "OnServerEvent",
+        "target": "code",
+        "why": "The check has to live on the server; OnClientEvent would put the decision where the attacker is."
+      },
+      {
+        "type": "regex",
+        "pattern": "\\bplayer\\b[\\s\\S]{0,200}(Backpack|HasKey|hasKey|Inventory|FindFirstChild|GetAttribute|leaderstats)",
+        "target": "code",
+        "why": "Ownership must be looked up server-side rather than taken from the request."
+      },
+      {
+        "type": "not_contains",
+        "pattern": "function\\s*\\([^)]*\\bhasKey\\b|,\\s*hasKey\\s*\\)|,\\s*canOpen\\s*\\)|,\\s*isOwner\\s*\\)",
+        "target": "code",
+        "why": "Accepting the answer as a remote argument is the classic client-trusted-authority exploit: the client simply sends true."
+      }
+    ]
+  },
+  {
+    "id": "door-04-cleanup-and-state",
+    "category": "door-mechanic",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "prompt": "Write a door that closes itself automatically three seconds after it opens, and is safe if several players trigger it at once.",
+    "weight": 2,
+    "checks": [
+      { "type": "luau_syntax", "target": "code" },
+      { "type": "no_antipattern", "target": "code" },
+      {
+        "type": "regex",
+        "pattern": "task\\.delay|task\\.wait|task\\.spawn",
+        "target": "code",
+        "why": "The modern task library, not the deprecated globals."
+      },
+      {
+        "type": "not_contains",
+        "pattern": "(?<!task\\.)\\bwait\\s*\\(",
+        "target": "code",
+        "why": "Bare wait() is deprecated and throttles unpredictably."
+      },
+      {
+        "type": "regex",
+        "pattern": "\\bdebounce\\b|\\bisMoving\\b|\\bisOpen\\b|\\bbusy\\b|if\\s+not\\s+\\w+\\s+then",
+        "target": "code",
+        "why": "Several players triggering at once is the concurrency case the prompt names."
+      }
+    ]
+  }
+]
