@@ -62,3 +62,7 @@ packages/training/mlxdata/
 # nonstop (machine-specific)
 .claude/settings.local.json
 .nonstop/
+
+# unlazy Stop hook session state — machine-specific, and tracking it makes every tree dirty
+.unlazy-hook-state.json
+.unlazy/
