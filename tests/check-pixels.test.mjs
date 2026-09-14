@@ -132,7 +132,12 @@ test('rules with no source of truth are REPORTED as a gap, never skipped silentl
   // quietly drops half its rules and prints CLEAN is the exact thing this repository keeps finding.
   const srv = await serve('<html><body><h1>x</h1></body></html>');
   try {
-    const r = await run(['--base', `http://localhost:${srv.port}`, '--pass', 'test-gap', '--routes', '/']);
+    // POINTED AT A FILE THAT DOES NOT EXIST. This case used to rely on packages/design having no
+    // tokens.mjs, and became untestable the day one landed — the good outcome quietly making its
+    // own guard unobservable, which is the same shape as a fixture that assumes a property of the
+    // tree instead of establishing it.
+    const r = await run(['--base', `http://localhost:${srv.port}`, '--pass', 'test-gap', '--routes', '/',
+      '--tokens', join(tmpdir(), 'no-such-tokens.mjs')]);
     assert.match(r.out, /declares no token vocabulary/);
     assert.match(r.out, /this is a gap, not a pass/);
     assert.equal(r.exit, 1, 'an unchecked rule must fail the run, not pass it');
@@ -145,4 +150,20 @@ test('--routes can only narrow, and a filter matching nothing is an error', () =
   const r = runSync(['--base', 'http://localhost:1', '--routes', '/does-not-exist']);
   assert.equal(r.exit, 2);
   assert.match(r.out, /matched none of the \d+ routes that exist/);
+});
+
+test('with a vocabulary present, rules 2 and 3 actually run', async () => {
+  // THE CONTROL for the gap case above. A checker that reported the gap unconditionally would
+  // satisfy that test forever while never applying either rule — which is exactly the failure the
+  // gap message exists to prevent, one level up.
+  const srv = await serve('<html><head><style>:root{--gx-ink:#111}</style></head>'
+    + '<body style="font-family:Archivo,sans-serif"><h1>real content</h1>'
+    + Array.from({ length: 200 }, (_, i) => `<div style="height:3px;background:rgb(${i},${(i * 5) % 255},90)"></div>`).join('')
+    + '</body></html>');
+  try {
+    const r = await run(['--base', `http://localhost:${srv.port}`, '--pass', 'test-vocab', '--routes', '/']);
+    assert.doesNotMatch(r.out, /declares no token vocabulary/, r.out);
+    assert.doesNotMatch(r.out, /uses no design token/, 'a page using --gx- must satisfy rule 3');
+    assert.doesNotMatch(r.out, /bare system font/, 'a page in Archivo must satisfy rule 2');
+  } finally { srv.close(); }
 });

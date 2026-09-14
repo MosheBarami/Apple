@@ -30,8 +30,8 @@
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DEPLOYED = 'https://golem.moshe-barami111.workers.dev';
@@ -39,7 +39,7 @@ const DEPLOYED = 'https://golem.moshe-barami111.workers.dev';
 /* ------------------------------------------------------------------- flags --- */
 
 const argv = process.argv.slice(2);
-const flags = { base: null, pass: null, writeBaseline: false, deployed: false, routes: null };
+const flags = { base: null, pass: null, writeBaseline: false, deployed: false, routes: null, tokens: null };
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
   if (a === '--deployed') { flags.deployed = true; continue; }
@@ -51,6 +51,11 @@ for (let i = 0; i < argv.length; i += 1) {
   // paying for the whole site. It NARROWS and can never widen, so it cannot be used to make a run
   // look clean by pointing it somewhere friendly — the DENOMINATOR line prints what was actually
   // swept, and a narrowed run says so in the same breath as its verdict.
+  // `--tokens <path>` points the vocabulary somewhere else. It exists so this checker's own tests
+  // can prove the missing-vocabulary GAP is reported — a case that became untestable the moment
+  // packages/design/src/tokens.mjs started existing, which is the good outcome making its own
+  // guard unobservable.
+  if (a === '--tokens') { flags.tokens = argv[i + 1]; i += 1; continue; }
   if (a === '--routes') { flags.routes = (argv[i + 1] ?? '').split(',').map((r) => r.trim()).filter(Boolean); i += 1; continue; }
   console.error(`check-pixels: unrecognised flag ${a}`);
   console.error('check-pixels: known flags — --deployed --base <url> --pass <n> --write-baseline');
@@ -102,7 +107,7 @@ const SCHEMES = ['light', 'dark'];
  * rules 2 and 3 circular — the page would be checked against itself and could never fail.
  */
 function designSystem() {
-  const p = join(ROOT, 'packages', 'design', 'src', 'tokens.mjs');
+  const p = flags.tokens ? resolve(flags.tokens) : join(ROOT, 'packages', 'design', 'src', 'tokens.mjs');
   if (!existsSync(p)) return null;
   return p;
 }
@@ -169,7 +174,21 @@ try {
       'rules 2 and 3 have no non-circular source of truth, so they are NOT being checked — this is a gap, not a pass',
     );
   }
-  const vocabulary = TOKENS ? (await import(`file://${TOKENS}`)) : null;
+  // A STATIC SPECIFIER, guarded rather than computed.
+  //
+  // This was `await import(\`file://${TOKENS}\`)`, a template literal, which no static import graph
+  // can resolve — so check-deadends correctly reported packages/design/src/tokens.mjs as imported
+  // by nothing in the tree the moment it was created. The module was consumed; the consumption was
+  // invisible, which is the same thing as far as every reader and every checker is concerned.
+  //
+  // The guard above already proved the file exists, so the optionality survives: an absent
+  // vocabulary is still a reported gap rather than a crash.
+  // A static specifier for the default, so check-deadends can see this dependency — a template
+  // literal here made packages/design/src/tokens.mjs look imported by nothing the day it appeared.
+  // An overridden path is necessarily dynamic; that is the test seam, not the shipping path.
+  const vocabulary = !TOKENS ? null
+    : flags.tokens ? await import(pathToFileURL(TOKENS).href)
+    : await import('../packages/design/src/tokens.mjs');
 
   for (const vp of VIEWPORTS) {
     for (const scheme of SCHEMES) {
