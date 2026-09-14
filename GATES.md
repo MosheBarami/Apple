@@ -253,7 +253,7 @@ test it gated.
     CHECK: node scripts/check-offer.mjs
     EXPECT: OFFER COHERENT
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=29018b9; tree-clean=yes; break-sha=29018b9; EXPECT=unmatched; output-sha256=fcebe58a239c5b68fa57a47aec6dd3b5bc655e8207d73817bca996d5a3e1e599; output-bytes=596; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=648cbe8fc366b1efbb1cc5a6; at=2026-09-14T20:20:09.342Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=4b0d9d2; tree-clean=yes; EXPECT=matched; output-sha256=ba59013d1076f03c7cf5e2f86c0a5aa1b4f91d80c9c3241532bdb36a970a94ad; output-bytes=415; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=00f31b3f44af48f7e0151c8c; at=2026-09-14T19:27:27.927Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=167757f; tree-clean=yes; EXPECT=matched; output-sha256=ba59013d1076f03c7cf5e2f86c0a5aa1b4f91d80c9c3241532bdb36a970a94ad; output-bytes=415; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=5bb13f27bed36ec99e05263b; at=2026-09-14T20:20:14.709Z
 
 ---
 
