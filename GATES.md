@@ -161,11 +161,11 @@ ledger row means anything: `--reverify` was a silent no-op, so the first clause 
 condition was vacuously satisfiable, and every EXPECT of `fail 0` was satisfiable by deleting the
 test it gated.
 
-- [ ] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
+- [x] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
-  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d7f2910; tree-clean=no; EXPECT=unmatched; output-sha256=9566eb1fde7e8ebd06b38bd8f0fca5936745b05b9880a8bc2ddac3ff118ff191; output-bytes=5149; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=91864ab3af3decf691265962; at=2026-09-14T17:31:48.251Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=ef2f14a; tree-clean=no; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3973; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=91864ab3af3decf691265962; at=2026-09-14T17:38:45.887Z
 
 - [ ] G-CRITIC-1: The visual critic cannot report a clean build for checks it never ran
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-1 -- node --test packages/evals/src/critic.test.mjs
@@ -178,7 +178,7 @@ test it gated.
     EXPECT: G-ORACLE-2 OK
   EXPECT-CHANGE: old=floor-20 new=floor-32 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9528a51; tree-clean=yes; EXPECT=matched; output-sha256=f9849a4ef9d9d5e49fd41b107644667cd83e7fb13999c0787063d80ac9cca7c6; output-bytes=1618; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:27.979Z
+  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=ef2f14a; tree-clean=no; EXPECT=unmatched; output-sha256=869582ab13ed4662d57ac4ab547f81e5ae0c9d1b25cf4dbb2b568a7b804c7ff3; output-bytes=13633; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=04892b7a73a92064d9a69254; at=2026-09-14T17:38:45.886Z
 
 - [x] G-ORACLE-3: The offer checker measures the four numbers a plan has to reconcile
     CHECK: node scripts/assert-tests.mjs --floor 10 --label G-ORACLE-3 -- node --test tests/check-offer.test.mjs

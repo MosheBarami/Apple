@@ -1,0 +1,4 @@
+[
+  "scripts/assert-tests.mjs",
+  "tests/check-escape-hatches.test.mjs"
+]
