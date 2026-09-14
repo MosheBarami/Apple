@@ -93,10 +93,11 @@ and are tracked as handoffs, not gates.
   EXPECT-CHANGE: old=fail 0 new=G13 OK reason=derived-floor-6-measured-6-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=f61d6198e9a1b52479a487e9ba1cda5c31eec5d8caee08f9f3fb248c1956bba5; output-bytes=592
 
-- [ ] G14: A conversation export is the whole conversation, and cannot forge its own filename
+- [x] G14: A conversation export is the whole conversation, and cannot forge its own filename
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 18 --label G14 -- node --test tests/export.test.mjs
     EXPECT: G14 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G14; path=6765c31f4f12/53 entries; git-sha=165b283; tree-clean=yes; break-sha=165b283; EXPECT=unmatched; output-sha256=098f05151491fa8a44e00c57313fac6fb5fc44902d14789c1df4ff74831c9ca8; output-bytes=1663; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=edcf3e1c6ae8be2f1af3380c; at=2026-09-14T18:47:23.853Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=2e4450c5c689bd431467c714c6fa3c1dfaeab6985b76734c7d61eea39f87091f; output-bytes=1476; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=edcf3e1c6ae8be2f1af3380c; at=2026-09-14T18:51:50.037Z
   EXPECT-CHANGE: old=fail 0 new=G14 OK reason=derived-floor-18-measured-18-passing
 
 - [ ] G15: A project can be renamed from either surface, and Escape does not save
@@ -123,10 +124,11 @@ and are tracked as handoffs, not gates.
   EXPECT-CHANGE: old=fail 0 new=G18 OK reason=derived-floor-18-measured-18-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=311ea7a211e4ba24a7f9488a74bf0a80cf11bd174f3b444d38c2ae7cd43b12a6; output-bytes=1329
 
-- [ ] G19: Search reads every message, and its results cannot be stale or mis-highlighted
+- [x] G19: Search reads every message, and its results cannot be stale or mis-highlighted
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 25 --label G19 -- node --test tests/search.test.mjs
     EXPECT: G19 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G19; path=6765c31f4f12/53 entries; git-sha=f79bfe6; tree-clean=yes; break-sha=f79bfe6; EXPECT=unmatched; output-sha256=9c7223eb0e6110283e99526cd04756d0bf66c3dd1fd255a82e9223676d796b2b; output-bytes=1664; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=3c1faa07adcbc2d0fdaa0da7; at=2026-09-14T18:47:27.862Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=f76629f5afd566db5cb5e863148fe4ddc36f40cd5e151c2e5798977fb917bb62; output-bytes=1884; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=3c1faa07adcbc2d0fdaa0da7; at=2026-09-14T18:51:50.037Z
   EXPECT-CHANGE: old=fail 0 new=G19 OK reason=derived-floor-25-measured-25-passing
 
 - [ ] G20: The search panel names every state and drops responses for a query the user has moved past
@@ -135,10 +137,11 @@ and are tracked as handoffs, not gates.
   EXPECT-CHANGE: old=fail 0 new=G20 OK reason=derived-floor-17-measured-17-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=c30700df765c4a778bcd9419e9d2f840fd4f23e727e710545d6b45793d7bffe4; output-bytes=1343
 
-- [ ] G21: Archiving hides a project everywhere and loses nothing, and restoring brings it all back
+- [x] G21: Archiving hides a project everywhere and loses nothing, and restoring brings it all back
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 15 --label G21 -- node --test tests/archive.test.mjs
     EXPECT: G21 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G21; path=6765c31f4f12/53 entries; git-sha=bfaa9b6; tree-clean=yes; break-sha=bfaa9b6; EXPECT=unmatched; output-sha256=f2dfff0201ee698be8a843951a3e07fd8f8b292bd5e8a4e5afe395a7f9285e58; output-bytes=923; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=a5e275b486836ce8bb8ba3ab; at=2026-09-14T18:47:32.909Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=d97548f91dc9bbc64e6b8ce4ac4637fea48681b56aa9647edb7e176427abb39d; output-bytes=1206; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=8f594881071fb0d0b6029566; at=2026-09-14T18:51:50.037Z
   EXPECT-CHANGE: old=fail 0 new=G21 OK reason=derived-floor-15-measured-15-passing
 
 - [ ] G81: A package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked
@@ -151,10 +154,11 @@ and are tracked as handoffs, not gates.
      sessions appending gates at the same time cannot collide on a number. Two did, twice, on the
      same afternoon; gate-check.mjs now refuses a ledger with duplicate ids. -->
 
-- [ ] G80: The gate checker itself is measured, and cannot report green over a gate that fails
+- [x] G80: The gate checker itself is measured, and cannot report green over a gate that fails
     CHECK: node scripts/assert-tests.mjs --floor 60 --label G80 -- node --test tests/gate-check.test.mjs
     EXPECT: G80 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G80; path=6765c31f4f12/53 entries; git-sha=0f63a44; tree-clean=yes; break-sha=0f63a44; EXPECT=unmatched; output-sha256=eb28cdad4ca98e832f0749e688ce658be421f8680fdb19d3a32b4c6bce732208; output-bytes=10953; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=2744b3ba51d2f9dcd5722de2; at=2026-09-14T18:48:40.482Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=0602062226529790ab634dd441722656f0bd8a68e7c30f5278c585aeb9f7eded; output-bytes=5081; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=34a92da96dc325438a2cc579; at=2026-09-14T18:51:50.037Z
   EXPECT-CHANGE: old=fail 0 new=G80 OK reason=derived-floor-60-measured-60-passing
 
 - [ ] G22: Editing a prompt refuses before it destroys, and says what it does not undo
@@ -169,10 +173,11 @@ and are tracked as handoffs, not gates.
   EXPECT-CHANGE: old=fail 0 new=G23 OK reason=derived-floor-13-measured-13-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=b5f7b8dd1e9e38a26acee9dcfc2f4135b4014d3eb15fced5bfe35ab4b055335f; output-bytes=1018
 
-- [ ] G24: An unsent message survives a reload, stays with its own project, never breaks the composer, and does not outlive the session that wrote it
+- [x] G24: An unsent message survives a reload, stays with its own project, never breaks the composer, and does not outlive the session that wrote it
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 20 --label G24 -- node --test tests/draft.test.mjs
     EXPECT: G24 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G24; path=6765c31f4f12/53 entries; git-sha=f2d4bef; tree-clean=yes; break-sha=f2d4bef; EXPECT=unmatched; output-sha256=b24ce861a9da7bf310a648ff384ec78a9f5470079d513c81725a6bea532fec74; output-bytes=11275; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=20c202fe5853d3bbc991f6a9; at=2026-09-14T18:47:29.384Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=9f411f2345cc4ae986b1335e51f5911d92ea7008ff235d3c143a0a79ef7f070e; output-bytes=1418; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=b684c34f06c0ea84af04c574; at=2026-09-14T18:51:50.036Z
   EXPECT-CHANGE: old=fail 0 new=G24 OK reason=derived-floor-20-measured-20-passing
 
 - [ ] G26: What Apple believes is visible and correctable, and a correction reaches the copy the agent reads
