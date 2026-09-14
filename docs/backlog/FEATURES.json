@@ -2580,19 +2580,19 @@
           "id": "f-8aec72e9",
           "name": "SFT",
           "status": "done",
-          "evidence": "packages/training — Apple v1 executed (regression, not promoted)"
+          "evidence": "RECORD, NOT GUARANTEE. packages/training/ and its run logs is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. v1 was a REGRESSION and was not promoted, which is the honest half of this row and the half a status of done hides."
         },
         {
           "id": "f-9dd7fe2d",
           "name": "LoRA",
           "status": "done",
-          "evidence": "lora-apple-v1.yaml / v2 — executed on M2 Pro"
+          "evidence": "packages/training/src/mlx-to-peft.test.mjs — conversion emits PEFT keys, transposed, and PROVES delta-W equivalence rather than asserting the shapes look right."
         },
         {
           "id": "f-4b942a3c",
           "name": "QLoRA",
           "status": "done",
-          "evidence": "4-bit base + LoRA adapters, MLX"
+          "evidence": "packages/training/src/mlx-to-peft.test.mjs — the emitted tensors are named and shaped the way PEFT loads them, and an unrecognised key is an error rather than a silently dropped tensor."
         },
         {
           "id": "f-0b513de2",
@@ -2658,7 +2658,7 @@
           "id": "f-39fae47b",
           "name": "Rank selection",
           "status": "done",
-          "evidence": "v1 rank 8 -> v2 rank 16, reasoned"
+          "evidence": "packages/training/src/mlx-to-peft.test.mjs — an adapter over the documented rank limit is REFUSED here, not uploaded and rejected later by the serving side."
         },
         {
           "id": "f-a39822b2",
@@ -2676,19 +2676,19 @@
           "id": "f-2ba93ab1",
           "name": "Learning-rate selection",
           "status": "done",
-          "evidence": "v1 1e-4 -> v2 5e-5, reasoned"
+          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v*.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-c181aff5",
           "name": "Batch-size selection",
           "status": "done",
-          "evidence": "v1 bs4 -> v2 bs2 + accum (Metal watchdog)"
+          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v*.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. The bs4 -> bs2 change was forced by the Metal watchdog, not chosen for quality."
         },
         {
           "id": "f-c8866926",
           "name": "Gradient accumulation",
           "status": "done",
-          "evidence": "lora-apple-v2.yaml grad_accumulation_steps: 2"
+          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v2.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-578b44ee",
@@ -2712,13 +2712,13 @@
           "id": "f-5d928b26",
           "name": "Seed pinning",
           "status": "done",
-          "evidence": "lora-apple-v*.yaml seed: 20260914"
+          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v*.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. A pinned seed is only reproducible alongside a pinned toolchain, and MLX is not pinned here."
         },
         {
           "id": "f-cab3d21f",
           "name": "Checkpointing",
           "status": "done",
-          "evidence": "adapters/apple-v1/0000050_adapters.safetensors"
+          "evidence": "packages/training/src/mlx-to-peft.test.mjs — a checkpointed adapter is proven loadable by the conversion path, with delta-W equivalence, rather than merely present on disk."
         },
         {
           "id": "f-35a05f47",
@@ -2730,7 +2730,7 @@
           "id": "f-eacc0229",
           "name": "Early stopping",
           "status": "done",
-          "evidence": "lora-apple-v2.yaml (v1 val bottomed at iter 50)"
+          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v2.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-242c793e",
@@ -2742,7 +2742,7 @@
           "id": "f-3f4e2c08",
           "name": "Mixed precision",
           "status": "done",
-          "evidence": "MLX 4-bit quantised base"
+          "evidence": "RECORD, NOT GUARANTEE. the MLX 4-bit quantised base config is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-18a69a79",
@@ -2772,19 +2772,19 @@
           "id": "f-d36fa39d",
           "name": "Training logs",
           "status": "done",
-          "evidence": "packages/training/runs/apple-v*.log"
+          "evidence": "RECORD, NOT GUARANTEE. packages/training/runs/apple-v*.log is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-b7614c66",
           "name": "Loss charts",
           "status": "done",
-          "evidence": "runs/*.log loss series"
+          "evidence": "RECORD, NOT GUARANTEE. packages/training/runs/apple-v*.log is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. There is no chart: the row means the loss series is in the log."
         },
         {
           "id": "f-9abbb2b4",
           "name": "Validation loss",
           "status": "done",
-          "evidence": "measured 2.812 -> 1.294 (v1)"
+          "evidence": "RECORD, NOT GUARANTEE. packages/training/runs/apple-v*.log is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. 2.812 -> 1.294 was measured once, on v1, which did not ship."
         },
         {
           "id": "f-99867d05",
@@ -2838,7 +2838,7 @@
           "id": "f-ef90bae2",
           "name": "Holdout evaluation",
           "status": "done",
-          "evidence": "base vs adapter on held-out prompts, n=8"
+          "evidence": "RECORD, NOT GUARANTEE. the holdout comparison is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. n=8 is small enough that the result is directional, not a measurement."
         },
         {
           "id": "f-70fed06c",
@@ -2880,7 +2880,7 @@
           "id": "f-305c393c",
           "name": "Data contamination scan",
           "status": "done",
-          "evidence": "build-dataset.mjs 8-word shingle vs packages/evals tasks"
+          "evidence": "RECORD, NOT GUARANTEE. build-dataset.mjs shingle scan is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. The scan runs when the dataset is rebuilt; no test asserts it catches a planted overlap."
         },
         {
           "id": "f-cbcffcff",
@@ -2916,13 +2916,13 @@
           "id": "f-c6594b24",
           "name": "Model card generation",
           "status": "done",
-          "evidence": "dataset-card.json emitted by build-dataset.mjs"
+          "evidence": "RECORD, NOT GUARANTEE. dataset-card.json is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-9482f2cd",
           "name": "Training report",
           "status": "done",
-          "evidence": "docs/audit/TRAINING-V1-REPORT.md"
+          "evidence": "RECORD, NOT GUARANTEE. docs/audit/TRAINING-V1-REPORT.md is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
         },
         {
           "id": "f-d1c68fb4",
@@ -2934,13 +2934,13 @@
           "id": "f-898fdb17",
           "name": "Reproducible training",
           "status": "done",
-          "evidence": "pinned seed + config + dataset card"
+          "evidence": "packages/training/src/build-dataset.test.mjs — the split assignment is deterministic across runs, and an empty corpus does not divide by zero. The dataset half of reproducibility is proven; the training half is a pinned seed in a config nothing re-runs."
         },
         {
           "id": "f-ab394828",
           "name": "Local training",
           "status": "done",
-          "evidence": "M2 Pro / MLX, zero recurring cost"
+          "evidence": "RECORD, NOT GUARANTEE. the M2 Pro / MLX toolchain is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. Zero recurring cost is a property of where it runs, not something a check can assert."
         },
         {
           "id": "f-4ede36be",
