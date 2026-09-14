@@ -1479,7 +1479,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'install_module',
       description:
-        'Install a vetted, self-contained ModuleScript for a system whose failures are silent and expensive. Prefer this to writing one of these yourself — they encode the specific Roblox behaviour that is easy to get subtly wrong. Each is one file with no dependencies on the others, and the user can read it.\n\n' +
+        'Install a vetted, self-contained ModuleScript for a system whose failures are silent and expensive. Prefer this to writing one of these yourself — they encode the specific Roblox behaviour that is easy to get subtly wrong. Each is one file with no dependencies on the others, and the user can read it. Installing over a script that already exists and differs is REFUSED unless you pass replace: true — re-installing would destroy whatever the user had changed.\n\n' +
         prefabCatalogue()
           .map((p) => `  ${p.id} — ${p.summary}\n      prevents: ${p.prevents.join('; ')}`)
           .join('\n'),
@@ -1487,6 +1487,10 @@ export const TOOLS: Record<string, ToolImpl> = {
         {
           module: { type: 'string', enum: PREFAB_IDS, description: 'Which module to install.' },
           parent: { type: 'string', description: 'Where to put it. Defaults to the module\'s own recommended parent.' },
+          replace: {
+            type: 'boolean',
+            description: 'Overwrite a script already at that path whose contents differ. Only when the user asked for it — their edits are lost.',
+          },
         },
         ['module'],
       ),
@@ -1505,6 +1509,34 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
 
       const path = `${parent}.${prefab.moduleName}`;
+
+      // READ BEFORE WRITING. `edit_script` with a `source` REPLACES the script, so installing over
+      // an existing one is destructive — and this tool is the kind a model calls again when it is
+      // unsure, which is exactly when the user has already edited what is there. `read_script`
+      // errors when the path resolves to nothing, so its failure is the "safe to create" signal.
+      const existing = await op(ctx, { op: 'read_script', path });
+      const found = existing && typeof existing === 'object' && !('error' in (existing as Record<string, unknown>));
+      if (found) {
+        const current = String((existing as { source?: unknown }).source ?? '');
+        // Identical is a no-op, not a refusal: re-asking for a module already installed should be
+        // boring rather than an error the model has to reason about.
+        if (current === prefab.source) {
+          return {
+            alreadyInstalled: prefab.moduleName,
+            at: path,
+            api: prefab.api,
+            note: 'unchanged — this is the same module, already present',
+          };
+        }
+        if (a.replace !== true) {
+          return {
+            error:
+              `${path} already exists and differs from the module. It may be an older version, or the user may have edited it. ` +
+              `Read it first; pass replace: true only if overwriting their file is what was asked for.`,
+          };
+        }
+      }
+
       const res = await op(ctx, {
         op: 'edit_script',
         path,
@@ -1516,6 +1548,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       return {
         installed: prefab.moduleName,
         at: path,
+        replaced: found || undefined,
         api: prefab.api,
         next: `require(${path}) from a Script in ServerScriptService. Read it before changing it — the comments say which lines are load-bearing.`,
       };

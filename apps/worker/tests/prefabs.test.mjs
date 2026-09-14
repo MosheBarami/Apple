@@ -48,11 +48,33 @@ function syntaxErrors(source, tag) {
   return out.split('\n').filter((l) => l.includes('SyntaxError'));
 }
 
-function stubCtx(data = { ok: true }) {
+/**
+ * A Studio stub whose `read_script` answers separately, because install_module reads before it
+ * writes. `existing` of null means "no script at that path", which the plugin signals by erroring —
+ * Paths.resolve throws rather than returning nil.
+ */
+function stubCtx({ existing = null, data = { ok: true } } = {}) {
   const ops = [];
-  return { ops, ctx: { env: {}, studioConnected: () => true,
-    execStudioOp: async (o) => { ops.push(o); return { ok: true, data }; }, addMemoryFact: async () => {} } };
+  return {
+    ops,
+    ctx: {
+      env: {},
+      studioConnected: () => true,
+      addMemoryFact: async () => {},
+      execStudioOp: async (o) => {
+        ops.push(o);
+        if (o.op === 'read_script') {
+          return existing === null
+            ? { ok: false, error: `${o.path} is not a script` }
+            : { ok: true, data: { path: o.path, source: existing } };
+        }
+        return { ok: true, data };
+      },
+    },
+  };
 }
+/** The ops that actually changed something, so a test can ignore the existence probe. */
+const writes = (ops) => ops.filter((o) => o.op !== 'read_script');
 
 test('the catalogue is real and each entry is complete', () => {
   assert.equal(P.PREFAB_IDS.length, 6);
@@ -196,11 +218,12 @@ test('no module reaches for an asset, so none of them can fail the asset gate', 
 test('install_module writes the module at its recommended parent', async () => {
   const { ctx, ops } = stubCtx();
   const res = await T.TOOLS.install_module.run(ctx, { module: 'profile_store' });
-  assert.equal(ops.length, 1);
-  assert.equal(ops[0].op, 'edit_script');
-  assert.equal(ops[0].path, 'game.ServerScriptService.Profile');
-  assert.deepEqual(ops[0].create, { className: 'ModuleScript', parent: 'game.ServerScriptService' });
-  assert.equal(ops[0].source, P.PREFABS.profile_store.source, 'the source must be ours, unaltered');
+  const w = writes(ops);
+  assert.equal(w.length, 1);
+  assert.equal(w[0].op, 'edit_script');
+  assert.equal(w[0].path, 'game.ServerScriptService.Profile');
+  assert.deepEqual(w[0].create, { className: 'ModuleScript', parent: 'game.ServerScriptService' });
+  assert.equal(w[0].source, P.PREFABS.profile_store.source, 'the source must be ours, unaltered');
   assert.equal(res.installed, 'Profile');
   assert.deepEqual(res.api, P.PREFABS.profile_store.api);
 });
@@ -208,8 +231,49 @@ test('install_module writes the module at its recommended parent', async () => {
 test('a chosen parent is honoured', async () => {
   const { ctx, ops } = stubCtx();
   await T.TOOLS.install_module.run(ctx, { module: 'receipts', parent: 'game.ServerScriptService.Systems' });
-  assert.equal(ops[0].path, 'game.ServerScriptService.Systems.Receipts');
-  assert.equal(ops[0].create.parent, 'game.ServerScriptService.Systems');
+  const w = writes(ops);
+  assert.equal(w[0].path, 'game.ServerScriptService.Systems.Receipts');
+  assert.equal(w[0].create.parent, 'game.ServerScriptService.Systems');
+});
+
+// --- installing over something that is already there -------------------------------------------
+
+test('IT READS BEFORE IT WRITES, because edit_script REPLACES a script', async () => {
+  const { ctx, ops } = stubCtx();
+  await T.TOOLS.install_module.run(ctx, { module: 'profile_store' });
+  assert.equal(ops[0].op, 'read_script', 'the first thing it does must be to look');
+  assert.equal(ops[0].path, 'game.ServerScriptService.Profile');
+});
+
+test("A USER'S EDITED MODULE IS NOT OVERWRITTEN — it refuses and says why", async () => {
+  // The dangerous case, and the likely one: this is a tool a model calls again when it is unsure,
+  // which is exactly when the user has already changed what is there.
+  const edited = P.PREFABS.profile_store.source.replace('local RETRIES = 4', 'local RETRIES = 9');
+  const { ctx, ops } = stubCtx({ existing: edited });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'profile_store' });
+  assert.match(String(res.error), /already exists and differs/);
+  assert.match(String(res.error), /replace: true/, 'and must say how to proceed deliberately');
+  assert.equal(writes(ops).length, 0, 'NOTHING may be written');
+});
+
+test('replace: true overwrites, and reports that it did', async () => {
+  const edited = P.PREFABS.profile_store.source.replace('local RETRIES = 4', 'local RETRIES = 9');
+  const { ctx, ops } = stubCtx({ existing: edited });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'profile_store', replace: true });
+  assert.equal(res.installed, 'Profile');
+  assert.equal(res.replaced, true, 'an overwrite must be reported, not silent');
+  assert.equal(writes(ops).length, 1);
+  assert.equal(writes(ops)[0].source, P.PREFABS.profile_store.source);
+});
+
+test('re-installing an IDENTICAL module is a boring no-op, not an error', async () => {
+  // Re-asking for a module already present should not be something the model has to reason about.
+  const { ctx, ops } = stubCtx({ existing: P.PREFABS.profile_store.source });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'profile_store' });
+  assert.equal(res.alreadyInstalled, 'Profile');
+  assert.equal(res.error, undefined);
+  assert.deepEqual(res.api, P.PREFABS.profile_store.api, 'and it still reports the API');
+  assert.equal(writes(ops).length, 0, 'an identical module needs no write at all');
 });
 
 test('an unknown module and a hostile parent are both refused with nothing sent', async () => {
