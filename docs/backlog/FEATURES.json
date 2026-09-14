@@ -3024,7 +3024,7 @@
           "id": "f-6ca6f7c3",
           "name": "Tool selection tests",
           "status": "done",
-          "evidence": "packages/evals/tasks/tool-selection.json"
+          "evidence": "apps/worker/tests/tools-for-mode.test.mjs — PLAN can reach nothing that changes a project, and every tool the table calls mutating really is in it."
         },
         {
           "id": "f-ca4830c7",
@@ -3042,7 +3042,7 @@
           "id": "f-45b2109f",
           "name": "Script syntax tests",
           "status": "done",
-          "evidence": "luau_syntax check via luau-lsp"
+          "evidence": "DELIBERATELY UNCITED. The obvious citation is scripting-curriculum.test.mjs, and it would be wrong: that file does `if (!checker) ... graded on every check EXCEPT luau_syntax`, and luau-lsp is absent from this environment (the gate ledger records luau=ABSENT). The test passes without ever running the syntax check this row claims. Needs a citation that fails when the checker is missing."
         },
         {
           "id": "f-ffb80770",
@@ -3054,7 +3054,7 @@
           "id": "f-01276ef7",
           "name": "Unit tests",
           "status": "done",
-          "evidence": "1,772 tests across 6 packages, green"
+          "evidence": "G90 — the full suite passes, with a red-first falsification record behind it."
         },
         {
           "id": "f-96404349",
