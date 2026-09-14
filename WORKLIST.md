@@ -33,7 +33,7 @@
 
 ## Quality
 
-- [ ] w15: Error taxonomy — every failure the user can see says what to do next
+- [x] w15: Error taxonomy — every failure the user can see says what to do next — on grow/main (193e773), pending merge
 - [ ] w16: Empty, loading and error states re-audited across the new surfaces above
 - [ ] w17: The whole suite, typecheck and E2E green, recorded as gate evidence
 - [~] w18: Apply infra/supabase/migrations/0004_project_archive.sql to the live Supabase project — needs Supabase service credentials or dashboard access this session does not have — owner must run the SQL
