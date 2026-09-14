@@ -50,6 +50,7 @@ and are tracked as handoffs, not gates.
 - [ ] G7: No tool is offered that this deployment cannot run
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 7 --label G7 -- node --test tests/asset-library-gating.test.mjs
     EXPECT: G7 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G7; path=6765c31f4f12/53 entries; git-sha=62536fc; tree-clean=yes; break-sha=62536fc; EXPECT=unmatched; output-sha256=92521bec39b5a983214ecf7765efb425848907052403e7510bfced8f5d16736b; output-bytes=1714; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=340a4123b10fd90a8963033a; at=2026-09-14T18:52:01.460Z
   EXPECT-CHANGE: old=fail 0 new=G7 OK reason=derived-floor-7-measured-7-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=dc2c7a4702b601a5aeb78d152a6b95ffcf9c8bd6680ae96ad421f4d61ab9d379; output-bytes=663
 
@@ -103,6 +104,7 @@ and are tracked as handoffs, not gates.
 - [ ] G15: A project can be renamed from either surface, and Escape does not save
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 15 --label G15 -- node --test tests/rename-project.test.mjs
     EXPECT: G15 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G15; path=6765c31f4f12/53 entries; git-sha=64fdb97; tree-clean=yes; break-sha=64fdb97; EXPECT=unmatched; output-sha256=61d7ecdfc572a2a6002af46fafd61c63899f3c25d8438f422c578f1ae815583c; output-bytes=944; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=904c2ee18c9d64b85cfc67eb; at=2026-09-14T18:52:06.904Z
   EXPECT-CHANGE: old=fail 0 new=G15 OK reason=derived-floor-15-measured-15-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=f88e95c00fa38fa4f90170bd67c857c905acbbca0efef94a319faa8288b2cd8e; output-bytes=1120
 
@@ -147,6 +149,7 @@ and are tracked as handoffs, not gates.
 - [ ] G81: A package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G81 -- node --test tests/workspace-coverage.test.mjs
     EXPECT: G81 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G81; path=6765c31f4f12/53 entries; git-sha=83561ea; tree-clean=yes; break-sha=83561ea; EXPECT=unmatched; output-sha256=230277763c442fda5087d3d10ffcfab1475721d517cba65109a59d74dd477e8e; output-bytes=15000; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=82354b912d237878efb67a2c; at=2026-09-14T18:52:20.000Z
   EXPECT-CHANGE: old=fail 0 new=G81 OK reason=derived-floor-12-measured-12-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=e38fd0e1fccd11b30f9f1406d692ee91c3db677a040646fd43549075cce49003; output-bytes=983
 
@@ -183,6 +186,7 @@ and are tracked as handoffs, not gates.
 - [ ] G26: What Apple believes is visible and correctable, and a correction reaches the copy the agent reads
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 29 --label G26 -- node --test tests/memory.test.mjs
     EXPECT: G26 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G26; path=6765c31f4f12/53 entries; git-sha=e30ef66; tree-clean=yes; break-sha=e30ef66; EXPECT=unmatched; output-sha256=4a31710975899e41fca4bcb9e656d691d4d61b205f61dd7d67994fb36143aef3; output-bytes=1664; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=dd60196cedfb574a3cb4e58e; at=2026-09-14T18:52:02.874Z
   EXPECT-CHANGE: old=fail 0 new=G26 OK reason=derived-floor-29-measured-29-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=4f198c34edd334b3db55fdda0571a8be67485acfc0c43ea90b0c4d1426d0b807; output-bytes=2148
 
