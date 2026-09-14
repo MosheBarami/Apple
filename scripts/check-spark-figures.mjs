@@ -46,11 +46,30 @@ const page = read('apps/site/src/pages/pricing.astro');
 const meter = read('apps/site/src/components/SparkMeter.astro');
 
 const problems = [];
+/** Modes whose requests-per-free-day is computed by the page rather than typed into it. */
+let derived = 0;
+/** Modes whose stated figure was actually parsed and compared. Not "not derived". */
+let stated = 0;
 
 const perSpark = Number(/NEURONS_PER_SPARK = (\d+)/.exec(pricing)?.[1]);
-const freeDay = Number(/free: \{ sparksPerDay: (\d+)/.exec(pricing)?.[1]);
+
+// PLAN_LIMITS LIVES IN packages/shared AND THE WORKER RE-EXPORTS IT. It used to be
+// declared in pricing.ts, and this line used to read it there. When the repricing moved
+// the table to the shared package — leaving `export { PLAN_LIMITS } from '@golem/shared'`
+// behind so every importer kept working — the regex stopped matching, `freeDay` became
+// NaN, and this guard exited 1 with "could not read". It had been red in CI since.
+//
+// It failing loudly is the only reason this was cheap to find: the same move against a
+// check that treated a miss as a pass would have left the whole chain unverified while
+// still printing "3 modes agree". Read the declaration where it is declared, and make a
+// missing one an error rather than a zero.
+const shared_ = read('packages/shared/src/index.ts');
+const freeDay = Number(/free: \{ sparksPerDay: ([\d_]+)/.exec(shared_)?.[1].replace(/_/g, ''));
 if (!perSpark || !freeDay) {
-  console.error('check-spark-figures: could not read NEURONS_PER_SPARK / free sparksPerDay from the worker');
+  console.error(
+    'check-spark-figures: could not read NEURONS_PER_SPARK (apps/worker/src/pricing.ts) ' +
+    'or PLAN_LIMITS.free.sparksPerDay (packages/shared/src/index.ts). One of them moved; follow it.',
+  );
   process.exit(1);
 }
 const sparksFor = (n) => Math.max(1, Math.ceil(n / perSpark));
@@ -95,10 +114,43 @@ for (const { mode, row } of MODES) {
     problems.push(`pricing.astro says ${mode} costs ${stated} spark(s); ${neurons} neurons / ${perSpark} = ${expected}`);
   }
 
-  // Requests per free day, where the page states a plain number.
+  // Requests per free day. The page may STATE it or DERIVE it, and this has to tell the
+  // two apart from "neither", because that third case is the one that looks like success.
+  //
+  // It was stated, as a literal, and was wrong: 30 / 15 / up to 6 against a free tier the
+  // repricing had taken from 60 Sparks a day to 231. It is derived now — computed from
+  // PLAN_LIMITS.free at build time — so there is no literal left for the regex below to
+  // read. A guard that simply found nothing and moved on would print "3 modes agree"
+  // having checked nothing at all, which is precisely the defect this file was written
+  // about in the first place. So: a literal is checked, a derivation is confirmed to be
+  // present, and the absence of both is a failure.
   const perDay = /perDay: '([^']+)'/.exec(block)?.[1];
-  if (perDay && /^\d+$/.test(perDay) && Number(perDay) !== Math.floor(freeDay / expected)) {
-    problems.push(`pricing.astro says ${perDay} ${mode} requests a free day; ${freeDay} / ${expected} = ${Math.floor(freeDay / expected)}`);
+  if (perDay === undefined) {
+    if (!/const perFreeDay\b/.test(page) || !/perDay: perFreeDay\(/.test(page)) {
+      problems.push(
+        `pricing.astro states no requests-per-free-day for ${mode} and does not derive one ` +
+        `via perFreeDay() — the figure a reader plans around is now unchecked`,
+      );
+    } else {
+      derived += 1;
+    }
+  } else {
+    // A STATED FIGURE HAS TO BE READABLE AS A NUMBER. The original rule was
+    // `if (/^\d+$/.test(perDay) && ...)` — a guard whose first condition was the
+    // opportunity to skip itself. "up to 6" fell through it for as long as it was on the
+    // page, and so did a literal `'?'` when this was falsified. Anything this cannot
+    // parse is unchecked, and unchecked is reported, not passed.
+    const m = /^(?:up to )?(\d+)$/.exec(perDay.trim());
+    if (!m) {
+      problems.push(
+        `pricing.astro states "${perDay}" ${mode} requests a free day — not a number this ` +
+        `can check against ${freeDay} Sparks/day. Write a count, or derive it with perFreeDay().`,
+      );
+    } else if (Number(m[1]) !== Math.floor(freeDay / expected)) {
+      problems.push(`pricing.astro says ${perDay} ${mode} requests a free day; ${freeDay} / ${expected} = ${Math.floor(freeDay / expected)}`);
+    } else {
+      stated += 1;
+    }
   }
 
   // The slider's label and its data-cost, which the calculator now reads.
@@ -123,6 +175,11 @@ const PROSE = [
   'apps/site/pages/docs/sparks-and-limits.astro',
   'apps/site/pages/docs/modes.astro',
   'apps/site/pages/docs/faq.astro',
+  // The landing states a Spark cost per mode in its `modes` table. It did not before —
+  // the one-viewport version carried no figures at all — so the moment it started
+  // carrying them it had to join this list or it would have been the one page free to
+  // drift.
+  'apps/site/pages/index.astro',
 ].map((p) => `apps/site/src/${p.slice('apps/site/'.length)}`);
 
 const expectedFor = {};
@@ -146,7 +203,19 @@ for (const file of PROSE) {
     // without it every "Super Agent — 10 sparks" is reported as Agent costing 10.
     // It produced five false positives against a correct file.
     const guard = mode === 'Agent' ? '(?<!Super )' : '';
-    const re = new RegExp(`${guard}\\b${mode}[^.\n]{0,40}?\\b(\\d+) spark`, 'g');
+    // `gi`, not `g`. The unit is a proper noun in product copy — "2 Sparks" — and a
+    // case-sensitive `spark` walked straight past every capitalised claim while
+    // reporting the file checked. Lowering the mode name too is safe: each of Plan,
+    // Agent and Super Agent is a distinct word, and the (?<!Super ) guard below is
+    // applied to the same lowered text.
+    // `[^.]`, NOT `[^.\n]`. The class excluded newlines, so it could only ever see a cost
+    // written on the same line as its mode name — which is how prose puts it and is NOT
+    // how structured copy does. The landing lists `name: 'Agent',` and `tag: '4 sparks',`
+    // on consecutive lines, and adding that file to this list caught nothing at all until
+    // this changed; a deliberate '3 Sparks' drift passed. The sentence-ending period is
+    // still the boundary, so a claim cannot run into the next one, and the window is 60
+    // rather than 40 to cover the intervening key.
+    const re = new RegExp(`${guard}\\b${mode}[^.]{0,60}?\\b(\\d+) spark`, 'gi');
     for (const m of text.matchAll(re)) {
       if (Number(m[1]) !== expected) {
         problems.push(`${file}: "${m[0].trim()}" — ${mode} costs ${expected} spark(s)`);
@@ -217,3 +286,7 @@ if (problems.length) {
 }
 
 console.log(`check-spark-figures: ${MODES.length} modes agree — COST-MODEL neurons, the worker's arithmetic, the page and the calculator`);
+console.log(
+  `  requests/free day: ${derived} of ${MODES.length} derived from PLAN_LIMITS at build time, ` +
+  `${stated} stated and checked against ${freeDay} Sparks/day`,
+);

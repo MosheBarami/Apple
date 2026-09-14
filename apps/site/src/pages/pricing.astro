@@ -28,7 +28,22 @@ import FAQ from '../components/FAQ.astro';
 // Plan was published as 1 spark and a request count computed from it. It is 2. Agent and
 // Super Agent were both right, which is what makes the Plan figure an arithmetic slip
 // rather than a different model of pricing: whoever wrote them divided correctly.
-// "≈ requests / free day" is simply the free daily allowance divided by cost.
+// "≈ requests / free day" is the free daily allowance divided by cost, and it is now
+// COMPUTED rather than typed. It was typed — 30 / 15 / up to 6 — against a free tier that
+// granted 60 Sparks a day. The repricing took free to 231 and those three numbers stayed
+// exactly where they were, so this page understated its own free allowance almost
+// fourfold for as long as that was live. Nobody typed a wrong number; three right ones
+// were left behind by a change somewhere else, which is the failure mode a literal always
+// has and a derivation cannot.
+//
+// Derived from the row's OWN `cost`, so there is one literal per row rather than two that
+// can disagree with each other.
+const perFreeDay = (cost: string, prefix = ''): string => {
+  const n = Number(/^\d+/.exec(cost)?.[0]);
+  if (!n) throw new Error(`pricing.astro: "${cost}" does not start with a Spark count`);
+  return `${prefix}${Math.floor(free.sparksPerDay / n)}`;
+};
+
 const modeRows = [
   {
     mode: 'Plan',
@@ -36,7 +51,7 @@ const modeRows = [
     cost: '2 sparks',
     extra: '',
     does: 'Fast answers and small edits',
-    perDay: '30',
+    perDayPrefix: '',
   },
   {
     mode: 'Agent',
@@ -44,7 +59,7 @@ const modeRows = [
     cost: '4 sparks',
     extra: '',
     does: 'Builds features across your project',
-    perDay: '15',
+    perDayPrefix: '',
   },
   {
     mode: 'Super Agent',
@@ -52,9 +67,9 @@ const modeRows = [
     cost: '10 sparks',
     extra: '+1 per extra step',
     does: 'Plans, builds, tests and fixes autonomously',
-    perDay: 'up to 6',
+    perDayPrefix: 'up to ',
   },
-];
+].map((r) => ({ ...r, perDay: perFreeDay(r.cost, r.perDayPrefix) }));
 
 const limitFaq = [
   {

@@ -138,9 +138,33 @@ if (freeDay < SPARKS_PER_BUILD) {
 const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_LIMITS[id].sparksPerDay, PLAN_LIMITS[id].sparksPerMonth]));
 const SPARK_CLAIM = /(\d[\d,]{1,8})\s*(?:Sparks?|sparks?)\s*(?:a|per|\/)\s*(day|month)/g;
 
+/**
+ * COMMENTARY IS NOT COPY. A guard that reads source text must read the source, not the prose
+ * explaining it.
+ *
+ * This reported `pricing.astro states 60 Sparks a day, which no plan grants` against a file whose
+ * every rendered figure is interpolated from PLAN_LIMITS. The "claim" was a comment recording why
+ * three literals had been replaced — *"against a free tier that granted 60 Sparks a day"* — which
+ * is exactly the history worth writing down, and this refused to let it be written.
+ *
+ * It is the second guard in this repository caught doing it; check-spark-figures.mjs has the same
+ * function and the same note, for the same reason. The failure is not symmetric and that is what
+ * makes it worth fixing rather than rewording around: a comment can only ever produce a FALSE
+ * ALARM here, and the cost of the false alarm is that nobody can explain a number they corrected.
+ *
+ * `//` is only treated as a comment when the character before it is not `:`, so `https://` in an
+ * href survives. A `//` inside some other string literal would be over-stripped; that narrows what
+ * this can see rather than widening it, and no file on the copy surface has one.
+ */
+const stripComments = (src) =>
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
 for (const rel of copySurface) {
   let src;
-  try { src = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
+  try { src = stripComments(readFileSync(join(ROOT, rel), 'utf8')); } catch { continue; }
   for (const m of src.matchAll(SPARK_CLAIM)) {
     const claimed = Number(m[1].replace(/,/g, ''));
     if (!enforced.has(claimed)) {
@@ -158,7 +182,9 @@ for (const rel of copySurface) {
 const FOREVER = [/\$0\s*forever/i, /no card required,?\s*ever/i, /never be charged/i, /free\s+forever/i];
 for (const rel of copySurface) {
   let src;
-  try { src = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
+  // Comments stripped here too — a note saying "we must never write $0 forever" is not a page
+  // writing it, and the rule is worth being able to record next to the code it governs.
+  try { src = stripComments(readFileSync(join(ROOT, rel), 'utf8')); } catch { continue; }
   for (const re of FOREVER) {
     const hit = re.exec(src);
     if (hit) problems.push(`${rel} promises "${hit[0]}" — a contractual term, and this product now has subscriptions`);
