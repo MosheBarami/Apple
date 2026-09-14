@@ -196,6 +196,7 @@ test it gated.
 - [ ] G-ORACLE-4: Every module nothing reaches carries a disposition, and the checker sees past its own blind spots
     CHECK: node scripts/assert-tests.mjs --floor 13 --label G-ORACLE-4 -- node --test tests/check-deadends.test.mjs
     EXPECT: G-ORACLE-4 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-4; path=6765c31f4f12/53 entries; git-sha=9e60f65; tree-clean=yes; break-sha=9e60f65; EXPECT=unmatched; output-sha256=d7a766db8e441089bc63819e48bdd0ad52ac0d8482d049f451cfb0a54e3effc7; output-bytes=1968; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=849a707d7e2395fdffe292e6; at=2026-09-14T17:53:27.432Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=72bd3bb; tree-clean=yes; EXPECT=matched; output-sha256=9545e5372c8c50d36e9283242440a30d5847e81caaeb338b0a0eeb5c7f7c0a1c; output-bytes=939; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=d86748b449fd670f46b0c0bd; at=2026-09-14T17:52:23.902Z
 
 - [ ] G-OFFER-1 [S1]: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
