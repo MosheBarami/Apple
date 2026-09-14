@@ -126,7 +126,7 @@
           "id": "f-d8aead20",
           "name": "Webhooks",
           "status": "done",
-          "evidence": "POST /api/billing/webhook, exempt from JWT and authenticated by signature"
+          "evidence": "apps/worker/tests/billing.test.mjs — a forged signature is refused, a tampered body invalidates a real one, a stale signature cannot be replayed, and a missing header is refused rather than treated as absent-therefore-fine."
         },
         {
           "id": "f-47cfc121",
@@ -420,13 +420,13 @@
           "id": "f-bb1e6605",
           "name": "Planning mode",
           "status": "done",
-          "evidence": "clay / Plan mode, read-only by construction"
+          "evidence": "apps/worker/tests/tools-for-mode.test.mjs — PLAN can reach nothing that changes a project, and can still do the thing it exists to do. Read-only is enforced, not merely intended."
         },
         {
           "id": "f-0c1d3e69",
           "name": "Execution mode",
           "status": "done",
-          "evidence": "stone / Agent mode"
+          "evidence": "apps/worker/tests/tools-for-mode.test.mjs — AGENT and SUPER get the full toolset, and every tool the table calls mutating really is in it."
         },
         {
           "id": "f-e47c68bc",
@@ -600,7 +600,7 @@
           "id": "f-3898735b",
           "name": "Run history",
           "status": "done",
-          "evidence": "messages table in SessionDO"
+          "evidence": "apps/worker/tests/persist.test.mjs — a healthy save writes the state intact exactly once, and shedding an oversized state never drops a pinned turn."
         },
         {
           "id": "f-636987b2",
@@ -618,7 +618,7 @@
           "id": "f-aa2f51ce",
           "name": "Partial result recovery",
           "status": "done",
-          "evidence": "owesWork -> 'incomplete', never reported as success"
+          "evidence": "apps/worker/tests/persist.test.mjs — the caller can tell a healthy save from a degraded one, a state that will not fit even shed is recorded as terminal rather than left to retry, and it does not swallow a failure it cannot handle."
         },
         {
           "id": "f-eceb2fe8",
@@ -822,7 +822,7 @@
           "id": "f-6ffead13",
           "name": "Agent budgets",
           "status": "done",
-          "evidence": "MAX_NEURONS_PER_REQUEST + BudgetDO"
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — the runtime ceiling is the compiled default rather than a wider number, and the ceiling a compromised ADMIN_KEY could reach stays bounded."
         },
         {
           "id": "f-1007b8e4",
@@ -870,7 +870,7 @@
           "id": "f-b971f269",
           "name": "Agent traces",
           "status": "done",
-          "evidence": "ToolTraceEntry persisted per run"
+          "evidence": "apps/worker/tests/persist.test.mjs — the trace is written with the state, and an oversized state keeps what a run cannot continue without."
         },
         {
           "id": "f-59f3ef7b",
@@ -1056,7 +1056,7 @@
           "id": "f-e59a294c",
           "name": "Part generation",
           "status": "done",
-          "evidence": "create_instances tool"
+          "evidence": "apps/worker/tests/studio-op-parity.test.mjs — every op the worker may send has a handler in the plugin, and both sides are parsed so the comparison is not vacuous."
         },
         {
           "id": "f-8d2f716f",
@@ -1086,7 +1086,7 @@
           "id": "f-55081b2f",
           "name": "Script generation",
           "status": "done",
-          "evidence": "edit_script tool"
+          "evidence": "apps/worker/tests/studio-op-parity.test.mjs — edit_script is one of the ops proven to have a handler on the plugin side."
         },
         {
           "id": "f-c050defb",
@@ -1170,13 +1170,13 @@
           "id": "f-77ae74a9",
           "name": "Workspace inspection",
           "status": "done",
-          "evidence": "snapshot tool"
+          "evidence": "apps/worker/tests/studio-op-parity.test.mjs — the snapshot op is proven to exist on both sides of the wire, not merely to be named by the worker."
         },
         {
           "id": "f-b05a1fee",
           "name": "Explorer tree snapshot",
           "status": "done",
-          "evidence": "snapshot tool root:'game'"
+          "evidence": "apps/worker/tests/studio-op-parity.test.mjs — the plugin handles no op the wire type cannot express, so the tree the worker asks for is one the plugin can return."
         },
         {
           "id": "f-13a4c0ee",
