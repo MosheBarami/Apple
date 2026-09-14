@@ -94,6 +94,21 @@ interface AgentState {
   forcedEffort?: Effort;
   /** a mutating tool has succeeded this run, so there is something to show for it */
   mutated?: boolean;
+  /**
+   * Asset ids whose PROVENANCE was established earlier in this run.
+   *
+   * These lived only on the per-step AgentCtx, which `agentCtx()` rebuilds from scratch every
+   * step — so a model that searched in step N and inserted in step N+1 arrived with both sets
+   * empty. Provenance then degraded to `user_supplied`, which means the curated-library waiver is
+   * not applied and the full Creator Store gate (price, votes, verified creator) runs against an
+   * asset that by construction has none of them. The intended search-then-insert flow could only
+   * work if both calls happened to land in the same 4-call step.
+   *
+   * Stored as arrays because AgentState is JSON-serialised into DO storage and a Set is not.
+   */
+  discoveredAssetIds?: number[];
+  /** The subset of the above that came from the curated library rather than the Creator Store. */
+  libraryAssetIds?: number[];
   /** how many times this run has been steered back to work after replying without acting */
   nudges?: number;
   /** the user's request, kept so the automatic visual gate can judge against the actual intent */
@@ -1054,8 +1069,9 @@ export class SessionDO extends DurableObject<Env> {
           totalSteps: agent.maxSteps,
           tool: 'inspect_visually',
         });
-        const ctx2 = this.agentCtx();
+        const ctx2 = this.agentCtx(agent);
         const out = await runTool(ctx2, 'inspect_visually', JSON.stringify({ intent: agent.request ?? 'the requested build' }));
+        this.captureProvenance(agent, ctx2);
         agent.trace.push({ tool: 'inspect_visually', summary: out.summary, ok: out.ok, durationMs: 0 });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId: `auto_${agent.step}`, ok: out.ok, summary: out.summary });
         const critique = ctx2.lastCritique;
@@ -1132,7 +1148,7 @@ export class SessionDO extends DurableObject<Env> {
     // form the target model expects
     agent.llm.push({ role: 'assistant', content: res.text ?? '', toolCalls: res.toolCalls });
 
-    const ctx = this.agentCtx();
+    const ctx = this.agentCtx(agent);
     agent.seenCalls = agent.seenCalls ?? [];
     for (const call of res.toolCalls.slice(0, 4)) {
       const t0 = Date.now();
@@ -1221,8 +1237,26 @@ export class SessionDO extends DurableObject<Env> {
           'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
       });
     }
+    this.captureProvenance(agent, ctx);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
+  }
+
+  /**
+   * Carry asset provenance from the step that discovered it onto the run that will use it.
+   *
+   * `agentCtx()` rebuilds its object every step, so without this a `find_verified_asset` in step N
+   * and the `insert_asset` in step N+1 never meet: the second arrives with empty sets, provenance
+   * degrades to `user_supplied`, and the curated-library waiver silently stops applying.
+   *
+   * Bounded, because this is unbounded model-supplied input in all but name: a run that searched
+   * in a loop would otherwise grow the persisted state without limit. The newest ids are kept,
+   * since those are the ones an insert in the next step is actually about.
+   */
+  private captureProvenance(agent: AgentState, ctx: AgentCtx): void {
+    const CAP = 200;
+    if (ctx.discoveredAssetIds?.size) agent.discoveredAssetIds = [...ctx.discoveredAssetIds].slice(-CAP);
+    if (ctx.libraryAssetIds?.size) agent.libraryAssetIds = [...ctx.libraryAssetIds].slice(-CAP);
   }
 
   /**
@@ -1375,8 +1409,15 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   // ------------------------------------------------------------------ AgentCtx impl
-  private agentCtx(): AgentCtx {
+  /**
+   * @param agent when present, asset provenance discovered earlier in the run is carried in and
+   *        back out again. Omitted by the admin `/run-tool` route, which is a single tool call
+   *        with no run to accumulate against.
+   */
+  private agentCtx(agent?: AgentState): AgentCtx {
     return {
+      discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
+      libraryAssetIds: new Set(agent?.libraryAssetIds ?? []),
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,

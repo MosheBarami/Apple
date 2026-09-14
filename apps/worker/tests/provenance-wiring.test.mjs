@@ -49,8 +49,14 @@ test('insert_asset records the use, and only after the asset is proven clean', (
 
 test('the session gives its tools a project id to attribute to', () => {
   const src = readFileSync(join(ROOT, 'apps/worker/src/do/session.ts'), 'utf8');
-  const ctx = src.slice(src.indexOf('private agentCtx()'));
-  assert.match(ctx.slice(0, 400), /projectId: this\.boundProjectId/, 'agentCtx must carry the project');
+  // Located by name rather than by exact signature: `agentCtx` gained an optional run parameter so
+  // asset provenance could survive a step boundary, and matching `private agentCtx()` literally
+  // meant indexOf returned -1 and the slice silently became the last character of the file — a
+  // test that fails for a reason with nothing to do with what it is guarding.
+  const start = src.search(/private agentCtx\(/);
+  assert.ok(start !== -1, 'agentCtx must exist');
+  const ctx = src.slice(start, src.indexOf('playtest:', start));
+  assert.match(ctx, /projectId: this\.boundProjectId/, 'agentCtx must carry the project');
   assert.match(src, /this\.boundProjectId = body\.projectId/, '/init must set it');
   assert.match(src, /if \(b\) this\.boundProjectId = b\.projectId/, 'and reading the binding must refresh it');
 });
