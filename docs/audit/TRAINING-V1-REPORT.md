@@ -242,3 +242,87 @@ rank <= 8 (up to 32), adapter < 300MB, files named exactly `adapter_config.json`
 
 **Also unchanged: neither v1 nor v2 is promoted.** A serving path existing does not make an adapter
 worth serving, and v2 still does not beat its own base.
+
+---
+
+# The hosted serving path, tested rather than read
+
+I corrected myself once on this page already, and that correction was also wrong. This section is
+what the API actually does, established by probing it.
+
+## What the documentation says, and what is true
+
+| | documented | actual |
+|---|---|---|
+| Upload path | `POST .../ai/finetunes/{id}/finetune-assets/` | **without the trailing slash.** With it: `{"success":false,"errors":[{"message":"Route not found"}]}` |
+| Which bases accept an adapter | "models with LoRA capabilities" | the catalogue's `lora` property does **not** mean this |
+
+**The catalogue misled me.** With Workers AI scope on the token, nine models report a `lora`
+property, including `@cf/qwen/qwen2.5-coder-32b-instruct`. I reported that as "a hosted path exists
+for a Qwen-family adapter". It does not. Inference refuses with:
+
+```
+LoRA adapter targets @cf/meta/llama-3.2-3b-instruct which is not in the allowed list
+```
+
+Probing every candidate with the same adapter — the error text distinguishes "base not allowed"
+from other failures — gives the real list:
+
+| base | result |
+|---|---|
+| `@cf/google/gemma-7b-it-lora` | **served** |
+| `@cf/meta-llama/llama-2-7b-chat-hf-lora` | **served** |
+| `@cf/mistral/mistral-7b-instruct-v0.2-lora` | not in the allowed list |
+| `@cf/google/gemma-2b-it-lora` | not in the allowed list |
+| `@cf/qwen/qwen2.5-coder-32b-instruct`, `@cf/qwen/qwq-32b` | no usable response |
+| `@cf/meta/llama-3.2-3b-instruct` | not in the allowed list |
+
+So **my original claim was right and my correction was wrong**: there is no hosted path for a Qwen
+adapter. Two bases accept one, and both are old. Worth noting that even the documented list is
+unreliable — `mistral-7b-instruct-v0.2-lora` is named for the feature and still refuses.
+
+## What the upload path does prove
+
+Mechanically it works end to end, and that part is now real rather than intended:
+
+1. `POST .../ai/finetunes` → created, returned an id
+2. `POST .../ai/finetunes/{id}/finetune-assets` × 2 → both files accepted (10.5MB adapter)
+3. inference with `"lora": "<id>"` → reached the model
+
+`packages/training/src/upload_lora.sh` performs all three and refuses before creating anything if
+the adapter is over Cloudflare's size limit, so a rejected upload cannot leave a half-created
+finetune behind.
+
+## The finding that matters most, and it is a warning
+
+**Cloudflare served an adapter that cannot possibly apply, without an error.**
+
+The adapter was trained on Llama-3.2-3B: 2560-dim projections, layers 20–35. Gemma-7B has 3072-dim
+projections and 28 layers. There is no valid way to apply one to the other. It served anyway — and
+it changed the output:
+
+```
+base, temperature 0, seed 7   -> "function openDoor(name) ..."      (identical across 3 runs)
+same, with the adapter        -> "function openDoor(doorNumber) ..."
+```
+
+The base is reproducible, so the difference is real rather than sampling noise. Something was
+applied, and it was something that should have been rejected.
+
+**Therefore a successful `lora` response is not evidence the intended adapter was used.** That is
+exactly the class of claim this project exists to refuse, so the verification method has to be a
+seed-pinned A/B against a KNOWN behavioural difference, not the absence of an error.
+
+## Consequence for v3 and v4
+
+`apple-v3` (Llama-3.2-3B) is trained but **cannot be served**, because its base is not in the
+allowed list. The two finetunes created while probing have been deleted; the account holds zero.
+
+Serving a trained artifact means retraining against `gemma-7b-it` or `llama-2-7b-chat-hf`. Both are
+older and weaker than `@cf/openai/gpt-oss-120b`, which production now runs and which scores 97.6 on
+the repo's own 56-task eval. So the honest trade is explicit: **putting a trained artifact into the
+hosted serving path most likely makes the product worse**, and the mandate is unambiguous that a
+branding requirement is not a reason to ship an inferior fine-tune.
+
+That leaves the requirement of a trained artifact in the serving lineage **UNMET**, now for a
+reason established by probing rather than assumed from documentation.

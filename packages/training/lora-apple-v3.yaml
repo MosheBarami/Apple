@@ -1,0 +1,31 @@
+# Apple v3 — trained against a base Cloudflare ACTUALLY SERVES.
+#
+# v1 and v2 were Qwen3-4B. A LoRA adapter is dimension-specific, so neither can ever load onto a
+# Workers AI base, whatever the family. This one targets @cf/meta/llama-3.2-3b-instruct, which the
+# live account lists as LoRA-capable — so the trained artifact can reach production.
+#
+# rank 8, not 16: Cloudflare's documented adapter limit is r <= 8 (up to 32). 8 is the value that
+# needs no exception, and v2 showed the bottleneck is the dataset rather than adapter capacity.
+model: "unsloth/Llama-3.2-3B-Instruct"
+train: true
+data: "mlxdata-llama"
+fine_tune_type: lora
+optimizer: adamw
+num_layers: 16
+batch_size: 2
+grad_accumulation_steps: 2
+grad_checkpoint: true
+iters: 120
+learning_rate: 5.0e-5
+max_seq_length: 1024
+val_batches: 20
+steps_per_report: 10
+steps_per_eval: 20
+save_every: 20
+adapter_path: "adapters/apple-v3-llama"
+seed: 20260914
+lora_parameters:
+  rank: 8
+  scale: 16.0
+  dropout: 0.05
+  keys: ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj"]
