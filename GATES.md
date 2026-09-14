@@ -30,11 +30,10 @@ and are tracked as handoffs, not gates.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G3; path=6765c31f4f12/53 entries; git-sha=3173a92; tree-clean=yes; break-sha=3173a92; EXPECT=unmatched; output-sha256=cbd3baa4bba4cfc82148f1a3cbefe4e25d5d3c6a7b787ec984d4f8b75a7e1c57; output-bytes=1550; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=18005bfa758f00f46425ec3b; at=2026-09-14T17:55:26.351Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=54f1b892b0c3bf99d61f64d6b5fa7e25cce2e871e1db461767b1d9c32ec88815; output-bytes=545; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=18005bfa758f00f46425ec3b; at=2026-09-14T18:05:46.642Z
 
-- [x] G4: The admin spend route can only ratchet down
-    CHECK: cd apps/worker && node --test tests/spend-ratchet.test.mjs
-    EXPECT: fail 0
-  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G4; path=6765c31f4f12/53 entries; git-sha=1e2bec8; tree-clean=yes; break-sha=1e2bec8; EXPECT=unmatched; output-sha256=cf4252b250ac98ea69b0ff633f031b3263de04090c365203f267b49abb151093; output-bytes=2600; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=893d2ab9f9581a6beb43754c; at=2026-09-14T17:55:10.747Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=334a2e14f52e200add332ec6637cf84932628526c84536a656127a0d117b21f9; output-bytes=381; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=893d2ab9f9581a6beb43754c; at=2026-09-14T18:05:46.642Z
+- [ ] G4: The admin spend route can only ratchet down
+    CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 36 --label G4 -- node --test tests/budget-admission.test.mjs
+  CHECK-CHANGE: old=cd apps/worker && node --test tests/spend-ratchet.test.mjs new=budget-admission reason=the-old-check-regexed-source-text-and-never-constructed-the-object
+    EXPECT: G4 OK
 
 - [x] G5: A checkpoint restore reports what it actually put back
     CHECK: cd apps/worker && node --test tests/restore-fidelity.test.mjs
