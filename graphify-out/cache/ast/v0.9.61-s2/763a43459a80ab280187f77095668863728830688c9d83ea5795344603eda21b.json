@@ -1,0 +1,1 @@
+{"nodes": [{"id": "$graphify-root$_apps_benchmark_crystal_canyon_tests_objectives_spec_luau", "label": "objectives.spec.luau", "file_type": "code", "source_file": "apps/benchmark/crystal-canyon/tests/objectives.spec.luau", "source_location": "L1"}], "edges": [], "raw_calls": [], "parse_errors": {"first_error_line": 16, "multiline_error": true}}

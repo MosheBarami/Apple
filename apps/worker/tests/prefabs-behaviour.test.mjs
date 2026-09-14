@@ -587,10 +587,17 @@ function runReceipts(body, tag) {
     'local player = { UserId = 7, Name = "buyer" }',
     'local presentPlayer = player',
     'local marketplace = {}',
+    // The module now forgets a player's in-flight and pending state on PlayerRemoving, so the stub
+    // has to hand back a connectable signal and let the test fire it.
+    'local onRemoving = nil',
+    'local players = {',
+    '\tGetPlayerByUserId = function(_, id) return presentPlayer end,',
+    '\tPlayerRemoving = { Connect = function(_, fn) onRemoving = fn end },',
+    '}',
     'game = {',
     '\tGetService = function(self, name)',
     '\t\tif name == "MarketplaceService" then return marketplace end',
-    '\t\treturn { GetPlayerByUserId = function(_, id) return presentPlayer end }',
+    '\t\treturn players',
     '\tend,',
     '}',
     '',
@@ -684,19 +691,152 @@ test('a DIFFERENT receipt for the same product does grant again', () => {
   assert.ok(r.ok, r.output);
 });
 
-test('A FAILED WRITE CHANGES NOTHING AND DOES NOT CONSUME THE RECEIPT', () => {
-  // The player keeps their Robux until the grant actually lands.
+/**
+ * A FAILED WRITE, and the two lines of this test that changed when the interleave bug was fixed.
+ *
+ * This used to assert that a failed save left the live session at zero coins and that the handler
+ * then ran a second time on the retry — the module rolled the award back, so re-running it was
+ * free. That rollback is gone, because it was the same operation as the bug: putting a pre-yield
+ * snapshot back over the live table after the yield, erasing anything written in between.
+ *
+ * So the award now stays in memory and is remembered as pending, and the retry SAVES rather than
+ * awards. The properties that actually protect the player are unchanged and asserted below: the
+ * receipt is not consumed, nothing is marked as saved that was not, and one purchase produces
+ * exactly one award. What changed is that the player now sees what they bought immediately instead
+ * of during the retry — and that the handler must no longer be safe to run twice.
+ *
+ * Either way a server that dies mid-retry loses the award and does NOT consume the receipt, so
+ * Roblox re-delivers the purchase on rejoin. The outcome for the player is the same; only the
+ * window differs.
+ */
+test('A FAILED WRITE HOLDS THE AWARD AND DOES NOT CONSUME THE RECEIPT', () => {
   const r = runReceipts([
     WIRED,
     'commitOk = false',
     'assert(process(receipt("p-1")) == "RETRY", "a failed write must not report the purchase done")',
-    'assert(data.coins == 0, "the live session must be untouched, has " .. tostring(data.coins))',
+    'assert(data.coins == 100, "the award is held in memory, has " .. tostring(data.coins))',
     'assert(data.receipts == nil, "and must not carry a receipt for an ungranted purchase")',
+    'assert(committed.receipts["p-1"] ~= nil, "the FAILED write still carried mark and award together")',
+    'assert(committed.coins == 100, "which is the point — they are never written separately")',
+    '',
     'commitOk = true',
     'assert(process(receipt("p-1")) == "GRANTED", "the retry must then succeed")',
-    'assert(data.coins == 100, "and award exactly once")',
-    'assert(grants == 2, "the handler ran twice, which is fine — only the WRITE is authoritative")',
+    'assert(grants == 1, "AND MUST NOT AWARD AGAIN — the retry re-saves, it does not re-grant")',
+    'assert(data.coins == 100, "one purchase, one award, has " .. tostring(data.coins))',
+    'assert(data.receipts["p-1"] ~= nil, "now it is marked, because now it is on disk")',
+    'assert(committed.coins == 100 and committed.receipts["p-1"] ~= nil, "both in the SAME write")',
   ].join('\n'), 'rec-failed-write');
+  assert.ok(r.ok, r.output);
+});
+
+/**
+ * THE ONE THAT LOSES MONEY.
+ *
+ * `commit` yields. In Roblox that is a DataStore round trip, and during it the scheduler runs
+ * whatever else is ready: another player's remote, a Touched handler, a Currency.award for THIS
+ * player — a module this same library ships and explicitly tells you to wire in beside Receipts.
+ *
+ * The committer below writes to the live table from inside the commit, which is exactly that
+ * interleave with the timing made deterministic. The old code took a snapshot before the commit and
+ * copied it over the live table after, so the interleaved write was erased: no error, no warning,
+ * the balance simply lower than the player earned. Both the purchase and the concurrent award have
+ * to survive, and the assertion is on the arithmetic, not on the absence of a crash.
+ */
+test('A WRITE DURING THE PURCHASE SAVE SURVIVES IT — the snapshot must not be copied back after', () => {
+  const r = runReceipts([
+    'local data = { coins = 500 }',
+    'local committed = nil',
+    'M.configure({',
+    '\tget = function(p) return data end,',
+    '\tcommit = function(p, snapshot)',
+    // the interleave: another module awards into the LIVE table while this save is in flight
+    '\t\tdata.coins = data.coins + 10',
+    '\t\tcommitted = snapshot',
+    '\t\treturn true',
+    '\tend,',
+    '})',
+    'M.product(111, function(p, working, info) working.coins = working.coins + 100; return true end)',
+    '',
+    'assert(process(receipt("p-1")) == "GRANTED", "the purchase itself must still be granted")',
+    'assert(data.coins == 610, "expected 500 + 100 bought + 10 earned = 610, got " .. tostring(data.coins))',
+    'assert(committed.coins == 600, "the save carries the purchase; the 10 lands in the next save")',
+    'assert(data.receipts["p-1"] ~= nil, "and the receipt is marked in the live session")',
+    'assert(#warnings == 0, "nothing here is an error — got: " .. table.concat(warnings, " | "))',
+  ].join('\n'), 'rec-interleave');
+  assert.ok(r.ok, r.output);
+});
+
+test('a second receipt for the same player is asked to retry, not run alongside the first', () => {
+  // Two overlapping receipts each save a snapshot, and whichever save lands second wins. The loser's
+  // award AND its receipt mark are gone from disk while the player was told it was granted.
+  const r = runReceipts([
+    'local data = { coins = 0 }',
+    'local reentered = nil',
+    'M.configure({',
+    '\tget = function(p) return data end,',
+    '\tcommit = function(p, snapshot)',
+    '\t\tif reentered == nil then reentered = process(receipt("p-2")) end',
+    '\t\treturn true',
+    '\tend,',
+    '})',
+    'M.product(111, function(p, working, info) working.coins = working.coins + 100; return true end)',
+    '',
+    'assert(process(receipt("p-1")) == "GRANTED")',
+    'assert(reentered == "RETRY", "the overlapping receipt must be deferred, got " .. tostring(reentered))',
+    'assert(data.coins == 100, "and it must NOT have awarded, got " .. tostring(data.coins))',
+    // and once nothing is in flight it goes through normally
+    'assert(process(receipt("p-2")) == "GRANTED", "the deferred receipt must succeed on its retry")',
+    'assert(data.coins == 200)',
+  ].join('\n'), 'rec-overlap');
+  assert.ok(r.ok, r.output);
+});
+
+test('a save that THROWS does not lock the player out of every later purchase', () => {
+  // inFlight is set before the save. If the DataStore error escaped, it would never be cleared and
+  // this player could never buy anything again for the life of the server.
+  const r = runReceipts([
+    'local data = { coins = 0 }',
+    'local explode = true',
+    'M.configure({',
+    '\tget = function(p) return data end,',
+    '\tcommit = function(p, snapshot)',
+    '\t\tif explode then error("DataStore request dropped") end',
+    '\t\treturn true',
+    '\tend,',
+    '})',
+    'M.product(111, function(p, working, info) working.coins = working.coins + 100; return true end)',
+    '',
+    'assert(process(receipt("p-1")) == "RETRY", "a throwing save must ask for a retry, not crash out")',
+    'explode = false',
+    'assert(process(receipt("p-1")) == "GRANTED", "and the player must not be locked out afterwards")',
+    'assert(data.coins == 100)',
+  ].join('\n'), 'rec-commit-throws');
+  assert.ok(r.ok, r.output);
+});
+
+test('leaving clears the pending award, and the unconsumed receipt is awarded on rejoin', () => {
+  const r = runReceipts([
+    'local data = { coins = 0 }',
+    'local commitOk = false',
+    'local grants = 0',
+    'M.configure({',
+    '\tget = function(p) return data end,',
+    '\tcommit = function(p, snapshot) return commitOk end,',
+    '})',
+    'M.product(111, function(p, working, info) grants = grants + 1; working.coins = working.coins + 100; return true end)',
+    '',
+    'assert(process(receipt("p-1")) == "RETRY")',
+    'assert(grants == 1 and data.coins == 100)',
+    '',
+    'assert(type(onRemoving) == "function", "the module must connect to PlayerRemoving")',
+    'onRemoving(player)',
+    // rejoining is a fresh session table; the receipt was never consumed so Roblox re-delivers it
+    'data = { coins = 0 }',
+    'commitOk = true',
+    'assert(process(receipt("p-1")) == "GRANTED", "the re-delivered receipt must be honoured")',
+    'assert(grants == 2, "and awarded, because the first attempt never reached disk")',
+    'assert(data.coins == 100, "exactly once into the new session, got " .. tostring(data.coins))',
+  ].join('\n'), 'rec-leave-then-rejoin');
   assert.ok(r.ok, r.output);
 });
 

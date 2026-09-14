@@ -158,34 +158,59 @@ test('THE AWARD AND THE RECEIPT ID GO INTO ONE WRITE — the atomicity rule', ()
   // not: a server that dies between the award and the second mark leaves an unfinished record, and
   // the retry awards again. Charged once, received twice, nothing errors.
   //
-  // So the handler mutates a COPY, the copy carries both the award and the receipt id, and it is
-  // persisted in ONE call. These assertions pin that ordering, because the ordering IS the fix.
+  // So the handler mutates a COPY, and one snapshot carries both the award and the receipt id into
+  // a single write. These assertions pin that ordering, because the ordering IS the fix.
+  //
+  // THIS TEST USED TO ASSERT THE BUG. It required `commitData(...)` to come BEFORE
+  // `replaceContents(live, working)` — "the session adopts the copy only after the write
+  // succeeded" — which sounds like care and is how the award got lost. commitData yields; a copy
+  // taken before the yield and written over the live table after it erases anything that happened
+  // in between, and Currency.award is a writer this same library tells you to wire in. The
+  // orderings below are the corrected ones, and the behavioural proof is in prefabs-behaviour.
   const s = P.PREFABS.receipts.source;
 
   const copied = s.indexOf('local working = deepCopy(live)');
   const handled = s.indexOf('pcall(handler, player, working, receiptInfo)');
-  const marked = s.indexOf('working.receipts[purchaseId]');
-  const committed = s.indexOf('commitData(player, working)');
   const adopted = s.indexOf('replaceContents(live, working)');
+  const snapshot = s.indexOf('local toSave = deepCopy(live)');
+  const marked = s.indexOf('toSave.receipts[purchaseId] = awardedAt');
+  const committed = s.indexOf('pcall(commitData, player, toSave)');
 
-  for (const [name, i] of Object.entries({ copied, handled, marked, committed, adopted })) {
+  for (const [name, i] of Object.entries({ copied, handled, adopted, snapshot, marked, committed })) {
     assert.ok(i > 0, `${name} step is missing entirely`);
   }
   assert.ok(copied < handled, 'the handler must receive a copy, not the live table');
-  assert.ok(handled < marked, 'the receipt is marked after the award is applied to the same copy');
+  assert.ok(handled < adopted, 'the copy goes back only after the handler succeeded on it');
+  assert.ok(adopted < snapshot, 'THE COPY-BACK HAPPENS BEFORE THE SAVE — this is the ordering fix');
+  assert.ok(snapshot < marked, 'the receipt is marked on the snapshot being written');
   assert.ok(marked < committed, 'the receipt id must be IN the table being written');
-  assert.ok(committed < adopted, 'the session adopts the copy only after the write succeeded');
+
+  // Nothing may be copied wholesale over the live table after the write, which is the shape of the
+  // defect. The only post-write assignment is the receipt mark, on its own key.
+  const afterWrite = s.slice(committed);
+  assert.doesNotMatch(afterWrite, /replaceContents\(live/, 'a post-write copy-back is the bug itself');
+  assert.match(afterWrite, /live\.receipts\[purchaseId\] = awardedAt/, 'the mark is written back on its own');
 
   // and the two-write shape this replaced must not come back
   assert.doesNotMatch(s, /delivered\s*=\s*true/, 'a second mark is the bug this design removes');
 });
 
-test('a failed commit changes nothing and does not consume the receipt', () => {
+test('a failed commit holds the award, keeps the receipt retryable, and cannot deadlock', () => {
   const s = P.PREFABS.receipts.source;
-  const failBranch = s.slice(s.indexOf('local saved = commitData'), s.indexOf('replaceContents(live, working)'));
-  assert.match(failBranch, /if saved ~= true then/, 'the write result must be checked');
+  const failBranch = s.slice(s.indexOf('local ok, saved = pcall(commitData'), s.indexOf('live.receipts = live.receipts or {}'));
+  assert.match(failBranch, /if not ok or saved ~= true then/, 'the write result AND a thrown error must be checked');
   assert.match(failBranch, /NotProcessedYet/, 'a failed write must leave the receipt retryable');
   assert.doesNotMatch(failBranch, /PurchaseGranted/, 'a failed write must never report the purchase done');
+
+  // pcall is not decoration here. inFlight is set before the save; a DataStore error that escaped
+  // would leave it set forever and lock that player out of every later purchase on the server.
+  assert.match(failBranch, /inFlight\[player\] = nil/, 'the in-flight guard must be released on every exit');
+
+  // The award stays in memory and is remembered, so the retry saves again rather than granting
+  // again. Rolling it back would mean writing a pre-yield snapshot back after the yield — the very
+  // operation that lost the concurrent write.
+  assert.match(s, /pendingSave\[player\]\[purchaseId\] = awardedAt/, 'an unsaved award must be remembered');
+  assert.match(s, /Players\.PlayerRemoving:Connect/, 'and forgotten when the player leaves');
 });
 
 test('receipts refuses to run at all until it is wired to a data module', () => {

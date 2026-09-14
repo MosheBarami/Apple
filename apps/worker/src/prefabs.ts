@@ -288,10 +288,19 @@ const RECEIPTS_SOURCE = `--!strict
 -- and is not: if the server dies between the award and the second mark, the retry sees an unfinished
 -- record and awards again. The player is charged once and receives twice, and nothing errors.
 --
--- So the handler here mutates a COPY of the player's data. The copy carries both the award and the
--- receipt id, and is persisted in one write. Only if that write succeeds does the copy become the
--- live session data and the receipt get consumed. If it fails, the live data is untouched and
--- NotProcessedYet asks Roblox to retry — the player keeps their Robux until it works.
+-- So the handler here mutates a COPY of the player's data, and the copy carries both the award and
+-- the receipt id into ONE write. If that write fails the receipt is not consumed and Roblox retries
+-- — the player keeps their Robux until it works.
+--
+-- THE COPY IS PUT BACK BEFORE THE WRITE, NOT AFTER, and that ordering is load-bearing. The write
+-- yields, and during the yield another script can change the same player's data. Putting a snapshot
+-- taken before the yield back over the live table after it silently erases whatever happened in
+-- between. So the award lands in memory first, the save is a separate snapshot, and the only thing
+-- written back afterwards is the receipt mark on its own key.
+--
+-- A save that fails therefore leaves the award in memory. It is remembered as pending, so the retry
+-- saves again instead of awarding again. YOUR HANDLER MUST NOT YIELD — it gets a plain table and
+-- should only do arithmetic on it; no DataStore calls, no task.wait, no WaitForChild.
 --
 -- SETUP (once, in a server Script):
 --   local Receipts = require(game.ServerScriptService.Receipts)
@@ -309,6 +318,23 @@ local Receipts = {}
 local handlers = {}
 local getData = nil
 local commitData = nil
+
+-- One receipt at a time per player. Two receipts in flight together each snapshot the session and
+-- each save it; whichever save lands second wins, and the loser's award and its receipt mark are
+-- gone from disk while the player has already been told the purchase went through.
+local inFlight = {}
+
+-- Awards that are in memory but not yet on disk, so a retry after a failed save re-saves instead of
+-- re-awarding. Without it the only way to make a retry safe is to undo the grant, and undoing a
+-- grant the player can already see is worse than the failure it is cleaning up after.
+local pendingSave = {}
+
+Players.PlayerRemoving:Connect(function(player)
+	inFlight[player] = nil
+	-- A pending award dies with the session, but its receipt was never consumed, so Roblox
+	-- re-delivers the purchase when they rejoin and it is awarded then.
+	pendingSave[player] = nil
+end)
 
 --- Wire this to your data module. \`get(player)\` returns the live table or nil when the player's
 --- data has not loaded; \`commit(player, data)\` persists THAT table and returns true on success.
@@ -371,26 +397,69 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 
-	-- Everything below happens on a copy, so a failure leaves the session exactly as it was.
-	local working = deepCopy(live)
-	working.receipts = working.receipts or {}
+	if inFlight[player] then
+		-- A receipt for this player is mid-save. Let Roblox retry rather than start a second one.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	inFlight[player] = true
 
-	local ok, awarded = pcall(handler, player, working, receiptInfo)
-	if not ok or awarded ~= true then
-		warn("[Receipts] handler declined or errored: " .. tostring(awarded))
+	local pending = pendingSave[player]
+	local awardedAt = pending ~= nil and pending[purchaseId] or nil
+
+	if awardedAt == nil then
+		-- The handler runs on a COPY, so an error partway through leaves the session untouched.
+		-- No receipts table is put on the copy: the mark belongs to the save snapshot below, and a
+		-- handler has no business writing into the receipt log.
+		local working = deepCopy(live)
+
+		local ok, granted = pcall(handler, player, working, receiptInfo)
+		if not ok or granted ~= true then
+			inFlight[player] = nil
+			warn("[Receipts] handler declined or errored: " .. tostring(granted))
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+
+		-- AND THE COPY GOES BACK RIGHT HERE, BEFORE ANYTHING YIELDS.
+		--
+		-- This single line used to sit after the save, and that was a way to lose money. The save
+		-- yields; during the yield another script can write to the live table -- Currency.award for
+		-- this same player is the obvious one, and this library tells you to wire it in. Copying a
+		-- snapshot taken BEFORE the yield over the live table AFTER it discards that write, with no
+		-- error and nothing logged: the player watches coins they earned disappear.
+		--
+		-- Nothing can interleave between the handler returning and this line, because neither
+		-- yields, so a wholesale copy-back is exactly right here and wrong four lines later. This
+		-- does mean YOUR HANDLER MUST NOT YIELD -- no DataStore calls, no task.wait, no
+		-- WaitForChild. It is handed a plain table and should only do arithmetic on it.
+		replaceContents(live, working)
+
+		awardedAt = os.time()
+		pendingSave[player] = pendingSave[player] or {}
+		pendingSave[player][purchaseId] = awardedAt
+	end
+
+	-- What goes to disk: the session as it stands now, plus the receipt id. The award and the mark
+	-- are in ONE write, which is what makes the duplicate check above trustworthy.
+	local toSave = deepCopy(live)
+	toSave.receipts = toSave.receipts or {}
+	toSave.receipts[purchaseId] = awardedAt
+
+	-- commitData yields, and pcall is here because a DataStore error that escapes would leave
+	-- inFlight set forever and lock this player out of every future purchase on this server.
+	local ok, saved = pcall(commitData, player, toSave)
+	inFlight[player] = nil
+
+	if not ok or saved ~= true then
+		-- The award is in memory and not on disk, and the receipt is NOT consumed. Roblox retries;
+		-- the retry finds it in pendingSave, skips the handler, and saves again.
+		warn("[Receipts] save failed for purchase " .. purchaseId .. " — held in memory, will retry")
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	-- The award and the receipt id go into ONE write. This is the whole design.
-	working.receipts[purchaseId] = os.time()
-
-	local saved = commitData(player, working)
-	if saved ~= true then
-		-- Nothing was persisted and nothing was changed in memory. The retry starts clean.
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-
-	replaceContents(live, working)
+	-- The mark is the only thing copied back after the yield, and only onto its own key.
+	live.receipts = live.receipts or {}
+	live.receipts[purchaseId] = awardedAt
+	pendingSave[player][purchaseId] = nil
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
@@ -1287,6 +1356,9 @@ export const PREFABS: Record<string, Prefab> = {
       'a retried receipt granting the reward a second time, which the obvious mark-then-grant-then-mark implementation still allows',
       'awarding into player data that never loaded',
       'a purchase being consumed while the player is not in the server',
+      'coins earned during the purchase write being erased when the session snapshot is put back',
+      'two receipts for one player overlapping, so the second save overwrites the first purchase',
+      'a failed save being retried into a second award of the same purchase',
     ],
     defaultParent: 'game.ServerScriptService',
     className: 'ModuleScript',
