@@ -20,26 +20,31 @@ and are tracked as handoffs, not gates.
     CHECK: cd apps/worker && node --test tests/conversational-routing.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G2; path=6765c31f4f12/53 entries; git-sha=fbb9806; tree-clean=yes; break-sha=fbb9806; EXPECT=unmatched; output-sha256=27e0912805306413d3d860b7bc790b0cf5e40077028e54d0908c7ce2cb6ebd23; output-bytes=1726; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=854299834cf2c20410f858f4; at=2026-09-14T17:55:18.854Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=736f18478220b2917291e67b6606e3cef5b9c4db3ef08e0f12b339f97df6561a; output-bytes=592; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=854299834cf2c20410f858f4; at=2026-09-14T18:05:46.643Z
 
 - [x] G3: An idle project stops holding a Durable Object open
     CHECK: cd apps/worker && node --test tests/poll-residency.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G3; path=6765c31f4f12/53 entries; git-sha=3173a92; tree-clean=yes; break-sha=3173a92; EXPECT=unmatched; output-sha256=cbd3baa4bba4cfc82148f1a3cbefe4e25d5d3c6a7b787ec984d4f8b75a7e1c57; output-bytes=1550; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=18005bfa758f00f46425ec3b; at=2026-09-14T17:55:26.351Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=54f1b892b0c3bf99d61f64d6b5fa7e25cce2e871e1db461767b1d9c32ec88815; output-bytes=545; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=18005bfa758f00f46425ec3b; at=2026-09-14T18:05:46.642Z
 
 - [x] G4: The admin spend route can only ratchet down
     CHECK: cd apps/worker && node --test tests/spend-ratchet.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G4; path=6765c31f4f12/53 entries; git-sha=1e2bec8; tree-clean=yes; break-sha=1e2bec8; EXPECT=unmatched; output-sha256=cf4252b250ac98ea69b0ff633f031b3263de04090c365203f267b49abb151093; output-bytes=2600; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=893d2ab9f9581a6beb43754c; at=2026-09-14T17:55:10.747Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=334a2e14f52e200add332ec6637cf84932628526c84536a656127a0d117b21f9; output-bytes=381; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=893d2ab9f9581a6beb43754c; at=2026-09-14T18:05:46.642Z
 
-- [ ] G5: A checkpoint restore reports what it actually put back
+- [x] G5: A checkpoint restore reports what it actually put back
     CHECK: cd apps/worker && node --test tests/restore-fidelity.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G5; path=6765c31f4f12/53 entries; git-sha=b2e57dc; tree-clean=yes; break-sha=b2e57dc; EXPECT=unmatched; output-sha256=88cdeec0431e38457e7ed6e782acb3e6b67ea449a8c9dd4dd220ea236a997022; output-bytes=4532; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=4ce93b82a015292c07372566; at=2026-09-14T17:57:08.700Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=06afe2a56b33e82f3adf6dc3ebc37e0deff5a8617b83b0fc3ab9a657ac0a26e7; output-bytes=626; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=4ce93b82a015292c07372566; at=2026-09-14T18:05:46.642Z
 
 - [x] G6: Asset provenance survives the step boundary
     CHECK: cd apps/worker && node --test tests/asset-provenance.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G6; path=6765c31f4f12/53 entries; git-sha=85a6bdc; tree-clean=yes; break-sha=85a6bdc; EXPECT=unmatched; output-sha256=18a9b4cd90aa39cd0660fbd144844358fa4675c4e997934adf766c392e766dcd; output-bytes=1466; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=0a443a1a3cda7802f88ec4ec; at=2026-09-14T17:57:12.823Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=d73baf876d31b412cd5ef03ad6a71bb7048bd6b423b167847475224af373886d; output-bytes=552; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=0a443a1a3cda7802f88ec4ec; at=2026-09-14T18:05:46.642Z
 
 - [ ] G7: No tool is offered that this deployment cannot run
     CHECK: cd apps/worker && node --test tests/asset-library-gating.test.mjs
@@ -50,6 +55,7 @@ and are tracked as handoffs, not gates.
     CHECK: cd apps/worker && node --test tests/billing.test.mjs tests/billing-route.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G8; path=6765c31f4f12/53 entries; git-sha=323f1bc; tree-clean=yes; break-sha=323f1bc; EXPECT=unmatched; output-sha256=60e445bcc8de8f3223964dc6f060510482696bf214db72db377cf8271156c2e5; output-bytes=2153; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=616c838cf664b1dc7e73e217; at=2026-09-14T17:55:17.480Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=3d9b6f6acc5c854d043e6c87e2eaac46d00445ef7e85df5cf9d8a8ae0338832a; output-bytes=1657; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=616c838cf664b1dc7e73e217; at=2026-09-14T18:05:46.641Z
 
 - [ ] G9: The door benchmark separates a correct door from the real broken outputs
     CHECK: cd packages/evals && node --test src/door-benchmark.test.mjs
