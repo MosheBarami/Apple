@@ -243,3 +243,134 @@ test('CONTROL: readable numbers are unaffected by the guard', async () => {
   assert.equal(s.estimated, undefined, 'and is NOT flagged as estimated');
   assert.equal((await b.call('/simulate-usage', { neurons: 10 })).ok, true);
 });
+
+// --- the lifecycle, because the file that covered it is not in the tree -------------------------
+//
+// SCOPE CHANGED, and this is why. These cases were deliberately absent above: rbxai-1d had them in
+// budget-do.test.mjs and duplicating a peer's suite is waste. He then stood down on this file and
+// moved it to his own scratchpad, so it is not in the tree and nothing executing covers the
+// reservation lifecycle, the kill switch or the ratchet. `spend-ratchet.test.mjs` regexes the
+// SOURCE for the ratchet, which is a different claim. Re-added here rather than left to a file
+// that may never land. Two of his cases are better than the ones I first wrote and are kept as he
+// framed them — the lowering control especially.
+//
+// FIXTURE TRAP, from his notes and worth stating where the numbers are: MAX_NEURONS_PER_REQUEST is
+// 1,200 against a 25,000 daily ceiling. ANY fixture reserving more than 1,200 exercises the
+// REFUSAL path while appearing to test the ceiling, and it looks like it passed for the intended
+// reason. Every reservation below is under 1,200 and the ceiling is approached by seeding spend.
+
+test('a reservation is held as pending, and pending accumulates', async () => {
+  // If pending did not count, two calls could each see room for one more and both be admitted —
+  // the double-spend the singleton exists to prevent.
+  const b = budget();
+  await b.reserve(1_000);
+  assert.equal((await b.state()).dayPending, 1_000, 'the hold must be visible before it settles');
+  await b.reserve(1_000);
+  assert.equal((await b.state()).dayPending, 2_000, 'a second hold must see the first');
+});
+
+test('the daily ceiling holds against a second reservation, and the boundary is exact', async () => {
+  const b = budget(seedUsed(CEILING - 1_100));
+  assert.equal((await b.reserve(1_000)).ok, true, 'the last 1,000 neurons of the day are spendable');
+  const over = await b.reserve(200);
+  assert.equal(over.ok, false, 'the next 200 are not — the first reservation is still held');
+  assert.equal(over.reason, 'daily_cap');
+});
+
+test('a request larger than the per-request cap is refused BY REASON, not by accident', async () => {
+  // request_too_large and unreadable_estimate are different operator actions at 3am: one is a
+  // client sending too much, the other is a bug upstream. They must never read the same.
+  const b = budget();
+  assert.equal((await b.reserve(MAX_PER_REQUEST)).ok, true, 'exactly at the cap is allowed');
+  const r = await b.reserve(MAX_PER_REQUEST + 1);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'request_too_large');
+  assert.notEqual(r.reason, 'unreadable_estimate');
+});
+
+test('the kill switch refuses every reservation and carries the operator reason to the caller', async () => {
+  const b = budget();
+  await b.call('/kill', { killed: true, reason: 'paused for a runaway loop' });
+  const r = await b.reserve(100);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'killed');
+  assert.equal(r.message, 'paused for a runaway loop', 'the operator said why; the caller must hear it');
+});
+
+test('the kill switch lifts, or it is a one-way door nobody would use', async () => {
+  const b = budget();
+  await b.call('/kill', { killed: true, reason: 'x' });
+  assert.equal((await b.reserve(100)).ok, false);
+  await b.call('/kill', { killed: false });
+  assert.equal((await b.reserve(100)).ok, true, 'un-killing must restore service');
+});
+
+test('release frees the hold; settle records the ACTUAL cost, not the reservation', async () => {
+  const b = budget();
+  await b.reserve(1_000);
+  await b.call('/release', { reserved: 1_000 });
+  const rel = await b.state();
+  assert.equal(rel.dayPending, 0, 'a failed call must return its reservation');
+  assert.equal(rel.dayNeurons, 0, 'and a released reservation is not spend');
+
+  await b.reserve(1_000);
+  await b.settle(1_000, 320);
+  const st = await b.state();
+  assert.equal(st.dayPending, 0);
+  assert.equal(st.dayNeurons, 320, 'the true cost, not the 1,000 reserved');
+});
+
+test('a stranded hold is released by the day rollover', async () => {
+  // The crash case: a worker that dies between reserve and settle holds neurons with nothing left
+  // to free them. Rollover is what bounds the damage to the remainder of one day.
+  //
+  // THE FIXTURE HAS TO BITE, and my first one did not. It stranded 1,000 neurons against a 25,000
+  // ceiling, so inheriting the stale hold refused nothing and the test passed whether or not the
+  // rollover happened — it went GREEN with `if (s.day !== d)` replaced by `if (false)`. A test that
+  // only ever walks the silent path is not a test. Yesterday's state below sits close enough to the
+  // ceiling that inheriting it MUST refuse the next call.
+  const stranded = {
+    day: '2000-01-01', month: '2000-01',
+    dayNeurons: CEILING - 500, dayPending: 400,
+    dayBillableNeurons: CEILING - 500 - FREE_PER_DAY, monthBillableNeurons: CEILING - 500 - FREE_PER_DAY,
+  };
+  // Proof the fixture bites: the same numbers dated TODAY are refused.
+  const sameDay = budget({ budget: { ...stranded, day: today(), month: thisMonth() } });
+  const refused = await sameDay.reserve(200);
+  assert.equal(refused.ok, false, 'the fixture must be over the line, or the rollover proves nothing');
+  assert.equal(refused.reason, 'daily_cap');
+
+  // Dated yesterday, the rollover must clear it and the same call must be admitted.
+  const b = budget({ budget: stranded });
+  const r = await b.reserve(200);
+  assert.equal(r.ok, true, "a new day must not inherit yesterday's stranded hold");
+  assert.equal(r.state.dayNeurons, 0, "and yesterday's spend must not follow it either");
+  assert.equal(r.state.dayPending, 200, 'only the new reservation is held');
+});
+
+test('the admin route cannot raise a ceiling above the compiled default', async () => {
+  // G4, executed rather than regexed. A route that could widen the cap is a static secret away
+  // from a 22x bill, and /api/admin/* is exempt from user auth.
+  const b = budget();
+  const raised = await b.call('/limits', {
+    billableNeuronsPerDay: 2_000_000, billableNeuronsPerMonth: 20_000_000, maxNeuronsPerRequest: 100_000,
+  });
+  assert.equal(raised.limits.billableNeuronsPerDay, BILLABLE_PER_DAY);
+  assert.equal(raised.limits.billableNeuronsPerMonth, 460_000);
+  assert.equal(raised.limits.maxNeuronsPerRequest, MAX_PER_REQUEST);
+});
+
+test('CONTROL: lowering a cap actually BINDS', async () => {
+  // The control for the ratchet, and the one that is easy to omit. A route that refused EVERY
+  // change would also pass "cannot raise" — while making the runtime cap useless in the incident
+  // it exists for. Without this, "can only ratchet down" is satisfied by a route that does nothing.
+  const b = budget();
+  const lowered = await b.call('/limits', { billableNeuronsPerDay: 100 });
+  assert.equal(lowered.limits.billableNeuronsPerDay, 100, 'lowering must be accepted');
+
+  // and it must bind ADMISSION, not merely be stored
+  await b.call('/simulate-usage', { neurons: FREE_PER_DAY + 50 });
+  const blocked = await b.reserve(100);
+  assert.equal(blocked.ok, false, 'a lowered daily cap must refuse');
+  assert.equal(blocked.reason, 'daily_cap');
+});
