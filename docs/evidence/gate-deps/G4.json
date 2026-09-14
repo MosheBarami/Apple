@@ -1,3 +1,4 @@
 [
-  "apps/worker/tests/spend-ratchet.test.mjs"
+  "apps/worker/tests/budget-admission.test.mjs",
+  "scripts/assert-tests.mjs"
 ]

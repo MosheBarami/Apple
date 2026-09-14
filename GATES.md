@@ -34,7 +34,7 @@ and are tracked as handoffs, not gates.
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 36 --label G4 -- node --test tests/budget-admission.test.mjs
   CHECK-CHANGE: old=cd apps/worker && node --test tests/spend-ratchet.test.mjs new=budget-admission reason=the-old-check-regexed-source-text-and-never-constructed-the-object
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G4; path=6765c31f4f12/53 entries; git-sha=3176b02; tree-clean=yes; break-sha=3176b02; EXPECT=unmatched; output-sha256=54b036ecb6807dc4e7cd4a69d7cc00564c1c37bb487aefcfd0807ae41ecd2820; output-bytes=1839; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=69008038199854508413fb01; at=2026-09-14T21:34:23.889Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=2d6092b; tree-clean=yes; EXPECT=matched; output-sha256=8efbf14a706fa01bfe164f2ade333da8e2ec2c73a4a5e8a4eb2dc440f9d676ac; output-bytes=3019; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=69008038199854508413fb01; at=2026-09-14T21:34:29.224Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=2ca4673; tree-clean=no; EXPECT=matched; output-sha256=8efbf14a706fa01bfe164f2ade333da8e2ec2c73a4a5e8a4eb2dc440f9d676ac; output-bytes=3014; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=69008038199854508413fb01; at=2026-09-14T21:34:34.515Z
     EXPECT: G4 OK
 
 - [x] G5: A checkpoint restore reports what it actually put back
@@ -253,10 +253,11 @@ test it gated.
     CHECK: node scripts/check-backlog.mjs --summary
     EXPECT: BACKLOG HONEST
 
-- [ ] G-ORACLE-5: Every disposition rule is proven to fire, and every one carries a control
+- [x] G-ORACLE-5: Every disposition rule is proven to fire, and every one carries a control
     CHECK: node scripts/assert-tests.mjs --floor 17 --label G-ORACLE-5 -- node --test tests/check-dispositions.test.mjs
     EXPECT: G-ORACLE-5 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-5; path=6765c31f4f12/53 entries; git-sha=dbb3c2d; tree-clean=yes; break-sha=dbb3c2d; EXPECT=unmatched; output-sha256=e794b7577303bad0a37278f2cb272acd90514b549f64d866f3e84aa2ff91b9f8; output-bytes=2436; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=933ed645b29cea142a3bfaea; at=2026-09-14T20:49:49.710Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=2ca4673; tree-clean=no; EXPECT=matched; output-sha256=acb0f998e30a53d5706c5d392a7999a7fd4fd4d31d0993cffe09f93db37d203e; output-bytes=1373; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=9721b078dabf71700315a5c1; at=2026-09-14T21:34:34.514Z
 
 
 - [x] G-OFFER-1: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
