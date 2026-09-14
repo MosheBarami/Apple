@@ -921,3 +921,185 @@ test('binding is refused when the player has no loaded data', () => {
   ].join('\n'), 'cp-noload');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * Leaderboard's harness.
+ *
+ * `task.spawn` CAPTURES the refresh loop rather than running it — the loop is `while running do`,
+ * and a synchronous spawn would hang the test forever. refresh() is driven directly instead, which
+ * is the part with the rules in it.
+ *
+ * The fake OrderedDataStore can be told to fail, and to fail only on the page read, so the two
+ * different failure points get different tests. They are different: one leaves the cache alone by
+ * never reaching it, the other has to leave it alone deliberately.
+ */
+function runLeaderboard(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local nowValue = 5000',
+    'os = { time = function() return nowValue end, clock = function() return nowValue end }',
+    '',
+    'local spawned = nil',
+    'task = { spawn = function(f) spawned = f end, wait = function() end }',
+    '',
+    'local store = {',
+    '\tdata = {},',
+    '\tfailFetch = false,',
+    '\tfailPage = false,',
+    '\tfetches = 0,',
+    '}',
+    'function store:UpdateAsync(key, transform)',
+    '\tlocal updated = transform(self.data[key])',
+    '\tself.data[key] = updated',
+    '\treturn updated',
+    'end',
+    'function store:GetSortedAsync(ascending, size)',
+    '\tself.fetches = self.fetches + 1',
+    '\tif self.failFetch then error("throttled") end',
+    '\tlocal rows = {}',
+    '\tfor key, value in pairs(self.data) do table.insert(rows, { key = key, value = value }) end',
+    '\ttable.sort(rows, function(a, b) return a.value > b.value end)',
+    '\tlocal page = {}',
+    '\tfor i = 1, math.min(size, #rows) do page[i] = rows[i] end',
+    '\tlocal failPage = self.failPage',
+    '\treturn { GetCurrentPage = function() if failPage then error("page read failed") end return page end }',
+    'end',
+    '',
+    'game = { GetService = function(self, name) return { GetOrderedDataStore = function() return store end } end }',
+    '',
+    'local function p(id) return { UserId = id } end',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.leaderboard.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+const LB = 'M.configure({ store = "Test_v1", size = 3, refreshSeconds = 60 })';
+
+test('the leaderboard harness runs, and a false assertion in it still fails', () => {
+  const good = runLeaderboard([LB, 'assert(type(M.refresh) == "function")'].join('\n'), 'lb-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runLeaderboard([LB, 'assert(false, "intentional-lb")'].join('\n'), 'lb-sanity-neg');
+  assert.equal(bad.ok, false, 'a failing assert did not fail the leaderboard run');
+  assert.match(bad.output, /intentional-lb/);
+});
+
+test('a refresh builds a ranked board from the store', () => {
+  const r = runLeaderboard([
+    LB,
+    'M.submit(p(1), 50) M.submit(p(2), 900) M.submit(p(3), 300)',
+    'assert(M.refresh() == true)',
+    'local top, at = M.top()',
+    'assert(#top == 3, "three entries, got " .. tostring(#top))',
+    'assert(top[1].userId == 2 and top[1].score == 900, "highest first")',
+    'assert(top[1].rank == 1 and top[3].rank == 3, "ranks are assigned")',
+    'assert(at == 5000, "and the board says when it was fetched")',
+  ].join('\n'), 'lb-refresh');
+  assert.ok(r.ok, r.output);
+});
+
+test('A FAILED FETCH KEEPS THE PREVIOUS BOARD — an empty board reads as "nobody has scored"', () => {
+  const r = runLeaderboard([
+    LB,
+    'M.submit(p(1), 100)',
+    'assert(M.refresh() == true)',
+    'assert(#M.top() == 1, "a board exists")',
+    'store.failFetch = true',
+    'assert(M.refresh() == false, "the fetch failed")',
+    'local top = M.top()',
+    'assert(#top == 1, "the previous board must still stand, got " .. tostring(#top))',
+    'assert(top[1].userId == 1, "with its entries intact")',
+  ].join('\n'), 'lb-failed-fetch');
+  assert.ok(r.ok, r.output);
+});
+
+test('a page that fails partway does not replace the board with half of one', () => {
+  // A separate failure point from the fetch: this one is reached AFTER the request succeeded, so
+  // leaving the cache alone has to be deliberate rather than incidental.
+  const r = runLeaderboard([
+    LB,
+    'M.submit(p(1), 100)',
+    'assert(M.refresh() == true)',
+    'store.failPage = true',
+    'assert(M.refresh() == false, "the page read failed")',
+    'assert(#M.top() == 1, "the old board stands rather than being half-replaced")',
+  ].join('\n'), 'lb-failed-page');
+  assert.ok(r.ok, r.output);
+});
+
+test('SUBMIT IS MONOTONIC BY DEFAULT — a stale retry cannot lower a score', () => {
+  const r = runLeaderboard([
+    LB,
+    'M.submit(p(1), 900)',
+    'M.submit(p(1), 100)',
+    'assert(M.refresh() == true)',
+    'local top = M.top()',
+    'assert(top[1].score == 900, "a later lower write must not win, got " .. tostring(top[1].score))',
+    'M.submit(p(1), 1200)',
+    'assert(M.refresh() == true)',
+    'assert(M.top()[1].score == 1200, "but a genuine improvement must")',
+  ].join('\n'), 'lb-monotonic');
+  assert.ok(r.ok, r.output);
+});
+
+test('monotonic = false lets a current value fall, for a board that tracks a balance', () => {
+  const r = runLeaderboard([
+    'M.configure({ store = "Test_v1", size = 3, monotonic = false })',
+    'M.submit(p(1), 900)',
+    'M.submit(p(1), 100)',
+    'assert(M.refresh() == true)',
+    'assert(M.top()[1].score == 100, "the newest write wins when the board tracks a current value")',
+  ].join('\n'), 'lb-nonmonotonic');
+  assert.ok(r.ok, r.output);
+});
+
+test('fractional, negative and non-numeric scores are refused', () => {
+  const r = runLeaderboard([
+    LB,
+    'assert(M.submit(p(1), 1.5) == false, "OrderedDataStore stores integers")',
+    'assert(M.submit(p(1), -5) == false)',
+    'assert(M.submit(p(1), "900") == false)',
+    'assert(M.refresh() == true)',
+    'assert(#M.top() == 0, "none of those may have been stored")',
+    'assert(#warnings >= 3, "and each should say why")',
+  ].join('\n'), 'lb-validation');
+  assert.ok(r.ok, r.output);
+});
+
+test('start is idempotent, so the scarcest budget is not spent twice over', () => {
+  const r = runLeaderboard([
+    LB,
+    'assert(M.start() == true, "the first start runs")',
+    'assert(M.start() == false, "a second start must NOT begin a second loop")',
+    'M.stop()',
+    'assert(M.start() == true, "and it can be restarted after stopping")',
+  ].join('\n'), 'lb-start');
+  assert.ok(r.ok, r.output);
+});
+
+test('an unconfigured board refuses rather than erroring', () => {
+  const r = runLeaderboard([
+    'assert(M.refresh() == false, "no store, no refresh")',
+    'assert(M.submit(p(1), 10) == false, "no store, no submit")',
+  ].join('\n'), 'lb-unconfigured');
+  assert.ok(r.ok, r.output);
+});

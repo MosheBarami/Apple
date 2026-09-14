@@ -642,6 +642,153 @@ end
 return Checkpoints
 `;
 
+const LEADERBOARD_SOURCE = `--!strict
+-- Leaderboard — a global top-N, on the scarcest budget Roblox has.
+--
+-- GetSortedAsync is a LIST operation. Roblox's request limits, per server:
+--
+--     reads / writes / removes    60 per minute + 40 per player
+--     LIST operations              5 per minute +  2 per player
+--
+-- An order of magnitude less than everything else. So the board is fetched on a TIMER and never on
+-- player join: a join-triggered fetch spends the scarcest budget in the API on the most repetitive
+-- request in the game, and it does it fastest exactly when the server is filling.
+--
+-- THE CACHE IS NOT AN OPTIMISATION. A failed fetch must leave the previous board on screen. An
+-- empty board does not read as "the service is unavailable" — it reads as "nobody has scored", and
+-- a player who sees their own name vanish concludes they lost their progress.
+--
+-- Writes are per player and go through the same OrderedDataStore, so they are cheap; the read is
+-- the expensive one and is shared by everybody.
+--
+-- SETUP (once, in a server Script):
+--   local Leaderboard = require(game.ServerScriptService.Leaderboard)
+--   Leaderboard.configure({ store = "Coins_v1", size = 10, refreshSeconds = 60 })
+--   Leaderboard.start()
+--   -- when a player's score changes, or on leave:
+--   Leaderboard.submit(player, Currency.balance(player))
+local DataStoreService = game:GetService("DataStoreService")
+
+local Leaderboard = {}
+
+local store = nil
+local boardSize = 10
+local refreshSeconds = 60
+local monotonic = true
+local running = false
+
+-- The last page that successfully loaded. Never cleared by a failure.
+local cached = {}
+local cachedAt = nil
+local failures = 0
+
+function Leaderboard.configure(opts)
+	store = DataStoreService:GetOrderedDataStore(opts.store or "Leaderboard_v1")
+	boardSize = opts.size or boardSize
+	refreshSeconds = opts.refreshSeconds or refreshSeconds
+	if opts.monotonic ~= nil then
+		monotonic = opts.monotonic
+	end
+end
+
+--- Record one player's score. Cheap: an ordinary ordered-store write, not a list operation.
+--- Scores must be whole numbers; OrderedDataStore stores integers and mangles anything else silently.
+---
+--- WRITTEN WITH UpdateAsync, NOT SetAsync, AND THAT IS NOT PEDANTRY HERE. Submits are retried, and
+--- they arrive from PlayerRemoving and from score changes, so two writes for one player can be in
+--- flight with the older one landing second. SetAsync takes the last writer, so a retried stale
+--- score would quietly lower somebody's place on the board. The read-modify-write cannot.
+---
+--- Monotonic by default, because a leaderboard is almost always "best ever" — and because under
+--- max() an out-of-order write is not merely survivable, it is a no-op. Set monotonic = false in
+--- configure when the board should track a CURRENT value that can legitimately fall, such as a
+--- balance that gets spent; then the newest write wins and ordering matters again.
+function Leaderboard.submit(player, score)
+	if store == nil then
+		warn("[Leaderboard] not configured")
+		return false
+	end
+	if type(score) ~= "number" or score % 1 ~= 0 or score < 0 then
+		warn("[Leaderboard] score must be a whole, non-negative number, got " .. tostring(score))
+		return false
+	end
+	local ok, err = pcall(function()
+		store:UpdateAsync(tostring(player.UserId), function(stored)
+			if monotonic and stored ~= nil and stored > score then
+				return stored
+			end
+			return score
+		end)
+	end)
+	if not ok then
+		warn("[Leaderboard] submit failed: " .. tostring(err))
+	end
+	return ok
+end
+
+--- Fetch the top N. Returns the entries and whether they are FRESH, so a caller can tell a live
+--- board from a cached one instead of guessing.
+function Leaderboard.top()
+	return cached, cachedAt
+end
+
+--- One fetch. Returns true when the board was refreshed. On failure the previous board stands.
+function Leaderboard.refresh()
+	if store == nil then
+		return false
+	end
+	local ok, pages = pcall(function()
+		return store:GetSortedAsync(false, boardSize)
+	end)
+	if not ok or pages == nil then
+		failures = failures + 1
+		warn("[Leaderboard] fetch failed (" .. tostring(failures) .. " in a row); keeping the previous board")
+		return false
+	end
+
+	local okPage, entries = pcall(function()
+		return pages:GetCurrentPage()
+	end)
+	if not okPage or entries == nil then
+		failures = failures + 1
+		return false
+	end
+
+	-- Only replace the cache once a whole page has been read successfully. Building it in place
+	-- would leave a half-filled board on screen if the read failed partway.
+	local fresh = {}
+	for rank, entry in ipairs(entries) do
+		fresh[rank] = { userId = tonumber(entry.key), score = entry.value, rank = rank }
+	end
+	cached = fresh
+	cachedAt = os.time()
+	failures = 0
+	return true
+end
+
+--- Start the refresh loop. Idempotent: calling twice does not start two loops, which would double
+--- the spend on the one budget this module exists to protect.
+function Leaderboard.start()
+	if running then
+		return false
+	end
+	running = true
+	task.spawn(function()
+		while running do
+			Leaderboard.refresh()
+			task.wait(refreshSeconds)
+		end
+	end)
+	return true
+end
+
+function Leaderboard.stop()
+	running = false
+end
+
+return Leaderboard
+`;
+
 export const PREFABS: Record<string, Prefab> = {
   profile_store: {
     id: 'profile_store',
@@ -662,6 +809,30 @@ export const PREFABS: Record<string, Prefab> = {
       'Profile.commit(player, data) -> boolean  -- persist one table now; for atomic purchase writes',
     ],
     source: PROFILE_SOURCE,
+  },
+  leaderboard: {
+    id: 'leaderboard',
+    moduleName: 'Leaderboard',
+    summary: 'A global top-N that respects the scarcest request budget Roblox has, and never blanks itself on a failure.',
+    prevents: [
+      'fetching with GetSortedAsync on player join — it is a LIST operation, 5 per minute plus 2 per player against 60 plus 40 for an ordinary read, so a join-triggered fetch spends the scarcest budget in the API on the most repetitive request',
+      'a failed fetch blanking the board, which reads as "nobody has scored" rather than "the service is down" and tells a player their progress is gone',
+      'a half-read page being shown as a complete board',
+      'two refresh loops running at once and doubling the spend on the one budget this protects',
+      'submitting a fractional score to an OrderedDataStore, which stores integers and mangles the rest silently',
+      'a retried or out-of-order submit lowering a score, which SetAsync would allow and a read-modify-write cannot',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'Leaderboard.configure({ store = "Coins_v1", size = 10, refreshSeconds = 60, monotonic = true })',
+      'Leaderboard.start() -> boolean   -- idempotent',
+      'Leaderboard.submit(player, score) -> boolean',
+      'Leaderboard.top() -> entries, fetchedAtOrNil',
+      'Leaderboard.refresh() -> boolean   -- one fetch; false leaves the previous board standing',
+      'Leaderboard.stop()',
+    ],
+    source: LEADERBOARD_SOURCE,
   },
   checkpoints: {
     id: 'checkpoints',
