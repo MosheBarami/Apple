@@ -262,7 +262,7 @@ test it gated.
 - [x] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
-  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G90; path=6765c31f4f12/53 entries; git-sha=6943c26; tree-clean=yes; break-sha=6943c26; EXPECT=unmatched; output-sha256=504c1c10adc6bcba015375f7d75b65ab2a6d3008a0b8e7da0af1e1d9c1fb0ad0; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=173; deps-sha=087b2482e48a9b3f93e1ca0b; at=2026-09-14T19:08:46.376Z
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=a5302495f6d69c1a218d4e0e9be1ab5080ec9fd8e20a4eab23d39fa3570b55a6; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=221; deps-sha=3e9005051ee31fca040c8734; at=2026-09-14T19:30:15.153Z
 
 - [x] G91: Every package typechecks
