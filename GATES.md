@@ -161,7 +161,7 @@ and are tracked as handoffs, not gates.
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G81 -- node --test tests/workspace-coverage.test.mjs
     EXPECT: G81 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G81; path=6765c31f4f12/53 entries; git-sha=83561ea; tree-clean=yes; break-sha=83561ea; EXPECT=unmatched; output-sha256=230277763c442fda5087d3d10ffcfab1475721d517cba65109a59d74dd477e8e; output-bytes=15000; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=82354b912d237878efb67a2c; at=2026-09-14T18:52:20.000Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=aaf7043; tree-clean=yes; EXPECT=matched; output-sha256=f0f3f90d157abac3ab10b91f964a1067748ea65528d52d4b6f7d540e24b792de; output-bytes=993; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=980ac4295f7090e222885233; at=2026-09-14T18:52:26.702Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=02e5d9c; tree-clean=yes; EXPECT=matched; output-sha256=0cd0cfd2e841d2c72e94fe144106b9a2fb10437ddce741a1e2114ffab66ceb90; output-bytes=1093; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=a9e78e7d99e826e381715f1b; at=2026-09-14T21:38:20.241Z
   EXPECT-CHANGE: old=fail 0 new=G81 OK reason=derived-floor-12-measured-12-passing
 
 <!-- G80+ gates the verification machinery itself, kept clear of the G1..G79 feature range so two
@@ -275,7 +275,7 @@ test it gated.
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e668111; tree-clean=yes; EXPECT=matched; output-sha256=81e3a89f7f2d7cb694f424ec245169b37cc6516a732e1f829ca6e9225746a4d3; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=0c6818a86f2753c593a15e51; at=2026-09-14T20:36:02.746Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=02e5d9c; tree-clean=yes; EXPECT=matched; output-sha256=b5bfe5f6555e2119236f8ea0fa0f1d382e91cf33bf002245edd6eee227fa4902; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=236; deps-sha=2a59acd68b92e1f915757dfe; at=2026-09-14T21:38:20.239Z
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
