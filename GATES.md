@@ -275,7 +275,6 @@ test it gated.
     CHECK: pnpm --filter @golem/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=line
     EXPECT: 60 passed
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9c8631d; tree-clean=yes; break-sha=9c8631d; EXPECT=unmatched; output-sha256=206de3ec0a919383b37a45a1204b589187175cd884b3b09258aa6bd09e71cb25; output-bytes=11481; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=30; deps-sha=cc530d454254947b8adcb7da; at=2026-09-14T20:22:29.947Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=220550f; tree-clean=yes; EXPECT=matched; output-sha256=611dad4702fc804ad0ef1ea889fe9ed99dd6d977999438f8f174ff08dfb94730; output-bytes=6257; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=b481ae14de7d07ca8fece351; at=2026-09-14T20:36:23.009Z
 
 ---
 
