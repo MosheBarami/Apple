@@ -27,6 +27,7 @@
  * constants, so `node --test` can load it directly via native type stripping.
  */
 
+import { safeInternalPath } from '../safe-redirect';
 import {
   ASSET_KINDS,
   BLOCK_TYPES,
@@ -123,10 +124,33 @@ export function isSafeHref(href: unknown): boolean {
 }
 
 /** Only a base64 data URL of a raster image. SVG and remote URLs are refused. */
+/**
+ * The only two shapes a panel image may have: an inline data URL, or OUR OWN image route.
+ *
+ * The route had to be allowed at all because a generated PNG cannot be a data URL — a 1024x1024
+ * image is far past `maxImageDataLength`, which is why `generate_image` parked its output in KV in
+ * the first place and why nothing could ever display it.
+ *
+ * The path is judged by `safeInternalPath`, the guard the sign-in redirect already uses, rather
+ * than by a second same-origin check written here. That one folds backslashes before deciding
+ * (engines disagree about whether a backslash separates a path), refuses `//evil.com` — a
+ * protocol-relative URL wearing a path's clothes, which a naive "does not start with http" test
+ * lets straight through — refuses any scheme inside a rooted path, and refuses control characters
+ * that would let a target be smuggled past these checks by something downstream that re-parses.
+ * Reusing it means this guard inherits every vector that file's hostile-input list covers.
+ *
+ * Then the path must still be EXACTLY our image route. Same-origin is not sufficient: any other
+ * in-app path rendered into an <img> is a request the panel author chose and the user did not.
+ */
+const IMAGE_ROUTE = /^\/api\/projects\/[A-Za-z0-9_-]{1,64}\/image\/[A-Za-z0-9_-]{1,64}$/;
+
 export function isSafeImageSrc(src: unknown): boolean {
   if (typeof src !== 'string') return false;
   if (src.length > LIMITS.maxImageDataLength) return false;
-  return IMAGE_DATA_URL.test(src);
+  if (IMAGE_DATA_URL.test(src)) return true;
+  // safeInternalPath returns its fallback for anything it rejects, so requiring the value to come
+  // back UNCHANGED is what makes a rejection here a rejection rather than a silent rewrite.
+  return safeInternalPath(src, '') === src && IMAGE_ROUTE.test(src);
 }
 
 /** Structural nesting depth of arbitrary JSON, used as a cheap bomb guard. */

@@ -688,8 +688,76 @@ export const IMAGE_TTL_SECONDS = 3600;
  * metadata does not — the same reasoning render_view already follows when it pushes frames to the
  * browser and strips them from the tool result.
  */
-export async function storeImage(env: Env, pngBase64: string): Promise<string> {
-  const key = `image:${crypto.randomUUID()}`;
-  await env.KV.put(key, pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
-  return key;
+/**
+ * Park a generated PNG where a route can serve it back, keyed to the project that made it.
+ *
+ * THE KEY CARRIES THE PROJECT ON PURPOSE. It used to be `image:<uuid>`, which is UNGUESSABLE but
+ * not SCOPED, and those differ at exactly the moment the key leaks — a shared transcript, a log
+ * line, a screenshot of devtools. An unguessable key is a bearer token for an object nobody ever
+ * decided you could see; a scoped one lets the serving route re-derive authority from the thing it
+ * was asked for, rather than trusting that the asker could only have arrived legitimately.
+ *
+ * Only the `imageId` half goes back to the caller. If the client never holds the namespace-
+ * qualified key, a leaked tool transcript does not carry a fetchable handle to anything.
+ */
+export async function storeImage(
+  env: Env,
+  projectId: string,
+  pngBase64: string,
+): Promise<{ imageId: string }> {
+  const imageId = crypto.randomUUID();
+  await env.KV.put(imageKeyFor(projectId, imageId), pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
+  return { imageId };
+}
+
+/** The one place the storage key is spelled, so the writer and the reader cannot drift apart. */
+export function imageKeyFor(projectId: string, imageId: string): string {
+  return `image:${projectId}:${imageId}`;
+}
+
+/**
+ * The panel that puts a generated image in front of the user.
+ *
+ * Pure, and separate from the tool, because this is the half that was missing for the whole life of
+ * `generate_image`: the pixels were generated, paid for and stored, and no payload ever carried
+ * them to a surface. Keeping it here means it can be tested without a model call.
+ *
+ * The src is a PATH, never the bytes. A 1024x1024 PNG as a data URL is far past the UI detail cap,
+ * which is the original reason the image went to KV rather than into the result.
+ */
+export function imagePanel(
+  projectId: string,
+  imageId: string,
+  subject: string,
+  meta: { width: number; height: number; note?: string },
+): { v: 1; blocks: unknown[] } {
+  const name = subject.trim().slice(0, 80) || 'Generated image';
+  return {
+    v: 1,
+    blocks: [
+      {
+        type: 'asset_picker',
+        title: 'Generated image',
+        assets: [
+          {
+            id: imageId,
+            name,
+            kind: 'image',
+            thumbnail: {
+              src: imagePathFor(projectId, imageId),
+              alt: subject.trim().slice(0, 120) || 'generated image',
+              width: meta.width,
+              height: meta.height,
+            },
+            ...(meta.note ? { note: meta.note } : {}),
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/** The same-origin path the browser fetches. Shared so the tool and the route agree on one shape. */
+export function imagePathFor(projectId: string, imageId: string): string {
+  return `/api/projects/${encodeURIComponent(projectId)}/image/${encodeURIComponent(imageId)}`;
 }

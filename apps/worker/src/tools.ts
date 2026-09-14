@@ -28,7 +28,7 @@ import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
 import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, parseLayout } from './composition';
 import { semanticCheck, semanticLine } from './semantic';
-import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
+import { generateImage, storeImage, imagePanel, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau } from './effects';
@@ -1786,7 +1786,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_image',
       description:
-        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The pixels are parked under `imageKey` for an hour; there is NOT yet a path that uploads them to Roblox or applies them to a Decal, so never tell the user the image has been placed.",
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The image is SHOWN to the user in the workspace and is retrievable for an hour under `imageId`. There is still NO path that uploads it to Roblox or applies it to a Decal, so never tell the user it has been placed in their game — they can see it, not use it yet.",
       parameters: S(
         {
           subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
@@ -1828,9 +1828,31 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('refused' in res) return { error: res.message, reason: res.reason, offending: res.offending };
       // The pixels never enter the transcript — a base64 PNG is ~230k characters of nothing the
       // model can read. They go to KV under a key, exactly as render_view keeps frames out.
-      const imageKey = await storeImage(ctx.env, res.pngBase64);
+      // No project means no scoped key and therefore no route that could serve it — the eval
+      // harness and the admin run-tool route both build an AgentCtx with no project. Generating
+      // without somewhere to put it is still useful to those callers, so it is reported rather
+      // than refused, and the model is told the pixels are not retrievable.
+      if (!ctx.projectId) {
+        return {
+          notStored: 'generated, but there is no project to store it under, so it cannot be shown',
+          width: res.width,
+          height: res.height,
+          bytes: res.bytes,
+          flatness: res.flatness.verdict,
+        };
+      }
+      const { imageId } = await storeImage(ctx.env, ctx.projectId, res.pngBase64);
+
+      // The pixels reach the BROWSER by path, never through the transcript. A 1024x1024 PNG as a
+      // data URL is far past MAX_UI_DETAIL_CHARS, and the model could not read it anyway.
+      ctx.uiDetail = imagePanel(ctx.projectId, imageId, req.subject, {
+        width: res.width,
+        height: res.height,
+        note: res.flatness.verdict === 'too_detailed' ? res.flatness.note : undefined,
+      });
+
       return {
-        imageKey,
+        imageId,
         width: res.width,
         height: res.height,
         bytes: res.bytes,
