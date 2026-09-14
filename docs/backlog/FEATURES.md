@@ -1,0 +1,1367 @@
+# Apple — feature backlog
+
+Captured 2026-09-14 from the owner's list. **1249 items across 23 sections.**
+
+Status is assigned from evidence in `docs/audit/APPLE-LEDGER.md` and from work verified in-session.
+`done` means a reachable, executing, persisting product path with a file reference — not that code exists.
+
+| status | count | share |
+|---|---:|---:|
+| done | 116 | 9.3% |
+| partial | 13 | 1.0% |
+| blocked | 8 | 0.6% |
+| conflicts-with-decision | 11 | 0.9% |
+| not-started | 1101 | 88.2% |
+
+## Honest scale note
+
+This is not a sprint backlog. At 1,249 items it is the feature surface of a company, and marking
+every line `done` would be exactly the failure this product exists to prevent: a green check over
+work that did not happen. Each item here moves only when there is a file reference behind it.
+
+## Conflicts with decisions already taken
+
+These were requested but contradict a decision made on 2026-09-14. They are recorded, not silently dropped:
+
+- **Dedicated inference** — recurring cost
+- **Inference autoscaling** — recurring cost
+- **SOC2 readiness** — external audit, five figures, not an engineering task
+- **Multi-region deployment** — recurring cost
+- **Pro plan** — conflicts with zero-recurring-cost
+- **Team plan** — conflicts with zero-recurring-cost
+- **Enterprise plan** — conflicts with zero-recurring-cost
+- **Usage-based billing** — conflicts with zero-recurring-cost
+- **GPU billing** — conflicts with zero-recurring-cost
+- **Seat billing** — conflicts with zero-recurring-cost
+- **Stripe** — conflicts with the zero-recurring-cost decision (no payments)
+
+## Blocked on the owner
+
+- **Roblox Open Cloud** — needs an Open Cloud asset-upload credential — does not exist
+- **Asset import** — same credential blocker
+- **Desktop companion app** — owner chose rasteriser-only; out of scope for now
+- **Studio viewport capture** — measured impossible in-engine; needs a desktop companion + OS permission
+- **Studio screen recording** — same
+- **Live viewport stream** — same — and owner chose rasteriser-only
+- **Export Roblox asset** — same credential blocker
+- **Roblox Studio plugin** — STUDIO_PLUGIN_STORE_LIVE=false — nobody can install it
+
+## Sections
+
+### מוצר וחשבון — 24 items  (done 0, partial 0)
+
+- [ ] הרשמה והתחברות
+- [ ] Clerk / OAuth / Passkeys
+- [ ] פרופילים
+- [ ] צוותים וארגונים
+- [ ] הרשאות משתמשים
+- [ ] תפקידים: Owner / Admin / Developer / Viewer
+- [ ] Workspaces
+- [ ] Projects
+- [ ] תיקיות
+- [ ] Tags
+- [ ] חיפוש גלובלי
+- [ ] Favorites
+- [ ] Recents
+- [ ] Activity log
+- [ ] Notifications
+- [ ] Onboarding
+- [ ] הגדרות משתמש
+- [ ] הגדרות ארגון
+- [ ] API keys
+- [ ] Webhooks
+- [ ] Audit logs
+- [ ] Export account data
+- [ ] מחיקת חשבון
+- [ ] מצב Offline
+
+### צ׳אט AI — 82 items  (done 10, partial 4)
+
+- [x] Chat streaming — apps/worker/src/do/session.ts broadcast deltas; verified live
+- [ ] Markdown
+- [ ] Code blocks
+- [ ] Syntax highlighting
+- [ ] Copy code
+- [ ] Edit message
+- [ ] Regenerate response
+- [x] Stop generation — stop-signal.ts requestStop
+- [ ] Retry failed request
+- [ ] Branch conversation
+- [ ] Fork conversation
+- [ ] Message version history
+- [ ] Pin messages
+- [ ] Search conversation
+- [ ] Rename conversation
+- [ ] Archive conversation
+- [ ] Delete conversation
+- [ ] Share conversation
+- [ ] Public/private links
+- [ ] Conversation folders
+- [ ] Conversation tags
+- [ ] Conversation export
+- [ ] JSON export
+- [ ] Markdown export
+- [ ] PDF export
+- [ ] Prompt templates
+- [ ] System prompt editor
+- [ ] Developer prompt editor
+- [ ] Context window indicator
+- [~] Token counter — usage tracked server-side; not surfaced per message
+- [~] Cost counter — Sparks ledger exists; per-message display unverified
+- [ ] Latency indicator
+- [x] Model selector — gateway DEFAULT_MODELS + /api/admin/models (verified live)
+- [ ] Fast / Balanced / Max modes
+- [ ] Automatic model routing
+- [x] Fallback model — registry.ts PROVIDER_ORDER + selectProvider
+- [ ] Multi-model comparison
+- [ ] Side-by-side answers
+- [ ] Debate mode
+- [ ] Critic mode
+- [ ] Judge mode
+- [ ] Ensemble mode
+- [ ] Self-reflection mode
+- [x] Planning mode — clay / Plan mode, read-only by construction
+- [x] Execution mode — stone / Agent mode
+- [x] Verification mode — inspect_visually + semantic/intent checks
+- [ ] Research mode
+- [ ] Code mode
+- [ ] Roblox mode
+- [~] Hebrew mode — conversational classifier handles Hebrew (3d36b3e); UI RTL not yet audited
+- [ ] Voice mode
+- [ ] Vision mode
+- [ ] Image upload
+- [ ] PDF upload
+- [ ] Video upload
+- [ ] Audio upload
+- [ ] ZIP upload
+- [ ] Dataset upload
+- [ ] Drag and drop files
+- [ ] File preview
+- [ ] File indexing
+- [ ] Document citations
+- [ ] Source links
+- [ ] Confidence score
+- [~] Evidence panel — generative-UI registry exists; no live data source reaches it
+- [ ] Reasoning timeline
+- [ ] Tool execution timeline
+- [ ] Live progress
+- [x] Cancel execution — stop-signal.ts
+- [ ] Resume execution
+- [ ] Pause execution
+- [ ] Background jobs
+- [ ] Queue position
+- [x] Run history — messages table in SessionDO
+- [ ] Error explanation
+- [ ] Automatic retry
+- [x] Partial result recovery — owesWork -> 'incomplete', never reported as success
+- [ ] Human approval checkpoints
+- [ ] Ask-before-destructive-action
+- [ ] Plan preview
+- [ ] Execution preview
+- [ ] Final verification report
+
+### Agent מערכת — 50 items  (done 5, partial 0)
+
+- [ ] Planner agent
+- [ ] Researcher agent
+- [ ] Coder agent
+- [ ] Roblox agent
+- [ ] Luau agent
+- [ ] QA agent
+- [ ] Security agent
+- [ ] Visual agent
+- [ ] 3D agent
+- [ ] Audio agent
+- [ ] Documentation agent
+- [ ] Product agent
+- [ ] Reviewer agent
+- [ ] Judge agent
+- [ ] Router agent
+- [ ] Memory agent
+- [ ] Critic agent
+- [ ] Parallel agents
+- [ ] Agent delegation
+- [ ] Agent hierarchy
+- [ ] Agent handoffs
+- [ ] Agent collaboration
+- [ ] Agent debate
+- [ ] Agent voting
+- [ ] Agent consensus
+- [ ] Agent fallback
+- [x] Agent timeouts — STEP_STALE_MS + 30s op timeout
+- [x] Agent budgets — MAX_NEURONS_PER_REQUEST + BudgetDO
+- [ ] Agent priorities
+- [ ] Agent permissions
+- [x] Agent tool restrictions — router.ts toolsForMode — Plan is read-only
+- [ ] Agent sandbox
+- [ ] Agent snapshots
+- [x] Agent checkpoints — pre-agent checkpoint per non-Plan run
+- [ ] Agent replay
+- [x] Agent traces — ToolTraceEntry persisted per run
+- [ ] Agent evaluation
+- [ ] Agent skill registry
+- [ ] Agent marketplace
+- [ ] Custom agents
+- [ ] Custom agent instructions
+- [ ] Custom tools
+- [ ] Custom workflows
+- [ ] Workflow templates
+- [ ] Scheduled workflows
+- [ ] Recurring workflows
+- [ ] Event-triggered workflows
+- [ ] Long-running workflows
+- [ ] Durable workflows
+- [ ] Human-in-the-loop workflows
+
+### Roblox Integration — 101 items  (done 10, partial 3)
+
+- [ ] Roblox OAuth
+- [ ] Roblox account linking
+- [ ] Roblox group linking
+- [!] Roblox Open Cloud — needs an Open Cloud asset-upload credential — does not exist
+- [ ] Roblox Creator Store
+- [~] Asset search — find_verified_asset (Creator Store) works; search_asset_library has no populated table
+- [ ] Asset preview
+- [ ] Asset metadata
+- [ ] Asset download
+- [!] Asset import — same credential blocker
+- [~] Asset licensing validation — provenance.ts exists; dependency chain not fully validated
+- [ ] Asset attribution
+- [ ] Asset policy validation
+- [ ] Asset moderation checks
+- [x] Model insertion — insert_asset tool
+- [x] Part generation — create_instances tool
+- [~] Mesh generation — same as Text-to-3D — session-scoped only
+- [ ] Terrain generation
+- [ ] UI generation
+- [ ] GUI generation
+- [x] Script generation — edit_script tool
+- [ ] LocalScript generation
+- [ ] ModuleScript generation
+- [ ] ServerScript generation
+- [ ] Tool generation
+- [ ] RemoteEvent generation
+- [ ] RemoteFunction generation
+- [ ] BindableEvent generation
+- [ ] BindableFunction generation
+- [x] ProximityPrompt generation — create_instances (verified via Groq tool call)
+- [ ] ClickDetector generation
+- [ ] CollectionService tagging
+- [ ] Attributes generation
+- [ ] Folder hierarchy generation
+- [x] Workspace inspection — snapshot tool
+- [x] Explorer tree snapshot — snapshot tool root:'game'
+- [ ] Selection sync
+- [x] Studio plugin sync — HTTP long-poll, now idle-parked (37c42eb)
+- [ ] Live Studio connection
+- [ ] Play-test connection
+- [ ] Test server connection
+- [ ] Client/server separation
+- [ ] Script injection
+- [ ] Script patching
+- [ ] Safe diff preview
+- [ ] Apply patch
+- [ ] Revert patch
+- [x] Undo changes — Ops.luau MUTATING + checkpoint restore
+- [x] Build snapshots — SessionDO checkpoints (25 retained)
+- [ ] Versioned builds
+- [ ] Project cloning
+- [ ] Place backup
+- [x] Place restore — Serializer.luau restore path
+- [ ] Publish validation
+- [ ] Team Create integration
+- [ ] DataStore inspection
+- [ ] MemoryStore inspection
+- [ ] MessagingService testing
+- [ ] TeleportService testing
+- [ ] MarketplaceService testing
+- [ ] HttpService testing
+- [ ] Animation editor integration
+- [ ] Animation preview
+- [ ] Rig generation
+- [ ] NPC generation
+- [ ] Humanoid setup
+- [ ] Pathfinding setup
+- [ ] Camera scripting
+- [ ] Lighting setup
+- [ ] Atmosphere setup
+- [ ] Sound setup
+- [ ] Particle setup
+- [ ] VFX setup
+- [ ] Tween setup
+- [ ] Cutscene setup
+- [ ] Game loop generation
+- [ ] Round system generation
+- [ ] Inventory generation
+- [ ] Shop generation
+- [ ] Quest system generation
+- [ ] Dialogue system generation
+- [ ] Combat system generation
+- [ ] Tycoon system generation
+- [ ] Obby system generation
+- [ ] Simulator system generation
+- [ ] Admin system generation
+- [ ] Matchmaking generation
+- [ ] Leaderboard generation
+- [ ] Badge integration
+- [ ] Gamepass integration
+- [ ] Developer product integration
+- [ ] Monetization audit
+- [ ] Performance audit
+- [ ] Exploit audit
+- [ ] Memory leak audit
+- [ ] Replication audit
+- [ ] Network ownership audit
+- [ ] StreamingEnabled audit
+- [ ] Mobile compatibility audit
+- [ ] Console compatibility audit
+- [ ] Accessibility audit
+
+### Roblox Studio Companion — 52 items  (done 0, partial 1)
+
+- [!] Desktop companion app — owner chose rasteriser-only; out of scope for now
+- [ ] Native Studio bridge
+- [!] Studio viewport capture — measured impossible in-engine; needs a desktop companion + OS permission
+- [!] Studio screen recording — same
+- [!] Live viewport stream — same — and owner chose rasteriser-only
+- [~] Scene thumbnail — render_view produces frames; they do not reach the browser
+- [ ] Scene minimap
+- [ ] Explorer mirror
+- [ ] Properties mirror
+- [ ] Output console mirror
+- [ ] Script editor mirror
+- [ ] Test controls
+- [ ] Play
+- [ ] Stop
+- [ ] Pause
+- [ ] Restart
+- [ ] Run server
+- [ ] Run client
+- [ ] Multi-client testing
+- [ ] Camera control
+- [ ] Object selection sync
+- [ ] Gizmo control
+- [ ] Transform controls
+- [ ] Move
+- [ ] Rotate
+- [ ] Scale
+- [ ] Clone
+- [ ] Delete
+- [ ] Group
+- [ ] Ungroup
+- [ ] Rename
+- [ ] Reparent
+- [ ] Lock
+- [ ] Unlock
+- [ ] Visibility toggle
+- [ ] Material picker
+- [ ] Color picker
+- [ ] Collision preview
+- [ ] Bounding box preview
+- [ ] Performance overlay
+- [ ] FPS overlay
+- [ ] Memory overlay
+- [ ] Network overlay
+- [ ] Error overlay
+- [ ] AI action replay
+- [ ] Before/after comparison
+- [ ] Diff overlay
+- [ ] Screenshot annotations
+- [ ] Screen recording export
+- [ ] Build timeline
+- [ ] Test timeline
+- [ ] Viewport annotations
+
+### AI Models — 74 items  (done 5, partial 1)
+
+- [x] Model catalog — providers/workers-ai.ts WORKERS_AI_MODELS; commit 10c1f31
+- [ ] Model search
+- [~] Model comparison — docs/evals/FINDINGS.md has 56-task results; no live UI
+- [ ] Model benchmarks
+- [ ] Model licenses
+- [ ] Model cards
+- [ ] Model versioning
+- [ ] Model aliases
+- [x] Model routing — gateway.ts DEFAULT_MODELS per mode; commit 10c1f31
+- [x] Model fallback — providers/registry.ts adapterForModelId falls back to Workers AI
+- [ ] Model health checks
+- [ ] Model latency tracking
+- [x] Model cost tracking — pricing.ts + providers/cost.ts, settled per call
+- [ ] Model quality tracking
+- [ ] Model availability tracking
+- [ ] Model capabilities matrix
+- [ ] Context length comparison
+- [ ] Tool calling comparison
+- [ ] Vision comparison
+- [ ] Audio comparison
+- [ ] JSON mode comparison
+- [ ] Structured output comparison
+- [ ] Hebrew quality comparison
+- [ ] Roblox quality comparison
+- [ ] Code quality comparison
+- [ ] Reasoning quality comparison
+- [ ] Local models
+- [ ] Cloud models
+- [ ] Open-source models
+- [ ] Private models
+- [ ] Fine-tuned models
+- [ ] LoRA models
+- [ ] Quantized models
+- [ ] MoE models
+- [ ] Small models
+- [ ] Large models
+- [ ] Text models
+- [ ] Vision models
+- [ ] Audio models
+- [ ] Embedding models
+- [ ] Reranker models
+- [ ] Image models
+- [ ] Video models
+- [ ] 3D models
+- [ ] Speech-to-text models
+- [ ] Text-to-speech models
+- [ ] Model playground
+- [ ] Prompt playground
+- [ ] Temperature control
+- [ ] Top-p control
+- [ ] Top-k control
+- [ ] Max token control
+- [ ] Repetition penalty
+- [ ] Seed control
+- [ ] Stop sequences
+- [ ] JSON schema control
+- [ ] Grammar constraints
+- [ ] Tool choice control
+- [ ] Reasoning budget
+- [ ] Response style control
+- [x] Prompt caching — x-session-affinity prefix caching, providers/workers-ai.ts
+- [ ] KV caching
+- [ ] Speculative decoding
+- [ ] Batch inference
+- [ ] Streaming inference
+- [ ] Continuous batching
+- [ ] Quantization selection
+- [ ] GPU selection
+- [ ] CPU fallback
+- [ ] Local inference
+- [ ] Edge inference
+- [ ] Serverless inference
+- [×] Dedicated inference — recurring cost
+- [×] Inference autoscaling — recurring cost
+
+### Training — 107 items  (done 30, partial 0)
+
+- [ ] Dataset creation
+- [ ] Dataset upload
+- [ ] Dataset versioning
+- [ ] Dataset viewer
+- [ ] Dataset search
+- [ ] Dataset filtering
+- [x] Dataset deduplication — build-dataset.mjs sha256 over normalised code
+- [ ] Dataset cleaning
+- [ ] Dataset normalization
+- [ ] Dataset validation
+- [x] Dataset licensing — packages/corpus/data/sources.json, training/reuse verdicts separated
+- [x] Dataset provenance — raw/manifest.json per-source SPDX + commit SHA
+- [x] Dataset hashing — packages/corpus/src/intake/contenthash.mjs
+- [ ] Dataset lineage
+- [x] Dataset splitting — packages/training/src/build-dataset.mjs assignSplits
+- [x] Train split — packages/training/data/train.jsonl (327)
+- [x] Validation split — packages/training/data/val.jsonl (39)
+- [x] Test split — packages/training/data/test.jsonl (38)
+- [x] Repository-level split — build-dataset.mjs — no repo spans splits
+- [ ] Curriculum learning
+- [ ] Synthetic data generation
+- [ ] Human demonstrations
+- [ ] Tool-call examples
+- [ ] Agent trajectories
+- [ ] Roblox code examples
+- [ ] Luau examples
+- [ ] Error-fix examples
+- [ ] Before/after examples
+- [ ] Planning examples
+- [ ] Verification examples
+- [ ] Hebrew examples
+- [ ] Multilingual examples
+- [ ] Preference datasets
+- [ ] Ranking datasets
+- [ ] Reward datasets
+- [ ] Safety datasets
+- [ ] Visual datasets
+- [ ] Audio datasets
+- [ ] Instruction tuning
+- [x] SFT — packages/training — Apple v1 executed (regression, not promoted)
+- [x] LoRA — lora-apple-v1.yaml / v2 — executed on M2 Pro
+- [x] QLoRA — 4-bit base + LoRA adapters, MLX
+- [ ] DPO
+- [ ] ORPO
+- [ ] KTO
+- [ ] RFT
+- [ ] Continued pretraining
+- [ ] Distillation
+- [ ] Knowledge distillation
+- [ ] Adapter training
+- [ ] Multi-adapter training
+- [ ] Adapter merging
+- [x] Rank selection — v1 rank 8 -> v2 rank 16, reasoned
+- [ ] Alpha selection
+- [ ] Dropout selection
+- [x] Learning-rate selection — v1 1e-4 -> v2 5e-5, reasoned
+- [x] Batch-size selection — v1 bs4 -> v2 bs2 + accum (Metal watchdog)
+- [x] Gradient accumulation — lora-apple-v2.yaml grad_accumulation_steps: 2
+- [ ] Warmup
+- [ ] Weight decay
+- [ ] Epoch control
+- [x] Seed pinning — lora-apple-v*.yaml seed: 20260914
+- [x] Checkpointing — adapters/apple-v1/0000050_adapters.safetensors
+- [ ] Resume training
+- [x] Early stopping — lora-apple-v2.yaml (v1 val bottomed at iter 50)
+- [ ] Gradient clipping
+- [x] Mixed precision — MLX 4-bit quantised base
+- [ ] Quantization-aware training
+- [ ] GPU monitoring
+- [ ] Memory monitoring
+- [ ] Thermal monitoring
+- [x] Training logs — packages/training/runs/apple-v*.log
+- [x] Loss charts — runs/*.log loss series
+- [x] Validation loss — measured 2.812 -> 1.294 (v1)
+- [ ] Per-category loss
+- [ ] Token accuracy
+- [ ] Perplexity
+- [ ] Checkpoint comparison
+- [ ] Training replay
+- [ ] Experiment tracking
+- [ ] Hyperparameter sweeps
+- [ ] Automated model selection
+- [x] Holdout evaluation — base vs adapter on held-out prompts, n=8
+- [ ] Regression evaluation
+- [ ] Adversarial evaluation
+- [ ] Human evaluation
+- [ ] Blind evaluation
+- [ ] Red-team evaluation
+- [x] License compliance scan — build-dataset.mjs TRAINING_OK_SPDX gate
+- [x] Data contamination scan — build-dataset.mjs 8-word shingle vs packages/evals tasks
+- [ ] Memorization scan
+- [ ] PII scan
+- [ ] Prompt injection scan
+- [ ] Backdoor scan
+- [ ] Poisoning scan
+- [x] Model card generation — dataset-card.json emitted by build-dataset.mjs
+- [x] Training report — docs/audit/TRAINING-V1-REPORT.md
+- [ ] Dataset report
+- [x] Reproducible training — pinned seed + config + dataset card
+- [x] Local training — M2 Pro / MLX, zero recurring cost
+- [ ] Cloud training
+- [ ] Scheduled training
+- [ ] Incremental training
+- [ ] Continuous training
+- [ ] Feedback-based training
+- [ ] User correction collection
+- [ ] Human approval queue
+
+### Evaluation — 64 items  (done 12, partial 0)
+
+- [x] Eval suite — packages/evals — 84 text + 12 visual tasks
+- [x] Task registry — packages/evals/tasks/*.json, 12 suites
+- [ ] Custom eval tasks
+- [x] Roblox task suite — packages/evals/tasks (api-knowledge, luau-correctness, ...)
+- [x] Luau task suite — packages/evals/tasks/luau-correctness.json
+- [x] Tool selection tests — packages/evals/tasks/tool-selection.json
+- [ ] Tool argument tests
+- [ ] Build completion tests
+- [x] Script syntax tests — luau_syntax check via luau-lsp
+- [ ] Runtime tests
+- [x] Unit tests — 1,772 tests across 6 packages, green
+- [ ] Integration tests
+- [ ] Play tests
+- [x] Visual rubric tests — packages/evals/tasks-visual/rubric.json
+- [ ] Screenshot comparison
+- [ ] Scene comparison
+- [x] Regression tests — packages/evals/tasks-visual/regression/bench
+- [ ] Safety tests
+- [ ] Security tests
+- [ ] Prompt injection tests
+- [ ] Hallucination tests
+- [ ] Citation tests
+- [ ] Hebrew tests
+- [ ] Multilingual tests
+- [ ] Latency tests
+- [ ] Cost tests
+- [ ] Token tests
+- [ ] Context overflow tests
+- [x] Failure recovery tests — packages/evals/tasks/failure-recovery.json
+- [ ] Partial execution tests
+- [ ] Timeout tests
+- [ ] Rate-limit tests
+- [ ] Load tests
+- [ ] Stress tests
+- [ ] Reliability tests
+- [ ] Golden answers
+- [ ] Golden projects
+- [ ] Human scoring
+- [x] Automated scoring — packages/evals/src/grade.mjs
+- [x] LLM-as-judge — vision.ts critiqueViews — real images to a vision model
+- [ ] Pairwise comparison
+- [ ] Elo ranking
+- [ ] Pass rate
+- [ ] Success rate
+- [ ] First-attempt success
+- [ ] Tool-call accuracy
+- [ ] Build validity
+- [ ] Test coverage
+- [ ] Mean latency
+- [ ] P95 latency
+- [ ] Mean cost
+- [ ] Token efficiency
+- [ ] Error rate
+- [ ] Retry rate
+- [ ] Completion rate
+- [ ] Quality dashboard
+- [ ] Eval history
+- [ ] Eval diff
+- [ ] Model leaderboard
+- [ ] Public benchmark
+- [ ] Private benchmark
+- [ ] Scheduled evaluation
+- [ ] Promotion gates
+- [ ] Rollback gates
+
+### Knowledge and RAG — 54 items  (done 8, partial 0)
+
+- [ ] Document ingestion
+- [ ] Website crawling
+- [ ] Sitemap ingestion
+- [x] GitHub ingestion — packages/corpus/src/fetch.mjs, 38 pinned repos
+- [x] Roblox documentation ingestion — Roblox/creator-docs CC-BY-4.0, pinned SHA
+- [ ] Creator Store ingestion
+- [ ] PDF ingestion
+- [ ] Markdown ingestion
+- [ ] Code ingestion
+- [ ] Video transcript ingestion
+- [ ] Audio transcript ingestion
+- [ ] Image OCR
+- [ ] Table extraction
+- [x] Chunking — packages/corpus/src/chunk.mjs
+- [ ] Semantic chunking
+- [x] Code-aware chunking — packages/corpus chunker splits on headings/code blocks
+- [ ] Metadata extraction
+- [x] Embeddings — bge-small-en-v1.5, 384d — verified live
+- [ ] Reranking
+- [x] Hybrid search — rag.ts — Vectorize + D1 FTS5
+- [ ] Keyword search
+- [x] Vector search — Vectorize index golem-docs (384d) — verified live
+- [x] Full-text search — D1 chunks_fts FTS5 — verified live, 8,327 chunks
+- [ ] Knowledge graph
+- [ ] Entity extraction
+- [ ] Relationship extraction
+- [ ] Citation tracking
+- [ ] Source freshness
+- [ ] Source ranking
+- [ ] Source trust scoring
+- [ ] Duplicate detection
+- [ ] Version tracking
+- [ ] Change detection
+- [ ] Incremental indexing
+- [ ] Per-project knowledge
+- [ ] Per-user knowledge
+- [ ] Per-team knowledge
+- [ ] Global knowledge
+- [ ] Private knowledge
+- [ ] Knowledge permissions
+- [ ] Knowledge expiration
+- [ ] Knowledge deletion
+- [ ] Retrieval evaluation
+- [ ] Context compression
+- [ ] Context summarization
+- [ ] Long-term memory
+- [ ] Short-term memory
+- [ ] Episodic memory
+- [ ] Semantic memory
+- [ ] User preferences
+- [ ] Project memory
+- [ ] Build memory
+- [ ] Failure memory
+- [ ] Successful pattern memory
+
+### Code Intelligence — 49 items  (done 7, partial 0)
+
+- [x] Luau parser — luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs
+- [x] Luau formatter — stylua 2.5.2 available
+- [x] Luau linter — selene 0.31.0 + roblox-antipatterns.mjs
+- [ ] Luau type checker
+- [x] luau-lsp integration — packages/evals/src/luau.mjs resolveLuauChecker
+- [x] Static analysis — roblox-antipatterns.mjs — semantic exploit rules
+- [ ] AST inspection
+- [ ] Symbol index
+- [ ] Dependency graph
+- [ ] Call graph
+- [ ] Data-flow analysis
+- [ ] Control-flow analysis
+- [ ] Dead-code detection
+- [ ] Unused-variable detection
+- [ ] Type inference
+- [ ] API discovery
+- [ ] Roblox API validation
+- [ ] Deprecated API detection
+- [ ] Security scanning
+- [x] Exploit pattern scanning — roblox-antipatterns.mjs error-severity rules
+- [ ] Remote validation
+- [x] Server-authority validation — roblox-antipatterns.mjs client-trusted-price rules
+- [ ] Rate-limit validation
+- [ ] Memory leak detection
+- [ ] Infinite loop detection
+- [ ] Yield safety detection
+- [ ] Promise safety detection
+- [ ] Error handling audit
+- [ ] Race condition detection
+- [ ] Replication audit
+- [ ] Performance profiling
+- [ ] Automatic refactoring
+- [ ] Code migration
+- [ ] API migration
+- [ ] Version upgrade assistant
+- [ ] Patch generation
+- [ ] Diff explanation
+- [ ] Commit generation
+- [ ] Branch generation
+- [ ] Pull request generation
+- [ ] Code review
+- [ ] Inline comments
+- [ ] Test generation
+- [ ] Mock generation
+- [ ] Fixture generation
+- [ ] Documentation generation
+- [ ] Type definition generation
+- [ ] Comment generation
+- [ ] Changelog generation
+
+### 3D and Creative — 79 items  (done 0, partial 2)
+
+- [~] Text-to-3D — generate_model reaches GenerationService but result does not persist as a Roblox asset
+- [ ] Image-to-3D
+- [ ] Sketch-to-3D
+- [ ] Script-to-3D
+- [ ] Primitive generation
+- [~] Mesh generation — same as Text-to-3D — session-scoped only
+- [ ] Low-poly generation
+- [ ] High-poly generation
+- [ ] Retopology
+- [ ] UV generation
+- [ ] Texture generation
+- [ ] PBR materials
+- [ ] Normal maps
+- [ ] Roughness maps
+- [ ] Metallic maps
+- [ ] Decal generation
+- [ ] Terrain generation
+- [ ] Building generation
+- [ ] Room generation
+- [ ] Prop generation
+- [ ] Vehicle generation
+- [ ] Weapon generation
+- [ ] Character generation
+- [ ] NPC generation
+- [ ] Creature generation
+- [ ] Rigging
+- [ ] Skinning
+- [ ] Weight painting
+- [ ] Animation generation
+- [ ] Motion capture import
+- [ ] Animation retargeting
+- [ ] IK setup
+- [ ] Facial animation
+- [ ] Lip sync
+- [ ] Procedural animation
+- [ ] VFX generation
+- [ ] Particle generation
+- [ ] Beam generation
+- [ ] Trail generation
+- [ ] Lighting generation
+- [ ] Post-processing generation
+- [ ] Skybox generation
+- [ ] Atmosphere generation
+- [ ] Weather generation
+- [ ] Environment generation
+- [ ] Scene composition
+- [ ] Level generation
+- [ ] Layout generation
+- [ ] Obstacle generation
+- [ ] Dungeon generation
+- [ ] City generation
+- [ ] Procedural worlds
+- [ ] Seeded generation
+- [ ] Variation generation
+- [ ] Asset remixing
+- [ ] Asset style transfer
+- [ ] Asset cleanup
+- [ ] Asset optimization
+- [ ] Asset LOD generation
+- [ ] Asset collision generation
+- [ ] Asset preview
+- [ ] 3D viewport
+- [ ] Orbit camera
+- [ ] Pan camera
+- [ ] Zoom camera
+- [ ] Wireframe view
+- [ ] Material view
+- [ ] Lighting preview
+- [ ] Animation timeline
+- [ ] Frame stepping
+- [ ] Play animation
+- [ ] Export FBX
+- [ ] Export OBJ
+- [ ] Export GLB
+- [!] Export Roblox asset — same credential blocker
+- [ ] Asset history
+- [ ] Asset comparison
+- [ ] Asset moderation
+- [ ] Asset licensing
+
+### Voice and Audio — 32 items  (done 0, partial 0)
+
+- [ ] Speech-to-text
+- [ ] Text-to-speech
+- [ ] Voice chat
+- [ ] Voice commands
+- [ ] Voice activity detection
+- [ ] Speaker diarization
+- [ ] Voice cloning
+- [ ] Voice presets
+- [ ] Emotion control
+- [ ] Language detection
+- [ ] Translation
+- [ ] Sound effect generation
+- [ ] Music generation
+- [ ] Ambience generation
+- [ ] Footstep generation
+- [ ] UI sound generation
+- [ ] Combat sound generation
+- [ ] Dialogue generation
+- [ ] Lip sync
+- [ ] Audio cleanup
+- [ ] Noise removal
+- [ ] Audio mixing
+- [ ] Audio mastering
+- [ ] Audio waveform preview
+- [ ] Audio timeline
+- [ ] Audio asset library
+- [ ] Audio licensing
+- [ ] Audio moderation
+- [ ] Volume normalization
+- [ ] Export WAV
+- [ ] Export MP3
+- [ ] Export OGG
+
+### Automation and Tools — 43 items  (done 0, partial 0)
+
+- [ ] Browser tool
+- [ ] Search tool
+- [ ] Web fetch
+- [ ] GitHub tool
+- [ ] Git tool
+- [ ] Terminal tool
+- [ ] File system tool
+- [ ] Code execution
+- [ ] Python sandbox
+- [ ] Node sandbox
+- [ ] Luau sandbox
+- [ ] Roblox test sandbox
+- [ ] Screenshot tool
+- [ ] OCR tool
+- [ ] Image analysis
+- [ ] Video analysis
+- [ ] Audio analysis
+- [ ] PDF analysis
+- [ ] Database tool
+- [ ] SQL tool
+- [ ] HTTP tool
+- [ ] API connector
+- [ ] Webhook tool
+- [ ] Email tool
+- [ ] Calendar tool
+- [ ] Storage tool
+- [ ] Queue tool
+- [ ] Cron tool
+- [ ] Secret manager
+- [ ] Container runner
+- [ ] GPU runner
+- [ ] Dataset runner
+- [ ] Evaluation runner
+- [ ] Deployment tool
+- [ ] Rollback tool
+- [ ] Log reader
+- [ ] Metrics reader
+- [ ] Cost reader
+- [ ] Health checker
+- [ ] Status checker
+- [ ] Dependency scanner
+- [ ] License scanner
+- [ ] Vulnerability scanner
+
+### Product UX — 59 items  (done 3, partial 2)
+
+- [x] Dark mode — apple-brand.css dark-native tokens
+- [ ] Light mode
+- [ ] Custom themes
+- [x] Brand theme — apps/site/src/styles/apple-brand.css, measured from the mark
+- [ ] Responsive design
+- [ ] Mobile layout
+- [ ] Tablet layout
+- [ ] Desktop layout
+- [ ] Keyboard shortcuts
+- [ ] Command palette
+- [ ] Quick actions
+- [ ] Context menus
+- [ ] Drag and drop
+- [ ] Split panes
+- [ ] Resizable panes
+- [ ] Floating panels
+- [ ] Fullscreen mode
+- [ ] Focus mode
+- [ ] Zen mode
+- [ ] Compact mode
+- [ ] Accessibility mode
+- [ ] High contrast
+- [x] Reduced motion — apple-brand.css prefers-reduced-motion
+- [ ] Screen-reader support
+- [~] RTL support — Hebrew greetings handled in classifier; UI RTL NOT audited
+- [ ] Hebrew UI
+- [ ] Arabic UI
+- [ ] Localization
+- [ ] Translation system
+- [ ] Onboarding tours
+- [ ] Empty states
+- [ ] Loading states
+- [ ] Skeleton states
+- [ ] Error states
+- [ ] Offline states
+- [ ] Success states
+- [ ] Toast notifications
+- [ ] Modal confirmations
+- [ ] Undo actions
+- [ ] Autosave
+- [ ] Autosave recovery
+- [ ] Draft recovery
+- [ ] Progress indicators
+- [ ] Activity timeline
+- [ ] Build timeline
+- [ ] Execution graph
+- [ ] Dependency graph
+- [ ] Token graph
+- [ ] Cost graph
+- [ ] Quality graph
+- [ ] Agent visualization
+- [ ] Model visualization
+- [ ] Training visualization
+- [ ] Live terminal
+- [ ] Live logs
+- [ ] Live metrics
+- [~] Live viewport — software rasteriser only — labelled honestly, not a viewport capture
+- [ ] Live code diff
+- [ ] Live test results
+
+### Safety and Security — 56 items  (done 6, partial 0)
+
+- [x] Authentication — Supabase ES256 JWKS verify, auth.ts
+- [x] Authorization — Postgres RLS, infra/supabase/migrations
+- [ ] RBAC
+- [ ] ABAC
+- [ ] SSO
+- [ ] MFA
+- [ ] Passkeys
+- [ ] Session management
+- [ ] Device management
+- [ ] API key rotation
+- [ ] Secret encryption
+- [ ] Secret redaction
+- [x] Secret scanning — scripts/secret-scan.py — tree verified clean
+- [ ] PII detection
+- [ ] PII redaction
+- [x] Prompt injection defense — per-run fence id; tool output never trusted as instruction
+- [ ] Tool injection defense
+- [ ] Data exfiltration defense
+- [ ] Sandbox isolation
+- [ ] Network isolation
+- [ ] File access policies
+- [ ] Tool allowlists
+- [ ] Tool denylists
+- [ ] Domain allowlists
+- [ ] Command allowlists
+- [x] Rate limiting — index.ts ipLimited (per-isolate, defence in depth)
+- [ ] Abuse detection
+- [ ] Spam detection
+- [ ] Malware scanning
+- [ ] Code exploit scanning
+- [ ] Roblox exploit scanning
+- [ ] Content moderation
+- [ ] Copyright checks
+- [ ] License checks
+- [ ] Attribution tracking
+- [ ] Human approval
+- [ ] Destructive action confirmation
+- [ ] Publish confirmation
+- [ ] Rollback
+- [ ] Immutable audit logs
+- [x] Tenant isolation — RLS enforced at DB level, not app level
+- [ ] Encryption at rest
+- [ ] Encryption in transit
+- [ ] Backup encryption
+- [ ] Data retention policies
+- [ ] Data deletion policies
+- [ ] GDPR export
+- [ ] GDPR deletion
+- [ ] Regional data controls
+- [ ] Privacy mode
+- [ ] No-training mode
+- [ ] Customer-owned keys
+- [ ] BYOK
+- [×] SOC2 readiness — external audit, five figures, not an engineering task
+- [ ] Incident response
+- [ ] Security alerts
+
+### Infrastructure — 54 items  (done 13, partial 0)
+
+- [x] Multi-provider routing — providers/ registry with 4 adapters
+- [x] Provider health checks — providers/registry.ts providerAvailability
+- [x] Automatic failover — adapterForModelId fallback
+- [x] Circuit breakers — gateway.ts circuit breaker
+- [x] Retry policies — gateway retry + classification
+- [ ] Exponential backoff
+- [x] Idempotency keys — stable op ids; single-flight.ts
+- [x] Request deduplication — apps/worker/src/single-flight.ts
+- [x] Prompt caching — x-session-affinity prefix caching, providers/workers-ai.ts
+- [ ] Response caching
+- [ ] Semantic caching
+- [ ] Queue-based execution
+- [ ] Priority queues
+- [ ] Dead-letter queues
+- [ ] Background workers
+- [ ] Durable workflows
+- [ ] Autoscaling
+- [ ] Load balancing
+- [ ] Geographic routing
+- [ ] Edge routing
+- [ ] GPU routing
+- [x] Model routing — gateway.ts DEFAULT_MODELS per mode; commit 10c1f31
+- [ ] Budget routing
+- [ ] Latency routing
+- [ ] Quality routing
+- [ ] Privacy routing
+- [ ] Provider quotas
+- [x] Per-user quotas — QuotaDO + PLAN_LIMITS
+- [ ] Per-project quotas
+- [ ] Per-model quotas
+- [x] Daily budgets — pricing.ts BILLABLE_NEURONS_PER_DAY
+- [x] Monthly budgets — pricing.ts BILLABLE_NEURONS_PER_MONTH
+- [x] Hard spending caps — BudgetDO reserve/settle, guard now provably fails (60407f0)
+- [ ] Usage alerts
+- [ ] Cost forecasts
+- [ ] Token budgets
+- [ ] Time budgets
+- [ ] Concurrency limits
+- [ ] Timeout limits
+- [ ] Memory limits
+- [ ] CPU limits
+- [ ] GPU limits
+- [ ] Storage limits
+- [ ] Data retention
+- [ ] Backups
+- [ ] Disaster recovery
+- [×] Multi-region deployment — recurring cost
+- [ ] Blue-green deployment
+- [ ] Canary deployment
+- [ ] Feature flags
+- [ ] Kill switches
+- [ ] Maintenance mode
+- [ ] Status page
+- [ ] Health dashboard
+
+### Billing and Monetization — 36 items  (done 0, partial 0)
+
+- [ ] Free plan
+- [×] Pro plan — conflicts with zero-recurring-cost
+- [×] Team plan — conflicts with zero-recurring-cost
+- [×] Enterprise plan — conflicts with zero-recurring-cost
+- [×] Usage-based billing — conflicts with zero-recurring-cost
+- [ ] Credit system
+- [ ] Token billing
+- [×] GPU billing — conflicts with zero-recurring-cost
+- [ ] Storage billing
+- [×] Seat billing — conflicts with zero-recurring-cost
+- [ ] Project billing
+- [ ] Organization billing
+- [ ] Spending limits
+- [ ] Prepaid credits
+- [ ] Postpaid billing
+- [ ] Invoices
+- [ ] Receipts
+- [ ] Taxes
+- [ ] Coupons
+- [ ] Trials
+- [ ] Referral credits
+- [ ] Usage alerts
+- [ ] Payment methods
+- [×] Stripe — conflicts with the zero-recurring-cost decision (no payments)
+- [ ] Refunds
+- [ ] Chargebacks
+- [ ] Subscription pause
+- [ ] Subscription cancellation
+- [ ] Plan upgrade
+- [ ] Plan downgrade
+- [ ] Overage protection
+- [ ] Cost allocation
+- [ ] Team cost reports
+- [ ] Project cost reports
+- [ ] Model cost reports
+- [ ] Provider cost reports
+
+### Developer Platform — 42 items  (done 0, partial 0)
+
+- [ ] Public API
+- [ ] REST API
+- [ ] GraphQL API
+- [ ] OpenAI-compatible API
+- [ ] Streaming API
+- [ ] WebSockets
+- [ ] Server-sent events
+- [ ] SDKs
+- [ ] JavaScript SDK
+- [ ] TypeScript SDK
+- [ ] Python SDK
+- [ ] Luau SDK
+- [ ] CLI
+- [ ] GitHub App
+- [ ] VS Code extension
+- [!] Roblox Studio plugin — STUDIO_PLUGIN_STORE_LIVE=false — nobody can install it
+- [ ] JetBrains plugin
+- [ ] Webhooks
+- [ ] OAuth apps
+- [ ] API documentation
+- [ ] OpenAPI schema
+- [ ] API playground
+- [ ] Sandbox API
+- [ ] Test API keys
+- [ ] Production API keys
+- [ ] Versioned API
+- [ ] Deprecation policy
+- [ ] Rate-limit headers
+- [ ] Usage headers
+- [ ] Request tracing
+- [ ] Idempotency
+- [ ] Batch API
+- [ ] Async API
+- [ ] Job API
+- [ ] Event API
+- [ ] Plugin marketplace
+- [ ] Tool marketplace
+- [ ] Model marketplace
+- [ ] Dataset marketplace
+- [ ] Skill marketplace
+- [ ] Template marketplace
+- [ ] Community extensions
+
+### Collaboration — 30 items  (done 0, partial 0)
+
+- [ ] Shared projects
+- [ ] Shared chats
+- [ ] Shared builds
+- [ ] Shared datasets
+- [ ] Shared models
+- [ ] Shared evaluations
+- [ ] Comments
+- [ ] Mentions
+- [ ] Reactions
+- [ ] Approvals
+- [ ] Review requests
+- [ ] Presence indicators
+- [ ] Live cursors
+- [ ] Version history
+- [ ] Branches
+- [ ] Merge requests
+- [ ] Conflict resolution
+- [ ] Project activity
+- [ ] Team dashboard
+- [ ] Team knowledge base
+- [ ] Team prompts
+- [ ] Team agents
+- [ ] Team tools
+- [ ] Shared secrets
+- [ ] Shared billing
+- [ ] Shared audit logs
+- [ ] Guest access
+- [ ] Public templates
+- [ ] Private templates
+- [ ] Community publishing
+
+### Analytics and Observability — 37 items  (done 3, partial 0)
+
+- [ ] Request logs
+- [x] Agent traces — ToolTraceEntry persisted per run
+- [ ] Model traces
+- [x] Tool traces — agent.trace + uiTools
+- [ ] Error logs
+- [ ] Build logs
+- [x] Training logs — packages/training/runs/apple-v*.log
+- [ ] Evaluation logs
+- [ ] Audit logs
+- [ ] User analytics
+- [ ] Project analytics
+- [ ] Model analytics
+- [ ] Cost analytics
+- [ ] Latency analytics
+- [ ] Token analytics
+- [ ] Success analytics
+- [ ] Retention analytics
+- [ ] Funnel analytics
+- [ ] Feature usage
+- [ ] Error breakdown
+- [ ] Provider breakdown
+- [ ] Model breakdown
+- [ ] Heatmaps
+- [ ] Session replay
+- [ ] Alerting
+- [ ] Email alerts
+- [ ] Webhook alerts
+- [ ] Slack alerts
+- [ ] Discord alerts
+- [ ] PagerDuty alerts
+- [ ] Sentry integration
+- [ ] OpenTelemetry
+- [ ] Prometheus
+- [ ] Grafana
+- [ ] Custom dashboards
+- [ ] Data export
+- [ ] Scheduled reports
+
+### Release and Quality — 40 items  (done 4, partial 0)
+
+- [x] CI/CD — .github/workflows/ci.yml — deterministic, no secrets, no paid calls
+- [x] Automated tests — pnpm -r test in CI
+- [x] Unit tests — 1,772 tests across 6 packages, green
+- [ ] Integration tests
+- [ ] E2E tests
+- [ ] Visual regression
+- [ ] Roblox playtest CI
+- [ ] Luau lint CI
+- [x] Type-check CI — pnpm -r typecheck in CI
+- [ ] Security CI
+- [ ] License CI
+- [ ] Dataset CI
+- [ ] Model CI
+- [ ] Eval CI
+- [ ] Build validation
+- [ ] Preview deployments
+- [ ] Staging environment
+- [ ] Production environment
+- [ ] Canary environment
+- [ ] Feature branches
+- [ ] Pull requests
+- [ ] Code review
+- [ ] Approval gates
+- [ ] Release notes
+- [ ] Changelog
+- [ ] Version tags
+- [ ] Semantic versioning
+- [ ] Automatic rollback
+- [ ] Database migrations
+- [ ] Schema validation
+- [ ] Backup verification
+- [ ] Disaster recovery drills
+- [ ] Uptime monitoring
+- [ ] Synthetic monitoring
+- [ ] Performance budgets
+- [ ] Accessibility audits
+- [ ] Browser compatibility tests
+- [ ] Mobile tests
+- [ ] Load tests
+- [ ] Chaos tests
+
+### Model Memory and Personalization — 29 items  (done 0, partial 0)
+
+- [ ] User memory
+- [ ] Project memory
+- [ ] Organization memory
+- [ ] Persistent preferences
+- [ ] Preferred coding style
+- [ ] Preferred Roblox conventions
+- [ ] Preferred language
+- [ ] Preferred model
+- [ ] Preferred response length
+- [ ] Preferred tool permissions
+- [ ] Personal prompt profile
+- [ ] Project instructions
+- [ ] Team instructions
+- [ ] Memory viewer
+- [ ] Memory editor
+- [ ] Memory deletion
+- [ ] Memory expiration
+- [ ] Memory import
+- [ ] Memory export
+- [ ] Memory audit
+- [ ] Memory permissions
+- [ ] Memory conflict resolution
+- [ ] Context summarization
+- [ ] Automatic context compression
+- [ ] Conversation recall
+- [ ] Build recall
+- [ ] Failure recall
+- [ ] Pattern recall
+- [ ] Personalized routing
+
+### Future and Experimental — 55 items  (done 0, partial 0)
+
+- [ ] Self-improving agents
+- [ ] Automatic dataset mining
+- [ ] Automatic curriculum generation
+- [ ] Autonomous eval creation
+- [ ] Autonomous bug discovery
+- [ ] Autonomous regression discovery
+- [ ] Autonomous documentation
+- [ ] Autonomous project planning
+- [ ] Autonomous asset discovery
+- [ ] Autonomous asset remixing
+- [ ] Autonomous game prototyping
+- [ ] Autonomous level design
+- [ ] Autonomous QA
+- [ ] Autonomous performance optimization
+- [ ] Autonomous security hardening
+- [ ] Autonomous deployment
+- [ ] Autonomous rollback
+- [ ] Multi-agent simulations
+- [ ] Agent tournaments
+- [ ] Model tournaments
+- [ ] Reinforcement learning
+- [ ] Environment interaction training
+- [ ] Roblox world simulation
+- [ ] Digital twin of Studio
+- [ ] Synthetic Roblox environments
+- [ ] Visual game understanding
+- [ ] Real-time co-creation
+- [ ] Multiplayer AI building
+- [ ] Voice-controlled Studio
+- [ ] AR/VR viewport
+- [ ] Holographic previews
+- [ ] Neural asset search
+- [ ] Procedural universe generation
+- [ ] Persistent game worlds
+- [ ] AI NPC memory
+- [ ] AI NPC dialogue
+- [ ] AI NPC planning
+- [ ] AI NPC learning
+- [ ] Player behavior analysis
+- [ ] Adaptive difficulty
+- [ ] Automated live operations
+- [ ] Automated events
+- [ ] Automated content updates
+- [ ] Automated moderation
+- [ ] Automated localization
+- [ ] Automated monetization testing
+- [ ] Automated A/B testing
+- [ ] Model marketplace
+- [ ] Agent marketplace
+- [ ] Creator marketplace
+- [ ] Community datasets
+- [ ] Community benchmarks
+- [ ] Public challenge system
+- [ ] Creator rewards
+- [ ] Contributor attribution
