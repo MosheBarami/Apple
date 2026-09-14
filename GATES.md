@@ -96,6 +96,7 @@ and are tracked as handoffs, not gates.
 - [ ] G14: A conversation export is the whole conversation, and cannot forge its own filename
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 18 --label G14 -- node --test tests/export.test.mjs
     EXPECT: G14 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G14; path=6765c31f4f12/53 entries; git-sha=165b283; tree-clean=yes; break-sha=165b283; EXPECT=unmatched; output-sha256=098f05151491fa8a44e00c57313fac6fb5fc44902d14789c1df4ff74831c9ca8; output-bytes=1663; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=edcf3e1c6ae8be2f1af3380c; at=2026-09-14T18:47:23.853Z
   EXPECT-CHANGE: old=fail 0 new=G14 OK reason=derived-floor-18-measured-18-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=2b99c8c854e0ec6bef7bd64a1420e0e75017278aadf448a296ff921a80be9036; output-bytes=1463
 
@@ -126,6 +127,7 @@ and are tracked as handoffs, not gates.
 - [ ] G19: Search reads every message, and its results cannot be stale or mis-highlighted
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 25 --label G19 -- node --test tests/search.test.mjs
     EXPECT: G19 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G19; path=6765c31f4f12/53 entries; git-sha=f79bfe6; tree-clean=yes; break-sha=f79bfe6; EXPECT=unmatched; output-sha256=9c7223eb0e6110283e99526cd04756d0bf66c3dd1fd255a82e9223676d796b2b; output-bytes=1664; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=3c1faa07adcbc2d0fdaa0da7; at=2026-09-14T18:47:27.862Z
   EXPECT-CHANGE: old=fail 0 new=G19 OK reason=derived-floor-25-measured-25-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=a9786747f645dec7e090cd628ee4bf0c44a1ccd56bce1b46dee52b80bd9dcb82; output-bytes=1867
 
@@ -138,6 +140,7 @@ and are tracked as handoffs, not gates.
 - [ ] G21: Archiving hides a project everywhere and loses nothing, and restoring brings it all back
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 15 --label G21 -- node --test tests/archive.test.mjs
     EXPECT: G21 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G21; path=6765c31f4f12/53 entries; git-sha=bfaa9b6; tree-clean=yes; break-sha=bfaa9b6; EXPECT=unmatched; output-sha256=f2dfff0201ee698be8a843951a3e07fd8f8b292bd5e8a4e5afe395a7f9285e58; output-bytes=923; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=a5e275b486836ce8bb8ba3ab; at=2026-09-14T18:47:32.909Z
   EXPECT-CHANGE: old=fail 0 new=G21 OK reason=derived-floor-15-measured-15-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=9339756b8e7cf3a802d0e74bdcaaaf7abeb2f17ec1c6f5a24c3ee35c317e6d54; output-bytes=1188
 
@@ -154,6 +157,7 @@ and are tracked as handoffs, not gates.
 - [ ] G80: The gate checker itself is measured, and cannot report green over a gate that fails
     CHECK: node scripts/assert-tests.mjs --floor 60 --label G80 -- node --test tests/gate-check.test.mjs
     EXPECT: G80 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G80; path=6765c31f4f12/53 entries; git-sha=0f63a44; tree-clean=yes; break-sha=0f63a44; EXPECT=unmatched; output-sha256=eb28cdad4ca98e832f0749e688ce658be421f8680fdb19d3a32b4c6bce732208; output-bytes=10953; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=2744b3ba51d2f9dcd5722de2; at=2026-09-14T18:48:40.482Z
   EXPECT-CHANGE: old=fail 0 new=G80 OK reason=derived-floor-60-measured-60-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=c1a7e85d6485cb16c1024b787a60502f9eae91e6c64043ccd594d2f55bc20f37; output-bytes=2262
 
@@ -172,6 +176,7 @@ and are tracked as handoffs, not gates.
 - [ ] G24: An unsent message survives a reload, stays with its own project, never breaks the composer, and does not outlive the session that wrote it
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 20 --label G24 -- node --test tests/draft.test.mjs
     EXPECT: G24 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G24; path=6765c31f4f12/53 entries; git-sha=f2d4bef; tree-clean=yes; break-sha=f2d4bef; EXPECT=unmatched; output-sha256=b24ce861a9da7bf310a648ff384ec78a9f5470079d513c81725a6bea532fec74; output-bytes=11275; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=20c202fe5853d3bbc991f6a9; at=2026-09-14T18:47:29.384Z
   EXPECT-CHANGE: old=fail 0 new=G24 OK reason=derived-floor-20-measured-20-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=54f08e9139ced928046d7ff7754247203cabfc0c54d60c573f857a4fe68e944c; output-bytes=1405
 
