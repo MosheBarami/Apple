@@ -3402,7 +3402,7 @@
           "id": "f-536d175a",
           "name": "GitHub ingestion",
           "status": "done",
-          "evidence": "packages/corpus/src/fetch.mjs, 38 pinned repos"
+          "evidence": "packages/corpus/src/intake/records.test.mjs — 100 identical forks collapse to one ContentRecord, collapse output is stable whatever order discovery visited in, and re-discovering a location does not inflate observedIn."
         },
         {
           "id": "f-e64adbda",
@@ -3462,7 +3462,7 @@
           "id": "f-58920913",
           "name": "Chunking",
           "status": "done",
-          "evidence": "packages/corpus/src/chunk.mjs"
+          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. chunk.mjs would need its pure helpers exported before a test could reach them."
         },
         {
           "id": "f-77295d37",
@@ -3474,7 +3474,7 @@
           "id": "f-25f96d6c",
           "name": "Code-aware chunking",
           "status": "done",
-          "evidence": "packages/corpus chunker splits on headings/code blocks"
+          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. The heading/code-block splitting rule is the testable part and is currently unreachable from a test."
         },
         {
           "id": "f-7c01e1a0",
@@ -3486,7 +3486,7 @@
           "id": "f-2594d8bd",
           "name": "Embeddings",
           "status": "done",
-          "evidence": "bge-small-en-v1.5, 384d — verified live"
+          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. Embedding dimensionality (384d) is asserted nowhere; a model swap would be caught at query time, in production."
         },
         {
           "id": "f-436e6770",
@@ -3498,7 +3498,7 @@
           "id": "f-473e63b5",
           "name": "Hybrid search",
           "status": "done",
-          "evidence": "rag.ts — Vectorize + D1 FTS5"
+          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. Hybrid search is the row that most needs a test: it is the one place where a ranking bug degrades silently into plausible-looking results."
         },
         {
           "id": "f-d6d1f1c5",
@@ -3510,13 +3510,13 @@
           "id": "f-04440f99",
           "name": "Vector search",
           "status": "done",
-          "evidence": "Vectorize index golem-docs (384d) — verified live"
+          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. A vector index that returns nothing looks identical to a query with no matches — the exact failure this repository names elsewhere."
         },
         {
           "id": "f-3d337511",
           "name": "Full-text search",
           "status": "done",
-          "evidence": "D1 chunks_fts FTS5 — verified live, 8,327 chunks"
+          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. The 8,327-chunk figure was true when measured and nothing re-measures it."
         },
         {
           "id": "f-ba3ee1d2",
