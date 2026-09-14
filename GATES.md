@@ -249,13 +249,17 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-4; path=6765c31f4f12/53 entries; git-sha=9e60f65; tree-clean=yes; break-sha=9e60f65; EXPECT=unmatched; output-sha256=d7a766db8e441089bc63819e48bdd0ad52ac0d8482d049f451cfb0a54e3effc7; output-bytes=1968; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=849a707d7e2395fdffe292e6; at=2026-09-14T17:53:27.432Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1076; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=61017c88de5b58016cab9ece; at=2026-09-14T22:07:51.464Z
 
-- [ ] G-BACKLOG-1: Every closed backlog row cites something a machine can run
+- [x] G-BACKLOG-1: Every closed backlog row cites something a machine can run
     CHECK: node scripts/check-backlog.mjs --summary --floor-cited 127
     EXPECT: BACKLOG HONEST
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=34e735d; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=8ea8fefec1eef9175291ce62; at=2026-09-14T23:27:30.638Z
 
-- [ ] G-ORACLE-6: Every rule in the backlog checker is proven to fire, and the floor has a control
+- [x] G-ORACLE-6: Every rule in the backlog checker is proven to fire, and the floor has a control
     CHECK: node scripts/assert-tests.mjs --floor 29 --label G-ORACLE-6 -- node --test tests/check-backlog.test.mjs
     EXPECT: G-ORACLE-6 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-6; path=6765c31f4f12/53 entries; git-sha=0ad417f; tree-clean=yes; deps-clean=yes; break-sha=0ad417f; EXPECT=unmatched; output-sha256=81af4261000cc4f947e1bca612db3ca165d603387648e9065a7d9c418ade9a79; output-bytes=4305; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=e32fdcb88870ce5d5369834e; at=2026-09-14T23:25:54.622Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=34e735d; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=2da3f2d7bb60cca6b96c37b2dae9dacfa4e9e270bb7d7f1305384f32b474350b; output-bytes=2575; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=e32fdcb88870ce5d5369834e; at=2026-09-14T23:27:33.239Z
 
 - [x] G-ORACLE-5: Every disposition rule is proven to fire, and every one carries a control
     CHECK: node scripts/assert-tests.mjs --floor 17 --label G-ORACLE-5 -- node --test tests/check-dispositions.test.mjs
