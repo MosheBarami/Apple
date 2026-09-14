@@ -1305,7 +1305,8 @@ export const TOOLS: Record<string, ToolImpl> = {
         { lenses, alwaysRunDeterministic: true },
       );
 
-      const skipped = coverage.filter((c) => !c.complete);
+      const partial = coverage.filter((c) => c.status === 'partial');
+      const notRun = coverage.filter((c) => c.status === 'none');
       const confirmed = panel.adjudication.confirmed;
 
       ctx.uiDetail = {
@@ -1318,9 +1319,10 @@ export const TOOLS: Record<string, ToolImpl> = {
             title: confirmed.length ? `${confirmed.length} confirmed defect(s)` : 'No confirmed defects',
             text:
               `${panel.lensesRun.length} of ${coverage.length} lenses run over ${capture.parts.length} part(s), ${panel.modelCalls} model call(s). ` +
-              (skipped.length
-                ? `Not checked: ${skipped.map((c) => c.lens).join(', ')} — ${skipped.map((c) => c.missing.join('/')).join('; ')} need a render.`
-                : 'Every lens ran.'),
+              (notRun.length ? `Not run: ${notRun.map((c) => c.lens).join(', ')} — every rule needs a render. ` : '') +
+              (panel.unchecked.length
+                ? `${panel.unchecked.length} rule(s) inside the lenses that did run were skipped for want of a measurement: ${[...new Set(panel.unchecked.map((u) => u.metric))].join(', ')}.`
+                : notRun.length ? '' : 'Every rule in every lens was evaluated.'),
           },
           ...(confirmed.length
             ? [{
@@ -1345,15 +1347,27 @@ export const TOOLS: Record<string, ToolImpl> = {
         ],
       };
 
-      const note = skipped.length
-        ? `\nNOT CHECKED (no render in this pass): ${skipped.map((c) => `${c.lens} [needs ${c.missing.join(', ')}]`).join('; ')}. Call inspect_visually for those.`
-        : '';
+      // Two different silences, reported as two different things: a lens that examined nothing, and
+      // a rule inside a lens that did run. Collapsing them would let "5 lenses run" stand for a
+      // lens that checked nothing at all.
+      const noteParts: string[] = [];
+      if (notRun.length) {
+        noteParts.push(`NOT RUN (every rule needs a render): ${notRun.map((c) => c.lens).join(', ')}`);
+      }
+      if (panel.unchecked.length) {
+        noteParts.push(
+          `RULES SKIPPED for want of a measurement: ${panel.unchecked.map((u) => `${u.lens}/${u.subject} [${u.metric}]`).join('; ')}`,
+        );
+      }
+      const note = noteParts.length ? `\n${noteParts.join('\n')}\nCall render_view then inspect_visually for those.` : '';
       return {
         text: formatPanelReport(panel) + note,
         confirmed: confirmed.length,
         blocking: confirmed.filter((d) => d.severity === 'blocking').length,
         lensesRun: panel.lensesRun,
-        lensesSkipped: skipped.map((c) => c.lens),
+        lensesNotRun: notRun.map((c) => c.lens),
+        lensesPartial: partial.map((c) => ({ lens: c.lens, missing: c.missing, ran: c.partialBecause })),
+        rulesUnchecked: panel.unchecked.length || undefined,
         partsAudited: capture.parts.length,
         truncated: capture.truncated || undefined,
       };

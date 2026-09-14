@@ -288,28 +288,78 @@ const RULES_BY_LENS: Record<string, { metric: string }[]> = {
   gameplay_readability: READABILITY_RULES,
 };
 
+/**
+ * Lenses that carry a deterministic check which needs NO metric.
+ *
+ * Only one does. `runDeterministicLens('lighting', …)` returns its metric-rule criticisms PLUS
+ * `lightingConfigCriticisms(input)`, which reads the plugin's Lighting report — configuration data,
+ * not pixels — and raises the single most actionable art-direction defect there is: every Lighting
+ * property is still the Roblox default, so no lighting decision exists to judge.
+ *
+ * Gating that lens out because two of its sibling rules need a render suppressed the one check in
+ * it that was always available. The value stated here is what a caller loses by skipping it.
+ */
+const LENS_NON_METRIC_CHECK: Partial<Record<LensId, string>> = {
+  lighting: 'the Lighting configuration report, which is data rather than pixels',
+};
+
+export type CoverageStatus = 'complete' | 'partial' | 'none';
+
 export interface LensCoverage {
   lens: LensId;
-  /** every rule in this lens had its metric measured */
+  status: CoverageStatus;
+  /** true only when every rule in this lens had its metric measured */
   complete: boolean;
+  /** metrics this lens needed and did not get */
   missing: string[];
+  /** why a `partial` lens is still worth running */
+  partialBecause?: string;
 }
 
 /**
- * Which lenses can be run honestly against this metric set.
+ * Which lenses can be run honestly against this metric set, in three states rather than two.
  *
- * A lens is only run when EVERY one of its rules can be evaluated. The alternative — running a lens
- * with some rules silently skipped — returns a short defect list that reads exactly like a clean
- * result, and that is the failure mode critic.ts exists to prevent.
+ * The original rule here was: run a lens only when EVERY rule can be evaluated, because a lens with
+ * some rules silently skipped returns a short defect list that reads exactly like a clean result.
+ * That was right about the danger and wrong about the remedy, and it cost a real check.
+ *
+ * `applyMetricRules` no longer skips silently — a rule whose metric is missing is reported on
+ * `PanelResult.unchecked`. So "partial" is now a state that can be REPORTED rather than one that
+ * has to be avoided, and the honest rule becomes: run a lens when it can check SOMETHING, and say
+ * exactly what it could not check.
+ *
+ *   complete  every rule ran
+ *   partial   some rules ran, or a non-metric check ran; the rest are named
+ *   none      nothing in this lens could run at all, so running it would report an empty silence
  */
 export function lensCoverage(metrics: Record<string, number>): LensCoverage[] {
-  return Object.entries(RULES_BY_LENS).map(([lens, rules]) => {
-    const missing = [...new Set(rules.map((r) => r.metric))].filter((k) => !Number.isFinite(metrics[k]));
-    return { lens: lens as LensId, complete: missing.length === 0, missing: missing.sort() };
+  return Object.entries(RULES_BY_LENS).map(([name, rules]) => {
+    const lens = name as LensId;
+    const needed = [...new Set(rules.map((r) => r.metric))];
+    const missing = needed.filter((k) => !Number.isFinite(metrics[k])).sort();
+    const ranSome = missing.length < needed.length;
+    const nonMetric = LENS_NON_METRIC_CHECK[lens];
+
+    if (missing.length === 0) return { lens, status: 'complete' as const, complete: true, missing };
+    if (ranSome || nonMetric) {
+      return {
+        lens,
+        status: 'partial' as const,
+        complete: false,
+        missing,
+        partialBecause: ranSome ? 'some of its rules had their metrics' : nonMetric,
+      };
+    }
+    return { lens, status: 'none' as const, complete: false, missing };
   });
 }
 
-/** The lenses to actually hand `runCriticPanel`, given what was measured. */
+/**
+ * The lenses to hand `runCriticPanel`.
+ *
+ * Everything that can check something. A lens in `none` is excluded deliberately: running it would
+ * add nothing to the verdict and would let "5 lenses run" stand for a lens that examined nothing.
+ */
 export function runnableLenses(metrics: Record<string, number>): LensId[] {
-  return lensCoverage(metrics).filter((c) => c.complete).map((c) => c.lens);
+  return lensCoverage(metrics).filter((c) => c.status !== 'none').map((c) => c.lens);
 }

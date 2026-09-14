@@ -107,24 +107,62 @@ test('an empty place yields no metrics at all rather than a page of zeroes', () 
 
 // --- the load-bearing property ---------------------------------------------------------------
 
-test('exactly the three geometry lenses are runnable, and the image lenses are not', () => {
+test('coverage is three states, not two, and each lens lands in the right one', () => {
+  // The original rule here was "run a lens only if EVERY rule can be evaluated", which was right
+  // about the danger — a lens with rules silently skipped returns a short list that reads like a
+  // clean result — and wrong about the remedy. applyMetricRules now REPORTS what it skipped, so
+  // partial is a state that can be reported rather than one that has to be avoided.
   const m = BA.auditMetrics(BA.parseAudit({ result: JSON.stringify(FIXTURE) }));
-  assert.deepEqual(BA.runnableLenses(m).sort(), ['composition', 'roblox_level_design', 'technical_art']);
-  const skipped = BA.lensCoverage(m).filter((c) => !c.complete);
-  assert.deepEqual(skipped.map((c) => c.lens).sort(), ['gameplay_readability', 'lighting']);
-  for (const s of skipped) assert.ok(s.missing.length > 0, `${s.lens} must name what it is missing`);
+  const by = Object.fromEntries(BA.lensCoverage(m).map((c) => [c.lens, c]));
+
+  for (const lens of ['composition', 'roblox_level_design', 'technical_art']) {
+    assert.equal(by[lens].status, 'complete', `${lens} is fully geometry-derived`);
+    assert.deepEqual(by[lens].missing, []);
+  }
+  // lighting has two pixel rules AND one check that is pure configuration data
+  assert.equal(by.lighting.status, 'partial');
+  assert.ok(by.lighting.missing.length > 0, 'it must still name what it could not measure');
+  assert.match(by.lighting.partialBecause, /configuration|pixels/i, 'and say why it is worth running');
+  // every readability rule is a pixel metric, so running it would examine nothing
+  assert.equal(by.gameplay_readability.status, 'none');
 });
 
-test('every rule of every runnable lens has its metric present — no silent skips', () => {
-  // This is the whole design. If it ever fails, the audit is reporting "no defect" for checks that
-  // did not execute.
+test('a lens that could examine NOTHING is excluded, so "lenses run" never overstates', () => {
+  const m = BA.auditMetrics(BA.parseAudit({ result: JSON.stringify(FIXTURE) }));
+  const run = BA.runnableLenses(m);
+  assert.ok(run.includes('lighting'), 'lighting checks configuration and must run');
+  assert.equal(run.includes('gameplay_readability'), false, 'readability can check nothing and must not');
+  assert.deepEqual(run.sort(), ['composition', 'lighting', 'roblox_level_design', 'technical_art']);
+});
+
+test('every rule of a COMPLETE lens has its metric — those may not be silently skipped', () => {
   const m = BA.auditMetrics(BA.parseAudit({ result: JSON.stringify(FIXTURE) }));
   const RULES = { composition: C.COMPOSITION_RULES, roblox_level_design: C.ROBLOX_RULES, technical_art: C.TECHNICAL_ART_RULES };
-  for (const lens of BA.runnableLenses(m)) {
-    for (const rule of RULES[lens]) {
-      assert.ok(Number.isFinite(m[rule.metric]), `${lens} would silently skip its ${rule.metric} rule`);
+  for (const c of BA.lensCoverage(m).filter((x) => x.status === 'complete')) {
+    for (const rule of RULES[c.lens] ?? []) {
+      assert.ok(Number.isFinite(m[rule.metric]), `${c.lens} would silently skip its ${rule.metric} rule`);
     }
   }
+});
+
+test('THE PAYOFF — an untouched Lighting rig is now reported, and could not be before', async () => {
+  // The single most actionable art-direction defect, and it needs no pixels at all: it reads the
+  // plugin's Lighting report. Gating the lens out because two sibling rules need a render
+  // suppressed the one check in it that was always available.
+  const { ctx } = stubCtx(FIXTURE); // fixture lighting has touched=0, so isDefault is true
+  await T.TOOLS.audit_build.run(ctx, {});
+  const rows = ctx.uiDetail.blocks.find((b) => b.type === 'table')?.rows ?? [];
+  const subjects = rows.map((r) => r[1]);
+  assert.ok(subjects.includes('lighting-pass'), `expected the untouched-Lighting defect, got ${JSON.stringify(subjects)}`);
+});
+
+test('a place WITH a lighting pass does not get the untouched-Lighting defect', async () => {
+  // The other direction, so the check above is not passing for a reason unrelated to lighting.
+  const lit = { ...FIXTURE, lighting: { ...FIXTURE.lighting, effects: ['Atmosphere', 'BloomEffect'], touched: 2 } };
+  const { ctx } = stubCtx(lit);
+  await T.TOOLS.audit_build.run(ctx, {});
+  const subjects = (ctx.uiDetail.blocks.find((b) => b.type === 'table')?.rows ?? []).map((r) => r[1]);
+  assert.equal(subjects.includes('lighting-pass'), false, 'a lit place must not be told its Lighting is default');
 });
 
 // --- the panel --------------------------------------------------------------------------------
@@ -142,14 +180,25 @@ test('the audit finds the planted defects and costs ZERO model calls', async () 
   assert.match(res.text, /0 model call/, 'the audit must call no model');
 });
 
-test('the result NAMES the lenses it did not run, in both payloads', async () => {
+test('the result names BOTH silences, and does not collapse them into one', async () => {
+  // A lens that examined nothing and a rule skipped inside a lens that did run are different
+  // facts. Collapsing them would let "4 lenses run" stand for a lens that checked nothing.
   const { ctx } = stubCtx(FIXTURE);
   const res = await T.TOOLS.audit_build.run(ctx, {});
-  assert.deepEqual(res.lensesSkipped.sort(), ['gameplay_readability', 'lighting']);
-  assert.match(res.text, /NOT CHECKED/);
+
+  assert.deepEqual(res.lensesNotRun, ['gameplay_readability'], 'the lens that could check nothing');
+  assert.ok(res.rulesUnchecked > 0, 'and the rules skipped inside lighting');
+  assert.deepEqual(res.lensesPartial.map((p) => p.lens), ['lighting']);
+  assert.ok(res.lensesPartial[0].missing.length > 0, 'naming the metrics it lacked');
+
+  assert.match(res.text, /NOT RUN/);
   assert.match(res.text, /gameplay_readability/);
+  assert.match(res.text, /RULES SKIPPED/);
+  assert.match(res.text, /faceValueSpread|figureGroundContrast/, 'by metric name, not vaguely');
+
   const callout = ctx.uiDetail.blocks.find((b) => b.type === 'callout');
-  assert.match(callout.text, /Not checked/);
+  assert.match(callout.text, /Not run/);
+  assert.match(callout.text, /skipped for want of a measurement/);
 });
 
 test('the panel payload is a valid v1 document the renderer accepts', async () => {
