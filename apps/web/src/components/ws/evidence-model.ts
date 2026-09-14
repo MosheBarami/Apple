@@ -260,7 +260,7 @@ export function buildEvidence(
 /** What an error card says. Two faults, two sentences — they are not the same event. */
 export const FAULT_COPY: Record<EvidenceFault, string> = {
   tool_failed: 'This step reported a failure. Nothing was produced.',
-  unreadable: 'A result came back in a shape Golem could not read, so none of it is shown.',
+  unreadable: 'A result came back in a shape Apple could not read, so none of it is shown.',
 };
 
 export const EMPTY_COPY: Record<EvidenceKind, string> = {

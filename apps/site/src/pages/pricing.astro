@@ -50,11 +50,11 @@ const modeRows = [
 const limitFaq = [
   {
     q: 'What happens when I run out of Sparks?',
-    a: `<p>Golem tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
+    a: `<p>Apple tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
   },
   {
     q: 'Why is there a limit at all?',
-    a: `<p>Golem runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest 60 Sparks every day than an unlimited plan with an asterisk.</p>`,
+    a: `<p>Apple runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest 60 Sparks every day than an unlimited plan with an asterisk.</p>`,
   },
   {
     q: 'Do unused Sparks roll over?',
@@ -62,11 +62,11 @@ const limitFaq = [
   },
   {
     q: 'Can one Super Agent request cost more than 10 Sparks?',
-    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Sparks and add 1 Spark per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Golem warns before starting work it estimates will be expensive.</p>`,
+    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Sparks and add 1 Spark per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Apple warns before starting work it estimates will be expensive.</p>`,
   },
   {
     q: 'What is a Spark, underneath?',
-    a: `<p>A unit of real compute. One Spark is 30 neurons of real compute, and Golem bills from the engine's own reported figure for each call rather than from an estimate. A full Agent build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
+    a: `<p>A unit of real compute. One Spark is 30 neurons of real compute, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A full Agent build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
   },
   {
     q: 'When does Pro launch, and what will it cost?',
@@ -76,8 +76,8 @@ const limitFaq = [
 ---
 
 <Base
-  title="Pricing — Golem"
-  description="Golem is free: 60 Sparks a day, all three modes, unlimited projects, checkpoints included. Pro is designed — 400 Sparks/day and a priority queue — and is on the waitlist. No card required, ever."
+  title="Pricing — Apple"
+  description="Apple is free: 60 Sparks a day, all three modes, unlimited projects, checkpoints included. Pro is designed — 400 Sparks/day and a priority queue — and is on the waitlist. No card required, ever."
 >
   <!-- ==================================================== head -->
   <section class="section phead is-ember" aria-labelledby="pricing-title">
@@ -125,7 +125,7 @@ const limitFaq = [
           </header>
           <ul class="plan__list">
             <li><strong>400 Sparks</strong> per day · 6,000 a month</li>
-            <li>Priority queue — your golem goes first</li>
+            <li>Priority queue — your apple goes first</li>
             <li>Extended checkpoint history</li>
             <li>Everything in Free</li>
           </ul>
@@ -167,7 +167,7 @@ const limitFaq = [
         <p class="eyebrow" data-reveal>Per request</p>
         <h2 id="sparks-title" data-reveal class="carved">What a Spark buys</h2>
         <p class="lede lede-wide" data-reveal>
-          Bigger golems burn more, because they do more work per request. The
+          Bigger apples burn more, because they do more work per request. The
           craft is picking the smallest one that can carry the job.
         </p>
       </header>
@@ -206,7 +206,7 @@ const limitFaq = [
       <p class="tfoot" data-reveal>
         A Super Agent request includes its base steps; each additional step beyond
         them costs 1 extra Spark, metered live so you always see where you
-        stand. Golem's own housekeeping does not count against your quota.
+        stand. Apple's own housekeeping does not count against your quota.
       </p>
     </div>
   </section>

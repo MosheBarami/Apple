@@ -2,67 +2,162 @@
   {
     "id": "ui-01-centered-frame",
     "category": "ui-implementation",
-    "system": "You are Golem, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
+    "system": "You are Apple, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
     "prompt": "Write a LocalScript (for StarterPlayerScripts) that creates a ScreenGui in the LocalPlayer's PlayerGui containing a Frame covering 50% x 50% of the screen, perfectly centered using AnchorPoint 0.5,0.5 and Position 50%,50%. Use only scale, never offset.",
     "weight": 2,
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']ScreenGui[\"']", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']Frame[\"']", "target": "code" },
-      { "type": "contains", "value": "PlayerGui", "target": "code" },
-      { "type": "regex", "pattern": "AnchorPoint\\s*=\\s*Vector2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)", "target": "code" },
-      { "type": "regex", "pattern": "UDim2\\.fromScale\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)|UDim2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\s*,\\s*0\\.5\\s*,\\s*0\\s*\\)", "target": "code" }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']ScreenGui[\"']",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']Frame[\"']",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "PlayerGui",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "AnchorPoint\\s*=\\s*Vector2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "UDim2\\.fromScale\\s*\\(\\s*0\\.5\\s*,\\s*0\\.5\\s*\\)|UDim2\\.new\\s*\\(\\s*0\\.5\\s*,\\s*0\\s*,\\s*0\\.5\\s*,\\s*0\\s*\\)",
+        "target": "code"
+      }
     ]
   },
   {
     "id": "ui-02-list-layout",
     "category": "ui-implementation",
-    "system": "You are Golem, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
+    "system": "You are Apple, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
     "prompt": "Write Luau that creates a Frame (assume a variable `parentGui` references an existing ScreenGui) containing a UIListLayout that stacks three TextButtons labeled Play, Shop, Settings vertically with UDim.new(0, 8) padding between them.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']UIListLayout[\"']", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']TextButton[\"']", "target": "code" },
-      { "type": "regex", "pattern": "Padding\\s*=\\s*UDim\\.new\\s*\\(\\s*0\\s*,\\s*8\\s*\\)", "target": "code" },
-      { "type": "contains", "value": "Settings", "target": "code" }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']UIListLayout[\"']",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']TextButton[\"']",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Padding\\s*=\\s*UDim\\.new\\s*\\(\\s*0\\s*,\\s*8\\s*\\)",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "Settings",
+        "target": "code"
+      }
     ]
   },
   {
     "id": "ui-03-health-bar",
     "category": "ui-implementation",
-    "system": "You are Golem, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
+    "system": "You are Apple, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
     "prompt": "Build a health bar in Luau: a background Frame and a fill Frame inside it. Include a function setHealth(fraction) that takes 0..1 and resizes the fill's X scale to that fraction (full Y scale). Assume a variable `parentGui` references an existing ScreenGui. Use scale-based sizing only.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "function\\s+setHealth\\s*\\(|setHealth\\s*=\\s*function", "target": "code" },
-      { "type": "regex", "pattern": "UDim2\\.(fromScale|new)\\s*\\(\\s*fraction", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']Frame[\"']", "target": "code" }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "function\\s+setHealth\\s*\\(|setHealth\\s*=\\s*function",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "UDim2\\.(fromScale|new)\\s*\\(\\s*fraction",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']Frame[\"']",
+        "target": "code"
+      }
     ]
   },
   {
     "id": "ui-04-rounded-button",
     "category": "ui-implementation",
-    "system": "You are Golem, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
+    "system": "You are Apple, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
     "prompt": "Create a TextButton with the text Play and rounded corners using a UICorner child with CornerRadius UDim.new(0, 8). Parent the button to an existing ScreenGui referenced by the variable `parentGui`, sized with scale (about 20% x 8% of the screen).",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']UICorner[\"']", "target": "code" },
-      { "type": "regex", "pattern": "CornerRadius\\s*=\\s*UDim\\.new\\s*\\(\\s*0\\s*,\\s*8\\s*\\)", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']TextButton[\"']", "target": "code" },
-      { "type": "regex", "pattern": "Text\\s*=\\s*[\"']Play[\"']", "target": "code" }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']UICorner[\"']",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "CornerRadius\\s*=\\s*UDim\\.new\\s*\\(\\s*0\\s*,\\s*8\\s*\\)",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']TextButton[\"']",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Text\\s*=\\s*[\"']Play[\"']",
+        "target": "code"
+      }
     ]
   },
   {
     "id": "ui-05-responsive-title",
     "category": "ui-implementation",
-    "system": "You are Golem, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
+    "system": "You are Apple, an expert Roblox UI engineer. Reply with exactly one fenced ```luau code block and nothing else. Build UI by creating instances in code with scale-based sizing (no pixel offsets) so it works on every screen.",
     "prompt": "Create a title TextLabel that stays readable on any device: sized with scale (about 60% width, 12% height, centered near the top), transparent background, and text that automatically resizes to fit the label. Parent it to an existing ScreenGui referenced by `parentGui`.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']TextLabel[\"']", "target": "code" },
-      { "type": "regex", "pattern": "TextScaled\\s*=\\s*true", "target": "code" },
-      { "type": "regex", "pattern": "BackgroundTransparency\\s*=\\s*1", "target": "code" },
-      { "type": "regex", "pattern": "UDim2\\.fromScale\\s*\\(|UDim2\\.new\\s*\\(\\s*0?\\.\\d+\\s*,\\s*0\\s*,", "target": "code" }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']TextLabel[\"']",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "TextScaled\\s*=\\s*true",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "BackgroundTransparency\\s*=\\s*1",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "UDim2\\.fromScale\\s*\\(|UDim2\\.new\\s*\\(\\s*0?\\.\\d+\\s*,\\s*0\\s*,",
+        "target": "code"
+      }
     ]
   }
 ]

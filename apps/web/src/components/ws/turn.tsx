@@ -15,7 +15,7 @@ import { GenerativeUI } from '../../lib/generative-ui/render';
 import { panelFromTool } from '../../lib/panels';
 import { gatesFromDocs, plannedStepsFromDocs, type ValidatedDoc } from '../../lib/gates';
 import { clockTime, isoStamp } from '../../lib/format';
-import { GolemGlyph } from '../glyphs';
+import { AppleGlyph } from '../glyphs';
 import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
 import { useNow } from './activity';
 import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
@@ -145,7 +145,7 @@ export function Turn({
   return (
     <div className="gx-turn gx-turn--agent gx-msg-in">
       <span className="gx-mark" aria-hidden="true">
-        <GolemGlyph size={22} />
+        <AppleGlyph size={22} />
       </span>
 
       <div className="gx-turn__body">

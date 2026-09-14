@@ -1,5 +1,5 @@
 ---
-import GolemMark from './GolemMark.astro';
+import AppleMark from './AppleMark.astro';
 
 // The landing is one viewport now, so /#how, /#modes and /#proof no longer
 // exist. Anchors to sections that were deleted are worse than no links at
@@ -17,9 +17,9 @@ const isCurrent = (href: string) =>
 
 <header class="nav" id="site-nav">
   <div class="wrap nav__inner">
-    <a href="/" class="brand" aria-label="Golem — home" data-cursor="link">
-      <GolemMark size={28} />
-      <span class="brand__word">Golem</span>
+    <a href="/" class="brand" aria-label="Apple — home" data-cursor="link">
+      <AppleMark size={28} />
+      <span class="brand__word">Apple</span>
     </a>
 
     <nav aria-label="Primary" class="nav__links" id="primary-nav">
@@ -73,7 +73,7 @@ const isCurrent = (href: string) =>
           <span class="visually-hidden">Toggle interface sound</span>
         </button>
 
-        <a href="/app" class="btn btn-primary nav__cta" data-cursor-label="open app">Open Golem</a>
+        <a href="/app" class="btn btn-primary nav__cta" data-cursor-label="open app">Open Apple</a>
       </div>
     </nav>
 

@@ -814,7 +814,7 @@ export const PROTOCOL_VERSION = 1;
 // apps/site/src/lib/studio-plugin.ts rather than restating the id.
 //
 // Measured against the live Roblox APIs on 2026-08-31:
-//   economy.roblox.com/v2/assets/<id>/details       -> 200 (AssetTypeId 38, "Golem")
+//   economy.roblox.com/v2/assets/<id>/details       -> 200 (AssetTypeId 38, "Apple")
 //   roblox.com/library/<id>                         -> 307 -> create.roblox.com/store/asset/<id>
 //   apis.roblox.com/toolbox-service/.../<id>        -> 404
 // The 307 is why STUDIO_PLUGIN_URL uses create.roblox.com/store/asset: Roblox
@@ -829,7 +829,7 @@ export const PROTOCOL_VERSION = 1;
 // (Development Items -> Configure -> Distribution -> Distribute on Creator Store).
 // ---------------------------------------------------------------------------
 
-/** The Golem Studio plugin's Roblox asset id. The one literal; derive, never retype. */
+/** The Apple Studio plugin's Roblox asset id. The one literal; derive, never retype. */
 export const STUDIO_PLUGIN_ASSET_ID = '132128477945417';
 
 /**

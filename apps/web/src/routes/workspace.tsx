@@ -235,7 +235,7 @@ export function WorkspacePage() {
             type="button"
             className="gx-icon-btn"
             onClick={() => setDrawer('memory')}
-            aria-label="What Golem remembers about this project"
+            aria-label="What Apple remembers about this project"
             title="Project memory"
           >
             <Icon d={PATH.brain} />
@@ -276,7 +276,7 @@ export function WorkspacePage() {
             to={`/projects/${projectId}/roadmap`}
             className="gx-btn gx-btn--outline gx-top__cp"
             aria-label="Roadmap"
-            title="What Golem would build next in this place"
+            title="What Apple would build next in this place"
           >
             <Icon d={PATH.listAll} size={15} />
             <span className="gx-top__cp-label">Roadmap</span>
@@ -408,11 +408,11 @@ export function WorkspacePage() {
           </p>
         )}
         {checkpointsState === 'loading' && (
-          <p className="gx-empty">Reading the checkpoints Golem has taken…</p>
+          <p className="gx-empty">Reading the checkpoints Apple has taken…</p>
         )}
         {checkpointsState === 'ready' && checkpoints.length === 0 && (
           <p className="gx-empty">
-            No checkpoints yet. Golem takes one automatically before it changes anything.
+            No checkpoints yet. Apple takes one automatically before it changes anything.
           </p>
         )}
 
@@ -446,12 +446,12 @@ export function WorkspacePage() {
         {drawer === 'credits' && <CreditsPanel projectId={projectId} />}
       </Drawer>
 
-      <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Golem remembers">
+      <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Apple remembers">
         {project.data?.memory_summary ? (
           <p className="gx-memory">{project.data.memory_summary}</p>
         ) : (
           <p className="gx-empty">
-            Nothing yet. As you build, Golem keeps a short note about how your project is put
+            Nothing yet. As you build, Apple keeps a short note about how your project is put
             together and uses it on later turns.
           </p>
         )}

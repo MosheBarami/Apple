@@ -12,7 +12,7 @@
 //      rail card says so rather than pretending.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-const COLLAPSE_KEY = 'golem.rail.collapsed';
+const COLLAPSE_KEY = 'apple.rail.collapsed';
 
 export interface Shell {
   /** The rail as an overlay on narrow viewports. */

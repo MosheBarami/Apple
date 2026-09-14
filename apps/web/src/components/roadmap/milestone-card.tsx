@@ -27,9 +27,9 @@ interface Props {
  * knowing rather than smoothed into either of the confident answers.
  */
 const DETECTED_COPY = {
-  present: 'Golem found this already in your place.',
-  absent: 'Golem did not find this in your place.',
-  unknown: 'Golem could not tell from the scan whether this exists yet.',
+  present: 'Apple found this already in your place.',
+  absent: 'Apple did not find this in your place.',
+  unknown: 'Apple could not tell from the scan whether this exists yet.',
 } as const;
 
 function RefChips({ refs, onJumpTo }: { refs: MilestoneRef[]; onJumpTo: (id: string) => void }) {

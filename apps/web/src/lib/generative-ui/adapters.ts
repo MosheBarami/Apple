@@ -1,5 +1,5 @@
 /**
- * Adapters: real Golem data → generative-UI documents.
+ * Adapters: real Apple data → generative-UI documents.
  *
  * These build *candidate* documents from first-party payloads (a Studio render,
  * a visual critique, checkpoint metadata, quota state). They are still passed

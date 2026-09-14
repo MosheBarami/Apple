@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOLEM — workspace design system.
+   APPLE — workspace design system.
 
    The product surface, in the same material as the landing: warm-neutral
    charcoal, ivory type, one amber accent that only ever means "something is
@@ -2712,7 +2712,7 @@
    treatment.
 
    TONE IS SEMANTIC, per the visual system's §16.2 colour grammar: amber is creation
-   and Golem's own identity, blue is Studio and transport, green is proven, violet is
+   and Apple's own identity, blue is Studio and transport, green is proven, violet is
    future or in-progress, red is failure. The tone comes from the state id in the
    component and is not a prop a caller can pass, because a state whose colour
    contradicts its meaning is exactly the drift §16.3 names.

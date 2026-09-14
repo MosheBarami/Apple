@@ -1,5 +1,5 @@
 --!strict
--- Executes StudioOps from the Golem agent. Mutating ops are wrapped in
+-- Executes StudioOps from the Apple agent. Mutating ops are wrapped in
 -- ChangeHistoryService recordings so every AI action is natively undoable.
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 local ScriptEditorService = game:GetService("ScriptEditorService")
@@ -440,7 +440,7 @@ handlers.run_code = function(op)
 		return { error = refusal }
 	end
 	local module = Instance.new("ModuleScript")
-	module.Name = "GolemEval"
+	module.Name = "AppleEval"
 	-- NOTE: long-bracket strings swallow a leading newline, so join segments explicitly
 	local header = [[
 local __prints = {}
@@ -635,7 +635,7 @@ handlers.inspect_model = function(op)
 end
 
 handlers.undo_waypoint = function(op)
-	ChangeHistoryService:SetWaypoint(op.name or "Golem")
+	ChangeHistoryService:SetWaypoint(op.name or "Apple")
 	return { waypoint = true }
 end
 
@@ -666,7 +666,7 @@ function Ops.execute(id: string, opBody: any): any
 		 an un-undoable partial mutation is not. ]]
 	local recording: string? = nil
 	if MUTATING[kind] then
-		recording = ChangeHistoryService:TryBeginRecording("Golem: " .. kind)
+		recording = ChangeHistoryService:TryBeginRecording("Apple: " .. kind)
 		if not recording then
 			return {
 				id = id,

@@ -3,13 +3,13 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base
-  title="Status — Golem"
-  description="Live operational status of the Golem service, checked directly against the API from your browser and refreshed every 30 seconds."
+  title="Status — Apple"
+  description="Live operational status of the Apple service, checked directly against the API from your browser and refreshed every 30 seconds."
 >
   <section class="section" aria-labelledby="status-title">
     <div class="wrap status-wrap">
       <p class="eyebrow">Status</p>
-      <h1 id="status-title">Is the golem awake?</h1>
+      <h1 id="status-title">Is the apple awake?</h1>
       <p class="lede">
         This page checks the live API from your own browser — the same endpoint the app uses — and
         refreshes every 30 seconds.
@@ -20,7 +20,7 @@ import Base from '../layouts/Base.astro';
           <span class="status-orb" id="status-orb" aria-hidden="true"></span>
           <div>
             <p class="status-headline" id="status-headline">Checking…</p>
-            <p class="status-sub" id="status-sub">Reaching the Golem API.</p>
+            <p class="status-sub" id="status-sub">Reaching the Apple API.</p>
           </div>
         </div>
 
@@ -57,7 +57,7 @@ import Base from '../layouts/Base.astro';
         </ul>
         <p>
           Something look wrong for more than a few minutes?
-          <a href="mailto:golem.labs.app@gmail.com">Tell us</a> — a human reads that inbox.
+          <a href="mailto:apple.labs.app@gmail.com">Tell us</a> — a human reads that inbox.
         </p>
       </div>
     </div>
@@ -267,7 +267,7 @@ import Base from '../layouts/Base.astro';
 
   async function check() {
     clearTimeout(pollTimer);
-    setState('checking', 'Checking…', 'Reaching the Golem API.');
+    setState('checking', 'Checking…', 'Reaching the Apple API.');
     const started = performance.now();
     try {
       const controller = new AbortController();
@@ -297,7 +297,7 @@ import Base from '../layouts/Base.astro';
       if (!navigator.onLine) {
         setState('down', 'You appear to be offline', 'Your browser reports no network connection. This check will retry automatically.');
       } else {
-        setState('down', 'API unreachable', 'The Golem API did not answer from your browser. It may be a service outage — we are probably already staring at it.');
+        setState('down', 'API unreachable', 'The Apple API did not answer from your browser. It may be a service outage — we are probably already staring at it.');
       }
     }
 

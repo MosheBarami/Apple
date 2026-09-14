@@ -1,4 +1,4 @@
-// Typed fetch helpers for the Golem worker API. All authed calls carry the
+// Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
@@ -128,7 +128,7 @@ export const fetchNextMilestones = (projectId: string): Promise<NextResponse> =>
  *
  * Only the id crosses the wire. The worker rebuilds the brief from a fresh
  * scan precisely so that a client cannot hand the builder arbitrary
- * instructions wearing Golem's own roadmap as a disguise.
+ * instructions wearing Apple's own roadmap as a disguise.
  */
 export const fetchMilestoneBrief = (projectId: string, milestoneId: string): Promise<MilestoneBrief> =>
   MOCK_MODE

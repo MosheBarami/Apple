@@ -8,9 +8,9 @@
  * the peak as the core, the two ends as the gradient stops, and the centre spark (#FEFEFE) as the
  * highlight.
  *
- * THIS INVERTS THE GOLEM IDENTITY, DELIBERATELY. Golem was warm and light: `--paper:#f2efe8`
- * limestone, `--acc-ember:#ad4a18` molten iron, Fraunces. Apple is dark and cosmic. The two do not
- * blend; do not carry ember or paper tokens forward into Apple surfaces.
+ * THIS INVERTS THE PREVIOUS IDENTITY, DELIBERATELY. The product was formerly Golem, and Golem was
+ * warm and light: `--paper:#f2efe8` limestone, `--acc-ember:#ad4a18` molten iron, Fraunces. Apple is
+ * dark and cosmic. The two do not blend; do not carry ember or paper tokens forward.
  *
  * EVERY CONTRAST FIGURE HERE IS COMPUTED, NOT ESTIMATED (WCAG 2.1 relative luminance, against
  * --a-void). Where a colour fails body text it is labelled and must not be used for body text —
@@ -30,7 +30,10 @@
   /* ---- text ---------------------------------------------------------- */
   --a-ink: #eaf0ff; /* 17.52:1 on void — AAA */
   --a-muted: #94a3c4; /* 7.90:1 — AAA, safe for secondary body */
-  --a-faint: #6e7b9b; /* 4.73:1 — AA body; the floor. Nothing dimmer carries text. */
+  --a-faint: #7582a4; /* the floor, set by the LIGHTEST surface it sits on: 4.61:1 on --a-surface-2,
+                      4.96:1 on --a-surface, 5.22:1 on --a-void. Derived against the worst case,
+                      because #6e7b9b cleared the ground at 4.73:1 and still failed a raised card
+                      at 4.49:1. Nothing dimmer carries text. */
 
   /* ---- brand --------------------------------------------------------- */
   --a-azure: #0080f0; /* 5.09:1 — AA body. The core. Peak hue of the mark (210–220°). */

@@ -3,15 +3,15 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 ---
 
 <DocsLayout
-  title="Build the plugin from source — Golem Docs"
-  description="Developer and debug path: build Golem for Studio from the repo with Rojo and load it as a local plugin. Not the way to install Golem."
+  title="Build the plugin from source — Apple Docs"
+  description="Developer and debug path: build Apple for Studio from the repo with Rojo and load it as a local plugin. Not the way to install Apple."
   heading="Build the plugin from source"
 >
   <div class="callout callout--violet">
     <p>
-      <strong>This is not how you install Golem.</strong> It is the development and debugging path,
-      for people changing the plugin's code. If you want to <em>use</em> Golem, go to
-      <a href="/docs/plugin">Install Golem for Studio</a> — the Creator Store is the only supported
+      <strong>This is not how you install Apple.</strong> It is the development and debugging path,
+      for people changing the plugin's code. If you want to <em>use</em> Apple, go to
+      <a href="/docs/plugin">Install Apple for Studio</a> — the Creator Store is the only supported
       install path, and a hand-built plugin is unsupported, unsigned and updated by nobody but you.
     </p>
   </div>
@@ -22,10 +22,10 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <a href="https://rojo.space" rel="noopener noreferrer" target="_blank">Rojo</a> — version
     <strong>7.7.0</strong>, the version CI pins.
   </p>
-  <pre><code>rojo build apps/plugin/default.project.json --output golem-plugin.rbxm</code></pre>
+  <pre><code>rojo build apps/plugin/default.project.json --output apple-plugin.rbxm</code></pre>
   <p>
     Continuous integration runs exactly this in the <strong>Build Studio plugin</strong> job and
-    attaches the result as the <code>golem-plugin</code> artifact, kept for seven days. If you only
+    attaches the result as the <code>apple-plugin</code> artifact, kept for seven days. If you only
     need a build and not a checkout, take it from there.
   </p>
 
@@ -44,7 +44,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <div class="callout">
     <p>
       <strong>Do not run both at once.</strong> A local build and a Creator Store install are two
-      separate plugins as far as Studio is concerned. Running both gives you two Golem buttons, two
+      separate plugins as far as Studio is concerned. Running both gives you two Apple buttons, two
       panels and two pollers fighting over the same place. Disable or remove one.
     </p>
   </div>
@@ -69,7 +69,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <p>
     Releases are cut by hand, from Studio: <strong>Plugins</strong> menu →
     <strong>Publish as Plugin</strong> → <strong>Overwrite an existing asset</strong>, selecting the
-    existing Golem asset so the id stays stable. There is no automated path: Roblox's Open Cloud
+    existing Apple asset so the id stays stable. There is no automated path: Roblox's Open Cloud
     asset API does not support the Plugin asset type at all, and its update endpoint can only
     replace content for models. Budget a human in Studio for every version.
   </p>

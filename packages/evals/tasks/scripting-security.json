@@ -2,105 +2,294 @@
   {
     "id": "ss-01-remote-validation",
     "category": "scripting-security",
-    "topics": ["remotes-validation", "exploit-resistance", "client-server-boundary"],
+    "topics": [
+      "remotes-validation",
+      "exploit-resistance",
+      "client-server-boundary"
+    ],
     "weight": 4,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "A RemoteEvent named SetNickname sits in ReplicatedStorage. Write the server Script that handles it. The client sends one argument, the requested nickname. Assume nothing about what arrives: reject it unless it is a string of 1 to 20 characters, and store an accepted value with player:SetAttribute(\"Nickname\", value).",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "OnServerEvent", "target": "code" },
-      { "type": "regex", "pattern": "typeof\\s*\\(|\\btype\\s*\\(", "target": "code" },
-      { "type": "regex", "pattern": "#\\w+\\s*>\\s*20|string\\.len", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["unvalidated-remote-arg", "server-trusts-client-amount"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnServerEvent",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "typeof\\s*\\(|\\btype\\s*\\(",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "#\\w+\\s*>\\s*20|string\\.len",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "unvalidated-remote-arg",
+          "server-trusts-client-amount"
+        ]
+      }
     ]
   },
   {
     "id": "ss-02-shop-purchase-authority",
     "category": "scripting-security",
-    "topics": ["shops", "economy-currency", "exploit-resistance", "race-conditions"],
+    "topics": [
+      "shops",
+      "economy-currency",
+      "exploit-resistance",
+      "race-conditions"
+    ],
     "weight": 4,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script for a shop. A RemoteEvent named BuyItem in ReplicatedStorage receives one argument from the client: an item id string. Prices live in a table inside this server script (sword = 100, shield = 250). The balance is player.leaderstats.Coins. Reject unknown ids, refuse when the balance is short, deduct the price, then hand over a clone of the item from ServerStorage. The client must never be able to influence the price, and nothing may yield between checking the balance and deducting it.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "OnServerEvent", "target": "code" },
-      { "type": "regex", "pattern": "\\bPRICES\\b|\\bprices\\b|\\bCOSTS\\b|\\bcosts\\b", "target": "code" },
-      { "type": "regex", "pattern": "100", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["server-trusts-client-amount", "unvalidated-remote-arg", "yield-inside-currency-debit", "client-authoritative-currency"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnServerEvent",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "\\bPRICES\\b|\\bprices\\b|\\bCOSTS\\b|\\bcosts\\b",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "100",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "server-trusts-client-amount",
+          "unvalidated-remote-arg",
+          "yield-inside-currency-debit",
+          "client-authoritative-currency"
+        ]
+      }
     ]
   },
   {
     "id": "ss-03-remote-event-not-function",
     "category": "scripting-security",
-    "topics": ["client-server-boundary", "exploit-resistance"],
+    "topics": [
+      "client-server-boundary",
+      "exploit-resistance"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "The server must notify one specific player that a round named \"Lava Rush\" has started, as each player joins. Create the remote instance under ReplicatedStorage if it is missing, then send the notification. Pick the remote type that a malicious client cannot stall the server with.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "FireClient", "target": "code" },
-      { "type": "not_contains", "value": "InvokeClient", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']RemoteEvent[\"']", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["remote-function-to-client"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "FireClient",
+        "target": "code"
+      },
+      {
+        "type": "not_contains",
+        "value": "InvokeClient",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']RemoteEvent[\"']",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "remote-function-to-client"
+        ]
+      }
     ]
   },
   {
     "id": "ss-04-rate-limited-remote",
     "category": "scripting-security",
-    "topics": ["remotes-validation", "exploit-resistance", "race-conditions"],
+    "topics": [
+      "remotes-validation",
+      "exploit-resistance",
+      "race-conditions"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "A RemoteEvent named Attack in ReplicatedStorage is fired by the client. Write the server Script that runs the attack at most once every 0.5 seconds per player, silently dropping the extra fires, and that drops the per-player bookkeeping when the player leaves so the table cannot grow without bound.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "OnServerEvent", "target": "code" },
-      { "type": "regex", "pattern": "os\\.clock\\s*\\(|os\\.time\\s*\\(|tick\\s*\\(|GetServerTimeNow", "target": "code" },
-      { "type": "contains", "value": "PlayerRemoving", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["unvalidated-remote-arg", "busy-wait-loop"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnServerEvent",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "os\\.clock\\s*\\(|os\\.time\\s*\\(|tick\\s*\\(|GetServerTimeNow",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "PlayerRemoving",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "unvalidated-remote-arg",
+          "busy-wait-loop"
+        ]
+      }
     ]
   },
   {
     "id": "ss-05-code-redemption",
     "category": "scripting-security",
-    "topics": ["codes", "idempotency", "exploit-resistance", "persistence-datastore"],
+    "topics": [
+      "codes",
+      "idempotency",
+      "exploit-resistance",
+      "persistence-datastore"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script for promo codes. A RemoteEvent named RedeemCode in ReplicatedStorage receives a code string from the client. Valid codes and their coin rewards live in a table in this script (launch = 100, summer = 250). Each account may redeem each code once, ever: record the claim in a data store so that redeeming twice — even from two servers at the same moment — pays out exactly once. Reward amounts come from the server, never from the client.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "OnServerEvent", "target": "code" },
-      { "type": "regex", "pattern": "\\bCODES\\b|\\bcodes\\b", "target": "code" },
-      { "type": "contains", "value": "UpdateAsync", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["server-trusts-client-amount", "unvalidated-remote-arg", "datastore-without-pcall", "set-async-read-modify-write"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnServerEvent",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "\\bCODES\\b|\\bcodes\\b",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "UpdateAsync",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "server-trusts-client-amount",
+          "unvalidated-remote-arg",
+          "datastore-without-pcall",
+          "set-async-read-modify-write"
+        ]
+      }
     ]
   },
   {
     "id": "ss-06-client-authority-review",
     "category": "scripting-security",
-    "topics": ["client-server-boundary", "exploit-resistance", "economy-currency"],
+    "topics": [
+      "client-server-boundary",
+      "exploit-resistance",
+      "economy-currency"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox engineer reviewing another developer's code. Answer in prose, three or four sentences. Do not write a code block.",
+    "system": "You are Apple, an expert Roblox engineer reviewing another developer's code. Answer in prose, three or four sentences. Do not write a code block.",
     "prompt": "A developer put this LocalScript in StarterPlayerScripts and says the shop works:\n\nlocal player = game:GetService(\"Players\").LocalPlayer\nlocal coins = player:WaitForChild(\"leaderstats\"):WaitForChild(\"Coins\")\nscript.Parent.BuyButton.Activated:Connect(function()\n\tif coins.Value >= 100 then\n\t\tcoins.Value -= 100\n\t\tgame:GetService(\"ReplicatedStorage\").GiveSword:FireServer()\n\tend\nend)\n\nExplain what is actually wrong with it and what the server has to own.",
     "checks": [
-      { "type": "regex", "pattern": "exploit|executor|cheat|inject", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "does not replicate|doesn't replicate|not replicate|only .{0,20}client|client[- ]side only|never reaches the server", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "server[- ]side|on the server|the server (must|should|owns|is|has)", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "RemoteEvent|remote", "flags": "i", "target": "text" }
+      {
+        "type": "regex",
+        "pattern": "exploit|executor|cheat|inject",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "does not replicate|doesn't replicate|not replicate|only .{0,20}client|client[- ]side only|never reaches the server",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "server[- ]side|on the server|the server (must|should|owns|is|has)",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "RemoteEvent|remote",
+        "flags": "i",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ss-07-instance-arg-sanitisation",
     "category": "scripting-security",
-    "topics": ["remotes-validation", "exploit-resistance", "tools-and-equipment"],
+    "topics": [
+      "remotes-validation",
+      "exploit-resistance",
+      "tools-and-equipment"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "A RemoteEvent named EquipTool in ReplicatedStorage is fired by the client with one argument: the Tool instance it wants equipped. An exploiter can pass any instance in the DataModel, including another player's tool. Write the server handler that accepts the argument only when it is a Tool currently parented to that same player's Backpack, then moves it into their Character.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "OnServerEvent", "target": "code" },
-      { "type": "regex", "pattern": ":IsA\\s*\\(\\s*[\"']Tool[\"']", "target": "code" },
-      { "type": "contains", "value": "Backpack", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["unvalidated-remote-arg"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnServerEvent",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": ":IsA\\s*\\(\\s*[\"']Tool[\"']",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "Backpack",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "unvalidated-remote-arg"
+        ]
+      }
     ]
   }
 ]

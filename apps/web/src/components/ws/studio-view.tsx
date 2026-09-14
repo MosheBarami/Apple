@@ -1,4 +1,4 @@
-// Watching Golem work, from the browser.
+// Watching Apple work, from the browser.
 //
 // READ THIS BEFORE CHANGING THE COPY.
 //

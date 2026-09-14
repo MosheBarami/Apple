@@ -1,10 +1,10 @@
 /* ==========================================================================
-   GOLEM — the workshop, as a tool.
+   APPLE — the workshop, as a tool.
 
    The marketing site is a showroom: big type, theatre, air. This is the bench
    you stand at for six hours. Same materials — quarried stone, warm neutrals,
    an accent that is the only thing in the palette that emits light — but
-   denser, quieter, and organised around a single question: what is the golem
+   denser, quieter, and organised around a single question: what is the apple
    doing right now, and what did it just do to my place?
 
    Structure
@@ -1712,7 +1712,7 @@ textarea {
   padding: 0.2rem 0.75rem;
 }
 
-.msg-golem {
+.msg-apple {
   align-items: flex-start;
 }
 
@@ -1728,7 +1728,7 @@ textarea {
   margin-top: 0.1rem;
 }
 
-.msg-bubble-golem {
+.msg-bubble-apple {
   min-width: 0;
   flex: 1;
 }

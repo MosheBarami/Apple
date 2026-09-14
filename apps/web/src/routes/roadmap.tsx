@@ -156,7 +156,7 @@ export function RoadmapPage() {
           </Link>
           <h1 className="page-title">Roadmap</h1>
           <p className="page-sub">
-            What Golem would build next in this place, in the order it can be built. Every milestone here
+            What Apple would build next in this place, in the order it can be built. Every milestone here
             comes from a scan of your project — nothing is a template.
           </p>
         </div>
@@ -223,7 +223,7 @@ export function RoadmapPage() {
           illustration={<EmptyRoadmapMark />}
           detail={
             <p className="es__body">
-              Golem read your place and found nothing it recognises well enough to plan around yet. Build
+              Apple read your place and found nothing it recognises well enough to plan around yet. Build
               something in the conversation — a spawn, a first room — and the plan fills in as the project
               takes shape.
             </p>
@@ -280,7 +280,7 @@ export function RoadmapPage() {
           {layout.hasCycle && (
             <p className="rm-note" role="status">
               Two milestones list each other as prerequisites, so one of those links has been dropped to
-              draw this. The order below may not be the order Golem intends.
+              draw this. The order below may not be the order Apple intends.
             </p>
           )}
           {layout.unknownDependencies.length > 0 && (

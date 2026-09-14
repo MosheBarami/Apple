@@ -15,7 +15,7 @@
  * 2. It never claims the plugin is installed. Nothing in this file can render
  *    such a claim, because no such state exists: the browser has no way to
  *    observe a Roblox Studio plugin, so step 1 is phrased as an action the user
- *    takes ("Install Golem for Studio"), never as a status we report.
+ *    takes ("Install Apple for Studio"), never as a status we report.
  *
  * The install button's destination is STUDIO_PLUGIN_INSTALL_HREF, not the store
  * URL directly. As of 2026-08-31 the asset is uploaded but not distributed
@@ -61,14 +61,14 @@ export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
       </h2>
       <p className="gx-connect__lede">
         {dropped
-          ? 'Golem can’t reach your place right now. Open the Golem plugin in Studio, or pair again.'
-          : 'Golem makes its changes inside Studio. Three steps, once.'}
+          ? 'Apple can’t reach your place right now. Open the Apple plugin in Studio, or pair again.'
+          : 'Apple makes its changes inside Studio. Three steps, once.'}
       </p>
 
       <ol className="gx-connect__steps">
         {!dropped && (
           <li className="gx-connect__step">
-            <span className="gx-connect__what">Install Golem for Studio</span>
+            <span className="gx-connect__what">Install Apple for Studio</span>
             <a
               className="gx-btn gx-btn--outline"
               href={STUDIO_PLUGIN_INSTALL_HREF}
@@ -81,7 +81,7 @@ export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
           </li>
         )}
         <li className="gx-connect__step">
-          <span className="gx-connect__what">Open the Golem plugin in Studio</span>
+          <span className="gx-connect__what">Open the Apple plugin in Studio</span>
         </li>
         <li className="gx-connect__step">
           <span className="gx-connect__what">Pair your project</span>

@@ -2,111 +2,322 @@
   {
     "id": "sy-01-tycoon-dropper",
     "category": "scripting-systems",
-    "topics": ["tycoon", "economy-currency", "performance"],
+    "topics": [
+      "tycoon",
+      "economy-currency",
+      "performance"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script for a tycoon dropper. Assume `dropper` and `collector` are parts and `owner` is the Player who owns this tycoon. Every 2 seconds, clone ServerStorage.Drop into workspace just above the dropper. When a drop touches the collector, add 5 to owner.leaderstats.Cash and destroy the drop. Never let more than 30 drops exist at once, and make sure the spawn loop cannot pin the server thread.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "task\\.wait\\s*\\(\\s*(2|\\w*INTERVAL\\w*|\\w*DELAY\\w*|\\w*RATE\\w*)\\s*\\)", "target": "code" },
-      { "type": "contains", "value": "Touched", "target": "code" },
-      { "type": "regex", "pattern": "30", "target": "code" },
-      { "type": "not_contains", "pattern": "(?<!task\\.)\\bwait\\s*\\(", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["busy-wait-loop", "client-authoritative-currency", "deprecated-api"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "task\\.wait\\s*\\(\\s*(2|\\w*INTERVAL\\w*|\\w*DELAY\\w*|\\w*RATE\\w*)\\s*\\)",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "Touched",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "30",
+        "target": "code"
+      },
+      {
+        "type": "not_contains",
+        "pattern": "(?<!task\\.)\\bwait\\s*\\(",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "busy-wait-loop",
+          "client-authoritative-currency",
+          "deprecated-api"
+        ]
+      }
     ]
   },
   {
     "id": "sy-02-tycoon-button-purchase",
     "category": "scripting-systems",
-    "topics": ["tycoon", "shops", "idempotency", "economy-currency"],
+    "topics": [
+      "tycoon",
+      "shops",
+      "idempotency",
+      "economy-currency"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script for a tycoon buy-button. Assume `button` is a part, `owner` is the Player who owns the tycoon, and ServerStorage.Wall is the model it unlocks. When the OWNER touches the button and owner.leaderstats.Cash is at least 500, deduct 500 and parent a clone of the wall into workspace. A second touch — including the stream of touches a single step produces — must never charge or build twice.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "Touched", "target": "code" },
-      { "type": "regex", "pattern": "500", "target": "code" },
-      { "type": "regex", "pattern": "purchased|bought|claimed|debounce|:Disconnect\\s*\\(|:Destroy\\s*\\(", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["yield-inside-currency-debit", "client-authoritative-currency", "busy-wait-loop"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "Touched",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "500",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "purchased|bought|claimed|debounce|:Disconnect\\s*\\(|:Destroy\\s*\\(",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "yield-inside-currency-debit",
+          "client-authoritative-currency",
+          "busy-wait-loop"
+        ]
+      }
     ]
   },
   {
     "id": "sy-03-upgrade-ladder",
     "category": "scripting-systems",
-    "topics": ["upgrades", "economy-currency", "exploit-resistance"],
+    "topics": [
+      "upgrades",
+      "economy-currency",
+      "exploit-resistance"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script for a walkspeed upgrade ladder. Levels 1 to 5 cost 100, 250, 600, 1500 and 4000 coins, from a table in this script. A RemoteEvent named BuyUpgrade in ReplicatedStorage is fired by the client with no arguments. On each fire, read the player's current level from an attribute, refuse past level 5, refuse when player.leaderstats.Coins is short, deduct the cost of the NEXT level, raise the attribute and set the new WalkSpeed. The client must not be able to name the level or the price.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "OnServerEvent", "target": "code" },
-      { "type": "regex", "pattern": "\\bCOSTS\\b|\\bPRICES\\b|\\bUPGRADES\\b|\\bcosts\\b", "target": "code" },
-      { "type": "regex", "pattern": "4000", "target": "code" },
-      { "type": "regex", "pattern": "MAX_LEVEL|#COSTS|#UPGRADES|>=\\s*5|>\\s*5", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["server-trusts-client-amount", "yield-inside-currency-debit", "client-authoritative-currency"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnServerEvent",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "\\bCOSTS\\b|\\bPRICES\\b|\\bUPGRADES\\b|\\bcosts\\b",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "4000",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "MAX_LEVEL|#COSTS|#UPGRADES|>=\\s*5|>\\s*5",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "server-trusts-client-amount",
+          "yield-inside-currency-debit",
+          "client-authoritative-currency"
+        ]
+      }
     ]
   },
   {
     "id": "sy-04-zone-detection",
     "category": "scripting-systems",
-    "topics": ["zones", "performance"],
+    "topics": [
+      "zones",
+      "performance"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script that tracks which players are inside a zone. Assume `zone` is a large anchored, non-collidable part. Print \"entered\" and \"left\" exactly once per player per transition. Sample no more than five times a second, query the zone's own volume rather than walking the workspace, and build any query parameters once instead of per sample.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "task\\.wait\\s*\\(\\s*(0?\\.2|1\\s*/\\s*5|SAMPLE\\w*|\\w*INTERVAL\\w*)\\s*\\)", "target": "code" },
-      { "type": "regex", "pattern": "GetPartBoundsInBox|GetPartsInPart|GetPartBoundsInRadius|:GetTouchingParts", "target": "code" },
-      { "type": "not_contains", "value": "GetDescendants", "target": "code" },
-      { "type": "regex", "pattern": "OverlapParams", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["expensive-call-per-frame", "busy-wait-loop"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "task\\.wait\\s*\\(\\s*(0?\\.2|1\\s*/\\s*5|SAMPLE\\w*|\\w*INTERVAL\\w*)\\s*\\)",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "GetPartBoundsInBox|GetPartsInPart|GetPartBoundsInRadius|:GetTouchingParts",
+        "target": "code"
+      },
+      {
+        "type": "not_contains",
+        "value": "GetDescendants",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "OverlapParams",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "expensive-call-per-frame",
+          "busy-wait-loop"
+        ]
+      }
     ]
   },
   {
     "id": "sy-05-quest-progress",
     "category": "scripting-systems",
-    "topics": ["quests", "idempotency", "economy-currency"],
+    "topics": [
+      "quests",
+      "idempotency",
+      "economy-currency"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write a server ModuleScript for a \"defeat 10 monsters\" quest exposing recordKill(player). Progress lives on the player's attributes. Ignore kills once the quest is complete, and award 500 coins to player.leaderstats.Coins exactly once, on the tenth kill — a further call after completion must pay nothing.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "regex", "pattern": "\\b10\\b", "target": "code" },
-      { "type": "regex", "pattern": "500", "target": "code" },
-      { "type": "regex", "pattern": "[Cc]omplet|[Dd]one|[Ff]inished|[Cc]laimed", "target": "code" },
-      { "type": "regex", "pattern": "GetAttribute|SetAttribute", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["yield-inside-currency-debit", "client-authoritative-currency"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "\\b10\\b",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "500",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "[Cc]omplet|[Dd]one|[Ff]inished|[Cc]laimed",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "GetAttribute|SetAttribute",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "yield-inside-currency-debit",
+          "client-authoritative-currency"
+        ]
+      }
     ]
   },
   {
     "id": "sy-06-leaderstats-sync",
     "category": "scripting-systems",
-    "topics": ["leaderboards", "economy-currency"],
+    "topics": [
+      "leaderboards",
+      "economy-currency"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script that gives each joining player a leaderstats folder holding two IntValues, Coins and Rebirths, seeded from the player's attributes of the same names (defaulting to 0), and that keeps each IntValue in step whenever the matching attribute changes later. Do not poll.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "leaderstats", "target": "code" },
-      { "type": "contains", "value": "PlayerAdded", "target": "code" },
-      { "type": "regex", "pattern": "Instance\\.new\\s*\\(\\s*[\"']IntValue[\"']", "target": "code" },
-      { "type": "contains", "value": "GetAttributeChangedSignal", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["busy-wait-loop", "client-authoritative-currency"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "leaderstats",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "PlayerAdded",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "Instance\\.new\\s*\\(\\s*[\"']IntValue[\"']",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "GetAttributeChangedSignal",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "busy-wait-loop",
+          "client-authoritative-currency"
+        ]
+      }
     ]
   },
   {
     "id": "sy-07-shop-client-boundary",
     "category": "scripting-systems",
-    "topics": ["shops", "client-server-boundary", "exploit-resistance"],
+    "topics": [
+      "shops",
+      "client-server-boundary",
+      "exploit-resistance"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the LocalScript behind a shop button. It sends only the item id to the server on the BuyItem RemoteEvent — never a price and never a balance — disables the button until the server answers on the ShopResult RemoteEvent, and shows the balance by reading the leaderstats Coins value the server owns. It must not write to that value.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "FireServer", "target": "code" },
-      { "type": "contains", "value": "OnClientEvent", "target": "code" },
-      { "type": "not_contains", "pattern": "\\.Value\\s*(=[^=]|\\+=|-=)", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "client", "rules": ["client-authoritative-currency", "streaming-unsafe-descendant"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "FireServer",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "OnClientEvent",
+        "target": "code"
+      },
+      {
+        "type": "not_contains",
+        "pattern": "\\.Value\\s*(=[^=]|\\+=|-=)",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "client",
+        "rules": [
+          "client-authoritative-currency",
+          "streaming-unsafe-descendant"
+        ]
+      }
     ]
   }
 ]

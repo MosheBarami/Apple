@@ -63,7 +63,7 @@ export function useAuth(): AuthState {
 function AuthSplash() {
   return (
     <div className="auth-splash">
-      <Forge kind="recalling" label="Waking the golem" compact />
+      <Forge kind="recalling" label="Waking the apple" compact />
     </div>
   );
 }

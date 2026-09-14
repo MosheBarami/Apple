@@ -2,7 +2,7 @@
 // marks follow light/dark without a second asset.
 
 /**
- * The Golem mark: a hexagonal outline containing an isometric cube.
+ * The Apple mark: a hexagonal outline containing an isometric cube.
  *
  * Geometry only — not a monolith, not a face, not a character. The outer
  * hexagon is never filled, the three interior lines are the classic "cube in
@@ -14,7 +14,7 @@
  * Used at 32px beside the wordmark, ~28px in the workspace rail, and 22px as
  * the assistant avatar in the conversation.
  */
-export function GolemGlyph({ size = 28, className }: { size?: number; className?: string }) {
+export function AppleGlyph({ size = 28, className }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
@@ -139,7 +139,7 @@ export function SummonIllustration() {
  * geometry rather than from a personified character. The earlier version was a
  * tilted robot with a blinking accent eye, which §3 forbids. No animation.
  */
-export function LostGolemIllustration() {
+export function LostAppleIllustration() {
   return (
     <svg
       width="190"

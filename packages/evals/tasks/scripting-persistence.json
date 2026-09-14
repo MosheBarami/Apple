@@ -2,109 +2,315 @@
   {
     "id": "sp-01-datastore-retry",
     "category": "scripting-persistence",
-    "topics": ["persistence-datastore", "error-recovery"],
+    "topics": [
+      "persistence-datastore",
+      "error-recovery"
+    ],
     "weight": 4,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write a ModuleScript exposing savePlayerData(userId, data) for the data store named PlayerData. Data store calls throw on throttling and on backend outages. Protect the call, retry up to three times with a growing delay between attempts, warn with the last error if every attempt fails, and return whether the save succeeded.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "pcall", "target": "code" },
-      { "type": "regex", "pattern": "for\\s+\\w+\\s*=\\s*1\\s*,\\s*(3|\\w*ATTEMPTS\\w*|\\w*RETRIES\\w*|\\w*TRIES\\w*)|repeat", "target": "code" },
-      { "type": "contains", "value": "warn", "target": "code" },
-      { "type": "regex", "pattern": "task\\.wait\\s*\\(", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "module", "rules": ["datastore-without-pcall", "datastore-without-retry"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "pcall",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "for\\s+\\w+\\s*=\\s*1\\s*,\\s*(3|\\w*ATTEMPTS\\w*|\\w*RETRIES\\w*|\\w*TRIES\\w*)|repeat",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "warn",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "task\\.wait\\s*\\(",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "module",
+        "rules": [
+          "datastore-without-pcall",
+          "datastore-without-retry"
+        ]
+      }
     ]
   },
   {
     "id": "sp-02-update-async-atomic",
     "category": "scripting-persistence",
-    "topics": ["persistence-datastore", "idempotency", "race-conditions", "economy-currency"],
+    "topics": [
+      "persistence-datastore",
+      "idempotency",
+      "race-conditions",
+      "economy-currency"
+    ],
     "weight": 4,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write awardCoins(userId, amount) for the data store named Coins. Two servers can run it for the same player at the same moment — a player can be mid-teleport, or rejoining before the old server finished saving — and no award may be lost when that happens. Protect the call and retry it.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "UpdateAsync", "target": "code" },
-      { "type": "not_contains", "value": "SetAsync", "target": "code" },
-      { "type": "contains", "value": "pcall", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "module", "rules": ["set-async-read-modify-write", "datastore-without-pcall", "datastore-without-retry"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "UpdateAsync",
+        "target": "code"
+      },
+      {
+        "type": "not_contains",
+        "value": "SetAsync",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "pcall",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "module",
+        "rules": [
+          "set-async-read-modify-write",
+          "datastore-without-pcall",
+          "datastore-without-retry"
+        ]
+      }
     ]
   },
   {
     "id": "sp-03-session-lock",
     "category": "scripting-persistence",
-    "topics": ["session-locking", "persistence-datastore", "race-conditions"],
+    "topics": [
+      "session-locking",
+      "persistence-datastore",
+      "race-conditions"
+    ],
     "weight": 4,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script that loads a player's profile from the PlayerData store when they join. A player can rejoin before the previous server finished saving, so two servers can hold the same profile and the stale one overwrites the fresh one. Claim the profile for the running server, refuse to load when another server still holds the claim, and release it when the player leaves.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "JobId", "target": "code" },
-      { "type": "contains", "value": "UpdateAsync", "target": "code" },
-      { "type": "contains", "value": "PlayerAdded", "target": "code" },
-      { "type": "contains", "value": "PlayerRemoving", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["no-session-lock", "datastore-without-pcall", "set-async-read-modify-write"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "JobId",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "UpdateAsync",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "PlayerAdded",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "PlayerRemoving",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "no-session-lock",
+          "datastore-without-pcall",
+          "set-async-read-modify-write"
+        ]
+      }
     ]
   },
   {
     "id": "sp-04-bindtoclose-flush",
     "category": "scripting-persistence",
-    "topics": ["persistence-datastore", "error-recovery"],
+    "topics": [
+      "persistence-datastore",
+      "error-recovery"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script that saves a player's coins — read from player:GetAttribute(\"Coins\") — into the Coins data store when they leave, AND flushes every remaining player when the server itself shuts down. A data store error must not stop the remaining players from being saved.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "BindToClose", "target": "code" },
-      { "type": "contains", "value": "PlayerRemoving", "target": "code" },
-      { "type": "contains", "value": "pcall", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["no-bindtoclose-save", "datastore-without-pcall", "datastore-without-retry"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "BindToClose",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "PlayerRemoving",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "pcall",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "no-bindtoclose-save",
+          "datastore-without-pcall",
+          "datastore-without-retry"
+        ]
+      }
     ]
   },
   {
     "id": "sp-05-load-failure-mode",
     "category": "scripting-persistence",
-    "topics": ["persistence-datastore", "error-recovery", "idempotency"],
+    "topics": [
+      "persistence-datastore",
+      "error-recovery",
+      "idempotency"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox engineer reviewing another developer's design. Answer in prose, three or four sentences. Do not write a code block.",
+    "system": "You are Apple, an expert Roblox engineer reviewing another developer's design. Answer in prose, three or four sentences. Do not write a code block.",
     "prompt": "A PlayerAdded handler calls GetAsync to load a save. The call throws. The handler catches it with pcall, continues with a fresh default profile, and saves that profile back when the player leaves. What happens to the player, and what should the handler do instead?",
     "checks": [
-      { "type": "regex", "pattern": "overwrit|wipe|erase|lose|lost|destroy|replac", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "retry|retries|retried|try again|back ?off", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "kick|do not save|don't save|never save|refuse to save|block(ing)? (the )?save|disable sav|mark .{0,20}(as )?(not loaded|unloaded)", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "default", "flags": "i", "target": "text" }
+      {
+        "type": "regex",
+        "pattern": "overwrit|wipe|erase|lose|lost|destroy|replac",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "retry|retries|retried|try again|back ?off",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "kick|do not save|don't save|never save|refuse to save|block(ing)? (the )?save|disable sav|mark .{0,20}(as )?(not loaded|unloaded)",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "default",
+        "flags": "i",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "sp-06-ordered-leaderboard",
     "category": "scripting-persistence",
-    "topics": ["leaderboards", "persistence-datastore", "performance"],
+    "topics": [
+      "leaderboards",
+      "persistence-datastore",
+      "performance"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write the server Script for a global top-10 coins leaderboard backed by an OrderedDataStore named CoinsLeaderboard. Publish a player's coins — player:GetAttribute(\"Coins\") — when they leave, and refresh the top ten on a repeating cycle no more often than once every 60 seconds, printing each name and score. Every data store call must survive an error, and the refresh loop must yield.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "GetOrderedDataStore", "target": "code" },
-      { "type": "contains", "value": "GetSortedAsync", "target": "code" },
-      { "type": "contains", "value": "pcall", "target": "code" },
-      { "type": "regex", "pattern": "task\\.wait\\s*\\(\\s*(60|REFRESH\\w*|\\w*INTERVAL\\w*)\\s*\\)", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["datastore-without-pcall", "busy-wait-loop"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "GetOrderedDataStore",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "GetSortedAsync",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "pcall",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "task\\.wait\\s*\\(\\s*(60|REFRESH\\w*|\\w*INTERVAL\\w*)\\s*\\)",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "datastore-without-pcall",
+          "busy-wait-loop"
+        ]
+      }
     ]
   },
   {
     "id": "sp-07-rebirth-transaction",
     "category": "scripting-persistence",
-    "topics": ["rebirth", "idempotency", "persistence-datastore", "economy-currency"],
+    "topics": [
+      "rebirth",
+      "idempotency",
+      "persistence-datastore",
+      "economy-currency"
+    ],
     "weight": 3,
-    "system": "You are Golem, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
+    "system": "You are Apple, an expert Roblox Luau engineer. Reply with exactly one fenced ```luau code block and nothing else.",
     "prompt": "Write rebirth(userId) for a simulator, against the PlayerData store. A rebirth is allowed only when the saved coins are at least 10000. Set coins back to 0 and raise the rebirth count by one in a single atomic store operation, so a player who fires it twice in the same second cannot rebirth twice off one balance. Return whether the rebirth happened.",
     "checks": [
-      { "type": "luau_syntax", "target": "code" },
-      { "type": "contains", "value": "UpdateAsync", "target": "code" },
-      { "type": "not_contains", "value": "SetAsync", "target": "code" },
-      { "type": "regex", "pattern": "10000|10_000|1e4", "target": "code" },
-      { "type": "contains", "value": "pcall", "target": "code" },
-      { "type": "no_antipattern", "target": "code", "context": "server", "rules": ["set-async-read-modify-write", "datastore-without-pcall", "yield-inside-currency-debit"] }
+      {
+        "type": "luau_syntax",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "UpdateAsync",
+        "target": "code"
+      },
+      {
+        "type": "not_contains",
+        "value": "SetAsync",
+        "target": "code"
+      },
+      {
+        "type": "regex",
+        "pattern": "10000|10_000|1e4",
+        "target": "code"
+      },
+      {
+        "type": "contains",
+        "value": "pcall",
+        "target": "code"
+      },
+      {
+        "type": "no_antipattern",
+        "target": "code",
+        "context": "server",
+        "rules": [
+          "set-async-read-modify-write",
+          "datastore-without-pcall",
+          "yield-inside-currency-debit"
+        ]
+      }
     ]
   }
 ]

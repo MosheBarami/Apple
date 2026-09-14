@@ -19,7 +19,7 @@
  * See docs/DESIGN-SPEC.md §0 and §1.
  */
 import Landing from '../layouts/Landing.astro';
-import GolemMark from '../components/GolemMark.astro';
+import AppleMark from '../components/AppleMark.astro';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 /** Nav destinations. Every one of these is a real page. No anchors. */
@@ -36,14 +36,14 @@ const navLinks = [
  * EVERY CLAIM HERE MUST BE ONE THE PRODUCT CAN KEEP TODAY.
  *
  * This strip used to read "Trusted by builders", "Loved by teams", "Indie devs to
- * studios". Those are adoption claims, and Golem has no adoption to claim: the
+ * studios". Those are adoption claims, and Apple has no adoption to claim: the
  * Creator Store plugin is not distributed yet (STUDIO_PLUGIN_STORE_LIVE is false,
  * five lines of this same file route the install button at the docs instead). A
  * visitor reading them was being told something untrue on the first screen, by a
  * project whose whole evidence standard is that a capability is not proven because
  * code for it exists.
  *
- * So they say what Golem actually does, and each one is a thing a first-time visitor
+ * So they say what Apple actually does, and each one is a thing a first-time visitor
  * can go and verify: the Studio connection is a real paired session, the build loop
  * really does plan/build/playtest/repair, and the training-data promise is the
  * standing policy in docs/SECURITY.md. If one of these ever stops being true, change
@@ -76,8 +76,8 @@ const icons: Record<string, string> = {
 ---
 
 <Landing
-  title="Golem — Describe it. Golem builds it."
-  description="Golem is the AI builder for Roblox. Describe what you want in plain language and Golem makes the change in your project — real scripts, real instances, native undo, verified by running your game."
+  title="Apple — Describe it. Apple builds it."
+  description="Apple is the AI builder for Roblox. Describe what you want in plain language and Apple makes the change in your project — real scripts, real instances, native undo, verified by running your game."
 >
   <a href="#main" class="skip-link">Skip to content</a>
 
@@ -124,9 +124,9 @@ const icons: Record<string, string> = {
       class-based, so the box tree is byte-for-byte what it was. */}
   <main class="frame" id="main">
     <header class="nav">
-      <a href="/" class="brand" aria-label="Golem — home">
-        <GolemMark size={32} />
-        <span>Golem</span>
+      <a href="/" class="brand" aria-label="Apple — home">
+        <AppleMark size={32} />
+        <span>Apple</span>
       </a>
 
       <nav class="nav__links" aria-label="Primary">
@@ -134,7 +134,7 @@ const icons: Record<string, string> = {
       </nav>
 
       <a href="/app" class="btn btn--cream nav__cta">
-        Open Golem
+        Open Apple
         <svg
           class="btn__arrow"
           width="13"
@@ -161,12 +161,12 @@ const icons: Record<string, string> = {
 
       <h1 class="title reveal reveal-2">
         Describe it.
-        <em>Golem builds it.</em>
+        <em>Apple builds it.</em>
       </h1>
 
       <p class="lede reveal reveal-3">
         Go from an idea in your head to a working experience in
-        <strong>Roblox Studio</strong>. Golem reads your project, writes the
+        <strong>Roblox Studio</strong>. Apple reads your project, writes the
         code, writes the instances — then presses Play to prove it works.
       </p>
 
@@ -215,7 +215,7 @@ const icons: Record<string, string> = {
 
     {/* A labelled region, not a footer: these are the page's claims, not its
         colophon. */}
-    <section class="strip" aria-label="What Golem does">
+    <section class="strip" aria-label="What Apple does">
       {
         cells.map((cell) => (
           <div class="strip__cell">
