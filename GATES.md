@@ -173,10 +173,11 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=a50e9d2; tree-clean=yes; break-sha=a50e9d2; EXPECT=unmatched; output-sha256=3745eb009d97881431b99e95b72fa8cb52fbef90ce95cf085d30eb6f1458ad02; output-bytes=35158; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:06.941Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e0ba958; tree-clean=yes; EXPECT=matched; output-sha256=5d9b92dadbc0f4e93ff52ea87c6b5e135761abdf0344d5f5450b2081810feaa8; output-bytes=5576; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:13.006Z
 
-- [ ] G-ORACLE-2: The escape-hatch checker catches every cheap way to buy a green signal
+- [x] G-ORACLE-2: The escape-hatch checker catches every cheap way to buy a green signal
     CHECK: node scripts/assert-tests.mjs --floor 20 --label G-ORACLE-2 -- node --test tests/check-escape-hatches.test.mjs
     EXPECT: G-ORACLE-2 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9528a51; tree-clean=yes; EXPECT=matched; output-sha256=f9849a4ef9d9d5e49fd41b107644667cd83e7fb13999c0787063d80ac9cca7c6; output-bytes=1618; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:27.979Z
 
 ---
 
