@@ -294,3 +294,79 @@ HANDOFFS OPEN: OH-1, OH-2 — now STATION-BLOCKING for S1, because §12.6 will n
 
 NEXT: implement §10.1 path-dependency in gate-check.mjs, then decide G-CRITIC-1 by wiring
   critic.ts into inspect_visually or deleting it.
+
+--------------------------------------------------------------------------------
+PASS 4  2026-09-14T17:37:35Z  HEAD d22d5e4  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: none claimed. This pass was §10.1 oracle work plus handoff accounting.
+
+DERIVED OPEN: gates 1 met / 34 open of 35 | worklist 6
+  | features 1084 not-started of 1249 | handoffs 6
+
+CLOSED: none. One capability added, no gate ticked.
+
+§10.1 — EVIDENCE NOW KNOWS WHICH CODE IT WAS ABOUT.
+  A gate records the fingerprint of every file it ACTUALLY LOADED, taken from V8 coverage
+  rather than declared by an author, because a declaration drifts the way a prose tally
+  does. The list is written to docs/evidence/gate-deps/<id>.json; only the fingerprint goes
+  on the record line. `--status` recomputes it and prints current or STALE, executing
+  nothing.
+
+  PROVEN, both directions: appending one line to scripts/assert-tests.mjs — a file
+  G-ORACLE-1's CHECK never names but does load — flips it to STALE in under a second, and
+  restoring the file flips it back to current. G-ORACLE-1's discovered dependency set is
+  three files, only one of which its CHECK mentions.
+
+  This is the thing that would have caught both swept commits at the moment they landed.
+
+TWO DEFECTS IN MY OWN NEW CODE, both caught by this session's own checkers:
+  - Two NUL bytes in scripts written twenty minutes earlier: masking an exempt span with a
+    raw byte where a space was meant. Third time the control-byte detector has earned its
+    place in one session — once on code from an hour before, once on a file a peer's
+    NUL-only scan missed, now on my own.
+  - The three-consecutive-confessions detector used G[\w-]+ as a row id, which matches
+    GREEN in "SUITE GREEN", so three passes of a passing suite read as a stall. A detector
+    that fires on its own success message is worse than one that does not fire: it teaches
+    the reader to ignore it. Narrowed to real ids.
+
+HANDOFFS: 4 -> 6.
+  OH-5 image retention. IMAGE_TTL_SECONDS is 3,600 against a panel that lives as long as
+    the conversation, so a returning user scrolling back to yesterday is the normal path.
+    Everything on this side is built; the number is a storage bill.
+  OH-6 geometryMask and figureGroundContrast exist in BOTH apps/worker/src/composition.ts
+    and packages/evals/src/props.mjs — one deciding what the offline grader believes, the
+    other what the product would. Recorded because no dead-end checker will find it: both
+    copies have callers, which is precisely why they can disagree indefinitely.
+
+DISPOSITIONS: CLOSED 0 | OWNER 6 | others 0
+
+REFUTERS: 0 dispatched. No row changed status this pass, so §9.1 requires none. §9.5's
+  self-refuter is still carried, fourth pass.
+
+VERIFICATION:
+  gate-suite.mjs            exit 0   SUITE GREEN, 2216 passed, 0 failed
+  gate-typecheck.mjs        exit 0   TYPECHECK CLEAN
+  check-escape-hatches.mjs  exit 0   CLEAN, 423 files
+  gate-check.mjs --lint     exit 0   WELL-FORMED, 35 gates
+  neurons spent 0
+
+DEPLOYED: not deployed. Still blocked by §12.6 on check-offer being red, which is OH-1/OH-2.
+
+NOT DONE:
+  G-CRITIC-1 | wire critic.ts into inspect_visually or delete it | SCHEDULED pass 5
+  §6.6 check-deadends | would find every critic.ts-shaped case systematically rather than
+    one at a time | SCHEDULED pass 5
+  §6.2 back-fill | 33 gates without a falsification record | SCHEDULED pass 5
+  §6.5 check-backlog, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 5
+  §9.5 self-refuter | carried four passes | SCHEDULED pass 5
+  OH-6 | decide which pixel-metric implementation survives | SCHEDULED pass 5
+
+NUMBERS CORRECTED: handoffs 4 -> 6. Denominator 421 -> 423 files as two scripts landed.
+
+SELF-REFUTER: still not dispatched. The sentence I expect it to find this pass is "§10.1 —
+  evidence now knows which code it was about": true of the mechanism, and misleading because
+  only 2 of 35 gates carry a dependency fingerprint at all. The other 33 have no evidence to
+  be stale, so the staleness check currently has almost nothing to check.
+
+NEXT: node scripts/check-deadends.mjs does not exist; write it, and let it decide
+  G-CRITIC-1 rather than deciding that one by hand.
