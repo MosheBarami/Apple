@@ -728,8 +728,12 @@ const CATALOGUE: readonly MilestoneSpec[] = [
       'Create a RemoteEvent folder in ReplicatedStorage for the actions the player can take.',
       'Move the decision for each action into a Script in ServerScriptService.',
       'Leave the LocalScript responsible only for input and feedback.',
+      'Name each remote for the ACTION the client is requesting, not the outcome — the client asks to buy, it never announces that it has bought.',
     ],
-    acceptance: ['A player action is applied by the server and visible to other players.'],
+    acceptance: [
+      'A player action is applied by the server and visible to other players.',
+      'No remote accepts a result the client has already decided.',
+    ],
   },
   {
     id: 'readable_hud',
@@ -778,10 +782,19 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 60,
     dependsOn: ['economy'], genres: ['any'], satisfiedBy: ['persistence'],
     build: [
-      'Save the player state on leave and on an interval with DataStoreService.',
-      'Load it on join before the player can act, and handle the failure case without wiping data.',
+      'Write with UpdateAsync, never SetAsync. UpdateAsync is a read-modify-write the service serialises, so two servers saving the same player cannot silently overwrite each other; SetAsync takes the last writer and discards the other.',
+      'If the load FAILED, refuse to save for that session. Writing a fresh default over a read that errored is how a player loses everything, and on the server it looks identical to a successful save.',
+      'Session-lock the profile on join and release it on leave, so the same player joined twice cannot duplicate what they own.',
+      'Wrap every DataStore call in pcall and retry with backoff — the service fails transiently, and an unhandled error is a lost session rather than a visible one.',
+      'Save on game:BindToClose as well as on PlayerRemoving. A server shutting down does not always fire PlayerRemoving for everyone before it goes.',
+      'Load on join before the player can act, and hold them until it resolves.',
     ],
-    acceptance: ['A player earns, leaves, rejoins and still has it.', 'A failed load does not overwrite the save.'],
+    acceptance: [
+      'A player earns, leaves, rejoins and still has it.',
+      'A failed load does not overwrite the save.',
+      'The same player joined twice cannot hold two writable copies of the profile.',
+      'A shutdown mid-session still persists what was earned.',
+    ],
   },
   {
     id: 'server_authority',
@@ -791,11 +804,16 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'rune', runs: 1, priority: 70,
     dependsOn: ['client_server_backbone', 'save_progress'], genres: ['any'], satisfiedBy: ['anticheat'],
     build: [
-      'Validate every RemoteEvent argument on the server: type, range and whether the player may do it at all.',
-      'Rate-limit the remotes a client can spam.',
-      'Never let the client send the amount it earned.',
+      'Validate every RemoteEvent argument on the server: its type, its range, and whether THIS player is allowed to do it at all. All three — a correctly typed value can still be a request the player has no right to make.',
+      'Rate-limit per player per remote on the SERVER, with a token bucket or a last-fired timestamp. A debounce in the LocalScript is not a rate limit; it is a courtesy the exploiter deletes.',
+      'Never accept an amount from the client. The client reports that a button was pressed; the server decides what that is worth.',
+      'Prefer a RemoteEvent to a RemoteFunction for anything a client initiates. A RemoteFunction invoked by a client yields the server thread waiting for a reply the client controls.',
     ],
-    acceptance: ['A remote fired with junk arguments changes nothing.', 'A remote fired in a loop is throttled.'],
+    acceptance: [
+      'A remote fired with junk arguments changes nothing.',
+      'A remote fired in a loop is throttled server-side.',
+      'A client that claims it earned a million is ignored, not clamped.',
+    ],
   },
   {
     id: 'onboarding',
@@ -819,9 +837,14 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['leaderboard_global'],
     build: [
       'Write the tracked stat to an OrderedDataStore on save.',
+      'Read the board with GetSortedAsync on a timer — once a minute is plenty — never on player join. The limit is per place, not per player, so a join-triggered fetch fails exactly when the server is busiest.',
+      'Keep the last page that loaded. A failed fetch should leave the previous board on screen; an empty board reads as "nobody has scored".',
       'Render the top entries on a SurfaceGui somewhere players pass.',
     ],
-    acceptance: ['The board updates after a session and survives a server restart.'],
+    acceptance: [
+      'The board updates after a session and survives a server restart.',
+      'A failed fetch leaves the previous board up rather than blanking it.',
+    ],
   },
   {
     id: 'shopfront',
@@ -843,8 +866,14 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     impact: 'Day-two returns rise without any new content.',
     complexity: 'small', mode: 'stone', runs: 1, priority: 95,
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['daily_reward'],
-    build: ['Award a daily bonus on the first join of a day, tracked in the same save.'],
-    acceptance: ['The bonus is awarded once per day per player, verified server-side.'],
+    build: [
+      'Award a daily bonus on the first join of a day, tracked in the same save.',
+      'Decide what day it is from os.time() on the SERVER. A client clock is a setting the player can change, and a date read from it turns a daily reward into an unlimited one.',
+    ],
+    acceptance: [
+      'The bonus is awarded once per day per player, verified server-side.',
+      'Changing the device clock does not award it again.',
+    ],
   },
   {
     id: 'monetisation',
@@ -855,9 +884,17 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     dependsOn: ['shopfront'], genres: ['any'], satisfiedBy: ['monetization'],
     build: [
       'Add one gamepass or developer product that saves time or looks good, never one that gates the core loop.',
-      'Handle the purchase server-side and grant it on rejoin too.',
+      'For a developer product, implement MarketplaceService.ProcessReceipt and return Enum.ProductPurchaseDecision.PurchaseGranted ONLY after the grant has been written and the write confirmed. Returning it first tells Roblox to stop retrying, and the player has paid for nothing.',
+      'Make ProcessReceipt idempotent on receipt.PurchaseId. Roblox may call it more than once for a single purchase, and a handler that just adds the reward grants it twice.',
+      'For a gamepass, check ownership once on join with UserOwnsGamePassAsync and cache it for the session. It is a web call and must never sit inside a loop or a per-frame check.',
+      'Grant on rejoin too, from the save rather than from a fresh purchase check.',
     ],
-    acceptance: ['The benefit persists after a rejoin.', 'A non-paying player can still finish the core loop.'],
+    acceptance: [
+      'The benefit persists after a rejoin.',
+      'A non-paying player can still finish the core loop.',
+      'ProcessReceipt called twice for one PurchaseId grants once.',
+      'A grant that fails to save is not reported as PurchaseGranted.',
+    ],
   },
 
   // ---- the economy foundation, only where an economy belongs ------------------------------
@@ -873,8 +910,12 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'Create a leaderstats folder per player with the single currency the loop uses.',
       'Award it from the server on the core action.',
+      'Keep the authoritative balance in the save and treat leaderstats as a display mirror of it. leaderstats is replicated state built for showing a number, and anything that writes to it directly will drift from what the player actually owns.',
     ],
-    acceptance: ['The currency rises only from a server-side award.'],
+    acceptance: [
+      'The currency rises only from a server-side award.',
+      'The saved balance is the number the game spends, not the leaderstats value.',
+    ],
   },
 
   // ---- obby --------------------------------------------------------------------------------
