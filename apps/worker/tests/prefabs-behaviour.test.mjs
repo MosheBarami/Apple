@@ -557,3 +557,181 @@ test('a failed commit does not let the session adopt the unsaved table', () => {
   ].join('\n'), 'prof-commit-fail');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * Receipts' harness — the money one.
+ *
+ * ProcessReceipt is assigned to MarketplaceService at module load, so the stub hands it back and
+ * the tests call it exactly as Roblox would. `Enum.ProductPurchaseDecision` is two sentinel values;
+ * what matters is which one comes back, because PurchaseGranted is irreversible — it tells Roblox
+ * to stop retrying, and a wrong one either charges a player for nothing or grants them a second
+ * copy of what they bought.
+ *
+ * The getter and the committer are injected by design, so both the "data never loaded" and the
+ * "write failed" branches are reachable without a DataStore at all.
+ */
+function runReceipts(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local nowValue = 1000',
+    'os = { time = function() return nowValue end, clock = function() return nowValue end }',
+    '',
+    'Enum = { ProductPurchaseDecision = { PurchaseGranted = "GRANTED", NotProcessedYet = "RETRY" } }',
+    '',
+    'local player = { UserId = 7, Name = "buyer" }',
+    'local presentPlayer = player',
+    'local marketplace = {}',
+    'game = {',
+    '\tGetService = function(self, name)',
+    '\t\tif name == "MarketplaceService" then return marketplace end',
+    '\t\treturn { GetPlayerByUserId = function(_, id) return presentPlayer end }',
+    '\tend,',
+    '}',
+    '',
+    'local function receipt(purchaseId, productId)',
+    '\treturn { PlayerId = 7, ProductId = productId or 111, PurchaseId = purchaseId or "p-1" }',
+    'end',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.receipts.source}\nend)()`,
+    'local process = marketplace.ProcessReceipt',
+    'assert(type(process) == "function", "the module must install ProcessReceipt at load")',
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+/** A configured module with a live profile and a committer whose success the test controls. */
+const WIRED = [
+  'local data = { coins = 0 }',
+  'local committed = nil',
+  'local commitOk = true',
+  'local commitCalls = 0',
+  'M.configure({',
+  '\tget = function(p) return data end,',
+  '\tcommit = function(p, table_) commitCalls = commitCalls + 1; committed = table_; return commitOk end,',
+  '})',
+  'local grants = 0',
+  'M.product(111, function(p, working, info) grants = grants + 1; working.coins = working.coins + 100; return true end)',
+].join('\n');
+
+test('the receipts harness runs, and a false assertion in it still fails', () => {
+  const good = runReceipts('assert(type(M.product) == "function", "M.product")', 'rec-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runReceipts('assert(false, "intentional-receipt")', 'rec-sanity-neg');
+  assert.equal(bad.ok, false, 'a failing assert did not fail the receipts run');
+  assert.match(bad.output, /intentional-receipt/);
+});
+
+test('an unconfigured module never consumes a receipt', () => {
+  const r = runReceipts([
+    'assert(process(receipt()) == "RETRY", "unconfigured must ask for a retry, not consume")',
+  ].join('\n'), 'rec-unconfigured');
+  assert.ok(r.ok, r.output);
+});
+
+test('THE AWARD AND THE RECEIPT ID REACH THE COMMITTER IN ONE TABLE', () => {
+  // The atomicity rule, observed rather than asserted about the source.
+  const r = runReceipts([
+    WIRED,
+    'assert(process(receipt("p-1")) == "GRANTED", "a good purchase is granted")',
+    'assert(commitCalls == 1, "exactly one write")',
+    'assert(committed.coins == 100, "the award is in the written table")',
+    'assert(committed.receipts["p-1"] ~= nil, "AND the receipt id is in the SAME table")',
+    'assert(data.coins == 100, "the session adopted it")',
+  ].join('\n'), 'rec-atomic');
+  assert.ok(r.ok, r.output);
+});
+
+test('A REPEATED RECEIPT GRANTS ONCE — Roblox may call this more than once', () => {
+  const r = runReceipts([
+    WIRED,
+    'assert(process(receipt("p-1")) == "GRANTED")',
+    'assert(process(receipt("p-1")) == "GRANTED", "a repeat must still consume the receipt")',
+    'assert(grants == 1, "but the handler must run once, ran " .. tostring(grants))',
+    'assert(data.coins == 100, "and the player must be awarded once, has " .. tostring(data.coins))',
+    'assert(commitCalls == 1, "and nothing written the second time")',
+  ].join('\n'), 'rec-idempotent');
+  assert.ok(r.ok, r.output);
+});
+
+test('a DIFFERENT receipt for the same product does grant again', () => {
+  // Idempotency must be keyed on the purchase, not the product — otherwise nobody can buy twice.
+  const r = runReceipts([
+    WIRED,
+    'assert(process(receipt("p-1")) == "GRANTED")',
+    'assert(process(receipt("p-2")) == "GRANTED")',
+    'assert(grants == 2, "two purchases, two grants")',
+    'assert(data.coins == 200)',
+  ].join('\n'), 'rec-distinct');
+  assert.ok(r.ok, r.output);
+});
+
+test('A FAILED WRITE CHANGES NOTHING AND DOES NOT CONSUME THE RECEIPT', () => {
+  // The player keeps their Robux until the grant actually lands.
+  const r = runReceipts([
+    WIRED,
+    'commitOk = false',
+    'assert(process(receipt("p-1")) == "RETRY", "a failed write must not report the purchase done")',
+    'assert(data.coins == 0, "the live session must be untouched, has " .. tostring(data.coins))',
+    'assert(data.receipts == nil, "and must not carry a receipt for an ungranted purchase")',
+    'commitOk = true',
+    'assert(process(receipt("p-1")) == "GRANTED", "the retry must then succeed")',
+    'assert(data.coins == 100, "and award exactly once")',
+    'assert(grants == 2, "the handler ran twice, which is fine — only the WRITE is authoritative")',
+  ].join('\n'), 'rec-failed-write');
+  assert.ok(r.ok, r.output);
+});
+
+test('a handler that declines or errors does not consume the receipt', () => {
+  const r = runReceipts([
+    'local data = { coins = 0 }',
+    'M.configure({ get = function() return data end, commit = function() return true end })',
+    'M.product(111, function() return false end)',
+    'M.product(222, function() error("handler exploded") end)',
+    'assert(process(receipt("p-1", 111)) == "RETRY", "a declining handler must not consume")',
+    'assert(process(receipt("p-2", 222)) == "RETRY", "a throwing handler must not consume")',
+    'assert(data.coins == 0, "and neither may award")',
+  ].join('\n'), 'rec-decline');
+  assert.ok(r.ok, r.output);
+});
+
+test('a player who has left, and data that never loaded, both retry rather than consume', () => {
+  const r = runReceipts([
+    'local data = { coins = 0 }',
+    'M.configure({ get = function() return data end, commit = function() return true end })',
+    'M.product(111, function(p, w) w.coins = 1 return true end)',
+    'presentPlayer = nil',
+    'assert(process(receipt("p-1")) == "RETRY", "an absent player must not have their receipt consumed")',
+    'presentPlayer = player',
+    'M.configure({ get = function() return nil end, commit = function() return true end })',
+    'assert(process(receipt("p-1")) == "RETRY", "unloaded data must not be awarded into")',
+  ].join('\n'), 'rec-absent');
+  assert.ok(r.ok, r.output);
+});
+
+test('an unknown product retries rather than silently consuming a real purchase', () => {
+  const r = runReceipts([
+    WIRED,
+    'assert(process(receipt("p-1", 999)) == "RETRY", "a product with no handler must not be consumed")',
+    'assert(#warnings >= 1, "and should say so")',
+  ].join('\n'), 'rec-unknown-product');
+  assert.ok(r.ok, r.output);
+});
