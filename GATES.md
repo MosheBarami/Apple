@@ -165,6 +165,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=cfeccd6; tree-clean=yes; EXPECT=matched; output-sha256=7ff347d721b75a881541af8291107dd16e9d4f6f633b51333f88fd2fecf60f2a; output-bytes=3558; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:48:52.415Z
 
 ---
 
