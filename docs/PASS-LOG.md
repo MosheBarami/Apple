@@ -581,8 +581,24 @@ SECURITY: the tool-output fence could fall back to a shared constant. `systemPro
   `agent.fenceId ?? ''`. The field is legitimately optional so a run persisted by an older
   deploy still loads, but that fallback gave every such run the SAME marker — and the whole
   untrusted-content rule rests on the marker being unguessable. An empty id is not a weaker
-  secret, it is a shared one. The prompt now refuses a falsy id, which immediately caught
-  three call sites that had been omitting it. The fence mints rather than defaults.
+  secret, it is a shared one. The fence mints rather than defaults.
+
+  CORRECTED BY THE §9.5 SELF-REFUTER, which found that the sentence removed from here
+  overstated half of this fix. Two things changed and only ONE was a live defect:
+
+    THE LIVE ONE. `agent.fenceId ?? ''` on the tool-output fence in session.ts. Product code
+    on the injection boundary, reachable by any run persisted without the field.
+
+    THE DEFENCE-IN-DEPTH ONE. `systemPrompt` refusing a falsy id. It has exactly one non-test
+    caller — session.ts:938 — and that caller already passed a minted id BEFORE the fix. The
+    guard caught ZERO product call sites. All three it caught are test fixtures.
+
+  The removed sentence read "immediately caught three call sites", one line after "the whole
+  untrusted-content rule rests on the marker being unguessable" — which reads as three further
+  exposure surfaces in the product. There were none. The commit for the same change said "a
+  fixture", singular; the record promoted it. "Immediately" was wrong too: one was caught in
+  a4e3aaa and two not until f1312c8, so the workspace suite was red on main in between while
+  a4e3aaa's own message reported "Worker 323 passed, 0 failed".
 
   Found because rbxai-a3 reported two `assert.ok(X || true)` assertions on main. `X || true`
   is `true`. One of them had been sitting on top of the product's only prompt-injection
@@ -606,8 +622,20 @@ OH-6 CLOSED. geometryMask, SKY_RGB and GROUND_RGB had two implementations — on
 
 DISPOSITIONS: CLOSED 2 | WIRE 1 | STRUCTURALLY-BLOCKED 1 | OWNER 5
 
-REFUTERS: 0 dispatched this pass. §9.5's self-refuter still carried, seventh pass — and it is
-  now the oldest unkept commitment in this log, which is itself the finding.
+REFUTERS: 2 dispatched, BOTH REFUTED, both repaired in this pass per §9.4.
+
+  THE IMAGE ROUTE (9150a69) — refuted, and the strongest finding was about my oracle, not my
+  code: every assertion in image-route.test.mjs reads index.ts as a string, so commenting the
+  whole route out left all nine green, including the one whose name claimed it asked whether
+  the route existed. Registering it on a never-mounted sub-app passed too. It also found two
+  real defects the source tests could not see — a Cache-Control anchored at response time while
+  the KV TTL is anchored at write time, so a cached copy outlived the object by up to the whole
+  hour; and two 404s distinguishable by body while their status codes were carefully identical.
+  Repaired in 7693a2a with a test that builds the Hono app and issues real requests.
+
+  THE SELF-REFUTER (§9.5) — see the corrections above. It found three misleading sentences in
+  this very record, two of them flattering, one of them reporting a regression this pass caused
+  as an earlier pass's sloppiness. All three repaired with measurement rather than rewording.
 
 VERIFICATION:
   gate-suite.mjs            SUITE GREEN, 2260 passed, 0 failed
@@ -617,12 +645,26 @@ VERIFICATION:
   gate-check.mjs --lint     WELL-FORMED, 37 gates, 0 problems
   gate-check.mjs --status   37 gates, 30 need work
 
-  TWO GATE COUNTS, because they measure different things and reporting either alone would
-  flatter the ledger. 12 rows are marked [x]. Only 6 of those — G2, G3, G4, G5, G6, G8 —
-  read MET / measured / red-first / current, meaning they carry a falsification record AND
-  evidence whose dependency fingerprint still reproduces. The other 6 are checked on a
-  measurement with no falsification behind it, which §0 says is not yet evidence. The
-  honest headline is 6, and the 30 that --status says need work is the number to act on.
+  TWELVE gates read MET / measured / red-first / current — a falsification record AND evidence
+  whose dependency fingerprint reproduces. 25 of 37 still need work.
+
+  THIS PARAGRAPH PREVIOUSLY SAID SIX, and was wrong twice in the flattering direction, both
+  caught by the §9.5 self-refuter:
+
+    It said "only 6 read current" on the same page as a --status line reading 30 of 37 need
+    work. 37 − 30 is 7, not 6.
+
+    It said the other six were "checked on a measurement with no falsification behind it".
+    False — all six carry FALSIFIED records, and the checker prints `red-first` for exactly
+    that condition. They read STALE, and they were stale because THIS PASS edited
+    gate-check.mjs, check-escape-hatches.mjs, check-deadends.mjs and composition.ts, which is
+    what their fingerprints cover. The pass caused the regression and the record reported it
+    as an earlier pass's missing rigour.
+
+  Repaired rather than reworded: the four stale gates were re-verified in 7ac4dd4 and none
+  reads STALE now. A paragraph written to look scrupulous is worth nothing when the scruple is
+  aimed at the wrong number — "I was careful here" is the easiest sentence in this log to write
+  without earning it.
 
   neurons spent 0
 
@@ -637,15 +679,31 @@ NOT DONE:
   the panel is display-only | the critic's confirmed defects reach the screen and influence
     nothing the agent does; session.ts's retry loop reads lastCritique, never the panel | SCHEDULED pass 8
 
-NUMBERS CORRECTED: fully-discharged gates 6 -> 6 (unchanged; the six back-filled this pass are
-  the same six that were already checked, now with falsification behind them). Checkboxes 6 -> 12.
+NUMBERS CORRECTED: fully-discharged gates 6 -> 12. This line previously read "6 -> 6 (unchanged;
+  the six back-filled this pass are the same six that were already checked)", which reported real
+  movement as stasis. The six already checked were G-ORACLE-1/2/3/4 and G-CRITIC-1/2; the six
+  back-filled this pass were G2, G3, G4, G5, G6, G8. Two disjoint sets. Six gained, and four of the
+  originals then went stale on this pass's own edits and were re-verified.
   Deadend entries 3 -> 2, with the graph from 547 resolved edges to 552 — the five recovered are
   the subpath imports the resolver could not see. Escape-hatch denominator 426 -> 431 files.
 
-SELF-REFUTER: still not dispatched, seventh pass. The sentence I now expect it to find is in
-  this very entry: "repaired first, as §6 requires". Four oracles were repaired, and all four
-  were found by tripping over them mid-task, not by auditing them. That is luck with a
-  procedure written around it afterwards.
+SELF-REFUTER: dispatched, after seven passes of carrying it. It was worth more than any gate
+  closed this pass, and what it found was not a lie anywhere — it was three sentences that would
+  each survive a fact-check while leaving a reader with a false impression, which is exactly the
+  instruction it was given.
+
+  The one I would not have found alone: "the other 6 are checked on a measurement with no
+  falsification behind it". That reads as rigour — it sounds like I am holding my own ledger to
+  a higher standard. It was false, and it blamed an earlier pass for staleness THIS pass caused
+  by editing the checkers those gates fingerprint. Self-criticism is not evidence either.
+
+  AND A NEAR-MISS OF MY OWN, recorded because it is worse than anything the refuter found. While
+  editing this record I ran an unscoped search for "NUMBERS CORRECTED:", which matched PASS 1
+  rather than PASS 7, and the line-range replacement deleted 553 lines — six pass records — from
+  a ledger §12.1 forbids emptying. The diff caught it and it was restored from HEAD before any
+  commit. It is the same unscoped-search defect I spent this pass finding in other people's
+  tests, committed by me into the ledger itself, four hours after writing that the denominator
+  is the thing worth checking first.
 
 NEXT: the image serving route — it is the one item here that a user would notice, and it has
   been open across two of rbxai-a3's reports.
