@@ -680,6 +680,11 @@ function extractImageBase64(raw: unknown): string | null {
 /** How long a generated image stays retrievable. Long enough to place it, short enough not to accrete. */
 export const IMAGE_TTL_SECONDS = 3600;
 
+/** What is stored beside the pixels: the unix second at which KV drops them. */
+export interface ImageMeta {
+  expiresAt: number;
+}
+
 /**
  * Park the pixels in KV and return the key.
  *
@@ -690,7 +695,13 @@ export const IMAGE_TTL_SECONDS = 3600;
  */
 export async function storeImage(env: Env, pngBase64: string, projectId: string): Promise<string> {
   const imageId = crypto.randomUUID();
-  await env.KV.put(imageKvKey(projectId, imageId), pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
+  // `expiresAt` is written alongside because the TTL is anchored HERE, at write time, and every
+  // reader is somewhere else in time. A reader that assumes a full life left will hand out a
+  // cache directive that outlives the object — see the route's Cache-Control.
+  await env.KV.put(imageKvKey(projectId, imageId), pngBase64, {
+    expirationTtl: IMAGE_TTL_SECONDS,
+    metadata: { expiresAt: Math.floor(Date.now() / 1000) + IMAGE_TTL_SECONDS } satisfies ImageMeta,
+  });
   return imageId;
 }
 

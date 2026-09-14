@@ -7,7 +7,7 @@ import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
-import { imageKvKey, IMAGE_TTL_SECONDS } from './imagegen';
+import { imageKvKey, type ImageMeta } from './imagegen';
 import { searchDocs } from './rag';
 import { serveStatic, ensureStaticTables } from './static';
 import { critiqueViews } from './vision';
@@ -184,6 +184,21 @@ app.get('/api/projects/:id/messages', async (c) => {
  * would defeat the point of showing it at all.
  */
 /**
+ * What is left of an image's life, in seconds.
+ *
+ * KV anchors `expirationTtl` at WRITE time; a Cache-Control header is anchored at RESPONSE time.
+ * Serving the full TTL to an image fetched late therefore hands out a cached copy that outlives the
+ * object it copies — by up to the whole hour. The stored `expiresAt` is what closes that gap.
+ *
+ * An object written before `expiresAt` existed has no metadata, and those are already within one
+ * TTL of being dropped, so the conservative floor is what they get rather than the full hour.
+ */
+function remainingLife(meta: ImageMeta | null): number {
+  if (!meta?.expiresAt) return 0;
+  return Math.max(0, meta.expiresAt - Math.floor(Date.now() / 1000));
+}
+
+/**
  * Serve a generated image.
  *
  * THE DEFECT THIS CLOSES. `generate_image` has been parking PNGs in KV and handing back a key
@@ -211,11 +226,15 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
   // address a different namespace in the same KV store.
   if (!UUID_RE.test(imageId)) return c.json({ error: 'not found' }, 404);
 
-  const base64 = await c.env.KV.get(imageKvKey(ctx.project.id, imageId));
+  const { value: base64, metadata } = await c.env.KV.getWithMetadata<ImageMeta>(imageKvKey(ctx.project.id, imageId));
   // Expiry is the NORMAL outcome here, not an edge case: images live IMAGE_TTL_SECONDS and a
   // conversation lives as long as the user keeps it, so scrolling back to yesterday's work lands
   // on this branch. The client says so in words; this says so in a status code.
-  if (!base64) return c.json({ error: 'not found', reason: 'expired_or_missing' }, 404);
+  //
+  // The body is byte-identical to the one above. It used to carry `reason: 'expired_or_missing'`,
+  // which quietly undid the point of making every failure a 404: the status codes matched and the
+  // BODIES told a prober which of the two cases they had hit.
+  if (!base64) return c.json({ error: 'not found' }, 404);
 
   const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
   return new Response(bytes, {
@@ -224,7 +243,11 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
       // PRIVATE. This is one user's generated content behind an authorised route, and a shared
       // cache holding it would serve it to whoever asked next. max-age is bounded by the TTL, so
       // a cached copy can never outlive the object it is a copy of.
-      'Cache-Control': `private, max-age=${IMAGE_TTL_SECONDS}`,
+      // THE REMAINING LIFE, not the full TTL. KV's expirationTtl is anchored at WRITE time and this
+      // header at RESPONSE time, so serving the full hour to an image fetched 59 minutes after it
+      // was stored cached it for another hour — outliving the object by nearly the whole TTL, which
+      // is exactly what the comment here used to claim was impossible.
+      'Cache-Control': `private, max-age=${remainingLife(metadata)}`,
       'Content-Length': String(bytes.byteLength),
       // The bytes are model-generated and served from our origin; nothing should ever execute or
       // embed them as anything but an image.

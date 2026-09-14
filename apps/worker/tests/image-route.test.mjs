@@ -34,9 +34,15 @@ const route = INDEX.slice(
 
 /* ------------------------------------------------- the route exists at all --- */
 
-test('there is a route that serves a generated image', () => {
-  // The whole defect in one assertion. Everything below is about the route being RIGHT; this is
-  // about it being there, which it was not.
+test('the route is present in the source (NOT proof that it is registered)', () => {
+  // READ THIS BEFORE TRUSTING THIS FILE. Every assertion here reads index.ts as a STRING. A refuter
+  // demonstrated what that is worth: commenting the whole route out left all nine of these green,
+  // including this one, whose name used to claim it asked whether the route existed. Registering it
+  // on a never-mounted sub-app passed too. Source text is not registration.
+  //
+  // `image-route-live.test.mjs` is the oracle for that: it builds the Hono app and issues real
+  // requests through it. What survives here is the cheap half — ordering, header spelling, the
+  // comment contracts — which is worth keeping and is worth nothing on its own.
   assert.ok(route.length > 0, 'no image route in index.ts — generated images are unreachable');
   assert.match(route, /app\.get\('\/api\/projects\/:id\/images\/:imageId'/);
 });
@@ -86,16 +92,23 @@ test('the bytes are served as a private, non-sniffable image', () => {
   assert.match(route, /'Content-Type': 'image\/png'/);
   // PRIVATE: one user's generated content behind an authorised route. A shared cache holding it
   // would serve it to whoever asked next.
-  assert.match(route, /'Cache-Control': `private, max-age=\$\{IMAGE_TTL_SECONDS\}`/);
+  assert.match(route, /'Cache-Control': `private, max-age=\$\{remainingLife\(metadata\)\}`/);
   assert.equal(/Cache-Control['"`:\s]+['"`]public/.test(route), false, 'a public cache must never hold user pixels');
   assert.match(route, /'X-Content-Type-Options': 'nosniff'/);
 });
 
-test('a cached copy can never outlive the object it is a copy of', () => {
-  // max-age is the TTL, not a number chosen beside it. If the two drifted apart a browser could
-  // hold an image the store had already dropped, and the user would see it reappear and vanish
-  // depending on which machine they opened.
-  assert.match(route, /max-age=\$\{IMAGE_TTL_SECONDS\}/);
+test('the cache directive is computed from the REMAINING life, not the full TTL', () => {
+  // This test used to assert `max-age=${IMAGE_TTL_SECONDS}` and call it "a cached copy can never
+  // outlive the object it is a copy of". That claim was false and this assertion was how it went
+  // unnoticed: KV anchors expirationTtl at WRITE time and the header at RESPONSE time, so an image
+  // fetched 59 minutes after it was stored was cached for a further hour — outliving the object by
+  // nearly the whole TTL. A refuter did the arithmetic that this assertion could not.
+  //
+  // The behaviour is proven in image-route-live.test.mjs, which serves an image with 100 seconds
+  // left and one already expired, and checks what each is actually cached for. What remains here is
+  // the shape: the header must not be a constant again.
+  assert.match(route, /max-age=\$\{remainingLife\(metadata\)\}/);
+  assert.equal(/max-age=\$\{IMAGE_TTL_SECONDS\}/.test(route), false, 'a constant max-age is the defect, not the fix');
   assert.equal(typeof IMAGE_TTL_SECONDS, 'number');
   assert.ok(IMAGE_TTL_SECONDS > 0);
 });
