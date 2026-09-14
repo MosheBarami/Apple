@@ -15,10 +15,10 @@
 // repository's own GATES.md.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -877,4 +877,48 @@ test('a record is rejected when the GATE\'S OWN dependencies were uncommitted', 
     ['--reverify'],
   );
   assert.match(legacy.out, /recorded against a dirty tree/);
+});
+
+test('a tool that cannot report a version is PRESENT, not ABSENT', () => {
+  // THIS RECORDED ABSENT FOR AN INSTALLED TOOL, 76 TIMES. `luau` does not accept `--version`, so
+  // the probe threw and every evidence record since said the Luau toolchain was missing while it
+  // sat on PATH.
+  //
+  // Not cosmetic: --lint flags a gate whose CHECK names a .luau path and whose record says
+  // luau=ABSENT as having proved nothing. The field exists to stop a SKIPPED runner reading as a
+  // pass, and it was making a real pass read as a skip — the same failure pointing the other way,
+  // inside the checker that measures whether we honour it.
+  const src = readFileSync(CHECKER, 'utf8');
+  const from = src.indexOf('function toolVersion(');
+  const fn = src.slice(from, src.indexOf('\n}\n', from) + 3);
+  const toolVersion = new Function('execFileSync', `${fn}\nreturn toolVersion;`)(execFileSync);
+
+  // A real version is reported as itself.
+  assert.match(toolVersion('node', [['--version']]), /^v\d+/);
+
+  // A tool that answers no version flag but IS installed reads as present.
+  //
+  // Stubbed rather than borrowed. My first version used `sh`, which on macOS IS bash and reports
+  // a version perfectly well — the test failed because the fixture was wrong about the world, not
+  // because the code was. Picking a real tool that "obviously has no --version" is a guess about
+  // someone else's machine.
+  const stubDir = mkdtempSync(join(tmpdir(), 'toolprobe-'));
+  const stub = join(stubDir, 'mute-tool');
+  try {
+    writeFileSync(stub, '#!/bin/sh\nexit 1\n');
+    chmodSync(stub, 0o755);
+    assert.equal(toolVersion(stub, [['--version'], ['-V']]), 'present',
+      'a tool that answers nothing but exists must not read as missing');
+  } finally {
+    rmSync(stubDir, { recursive: true, force: true });
+  }
+
+  // And something genuinely missing is still ABSENT, or the fix would just erase the distinction.
+  assert.equal(toolVersion('definitely-not-a-tool-xyz', [['--version']]), 'ABSENT');
+
+  // A usage banner is not a version: recording `Usage: ...` in a field a reader scans for a
+  // version number is a different way of saying nothing. `luau` is the real case — it answers
+  // only --help — so assert it where it exists rather than inventing a stand-in.
+  const luau = toolVersion('luau', [['--version'], ['-v'], ['--help']]);
+  assert.equal(/^Usage/i.test(luau), false, `a usage banner reached the version field: ${luau}`);
 });

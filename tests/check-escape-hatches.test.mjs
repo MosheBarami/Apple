@@ -436,6 +436,34 @@ test('it does NOT fire on `|| true` inside a string, or this file could not name
   assert.doesNotMatch(quoted.out, /an assertion that cannot fail/);
 });
 
+test('an untracked file in a published directory is caught before it ships', () => {
+  // A public/ directory is copied WHOLESALE into the deploy artefact, so an untracked file there
+  // is published to a live origin while being invisible to every check here: not in a diff, not
+  // in a review, not in git log, not in any denominator. It ships and nothing says so.
+  //
+  // The old Golem OG card reappeared in apps/site/public untracked, and a rebuild put it back
+  // into dist — on the night two sessions spent establishing that the live site still says Golem.
+  // Third artefact in one night that was in the TREE without being in the REPOSITORY.
+  const r = withPlant(DIR, 'apps/site/public/robots.txt', (src) => src);
+  assert.equal(r.exit, 0, 'a tracked file in public/ is fine');
+
+  const dir = DIR;
+  const stray = join(dir, 'apps', 'site', 'public', '__stray__.svg');
+  writeFileSync(stray, '<svg/>\n');
+  try {
+    const planted = run(dir);
+    assert.equal(planted.exit, 1, planted.out);
+    assert.match(planted.out, /an untracked file inside a published directory/);
+    assert.match(planted.out, /__stray__\.svg/);
+  } finally {
+    rmSync(stray, { force: true });
+  }
+
+  // THE CONTROL: with it gone the checker is clean again, so the assertion above cannot be
+  // satisfied by a checker that condemns the directory unconditionally.
+  assert.doesNotMatch(run(dir).out, /untracked file inside a published directory/);
+});
+
 test('the scratch clone is removed', () => {
   cleanup(DIR);
 });

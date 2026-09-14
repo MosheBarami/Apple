@@ -19,7 +19,7 @@
 // AN OWNER `HALT:` LINE IS NEVER A FAILURE. It is the one legitimate way to stop the loop, and a
 // checker that failed on it would make stopping impossible, which is the opposite of the point.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -249,6 +249,34 @@ if (gatesText === null) {
         }
       }
     }
+  }
+}
+
+/* ------------------------------------- 4b. what ships without being in the repo --- */
+
+//[[ A PUBLIC DIRECTORY IS COPIED WHOLESALE INTO THE DEPLOY ARTEFACT.
+//
+//   Astro copies apps/site/public/ into dist verbatim, so an UNTRACKED file there is published to
+//   a live origin while being invisible to every check in this repository: it is not in a diff,
+//   not in a review, not in git log, and not in any denominator. It ships and nothing said so.
+//
+//   The old Golem OG card came back into apps/site/public untracked, with its original mtime, and
+//   a rebuild put it straight back into dist — on the night both sessions spent establishing that
+//   the live site still says Golem. Nothing referenced it, so it would not have been anyone's
+//   preview image; it would simply have been a publicly reachable URL serving the previous brand.
+//
+//   That was the third artefact in one night that was in the TREE without being in the
+//   REPOSITORY. Different causes each time, one blind spot: this project checks what is committed
+//   and what is built, and nothing checked the gap between them.
+//
+//   Found by rbxai-a3, who moved it to a scratchpad rather than deleting it and suggested the
+//   guard rather than writing it in someone else's lane. ]]
+for (const dir of ['apps/site/public', 'apps/web/public']) {
+  if (!existsSync(join(ROOT, dir))) continue;
+  const stray = git(['ls-files', '--others', '--exclude-standard', dir]).split('\n').filter(Boolean);
+  for (const f of stray) {
+    fail('an untracked file inside a published directory', f,
+      'this directory is copied wholesale into the deploy artefact, so this ships while being invisible to every check here');
   }
 }
 

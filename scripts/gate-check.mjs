@@ -326,10 +326,42 @@ const PATH_PARTS = (process.env.PATH ?? '').split(':').filter(Boolean);
 const PATH_FP = `${sha256(PATH_PARTS.join(':')).slice(0, 12)}/${PATH_PARTS.length} entries`;
 
 /** Version of a toolchain, or ABSENT. Recorded because a missing runner is why a suite "passes". */
-function toolVersion(bin, args) {
+/**
+ * A tool's version, or 'present', or 'ABSENT' — and the three are now distinguishable.
+ *
+ * THIS RECORDED 'ABSENT' FOR A TOOL THAT WAS INSTALLED, 76 TIMES. `luau` does not accept
+ * `--version` (nor `-v`, and `version` opens a file of that name); only `--help` works. So the
+ * probe threw, the catch returned ABSENT, and every evidence record since has said the Luau
+ * toolchain was missing while it sat on PATH at /opt/homebrew/bin/luau.
+ *
+ * That is not cosmetic: the linter below flags a gate whose CHECK names a .luau path and whose
+ * record says luau=ABSENT as having proved nothing. The field exists to stop a SKIPPED runner
+ * reading as a pass, and it was making a real pass read as a skip — the same failure it guards
+ * against, pointing the other way, inside the checker that measures whether we honour it.
+ *
+ * A tool that cannot ANSWER a question must not read the same as a tool that is not THERE. Each
+ * candidate argument list is tried in turn, and a tool that answers none of them but exists on
+ * PATH is recorded 'present' rather than absent.
+ *
+ * Found by rbxai-a3, who measured `which luau` rather than trusting a field of mine that had been
+ * telling them the opposite all night.
+ */
+function toolVersion(bin, candidates) {
+  const attempts = Array.isArray(candidates[0]) ? candidates : [candidates];
+  for (const args of attempts) {
+    try {
+      const out = execFileSync(bin, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 20_000 })
+        .trim().split('\n')[0].replace(/\s+/g, ' ').slice(0, 40);
+      // A usage banner is not a version. Recording `Usage: luau [options] [file list]` in a field
+      // a reader scans for a version number is a different way of saying nothing.
+      if (out && !/^usage\b|^unrecognized\b/i.test(out)) return out;
+    } catch { /* try the next shape */ }
+  }
+  // It answered nothing we asked. Is it even there? `which` distinguishes "cannot report a
+  // version" from "not installed", which is the whole distinction this function got wrong.
   try {
-    return execFileSync(bin, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 20_000 })
-      .trim().split('\n')[0].replace(/\s+/g, ' ').slice(0, 40) || 'present';
+    execFileSync('which', [bin], { stdio: 'ignore', timeout: 5_000 });
+    return 'present';
   } catch {
     return 'ABSENT';
   }
@@ -337,7 +369,8 @@ function toolVersion(bin, args) {
 
 const TOOLS = {
   node: process.version,
-  luau: toolVersion('luau', ['--version']),
+  // luau answers only --help; the fallback list is why that no longer reads as ABSENT.
+  luau: toolVersion('luau', [['--version'], ['-v'], ['--help']]),
   playwright: toolVersion('npx', ['playwright', '--version']),
 };
 
