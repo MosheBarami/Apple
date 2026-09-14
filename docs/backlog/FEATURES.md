@@ -686,7 +686,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 ### Code Intelligence — 49 items  (done 7, partial 0)
 
 - [x] Luau parser — luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs
-- [x] Luau formatter — stylua 2.5.2 available
+- [ ] Luau formatter — NOT BUILT: nothing invokes stylua; the mission doc lists installing it as G-TOOLCHAIN-1, i.e. work not done
 - [x] Luau linter — selene 0.31.0 + roblox-antipatterns.mjs
 - [ ] Luau type checker
 - [x] luau-lsp integration — packages/evals/src/luau.mjs resolveLuauChecker

@@ -3719,8 +3719,8 @@
         {
           "id": "f-b8db08a7",
           "name": "Luau formatter",
-          "status": "done",
-          "evidence": "NO TEST REACHES THIS. stylua 2.5.2 is available in the toolchain; nothing asserts it runs or that its output is stable."
+          "status": "not-started",
+          "evidence": "MIS-STATUSED AS DONE UNTIL 2026-09-15; NOTHING IN THE PRODUCT FORMATS LUAU. There is no format_script tool, no formatLuau, no luau_format, no invocation of stylua anywhere in apps/ or packages/. The only references are: FINISH-THE-PRODUCT.md:116 and docs/MISSION-PROMPT.md:116, which list installing stylua as gate G-TOOLCHAIN-1 and describe it as work NOT DONE; research prose; and two coincidental hits in corpus and training data (the pesde package index, and a \"stylua: ignore\" comment inside a training sample). stylua 2.5.2 exists at /opt/homebrew/bin/stylua — a binary on a developer laptop is not a product capability. This row does not need a citation, it needed its status moved."
         },
         {
           "id": "f-b5a3b288",
