@@ -996,7 +996,7 @@
           "id": "f-60e81584",
           "name": "Asset search",
           "status": "partial",
-          "evidence": "find_verified_asset (Creator Store) works; search_asset_library has no populated table"
+          "evidence": "apps/worker/tests/asset-library-gating.test.mjs — availability is READ, never created, and a CORPUS binding that cannot be queried is not evidence the library exists. That is precisely why this row is partial rather than done."
         },
         {
           "id": "f-b598766f",
@@ -1026,7 +1026,7 @@
           "id": "f-bd5c9af1",
           "name": "Asset licensing validation",
           "status": "partial",
-          "evidence": "provenance.ts exists; dependency chain not fully validated"
+          "evidence": "apps/worker/tests/asset-provenance.test.mjs — provenance travels with the run as serialisable sets and is written back before state is persisted. The dependency chain is still unvalidated, hence partial."
         },
         {
           "id": "f-7e6a0d06",
@@ -1248,13 +1248,13 @@
           "id": "f-fedd9971",
           "name": "Undo changes",
           "status": "done",
-          "evidence": "Ops.luau MUTATING + checkpoint restore"
+          "evidence": "apps/worker/tests/restore-fidelity.test.mjs — ok reflects the plugin verdict rather than delivery, failed property writes are reported even when the restore succeeded, and a plugin too old to report is treated as unverified, never as success."
         },
         {
           "id": "f-b4f8cf6c",
           "name": "Build snapshots",
           "status": "done",
-          "evidence": "SessionDO checkpoints (25 retained)"
+          "evidence": "apps/worker/tests/restore-fidelity.test.mjs — a restore reports what it actually put back, with counts travelling alongside the result."
         },
         {
           "id": "f-559ddb69",
@@ -2406,7 +2406,7 @@
           "id": "f-cbaf1273",
           "name": "Dataset licensing",
           "status": "done",
-          "evidence": "packages/corpus/data/sources.json, training/reuse verdicts separated"
+          "evidence": "packages/corpus/src/intake/licence.test.mjs — reuse and training are independent verdicts: CC-BY-4.0 allows reuse but NOT training, AGPL forbids reuse but is reference material."
         },
         {
           "id": "f-c2aa7469",
@@ -2874,7 +2874,7 @@
           "id": "f-9311aa79",
           "name": "License compliance scan",
           "status": "done",
-          "evidence": "build-dataset.mjs TRAINING_OK_SPDX gate"
+          "evidence": "packages/corpus/src/intake/licence.test.mjs — the default is quarantine, not permissive; an empty repository quarantines and a README claiming a licence is not evidence."
         },
         {
           "id": "f-305c393c",
@@ -3222,7 +3222,7 @@
           "id": "f-f78d0776",
           "name": "Automated scoring",
           "status": "done",
-          "evidence": "packages/evals/src/grade.mjs"
+          "evidence": "packages/evals/src/grade.test.mjs — the dispatchable list is checked against the case labels in grade.mjs itself, so a check type cannot be advertised and unimplemented."
         },
         {
           "id": "f-42c2afae",
@@ -3726,7 +3726,7 @@
           "id": "f-b5a3b288",
           "name": "Luau linter",
           "status": "done",
-          "evidence": "selene 0.31.0 + roblox-antipatterns.mjs"
+          "evidence": "packages/evals/src/roblox-antipatterns.test.mjs — every rule ships a bad sample AND a good one, and no good sample trips an error-severity rule, so the rule set is proven to fire and proven not to over-fire."
         },
         {
           "id": "f-90ee99ec",
@@ -3744,7 +3744,7 @@
           "id": "f-8be838cc",
           "name": "Static analysis",
           "status": "done",
-          "evidence": "roblox-antipatterns.mjs — semantic exploit rules"
+          "evidence": "packages/evals/src/roblox-antipatterns.test.mjs — the semantic rules are asserted against samples; a rule cannot be fired by its own warning comment."
         },
         {
           "id": "f-2cd602fe",
@@ -3828,7 +3828,7 @@
           "id": "f-2d0f865e",
           "name": "Exploit pattern scanning",
           "status": "done",
-          "evidence": "roblox-antipatterns.mjs error-severity rules"
+          "evidence": "packages/evals/src/roblox-antipatterns.test.mjs — string contents are kept during analysis, because the dangerous shapes live inside strings."
         },
         {
           "id": "f-a58a71f8",
@@ -3840,7 +3840,7 @@
           "id": "f-df5eee6e",
           "name": "Server-authority validation",
           "status": "done",
-          "evidence": "roblox-antipatterns.mjs client-trusted-price rules"
+          "evidence": "packages/evals/src/roblox-antipatterns.test.mjs — the client-trusted-price rules carry both samples, like every other rule in the set."
         },
         {
           "id": "f-51970f0c",
@@ -5407,7 +5407,7 @@
           "id": "f-24c7081a",
           "name": "Prompt injection defense",
           "status": "done",
-          "evidence": "per-run fence id; tool output never trusted as instruction"
+          "evidence": "apps/worker/tests/prompt-fence.test.mjs — the fence id differs per run, so a payload learned from one run is useless in the next, and a payload forging the old constant tag cannot match."
         },
         {
           "id": "f-ff322023",
@@ -5659,19 +5659,19 @@
           "id": "f-2d10706f",
           "name": "Multi-provider routing",
           "status": "done",
-          "evidence": "providers/ registry with 4 adapters"
+          "evidence": "packages/evals/src/providers.test.mjs — the production model id routes to the Workers AI adapter, and the GLM path is byte-identical to the pre-refactor gateway."
         },
         {
           "id": "f-fece68eb",
           "name": "Provider health checks",
           "status": "done",
-          "evidence": "providers/registry.ts providerAvailability"
+          "evidence": "packages/evals/src/providers.test.mjs — availability reads env rather than a literal, and a provider flips to available the moment its credential appears and only then."
         },
         {
           "id": "f-1ab746c1",
           "name": "Automatic failover",
           "status": "done",
-          "evidence": "adapterForModelId fallback"
+          "evidence": "packages/evals/src/providers.test.mjs — only Workers AI is available on an env with no provider keys, which is the fallback this row claims."
         },
         {
           "id": "f-7e0ef44d",
@@ -5701,7 +5701,7 @@
           "id": "f-49481a5b",
           "name": "Request deduplication",
           "status": "done",
-          "evidence": "apps/worker/src/single-flight.ts"
+          "evidence": "apps/worker/tests/single-flight.test.mjs — \"a second call started before the first finishes does not run\", and the guard holds across an await."
         },
         {
           "id": "f-54c41958",
@@ -5823,7 +5823,7 @@
           "id": "f-8058d3ae",
           "name": "Per-user quotas",
           "status": "done",
-          "evidence": "QuotaDO daily+monthly, plan-aware"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — day and month keys are UTC, the allowance returns at midnight without anything clearing a counter, and purchased credits do not reset."
         },
         {
           "id": "f-250160b7",
@@ -5853,7 +5853,7 @@
           "id": "f-5a5b76b1",
           "name": "Hard spending caps",
           "status": "done",
-          "evidence": "BudgetDO reserve/settle, guard now provably fails (60407f0)"
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — the runtime ceiling is the compiled default, lowering is allowed and raising is not, and a compromised ADMIN_KEY stays bounded."
         },
         {
           "id": "f-39605354",
