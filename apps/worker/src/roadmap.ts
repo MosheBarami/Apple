@@ -1014,10 +1014,17 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 34,
     dependsOn: ['tycoon_income'], genres: ['tycoon'], satisfiedBy: ['upgrades'],
     build: [
-      'Add buy buttons that unlock the next piece of the plot in sequence.',
-      'Persist which buttons a player has bought.',
+      'install_module("buy_buttons") — the pad, the deduction and the unlock in one write.',
+      'Wire it: BuyButtons.configure({ get = Profile.get, spend = Currency.spend }), then one add() per pad.',
+      'Call BuyButtons.restore(player) after their data loads, or a returning player walks into a plot stripped back to its first day.',
+      'The money and the unlock must go into the SAME live table with nothing yielding between them. Two writes with a failure in the middle is a player who paid and got nothing.',
+      'Read ownership from the PLOT, never from whoever touched the pad — otherwise a visitor buys an upgrade on a stranger\'s plot with their own money.',
     ],
-    acceptance: ['A bought upgrade is still there after a rejoin.'],
+    acceptance: [
+      'A bought upgrade is still there after a rejoin.',
+      'Standing on a pad does not buy it forty times.',
+      'A visitor cannot buy anything on a plot that is not theirs.',
+    ],
   },
 
   // ---- simulator ---------------------------------------------------------------------------

@@ -1378,7 +1378,244 @@ end
 return Income
 `;
 
+const BUY_BUTTONS_SOURCE = `--!strict
+-- BuyButtons — the tycoon purchase pad, where the money is taken and the thing appears.
+--
+-- This is the moment a tycoon is most often broken, and every way of breaking it is quiet.
+--
+-- THE ONE THAT COSTS MONEY: a player pays and gets nothing. The obvious shape is
+--   if Currency.spend(player, price) then unlock() end
+-- and it looks atomic because both lines are right there. It is not, if unlocking writes anywhere
+-- that can fail or yield between the two. Here the deduction and the ownership record go into the
+-- SAME live profile table with nothing yielding in between, so the next save writes both or
+-- neither. That is the whole reason this module takes Currency.spend and Profile.get rather than
+-- doing its own arithmetic: Currency.spend mutates the live table and does not touch a DataStore,
+-- which is exactly what makes the pair atomic.
+--
+-- Three more, each quieter:
+--   * TOUCHED FIRES REPEATEDLY, and per limb. A player standing on a pad buys it dozens of times a
+--     second. The ownership check catches the second purchase, but the debounce is what stops the
+--     first burst racing itself.
+--   * PAYING FOR THE NEIGHBOUR'S PLOT. The pad credits whoever touched it, so a visitor standing on
+--     a stranger's pad buys THEIR upgrade with the visitor's money. Ownership is read from the
+--     PLOT, never from the toucher — the same rule Income follows for the same reason.
+--   * A REJOINING PLAYER'S PURCHASES VANISH. The save holds what they bought; the place does not.
+--     Nothing re-applies it unless something is asked to, and bind-time restore is the case
+--     Checkpoints got wrong too: the work has to happen for the session that is already running,
+--     not only for the next event.
+--
+-- SETUP (once, in a server Script, after Profile.load has returned for the player):
+--   local BuyButtons = require(game.ServerScriptService.BuyButtons)
+--   BuyButtons.configure({ get = Profile.get, spend = Currency.spend })
+--   BuyButtons.add({ plot = plot, button = pad, id = "dropper2", price = 250, unlocks = dropperModel })
+--   BuyButtons.restore(player)   -- puts back everything this player already owns
+local Players = game:GetService("Players")
+
+local BuyButtons = {}
+
+local getData = nil
+local spendFn = nil
+local fieldName = "owned"
+local TOUCH_DEBOUNCE = 0.5
+
+local buttons = {}
+-- Weak keys: one entry per player per pad, and a strong table here would hold departed players and
+-- destroyed pads alive for the life of the server. Income shipped that leak; this does not.
+local lastTouch = setmetatable({}, { __mode = "k" })
+
+--- Wire this to your data and currency modules.
+---   opts.get    function(player) -> the live profile table, or nil when it may not be written
+---   opts.spend  function(player, amount) -> true when it was taken, false when unaffordable
+---   opts.field  where the owned-ids table lives in the profile (default "owned")
+function BuyButtons.configure(opts)
+	opts = opts or {}
+	getData = opts.get
+	spendFn = opts.spend
+	if type(opts.field) == "string" and #opts.field > 0 then
+		fieldName = opts.field
+	end
+end
+
+--- What this player owns, as a table of id -> true. Never nil for a loaded player, so callers do
+--- not each invent their own empty case.
+function BuyButtons.owned(player)
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return nil
+	end
+	if type(data[fieldName]) ~= "table" then
+		data[fieldName] = {}
+	end
+	return data[fieldName]
+end
+
+--- The player who owns a plot, or nil. Read from the PLOT so a visitor cannot buy on it.
+local function ownerOf(plot)
+	local id = plot:GetAttribute("OwnerUserId")
+	if type(id) ~= "number" then
+		return nil
+	end
+	return Players:GetPlayerByUserId(id)
+end
+
+-- Named for what it means. It was show(spec, visible), and the flag was read as "is the pad
+-- visible" in one place and "is it bought" in another, so registration passed it backwards and
+-- every unlockable started ON SCREEN — the exact free-upgrades bug this is supposed to prevent.
+-- A boolean whose name does not say which way round it goes is worth renaming rather than
+-- remembering.
+local function setBought(spec, bought)
+	if spec.unlocks ~= nil then
+		spec.unlocks.Parent = if bought then spec.parent else nil
+	end
+	if spec.button ~= nil then
+		-- The pad goes away once bought. A pad that stays is a pad that gets stood on again, and
+		-- every later touch is a refused purchase the player has to work out for themselves.
+		spec.button.Transparency = if bought then 1 else spec.buttonTransparency
+		spec.button.CanTouch = not bought
+	end
+end
+
+--- Register one pad. Returns the spec, so a test or a HUD can read it.
+function BuyButtons.add(spec)
+	if spec.unlocks == nil then
+		-- Refusing here is the point: a pad wired to nothing takes the money and shows no thing.
+		warn("[BuyButtons] " .. tostring(spec.id) .. " unlocks nothing; not registering it")
+		return nil
+	end
+	local entry = {
+		id = tostring(spec.id),
+		plot = spec.plot,
+		button = spec.button,
+		price = math.max(0, math.floor(tonumber(spec.price) or 0)),
+		unlocks = spec.unlocks,
+		-- Where the unlocked thing lives when it is visible, captured BEFORE it is taken away.
+		parent = spec.unlocks.Parent,
+		buttonTransparency = spec.button ~= nil and spec.button.Transparency or 0,
+	}
+	table.insert(buttons, entry)
+
+	-- Everything starts UNBOUGHT. A place saved with the upgrades already built would otherwise hand
+	-- them to every player for free, which is the failure nobody notices until it is monetised.
+	setBought(entry, false)
+
+	if entry.button ~= nil then
+		entry.button.Touched:Connect(function(hit)
+			local character = hit.Parent
+			if character == nil then
+				return
+			end
+			local player = Players:GetPlayerFromCharacter(character)
+			if player == nil then
+				return
+			end
+			BuyButtons.tryBuy(player, entry)
+		end)
+	end
+	return entry
+end
+
+--- Attempt one purchase. Returns "bought", or a reason it did not happen.
+function BuyButtons.tryBuy(player, entry)
+	if getData == nil or spendFn == nil then
+		warn("[BuyButtons] not configured — call BuyButtons.configure first")
+		return "unconfigured"
+	end
+
+	-- THE PLOT DECIDES, NOT THE TOUCHER. A visitor standing on somebody else's pad is not a buyer.
+	if entry.plot ~= nil and ownerOf(entry.plot) ~= player then
+		return "not your plot"
+	end
+
+	local owned = BuyButtons.owned(player)
+	if owned == nil then
+		-- Their data did not load. Taking money from a table that may not be saved is how a player
+		-- pays and then finds the purchase gone.
+		return "no data"
+	end
+	if owned[entry.id] then
+		return "already owned"
+	end
+
+	-- THIS IS NOT WHAT STOPS A TOUCHED STORM. The ownership check above already does that, because
+	-- the record below is written with nothing yielding in between — removing this guard broke no
+	-- test, which is how it was found claiming credit for work it does not do.
+	--
+	-- It is here for the window a USER can open: spend is documented as non-yielding and
+	-- Currency.spend does not yield, but a game wiring its own spend that writes to a DataStore
+	-- lets two touches both pass the ownership check before either records anything. That case is
+	-- tested; this comment exists so the next person does not assume a broader guarantee.
+	local key = tostring(player.UserId) .. ":" .. entry.id
+	local now = os.clock()
+	local previous = lastTouch[key]
+	if previous ~= nil and now - previous < TOUCH_DEBOUNCE then
+		return "too soon"
+	end
+	lastTouch[key] = now
+
+	if not spendFn(player, entry.price) then
+		return "cannot afford"
+	end
+
+	-- NOTHING YIELDS BETWEEN THE DEDUCTION AND THIS LINE, and that is what makes the pair atomic.
+	-- Both live in the same profile table, so the next save writes both or neither. Put a DataStore
+	-- call, a wait, or a remote between them and you have rebuilt the bug this module exists to
+	-- avoid: paid, and nothing to show for it.
+	owned[entry.id] = true
+	setBought(entry, true)
+	return "bought"
+end
+
+--- Put back everything this player already owns. Call after their data has loaded.
+---
+--- The place does not remember purchases; the save does. Without this a returning player walks into
+--- a plot stripped back to its first day, with the pads they already paid for asking again.
+function BuyButtons.restore(player)
+	local owned = BuyButtons.owned(player)
+	if owned == nil then
+		return 0
+	end
+	local restored = 0
+	for _, entry in ipairs(buttons) do
+		if owned[entry.id] and (entry.plot == nil or ownerOf(entry.plot) == player) then
+			setBought(entry, true)
+			restored += 1
+		end
+	end
+	return restored
+end
+
+--- How many pads are registered. For tests and for a HUD.
+function BuyButtons.count()
+	return #buttons
+end
+
+return BuyButtons
+`;
+
 export const PREFABS: Record<string, Prefab> = {
+  buy_buttons: {
+    id: 'buy_buttons',
+    needs: ['profile_store', 'currency'],
+    moduleName: 'BuyButtons',
+    summary: 'The tycoon purchase pad — the money leaves and the thing appears, in one write that cannot half-happen.',
+    prevents: [
+      'a player paying and receiving nothing, because the deduction and the unlock were two writes with a failure between them',
+      'a Touched burst buying the same pad many times before the first purchase has been recorded',
+      'a visitor standing on a stranger\'s pad and buying an upgrade on a plot that is not theirs',
+      'a returning player finding the plot they paid for stripped back to its first day',
+      'a place saved with the upgrades already built handing them to everybody for free',
+      'a pad wired to nothing taking the money and showing no thing',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'BuyButtons.configure({ get = Profile.get, spend = Currency.spend })',
+      'BuyButtons.add({ plot = plot, button = pad, id = "dropper2", price = 250, unlocks = model })',
+      'BuyButtons.restore(player)',
+      'BuyButtons.owned(player)',
+    ],
+    source: BUY_BUTTONS_SOURCE,
+  },
   profile_store: {
     id: 'profile_store',
     moduleName: 'Profile',

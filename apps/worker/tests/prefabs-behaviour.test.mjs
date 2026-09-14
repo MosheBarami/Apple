@@ -2225,3 +2225,271 @@ test('an award that throws does not take the collector down with it', () => {
   ].join('\n'), 'in-throwing-award');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * BuyButtons' harness — the tycoon purchase pad.
+ *
+ * The money and the unlock have to land together or not at all, so the profile table is real here:
+ * Currency.spend is modelled as the shipped one behaves, mutating the live table and touching no
+ * DataStore, because THAT is what makes the pair atomic and a stub that saved would prove the
+ * opposite of what is being claimed.
+ */
+function runBuyButtons(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local nowValue = 0',
+    'os = { clock = function() return nowValue end, time = function() return nowValue end }',
+    'local function advance(s) nowValue = nowValue + s end',
+    '',
+    'local owner = { UserId = 7, Name = "owner" }',
+    'local visitor = { UserId = 9, Name = "visitor" }',
+    'local known = { [7] = owner, [9] = visitor }',
+    'local characters = {}',
+    'game = { GetService = function()',
+    '\treturn {',
+    '\t\tGetPlayerByUserId = function(_, id) return known[id] end,',
+    '\t\tGetPlayerFromCharacter = function(_, c) return characters[c] end,',
+    '\t}',
+    'end }',
+    '',
+    '-- The live profile table, exactly as Profile.get hands it out.',
+    'local profiles = { [7] = { coins = 1000 }, [9] = { coins = 1000 } }',
+    'local function getData(p) return profiles[p.UserId] end',
+    '-- Currency.spend as shipped: mutates the live table, writes to no DataStore, never negative.',
+    'local function spend(p, amount)',
+    '\tlocal d = profiles[p.UserId]',
+    '\tif d == nil then return false end',
+    '\tif (d.coins or 0) < amount then return false end',
+    '\td.coins = d.coins - amount',
+    '\treturn true',
+    'end',
+    '',
+    'local function makePlot(ownerId)',
+    '\tlocal attrs = { OwnerUserId = ownerId }',
+    '\treturn { GetAttribute = function(_, k) return attrs[k] end,',
+    '\t\tSetAttribute = function(_, k, v) attrs[k] = v end }',
+    'end',
+    'local function makeModel(parent) return { Parent = parent } end',
+    'local function makePad()',
+    '\tlocal handlers = {}',
+    '\treturn {',
+    '\t\tTransparency = 0, CanTouch = true, handlers = handlers,',
+    '\t\tTouched = { Connect = function(_, fn) table.insert(handlers, fn) end },',
+    '\t\ttouch = function(self, character) for _, fn in ipairs(handlers) do fn({ Parent = character }) end end,',
+    '\t}',
+    'end',
+    'local reentered, second, entry = false, nil, nil',
+    'local ownerChar, visitorChar = {}, {}',
+    'characters[ownerChar] = owner',
+    'characters[visitorChar] = visitor',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.buy_buttons.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+/** Configured, one plot owned by player 7, one pad that unlocks a model. */
+const BB = [
+  'M.configure({ get = getData, spend = spend })',
+  'local plot = makePlot(7)',
+  'local world = "Workspace"',
+  'local model = makeModel(world)',
+  'local pad = makePad()',
+  'local entry = M.add({ plot = plot, button = pad, id = "dropper2", price = 250, unlocks = model })',
+].join('\n');
+
+test('the buy-button harness runs, and a false assertion in it still fails', () => {
+  const good = runBuyButtons('assert(type(M.add) == "function", "M.add")', 'bb-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runBuyButtons('assert(false, "intentional-bb")', 'bb-sanity-neg');
+  assert.equal(bad.ok, false, 'a failing assert did not fail the run');
+  assert.match(bad.output, /intentional-bb/);
+});
+
+test('an unlockable starts HIDDEN, so a saved place does not hand it out for free', () => {
+  const r = runBuyButtons([
+    BB,
+    'assert(model.Parent == nil, "the model must be taken away until it is bought")',
+    'assert(pad.CanTouch == true, "and the pad must still be touchable")',
+  ].join('\n'), 'bb-starts-hidden');
+  assert.ok(r.ok, r.output);
+});
+
+test('THE MONEY AND THE UNLOCK LAND TOGETHER', () => {
+  // The failure this module exists for: paid, and nothing to show for it. Both live in the same
+  // profile table with nothing yielding between them, so a save writes both or neither.
+  const r = runBuyButtons([
+    BB,
+    'assert(M.tryBuy(owner, entry) == "bought", "the purchase must go through")',
+    'assert(profiles[7].coins == 750, "the money must be taken, has " .. tostring(profiles[7].coins))',
+    'assert(profiles[7].owned["dropper2"] == true, "AND the ownership recorded in the SAME table")',
+    'assert(model.Parent == "Workspace", "and the thing must appear")',
+    'assert(pad.CanTouch == false, "and the pad must stop asking")',
+  ].join('\n'), 'bb-atomic');
+  assert.ok(r.ok, r.output);
+});
+
+test('AN UNAFFORDABLE PURCHASE TAKES NOTHING AND UNLOCKS NOTHING', () => {
+  const r = runBuyButtons([
+    BB,
+    'profiles[7].coins = 10',
+    'assert(M.tryBuy(owner, entry) == "cannot afford")',
+    'assert(profiles[7].coins == 10, "not a single coin may move")',
+    'assert(profiles[7].owned == nil or profiles[7].owned["dropper2"] == nil, "and nothing is owned")',
+    'assert(model.Parent == nil, "and nothing appears")',
+  ].join('\n'), 'bb-poor');
+  assert.ok(r.ok, r.output);
+});
+
+test('A TOUCHED STORM BUYS ONCE — many events, once per limb, one purchase', () => {
+  const r = runBuyButtons([
+    BB,
+    'for i = 1, 40 do pad:touch(ownerChar) end',
+    'assert(profiles[7].coins == 750, "exactly one purchase, coins are " .. tostring(profiles[7].coins))',
+    'assert(model.Parent == "Workspace")',
+  ].join('\n'), 'bb-storm');
+  assert.ok(r.ok, r.output);
+});
+
+/**
+ * THE DEBOUNCE EARNS ITS PLACE ONLY IF SPEND CAN YIELD.
+ *
+ * Removing it broke no test, because `owned[id] = true` is set with nothing yielding between the
+ * check and the write — so the ownership check alone already absorbs a Touched storm. A guard that
+ * prevents nothing is worse than no guard: it reads as protection and invites the next person to
+ * rely on it.
+ *
+ * It is kept because the contract it defends is one a USER can break. This module documents that
+ * spend must not yield, and Currency.spend as shipped does not — but a game wiring its own spend
+ * that touches a DataStore opens exactly the window where two touches both pass the ownership check
+ * before either records anything. That is the case below, and it is the only reason the debounce
+ * exists; the comment in the source now says so rather than implying it stops the storm.
+ */
+test('A YIELDING SPEND CANNOT BE RACED INTO A DOUBLE PURCHASE', () => {
+  const r = runBuyButtons([
+    'M.configure({ get = getData, spend = function(p, amount)',
+    // a spend that re-enters the pad mid-flight, the way a yielding DataStore write would
+    '\tlocal d = profiles[p.UserId]',
+    '\tif (d.coins or 0) < amount then return false end',
+    '\tif not reentered then',
+    '\t\treentered = true',
+    '\t\tsecond = M.tryBuy(owner, entry)',
+    '\tend',
+    '\td.coins = d.coins - amount',
+    '\treturn true',
+    'end })',
+    'local plot = makePlot(7)',
+    'local model = makeModel("Workspace")',
+    'local pad = makePad()',
+    'entry = M.add({ plot = plot, button = pad, id = "dropper2", price = 250, unlocks = model })',
+    '',
+    'assert(M.tryBuy(owner, entry) == "bought", "the first purchase goes through")',
+    'assert(second == "too soon", "the re-entrant one must be refused, got " .. tostring(second))',
+    'assert(profiles[7].coins == 750, "and charged ONCE, coins are " .. tostring(profiles[7].coins))',
+  ].join('\n'), 'bb-reentrant-spend');
+  assert.ok(r.ok, r.output);
+});
+
+test("A VISITOR CANNOT BUY ON SOMEBODY ELSE'S PLOT", () => {
+  // The pad credits the plot, never the toucher. Otherwise a stranger standing on your pad spends
+  // their own money to build YOUR tycoon, which is the same bug Income had in the other direction.
+  const r = runBuyButtons([
+    BB,
+    'assert(M.tryBuy(visitor, entry) == "not your plot", "a visitor must be refused")',
+    'assert(profiles[9].coins == 1000, "and must not be charged")',
+    'assert(model.Parent == nil, "and nothing unlocks")',
+    '',
+    'pad:touch(visitorChar)',
+    'assert(profiles[9].coins == 1000, "not through the pad either")',
+  ].join('\n'), 'bb-visitor');
+  assert.ok(r.ok, r.output);
+});
+
+test('buying twice is refused, and costs nothing the second time', () => {
+  const r = runBuyButtons([
+    BB,
+    'assert(M.tryBuy(owner, entry) == "bought")',
+    'advance(10)',
+    'assert(M.tryBuy(owner, entry) == "already owned")',
+    'assert(profiles[7].coins == 750, "the second attempt must be free, coins are " .. tostring(profiles[7].coins))',
+  ].join('\n'), 'bb-twice');
+  assert.ok(r.ok, r.output);
+});
+
+test('A REJOINING PLAYER GETS BACK WHAT THEY PAID FOR', () => {
+  // The save holds the purchase; the place does not. Nothing re-applies it unless asked, and the
+  // session that is already running is the case Checkpoints got wrong for the same reason.
+  const r = runBuyButtons([
+    BB,
+    'profiles[7].owned = { dropper2 = true }',
+    'assert(model.Parent == nil, "a fresh place starts stripped back")',
+    'assert(M.restore(owner) == 1, "restore must put one thing back")',
+    'assert(model.Parent == "Workspace", "the thing they paid for must be there")',
+    'assert(pad.CanTouch == false, "and its pad must not ask again")',
+  ].join('\n'), 'bb-restore');
+  assert.ok(r.ok, r.output);
+});
+
+test('restore does not hand one player another player\'s purchases', () => {
+  const r = runBuyButtons([
+    BB,
+    'profiles[9].owned = { dropper2 = true }',
+    'assert(M.restore(visitor) == 0, "not their plot, so nothing to restore on it")',
+    'assert(model.Parent == nil, "and nothing appears");',
+  ].join('\n'), 'bb-restore-foreign');
+  assert.ok(r.ok, r.output);
+});
+
+test('a pad wired to nothing is refused rather than taking the money', () => {
+  const r = runBuyButtons([
+    'M.configure({ get = getData, spend = spend })',
+    'local plot = makePlot(7)',
+    'local pad = makePad()',
+    'local bad = M.add({ plot = plot, button = pad, id = "nothing", price = 100 })',
+    'assert(bad == nil, "a pad that unlocks nothing must not register")',
+    'assert(M.count() == 0, "and must not be counted")',
+    'assert(#warnings == 1, "and must say so")',
+  ].join('\n'), 'bb-no-unlock');
+  assert.ok(r.ok, r.output);
+});
+
+test('an unloaded profile is refused — money is never taken from a table that may not be saved', () => {
+  const r = runBuyButtons([
+    BB,
+    'profiles[7] = nil',
+    'assert(M.tryBuy(owner, entry) == "no data")',
+    'assert(model.Parent == nil, "and nothing unlocks")',
+  ].join('\n'), 'bb-no-data');
+  assert.ok(r.ok, r.output);
+});
+
+test('an unconfigured module buys nothing and says so', () => {
+  const r = runBuyButtons([
+    'local plot = makePlot(7)',
+    'local model = makeModel("Workspace")',
+    'local pad = makePad()',
+    'local entry = M.add({ plot = plot, button = pad, id = "x", price = 1, unlocks = model })',
+    'assert(M.tryBuy(owner, entry) == "unconfigured")',
+    'assert(#warnings >= 1)',
+  ].join('\n'), 'bb-unconfigured');
+  assert.ok(r.ok, r.output);
+});

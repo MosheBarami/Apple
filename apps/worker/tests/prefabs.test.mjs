@@ -87,7 +87,7 @@ function stubCtx({ existing = null, data = { ok: true }, readError = null } = {}
 const writes = (ops) => ops.filter((o) => o.op !== 'read_script');
 
 test('the catalogue is real and each entry is complete', () => {
-  assert.equal(P.PREFAB_IDS.length, 8);
+  assert.equal(P.PREFAB_IDS.length, 9);
   for (const id of P.PREFAB_IDS) {
     const p = P.PREFABS[id];
     assert.equal(p.id, id);
