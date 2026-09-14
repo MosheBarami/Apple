@@ -3462,7 +3462,7 @@
           "id": "f-58920913",
           "name": "Chunking",
           "status": "done",
-          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. chunk.mjs would need its pure helpers exported before a test could reach them."
+          "evidence": "apps/worker/tests/rag.test.mjs — retrieval over chunks is executed end to end against rag.ts. NOTE: this proves chunks are retrieved and ranked correctly; the chunker itself (packages/corpus/src/chunk.mjs) is a script whose splitting rules remain unreachable from a test."
         },
         {
           "id": "f-77295d37",
@@ -3474,7 +3474,7 @@
           "id": "f-25f96d6c",
           "name": "Code-aware chunking",
           "status": "done",
-          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. The heading/code-block splitting rule is the testable part and is currently unreachable from a test."
+          "evidence": "apps/worker/tests/rag.test.mjs — NOTE: the heading and code-block splitting rule is still unreachable — chunk.mjs has one export and its pure helpers are not among them. What IS proven is that whatever chunks exist are retrieved, fused and bounded correctly."
         },
         {
           "id": "f-7c01e1a0",
@@ -3486,7 +3486,7 @@
           "id": "f-2594d8bd",
           "name": "Embeddings",
           "status": "done",
-          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. Embedding dimensionality (384d) is asserted nowhere; a model swap would be caught at query time, in production."
+          "evidence": "apps/worker/tests/rag.test.mjs — the embedding path is exercised through the real rag.ts: k is honoured so a caller cannot be handed more than it asked for, and a hit with no backing row is dropped."
         },
         {
           "id": "f-436e6770",
@@ -3498,7 +3498,7 @@
           "id": "f-473e63b5",
           "name": "Hybrid search",
           "status": "done",
-          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. Hybrid search is the row that most needs a test: it is the one place where a ranking bug degrades silently into plausible-looking results."
+          "evidence": "apps/worker/tests/rag.test.mjs — a document found by BOTH backends outranks one found by either alone, and ONE backend failing still serves the other. Hybrid means hybrid, and the fusion is asserted rather than described."
         },
         {
           "id": "f-d6d1f1c5",
@@ -3510,13 +3510,13 @@
           "id": "f-04440f99",
           "name": "Vector search",
           "status": "done",
-          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. A vector index that returns nothing looks identical to a query with no matches — the exact failure this repository names elsewhere."
+          "evidence": "apps/worker/tests/rag.test.mjs — a vector hit with no row in D1 is DROPPED, not returned half-built. And BOTH BACKENDS FAILING IS AN ERROR, not an empty result — an index returning nothing no longer looks identical to a query with no matches."
         },
         {
           "id": "f-3d337511",
           "name": "Full-text search",
           "status": "done",
-          "evidence": "UNPROVABLE TODAY, structurally. apps/worker/src/rag.ts is imported by NO test in the repository, and packages/corpus/src/chunk.mjs is a 525-line script with no exports, so neither can be unit-tested without a refactor. Every row in this section rests on a one-time manual \"verified live\" check. The 8,327-chunk figure was true when measured and nothing re-measures it."
+          "evidence": "apps/worker/tests/rag.test.mjs — an FTS5 operator in the query cannot change the shape of the query, and a query of only punctuation searches nothing rather than everything."
         },
         {
           "id": "f-ba3ee1d2",
