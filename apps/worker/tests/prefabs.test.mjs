@@ -101,6 +101,11 @@ test('profile_store keeps all four of its rules', () => {
   const s = P.PREFABS.profile_store.source;
   assert.match(s, /:UpdateAsync\(/, 'the atomic write');
   assert.match(s, /BindToClose/, 'a shutdown must still persist');
+  // Roblox allows ~30s in BindToClose and then closes regardless. Waiting for the saves is the
+  // documented shape; a fixed sleep silently truncates whichever save was slow — the one most
+  // worth keeping. An earlier version of this module did exactly that.
+  assert.match(s, /outstanding/, 'the shutdown must track its outstanding saves');
+  assert.doesNotMatch(s, /task\.wait\(3\)\s*\nend\)/, 'a fixed sleep is a guess, not a wait');
   assert.match(s, /lock/, 'the session lock');
   assert.match(s, /pcall/, 'transient failure must be caught');
   // the rule that saves accounts: a failed load disables saving for that session

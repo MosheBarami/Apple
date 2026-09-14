@@ -174,10 +174,24 @@ game:BindToClose(function()
 	if RunService:IsStudio() then
 		return
 	end
+	-- Roblox gives this callback about 30 seconds and then closes the server regardless. Saving in
+	-- parallel and WAITING FOR THEM TO FINISH is the documented shape; a fixed sleep is a guess that
+	-- silently truncates whichever save happened to be slow, which is the one most worth keeping.
+	local outstanding = 0
 	for _, player in ipairs(Players:GetPlayers()) do
-		task.spawn(Profile.release, player)
+		outstanding += 1
+		task.spawn(function()
+			Profile.release(player)
+			outstanding -= 1
+		end)
 	end
-	task.wait(3)
+	local deadline = os.clock() + 25
+	while outstanding > 0 and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	if outstanding > 0 then
+		warn("[Profile] shut down with " .. tostring(outstanding) .. " save(s) unfinished")
+	end
 end)
 
 return Profile
