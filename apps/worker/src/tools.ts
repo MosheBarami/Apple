@@ -1079,7 +1079,6 @@ export const TOOLS: Record<string, ToolImpl> = {
       ctx.lastRender = res;
       const intent = String(a.intent ?? 'a well-built Roblox scene');
       const critique = await critiqueViews(ctx.env, res, intent);
-      ctx.lastCritique = critique;
 
       // THE DETERMINISTIC PANEL, alongside the model's opinion.
       //
@@ -1097,6 +1096,36 @@ export const TOOLS: Record<string, ToolImpl> = {
       // mean inferring a downsample and a masking rule defined in the eval harness — and the panel
       // now REPORTS what it could not check, so a partial run says so instead of looking clean.
       const panel = await runCriticPanel(criticInputFromRender(res, intent));
+
+      // THE PANEL'S VERDICT REACHES THE AGENT, not only the screen.
+      //
+      // Until now `panel` went into `ctx.uiDetail` and nowhere else. `uiDetail` is the browser.
+      // The retry loop reads `ctx.lastCritique`, and `session.ts` decides `visualDefectsFound`
+      // from it — so the panel could confirm a measured defect, print it in the workspace, and the
+      // run would still report a clean build and move on. A critic whose findings reach the screen
+      // and influence nothing the agent does is a display, not a critic, and this repository has
+      // twice recorded that the panel "is display-only" as an item to fix rather than fixing it.
+      //
+      // `hardFails` is the seam, because it is already DEFINED as "rules tripped by measured
+      // structure, independent of the model's opinion" — which is exactly what the panel produces.
+      // It already flows to the model's text via critiqueToText, to the workspace through the
+      // generative-ui adapter, and to the retry decision through `passed`. Nothing new is threaded;
+      // the measured verdict simply stops being discarded.
+      //
+      // CONFIRMED ONLY. `panel.unchecked` is an absence of evidence and must never fail a build —
+      // that distinction is the whole point of the evidence gate, and inverting it here would make
+      // a partial run indistinguishable from a bad one.
+      if (panel.adjudication.confirmed.length) {
+        critique.hardFails = [
+          ...critique.hardFails,
+          ...panel.adjudication.confirmed.map((d) => `${d.subject} — ${d.claims[0] ?? 'measured defect'} [${d.severity}, confirmed by ${d.confirmedBy}]`),
+        ];
+        // A measured, evidence-backed defect is not a clean build, whatever the model said. The
+        // two verdicts are complementary and this is the direction the disagreement has to resolve:
+        // the panel cites numbers the model never saw.
+        critique.passed = false;
+      }
+      ctx.lastCritique = critique;
 
       // SHOW THE USER WHAT THE CRITIC LOOKED AT.
       //

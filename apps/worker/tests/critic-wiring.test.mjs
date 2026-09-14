@@ -198,3 +198,38 @@ test('the views carry their real pixel dimensions', () => {
     { name: 'front', width: 288, height: 180 },
   ]);
 });
+
+test('a defect the panel CONFIRMS reaches the agent, not only the screen', () => {
+  // THE DEFECT THIS CLOSES. `panel` went into ctx.uiDetail and nowhere else. uiDetail is the
+  // browser. The retry loop reads ctx.lastCritique, and session.ts decides visualDefectsFound
+  // from it — so the panel could confirm a measured defect, print it in the workspace, and the
+  // run would still report a clean build and move on.
+  //
+  // This repository recorded "the panel is display-only" as an outstanding item in two
+  // consecutive pass records without closing it, which is its own finding: a defect written down
+  // often enough starts reading as a feature of the landscape.
+  const TOOLS = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  // COMMENTS STRIPPED FIRST. The block below is heavily commented — deliberately, since it
+  // explains why the panel's verdict may override the model's — and every assertion here is a
+  // match on source text. Without this, commenting OUT `critique.passed = false;` leaves the
+  // string `critique.passed = false` in the file and the assertion still passes. Verified: the
+  // first version of this test survived exactly that break.
+  const live = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  const wire = live(TOOLS.slice(TOOLS.indexOf('const panel = await runCriticPanel('), TOOLS.indexOf('SHOW THE USER WHAT THE CRITIC LOOKED AT')));
+
+  assert.match(wire, /panel\.adjudication\.confirmed\.length/, 'the confirmed list must be consulted');
+  assert.match(wire, /critique\.hardFails = \[/, 'confirmations must join hardFails, which already reaches the model, the UI and the retry loop');
+  assert.match(wire, /critique\.passed = false/, 'a measured, evidence-backed defect is not a clean build');
+
+  // ORDER. ctx.lastCritique must be assigned AFTER the merge, or the retry loop reads the
+  // pre-panel verdict and the wiring above changes nothing that matters.
+  assert.ok(
+    live(TOOLS).indexOf('critique.passed = false') < live(TOOLS).indexOf('ctx.lastCritique = critique'),
+    'the panel must be merged BEFORE the critique is published to the run',
+  );
+
+  // UNCHECKED MUST NOT FAIL A BUILD. An absence of evidence is not evidence of a defect, and
+  // inverting that would make a partial run indistinguishable from a bad one.
+  assert.equal(/panel\.unchecked\.length\s*\)?\s*\{?[^}]*passed = false/.test(wire), false,
+    'an unchecked rule must never fail the build');
+});
