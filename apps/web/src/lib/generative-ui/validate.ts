@@ -27,7 +27,7 @@
  * constants, so `node --test` can load it directly via native type stripping.
  */
 
-import { safeInternalPath } from '../safe-redirect';
+import { safeInternalPath } from '../safe-redirect.ts';
 import {
   ASSET_KINDS,
   BLOCK_TYPES,
