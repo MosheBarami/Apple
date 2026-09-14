@@ -211,14 +211,14 @@ test it gated.
     EXPECT: G-CRITIC-1 OK
   EXPECT-CHANGE: old=critic-wiring.test.mjs-floor-12 new=critic-wiring.test.mjs-floor-13 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=ae01cac; tree-clean=yes; break-sha=ae01cac; EXPECT=unmatched; output-sha256=143ac253d82767fe4cbdcc36b3096dc224c8c4818b05a4f896e59fe9b2b6919d; output-bytes=1845; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=88bf45437e7bd708867b6d88; at=2026-09-14T17:47:16.380Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=47778cb; tree-clean=yes; EXPECT=matched; output-sha256=d9001e8a110704c2140cee8bd8d77069ff5c97f528bc068e99b4c54bcb7d6df2; output-bytes=1303; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=e2c4b5003f7943fcea7a1e3d; at=2026-09-14T18:31:37.549Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1eca9a7; tree-clean=yes; EXPECT=matched; output-sha256=03a3d2a1adda9aabd0b0ddb456cba69cfd3b04cb91faf14d16904839806fd457; output-bytes=1384; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=3f9b08dda13985ff4fdfda14; at=2026-09-14T19:05:29.191Z
 
 - [x] G-ORACLE-2: Every detector in the escape-hatch checker is proven to fail against a planted violation
     CHECK: node scripts/assert-tests.mjs --floor 33 --label G-ORACLE-2 -- node --test tests/check-escape-hatches.test.mjs
     EXPECT: G-ORACLE-2 OK
   EXPECT-CHANGE: old=floor-32 new=floor-33 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=7693a2a; tree-clean=yes; EXPECT=matched; output-sha256=2034fd679cc136ca8369f84af39012dfc6313ccb011570fbd0a9dfff18b98c30; output-bytes=2759; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=9f3f199104624ac1807194c8; at=2026-09-14T18:40:38.639Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1eca9a7; tree-clean=yes; EXPECT=matched; output-sha256=2034fd679cc136ca8369f84af39012dfc6313ccb011570fbd0a9dfff18b98c30; output-bytes=2759; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=8c85597e3e7eaa6bcac8da0c; at=2026-09-14T19:05:29.189Z
 
 - [x] G-ORACLE-3: The offer checker measures the four numbers a plan has to reconcile
     CHECK: node scripts/assert-tests.mjs --floor 10 --label G-ORACLE-3 -- node --test tests/check-offer.test.mjs
