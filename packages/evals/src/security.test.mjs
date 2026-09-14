@@ -977,11 +977,23 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   assert.match(src, /const AUTH_EXEMPT = \[([^\]]*)\]/);
   const exempt = JSON.parse('[' + /const AUTH_EXEMPT = \[([^\]]*)\]/.exec(src)[1].replace(/'/g, '"') + ']');
   assert.equal(exempt.includes('/api/providers'), false, '/api/providers must not be exempt from JWT auth');
+  // This list is reviewed, not merely observed: an entry here means "this route is not asked for a
+  // user JWT", and every one must authenticate some OTHER way or it is simply open.
+  //   /api/health       — no data, no side effect
+  //   /api/studio/claim — a short-lived pairing code IS the credential
+  //   /api/studio/poll  — the plugin's X-Golem-Token is the credential
+  //   /api/waitlist     — write-only, rate-limited, holds an email and nothing else
+  //   /api/billing/webhook — Stripe is not a user and has no JWT. It signs the body with a shared
+  //     secret, and the route refuses with 503 when that secret is absent rather than trusting the
+  //     payload. Asserted below so the exemption cannot outlive the verification.
   assert.deepEqual(
     exempt.sort(),
-    ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist'],
+    ['/api/billing/webhook', '/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist'],
     'the unauthenticated route list changed — every entry needs its own review',
   );
+  const webhook = src.slice(src.indexOf("app.post('/api/billing/webhook'"), src.indexOf("app.get('/api/providers'"));
+  assert.match(webhook, /verifyStripeSignature\(/, 'the billing webhook is exempt from JWT auth ONLY because it verifies a signature');
+  assert.match(webhook, /if \(!secret\) return c\.json\(\{ error: 'billing not configured' \}, 503\)/, 'and refuses outright when it cannot verify');
   // Behaviourally: no token is a 401, and the ADMIN KEY ALONE does not open it.
   assert.equal((await call('/api/providers', { env })).status, 401);
   assert.equal((await call('/api/providers', { env, adminKey: SECRETS.ADMIN_KEY })).status, 401,
@@ -1197,9 +1209,14 @@ test('A4 no route outside the exempt list and outside /api/admin/ is reachable u
   reset({ project: OWNED_ROW });
   const env = makeEnv();
   const src = read('index.ts');
+  // The exclusion list is READ from AUTH_EXEMPT rather than restated here. The restated copy had
+  // already drifted — it omitted /api/waitlist, which is exempt — so this sweep was asserting 401
+  // on a route that legitimately answers otherwise, and would have kept drifting with every
+  // addition. Same failure as the spend constants that compared literals to literals.
+  const exemptList = JSON.parse('[' + /const AUTH_EXEMPT = \[([^\]]*)\]/.exec(src)[1].replace(/'/g, '"') + ']');
   const routes = [...src.matchAll(/app\.(get|post|put|patch|delete)\('(\/api\/[^']+)'/g)]
     .map((m) => ({ method: m[1].toUpperCase(), path: m[2] }))
-    .filter((r) => !r.path.startsWith('/api/admin/') && !['/api/health', '/api/studio/claim', '/api/studio/poll'].includes(r.path));
+    .filter((r) => !r.path.startsWith('/api/admin/') && !exemptList.includes(r.path));
   assert.ok(routes.length >= 10);
   for (const r of routes) {
     const path = r.path.replace(':id', PROJECT_ID);
