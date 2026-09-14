@@ -1,6 +1,7 @@
 // /admin — plain functional operator panels: stats, model tester, RAG tester.
 // Rendered only for is_admin profiles; admin key kept in sessionStorage.
 import { useState, type FormEvent } from 'react';
+import { Failure } from '../components/failure';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   adminKillSwitch,
@@ -191,7 +192,7 @@ function StatsPanel({ adminKey }: { adminKey: string }) {
       </div>
       {!MOCK_MODE && !adminKey && <p className="muted">Enter the admin key above.</p>}
       {stats.isFetching && <p className="muted">Loading…</p>}
-      {stats.isError && <p className="form-error">{(stats.error as Error).message}</p>}
+      {stats.isError && <Failure error={stats.error} onRetry={() => void stats.refetch()} compact />}
       {stats.isSuccess && (
         <div className="table-wrap">
           <table className="admin-table">

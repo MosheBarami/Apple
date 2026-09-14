@@ -11,6 +11,7 @@
 // works, rather than concluding the delete button is broken.
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Failure } from '../failure';
 import { ApiError, fetchMemory, saveMemory } from '../../lib/api';
 import { useToast } from '../toast';
 
@@ -67,7 +68,7 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
     return (
       <div className="mem">
         <p className="gx-empty" role="alert">
-          {(state.error as Error).message}
+          <Failure error={state.error} compact />
         </p>
         <button type="button" className="btn" onClick={() => void state.refetch()}>
           Try again

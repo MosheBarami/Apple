@@ -4564,6 +4564,71 @@ textarea {
   padding: 0.45rem 0;
 }
 
+/* A failure, shown the one way. Ordered as the questions arrive: what happened, whether anything
+   was lost, what to do. The tone is a left rail rather than a red block — a full red card for a
+   history panel that did not load treats a minor gap as an emergency, and a user who meets that
+   three times stops reading any of them. */
+.failure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--bad);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  font-size: 0.86rem;
+}
+
+.failure.is-compact {
+  padding: 0.5rem 0.7rem;
+  background: none;
+  border-block: 0;
+  border-inline-end: 0;
+  border-radius: 0;
+}
+
+/* Not every failure is an alarm. A deployment that simply does not offer a feature, and a session
+   that has timed out, are facts rather than faults. */
+.failure.is-not_configured,
+.failure.is-signed_out {
+  border-inline-start-color: var(--muted);
+}
+
+.failure__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.failure__safety {
+  margin: 0;
+  color: var(--muted);
+}
+
+.failure__next {
+  margin: 0.15rem 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.failure__detail {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.failure__detail summary {
+  cursor: pointer;
+}
+
+.failure__detail code {
+  display: block;
+  margin-top: 0.3rem;
+  overflow-wrap: anywhere;
+}
+
 /* What came back from Stripe. Deliberately a note and not a success banner: the plan has not
    changed until the webhook says so, and this sits above the ladder that shows what it is now. */
 .plans-note {

@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Failure } from '../failure';
 import { fetchAttribution } from '../../lib/api';
 import { StatusIcon } from '../status-icon';
 import { EmptyState } from '../empty-state';
@@ -59,7 +60,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
     return (
       <EmptyState
         state="connectionFailed"
-        detail={<p className="es__body">{(q.error as Error).message}</p>}
+        detail={<Failure error={q.error} compact />}
         action={
           <button type="button" className="gx-btn gx-btn--outline" onClick={() => void q.refetch()}>
             Try again

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Failure } from '../components/failure';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
@@ -476,7 +477,7 @@ export function DashboardPage() {
       {projects.isError && (
         <EmptyState
           state="connectionFailed"
-          detail={<p className="es__body">{(projects.error as Error).message}</p>}
+          detail={<Failure error={projects.error} compact />}
           action={
             <button type="button" className="btn" onClick={() => void projects.refetch()}>
               Try again

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { supabase, type ProfileRow } from '../lib/supabase';
+import { Failure } from '../components/failure';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { useTheme } from '../lib/theme';
@@ -82,7 +83,7 @@ export function SettingsPage() {
 
       {profile.isError && (
         <div className="card" role="alert">
-          <p className="form-error">Couldn&rsquo;t load your profile: {(profile.error as Error).message}</p>
+          <Failure error={profile.error} onRetry={() => void profile.refetch()} compact />
           <button type="button" className="btn btn-sm" onClick={() => void profile.refetch()}>
             Retry
           </button>

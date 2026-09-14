@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { meterView } from '../components/usage-meter-model';
+import { Failure } from '../components/failure';
 import { PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
 import {
   fetchBillingConfig,
@@ -216,11 +217,8 @@ export function UsagePage() {
       )}
 
       {me.isError && (
-        <div className="card" role="alert">
-          <p className="form-error">Couldn&rsquo;t load usage: {(me.error as Error).message}</p>
-          <button type="button" className="btn btn-sm" onClick={() => void me.refetch()}>
-            Retry
-          </button>
+        <div className="card">
+          <Failure error={me.error} onRetry={() => void me.refetch()} />
         </div>
       )}
 
@@ -263,14 +261,7 @@ export function UsagePage() {
                 Loading history…
               </p>
             )}
-            {usage.isError && (
-              <p className="form-error" role="alert">
-                Couldn&rsquo;t load history.{' '}
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => void usage.refetch()}>
-                  Retry
-                </button>
-              </p>
-            )}
+            {usage.isError && <Failure error={usage.error} onRetry={() => void usage.refetch()} compact />}
             {usage.isSuccess &&
               (usage.data.days.length === 0 ? (
                 <p className="muted">No Sparks spent yet — go build something.</p>
