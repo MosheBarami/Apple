@@ -707,3 +707,79 @@ SELF-REFUTER: dispatched, after seven passes of carrying it. It was worth more t
 
 NEXT: the image serving route — it is the one item here that a user would notice, and it has
   been open across two of rbxai-a3's reports.
+
+PASS 8  2026-09-14T19:02:22Z  HEAD e9d633c  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+THE BACK-FILL, AND WHAT IT COST TO MAKE IT MEAN ANYTHING
+
+GATES 6 -> 23. Twenty-one gates were standing on `EXPECT: fail 0`, which is satisfied by a
+  test file with no tests in it, by a file where every test is .skip, and by an emptied file —
+  `node --test` counts each FILE as one passing test, so an emptied file still reports pass 1.
+  Each now carries a floor MEASURED from its own command, so a gate fails when tests go
+  missing, which `fail 0` could never see.
+
+  Eleven were then falsified at a break that removed the path they name and closed with
+  evidence on a clean tree: G7, G11, G14, G15, G19, G21, G23, G24, G26, G80, G81.
+
+TWO SURVIVED, and they are the useful ones:
+
+  G11's first break un-exported direction.ts, which its test never reads — it examines CSS for
+  physical direction declarations. A NEGATIVE gate has no path to remove, so the honest break
+  is the positive control §9.2 asks for: add exactly what it forbids. Re-run, it went red.
+
+  G12 SURVIVED AND STAYS OPEN. Its sentence is "Every user-facing surface has an explicit
+  empty, loading and error state"; its check enumerates only src/routes/*.tsx. Removing a state
+  from a component is invisible to it. rbxai-a3 found this independently, widened it on
+  grow/main, and the widened sweep went red immediately on layout.tsx — a failed profile fetch
+  rendering as "you are not an admin". Closing it here would be closing a gate whose subject is
+  broader than anything it measures; widening it here would collide with that merge. Open is the
+  honest state, not the tidy one.
+
+CHECK-BACKLOG (§6.5) EXISTS AND IS RED BY DESIGN. FEATURES.json had 1,249 rows nothing read,
+  so `sed -i 's/"not-started"/"done"/g'` closed 1,084 of them and passed every check in the
+  repository. 164 rows claim a status and not one cites a runnable thing. It also found seven
+  features closed TWICE in two sections citing identical evidence; six are genuine
+  cross-taxonomy listings and now carry a duplicateOf pointer excluded from every tally, and the
+  seventh — "Webhooks" under Developer Platform, closed by copying the evidence for Stripe's
+  INBOUND webhook — was reopened. 165 claimed becomes 158 distinct.
+
+THE IMAGE ROUTE SHIPPED, WAS REFUTED, AND WAS REPAIRED. See pass 7's refuter section. The
+  client half is rbxai-a3's and is done; a plain <img src> cannot carry a Bearer token, so
+  SafeImage fetches and renders an object URL.
+
+FOUR MORE ORACLE DEFECTS, all found by using the checkers rather than reading them:
+  checkPaths compared unnormalised paths, so `cd apps/worker && node ../../scripts/…` reported
+    a tracked file as untracked and quarantined five gates at once
+  the dirty-tree quarantine was the same deadlock as the fingerprint one, and named no remedy
+  an escape-hatch fixture planted on the FIRST EXPECT line, which stopped isolating its rule
+    the day that gate legitimately gained an EXPECT-CHANGE
+  --lint could not see a station tag stranded in a title
+
+VERIFICATION:
+  gate-suite.mjs            SUITE GREEN, 2305 passed, 0 failed
+  gate-typecheck.mjs        TYPECHECK CLEAN
+  check-escape-hatches.mjs  CLEAN, 438 files, 0 findings
+  check-deadends.mjs --gate ALL DISPOSITIONED, 2 entries
+  gate-check.mjs --lint     WELL-FORMED, 37 gates, 0 problems
+  gates met                 23 of 37, 0 STALE
+  check-backlog.mjs         UNPROVEN, 158 findings across 1249 rows (red by design)
+  neurons spent 0
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red — OH-1 and OH-2.
+
+NOT DONE:
+  §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 9
+  G1, G9, G10, G13, G16, G17, G18, G20, G22 | floors in place, no falsification record yet
+  G12 | blocked on the grow/main merge, by choice, reason above
+  G90, G91, G92 | meta-gates over the suite, typecheck and e2e; no falsification shape yet
+  the critic panel is display-only | session.ts's retry loop reads lastCritique, never the panel
+  164 backlog rows citing prose | the checker now says so every run
+
+SELF-REFUTER: dispatched in pass 7 and its findings fixed there. The sentence I expect the next
+  one to find is "GATES 6 -> 23" at the top of this record: eleven of those seventeen closures
+  are gates that were already GREEN and already tested, and what changed was the ORACLE, not the
+  product. A reader skimming this log sees a product getting safer. What actually happened is
+  that a ledger stopped lying about work that was already done.
+
+NEXT: G12 is the one I would rather not have left open. Everything else here is bookkeeping
+  catching up with engineering; that one is engineering still owed.
