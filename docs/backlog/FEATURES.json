@@ -2658,7 +2658,7 @@
           "id": "f-39fae47b",
           "name": "Rank selection",
           "status": "done",
-          "evidence": "packages/training/src/mlx-to-peft.test.mjs — an adapter over the documented rank limit is REFUSED here, not uploaded and rejected later by the serving side."
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. The RELATIONSHIP is asserted, not the literal: v2 rank must be GREATER than v1 (8 -> 16), because \"rank was raised in response to a freed constraint\" is the decision, where \"rank is 16\" would pass just as happily if it had always been 16. v3 dropping back to 8 is asserted separately as a different model family, so a reader does not mistake it for a reversal."
         },
         {
           "id": "f-a39822b2",
@@ -2676,19 +2676,19 @@
           "id": "f-2ba93ab1",
           "name": "Learning-rate selection",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v*.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. v2 must be EXACTLY half of v1 (1.0e-4 -> 5.0e-5). \"Lower\" is not the recorded decision. Raising it back to v1 reddens two cases."
         },
         {
           "id": "f-c181aff5",
           "name": "Batch-size selection",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v*.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. The bs4 -> bs2 change was forced by the Metal watchdog, not chosen for quality."
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. batch_size 4 -> 2 AND batch_size * grad_accumulation_steps must equal v1 batch, so the effective batch is unchanged and the runs stay like-for-like. Halving the batch without accumulation would be a different experiment wearing the same numbers."
         },
         {
           "id": "f-c8866926",
           "name": "Gradient accumulation",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v2.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. grad_accumulation_steps is 2 in v2 and ABSENT in v1, so the change is proven to be a change. Deleting the line reddens the effective-batch assertion."
         },
         {
           "id": "f-578b44ee",
@@ -2712,7 +2712,7 @@
           "id": "f-5d928b26",
           "name": "Seed pinning",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v*.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. A pinned seed is only reproducible alongside a pinned toolchain, and MLX is not pinned here."
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. Every config pins seed 20260914; unpinning it reddens this and only this. NOTE, unchanged: a pinned seed is only reproducible alongside a pinned toolchain, and MLX is not pinned here."
         },
         {
           "id": "f-cab3d21f",
@@ -2730,7 +2730,7 @@
           "id": "f-eacc0229",
           "name": "Early stopping",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. lora-apple-v2.yaml is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. v2 iters must be under half of v1 (250 -> 120), AND validation must be sampled at least six times across the run (steps_per_eval 20). The second is the load-bearing half: v1 missed its own turn because it sampled validation three times, so a shorter run that still sampled rarely would not have been the fix."
         },
         {
           "id": "f-242c793e",
@@ -2742,7 +2742,7 @@
           "id": "f-3f4e2c08",
           "name": "Mixed precision",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. the MLX 4-bit quantised base config is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. The v1 and v2 base model id must match /4bit/. Swapping to the unquantised checkpoint reddens it."
         },
         {
           "id": "f-18a69a79",
