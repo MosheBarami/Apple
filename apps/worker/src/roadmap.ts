@@ -871,12 +871,16 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'small', mode: 'stone', runs: 1, priority: 95,
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['daily_reward'],
     build: [
-      'Award a daily bonus on the first join of a day, tracked in the same save.',
+      'install_module("daily_reward") — the day arithmetic, the streak and the one-write claim.',
+      'Wire it: DailyReward.configure({ get = Profile.get, award = Currency.award, rewards = { ... } }), then DailyReward.claim(player) once their data has loaded.',
       'Decide what day it is from os.time() on the SERVER. A client clock is a setting the player can change, and a date read from it turns a daily reward into an unlimited one.',
+      'Use a UTC day INDEX, not os.date yday and not elapsed seconds. yday resets at new year, so 31 December to 1 January reads as a 364-day gap and wipes a year-long streak; elapsed seconds makes the streak depend on the hour somebody logs in.',
+      'The award and the record are ONE write into the same live table. Two steps with a failure between them is a day that pays twice.',
     ],
     acceptance: [
       'The bonus is awarded once per day per player, verified server-side.',
       'Changing the device clock does not award it again.',
+      'A streak counted on 31 December is still a streak on 1 January.',
     ],
   },
   {

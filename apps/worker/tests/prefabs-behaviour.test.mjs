@@ -2493,3 +2493,206 @@ test('an unconfigured module buys nothing and says so', () => {
   ].join('\n'), 'bb-unconfigured');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * DailyReward's harness — a clock the test moves, because every failure here is arithmetic.
+ *
+ * os.time is the only thing this module reads about the world, so it is the only thing stubbed.
+ * Days are moved by whole 86400s steps and by awkward fractions of them, because "is it a new day"
+ * is the question the module exists to answer correctly and the wrong answers all look plausible.
+ */
+function runDaily(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    '-- 2026-09-14T12:00:00Z, a Monday noon, so a day step is never ambiguous.',
+    'local nowValue = 1789387200',
+    'os = { time = function() return nowValue end, clock = function() return nowValue end }',
+    'local function setTime(t) nowValue = t end',
+    'local function addDays(n) nowValue = nowValue + n * 86400 end',
+    'local function addHours(n) nowValue = nowValue + n * 3600 end',
+    '',
+    'local player = { UserId = 7, Name = "returning" }',
+    'local profiles = { [7] = { coins = 0 } }',
+    'local function getData(p) return profiles[p.UserId] end',
+    '-- Currency.award as shipped: mutates the live table, returns the new balance, no DataStore.',
+    'local function award(p, amount)',
+    '\tlocal d = profiles[p.UserId]',
+    '\tif d == nil then return nil end',
+    '\td.coins = (d.coins or 0) + amount',
+    '\treturn d.coins',
+    'end',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.daily_reward.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+const DR = 'M.configure({ get = getData, award = award, rewards = { 10, 20, 30 } })';
+
+test('the daily harness runs, and a false assertion in it still fails', () => {
+  const good = runDaily([DR, 'assert(type(M.claim) == "function")'].join('\n'), 'dr-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runDaily([DR, 'assert(false, "intentional-daily")'].join('\n'), 'dr-sanity-neg');
+  assert.equal(bad.ok, false);
+  assert.match(bad.output, /intentional-daily/);
+});
+
+test('a first claim pays day one and starts the streak', () => {
+  const r = runDaily([
+    DR,
+    'local res = M.claim(player)',
+    'assert(res.granted == 10, "day one is the first entry, got " .. tostring(res.granted))',
+    'assert(res.streak == 1)',
+    'assert(profiles[7].coins == 10, "and the money is in the same table as the record")',
+    'assert(profiles[7].daily.lastDay ~= nil, "and the claim is recorded")',
+  ].join('\n'), 'dr-first');
+  assert.ok(r.ok, r.output);
+});
+
+test('CLAIMING TWICE IN A DAY PAYS ONCE, however many hours apart', () => {
+  const r = runDaily([
+    DR,
+    'assert(M.claim(player).granted == 10)',
+    'addHours(11)   -- same UTC day, much later',
+    'local again = M.claim(player)',
+    'assert(again.granted == nil, "a second claim must not pay")',
+    'assert(again.reason == "already claimed")',
+    'assert(profiles[7].coins == 10, "coins are " .. tostring(profiles[7].coins))',
+  ].join('\n'), 'dr-twice');
+  assert.ok(r.ok, r.output);
+});
+
+test('A NEW DAY IS A DAY BOUNDARY, NOT 24 ELAPSED HOURS', () => {
+  // The distinction the whole module turns on. 23:00 then 01:00 is two hours and a NEW day;
+  // 09:00 then 09:00 tomorrow is 24 hours and also a new day. An elapsed-seconds implementation
+  // gets the first one wrong, and the streak then depends on the hour somebody logs in.
+  const r = runDaily([
+    DR,
+    'setTime(1789430340)   -- 2026-09-14T23:59:00Z',
+    'assert(M.claim(player).granted == 10, "claimed just before midnight")',
+    'addHours(2)           -- 2026-09-15T01:59:00Z, two hours later',
+    'local next_ = M.claim(player)',
+    'assert(next_.granted == 20, "two hours later is a new day, got " .. tostring(next_.granted))',
+    'assert(next_.streak == 2, "and the streak continues")',
+  ].join('\n'), 'dr-boundary');
+  assert.ok(r.ok, r.output);
+});
+
+test('A STREAK SURVIVES NEW YEAR — the bug a calendar date would have', () => {
+  // os.date("*t").yday resets to 1 on 1 January, so 31 December to 1 January reads as a 364-day
+  // gap and wipes a year-long streak. A day index counting up forever has no months in it.
+  const r = runDaily([
+    DR,
+    'setTime(1798675200)   -- 2026-12-31T00:00:00Z',
+    'assert(M.claim(player).streak == 1)',
+    'addDays(1)            -- 2027-01-01',
+    'local ny = M.claim(player)',
+    'assert(ny.streak == 2, "the year turned and the streak must not, got " .. tostring(ny.streak))',
+    'assert(ny.granted == 20)',
+  ].join('\n'), 'dr-newyear');
+  assert.ok(r.ok, r.output);
+});
+
+test('a missed day resets the streak to one, whether the gap is two days or two months', () => {
+  const r = runDaily([
+    DR,
+    'assert(M.claim(player).streak == 1)',
+    'addDays(2)',
+    'assert(M.claim(player).streak == 1, "one missed day starts again")',
+    'addDays(60)',
+    'assert(M.claim(player).streak == 1, "and so does sixty")',
+  ].join('\n'), 'dr-missed');
+  assert.ok(r.ok, r.output);
+});
+
+test('A CLOCK MOVED BACKWARDS IS NOT A NEW DAY', () => {
+  // An earlier day than the one on record is not a new day, it is a wrong one. Paying out on it is
+  // the exploit the milestone's own acceptance criterion names.
+  const r = runDaily([
+    DR,
+    'addDays(5)',
+    'assert(M.claim(player).granted == 10, "claimed on the later day")',
+    'addDays(-3)',
+    'local back = M.claim(player)',
+    'assert(back.granted == nil, "going back in time must not pay again")',
+    'assert(back.reason == "already claimed")',
+    'assert(profiles[7].coins == 10)',
+  ].join('\n'), 'dr-backwards');
+  assert.ok(r.ok, r.output);
+});
+
+test('A STREAK PAST THE END OF THE TABLE REPEATS THE LAST ENTRY, never nil', () => {
+  // rewards[8] on a three-day table is nil, and nil reaches award() as the amount.
+  const r = runDaily([
+    DR,
+    'for i = 1, 3 do M.claim(player); addDays(1) end',
+    'local fourth = M.claim(player)',
+    'assert(fourth.streak == 4, "streak is " .. tostring(fourth.streak))',
+    'assert(fourth.granted == 30, "day four repeats the last entry, got " .. tostring(fourth.granted))',
+    'assert(M.rewardFor(99) == 30, "and so does day ninety-nine")',
+    'assert(M.rewardFor(0) == 10, "and a nonsense streak does not read past the start")',
+  ].join('\n'), 'dr-past-table');
+  assert.ok(r.ok, r.output);
+});
+
+test('status reports without changing anything', () => {
+  const r = runDaily([
+    DR,
+    'local before = M.status(player)',
+    'assert(before.claimable == true, "a player who never claimed can claim")',
+    'assert(before.wouldGrant == 10)',
+    'assert(profiles[7].coins == 0, "status must not pay")',
+    'assert(profiles[7].daily.lastDay == nil, "and must not record")',
+    '',
+    'M.claim(player)',
+    'local after = M.status(player)',
+    'assert(after.claimable == false, "and now it cannot")',
+    'assert(after.streak == 1)',
+  ].join('\n'), 'dr-status');
+  assert.ok(r.ok, r.output);
+});
+
+test('an award that does not apply records NOTHING, so the day is not lost', () => {
+  const r = runDaily([
+    'M.configure({ get = getData, award = function() return nil end, rewards = { 10 } })',
+    'local res = M.claim(player)',
+    'assert(res.granted == nil and res.reason == "award failed")',
+    'assert(profiles[7].daily == nil or profiles[7].daily.lastDay == nil,',
+    '\t"recording a claim that was never paid costs the player a day")',
+  ].join('\n'), 'dr-award-failed');
+  assert.ok(r.ok, r.output);
+});
+
+test('an unloaded profile is refused, and an unconfigured module says so', () => {
+  const r = runDaily([
+    DR,
+    'profiles[7] = nil',
+    'assert(M.claim(player).reason == "no data")',
+  ].join('\n'), 'dr-no-data');
+  assert.ok(r.ok, r.output);
+
+  const u = runDaily([
+    'assert(M.claim(player).reason == "unconfigured")',
+    'assert(#warnings >= 1)',
+  ].join('\n'), 'dr-unconfigured');
+  assert.ok(u.ok, u.output);
+});

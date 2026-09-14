@@ -1592,7 +1592,199 @@ end
 return BuyButtons
 `;
 
+const DAILY_REWARD_SOURCE = `--!strict
+-- DailyReward — a bonus on the first join of a day, and a streak that is right about what a day is.
+--
+-- Every way this breaks is arithmetic, and none of it errors.
+--
+-- 1. WHAT DAY IS IT. Read from os.time() on the SERVER, never from the client: a device clock is a
+--    setting the player can change, and a date taken from it turns a daily reward into an unlimited
+--    one. And it is a UTC DAY INDEX, not os.date("*t").yday and not "86400 seconds since last
+--    time". yday resets at new year, so 31 December to 1 January reads as a 364-day gap and wipes
+--    a year-long streak. Elapsed-seconds is worse: it makes 23:59 and 00:01 "not a new day" while
+--    making 09:00 and 09:00 the next morning "two days", so the streak depends on the hour a
+--    player happens to log in.
+--
+-- 2. CLAIMED TWICE. A rejoin, a second server, a double-fired UI button. The claim is keyed on the
+--    day index already stored, so a repeat is refused by comparison rather than by a debounce.
+--
+-- 3. THE AWARD AND THE RECORD ARE ONE WRITE. Awarding and then storing "claimed today" as two
+--    steps is a player who claims, the server drops, and they claim again tomorrow for both. Both
+--    land in the same live profile table with nothing yielding between them, so the next save
+--    writes both or neither. This is the same rule Receipts and BuyButtons follow, for the same
+--    reason.
+--
+-- 4. A STREAK LONGER THAN THE REWARD TABLE. rewards[8] on a five-day table is nil, and nil
+--    reaches Currency.award as an amount. The last entry repeats instead.
+--
+-- SETUP (once, in a server Script, after Profile.load has returned):
+--   local DailyReward = require(game.ServerScriptService.DailyReward)
+--   DailyReward.configure({ get = Profile.get, award = Currency.award, rewards = { 50, 75, 100, 150, 250 } })
+--   local result = DailyReward.claim(player)
+--   if result.granted then  -- tell them, show the streak
+--   end
+local DailyReward = {}
+
+local getData = nil
+local awardFn = nil
+local fieldName = "daily"
+local rewards = { 50, 75, 100, 150, 250 }
+
+--- Wire this to your data and currency modules.
+---   opts.get      function(player) -> the live profile table, or nil when it may not be written
+---   opts.award    function(player, amount) -> the new balance, or nil when it could not be applied
+---   opts.rewards  what day 1, 2, 3... are worth. The last entry repeats for longer streaks.
+---   opts.field    where the record lives in the profile (default "daily")
+function DailyReward.configure(opts)
+	opts = opts or {}
+	getData = opts.get
+	awardFn = opts.award
+	if type(opts.field) == "string" and #opts.field > 0 then
+		fieldName = opts.field
+	end
+	if type(opts.rewards) == "table" and #opts.rewards > 0 then
+		rewards = opts.rewards
+	end
+end
+
+--- The UTC day this instant falls in, as a whole number that counts up forever.
+---
+--- Subtraction across it is the whole point: day N and day N+1 are consecutive in January and in
+--- December alike, because there are no months in it. A calendar date would need to know which,
+--- and getting that wrong is invisible until the turn of a year.
+function DailyReward.dayIndex(atSeconds)
+	return math.floor((atSeconds or os.time()) / 86400)
+end
+
+--- What this player's record looks like. Never nil for a loaded player.
+local function record(player)
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return nil, nil
+	end
+	if type(data[fieldName]) ~= "table" then
+		data[fieldName] = { lastDay = nil, streak = 0 }
+	end
+	return data[fieldName], data
+end
+
+--- What day N of a streak is worth. A streak past the end of the table repeats the last entry
+--- rather than reading nil, which would reach award() as the amount.
+function DailyReward.rewardFor(streak)
+	if streak < 1 then
+		return rewards[1]
+	end
+	return rewards[math.min(streak, #rewards)]
+end
+
+--- Can this player claim, and what would it be worth? Reads nothing and changes nothing.
+function DailyReward.status(player, atSeconds)
+	local rec = record(player)
+	if rec == nil then
+		return nil
+	end
+	local today = DailyReward.dayIndex(atSeconds)
+	local last = rec.lastDay
+	local streak = rec.streak or 0
+	local nextStreak = 1
+	if last ~= nil and today - last == 1 then
+		nextStreak = streak + 1
+	end
+	return {
+		claimable = last == nil or today > last,
+		streak = streak,
+		day = today,
+		wouldGrant = DailyReward.rewardFor(nextStreak),
+		wouldBeStreak = nextStreak,
+	}
+end
+
+--- Claim today's reward. Returns a table describing what happened; granted is nil when nothing was.
+function DailyReward.claim(player, atSeconds)
+	if getData == nil or awardFn == nil then
+		warn("[DailyReward] not configured — call DailyReward.configure first")
+		return { reason = "unconfigured" }
+	end
+
+	local rec = record(player)
+	if rec == nil then
+		-- Their data did not load. Awarding into a table that may not be saved is how a player is
+		-- given a bonus and then finds it gone, with the claim recorded against them or not at all.
+		return { reason = "no data" }
+	end
+
+	local today = DailyReward.dayIndex(atSeconds)
+	local last = rec.lastDay
+
+	if last ~= nil and today <= last then
+		-- Already claimed. Also catches a clock that went BACKWARDS: an earlier day than the one on
+		-- record is not a new day, it is a wrong one, and paying out on it is the exploit.
+		return { reason = "already claimed", streak = rec.streak or 0, nextIn = (last + 1) - today }
+	end
+
+	-- Exactly yesterday continues the streak. Anything older starts again at one; the gap could be
+	-- two days or two months and the answer is the same.
+	local streak = 1
+	if last ~= nil and today - last == 1 then
+		streak = (rec.streak or 0) + 1
+	end
+
+	local amount = DailyReward.rewardFor(streak)
+	local balance = awardFn(player, amount)
+	if balance == nil then
+		-- The award did not apply, so nothing is recorded. Recording a claim that was never paid
+		-- costs the player a day.
+		return { reason = "award failed" }
+	end
+
+	-- NOTHING YIELDS BETWEEN THE AWARD AND THESE TWO LINES. Both sit in the same profile table, so
+	-- the next save writes the money and the claim together or writes neither.
+	rec.lastDay = today
+	rec.streak = streak
+
+	return { granted = amount, streak = streak, day = today, balance = balance }
+end
+
+--- Forget nothing — there is no per-session state here on purpose.
+---
+--- Everything this module knows lives in the player's save, so a rejoin, a second server and a
+--- restart all read the same answer. A module that remembered anything in memory would be a module
+--- that disagrees with itself across servers.
+function DailyReward.rewardTable()
+	local out = {}
+	for i, v in ipairs(rewards) do
+		out[i] = v
+	end
+	return out
+end
+
+return DailyReward
+`;
+
 export const PREFABS: Record<string, Prefab> = {
+  daily_reward: {
+    id: 'daily_reward',
+    needs: ['profile_store', 'currency'],
+    moduleName: 'DailyReward',
+    summary: 'A bonus on the first join of a day, with a streak that is right about what a day is.',
+    prevents: [
+      'a date read from the client, which is a setting the player can change and turns a daily reward into an unlimited one',
+      'a streak wiped at new year, because os.date yday resets and 31 December to 1 January reads as a 364-day gap',
+      'a streak that depends on the hour somebody logs in, because elapsed seconds is not a day boundary',
+      'claiming twice from a rejoin, a second server, or a double-fired button',
+      'a clock moved BACKWARDS being treated as a new day',
+      'awarding and then failing to record it, so the same day pays twice',
+      'a streak longer than the reward table reaching award() with nil as the amount',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'DailyReward.configure({ get = Profile.get, award = Currency.award, rewards = { 50, 75, 100 } })',
+      'DailyReward.claim(player)',
+      'DailyReward.status(player)',
+    ],
+    source: DAILY_REWARD_SOURCE,
+  },
   buy_buttons: {
     id: 'buy_buttons',
     needs: ['profile_store', 'currency'],
