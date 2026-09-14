@@ -165,3 +165,178 @@ test('the balance comes from the save even when the mirror disagrees', () => {
   ].join('\n'), 'mirror');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * RemoteGuard's harness.
+ *
+ * Its rate limit is a token bucket refilled by elapsed time, so testing it means CONTROLLING time
+ * rather than sleeping through it — a test that waits a real second to prove a refill is a test
+ * nobody runs twice. `os.clock` is replaced before the module loads, so the module's own calls
+ * resolve to the stub.
+ *
+ * The module also connects to Players.PlayerRemoving at load, so `game` has to exist for it to
+ * construct at all.
+ */
+function runGuard(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    '-- Controlled time. The module reads the global `os` at call time, so replacing it here wins.',
+    'local nowValue = 0',
+    'local realOs = os',
+    'os = { clock = function() return nowValue end, time = realOs.time, date = realOs.date }',
+    'local function advance(seconds) nowValue = nowValue + seconds end',
+    '',
+    '-- Just enough of the instance tree for the module to load and for one remote to exist.',
+    'local removingHandler = nil',
+    'game = {',
+    '\tGetService = function(self, name)',
+    '\t\treturn { PlayerRemoving = { Connect = function(_, fn) removingHandler = fn end } }',
+    '\tend,',
+    '}',
+    '',
+    'local function fakeRemote(name)',
+    '\tlocal fired = nil',
+    '\treturn {',
+    '\t\tName = name,',
+    '\t\tOnServerEvent = { Connect = function(_, fn) fired = fn end },',
+    '\t\tfire = function(...) return fired(...) end,',
+    '\t}',
+    'end',
+    'local player = { Name = "tester" }',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.remote_guard.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+test('the guard harness runs, and a false assertion in it still fails', () => {
+  const good = runGuard('assert(type(M.on) == "function", "M.on")', 'guard-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runGuard('assert(false, "intentional-guard")', 'guard-sanity-neg');
+  assert.equal(bad.ok, false, 'a failing assert did not fail the guard run');
+  assert.match(bad.output, /intentional-guard/);
+});
+
+test('calls within the rate are all delivered', () => {
+  const r = runGuard([
+    'local calls = 0',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 5 }, function(p) calls = calls + 1 end)',
+    'for i = 1, 5 do remote.fire(player) end',
+    'assert(calls == 5, "expected 5 delivered, got " .. tostring(calls))',
+  ].join('\n'), 'guard-under');
+  assert.ok(r.ok, r.output);
+});
+
+test('A BURST PAST THE LIMIT IS DROPPED, not queued', () => {
+  // The whole point. A client-side debounce is deleted by the exploiter; this is the limit that
+  // survives, and it must drop silently rather than throw or buffer.
+  const r = runGuard([
+    'local calls = 0',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 5 }, function(p) calls = calls + 1 end)',
+    'for i = 1, 50 do remote.fire(player) end',
+    'assert(calls == 5, "a 50-call burst should deliver 5, delivered " .. tostring(calls))',
+  ].join('\n'), 'guard-burst');
+  assert.ok(r.ok, r.output);
+});
+
+test('tokens refill with elapsed time, and never bank past capacity', () => {
+  // The second half is the subtle one: a player idle for an hour must not be able to spend an
+  // hour of tokens at once, which would make the limit meaningless for exactly the pattern that
+  // matters — a quiet client that suddenly floods.
+  const r = runGuard([
+    'local calls = 0',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 5 }, function(p) calls = calls + 1 end)',
+    'for i = 1, 50 do remote.fire(player) end',
+    'assert(calls == 5, "burst drained the bucket")',
+    'advance(1)',
+    'for i = 1, 50 do remote.fire(player) end',
+    'assert(calls == 10, "one second should restore 5, got " .. tostring(calls - 5))',
+    'advance(3600)',
+    'for i = 1, 50 do remote.fire(player) end',
+    'assert(calls == 15, "an idle hour must not bank more than capacity, got " .. tostring(calls - 10))',
+  ].join('\n'), 'guard-refill');
+  assert.ok(r.ok, r.output);
+});
+
+test('a validate that returns false blocks the handler entirely', () => {
+  const r = runGuard([
+    'local calls = 0',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 100, validate = function(p, amount) return amount == 1 end },',
+    '\tfunction(p, amount) calls = calls + 1 end)',
+    'remote.fire(player, 1)',
+    'assert(calls == 1, "a valid call must pass")',
+    'remote.fire(player, 9999)',
+    'assert(calls == 1, "an invalid argument must not reach the handler")',
+    'remote.fire(player, nil)',
+    'assert(calls == 1, "nil must not reach the handler either")',
+  ].join('\n'), 'guard-validate');
+  assert.ok(r.ok, r.output);
+});
+
+test('a validate that ERRORS is a refusal, not an opening', () => {
+  // A validator that throws must fail closed. Failing open would make a crash in the check the
+  // easiest way through it.
+  const r = runGuard([
+    'local calls = 0',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 100, validate = function() error("boom") end },',
+    '\tfunction(p) calls = calls + 1 end)',
+    'remote.fire(player)',
+    'assert(calls == 0, "a throwing validator must refuse, not admit")',
+  ].join('\n'), 'guard-validate-error');
+  assert.ok(r.ok, r.output);
+});
+
+test('a handler that errors does not kill the connection for everyone after it', () => {
+  const r = runGuard([
+    'local calls = 0',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 100 }, function(p)',
+    '\tcalls = calls + 1',
+    '\tif calls == 1 then error("first call explodes") end',
+    'end)',
+    'remote.fire(player)',
+    'remote.fire(player)',
+    'assert(calls == 2, "the second call must still arrive, got " .. tostring(calls))',
+    'assert(#warnings >= 1, "the error should have been reported")',
+  ].join('\n'), 'guard-handler-error');
+  assert.ok(r.ok, r.output);
+});
+
+test('each player gets their own bucket', () => {
+  // One noisy client must not spend another player's allowance.
+  const r = runGuard([
+    'local calls = 0',
+    'local other = { Name = "other" }',
+    'local remote = fakeRemote("Buy")',
+    'M.on(remote, { perSecond = 3 }, function(p) calls = calls + 1 end)',
+    'for i = 1, 20 do remote.fire(player) end',
+    'assert(calls == 3, "first player drained their own bucket")',
+    'for i = 1, 20 do remote.fire(other) end',
+    'assert(calls == 6, "the second player must have a full bucket, got " .. tostring(calls - 3))',
+  ].join('\n'), 'guard-per-player');
+  assert.ok(r.ok, r.output);
+});
