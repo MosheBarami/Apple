@@ -89,6 +89,7 @@ and are tracked as handoffs, not gates.
 - [ ] G12: Every user-facing surface has an explicit empty, loading and error state
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 5 --label G12 -- node --test tests/ui-states.test.mjs
     EXPECT: G12 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G12; path=6765c31f4f12/53 entries; git-sha=12fb96d; tree-clean=yes; break-sha=12fb96d; EXPECT=unmatched; output-sha256=2cd9baccee7fce26fb3403c93d574fa61804152e38171d7b9e023610ddbc27a5; output-bytes=1278; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=8f591d9cadb89e13ff15c64a; at=2026-09-14T19:29:07.187Z
   EXPECT-CHANGE: old=fail 0 new=G12 OK reason=derived-floor-5-measured-5-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=501ee60b3de430a690663b5962fd1f45b829d31318f592321bd3f9c9b3f9071a; output-bytes=489
 
