@@ -23,7 +23,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { rmSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -77,6 +77,166 @@ test('all four are withheld when Studio is not connected', () => {
 });
 
 // --- set_mood -------------------------------------------------------------------------
+
+/**
+ * moodLuau's sweep, EXECUTED rather than grepped.
+ *
+ * The chunk used to open by destroying every PostEffect and Atmosphere in Lighting, unconditionally
+ * — so a user who had hand-tuned a ColorCorrectionEffect and a SunRaysEffect and then asked to
+ * "warm the scene up a bit" had both deleted, and was told only that a mood had been applied.
+ * Replacing somebody's lighting rig is a reasonable thing to ask for and an unreasonable thing to
+ * do unasked, and worse to do silently.
+ *
+ * A regex over the emitted source would only prove the marker appears somewhere. This runs the
+ * chunk against a Lighting stub and asserts which instances are still parented afterwards, which
+ * is the thing that actually matters to the user.
+ */
+const LUAU_TMP = mkdtempSync(join(tmpdir(), 'mood-'));
+function haveLuau() {
+  try { execFileSync('luau', ['--help'], { stdio: 'pipe' }); return true; } catch { return false; }
+}
+if (!haveLuau()) throw new Error('luau is not on PATH — these tests must run, not skip');
+
+/**
+ * The emitted chunk, taken from what the TOOL actually sends rather than from a test-only export.
+ * A helper exported just for tests can drift from the thing that ships; the op cannot.
+ */
+async function moodCode(mood) {
+  const { ctx, ops } = stubCtx();
+  await T.TOOLS.set_mood.run(ctx, { mood });
+  const sent = ops.find((o) => o.op === 'run_code');
+  assert.ok(sent?.code, `set_mood sent no run_code for ${mood}`);
+  return sent.code;
+}
+
+/** Run a mood chunk against a fake Lighting holding the given children. */
+function runMood(code, children, tag) {
+  const src = [
+    'local made = {}',
+    'local function inst(class, attrs)',
+    '\tlocal a = attrs or {}',
+    '\tlocal i',
+    '\ti = {',
+    '\t\tClassName = class, Parent = "Lighting",',
+    '\t\tGetAttribute = function(_, k) return a[k] end,',
+    '\t\tSetAttribute = function(_, k, v) a[k] = v end,',
+    '\t\tDestroy = function(self) self.Parent = nil end,',
+    '\t\tIsA = function(_, want)',
+    '\t\t\tif want == "Atmosphere" then return class == "Atmosphere" end',
+    '\t\t\tif want == "PostEffect" then return class ~= "Atmosphere" end',
+    '\t\t\treturn false',
+    '\t\tend,',
+    '\t}',
+    '\treturn i',
+    'end',
+    '',
+    `local existing = { ${children.map((c) => `inst(${JSON.stringify(c.class)}, ${c.mood ? `{ AppleMood = ${JSON.stringify(c.mood)} }` : 'nil'})`).join(', ')} }`,
+    'local lighting = { children = existing }',
+    'function lighting:GetChildren()',
+    '\tlocal out = {}',
+    '\tfor _, c in ipairs(self.children) do if c.Parent ~= nil then table.insert(out, c) end end',
+    '\treturn out',
+    'end',
+    'Instance = { new = function(class)',
+    '\tlocal i = inst(class, {})',
+    '\ti.Parent = nil',
+    '\ttable.insert(made, i)',
+    '\ttable.insert(lighting.children, i)',
+    '\treturn i',
+    'end }',
+    'Color3 = { fromRGB = function(r, g, b) return { r, g, b } end }',
+    'game = { GetService = function() return lighting end }',
+    '',
+    `local chunk = function()
+${code}
+end`,
+    'local report = chunk()',
+    '',
+    '-- what is still parented to Lighting, by class, plus whether it is ours',
+    'local survivors = {}',
+    'for _, c in ipairs(lighting.children) do',
+    '\tif c.Parent ~= nil then',
+    '\t\ttable.insert(survivors, c.ClassName .. (c:GetAttribute("AppleMood") ~= nil and ":ours" or ":theirs"))',
+    '\tend',
+    'end',
+    'table.sort(survivors)',
+    'print("SURVIVORS " .. table.concat(survivors, " "))',
+    'print("REPLACED " .. tostring(report.replaced))',
+    'print("KEPT " .. table.concat(report.kept, ","))',
+  ].join('\n');
+  const file = join(LUAU_TMP, `${tag}.luau`);
+  writeFileSync(file, src);
+  try {
+    return { ok: true, out: execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' }) };
+  } catch (e) {
+    return { ok: false, out: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+test('the mood harness runs and reports survivors', async () => {
+  const r = runMood(await moodCode('night'), [], 'mood-sanity');
+  assert.ok(r.ok, r.out);
+  assert.match(r.out, /SURVIVORS /);
+  assert.match(r.out, /:ours/, 'the mood must have parented its own effects');
+  assert.doesNotMatch(r.out, /:theirs/, 'and there were none of the user\'s to keep');
+});
+
+test("A MOOD MUST NOT DELETE THE USER'S OWN LIGHTING EFFECTS", async () => {
+  const r = runMood(await moodCode('golden'), [
+    { class: 'ColorCorrectionEffect' },          // hand-tuned by the user
+    { class: 'SunRaysEffect' },                  // likewise
+    { class: 'BloomEffect', mood: 'night' },     // ours, from a previous set_mood
+    { class: 'Atmosphere', mood: 'night' },      // ours
+  ], 'mood-keeps-user');
+  assert.ok(r.ok, r.out);
+
+  const survivors = /SURVIVORS (.*)/.exec(r.out)[1].split(' ').filter(Boolean);
+  assert.ok(survivors.includes('ColorCorrectionEffect:theirs'),
+    `the user's ColorCorrectionEffect was destroyed — survivors: ${survivors.join(' ')}`);
+  assert.ok(survivors.includes('SunRaysEffect:theirs'), "the user's SunRaysEffect was destroyed");
+
+  // and ours from the previous mood ARE replaced, or moods would stack on themselves
+  assert.match(r.out, /REPLACED 2/, 'both of the previous mood\'s instances should be replaced');
+  const kept = /KEPT (.*)/.exec(r.out)[1];
+  assert.match(kept, /ColorCorrectionEffect/);
+  assert.match(kept, /SunRaysEffect/);
+});
+
+test('applying two moods in a row leaves one set of ours, not two', async () => {
+  const r = runMood(await moodCode('night'), [
+    { class: 'BloomEffect', mood: 'day' },
+    { class: 'ColorCorrectionEffect', mood: 'day' },
+    { class: 'Atmosphere', mood: 'day' },
+  ], 'mood-replaces-own');
+  assert.ok(r.ok, r.out);
+  const survivors = /SURVIVORS (.*)/.exec(r.out)[1].split(' ').filter(Boolean);
+  assert.equal(survivors.filter((x) => x.endsWith(':theirs')).length, 0, 'nothing of the user\'s here');
+  assert.equal(survivors.filter((x) => x === 'Atmosphere:ours').length, 1,
+    `exactly one Atmosphere should remain, got: ${survivors.join(' ')}`);
+});
+
+test('set_mood TELLS the model what it left in place', async () => {
+  const { ctx } = stubCtx({ ok: true, data: { result: {
+    mood: { t: 'string', v: 'golden' },
+    replaced: { t: 'number', v: 2 },
+    kept: { t: 'table', v: undefined } && [{ t: 'string', v: 'ColorCorrectionEffect' }, { t: 'string', v: 'SunRaysEffect' }],
+  } } });
+  const res = await T.TOOLS.set_mood.run(ctx, { mood: 'golden' });
+  assert.equal(res.applied, 'golden');
+  assert.deepEqual(res.keptUserEffects, ['ColorCorrectionEffect', 'SunRaysEffect']);
+  assert.match(res.note, /still active/i, 'the model must be told they are still there');
+  assert.match(res.note, /ask before deleting/i, 'and that removing them is the user\'s call');
+});
+
+test('a scene with nothing of the user\'s says nothing about it', async () => {
+  // A note on every call is a note nobody reads.
+  const { ctx } = stubCtx({ ok: true, data: { result: {
+    mood: { t: 'string', v: 'night' }, replaced: { t: 'number', v: 0 }, kept: [],
+  } } });
+  const res = await T.TOOLS.set_mood.run(ctx, { mood: 'night' });
+  assert.equal(res.note, undefined);
+  assert.equal(res.keptUserEffects, undefined);
+});
 
 test('set_mood sends Luau that actually configures Lighting', async () => {
   const { ctx, ops } = stubCtx();

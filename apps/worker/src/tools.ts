@@ -1251,16 +1251,34 @@ export const TOOLS: Record<string, ToolImpl> = {
       const res = await op(ctx, { op: 'run_code', code: moodLuau(mood), timeoutMs: 10_000 }, 25_000);
       if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
 
+      // WHAT WAS LEFT IN PLACE, reported. The mood only removes lighting instances it marked as its
+      // own, so anything the user hand-tuned is still there and is now stacking with the preset.
+      // That is the right default — deleting their work would be worse — but it changes what they
+      // see, so it has to be said rather than left for them to discover.
+      const result = (res as { result?: Record<string, unknown> })?.result;
+      const keptRaw = decodeTagged(result?.kept);
+      const kept = Array.isArray(keptRaw) ? keptRaw.map((k) => String(decodeTagged(k))) : [];
+      const replaced = Number(decodeTagged(result?.replaced) ?? NaN);
+
       // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
       // look; the materials and colours are the other half, and the model has no other way to
       // learn which of them were designed to sit under this light.
       const palettes = Object.entries(PALETTES)
         .filter(([, p]) => p.moods.includes(mood))
         .map(([name, p]) => ({ name, materials: p.materials }));
+      const keptNote = kept.length
+        ? `Left in place: ${kept.join(', ')} — the user put ${kept.length === 1 ? 'that' : 'those'} in Lighting, so ${kept.length === 1 ? 'it is' : 'they are'} still active and now combine with this mood. Tell them, and use remove_effect or ask before deleting ${kept.length === 1 ? 'it' : 'them'}.`
+        : undefined;
       return {
         applied: mood,
+        // Only ever this mood's own previous instances; the user's are counted in `kept`.
+        replacedOwn: Number.isFinite(replaced) && replaced > 0 ? replaced : undefined,
+        keptUserEffects: kept.length ? kept : undefined,
+        note: keptNote,
         palettes: palettes.length ? palettes : undefined,
-        next: 'render_view to see it. If the scene reads flat or muddy, the mood is usually right and the MATERIALS are wrong — use one of the palettes above.',
+        next:
+          'render_view to see it. If the scene reads flat or muddy, the mood is usually right and the MATERIALS are wrong — use one of the palettes above.' +
+          (kept.length ? ' The scene also carries the effects listed above, which were not mine to remove.' : ''),
       };
     },
   },

@@ -441,18 +441,44 @@ export function moodLuau(mood: string): string {
   const lines = Object.entries(p.scriptable).map(
     ([k, v]) => `L.${k} = ${val(v as number | boolean | RGB)}`,
   );
+  // EITHER WE PUT IT THERE AND SAID SO, OR WE LEAVE IT ALONE.
+  //
+  // This used to open by destroying every PostEffect and Atmosphere in Lighting, full stop. A user
+  // who had hand-tuned a ColorCorrectionEffect and a SunRaysEffect and then asked to "warm the
+  // scene up a bit" had both deleted, and was told only that a mood had been applied. Replacing
+  // somebody's lighting rig is a reasonable thing to ask for and an unreasonable thing to do
+  // without being asked — and worse to do silently.
+  //
+  // So every instance this writes carries the same AppleMood marker that effects.ts uses for its
+  // own, the sweep removes only marked ones, and the chunk RETURNS what it left behind so the tool
+  // can say so. Anything of the user's stays, and stacking with it is a visible fact rather than a
+  // surprise.
   return [
     'local L = game:GetService("Lighting")',
+    'local kept, replaced = {}, 0',
     'for _, c in ipairs(L:GetChildren()) do',
-    '\tif c:IsA("PostEffect") or c:IsA("Atmosphere") then c:Destroy() end',
+    '\tif c:IsA("PostEffect") or c:IsA("Atmosphere") then',
+    '\t\tif c:GetAttribute("AppleMood") ~= nil then',
+    '\t\t\treplaced = replaced + 1',
+    '\t\t\tc:Destroy()',
+    '\t\telse',
+    '\t\t\ttable.insert(kept, c.ClassName)',
+    '\t\tend',
+    '\tend',
     'end',
+    // The RESOLVED name, not the requested one. An unknown mood falls back to day's lighting, and
+    // tagging those instances with a name nobody implemented would make the marker a record of what
+    // was asked for rather than of what is actually in the scene.
+    `local mood = ${JSON.stringify(MOODS[mood] ? mood : 'day')}`,
     'local function mk(class, props)',
     '\tlocal i = Instance.new(class)',
     '\tfor k, v in pairs(props) do i[k] = v end',
+    '\ti:SetAttribute("AppleMood", mood)',
     '\ti.Parent = L',
     'end',
     ...lines,
     ...fx,
+    'return { mood = mood, replaced = replaced, kept = kept }',
   ].join('\n');
 }
 
