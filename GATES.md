@@ -14,6 +14,7 @@ and are tracked as handoffs, not gates.
 - [ ] G1: The render payload cannot crash the workspace
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 7 --label G1 -- node --test src/lib/generative-ui/adapters.test.mjs
     EXPECT: G1 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G1; path=6765c31f4f12/53 entries; git-sha=899069f; tree-clean=yes; break-sha=899069f; EXPECT=unmatched; output-sha256=c7c999c8609f15a4085729693ab4d0235ee666d337264257d1bfe394abdfab1c; output-bytes=1426; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=dca3770ad7fb788cc98c3495; at=2026-09-14T19:06:50.027Z
   EXPECT-CHANGE: old=fail 0 new=G1 OK reason=derived-floor-7-measured-7-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=e253db45422d0dcc05c8ad0f9ddbeb508c23d69502b562d8ad75c8643554f50f; output-bytes=653
 
@@ -63,12 +64,14 @@ and are tracked as handoffs, not gates.
 - [ ] G9: The door benchmark separates a correct door from the real broken outputs
     CHECK: cd packages/evals && node ../../scripts/assert-tests.mjs --floor 3 --label G9 -- node --test src/door-benchmark.test.mjs
     EXPECT: G9 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G9; path=6765c31f4f12/53 entries; git-sha=ac2c5f6; tree-clean=yes; break-sha=ac2c5f6; EXPECT=unmatched; output-sha256=ce4dcf7d908279f10fe24d55e097b802bc43365657999884b6ac58fe6fd38ce7; output-bytes=1386; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=dca3770ad7fb788cc98c3495; at=2026-09-14T19:06:51.668Z
   EXPECT-CHANGE: old=fail 0 new=G9 OK reason=derived-floor-3-measured-3-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=46d629f76a5001658f5fef05f66141cccfc4a42191ad5ecea6a8b234e362dfe8; output-bytes=320
 
 - [ ] G10: The MLX adapter converts to PEFT with proven delta-W equivalence
     CHECK: cd packages/training && node ../../scripts/assert-tests.mjs --floor 20 --label G10 -- node --test src/mlx-to-peft.test.mjs src/build-dataset.test.mjs
     EXPECT: G10 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G10; path=6765c31f4f12/53 entries; git-sha=eb69314; tree-clean=yes; break-sha=eb69314; EXPECT=unmatched; output-sha256=3cef487ca8e3fe34a880828372ae37778823326f41ea922d09b494eb43bd83f8; output-bytes=1758; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=72a42f4c08ace0f10d6072a5; at=2026-09-14T19:06:59.758Z
   EXPECT-CHANGE: old=fail 0 new=G10 OK reason=derived-floor-20-measured-20-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=a2ef3468e7e2343986db5d48ed296850c9a40cb0660d4d5969cf7b3d74440523; output-bytes=1470
 
