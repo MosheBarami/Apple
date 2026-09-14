@@ -593,3 +593,55 @@ test('the checker refuses to verify a tree the caller is not standing in', () =>
     rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+/* ------------------------------------- a fingerprint that stops reproducing --- */
+
+// An EVIDENCE line carrying a deliberately wrong output-sha256, so --reverify must decide what a
+// non-reproducing fingerprint MEANS. `tree-clean=yes` is written in so the fixture does not also
+// trip the dirty-tree reason and mask which branch fired.
+const evidence = (depsField) =>
+  `  EVIDENCE: exit=0; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=deadbee; tree-clean=yes; ` +
+  `EXPECT=matched; output-sha256=${'0'.repeat(64)}; output-bytes=1; ` +
+  `node=v1; luau=ABSENT; playwright=ABSENT; deps=0${depsField}; at=2020-01-01T00:00:00.000Z\n`;
+
+const falsified =
+  `  FALSIFIED: exit=1; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=deadbee; tree-clean=yes; ` +
+  `break-sha=deadbee; EXPECT=unmatched; output-sha256=${'1'.repeat(64)}; output-bytes=1; ` +
+  `node=v1; luau=ABSENT; playwright=ABSENT; deps=0; deps-sha=none; at=2020-01-01T00:00:00.000Z\n`;
+
+test('a record too old to carry a fingerprint is quarantined, and told how to re-baseline', () => {
+  // There IS a deadlock here — a stale output-sha256 is itself the reason the record can never be
+  // rewritten — but auto-refreshing is the wrong escape, because refreshing marks the gate MET.
+  // Closing a gate because the checker could not work out why its output moved is the overclaim
+  // this ledger exists to prevent. The escape is deliberate: delete the line, re-run, see it in
+  // the diff. So the message has to name the remedy, or the operator is merely stuck.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified + evidence(''), ['--reverify']);
+  assert.match(r.out, /QUARANTINED G1/);
+  assert.match(r.out, /delete the stale EVIDENCE line to re-baseline deliberately/);
+  assert.match(r.ledger(), /- \[ \] G1:/, 'an unexplained change must leave the gate unmet');
+});
+
+test('deleting the stale EVIDENCE line is a real escape, not just advice', () => {
+  // The positive control for the sentence above. If the remedy the message names did not actually
+  // work, the quarantine would be a dead end dressed up as guidance.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified, ['--reverify']);
+  assert.doesNotMatch(r.out, /QUARANTINED G1/);
+  assert.match(r.ledger(), /- \[x\] G1:/, 'with the stale line gone the gate must close on its own merits');
+  assert.match(r.ledger(), /EVIDENCE: exit=0;/, 'and a fresh record must be written in its place');
+});
+
+test('a fingerprint that moves with NO dependency change is still quarantined', () => {
+  // The case the check exists for: byte-identical sources, different output. That is
+  // nondeterminism or environment drift, and evidence that cannot be reproduced is not evidence.
+  // Without this the loosened rule would be a blanket amnesty rather than a discrimination.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified + evidence('; deps-sha=none'), ['--reverify']);
+  assert.match(r.out, /QUARANTINED G1 — output-sha256 does not reproduce/);
+  assert.match(r.ledger(), /- \[ \] G1:/, 'a quarantined gate must be marked unmet IN THE FILE');
+});
+
+test('a fingerprint that moves BECAUSE the dependencies moved is refreshed', () => {
+  // Both fingerprints are real and they differ, which is the one shape that explains the change.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified + evidence('; deps-sha=abc123'), ['--reverify']);
+  assert.match(r.out, /REFRESHED G1 \(its dependencies changed\)/);
+  assert.doesNotMatch(r.out, /QUARANTINED G1/);
+});

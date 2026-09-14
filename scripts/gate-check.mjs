@@ -569,6 +569,7 @@ if (REVERIFY) {
   const lines = readFileSync(FILE, 'utf8').split('\n');
   const current = new Map(parseGates(lines.join('\n')).map((g) => [g.id, g]));
   const quarantined = [];
+  const refreshed = [];
 
   for (const r of results.sort((a, b) => b.headLine - a.headLine)) {
     const now = current.get(r.id);
@@ -580,7 +581,39 @@ if (REVERIFY) {
 
     const evLine = now.evidenceLine === null ? null : lines[now.evidenceLine];
     const before = storedSha(evLine);
-    if (evLine && before && before !== sha256(normaliseOutput(r.output))) reasons.push('output-sha256 does not reproduce');
+    // The raw field, not just a hex match: `deps-sha=none` is a RECORDED absence of dependencies
+    // and must not be mistaken for a record that predates the field entirely. The two call for
+    // opposite answers.
+    const beforeDeps = /deps-sha=([0-9a-z]+)/.exec(evLine ?? '')?.[1] ?? null;
+    const nowDeps = r.depsSha ?? 'none';
+    if (evLine && before && before !== sha256(normaliseOutput(r.output))) {
+      // A fingerprint that stops reproducing means one of two very different things, and the
+      // DEPENDENCY fingerprint is what separates them.
+      //
+      // If the gate's own sources changed, the output is SUPPOSED to differ and the record is
+      // merely out of date — refreshing it is what --reverify is for. If the sources are
+      // byte-identical and the output moved anyway, that is nondeterminism or environment drift
+      // and the evidence is worthless.
+      //
+      // Collapsing the two was a deadlock, not a strictness: the stale fingerprint was itself the
+      // reason the record could never be rewritten, so the first legitimate edit to a gate's code
+      // pinned that gate at unmet permanently and no amount of green could release it. Six gates
+      // were sitting in exactly that state.
+      if (beforeDeps !== null && beforeDeps !== 'none' && nowDeps !== 'none' && beforeDeps !== nowDeps) {
+        refreshed.push(`${r.id} (its dependencies changed)`);
+      } else {
+        // Everything else is an UNEXPLAINED output change: matching fingerprints (byte-identical
+        // sources, different output — nondeterminism or environment drift), dependencies that
+        // stopped being discoverable, or a record old enough to carry no fingerprint at all.
+        //
+        // None of those may refresh automatically. Refreshing marks the gate MET, and marking a
+        // gate met because the checker could not work out why its output moved is precisely the
+        // overclaim this ledger exists to prevent. The deadlock it creates for a legacy record is
+        // real but it is not a reason to auto-close: the operator deletes that EVIDENCE line and
+        // re-runs, which re-baselines in a way that shows up in the diff as a deliberate act.
+        reasons.push('output-sha256 does not reproduce; delete the stale EVIDENCE line to re-baseline deliberately');
+      }
+    }
     if (evLine && evLine.includes('tree-clean=no')) reasons.push('recorded against a dirty tree');
 
     const untracked = checkPaths(now.check).filter((f) => !TRACKED.has(f));
@@ -606,6 +639,7 @@ if (REVERIFY) {
   const met = after.filter((g) => g.mark === 'x' || g.mark === 'X').length;
   const unmet = after.length - met;
 
+  for (const id of refreshed) console.error(`gate-check: REFRESHED ${id}`);
   for (const q of quarantined) console.error(`gate-check: QUARANTINED ${q.id} — ${q.reasons.join('; ')}`);
   console.log(`REVERIFY ${unmet === 0 ? 'GREEN' : 'RED'} — ${after.length} gates, ${met} met, ${unmet} unmet, ${quarantined.length} quarantined`);
   process.exit(unmet === 0 ? 0 : 1);
