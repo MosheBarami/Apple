@@ -172,7 +172,7 @@ and are tracked as handoffs, not gates.
     CHECK: node scripts/assert-tests.mjs --floor 60 --label G80 -- node --test tests/gate-check.test.mjs
     EXPECT: G80 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G80; path=6765c31f4f12/53 entries; git-sha=0f63a44; tree-clean=yes; break-sha=0f63a44; EXPECT=unmatched; output-sha256=eb28cdad4ca98e832f0749e688ce658be421f8680fdb19d3a32b4c6bce732208; output-bytes=10953; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=2744b3ba51d2f9dcd5722de2; at=2026-09-14T18:48:40.482Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=995484418124eff068ef96e0808215da6f588843953ffc0e312ce91b3520bed3; output-bytes=5335; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=3ade98f1dfdfe6eea7362b4b; at=2026-09-14T22:07:51.595Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=45c755f; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=995484418124eff068ef96e0808215da6f588843953ffc0e312ce91b3520bed3; output-bytes=5321; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=b95cbd9e5dfa93dec268d3cf; at=2026-09-14T22:19:39.622Z
   EXPECT-CHANGE: old=fail 0 new=G80 OK reason=derived-floor-60-measured-60-passing
 
 - [x] G22: Editing a prompt refuses before it destroys, and says what it does not undo
@@ -214,7 +214,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=2278ce5a5c25a1c7f640515345bef11be3d37f482a24d65af8e589892a7b26dc; output-bytes=5336; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=3ade98f1dfdfe6eea7362b4b; at=2026-09-14T22:07:51.529Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=45c755f; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=2278ce5a5c25a1c7f640515345bef11be3d37f482a24d65af8e589892a7b26dc; output-bytes=5335; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=b95cbd9e5dfa93dec268d3cf; at=2026-09-14T22:19:39.609Z
 
 - [x] G-CRITIC-1: The visual critic runs on a product path and cannot report a clean build for checks it never ran
     STATION: S7
@@ -235,7 +235,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 10 --label G-ORACLE-3 -- node --test tests/check-offer.test.mjs
     EXPECT: G-ORACLE-3 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=bb950a2; tree-clean=yes; break-sha=bb950a2; EXPECT=unmatched; output-sha256=b0e693611e44be491249feb1d509c916abf43c600bd71898bc61d9ef834ea4fb; output-bytes=2708; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=ea1d9269dc458fe65a6c7077; at=2026-09-14T20:21:27.228Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=a31187467c7a29acaf5ca4018fef63f8e085c3f612a369df3329dfa65ff0ed0d; output-bytes=1799; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=db1bd47dea7bdffdb77bfc01; at=2026-09-14T22:07:51.490Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=45c755f; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=a31187467c7a29acaf5ca4018fef63f8e085c3f612a369df3329dfa65ff0ed0d; output-bytes=1800; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=b707142fe913a314abdf7a9a; at=2026-09-14T22:19:39.597Z
 
 - [x] G-CRITIC-2: The critic's rules, evidence gate and adjudication behave as specified
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-2 -- node --test packages/evals/src/critic.test.mjs
@@ -265,7 +265,7 @@ test it gated.
     CHECK: node scripts/check-offer.mjs
     EXPECT: OFFER COHERENT
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=29018b9; tree-clean=yes; break-sha=29018b9; EXPECT=unmatched; output-sha256=fcebe58a239c5b68fa57a47aec6dd3b5bc655e8207d73817bca996d5a3e1e599; output-bytes=596; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=648cbe8fc366b1efbb1cc5a6; at=2026-09-14T20:20:09.342Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=b6d9299; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=f4ccde365c988568dae783b3336e792eaaec026e6cb6f04e0f95cc52f119b47e; output-bytes=451; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=4259f133dc12715205575c8b; at=2026-09-14T22:10:35.758Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=45c755f; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=f4ccde365c988568dae783b3336e792eaaec026e6cb6f04e0f95cc52f119b47e; output-bytes=451; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=4259f133dc12715205575c8b; at=2026-09-14T22:19:39.583Z
 
 ---
 
@@ -275,7 +275,7 @@ test it gated.
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=7203563bb7c85f29993cf1772330153665c5c4f32eac8991b7f6b013bab6ec1c; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=236; deps-sha=5cb1b19ab8228ca880c23092; at=2026-09-14T22:07:51.437Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=45c755f; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=1309f29836a07ce42761b4f4e77ab4a06833dac1daeb4c008420ac66bfebf2fe; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=237; deps-sha=cd686382fd038f676742dc5d; at=2026-09-14T22:19:39.569Z
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
