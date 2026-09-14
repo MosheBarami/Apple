@@ -1,6 +1,23 @@
 // Uploads built frontends into the worker's D1 static store.
-//   node infra/deploy-static.mjs [--only site|web|file <local> <remote>]
+//   node infra/deploy-static.mjs [--only site|web]
+//   node infra/deploy-static.mjs --file <local> <remote>
 // Env: API_BASE, GOLEM_ADMIN_KEY (from repo .env)
+//
+// THE SECOND LINE USED TO BE DOCUMENTED AS `--only file <local> <remote>`, WHICH UPLOADS NOTHING.
+// The code branches on `args[0] === '--file'`, so the documented spelling set `only = 'file'`,
+// matched neither 'site' nor 'web', skipped both directories and printed `done`. A command that
+// reports success having transferred zero bytes.
+//
+// That matters more than a typo because `--file` is the ROLLBACK path: it is what puts a captured
+// copy of a page back over a bad one. So the failure mode was a restore that silently does nothing
+// and says it worked, discovered at the only moment anyone runs it — during a bad deploy, under
+// pressure, when nobody re-reads the source. An unknown `--only` value is now an error.
+//
+// UPLOAD ORDER IS DELIBERATE. This is not transactional: each file is a separate POST, and large
+// files are chunked with `append`, so a failure part-way leaves a mixed site. Content-addressed
+// assets go FIRST and pages LAST, because the survivable mixed state is old pages pointing at
+// assets that all exist. The reverse — new pages referencing assets that never uploaded — is a
+// broken site rather than a stale one.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -41,9 +58,25 @@ function* walk(dir) {
   }
 }
 
+/**
+ * Content-addressed assets first, everything else after, pages last.
+ *
+ * A hashed asset can never overwrite a different file — its name contains its content — so
+ * uploading it early is free of risk, and it is what the new pages will ask for.
+ */
+function inUploadOrder(dir) {
+  const files = [...walk(dir)];
+  // The same path normalisation `upload` applies, so the immutability test agrees with the name
+  // the file is actually stored under — on Windows `relative` yields backslashes and HASHED,
+  // which looks for /_astro/ and /assets/, would match nothing.
+  const remoteOf = (f) => '/' + relative(dir, f).split('\\').join('/');
+  const rank = (f) => (HASHED.test(remoteOf(f)) ? 0 : /\.html$/.test(remoteOf(f)) ? 2 : 1);
+  return files.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
 async function uploadDir(dir, prefix) {
   let count = 0, bytes = 0;
-  for (const file of walk(dir)) {
+  for (const file of inUploadOrder(dir)) {
     const rel = '/' + relative(dir, file).split('\\').join('/');
     const remote = prefix === '/' ? rel : prefix + rel;
     bytes += await upload(file, remote);
@@ -60,7 +93,23 @@ if (args[0] === '--file') {
   console.log(`uploaded ${args[2]} (${size}B)`);
 } else {
   const only = args[0] === '--only' ? args[1] : null;
-  if (!only || only === 'site') await uploadDir(join(root, 'apps/site/dist'), '/');
-  if (!only || only === 'web') await uploadDir(join(root, 'apps/web/dist'), '/app');
-  console.log('done');
+  // An unrecognised target is an error, never a silent no-op. This is the line that used to let
+  // `--only file ...` transfer nothing and report success.
+  if (args.length && args[0] !== '--only') {
+    console.error(`deploy-static: unrecognised argument ${args[0]} — use --only site|web, or --file <local> <remote>`);
+    process.exit(2);
+  }
+  if (only !== null && only !== 'site' && only !== 'web') {
+    console.error(`deploy-static: --only takes site or web, not ${only === undefined ? '(nothing)' : only}`);
+    process.exit(2);
+  }
+  let total = 0;
+  if (!only || only === 'site') total += (await uploadDir(join(root, 'apps/site/dist'), '/')).count;
+  if (!only || only === 'web') total += (await uploadDir(join(root, 'apps/web/dist'), '/app')).count;
+  // A run that uploaded nothing has not deployed, whatever the arguments looked like.
+  if (total === 0) {
+    console.error('deploy-static: 0 files uploaded — nothing was deployed');
+    process.exit(2);
+  }
+  console.log(`done — ${total} file(s)`);
 }

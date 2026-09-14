@@ -9,7 +9,20 @@
 // paired plugin; this script reports their reachability honestly rather than
 // pretending to have exercised them. See the STUDIO section of the output.
 //
-//   node infra/smoke.mjs [--mode clay|stone] [--text "..."]
+//   node infra/smoke.mjs [--mode clay|stone] [--text "..."] [--no-model] [--studio]
+//
+// --no-model  do not send a chat turn. The model-dependent checks are reported SKIP and counted,
+//             never silently dropped. §10 invokes this script with this flag; until now the flag
+//             DID NOT EXIST — it appeared in docs/MISSION-PROMPT.md, docs/CHECKPOINT.md and
+//             docs/backlog/OWNER-HANDOFF.md, and nowhere in this file, while line ~168 ran a real
+//             agent turn unconditionally. So the one flag whose job was to stop this script
+//             spending money was ignored by the only program that could honour it.
+//
+// --studio    exercise the plugin round-trip, which POSTs to /api/admin/studio-op. OFF by default:
+//             §12.5 says a smoke run may never go against /api/admin/*, and the previous guard was
+//             `if (ADMIN)` — which is always true, because this file reads .env into process.env
+//             at startup and GOLEM_ADMIN_KEY lives there. A guard on a value the script itself
+//             guarantees is not a guard.
 import { readFileSync } from 'node:fs';
 
 const root = new URL('..', import.meta.url).pathname;
@@ -37,11 +50,70 @@ const arg = (flag, dflt) => {
 };
 const MODE = arg('--mode', 'clay');
 const TEXT = arg('--text', 'In one sentence, what is in this project right now?');
+const NO_MODEL = process.argv.includes('--no-model');
+const STUDIO = process.argv.includes('--studio');
+
+// An unrecognised flag is an error. This whole repair exists because `--no-model` was passed for
+// several passes and silently ignored, so a typo here must never again be indistinguishable from
+// a flag that works.
+const KNOWN = new Set(['--mode', '--text', '--no-model', '--studio']);
+for (let i = 2; i < process.argv.length; i += 1) {
+  const a = process.argv[i];
+  if (!a.startsWith('--')) continue;
+  if (!KNOWN.has(a)) {
+    console.error(`smoke: unrecognised flag ${a} — known: ${[...KNOWN].join(', ')}`);
+    process.exit(2);
+  }
+  if (a === '--mode' || a === '--text') i += 1;
+}
+
+// ---------------------------------------------------- the §12.5 spend ceiling ---
+//
+// REFUSE BEFORE SPENDING, NOT REPORT AFTER. §12.5 caps a pass at 500 neurons. A `stone` turn is
+// 4-18 Sparks and a `rune` one 10-30, which at 30 neurons per Spark is up to 540 and 900 — so a
+// single documented invocation of this script can blow the whole pass ceiling, and nothing in it
+// knew the ceiling existed. Clay, at 2 Sparks / 60 neurons, is the only mode that fits.
+//
+// Both numbers are DERIVED from the files the product actually bills with — `typicalSparks` in
+// @golem/shared and NEURONS_PER_SPARK in the worker's pricing — rather than restated here, because
+// a ceiling check that keeps its own copy of the prices stops agreeing with them and then permits
+// exactly what it was written to refuse. An unreadable source is a hard error, never a default:
+// failing open on a spend guard is the one direction that costs money.
+const SPEND_CEILING_NEURONS = 500; // §12.5, the owner's number; there is no machine source for it.
+if (!NO_MODEL) {
+  const shared = readFileSync(root + '/packages/shared/src/index.ts', 'utf8');
+  const pricing = readFileSync(root + '/apps/worker/src/pricing.ts', 'utf8');
+  const perSpark = Number(pricing.match(/NEURONS_PER_SPARK\s*=\s*(\d+)/)?.[1]);
+  const typical = shared.match(new RegExp(`\\b${MODE}:\\s*\\{[^}]*typicalSparks:\\s*'([^']+)'`))?.[1];
+  if (!Number.isFinite(perSpark) || !typical) {
+    console.error(`smoke: cannot derive the cost of --mode ${MODE} (perSpark=${perSpark}, typicalSparks=${typical}).`);
+    console.error('Refusing to run a model turn against an unknown price. This is deliberate: a spend guard that cannot read the prices must not fall back to permitting the spend.');
+    process.exit(2);
+  }
+  // The UPPER end of the range. A ceiling checked against the optimistic figure is not a ceiling.
+  const worstSparks = Math.max(...typical.split('-').map(Number));
+  const worstNeurons = worstSparks * perSpark;
+  if (worstNeurons > SPEND_CEILING_NEURONS) {
+    console.error(`smoke: --mode ${MODE} costs up to ${worstSparks} Sparks = ${worstNeurons} neurons, over the §12.5 ceiling of ${SPEND_CEILING_NEURONS} per pass.`);
+    console.error('Use --no-model, or --mode clay. Refused before spending rather than reported after.');
+    process.exit(2);
+  }
+  console.log(`spend — --mode ${MODE} is at most ${worstSparks} Sparks = ${worstNeurons} neurons, within the ${SPEND_CEILING_NEURONS} ceiling`);
+}
 
 const checks = [];
 const check = (name, pass, detail = '') => {
   checks.push({ name, pass, detail });
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}`);
+};
+
+// A skipped check is RECORDED, not dropped. Shrinking the denominator instead would let a run that
+// exercised none of the agent report "12/12 checks passed" — the same shape as `node --test`
+// reporting `fail 0` over a file with no tests left in it.
+const skipped = [];
+const skip = (name, why) => {
+  skipped.push({ name, why });
+  console.log(`SKIP  ${name}  — ${why}`);
 };
 
 const t0 = Date.now();
@@ -98,7 +170,10 @@ check('tenant isolation — a project this account does not own is not readable'
 
 // --------------------------------------------------------------- studio ---
 let studioReachable = false;
-if (ADMIN) {
+if (ADMIN && !STUDIO) {
+  skip('studio — plugin round-trip', 'needs --studio: this POSTs /api/admin/studio-op, which §12.5 bars a smoke run from touching');
+}
+if (ADMIN && STUDIO) {
   const t = Date.now();
   const op = await fetch(`${BASE}/api/admin/studio-op/${project.id}`, {
     method: 'POST',
@@ -165,25 +240,42 @@ const runOnce = () =>
     ws.onerror = () => { clearTimeout(timer); resolve('ws-error'); };
   });
 
-console.log(`\n--- running a real ${MODE} turn against ${BASE} ---`);
-const stopReason = await runOnce();
+// THE ONLY PART OF THIS SCRIPT THAT SPENDS MONEY.
+//
+// A clay turn is ~29 neurons and a stone one ~1,266 against a §12.5 ceiling of 500 per pass, so
+// whether this block runs is a budget decision and has to be one the caller can actually make.
+if (NO_MODEL) {
+  for (const name of [
+    'chat — a real agent turn completes',
+    'chat — the assistant produced text',
+    'activity — the worker announced real phases',
+    'activity — a typed phase union is used (no ad-hoc strings)',
+    'intent — run_intent was emitted with real derived content',
+    'tools — tool_end carries structured detail for the typed UI registry',
+    'no protocol errors were broadcast',
+    'persistence — the turn was written to history',
+  ]) skip(name, 'not run: --no-model');
+} else {
+  console.log(`\n--- running a real ${MODE} turn against ${BASE} ---`);
+  const stopReason = await runOnce();
 
-check('chat — a real agent turn completes', ['done', 'incomplete'].includes(stopReason), `stopReason=${stopReason}`);
-check('chat — the assistant produced text', finalText.trim().length > 0, `${finalText.trim().length} chars`);
-check('activity — the worker announced real phases', seen.phases.length > 0, seen.phases.join(' → '));
-check('activity — a typed phase union is used (no ad-hoc strings)',
-  seen.phases.every((p) => [
-    'understanding','planning','inspecting','building','writing_luau','rendering','critiquing',
-    'rebuilding','playtesting','debugging','verifying','checkpointing','remembering','done',
-  ].includes(p)), [...new Set(seen.phases)].join(','));
-check('intent — run_intent was emitted with real derived content', seen.intent !== null,
-  seen.intent ? `checklist=${JSON.stringify(seen.intent.checklist).slice(0, 80)}` : 'not emitted');
-if (seen.tools.length) {
-  check('tools — tool_end carries structured detail for the typed UI registry',
-    seen.tools.some((t) => t.hasDetail),
-    `${seen.tools.filter((t) => t.hasDetail).length}/${seen.tools.length} with detail`);
+  check('chat — a real agent turn completes', ['done', 'incomplete'].includes(stopReason), `stopReason=${stopReason}`);
+  check('chat — the assistant produced text', finalText.trim().length > 0, `${finalText.trim().length} chars`);
+  check('activity — the worker announced real phases', seen.phases.length > 0, seen.phases.join(' → '));
+  check('activity — a typed phase union is used (no ad-hoc strings)',
+    seen.phases.every((p) => [
+      'understanding','planning','inspecting','building','writing_luau','rendering','critiquing',
+      'rebuilding','playtesting','debugging','verifying','checkpointing','remembering','done',
+    ].includes(p)), [...new Set(seen.phases)].join(','));
+  check('intent — run_intent was emitted with real derived content', seen.intent !== null,
+    seen.intent ? `checklist=${JSON.stringify(seen.intent.checklist).slice(0, 80)}` : 'not emitted');
+  if (seen.tools.length) {
+    check('tools — tool_end carries structured detail for the typed UI registry',
+      seen.tools.some((t) => t.hasDetail),
+      `${seen.tools.filter((t) => t.hasDetail).length}/${seen.tools.length} with detail`);
+  }
+  check('no protocol errors were broadcast', seen.errors.length === 0, seen.errors.join('; '));
 }
-check('no protocol errors were broadcast', seen.errors.length === 0, seen.errors.join('; '));
 
 // ------------------------------------------------- reconnect / replay -----
 // A finished run must replay as "no live run". The point is that the resume
@@ -207,16 +299,25 @@ const replay = await new Promise((resolve) => {
 check('reconnect — the resume handler answers with a run_state', replay !== undefined,
   replay ? `run=${replay.run === null ? 'null (idle, correct)' : 'live snapshot'}` : 'no reply within 20s');
 
-// ------------------------------------------------------ history persist ---
-const msgs = await (
-  await fetch(`${BASE}/api/projects/${project.id}/messages`, { headers: { Authorization: `Bearer ${jwt}` } })
-).json();
-check('persistence — the turn was written to history',
-  Array.isArray(msgs.messages) && msgs.messages.length > 0, `${msgs.messages?.length} messages`);
+// History is only evidence of THIS run if this run sent something. With --no-model the account's
+// existing messages would satisfy `length > 0` while proving nothing, so the check is skipped
+// above rather than passed on somebody else's turn.
+if (!NO_MODEL) {
+  // ------------------------------------------------------ history persist ---
+  const msgs = await (
+    await fetch(`${BASE}/api/projects/${project.id}/messages`, { headers: { Authorization: `Bearer ${jwt}` } })
+  ).json();
+  check('persistence — the turn was written to history',
+    Array.isArray(msgs.messages) && msgs.messages.length > 0, `${msgs.messages?.length} messages`);
+}
 
 // ------------------------------------------------------------- summary ---
 const failed = checks.filter((c) => !c.pass);
-console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`);
+console.log(`\n${checks.length - failed.length}/${checks.length} checks passed${skipped.length ? `, ${skipped.length} SKIPPED` : ''}`);
+if (skipped.length) {
+  console.log('\nSKIPPED — these were not exercised, and this run is not a full smoke:');
+  for (const sk of skipped) console.log(`  - ${sk.name} (${sk.why})`);
+}
 if (!studioReachable) {
   console.log('\nSTUDIO: not paired to this project — build, checkpoint, restore and playtest');
   console.log('were NOT exercised. This is reported, not worked around.');
