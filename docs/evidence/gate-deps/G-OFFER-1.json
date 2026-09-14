@@ -1,5 +1,6 @@
 [
   "apps/worker/src/pricing.ts",
   "packages/shared/src/index.ts",
-  "scripts/check-offer.mjs"
+  "scripts/check-offer.mjs",
+  "scripts/lib/offer-rules.mjs"
 ]
