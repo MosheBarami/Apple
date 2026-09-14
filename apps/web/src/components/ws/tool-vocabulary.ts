@@ -127,6 +127,7 @@ export const TOOL = {
   run_spec: { kind: 'verifying', label: 'Ran a spec against the project' },
   select_instances: { kind: 'editing', label: 'Selected it in Studio' },
   viewport_info: { kind: 'inspecting', label: 'Looked at the workspace layout' },
+  install_module: { kind: 'writing_luau', label: 'Installed a vetted module' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },

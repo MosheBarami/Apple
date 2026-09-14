@@ -35,6 +35,7 @@ import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau } from './effects';
 import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { runCriticPanel, formatPanelReport } from './critic';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
+import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
 
 export interface AgentCtx {
   env: Env;
@@ -1460,6 +1461,63 @@ export const TOOLS: Record<string, ToolImpl> = {
           .map((c) => `${c.status === 'pass' ? 'PASS' : 'FAIL'}  ${c.name}${c.message ? ` — ${c.message}` : ''}`)
           .join('\n'),
         ...(missing.length ? { didNotRun: missing } : {}),
+      };
+    },
+  },
+  /**
+   * INSTALL A VETTED MODULE instead of writing it again.
+   *
+   * The roadmap briefs now say what correct looks like for saving, for remote validation and for
+   * receipts. A brief is an instruction, and an instruction is re-followed from scratch on every
+   * project with a fresh chance to drop one clause — and the clause that gets dropped is always the
+   * one whose absence is silent. These are the same rules as code, written once, compiled in CI.
+   *
+   * Rides `edit_script`, which already creates a ModuleScript when given `create`. The source comes
+   * from a table in this repository, never from the model, so nothing here is model-authored Luau.
+   */
+  install_module: {
+    def: {
+      name: 'install_module',
+      description:
+        'Install a vetted, self-contained ModuleScript for a system whose failures are silent and expensive. Prefer this to writing one of these yourself — they encode the specific Roblox behaviour that is easy to get subtly wrong. Each is one file with no dependencies on the others, and the user can read it.\n\n' +
+        prefabCatalogue()
+          .map((p) => `  ${p.id} — ${p.summary}\n      prevents: ${p.prevents.join('; ')}`)
+          .join('\n'),
+      parameters: S(
+        {
+          module: { type: 'string', enum: PREFAB_IDS, description: 'Which module to install.' },
+          parent: { type: 'string', description: 'Where to put it. Defaults to the module\'s own recommended parent.' },
+        },
+        ['module'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const id = String(a.module ?? '');
+      const prefab = PREFABS[id];
+      if (!prefab) return { error: `unknown module "${id}". Choose one of: ${PREFAB_IDS.join(', ')}.` };
+
+      const parent = String(a.parent ?? '').trim() || prefab.defaultParent;
+      // The parent is concatenated into an instance path. A quote, backslash, newline or control
+      // character is not a path, and refusing is cheaper than reasoning about what would happen.
+      if (!/^[A-Za-z0-9_.]+$/.test(parent)) {
+        return { error: `"${parent}" is not a valid instance path — use dotted names such as game.ServerScriptService` };
+      }
+
+      const path = `${parent}.${prefab.moduleName}`;
+      const res = await op(ctx, {
+        op: 'edit_script',
+        path,
+        source: prefab.source,
+        create: { className: prefab.className, parent },
+      });
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      return {
+        installed: prefab.moduleName,
+        at: path,
+        api: prefab.api,
+        next: `require(${path}) from a Script in ServerScriptService. Read it before changing it — the comments say which lines are load-bearing.`,
       };
     },
   },
