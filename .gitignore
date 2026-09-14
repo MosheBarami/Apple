@@ -66,3 +66,12 @@ packages/training/mlxdata/
 # unlazy Stop hook session state — machine-specific, and tracking it makes every tree dirty
 .unlazy-hook-state.json
 .unlazy/
+
+# Pixel frames are written on every check-pixels run and a full capture is ~21MB. The BASELINE is
+# committed, because a regression is measured against it, and §16.10 wants the final pass's capture
+# committed as evidence. Interim captures are local: they exist to be looked at, not to be carried
+# in history. They are ignored rather than deleted — §18 forbids discarding an untracked path, and
+# a frame somebody is mid-way through reviewing is exactly the kind of thing that rule protects.
+docs/evidence/pixels/*
+!docs/evidence/pixels/baseline/
+!docs/evidence/pixels/final/
