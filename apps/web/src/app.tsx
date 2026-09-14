@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from './components/error-boundary';
 import { ToastProvider } from './components/toast';
+import { CommandProvider } from './lib/commands';
 import { Cursor, Grain } from './components/atmosphere';
 import { ThemeProvider } from './lib/theme';
 import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
@@ -56,6 +57,9 @@ export function App() {
           <ToastProvider>
             <BrowserRouter basename="/app">
               <AuthProvider>
+                {/* Inside AuthProvider and the router: commands navigate and act as the signed-in
+                    user, so the registry has to sit where both are available. */}
+                <CommandProvider>
                 <Routes>
                   <Route
                     path="/login"
@@ -106,6 +110,7 @@ export function App() {
                     <Route path="*" element={<NotFoundPage />} />
                   </Route>
                 </Routes>
+                </CommandProvider>
               </AuthProvider>
             </BrowserRouter>
             <Grain />

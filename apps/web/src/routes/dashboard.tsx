@@ -1,17 +1,21 @@
 // / — the project shelf: create, open, delete.
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import { purgeProject } from '../lib/api';
+import { downloadExport, purgeProject, ApiError } from '../lib/api';
+import { PROJECT_NAME_MAX, isRenameWorthwhile, useRenameProject } from '../lib/rename-project';
 import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
 import { useToast } from '../components/toast';
 import { EmptyState } from '../components/empty-state';
+import { useCommands } from '../lib/commands';
+import { useProvideNewProject } from '../lib/shell';
+import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 
 async function fetchProjects(): Promise<ProjectRow[]> {
   if (MOCK_MODE) return mockProjects;
@@ -23,7 +27,7 @@ async function fetchProjects(): Promise<ProjectRow[]> {
   return (data ?? []) as ProjectRow[];
 }
 
-function ProjectMenu({ onDelete }: { onDelete: () => void }) {
+function ProjectMenu({ onDelete, onExport, onRename }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -65,6 +69,46 @@ function ProjectMenu({ onDelete }: { onDelete: () => void }) {
       </button>
       {open && (
         <div className="menu-pop" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onRename();
+            }}
+          >
+            Rename…
+          </button>
+          {/* Markdown first: it is what someone actually reads. JSON is for feeding somewhere. */}
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onExport('md');
+            }}
+          >
+            Export conversation (Markdown)
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onExport('json');
+            }}
+          >
+            Export conversation (JSON)
+          </button>
           <button
             type="button"
             role="menuitem"
@@ -162,6 +206,68 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/**
+ * Rename a project.
+ *
+ * The write goes straight to Supabase under RLS, exactly like create and delete do — there is no
+ * worker route because there is nothing for one to do. `withOwnedProject` posts the CURRENT name
+ * from Supabase to the Durable Object's `/init` on every single request, so the session picks the
+ * new name up on its next call without being told. A rename endpoint would exist only to repeat
+ * that, and would then be a second place where the name could be wrong.
+ */
+function RenameProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
+  const { toast } = useToast();
+  const [name, setName] = useState(project.name);
+
+  const rename = useRenameProject(project.id, project.name, {
+    onDone: (next) => {
+      toast(`Renamed to "${next}"`, 'success');
+      onClose();
+    },
+    onFail: (msg) => toast(`Rename failed: ${msg}`, 'error'),
+  });
+
+  const canSave = isRenameWorthwhile(name, project.name) && !rename.isPending;
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!canSave) return;
+    rename.mutate(name);
+  };
+
+  return (
+    <Modal title="Rename project" onClose={onClose} locked={rename.isPending}>
+      <form onSubmit={onSubmit}>
+        <label className="field">
+          <span className="field-label">Name</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={PROJECT_NAME_MAX}
+            required
+            name="renameProjectName"
+            id="rename-project-name"
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+          />
+        </label>
+        <p className="field-hint">
+          Only the name changes. The Studio pairing, chat history and everything Apple has built stay
+          where they are.
+        </p>
+        <div className="modal-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={rename.isPending}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={!canSave}>
+            {rename.isPending ? 'Renaming…' : 'Rename'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -213,7 +319,55 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 export function DashboardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
+  const [renaming, setRenaming] = useState<ProjectRow | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
   const projects = useQuery({ queryKey: ['projects'], queryFn: fetchProjects });
+  const { toast } = useToast();
+
+  // Stable identity: the shell stores this and re-registering on every render
+  // would reset the handoff each time the project list refetched.
+  const openCreate = useCallback(() => setShowCreate(true), []);
+  useProvideNewProject(openCreate);
+
+  // Two commands, not five. Rename, Delete and Export act on ONE project, and
+  // the palette has no notion of which card is selected — a "Rename project"
+  // entry here would have to guess, and guessing wrong renames the wrong thing.
+  // Those stay on the card menu until there is a selection model to target.
+  useCommands([
+    {
+      id: 'dash-new',
+      title: 'New project',
+      section: 'Projects',
+      keywords: ['create', 'summon', 'start'],
+      hint: shortcutLabel(SHORTCUTS.newProject),
+      run: openCreate,
+    },
+    {
+      id: 'dash-refresh',
+      title: 'Refresh projects',
+      section: 'Projects',
+      keywords: ['reload', 'sync', 'update'],
+      enabled: !projects.isFetching,
+      why: 'Already refreshing',
+      run: () => void projects.refetch(),
+    },
+  ]);
+
+  // An export of a long conversation is not instant, and a menu that closes with nothing visibly
+  // happening reads as a broken button. Say it started, and say if it failed.
+  const runExport = async (project: ProjectRow, format: 'md' | 'json') => {
+    if (exporting) return;
+    setExporting(project.id);
+    toast(`Preparing ${project.name} as ${format === 'md' ? 'Markdown' : 'JSON'}…`, 'info');
+    try {
+      await downloadExport(project.id, format);
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : 'Export failed';
+      toast(msg, 'error');
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
     <div className="page">
@@ -270,7 +424,7 @@ export function DashboardPage() {
             <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
               <div className="project-card-top">
                 <h2 className="project-card-name">{p.name}</h2>
-                <ProjectMenu onDelete={() => setDeleting(p)} />
+                <ProjectMenu onDelete={() => setDeleting(p)} onExport={(f) => void runExport(p, f)} onRename={() => setRenaming(p)} />
               </div>
               <p className="project-card-desc">
                 {p.memory_summary
@@ -320,6 +474,7 @@ export function DashboardPage() {
       )}
 
       {showCreate && <CreateProjectModal onClose={() => setShowCreate(false)} />}
+      {renaming && <RenameProjectModal project={renaming} onClose={() => setRenaming(null)} />}
       {deleting && <DeleteProjectModal project={deleting} onClose={() => setDeleting(null)} />}
     </div>
   );

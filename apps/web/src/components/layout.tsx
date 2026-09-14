@@ -20,6 +20,10 @@ import { fetchMe } from '../lib/api';
 import { shortRelative } from '../lib/format';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
+import { useCommands } from '../lib/commands';
+import { CommandPalette } from './command-palette';
+import { ShortcutsDialog, useGlobalShortcut } from './shortcuts-dialog';
+import { SHORTCUTS, matchesShortcut, shortcutLabel } from '../lib/shortcuts';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import { AppleGlyph } from './glyphs';
@@ -177,8 +181,8 @@ function Rail({ name, email, isAdmin }: { name: string | null; email: string; is
       <Link to="/" className="gx-new" title="New chat">
         <Icon d={PATH.compose} size={16} />
         <span className="gx-new__label">New chat</span>
-        <kbd className="gx-kbd" aria-hidden="true">
-          ⌘K
+        <kbd className="gx-kbd" dir="ltr" aria-hidden="true">
+          {shortcutLabel(SHORTCUTS.newProject)}
         </kbd>
       </Link>
 
@@ -253,10 +257,12 @@ function Rail({ name, email, isAdmin }: { name: string | null; email: string; is
 /* ---------------------------------------------------------------- shell --- */
 
 function Shell() {
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { railOpen, closeRail, railCollapsed } = useShell();
+  const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, newProject } = useShell();
+  const { theme, setTheme } = useTheme();
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
   const isAdmin = me.data?.profile?.is_admin === true;
@@ -271,16 +277,39 @@ function Shell() {
         closeRail();
         return;
       }
-      // The ⌘K badge on "New chat" has to mean something, so it does.
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      // ⌘K used to come here, to New chat. It now opens the command palette, which is what ⌘K
+      // means everywhere else and therefore what people try first. New chat moved to ⌘⇧N and the
+      // badge beside it says so — a shortcut nobody can see is one nobody uses.
+      //
+      // This used to end at navigate('/'), which is not what the binding is called: the user
+      // pressed "New project" and landed on the shelf with nothing open, having to find the
+      // button by hand. It now asks the shell, which opens the dialog here or arms it for the
+      // dashboard to open as it mounts.
+      if (matchesShortcut(e, SHORTCUTS.newProject)) {
         e.preventDefault();
         closeRail();
-        navigate('/');
+        if (location.pathname !== '/') navigate('/');
+        newProject();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [railOpen, closeRail, navigate]);
+  }, [railOpen, closeRail, navigate, newProject, location.pathname]);
+
+  useGlobalShortcut(SHORTCUTS.help, () => setShowShortcuts(true));
+
+  // Global commands: available on every route because the shell is mounted on every route.
+  useCommands([
+    { id: 'nav-projects', title: 'Go to projects', section: 'Navigate', keywords: ['dashboard', 'home'], run: () => navigate('/') },
+    { id: 'new-project', title: 'New project', section: 'Navigate', keywords: ['create', 'chat', 'summon'], hint: shortcutLabel(SHORTCUTS.newProject), run: () => { if (location.pathname !== '/') navigate('/'); newProject(); } },
+    { id: 'nav-usage', title: 'Usage', section: 'Navigate', keywords: ['credits', 'spend', 'billing'], run: () => navigate('/usage') },
+    { id: 'nav-settings', title: 'Settings', section: 'Navigate', keywords: ['preferences', 'account', 'profile'], run: () => navigate('/settings') },
+    ...(isAdmin ? [{ id: 'nav-admin', title: 'Admin', section: 'Navigate', keywords: ['ops'], run: () => navigate('/admin') }] : []),
+    { id: 'toggle-rail', title: railCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar', section: 'View', keywords: ['nav', 'panel'], run: toggleRailCollapsed },
+    { id: 'toggle-theme', title: theme === 'dark' ? 'Switch to light' : 'Switch to dark', section: 'View', keywords: ['theme', 'dark', 'light', 'appearance'], run: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
+    { id: 'shortcuts', title: 'Keyboard shortcuts', section: 'View', keywords: ['keys', 'hotkeys', 'bindings'], hint: shortcutLabel(SHORTCUTS.help), run: () => setShowShortcuts(true) },
+    { id: 'sign-out', title: 'Sign out', section: 'Account', keywords: ['logout', 'log out', 'leave'], run: () => void signOut() },
+  ]);
 
   const email = session?.user.email ?? me.data?.email ?? (MOCK_MODE ? 'builder@example.com' : '');
   const name = me.data?.profile?.display_name ?? null;
@@ -300,6 +329,9 @@ function Shell() {
       <main id="main-content" className="gx-main">
         <Outlet />
       </main>
+
+      <CommandPalette />
+      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
     </div>
   );
 }

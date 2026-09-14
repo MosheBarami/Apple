@@ -1,6 +1,7 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { Hono } from 'hono';
 import { verifyStripeSignature, interpretStripeEvent, entitlementFor } from './billing';
+import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
@@ -172,6 +173,50 @@ app.get('/api/projects/:id/messages', async (c) => {
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const url = new URL(c.req.url);
   return ctx.stub.fetch(`https://do/messages?${url.searchParams}`);
+});
+
+/**
+ * Search one project's conversation.
+ *
+ * Server-side because `/messages` only pages the most recent hundred into the client: a filter over
+ * that window answers "not found" for text that IS in the conversation, and nothing distinguishes
+ * that from the true answer. The query is forwarded rather than re-parsed here so the DO owns one
+ * definition of what counts as a match.
+ */
+app.get('/api/projects/:id/search', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const url = new URL(c.req.url);
+  return ctx.stub.fetch(`https://do/search?${url.searchParams}`);
+});
+
+/**
+ * The whole conversation as a file, in JSON or Markdown.
+ *
+ * `format=md` is rendered SERVER-SIDE from the same payload the JSON export returns, so the two
+ * cannot drift: a Markdown transcript assembled separately in the browser would be a second
+ * implementation of "what the conversation was", and they would disagree the first time either one
+ * changed.
+ *
+ * Ownership goes through `withOwnedProject` like every other project route — an export is a
+ * complete copy of a project's history and is exactly the thing that must not read across tenants.
+ */
+app.get('/api/projects/:id/export', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+
+  const res = await ctx.stub.fetch('https://do/export');
+  if (!res.ok) return c.json({ error: 'export failed' }, 502);
+  const data = (await res.json()) as TranscriptExport;
+
+  const md = c.req.query('format') === 'md';
+  const body = md ? renderTranscriptMarkdown(data) : JSON.stringify(data, null, 2);
+  return new Response(body, {
+    headers: {
+      'Content-Type': md ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${exportFilename(data.project.name, data.exportedAt, md ? 'md' : 'json')}"`,
+    },
+  });
 });
 
 app.get('/api/projects/:id/checkpoints', async (c) => {

@@ -599,6 +599,55 @@
   text-overflow: ellipsis;
 }
 
+/* The title as a rename affordance.
+   It has to read as a heading first and a control second: a topbar where the project name looks
+   like a button competes with the actions beside it for the eye, and the name is not an action.
+   So it is bare until hover or focus, and then it is unmistakably editable. */
+.gx-title-edit {
+  appearance: none;
+  border: 1px solid transparent;
+  background: none;
+  padding-block: 2px;
+  padding-inline: 6px;
+  margin-inline-start: -6px;
+  border-radius: 6px;
+  font: inherit;
+  text-align: start;
+  cursor: text;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.gx-title-edit:hover:not(:disabled) {
+  background: var(--gx-surface-2, rgb(255 255 255 / 6%));
+  border-color: var(--gx-line, rgb(255 255 255 / 10%));
+}
+
+.gx-title-edit:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 1px;
+}
+
+.gx-title-edit:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.gx-title-input {
+  min-width: 0;
+  padding-block: 2px;
+  padding-inline: 6px;
+  margin-inline-start: -6px;
+  border: 1px solid var(--gx-accent, #6aa7ff);
+  border-radius: 6px;
+  background: var(--gx-surface, rgb(0 0 0 / 20%));
+  color: var(--gx-ink);
+  font: inherit;
+}
+
+.gx-title-input:focus {
+  outline: none;
+}
+
 .gx-top__when {
   flex: none;
   color: var(--gx-ink-3);
@@ -2870,3 +2919,302 @@
 .cr-ids { gap: 0.25rem; font-size: 0.8rem; color: var(--ink-2); }
 
 .cr-stamp { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--ink-3); }
+
+/* ------------------------------------------------------------ command palette --- */
+/* Sits above everything, including the rail overlay and any modal that opened it, because it is
+   the thing that closes them. Positioned in the upper third rather than centred: the list grows
+   downward as you type, and a centred dialog that grows in both directions makes the row under
+   your eye move while you are reading it. */
+
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-block: clamp(48px, 12vh, 140px) 24px;
+  padding-inline: 16px;
+  background: rgb(0 0 0 / 45%);
+  backdrop-filter: blur(2px);
+}
+
+.cmdk {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(60vh, 520px);
+  overflow: hidden;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 14px;
+  background: var(--gx-surface-1, #16181d);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 45%);
+}
+
+.cmdk__input {
+  flex: none;
+  padding: 16px 18px;
+  border: none;
+  border-block-end: 1px solid var(--gx-line, rgb(255 255 255 / 10%));
+  background: none;
+  color: var(--gx-ink);
+  font-size: 1rem;
+}
+
+.cmdk__input:focus {
+  outline: none;
+}
+
+.cmdk__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: 6px;
+}
+
+.cmdk__section {
+  padding: 10px 18px 4px;
+  color: var(--gx-ink-3);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cmdk__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px;
+  cursor: pointer;
+  /* No transition: the selection follows the arrow keys and a fade makes fast movement smear. */
+}
+
+.cmdk__item.is-selected {
+  background: var(--gx-surface-2, rgb(255 255 255 / 7%));
+}
+
+.cmdk__item.is-off {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.cmdk__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gx-ink);
+}
+
+.cmdk__title mark {
+  background: none;
+  color: var(--gx-accent, #6aa7ff);
+  font-weight: 600;
+}
+
+.cmdk__why {
+  flex: none;
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
+.cmdk__hint,
+.cmdk__foot kbd {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 5px;
+  color: var(--gx-ink-3);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+.cmdk__empty {
+  margin: 0;
+  padding: 28px 18px;
+  color: var(--gx-ink-3);
+  text-align: center;
+}
+
+.cmdk__foot {
+  display: flex;
+  flex: none;
+  gap: 16px;
+  padding: 8px 18px;
+  border-block-start: 1px solid var(--gx-line, rgb(255 255 255 / 10%));
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+}
+
+.cmdk__foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmdk-backdrop {
+    backdrop-filter: none;
+  }
+}
+
+/* ---------------------------------------------------------- shortcuts dialog --- */
+
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.shortcuts__heading {
+  margin: 0 0 8px;
+  color: var(--gx-ink-3);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shortcuts__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.shortcuts__row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-block: 5px;
+}
+
+.shortcuts__row dt {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--gx-ink);
+}
+
+/* The chords line up in a column so the eye can scan them; without this each sits flush against
+   its own label at a different indent and the list reads as unordered. */
+.shortcuts__row dd {
+  flex: none;
+  margin: 0;
+}
+
+/* --------------------------------------------------- conversation search --- */
+
+.cs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cs__input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 8px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+  color: var(--gx-ink);
+  font: inherit;
+}
+
+.cs__input:focus {
+  border-color: var(--gx-accent, #6aa7ff);
+  outline: none;
+}
+
+.cs__note {
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.85rem;
+}
+
+.cs__note--bad {
+  color: var(--gx-bad, #f0776a);
+}
+
+.cs__count {
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cs__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cs__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--gx-surface-1, rgb(255 255 255 / 4%));
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cs__hit:hover,
+.cs__hit:focus-visible {
+  border-color: var(--gx-line, rgb(255 255 255 / 14%));
+  outline: none;
+}
+
+.cs__meta {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+}
+
+/* The snippet is an excerpt, so it wraps to a few lines rather than truncating: a one-line result
+   cut mid-phrase tells you less than the words either side of the match. */
+.cs__snippet {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--gx-ink-2, #c7ccd6);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.cs__snippet mark {
+  background: none;
+  color: var(--gx-accent, #6aa7ff);
+  font-weight: 600;
+}
+
+/* Where search landed you. A flash, not a persistent state: it answers "which one" and then gets
+   out of the way, so the next jump reads as clearly as the first. */
+.is-found {
+  animation: found-flash 1.6s ease-out;
+  border-radius: 10px;
+}
+
+@keyframes found-flash {
+  0%, 35% { background: color-mix(in srgb, var(--gx-accent, #6aa7ff) 16%, transparent); }
+  100% { background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-found {
+    animation: none;
+    outline: 2px solid var(--gx-accent, #6aa7ff);
+    outline-offset: 2px;
+  }
+}

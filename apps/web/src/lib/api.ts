@@ -76,6 +76,36 @@ export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
 export const fetchMessages = (projectId: string, limit = 100) =>
   request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
 
+export interface SearchHit {
+  id: string;
+  role: string;
+  mode: string | null;
+  createdAt: string;
+  snippet: string;
+  /** Offset of the match INSIDE `snippet`, already adjusted for any leading ellipsis. */
+  matchStart: number;
+  matchLength: number;
+  occurrences: number;
+}
+
+export interface SearchResponse {
+  query: string;
+  results: SearchHit[];
+  total: number;
+  /** True when the result set was capped — there are older matches than these. */
+  more: boolean;
+  tooShort?: boolean;
+}
+
+/**
+ * Search every message in a project's conversation.
+ *
+ * Server-side deliberately: `fetchMessages` only pages the most recent hundred into the client, so
+ * a filter over that would answer "not found" for text that is in the conversation.
+ */
+export const searchConversation = (projectId: string, q: string): Promise<SearchResponse> =>
+  request<SearchResponse>(`/api/projects/${encodeURIComponent(projectId)}/search?q=${encodeURIComponent(q)}`);
+
 export const fetchCheckpoints = (projectId: string) =>
   request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
 
@@ -83,6 +113,53 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE
     ? Promise.resolve({ code: 'GLM-7F3K2Q', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
     : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
+
+/**
+ * Download the whole conversation as a file.
+ *
+ * Not `request<T>` because that parses JSON and throws away the response — and the FILENAME lives
+ * in the response, in Content-Disposition. Re-deriving it here from the project name would be a
+ * second implementation of the server's slug rule, and the two would disagree the first time
+ * either changed. The server names the file; the browser saves what it was given.
+ *
+ * A plain <a href> cannot be used at all: the route needs a Bearer token, and an anchor sends no
+ * headers. So the bytes are fetched and handed to the browser as a blob.
+ */
+export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/export?format=${format}`, { headers });
+  } catch {
+    throw new ApiError('Network error — check your connection.', 0);
+  }
+  if (!res.ok) {
+    // The error body IS JSON even though the success body is not.
+    const body = await res.json().catch(() => null);
+    const msg =
+      body && typeof body === 'object' && 'error' in body && typeof (body as { error: unknown }).error === 'string'
+        ? (body as { error: string }).error
+        : `Export failed (${res.status})`;
+    throw new ApiError(msg, res.status);
+  }
+
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const named = /filename="([^"]+)"/.exec(disposition);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named?.[1] ?? `project-export.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoked on the next frame rather than immediately: a synchronous revoke can race the browser's
+  // own read of the blob and produce a zero-byte file on some engines.
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
+}
 
 export const purgeProject = (projectId: string) =>
   request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/purge`, { method: 'POST' });

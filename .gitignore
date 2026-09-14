@@ -58,3 +58,7 @@ packages/training/runs/
 packages/training/mlxdata/
 packages/training/mlxdata-text/
 packages/training/mlxdata/
+
+# nonstop (machine-specific)
+.claude/settings.local.json
+.nonstop/

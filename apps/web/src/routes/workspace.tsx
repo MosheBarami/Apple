@@ -17,6 +17,12 @@ import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
 import { useToast } from '../components/toast';
+import { EditableProjectTitle } from '../components/editable-title';
+import { useCommands } from '../lib/commands';
+import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
+import { useGlobalShortcut } from '../components/shortcuts-dialog';
+import { SearchPanel } from '../components/ws/search-panel';
+import { ApiError, downloadExport } from '../lib/api';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
@@ -53,7 +59,7 @@ export function WorkspacePage() {
   const navigate = useNavigate();
 
   const [showPairing, setShowPairing] = useState(false);
-  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory' | 'credits'>(null);
+  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory' | 'credits' | 'search'>(null);
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
@@ -103,6 +109,134 @@ export function WorkspacePage() {
    * below cannot linger after Studio attaches or reappear while it is attached.
    */
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
+
+  const projectNameRef = useRef('this project');
+  projectNameRef.current = project.data?.name ?? 'this project';
+
+  // Shared by both export commands so the toast copy and the failure handling cannot diverge.
+  const exportConversation = useCallback(
+    async (format: 'md' | 'json') => {
+      toast(`Preparing ${projectNameRef.current} as ${format === 'md' ? 'Markdown' : 'JSON'}…`, 'info');
+      try {
+        await downloadExport(projectId, format);
+      } catch (e) {
+        toast(e instanceof ApiError ? e.message : 'Export failed', 'error');
+      }
+    },
+    [projectId, toast],
+  );
+
+  /**
+   * Scroll to a message found by search.
+   *
+   * The message may not be mounted: the workspace pages backwards from the newest hundred, and a
+   * hit from six months ago is not in the DOM. Loading the surrounding history first would be the
+   * complete answer; until that exists, saying so plainly beats scrolling to nothing and looking
+   * broken.
+   */
+  const jumpToMessage = useCallback(
+    (messageId: string) => {
+      const el = document.getElementById(`msg-${messageId}`);
+      if (!el) {
+        toast('That message is further back than the loaded history — load more and search again.', 'info');
+        return;
+      }
+      setDrawer(null);
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      // A flash rather than a persistent highlight: it answers "which one?" and then gets out of
+      // the way, so the next jump is just as legible as the first.
+      el.classList.add('is-found');
+      setTimeout(() => el.classList.remove('is-found'), 1600);
+    },
+    [toast],
+  );
+
+  useGlobalShortcut(SHORTCUTS.search, () => setDrawer('search'));
+
+  // What this route contributes to the command palette. These exist ONLY while a workspace is
+  // mounted, because every one of them needs something this route owns — the socket, the drawer
+  // state, or a project id. A command that is listed but cannot run says why rather than
+  // disappearing: vanishing teaches the user it does not exist.
+  useCommands([
+    {
+      id: 'ws-stop',
+      title: 'Stop the run',
+      section: 'Run',
+      keywords: ['cancel', 'halt', 'abort'],
+      hint: shortcutLabel(SHORTCUTS.stop),
+      enabled: running,
+      why: 'Nothing is running',
+      run: stop,
+    },
+    {
+      id: 'ws-checkpoint',
+      title: 'New checkpoint',
+      section: 'Run',
+      keywords: ['save', 'snapshot', 'restore point'],
+      enabled: studioStatus === 'connected',
+      why: 'Studio is not connected',
+      run: () => createCheckpoint('manual checkpoint'),
+    },
+    {
+      id: 'ws-checkpoints',
+      title: 'Checkpoints',
+      section: 'Run',
+      keywords: ['history', 'restore', 'undo'],
+      hint: shortcutLabel(SHORTCUTS.checkpoints),
+      run: () => setDrawer('checkpoints'),
+    },
+    {
+      id: 'ws-search',
+      title: 'Search this conversation',
+      section: 'Project',
+      keywords: ['find', 'lookup', 'grep'],
+      hint: shortcutLabel(SHORTCUTS.search),
+      run: () => setDrawer('search'),
+    },
+    {
+      id: 'ws-memory',
+      title: 'What Apple remembers',
+      section: 'Project',
+      keywords: ['memory', 'context', 'knows'],
+      run: () => setDrawer('memory'),
+    },
+    {
+      id: 'ws-credits',
+      title: 'Credits and clearance',
+      section: 'Project',
+      keywords: ['licence', 'license', 'attribution', 'assets'],
+      run: () => setDrawer('credits'),
+    },
+    {
+      id: 'ws-connect',
+      title: studioStatus === 'connected' ? 'Studio pairing' : 'Connect Studio',
+      section: 'Project',
+      keywords: ['pair', 'plugin', 'roblox'],
+      run: () => setShowPairing(true),
+    },
+    {
+      id: 'ws-roadmap',
+      title: 'Roadmap',
+      section: 'Project',
+      keywords: ['plan', 'milestones', 'next'],
+      run: () => navigate(`/projects/${projectId}/roadmap`),
+    },
+    {
+      id: 'ws-export-md',
+      title: 'Export conversation (Markdown)',
+      section: 'Project',
+      keywords: ['download', 'save', 'transcript'],
+      run: () => void exportConversation('md'),
+    },
+    {
+      id: 'ws-export-json',
+      title: 'Export conversation (JSON)',
+      section: 'Project',
+      keywords: ['download', 'save', 'transcript', 'data'],
+      run: () => void exportConversation('json'),
+    },
+  ]);
+
 
   /**
    * The roadmap hands a milestone over as router state rather than in the URL,
@@ -233,7 +367,14 @@ export function WorkspacePage() {
           <Icon d={PATH.menu} />
         </button>
 
-        <h1 className="gx-top__title">{project.data?.name ?? 'Build'}</h1>
+        {/* Renamable in place: this is where you notice a bad name, so this is where fixing it
+            belongs. Falls back to a plain heading until the project has loaded — an editable
+            control over a placeholder would offer to rename something that is not there yet. */}
+        {project.data ? (
+          <EditableProjectTitle projectId={projectId} name={project.data.name} className="gx-top__title" />
+        ) : (
+          <h1 className="gx-top__title">Build</h1>
+        )}
         {when && (
           <span className="gx-top__when" title={activityAt ? new Date(activityAt).toLocaleString() : undefined}>
             {when}
@@ -364,8 +505,10 @@ export function WorkspacePage() {
           )}
 
           {messages.map((item) => (
+            // The id is on a wrapper rather than passed into Turn: search jumps to a message by
+            // scrolling to it, and that only needs an element to aim at.
+            <div key={item.id} id={`msg-${item.id}`} data-message-id={item.id}>
             <Turn
-              key={item.id}
               item={item}
               status={agentStatus}
               // `agent_status` carries no msgId, so the phase marks can only be
@@ -373,6 +516,7 @@ export function WorkspacePage() {
               phaseMarks={item.id === lastAssistantId ? phaseMarks : undefined}
               isLast={item.id === lastAssistantId}
             />
+            </div>
           ))}
 
           {/* The connect prompt sits at the foot of the conversation — where
@@ -473,6 +617,10 @@ export function WorkspacePage() {
             </button>
           </div>
         ))}
+      </Drawer>
+
+      <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
+        <SearchPanel projectId={projectId} onJump={jumpToMessage} />
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">

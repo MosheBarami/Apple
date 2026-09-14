@@ -9,6 +9,15 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/opt/homebrew/Cellar/node/26.8.1/bin/node' '/Users/moshe/.claude/skills/nonstop/scripts/stop-hook.mjs' --nonstop-hook-v1",
+            "timeout": 20
+          }
+        ]
       }
     ]
   }

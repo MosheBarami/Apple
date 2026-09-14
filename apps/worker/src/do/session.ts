@@ -48,6 +48,7 @@ import { singleFlight } from '../single-flight';
 import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 import { partitionOpsByRun } from '../op-attribution';
+import { MIN_QUERY, escapeLike, isSearchable, snippetAround } from '../search';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -491,6 +492,104 @@ export class SessionDO extends DurableObject<Env> {
         .toArray() as { id: string; role: string; mode: string | null; content: string; tool_trace: string | null; created_at: number }[];
       return json({
         messages: rows.reverse().map((r) => ({
+          id: r.id,
+          role: r.role,
+          mode: r.mode,
+          content: r.content,
+          toolTrace: r.tool_trace ? JSON.parse(r.tool_trace) : null,
+          createdAt: new Date(r.created_at).toISOString(),
+        })),
+      });
+    }
+
+    if (path === '/search' && req.method === 'GET') {
+      //[[ SEARCH THE WHOLE CONVERSATION, NOT THE PART THE UI HAPPENS TO HOLD.
+      //
+      //   A client-side filter over the last 100 messages is the cheap version, and it is worse
+      //   than nothing: it answers "not found" for text that IS in the conversation, and the user
+      //   has no way to tell that from the real answer. So the query runs here, against every row.
+      //
+      //   LIKE rather than FTS5: the DO's SQLite build cannot be relied on to carry the FTS
+      //   extension, and a transcript is bounded by the DO itself. A scan over a few thousand rows
+      //   is the honest implementation at this size, and it does not silently tokenise Hebrew
+      //   wrongly the way a naive FTS configuration would. ]]
+      const raw = url.searchParams.get('q') ?? '';
+      if (!isSearchable(raw)) {
+        return json({ query: raw, tooShort: raw.trim().length < MIN_QUERY, results: [], total: 0 });
+      }
+      const q = raw.trim();
+      const limit = Math.min(100, Number(url.searchParams.get('limit')) || 40);
+
+      // The value is BOUND, never interpolated — the escape is about LIKE's wildcards being SQL's
+      // rather than the user's, not about injection.
+      const pattern = `%${escapeLike(q)}%`;
+      const rows = this.sql
+        .exec(
+          `select id, role, mode, content, created_at from messages
+           where content like ? escape '\\'
+           order by created_at desc limit ?`,
+          pattern,
+          limit + 1,
+        )
+        .toArray() as { id: string; role: string; mode: string | null; content: string; created_at: number }[];
+
+      const more = rows.length > limit;
+      const kept = more ? rows.slice(0, limit) : rows;
+
+      return json({
+        query: q,
+        // Stated so the UI can say "showing the 40 most recent of more" rather than implying these
+        // are all of them.
+        more,
+        total: kept.length,
+        results: kept.map((r) => {
+          const snip = snippetAround(r.content, q);
+          return {
+            id: r.id,
+            role: r.role,
+            mode: r.mode,
+            createdAt: new Date(r.created_at).toISOString(),
+            snippet: snip?.text ?? r.content.slice(0, 160),
+            matchStart: snip?.matchStart ?? 0,
+            matchLength: snip?.matchLength ?? 0,
+            occurrences: snip?.occurrences ?? 0,
+          };
+        }),
+      });
+    }
+
+    if (path === '/export' && req.method === 'GET') {
+      //[[ THE WHOLE CONVERSATION, AS A FILE THE USER OWNS.
+      //
+      //   `/messages` pages backwards for the UI and caps at 100. An export that silently returned
+      //   the most recent hundred and called itself the transcript would be a file that LOOKS
+      //   complete, which is worse than no export: the user keeps it, and only discovers the gap
+      //   when they need the part that was cut.
+      //
+      //   So this reads everything, and reports the count it actually wrote. The cap that remains
+      //   is a real one — DO SQLite is bounded and a transcript is not unbounded in practice — and
+      //   when it bites the response says so in `truncated` rather than staying quiet. ]]
+      const EXPORT_MAX = 5000;
+      const rows = this.sql
+        .exec(
+          `select id, role, mode, content, tool_trace, created_at from messages order by created_at asc limit ?`,
+          EXPORT_MAX + 1,
+        )
+        .toArray() as { id: string; role: string; mode: string | null; content: string; tool_trace: string | null; created_at: number }[];
+      const truncated = rows.length > EXPORT_MAX;
+      const kept = truncated ? rows.slice(0, EXPORT_MAX) : rows;
+      const bind = await this.bind();
+      const total = (this.sql.exec(`select count(*) as n from messages`).one() as { n: number }).n;
+
+      return json({
+        project: { id: bind?.projectId ?? null, name: bind?.projectName ?? null },
+        exportedAt: new Date().toISOString(),
+        // Stated rather than implied: a consumer can tell a complete transcript from a clipped one
+        // without counting the array itself.
+        messageCount: kept.length,
+        totalMessages: total,
+        truncated,
+        messages: kept.map((r) => ({
           id: r.id,
           role: r.role,
           mode: r.mode,

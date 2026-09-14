@@ -80,6 +80,41 @@ and are tracked as handoffs, not gates.
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=da4c21766259eef2f2e4e0a804d1837cee6a4d532448484bbf7b3aecc9b58762; output-bytes=591
 
+- [x] G14: A conversation export is the whole conversation, and cannot forge its own filename
+    CHECK: cd apps/worker && node --test tests/export.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=3f4191dee2db7bc7f27dbdecf4565b356a1ab8c078d7635032171fe7c9457892; output-bytes=1461
+
+- [x] G15: A project can be renamed from either surface, and Escape does not save
+    CHECK: cd apps/web && node --test tests/rename-project.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=a7191559d0ee592cbadf7627da59d8c217e27601f879a977935acfbdc09345fb; output-bytes=1122
+
+- [x] G16: Every action in the product is reachable from the command palette, and the palette is reachable from every signed-in route
+    CHECK: cd apps/web && node --test tests/command-palette.test.mjs tests/command-match.test.mjs tests/shortcuts.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=17f7b623b30109ea0c6f05882cf5a032f2faccc5729b9605c0dc22f3f565a46c; output-bytes=4219
+
+- [x] G17: The palette puts the command you meant first, and lists each one once
+    CHECK: cd apps/web && node --test tests/command-match.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=f3a75bf1fe5fd7b7297e847bf8b4f3902ebe51d4b57c6f45bb5ee568f6a35178; output-bytes=1892
+
+- [x] G18: One keyboard map, with no chord claimed twice and none stolen from the browser
+    CHECK: cd apps/web && node --test tests/shortcuts.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=638402f48af5d31b1426a48be526cc36627872ce8e3417b7f423efbfba1e7ca8; output-bytes=1329
+
+- [x] G19: Search reads every message, and its results cannot be stale or mis-highlighted
+    CHECK: cd apps/worker && node --test tests/search.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=5db5a1055ed286359661559ef2ec8f59fe8eea5057153f8037a966d9f8eda1a2; output-bytes=1869
+
+- [x] G20: The search panel names every state and drops responses for a query the user has moved past
+    CHECK: cd apps/web && node --test tests/search-panel.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=b3b9903e971b4452136aec56f8403e74acc038b4077ccde1b5c9171fdf7fe1bc; output-bytes=1346
+
 ---
 
 ## Whole-product gates

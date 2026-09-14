@@ -10,6 +10,13 @@
 //      being shown. So the workspace registers an opener here and the rail
 //      calls it. When no workspace is mounted there is nothing to open, and the
 //      rail card says so rather than pretending.
+//   3. New project, for the same reason in reverse. The create dialog belongs to
+//      the dashboard, but ⌘⇧N and the palette's "New project" have to work from
+//      inside a conversation. They used to navigate to `/` and stop there, which
+//      left the user staring at the shelf with the dialog still unopened — a
+//      command that does not do what its own title says. The dashboard lends the
+//      shell an opener; off the dashboard the shell navigates there first and
+//      the opener fires when it mounts.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 const COLLAPSE_KEY = 'apple.rail.collapsed';
@@ -25,6 +32,18 @@ export interface Shell {
   /** Null when no route has offered checkpoints — the control is then inert. */
   openCheckpoints: (() => void) | null;
   registerCheckpoints: (open: (() => void) | null) => void;
+  /**
+   * Start a new project from anywhere. On the dashboard this opens the create
+   * dialog directly; elsewhere it navigates to the dashboard and arms the
+   * request, which the dashboard consumes as it mounts.
+   */
+  newProject: () => void;
+  /** Null until the dashboard is mounted. */
+  openNewProject: (() => void) | null;
+  registerNewProject: (open: (() => void) | null) => void;
+  /** True when a route asked for the dialog before one existed to open. */
+  newProjectPending: boolean;
+  clearNewProjectPending: () => void;
 }
 
 const ShellContext = createContext<Shell | null>(null);
@@ -42,6 +61,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [railOpen, setRailOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(readCollapsed);
   const [openCheckpoints, setOpenCheckpoints] = useState<(() => void) | null>(null);
+  const [openNewProject, setOpenNewProject] = useState<(() => void) | null>(null);
+  const [newProjectPending, setNewProjectPending] = useState(false);
 
   // These have to keep a stable identity: consumers put them in effect
   // dependency arrays (closing the rail on navigation, for one), and a fresh
@@ -68,6 +89,23 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     setOpenCheckpoints(() => open);
   }, []);
 
+  const registerNewProject = useCallback((open: (() => void) | null) => {
+    setOpenNewProject(() => open);
+  }, []);
+
+  const clearNewProjectPending = useCallback(() => setNewProjectPending(false), []);
+
+  // Reads `openNewProject` out of state rather than closing over it, so a caller
+  // that captured this function before the dashboard mounted still reaches the
+  // opener that exists by the time it fires.
+  const newProject = useCallback(() => {
+    setOpenNewProject((open) => {
+      if (open) open();
+      else setNewProjectPending(true);
+      return open;
+    });
+  }, []);
+
   const value = useMemo<Shell>(
     () => ({
       railOpen,
@@ -77,8 +115,26 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       toggleRailCollapsed,
       openCheckpoints,
       registerCheckpoints,
+      newProject,
+      openNewProject,
+      registerNewProject,
+      newProjectPending,
+      clearNewProjectPending,
     }),
-    [railOpen, openRail, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints, registerCheckpoints],
+    [
+      railOpen,
+      openRail,
+      closeRail,
+      railCollapsed,
+      toggleRailCollapsed,
+      openCheckpoints,
+      registerCheckpoints,
+      newProject,
+      openNewProject,
+      registerNewProject,
+      newProjectPending,
+      clearNewProjectPending,
+    ],
   );
 
   return <ShellContext.Provider value={value}>{children}</ShellContext.Provider>;
@@ -100,4 +156,26 @@ export function useProvideCheckpoints(open: (() => void) | null) {
     registerCheckpoints(open);
     return () => registerCheckpoints(null);
   }, [registerCheckpoints, open]);
+}
+
+/**
+ * Lend the shell an opener for the create-project dialog, and honour a request
+ * that arrived before this route existed.
+ *
+ * The pending flag is cleared as it is consumed rather than left set, or every
+ * later visit to the dashboard would pop the dialog again on arrival.
+ */
+export function useProvideNewProject(open: (() => void) | null) {
+  const { registerNewProject, newProjectPending, clearNewProjectPending } = useShell();
+
+  useEffect(() => {
+    registerNewProject(open);
+    return () => registerNewProject(null);
+  }, [registerNewProject, open]);
+
+  useEffect(() => {
+    if (!newProjectPending || !open) return;
+    clearNewProjectPending();
+    open();
+  }, [newProjectPending, open, clearNewProjectPending]);
 }
