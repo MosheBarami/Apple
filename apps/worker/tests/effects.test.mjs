@@ -105,15 +105,19 @@ test('the generated Luau survives the plugin\'s non-yielding-loop refusal', () =
 test('every particle preset ramps transparency to fully invisible', () => {
   // A particle whose transparency does not end at 1 pops out of existence at the end of its
   // lifetime. It is the single most common tell of a hand-written emitter.
+  let emitters = 0;
   for (const n of FX.EFFECT_NAMES) {
     for (const part of FX.EFFECTS[n].parts) {
       if (part.className !== 'ParticleEmitter') continue;
+      emitters += 1;
       assert.ok(part.props.Transparency, `${n} has no transparency ramp`);
       assert.match(part.props.Transparency, /NumberSequenceKeypoint\.new\(1,\s*1\)/, `${n} does not fade out`);
       assert.ok(part.props.Size, `${n} has no size ramp`);
       assert.ok(Number(part.props.Rate) <= 40, `${n} emits ${part.props.Rate}/s, which reads as a smoke machine`);
     }
   }
+  // Renaming the class would skip every part and leave this passing with nothing checked.
+  assert.equal(emitters, 9, `expected 9 particle emitters across the presets, examined ${emitters}`);
 });
 
 test('re-applying clears the previous copy instead of stacking', () => {

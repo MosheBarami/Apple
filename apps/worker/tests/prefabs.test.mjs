@@ -375,6 +375,9 @@ test('the wiring graph has no cycle, so there is always an order to install in',
 test('a module that is handed another module\'s function declares it', () => {
   // Read from the API strings rather than from my own memory of which needs which: a configure
   // line mentioning Profile is the evidence that this module is wired to Profile.
+  // A configure line that stopped naming other modules would empty this loop and the test would
+  // pass having compared nothing, which is the failure mode it is meant to catch.
+  let pairs = 0;
   for (const id of P.PREFAB_IDS) {
     const p = P.PREFABS[id];
     const configure = p.api.find((line) => line.includes('configure')) ?? '';
@@ -383,6 +386,7 @@ test('a module that is handed another module\'s function declares it', () => {
       if (other === id) continue;
       const name = P.PREFABS[other].moduleName;
       if (new RegExp(`\\b${name}\\.`).test(configure)) {
+        pairs += 1;
         assert.ok(
           declared.includes(name),
           `${id}'s configure line uses ${name}.something but ${id} does not declare needing ${other}`,
@@ -390,6 +394,7 @@ test('a module that is handed another module\'s function declares it', () => {
       }
     }
   }
+  assert.ok(pairs >= 3, `expected at least 3 cross-module configure references, found ${pairs}`);
 });
 
 test('install_module reports what a module has to be wired to', async () => {

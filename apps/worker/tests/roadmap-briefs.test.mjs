@@ -186,22 +186,31 @@ test('every module a brief names actually exists', () => {
 });
 
 test('each wired milestone names its module, through the real brief', () => {
+  // The skip is real — this project shape does not reach every milestone — but a loop that skips
+  // everything asserts nothing and still passes. The count is checked so this cannot quietly become
+  // a test of nothing; if the shape stops reaching these, that is a change worth failing on.
+  let checked = 0;
   for (const [milestone, module] of Object.entries(WIRED)) {
     const b = R.executionBrief(shape, roadmap, milestone);
-    if (!b) continue; // not every milestone is reachable for this project shape
+    if (!b) continue;
+    checked += 1;
     const text = b.steps.join('\n');
     assert.match(text, new RegExp(`install_module\\("${module}"\\)`),
       `${milestone} should offer ${module}`);
   }
+  assert.equal(checked, 5, `expected 5 of the ${Object.keys(WIRED).length} wired milestones to be reachable`);
 });
 
 test('the install step comes FIRST, before the rules it would satisfy', () => {
   // A module offered after four paragraphs of how to write it yourself is a module nobody installs.
+  let checked = 0;
   for (const [milestone] of Object.entries(WIRED)) {
     const b = R.executionBrief(shape, roadmap, milestone);
     if (!b) continue;
+    checked += 1;
     assert.match(b.steps[0], /install_module/, `${milestone}'s first step should be the module`);
   }
+  assert.equal(checked, 5, 'the same five briefs must be the ones examined');
 });
 
 test('the rules survive alongside the module, for a builder who declines it', () => {
