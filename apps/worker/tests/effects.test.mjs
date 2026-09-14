@@ -151,6 +151,102 @@ test('a hostile path is refused before any code is generated', async () => {
   }
 });
 
+/**
+ * THE CANONICAL PATH WAS THE ONE PATH THESE TOOLS REFUSED.
+ *
+ * Paths.fullPath — what every other tool RETURNS to the model — brackets any name that is not a
+ * bare identifier: game.Workspace["Camp Fire"].Logs. add_effect and remove_effect rejected every
+ * path containing a quote, so an instance named "Camp Fire", "Rock 2" or "3rd Floor" could never be
+ * given an effect, and the model was told its own system's format was "not valid". The resolver
+ * could not have handled it either: it split on '.' and asked FindFirstChild for
+ * `Workspace["Camp Fire"]`.
+ *
+ * These assert the round trip that was broken: a path of the shape create_instances hands back goes
+ * into add_effect and comes out as a resolver that looks for the right child.
+ */
+test('A BRACKETED NAME — the form every other tool returns — is accepted and resolved', async () => {
+  const { ctx, ops } = stubCtx();
+  const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: 'game.Workspace["Camp Fire"].Logs' });
+  assert.equal(res.error, undefined, JSON.stringify(res));
+  assert.equal(ops.length, 1, 'it must reach Studio');
+
+  const code = ops[0].code;
+  assert.match(code, /"Camp Fire"/, 'the bracketed name must survive as a segment');
+  assert.match(code, /"Logs"/, 'and so must the segment after it');
+  assert.doesNotMatch(code, /Workspace\["Camp Fire"\]/,
+    'the bracket form must be SPLIT, not handed to FindFirstChild whole');
+  assert.match(code, /FindFirstChild\(seg\)/, 'and walked segment by segment');
+});
+
+test('names with spaces, hyphens and leading digits all work, in both tools', async () => {
+  const paths = [
+    'game.Workspace["Camp Fire"].Logs',
+    'game.Workspace["Rock-2"]',
+    'game.Workspace["3rd Floor"].Lamp',
+    "game.Workspace['Single Quoted']",
+    'game.Workspace.Plain.Nested.Deep',
+  ];
+  for (const path of paths) {
+    for (const tool of ['add_effect', 'remove_effect']) {
+      const { ctx, ops } = stubCtx();
+      const args = tool === 'add_effect' ? { effect: 'fire', path } : { path };
+      const res = await T.TOOLS[tool].run(ctx, args);
+      assert.equal(res.error, undefined, `${tool} refused ${path}: ${JSON.stringify(res)}`);
+      assert.equal(ops.length, 1, `${tool} sent nothing for ${path}`);
+    }
+  }
+});
+
+test('a name containing a quote is reachable when it is bracketed properly', async () => {
+  // Roblox lets an instance be named with a quote in it. The canonical form escapes it inside the
+  // brackets; that must resolve to the real name, not to the escaped spelling.
+  const { ctx, ops } = stubCtx();
+  const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: 'game.Workspace["Bob\\"s Hut"]' });
+  assert.equal(res.error, undefined, JSON.stringify(res));
+  assert.match(ops[0].code, /Bob\\"s Hut/, 'the unescaped name must be what is searched for');
+});
+
+test('THE PATH NEVER REACHES CODE POSITION, however it is spelled', async () => {
+  // Accepting the bracketed form means accepting quotes inside a name, so the escaping is now
+  // load-bearing in a way it was not when every quote was refused outright.
+  //
+  // Grepping the emitted source for the payload proves nothing — it is SUPPOSED to appear there,
+  // inside a string literal. The question is whether it ever executes. So this runs the chunk with
+  // a game stub that records what was asked of it, and asserts the payload only ever arrived as a
+  // child name. My first version of this test asserted the text was absent and failed on its own
+  // premise.
+  const sneaky = 'game.Workspace["a\\" ]] .. tostring(game:GetService(\'Players\')) .. [[ "].B';
+  const { ctx, ops } = stubCtx();
+  const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: sneaky });
+  assert.equal(res.error, undefined, 'a legal if absurd name should be accepted');
+  assert.equal(ops.length, 1);
+  const code = ops[0].code;
+  assert.equal(syntaxErrors(code, 'fx-sneaky').length, 0, 'the emitted chunk must still parse');
+
+  const harness = [
+    'local asked = {}',
+    'local services = 0',
+    'local node = {}',
+    'node.FindFirstChild = function(_, name) table.insert(asked, name); return nil end',
+    'game = {',
+    '\tFindFirstChild = node.FindFirstChild,',
+    '\tGetService = function() services = services + 1; return node end,',
+    '}',
+    'Instance = { new = function() error("must not get this far") end }',
+    `local ok, err = pcall(function()\n${code}\nend)`,
+    'print("SERVICES " .. tostring(services))',
+    'print("ASKED " .. tostring(#asked))',
+    'for _, name in ipairs(asked) do print("NAME " .. name) end',
+  ].join('\n');
+  const file = join(TMP, 'fx-sneaky-run.luau');
+  writeFileSync(file, harness);
+  const out = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+
+  assert.match(out, /SERVICES 0/, 'the payload must never have called GetService');
+  assert.match(out, /ASKED 1/, 'and resolution must stop at the first missing child');
+  assert.match(out, /NAME Workspace/, 'which is the first real segment');
+});
+
 test('a real call sends exactly one run_code op and reports what it attached', async () => {
   const { ctx, ops } = stubCtx();
   const res = await T.TOOLS.add_effect.run(ctx, { effect: 'fire', path: 'game.Workspace.Torch' });

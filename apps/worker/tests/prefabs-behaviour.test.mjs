@@ -2067,6 +2067,53 @@ test('a huge dt owes a bounded number of drops rather than an unbounded catch-up
   assert.ok(r.ok, r.output);
 });
 
+/**
+ * A NEIGHBOUR'S DROP MUST NOT PAY THE NEIGHBOUR.
+ *
+ * Every drop is stamped with the plot that made it, and nothing read the stamp: the collector paid
+ * the owner of ITS OWN plot, whatever had touched it. Drops are unanchored parts parented straight
+ * into workspace and tycoon plots sit side by side, so one rolling off a conveyor onto the plot
+ * next door paid the wrong player — the module's own second stated bug, in the one direction it
+ * did not close, with the evidence already written on the part.
+ */
+test("A DROP FROM ANOTHER PLOT DOES NOT PAY THIS PLOT'S OWNER", () => {
+  const r = runIncome([
+    'local paid = {}',
+    'M.configure({ award = function(p, n) paid[p.Name] = (paid[p.Name] or 0) + n end, maxLive = 5 })',
+    '',
+    // Alice owns the plot with the dropper; Bob owns the one with the collector next door
+    'local alicePlot = makePlot(7)',
+    'local bobPlot = makePlot(9)',
+    'bobPlot.GetFullName = function() return "game.Workspace.PlotB" end',
+    'local d = M.addDropper({ plot = alicePlot, spawner = spawner, value = 5, everySeconds = 1 })',
+    'local bobCollector = makeCollector()',
+    'M.collector(bobPlot, bobCollector)',
+    '',
+    "local drop = M.drop(d)   -- Alice's drop, stamped with Alice's plot",
+    'assert(drop:GetAttribute("DropPlot") == "game.Workspace.Plot", "the stamp must be written")',
+    '',
+    'bobCollector.touch(drop)',
+    'assert(paid["visitor"] == nil, "Bob must not be paid for a drop he did not produce")',
+    'assert(paid["owner"] == nil, "and it must not be credited to Alice through Bob\'s collector either")',
+    'assert(drop.Parent ~= nil, "AND the drop must survive — consuming it would rob the plot that is owed it")',
+  ].join('\n'), 'in-foreign-drop');
+  assert.ok(r.ok, r.output);
+});
+
+test("and the plot's own collector still pays its owner", () => {
+  // The guard must not cost the normal case, which is every drop on a correctly built plot.
+  const r = runIncome([
+    INC,
+    'local collector = makeCollector()',
+    'M.collector(plot, collector)',
+    'local drop = M.drop(d)',
+    'collector.touch(drop)',
+    'assert(paid["owner"] == 10, "the plot owner is paid, got " .. tostring(paid["owner"]))',
+    'assert(drop.Parent == nil, "and the drop is consumed")',
+  ].join('\n'), 'in-own-drop');
+  assert.ok(r.ok, r.output);
+});
+
 test('A CAP BELOW ONE IS REFUSED RATHER THAN HANGING THE SERVER', () => {
   // The trim loop removes the oldest while the count is at or above the cap. At zero there is never
   // anything to remove and the condition never stops holding: Income.drop never returns, the script

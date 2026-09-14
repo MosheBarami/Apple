@@ -1334,6 +1334,19 @@ function Income.collector(plot, part)
 		if hit.Parent == nil then
 			return
 		end
+
+		-- THE DROP HAS TO BELONG TO THIS PLOT. Every drop is stamped with the plot that made it, and
+		-- until now nothing read the stamp: the collector paid the owner of ITS OWN plot, whatever
+		-- had touched it. Drops are unanchored parts dropped into workspace and tycoon plots sit
+		-- side by side, so one rolling off a conveyor onto the neighbour's collector paid the
+		-- neighbour for it. That is this module's own second stated bug -- paying the wrong player --
+		-- in the one direction it did not close, with the evidence already written on the part.
+		local from = hit:GetAttribute("DropPlot")
+		if from ~= nil and from ~= plot:GetFullName() then
+			-- Somebody else's income. Leave it alone rather than consuming it: destroying it here
+			-- would take the drop away from the plot that is owed it.
+			return
+		end
 		local now = os.clock()
 		local previous = lastCollect[hit]
 		if previous ~= nil and now - previous < COLLECT_DEBOUNCE then

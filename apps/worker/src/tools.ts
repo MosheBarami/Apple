@@ -31,7 +31,7 @@ import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, imagePanel, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
-import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau, removeEffectLuau } from './effects';
+import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau, removeEffectLuau, parseInstancePath } from './effects';
 import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { runCriticPanel, formatPanelReport } from './critic';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
@@ -1314,7 +1314,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       // The path is embedded in generated source as a quoted literal. A quote, a backslash or a
       // newline in it could not break out of the string (it is JSON-escaped), but a path containing
       // them is not a real instance path and refusing is cheaper than reasoning about it.
-      if (/["'\\\n\r]/.test(path)) return { error: 'path contains characters that are not valid in an instance path' };
+      // Parsed, not pattern-matched. The old filter rejected every quote, which meant it rejected
+      // game.Workspace["Camp Fire"].Logs — the exact form Paths.fullPath RETURNS for any name that
+      // is not a bare identifier. Every instance with a space, a hyphen or a leading digit in its
+      // name was unreachable here, and the error told the model its own path format was invalid.
+      if (!parseInstancePath(path)) {
+        return { error: `"${path}" is not an instance path. Use the form returned by other tools, such as game.Workspace.Lobby.Floor or game.Workspace["Camp Fire"].Logs.` };
+      }
 
       const res = await op(ctx, { op: 'run_code', code: effectLuau(effect, path), timeoutMs: 10_000 }, 25_000);
       if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
@@ -1681,7 +1687,13 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: async (ctx, a) => {
       const path = String(a.path ?? '');
       if (!path) return { error: 'path is required' };
-      if (/["'\\\n\r]/.test(path)) return { error: 'path contains characters that are not valid in an instance path' };
+      // Parsed, not pattern-matched. The old filter rejected every quote, which meant it rejected
+      // game.Workspace["Camp Fire"].Logs — the exact form Paths.fullPath RETURNS for any name that
+      // is not a bare identifier. Every instance with a space, a hyphen or a leading digit in its
+      // name was unreachable here, and the error told the model its own path format was invalid.
+      if (!parseInstancePath(path)) {
+        return { error: `"${path}" is not an instance path. Use the form returned by other tools, such as game.Workspace.Lobby.Floor or game.Workspace["Camp Fire"].Logs.` };
+      }
 
       const effect = a.effect === undefined || a.effect === null ? null : String(a.effect);
       if (effect !== null && !Object.prototype.hasOwnProperty.call(EFFECTS, effect)) {

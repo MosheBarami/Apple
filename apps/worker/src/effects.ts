@@ -333,9 +333,11 @@ export function effectCatalogue(): { name: string; summary: string; use: string 
 export function effectLuau(effect: string, path: string): string {
   const preset = EFFECTS[effect];
   if (!preset) return '';
+  const segments = parseInstancePath(path);
+  if (!segments) return '';
   const target = JSON.stringify(path); // Luau accepts JSON's double-quoted escaping for these
   const lines: string[] = [
-    `local target = ${luauResolve(target)}`,
+    `local target = ${luauResolve(segments)}`,
     'if not target then error("no instance at " .. ' + target + ') end',
     '-- Clear anything a previous apply of THIS preset left, so re-applying tunes rather than stacks.',
     'for _, child in ipairs(target:GetChildren()) do',
@@ -369,10 +371,12 @@ export function effectLuau(effect: string, path: string): string {
  * `effect` of null removes every effect we placed there; naming one removes just that preset.
  */
 export function removeEffectLuau(effect: string | null, path: string): string {
+  const segments = parseInstancePath(path);
+  if (!segments) return '';
   const target = JSON.stringify(path);
   const wanted = effect === null ? 'nil' : JSON.stringify(effect);
   return [
-    `local target = ${luauResolve(target)}`,
+    `local target = ${luauResolve(segments)}`,
     'if not target then error("no instance at " .. ' + target + ') end',
     `local wanted = ${wanted}`,
     'local removed, kinds = 0, {}',
@@ -391,18 +395,77 @@ export function removeEffectLuau(effect: string | null, path: string): string {
 }
 
 /**
- * Resolve a dotted path without `loadstring` and without indexing by a model-supplied expression.
+ * Split an instance path into its segment names, or null if it is not a path.
  *
- * The path arrives as data and stays data: it is split on '.' at runtime and walked with
- * `FindFirstChild`, so the only thing the model can do with it is name a child that may not exist.
+ * THIS EXISTS BECAUSE THE CANONICAL FORM IS NOT DOT-SEPARATED. `Paths.fullPath` in the plugin — the
+ * format every other tool RETURNS to the model — brackets any name that is not a bare identifier:
+ *
+ *     game.Workspace["Camp Fire"].Logs
+ *
+ * Splitting that on '.' yields `Workspace["Camp Fire"]` and `Logs`, and FindFirstChild finds
+ * neither. Together with a caller that rejected every path containing a quote, that made every
+ * instance whose name has a space, a hyphen or a leading digit permanently unreachable by
+ * add_effect and remove_effect — which is most model- and user-named geometry — while telling the
+ * model its own system's path format was "not valid".
+ *
+ * Parsing here rather than in the emitted Luau keeps the path as DATA the whole way: the segments
+ * go into the chunk as quoted string literals, so there is still nothing the model can name that
+ * becomes code. This mirrors Paths.parse in the plugin, which is the authority on the format.
  */
-function luauResolve(quotedPath: string): string {
+export function parseInstancePath(path: string): string[] | null {
+  if (path.length === 0 || path.length > 500) return null;
+  // A control character is not part of any instance name and would break the emitted literal.
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(path)) return null;
+
+  const segs: string[] = [];
+  let cur = '';
+  let i = 0;
+  while (i < path.length) {
+    const ch = path[i];
+    if (ch === '.') {
+      if (cur.length > 0) segs.push(cur);
+      cur = '';
+      i += 1;
+    } else if (ch === '[') {
+      if (cur.length > 0) segs.push(cur);
+      cur = '';
+      const quote = path[i + 1];
+      if (quote !== '"' && quote !== "'") return null;
+      const close = path.indexOf(`${quote}]`, i + 2);
+      if (close === -1) return null;
+      const name = path.slice(i + 2, close);
+      if (name.length === 0) return null;
+      segs.push(name.replace(/\\(["'\\])/g, '$1'));
+      i = close + 2;
+    } else {
+      // A quote, a backslash or a stray bracket outside a bracketed segment is malformed. Nothing
+      // here could become code — every segment is emitted as an escaped string literal — but the
+      // canonical form always brackets a name that needs a quote, so refusing keeps the boundary
+      // crisp rather than silently accepting a path no tool would ever produce.
+      if (ch === '"' || ch === "'" || ch === '\\' || ch === ']') return null;
+      cur += ch;
+      i += 1;
+    }
+  }
+  if (cur.length > 0) segs.push(cur);
+  if (segs.length < 2) return null;
+  if (segs[0] !== 'game' && segs[0] !== 'Game') return null;
+  return segs.slice(1);
+}
+
+/**
+ * Resolve a path without `loadstring` and without indexing by a model-supplied expression.
+ *
+ * The segments arrive as quoted string literals and are walked with `FindFirstChild`, so the only
+ * thing the model can do with a path is name a child that may not exist.
+ */
+function luauResolve(segments: string[]): string {
   return [
     '(function()',
-    `\tlocal parts = string.split(${quotedPath}, ".")`,
+    `\tlocal segs = { ${segments.map((sg) => JSON.stringify(sg)).join(', ')} }`,
     '\tlocal node = game',
-    '\tfor i, seg in ipairs(parts) do',
-    '\t\tif i == 1 and (seg == "game" or seg == "Game") then continue end',
+    '\tfor _, seg in ipairs(segs) do',
     '\t\tnode = node:FindFirstChild(seg)',
     '\t\tif not node then return nil end',
     '\tend',
