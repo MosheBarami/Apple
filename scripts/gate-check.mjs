@@ -477,6 +477,17 @@ if (STATUS) {
 if (LINT) {
   const problems = [];
   for (const g of gates) {
+    // A STATION TAG STRANDED IN THE TITLE. The heading grammar puts the station before the colon
+    // — `- [x] G1 [S7]: title` — and the parser only recognises it there. A heading rewritten as
+    // `- [x] G1: [S7] title` still parses, but the station silently becomes part of the title and
+    // the gate stops belonging to any station. Nothing else in this file would notice: the id is
+    // intact, the checkbox is intact, the CHECK still runs.
+    //
+    // Two rows drifted into that shape in the working tree this pass. This runs for EVERY gate,
+    // ticked or not, because an unticked gate loses its station just as quietly.
+    if (/^\[S\d+\]/.test(g.title)) {
+      problems.push(`${g.id}: its station tag is inside the title — the heading must read \`${g.id} [S…]: …\``);
+    }
     if (g.mark === ' ') continue;
     if (g.mark === '~') { problems.push(`${g.id}: abandoned in a file that has no vocabulary for it`); continue; }
     // A gate with EVIDENCE and no FALSIFIED is VOID: nobody has ever seen it fail, so nothing

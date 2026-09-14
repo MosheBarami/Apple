@@ -645,3 +645,23 @@ test('a fingerprint that moves BECAUSE the dependencies moved is refreshed', () 
   assert.match(r.out, /REFRESHED G1 \(its dependencies changed\)/);
   assert.doesNotMatch(r.out, /QUARANTINED G1/);
 });
+
+test('--lint catches a station tag that has drifted into the title', () => {
+  // The heading grammar puts the station BEFORE the colon — `- [x] G1 [S7]: title` — and the
+  // parser only recognises it there. A heading rewritten as `- [x] G1: [S7] title` still parses
+  // perfectly: the id is intact, the checkbox is intact, the CHECK still runs. The only thing
+  // lost is the station, which silently becomes part of the title, and the gate stops belonging
+  // to any station at all. Two rows drifted into that shape in this repository's working tree.
+  const bad = check('- [x] G1: [S7] a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.equal(bad.exit, 1, bad.out);
+  assert.match(bad.out, /station tag is inside the title/);
+
+  // It must fire for an UNTICKED gate too — one of the two that drifted was unticked, and an
+  // unticked gate loses its station just as quietly.
+  const untickedBad = check('- [ ] G1: [S7] a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.match(untickedBad.out, /station tag is inside the title/);
+
+  // THE CONTROL. The correct spelling must stay silent, or the rule would just forbid stations.
+  const good = check('- [ ] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.doesNotMatch(good.out, /station tag is inside the title/);
+});
