@@ -132,3 +132,67 @@ zero recurring cost is demonstrated, not assumed.
 mandate's requirement of *a real trained artifact in the serving lineage of each shipped mode*
 is therefore **UNMET**, deliberately and visibly, pending the repair above — rather than satisfied
 by promoting a model that measures worse than the one it replaces.
+
+---
+
+# Apple v2 — the repair, and what it did and did not fix
+
+**Verdict: v1's damage is repaired. Improvement over the base is NOT demonstrated. Still not promoted.**
+
+| n=8, held-out product-shaped prompts | syntax valid | degenerate repetition | stray `<think>` |
+|---|---:|---:|---:|
+| base (untrained) | 5/8 | 1/8 | 0/8 |
+| apple-v1 | 5/8 | 3/8 | 8/8 |
+| **apple-v2** | 6/8 | 1/8 | **0/8** |
+
+## What the fixes achieved
+
+**The chat-template fix worked completely.** Stray `<think>` went 8/8 → 0/8. Training text is now
+pre-rendered by `src/render_chat.py` so the assistant span is byte-identical to the inference
+prefix, and `assert_prefix_match` fails the build if that stops being true.
+
+**Overfitting is gone.** v1's validation bottomed at iter 50 and rose by 100. v2 decreased
+monotonically across the whole run: 3.539 → 1.438 → 1.396 → 1.389 → 1.357 → 1.322 → 1.319, and was
+still falling at the end — so the run was short, not long. (v1 and v2 validation numbers are not
+comparable to each other: the data format differs. The shape of the curve is the comparison.)
+
+**Memory is no longer a risk.** Peak 5.31 GB against v1's 23.55 GB — batch 2 with gradient
+accumulation plus gradient checkpointing. v1 died at ~iter 120 to the macOS Metal watchdog; v2
+finished. Throughput also rose, 112 → 179 tok/s.
+
+## What it did not achieve
+
+**+1/8 on syntax validity at n=8 is noise.** The confidence interval on eight samples is wide
+enough to contain zero. This is not evidence the adapter helps, and it is not reported as such.
+
+**The task mismatch survives, visibly.** Asked for a door, v2 writes:
+
+```luau
+local function openDoor()
+    local door = doorService:GetDoorByHandle(doorHandle)
+    if door then door:Open() end
+end
+```
+
+`doorService` does not exist. Neither does `GetDoorByHandle`. The model has learned to write code
+that belongs *inside a framework* — referencing module-level helpers that the surrounding file was
+expected to define — because that is exactly what the dataset is: `(library docstring -> library
+internal function)` harvested from ProfileService, Nevermore and friends. The product asks
+`(user request -> working mechanic)`. Fixing the template made the model coherent; it did not make
+the training objective the right one.
+
+## What comes next, and why it is not another training run
+
+Hyperparameters are not the lever. The dataset is. The next version needs examples in the product's
+own shape, and the two admissible sources are:
+
+1. **Verified execution traces from Apple's own runs** — context, goal, tool calls, results, errors,
+   repairs, evidence. Owned outright, correctly licensed, and exactly the shape the mandate
+   specifies. Requires the system to be running builds that can be captured.
+2. **Locally synthesised request/implementation pairs** over the licensed corpus, each one passed
+   through the existing `checkLuauSyntax` + `checkNoAntipattern` gates before admission.
+
+Until one of those exists, a third training run would move the same numbers by the same noise.
+
+**Artifacts.** `adapters/apple-v2/` (rank 16, 5.243M trainable params, 0.130%, seed 20260914),
+config `lora-apple-v2.yaml`, log `runs/apple-v2.log`, six checkpoints at 20-iteration intervals.
