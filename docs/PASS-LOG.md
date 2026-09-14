@@ -192,3 +192,105 @@ HANDOFFS OPEN: OH-1 free-plan allowance — approve-by node scripts/check-offer.
 
 NEXT: node scripts/check-rebrand.mjs does not exist; write it red-first (§6.10), then probe
   the deployed origin for §10.2 before anything else claims a station.
+
+--------------------------------------------------------------------------------
+PASS 3  2026-09-14T17:30:29Z  HEAD 7214e6c  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: S1 ADVANCED(2 of 4 sub-probes green, was 0). The deployed origin was probed for
+  the first time this mission. / and /pricing return 200 and the two unauthorised
+  contractual terms are gone from source — but the DEPLOYED site still says Golem, so S1
+  is NOT proven and is not claimed.
+
+DERIVED OPEN: gates 2 met / 33 open of 35 | worklist 6
+  | features 1084 not-started of 1249
+
+REOPENED — BOTH REFUTERS RETURNED REFUTED:
+  G-CRITIC-1 — critic.ts has ZERO product importers. The refuter bundled the deployed
+    entry point and found 0 occurrences of runCriticPanel, applyMetricRules or
+    UncheckedRule, against controls of 6 and 3 for inspect_visually and lastRender. The
+    product's visual path is vision.ts. The mechanism is sound and every behavioural claim
+    reproduced independently — but in a module no user can reach, which is a §2.3 dead end.
+  G-ORACLE-2 — the failing word was "every". Eight of twenty-two detectors had no test,
+    and the refuter BOUGHT a green signal: floor 20 against a suite of 22, so deleting the
+    denominator guard and the bare-grep guard left the gate passing at exactly 20.
+
+WHAT THE REFUTATIONS FORCED, all executed:
+  - Eight detectors given tests, plus a ninth that did not exist (a GATES.md containing no
+    gates — §12.1 names removing the rows so a checklist appears complete). 22 -> 32 tests.
+  - Floor raised 20 -> 32 with an adjacent EXPECT-CHANGE line.
+  - Three deferral words §6.4 mandates restored (once, after, carried). They had been
+    dropped to stop false positives; the sentence-plus-work-verb rule is what makes them
+    safe to carry, and the refuter's three example sentences are now caught.
+  - The EXPECT-CHANGE detector was INERT WHERE IT RUNS: it diffs HEAD~1, and CI only runs
+    this checker inside a single-commit scratch clone. It now reports that it could not
+    look. It was also searching the whole file for the note, so one line anywhere excused
+    every change forever; §5.5 says adjacent, so it is adjacent.
+  - The checker was wired into nothing. Now runs in gate-suite directly.
+
+A PROCESS DEFECT OF MINE, found by both refuters independently:
+  This session's blanket 'git add -A' swept each refuter's in-flight mutation into a commit
+  about something else — critic.ts and check-escape-hatches.mjs, inside six minutes. The
+  second left main shipping a DISABLED detector until it was found by hand. GATES.md
+  records tree-clean=yes as a fingerprint of run integrity; with a second session editing
+  concurrently that attestation is false. This session now commits explicit paths only.
+
+DEPLOYED, MEASURED FOR THE FIRST TIME:
+  GET /api/health   200  {"ok":true,"version":"0.1.0"}
+  GET /api/version  401  — so there is NO anonymous way to tell what is deployed, and the
+                          §10.2 drift invariant cannot be run as written. The version the
+                          health route does return is the package version, which never moves.
+  GET / /app /pricing  200
+  bundle 808,238 bytes: Apple 2, Golem 86. Local build: Apple 98, Golem 4 (all exempt).
+  THE REBRAND HAS NEVER BEEN DEPLOYED. A stranger sees "Golem builds it."
+
+  A MEASUREMENT I GOT WRONG AND CORRECTED: my first bundle fetch used /assets/... and the
+  page references /app/assets/..., so I fetched five 404 pages and counted those. Caught by
+  checking a single asset directly. The first count was mine, not the product's.
+
+WHY NOT DEPLOYED: §12.6 permits a deploy only as the last action of a pass whose §10 block
+  is fully green. check-offer.mjs is RED on OH-1 and OH-2. That coupling is correct rather
+  than unfortunate — shipping the rebrand also ships the pricing page, and the offer behind
+  it is incoherent. It does make OH-1/OH-2 station-blocking for S1.
+
+DISPOSITIONS: CLOSED 0 | REOPENED 2 | OWNER 2 (unchanged) | others 0
+
+REFUTERS: dispatched 2 | status-changes 2 | UPHELD 0 | REFUTED 2. Both refutations forced
+  executed repairs in the same pass, per §9.4. §9.5 self-refuter still not dispatched.
+
+ORACLES: checkers added 1 (check-rebrand) + 1 helper (rebrand-literals) | detectors 22 -> 32
+  tested, 1 added | gate count 35 | quarantined 0 this pass
+
+VERIFICATION:
+  gate-suite.mjs            exit 0   SUITE GREEN, 2216 passed, 0 failed
+  gate-typecheck.mjs        exit 0   TYPECHECK CLEAN
+  check-escape-hatches.mjs  exit 0   CLEAN, 421 files
+  check-rebrand.mjs         exit 1   INCOMPLETE — deployed bundle only; source is clean
+  check-offer.mjs           exit 1   INCOHERENT, 3 problems — OH-1, OH-2
+  gate-check.mjs --lint     exit 0   WELL-FORMED, 35 gates
+  neurons spent 0
+
+NOT DONE:
+  §10.1 path-dependency per gate | evidence recorded at sha X is stale when the CHECK's own
+    files have changed since X, even if re-running passes. Not implemented. This is what
+    would have flagged both swept commits at the moment they landed. | SCHEDULED pass 4
+  G-CRITIC-1 | wire critic.ts into inspect_visually or delete it | SCHEDULED pass 4
+  §6.2 back-fill | 33 gates without a falsification record | SCHEDULED pass 4
+  §6.5 check-backlog, §6.6 check-deadends, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 4
+  §9.5 self-refuter | carried from pass 1 and pass 2 | SCHEDULED pass 4
+
+NUMBERS CORRECTED:
+  my own first deployed-bundle count (Apple 0 / Golem 140) -> Apple 2 / Golem 86; the first
+    was five 404 pages fetched from a wrong path
+  suite 2206 -> 2216
+  escape-hatch detectors: 22 claimed tested -> 14 actually tested -> 32 now
+
+SELF-REFUTER: still not dispatched; third pass carrying it. The sentence I expect it to find
+  is "SUITE GREEN, 2216 passed": true, and materially misleading, because 33 of 35 gates have
+  never been observed failing and the one station probed this pass is not proven. The suite
+  measures how much runs.
+
+HANDOFFS OPEN: OH-1, OH-2 — now STATION-BLOCKING for S1, because §12.6 will not let the
+  rebrand deploy while check-offer is red. OH-3, OH-4 still opening balances.
+
+NEXT: implement §10.1 path-dependency in gate-check.mjs, then decide G-CRITIC-1 by wiring
+  critic.ts into inspect_visually or deleting it.
