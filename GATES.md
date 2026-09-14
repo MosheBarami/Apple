@@ -251,6 +251,7 @@ test it gated.
     STATION: S1
     CHECK: node scripts/check-offer.mjs
     EXPECT: OFFER COHERENT
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-OFFER; path=6765c31f4f12/53 entries; git-sha=b17b3a5; tree-clean=yes; break-sha=b17b3a5; EXPECT=unmatched; output-sha256=a771573b11c19b93f7cd1abb934ab83c1b7b967cc28221432201b490214745e2; output-bytes=1064; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=0; deps-sha=e3b0c44298fc1c149afbf4c8; at=2026-09-14T19:26:57.948Z
 
 ---
 
