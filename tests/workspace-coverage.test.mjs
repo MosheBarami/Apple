@@ -15,7 +15,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -150,4 +150,51 @@ test('this repository itself passes', () => {
   const proc = spawnSync('node', [CHECKER], { cwd: ROOT, encoding: 'utf8', timeout: 30_000 });
   assert.equal(proc.status, 0, `${proc.stdout}${proc.stderr}`);
   assert.match(proc.stdout, /package\(s\) reachable/);
+});
+
+test('a test script whose glob misses a test file in its own package is caught', () => {
+  // THE GAP ONE LEVEL DOWN. This file exists because a whole PACKAGE fell out of `pnpm -r test`.
+  // A test FILE falling out of its own package is the same failure, and quieter: the package still
+  // reports a number and the number still goes up.
+  //
+  // packages/corpus ran `node --test src/intake/*.test.mjs`. A new test at src/chunk.test.mjs —
+  // covering 525 lines of splitting logic that had never been reachable — sat one directory above
+  // the glob and was never run by the suite. It passed when invoked by hand, which is the worst
+  // version: the author sees green.
+  const dir = mkdtempSync(join(tmpdir(), 'wscov-glob-'));
+  try {
+    // `apps/*`, not a bare `pkg`: this checker refuses a workspace entry shape it cannot expand,
+    // by design, and my first fixture tripped that rather than the rule under test.
+    mkdirSync(join(dir, 'apps', 'pkg', 'src', 'deep'), { recursive: true });
+    writeFileSync(join(dir, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    writeFileSync(join(dir, 'apps', 'pkg', 'src', 'thing.mjs'), 'export const a = 1;\n');
+    writeFileSync(join(dir, 'apps', 'pkg', 'src', 'deep', 'covered.test.mjs'), 'export {};\n');
+    writeFileSync(join(dir, 'apps', 'pkg', 'src', 'missed.test.mjs'), 'export {};\n');
+    const pkg = (script) => writeFileSync(join(dir, 'apps', 'pkg', 'package.json'),
+      JSON.stringify({ name: 'pkg', scripts: { test: script } }, null, 2));
+    spawnSync('git', ['init', '-q'], { cwd: dir });
+
+    pkg('node --test src/deep/*.test.mjs');
+    spawnSync('git', ['add', '-A'], { cwd: dir });
+    const narrow = spawnSync('node', [CHECKER, '--root', dir], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(narrow.status, 1, `${narrow.stdout}${narrow.stderr}`);
+    assert.match(`${narrow.stdout}${narrow.stderr}`, /misses 1 test file\(s\) — src\/missed\.test\.mjs/);
+
+    // CONTROL 1: a glob that reaches everything passes. `**/` must match zero directories too, or
+    // the checker reports a gap against the very glob that closes it — which is how a checker gets
+    // switched off.
+    pkg('node --test "src/**/*.test.mjs"');
+    spawnSync('git', ['add', '-A'], { cwd: dir });
+    const wide = spawnSync('node', [CHECKER, '--root', dir], { cwd: ROOT, encoding: 'utf8' });
+    assert.doesNotMatch(`${wide.stdout}${wide.stderr}`, /misses \d+ test file/, `${wide.stdout}${wide.stderr}`);
+
+    // CONTROL 2: `node --test` with no path discovers recursively and cannot drift, so it is never
+    // asked to account for anything.
+    pkg('node --test');
+    spawnSync('git', ['add', '-A'], { cwd: dir });
+    const auto = spawnSync('node', [CHECKER, '--root', dir], { cwd: ROOT, encoding: 'utf8' });
+    assert.doesNotMatch(`${auto.stdout}${auto.stderr}`, /misses \d+ test file/, `${auto.stdout}${auto.stderr}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  }
 });

@@ -17,6 +17,7 @@
 //
 // A package may opt out ONLY by declaring why, in the file itself, beside its name.
 // An opt-out that is merely absent is a failure.
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -109,6 +110,53 @@ const ALL = members();
 // another member is not a package; its contents belong to that member.
 const isContainer = (dir) => ALL.some((other) => other !== dir && other.startsWith(dir + '/'));
 
+/**
+ * Every test file a package OWNS, relative to it.
+ *
+ * Tracked files only, and vendored trees excluded. Walking the directory instead picked up 120
+ * `.test.ts` files from `packages/corpus/raw/Quenty__NevermoreEngine` — third-party sources the
+ * corpus ingests, which this repository neither runs nor should. A denominator that counts other
+ * people's tests reports a gap that cannot be closed, and a finding nobody can act on gets muted.
+ */
+function testFilesIn(dir) {
+  const rel = relative(ROOT, dir).replaceAll('\\', '/');
+  let listed = '';
+  try {
+    listed = execFileSync('git', ['ls-files', `${rel}/*.test.mjs`, `${rel}/**/*.test.mjs`,
+      `${rel}/*.test.ts`, `${rel}/**/*.test.ts`], { cwd: ROOT, encoding: 'utf8' });
+  } catch { return []; }
+  return listed.split('\n').filter(Boolean)
+    .filter((f) => !f.includes('/raw/') && !f.includes('/node_modules/'))
+    .map((f) => f.slice(rel.length + 1));
+}
+
+/**
+ * Which of a package's test files a path in its test script reaches.
+ *
+ * Matched in JS rather than by asking a shell: macOS ships bash 3.2, which has no `globstar`, so
+ * `**` there silently behaves as `*` and the answer would be wrong in the direction that reports
+ * a gap where there is none.
+ */
+function reachedBy(pattern, files) {
+  const p = pattern.replace(/^\.\//, '');
+  // A bare directory means node discovers everything under it.
+  if (!p.includes('*') && !p.includes('.test.')) return files.filter((f) => f.startsWith(p.replace(/\/$/, '') + '/'));
+
+  // `**/` MATCHES ZERO DIRECTORIES as well as many — `src/**/*.test.mjs` covers src/chunk.test.mjs.
+  // Treating it as "at least one directory" made this report a gap against the very glob that
+  // fixes the gap, which is the sort of finding that gets a checker switched off.
+  const esc = (x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+  let rx = '';
+  for (let i = 0; i < p.length; i += 1) {
+    if (p.startsWith('**/', i)) { rx += '(?:[^/]+/)*'; i += 2; continue; }
+    if (p.startsWith('**', i)) { rx += '.*'; i += 1; continue; }
+    if (p[i] === '*') { rx += '[^/]*'; continue; }
+    rx += esc(p[i]);
+  }
+  const re = new RegExp(`^${rx}$`);
+  return files.filter((f) => re.test(f));
+}
+
 for (const dir of ALL) {
   if (isContainer(dir)) continue;
   const rel = relative(ROOT, dir).replaceAll('\\', '/');
@@ -139,6 +187,36 @@ for (const dir of ALL) {
   const hasTest = script !== '' && !['true', ':', 'exit 0', 'echo'].includes(script);
   if (hasTest) {
     covered.push(rel);
+
+    //[[ A TEST SCRIPT'S GLOB IS A DENOMINATOR, and an explicit one stops growing.
+    //
+    //   packages/corpus ran `node --test src/intake/*.test.mjs`. A new test written at
+    //   src/chunk.test.mjs — covering 525 lines of heading and code-block splitting that had never
+    //   been reachable — sat one directory above the glob and was never run by `pnpm -r test`. It
+    //   passed locally when invoked by hand, which is the worst version: the author sees green.
+    //
+    //   This file already exists because a package fell out of the suite. A test file falling out
+    //   of its own package is the same failure one level down, and it is quieter, because the
+    //   package still reports a number and the number still goes up.
+    //
+    //   `node --test` with no path argument discovers recursively and cannot drift. A script that
+    //   names paths is asked to account for every test file in its package.
+    const named = script.match(/(?:"[^"]*\.test\.[a-z]+"|\S*\.test\.[a-z]+)/g);
+    if (named) {
+      const reached = new Set();
+      const files = testFilesIn(dir);
+      for (const raw of named) {
+        for (const f of reachedBy(raw.replace(/"/g, ''), files)) reached.add(f);
+      }
+      const missed = files.filter((f) => !reached.has(f));
+      if (missed.length) {
+        problems.push(
+          `${rel}: its "test" script names paths and misses ${missed.length} test file(s) — `
+          + `${missed.slice(0, 3).join(', ')}${missed.length > 3 ? ', …' : ''}. `
+          + 'Use `node --test` with no path so discovery cannot drift, or widen the glob.',
+        );
+      }
+    }
     continue;
   }
   if (EXEMPT[rel]) continue;
