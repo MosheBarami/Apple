@@ -76,10 +76,11 @@ and are tracked as handoffs, not gates.
 
 ## Open
 
-- [ ] G11: The workspace mirrors correctly in RTL, not just the auth screen
+- [x] G11: The workspace mirrors correctly in RTL, not just the auth screen
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 4 --label G11 -- node --test tests/rtl-workspace.test.mjs
     EXPECT: G11 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G11; path=6765c31f4f12/53 entries; git-sha=683cdf7; tree-clean=yes; break-sha=683cdf7; EXPECT=unmatched; output-sha256=ee5671b27554dd9b338e3f8bc05c13f9f1899db457bf617c7071fe65ad251416; output-bytes=1376; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=74411d82e7e57151303819cd; at=2026-09-14T18:53:55.594Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e8f89f6; tree-clean=yes; EXPECT=matched; output-sha256=8c14021c05fa90eca8ee096ee75bdc27b6b2c494da902c009173eab7db8976f4; output-bytes=489; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=74411d82e7e57151303819cd; at=2026-09-14T18:54:20.928Z
   EXPECT-CHANGE: old=fail 0 new=G11 OK reason=derived-floor-4-measured-4-passing
 
 - [ ] G12: Every user-facing surface has an explicit empty, loading and error state
@@ -170,10 +171,11 @@ and are tracked as handoffs, not gates.
   EXPECT-CHANGE: old=fail 0 new=G22 OK reason=derived-floor-18-measured-18-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=4bc6a0e42828c223f347428ec10019794e70fc9dde24881167df4c0a4e8a1236; output-bytes=1333
 
-- [ ] G23: A failed run can be stopped and run again from the workspace, without retyping
+- [x] G23: A failed run can be stopped and run again from the workspace, without retyping
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 13 --label G23 -- node --test tests/retry-run.test.mjs
     EXPECT: G23 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G23; path=6765c31f4f12/53 entries; git-sha=3f0de27; tree-clean=yes; break-sha=3f0de27; EXPECT=unmatched; output-sha256=9a11a64f28acc510fd523a9f008b4af8498710a7fde05e04c32444e7b13114ff; output-bytes=21433; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=de09c5affe12a4db865b3877; at=2026-09-14T18:54:13.670Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e8f89f6; tree-clean=yes; EXPECT=matched; output-sha256=d85115a1b318f77b174491092d69d7bd040f80b8514f59157fae28073548c4f8; output-bytes=1031; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=de09c5affe12a4db865b3877; at=2026-09-14T18:54:20.927Z
   EXPECT-CHANGE: old=fail 0 new=G23 OK reason=derived-floor-13-measured-13-passing
 
 - [x] G24: An unsent message survives a reload, stays with its own project, never breaks the composer, and does not outlive the session that wrote it
