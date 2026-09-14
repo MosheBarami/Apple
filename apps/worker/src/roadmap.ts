@@ -782,6 +782,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 60,
     dependsOn: ['economy'], genres: ['any'], satisfiedBy: ['persistence'],
     build: [
+      'Install the reviewed module first: install_module("profile_store"). It already does everything below, and the rules below are then what to check rather than what to write.',
       'Write with UpdateAsync, never SetAsync. UpdateAsync is a read-modify-write the service serialises, so two servers saving the same player cannot silently overwrite each other; SetAsync takes the last writer and discards the other.',
       'If the load FAILED, refuse to save for that session. Writing a fresh default over a read that errored is how a player loses everything, and on the server it looks identical to a successful save.',
       'Session-lock the profile on join and release it on leave, so the same player joined twice cannot duplicate what they own.',
@@ -804,6 +805,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'rune', runs: 1, priority: 70,
     dependsOn: ['client_server_backbone', 'save_progress'], genres: ['any'], satisfiedBy: ['anticheat'],
     build: [
+      'Install the reviewed module first: install_module("remote_guard"). It already does everything below, and the rules below are then what to check rather than what to write.',
       'Validate every RemoteEvent argument on the server: its type, its range, and whether THIS player is allowed to do it at all. All three — a correctly typed value can still be a request the player has no right to make.',
       'Rate-limit per player per remote on the SERVER, with a token bucket or a last-fired timestamp. A debounce in the LocalScript is not a rate limit; it is a courtesy the exploiter deletes.',
       'Never accept an amount from the client. The client reports that a button was pressed; the server decides what that is worth.',
@@ -836,6 +838,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 85,
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['leaderboard_global'],
     build: [
+      'Install the reviewed module first: install_module("leaderboard"). It already does everything below, and the rules below are then what to check rather than what to write.',
       'Write the tracked stat to an OrderedDataStore on save.',
       'Read the board with GetSortedAsync on a timer — once a minute is plenty — never on player join.',
       'GetSortedAsync is a LIST operation: 5 requests a minute plus 2 per player, against 60 plus 40 for an ordinary read. It is the scarcest budget in the API, so do not spend it on the most repetitive request.',
@@ -884,6 +887,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 100,
     dependsOn: ['shopfront'], genres: ['any'], satisfiedBy: ['monetization'],
     build: [
+      'Install the reviewed module first: install_module("receipts"). It already does everything below, and the rules below are then what to check rather than what to write.',
       'Add one gamepass or developer product that saves time or looks good, never one that gates the core loop.',
       'For a developer product, implement MarketplaceService.ProcessReceipt and return Enum.ProductPurchaseDecision.PurchaseGranted ONLY after the grant has been written and the write confirmed. Returning it first tells Roblox to stop retrying, and the player has paid for nothing.',
       'Make ProcessReceipt idempotent on receipt.PurchaseId. Roblox may call it more than once for a single purchase, and a handler that just adds the reward grants it twice.',
@@ -909,6 +913,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     genres: ['simulator', 'tycoon', 'tower_defence', 'adventure', 'roleplay', 'combat'],
     satisfiedBy: ['currency'],
     build: [
+      'Install the reviewed module first: install_module("currency"). It already does everything below, and the rules below are then what to check rather than what to write.',
       'Create a leaderstats folder per player with the single currency the loop uses.',
       'Award it from the server on the core action.',
       'Keep the authoritative balance in the save and treat leaderstats as a display mirror of it. leaderstats is replicated state built for showing a number, and anything that writes to it directly will drift from what the player actually owns.',
@@ -928,10 +933,16 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 22,
     dependsOn: ['playable_spawn'], genres: ['obby'], satisfiedBy: ['checkpoints'],
     build: [
-      'Split the course into numbered stages, each ending in a checkpoint SpawnLocation.',
-      'Store the reached stage per player so respawn returns them to it.',
+      'Install the reviewed module first: install_module("checkpoints"). It already does everything below, and the rules below are then what to check rather than what to write.',
+      'Split the course into numbered stages, each ending in a checkpoint SpawnLocation named for its number.',
+      'Store the reached stage per player so respawn returns them to it, and only ever move it FORWARD — assigning on touch instead of comparing is why re-crossing an early checkpoint sends players back.',
+      'Guard the Touched handler: a part fires it many times a second while a character rests on it, and once per limb.',
+      'Move the character after it respawns. Roblox has already chosen a SpawnLocation by then, so a player who died at stage 9 restarts at the beginning with their saved stage still saying 9.',
     ],
-    acceptance: ['Dying returns the player to their last checkpoint, not to stage 1.'],
+    acceptance: [
+      'Dying returns the player to their last checkpoint, not to stage 1.',
+      'Re-touching an earlier checkpoint does not move the player back.',
+    ],
   },
   {
     id: 'obby_hazards',

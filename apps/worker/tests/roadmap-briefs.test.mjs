@@ -27,7 +27,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -39,6 +39,12 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'roadmap.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { cwd: WORKER, stdio: 'pipe' });
 const R = await import(`file://${out}`);
+
+const pfOut = join(mkdtempSync(join(tmpdir(), 'rm-pf-')), 'pf.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'prefabs.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + pfOut],
+  { cwd: WORKER, stdio: 'pipe' });
+const P = await import(`file://${pfOut}`);
 
 /** A simulator with a currency, a shop and remotes — enough for the 'any' milestones to appear. */
 const SCAN = {
@@ -140,4 +146,76 @@ test('every brief still reads as instructions, not as a specification dump', () 
       assert.match(s, /^[A-Z]/, `${id} step does not start as a sentence: ${s.slice(0, 40)}`);
     }
   }
+});
+
+
+// --- the briefs and the module library have to stay in step -----------------------------------
+
+/**
+ * A brief naming a module that does not exist is worse than a brief naming none.
+ *
+ * The prose IS the build prompt, so `install_module("profile_stores")` is not a broken link — it is
+ * an instruction the model will follow, fail, and then work around by writing the thing itself,
+ * having spent a turn discovering that. These two files have no import between them on purpose,
+ * which is exactly why they need a test holding them together.
+ */
+const WIRED = {
+  save_progress: 'profile_store',
+  server_authority: 'remote_guard',
+  monetisation: 'receipts',
+  economy: 'currency',
+  global_leaderboard: 'leaderboard',
+  obby_stages: 'checkpoints',
+};
+
+/** Every install_module("...") named anywhere in the catalogue. */
+function modulesNamedInBriefs() {
+  const src = readFileSync(join(WORKER, 'src', 'roadmap.ts'), 'utf8');
+  return [...src.matchAll(/install_module\("([a-z_]+)"\)/g)].map((m) => m[1]);
+}
+
+test('every module a brief names actually exists', () => {
+  const named = modulesNamedInBriefs();
+  assert.ok(named.length >= 6, `only ${named.length} briefs name a module`);
+  for (const id of named) {
+    assert.ok(P.PREFAB_IDS.includes(id),
+      `a brief tells the model to install "${id}", which is not a module. Available: ${P.PREFAB_IDS.join(', ')}`);
+  }
+});
+
+test('each wired milestone names its module, through the real brief', () => {
+  for (const [milestone, module] of Object.entries(WIRED)) {
+    const b = R.executionBrief(shape, roadmap, milestone);
+    if (!b) continue; // not every milestone is reachable for this project shape
+    const text = b.steps.join('\n');
+    assert.match(text, new RegExp(`install_module\\("${module}"\\)`),
+      `${milestone} should offer ${module}`);
+  }
+});
+
+test('the install step comes FIRST, before the rules it would satisfy', () => {
+  // A module offered after four paragraphs of how to write it yourself is a module nobody installs.
+  for (const [milestone] of Object.entries(WIRED)) {
+    const b = R.executionBrief(shape, roadmap, milestone);
+    if (!b) continue;
+    assert.match(b.steps[0], /install_module/, `${milestone}'s first step should be the module`);
+  }
+});
+
+test('the rules survive alongside the module, for a builder who declines it', () => {
+  // Replacing the rules with "install the module" would make the brief useless the moment somebody
+  // needs something the module does not do.
+  const b = R.executionBrief(shape, roadmap, 'save_progress');
+  const text = b.steps.join('\n');
+  assert.match(text, /UpdateAsync/, 'the rules must remain');
+  assert.match(text, /BindToClose/);
+  assert.ok(b.steps.length >= 4, 'the brief should still teach, not just delegate');
+});
+
+test('every module in the library is offered by some brief, or is deliberately unoffered', () => {
+  // The other drift direction: a module nobody is told about is a module nobody installs.
+  const named = new Set(modulesNamedInBriefs());
+  const unoffered = P.PREFAB_IDS.filter((id) => !named.has(id));
+  assert.deepEqual(unoffered, [],
+    `these modules exist and no brief mentions them: ${unoffered.join(', ')}`);
 });
