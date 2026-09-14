@@ -167,6 +167,7 @@ const WIRED = {
   global_leaderboard: 'leaderboard',
   obby_stages: 'checkpoints',
   combat_rounds: 'rounds',
+  tycoon_income: 'income',
 };
 
 /** Every install_module("...") named anywhere in the catalogue. */

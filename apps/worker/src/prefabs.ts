@@ -957,6 +957,158 @@ end
 return Rounds
 `;
 
+const TYCOON_SOURCE = `--!strict
+-- Income — the dropper-and-collector chain, with the bug that kills the server.
+--
+-- THE ONE THAT MATTERS: a dropper spawns a part on a timer and nothing ever removes it. Ten
+-- droppers at one part a second is 36,000 parts an hour, and the server degrades until it dies.
+-- It is not a crash anyone can point at — frame time climbs, players complain the game is laggy,
+-- and the cause is a loop working exactly as written. So this caps the live parts per dropper and
+-- destroys the oldest when the cap is reached, rather than trusting the collector to keep up.
+--
+-- Three more, each quieter:
+--   * PAYING THE WRONG PLAYER. The collector credits whoever touched it. A visitor standing on a
+--     neighbour's collector is then earning their income. Ownership is read from the PLOT, never
+--     from the toucher.
+--   * TOUCHED FIRES REPEATEDLY. A part resting on the collector pays out dozens of times a second.
+--     Each drop is consumed exactly once, by destroying it inside the same guard that credits.
+--   * INCOME AFTER LEAVING. A dropper whose owner has gone keeps spawning into a plot nobody owns.
+--
+-- SETUP (once, in a server Script):
+--   local Income = require(game.ServerScriptService.Income)
+--   Income.configure({ award = function(player, amount) Currency.award(player, amount) end })
+--   Income.addDropper({ plot = plotModel, spawner = dropperPart, value = 5, everySeconds = 2 })
+--   Income.collector(plotModel, collectorPart)
+--   -- set plot:SetAttribute("OwnerUserId", player.UserId) when a plot is claimed
+local Players = game:GetService("Players")
+
+local Income = {}
+
+local MAX_LIVE_PER_DROPPER = 24
+local COLLECT_DEBOUNCE = 0.1
+
+local droppers = {}
+local awardFn = nil
+local lastCollect = {}
+
+function Income.configure(opts)
+	awardFn = opts.award
+	if opts.maxLive ~= nil then
+		MAX_LIVE_PER_DROPPER = opts.maxLive
+	end
+end
+
+--- The player who owns a plot, or nil. Read from the PLOT so a visitor cannot be paid by standing
+--- somewhere; the attribute is set once when the plot is claimed.
+function Income.ownerOf(plot)
+	local id = plot:GetAttribute("OwnerUserId")
+	if type(id) ~= "number" then
+		return nil
+	end
+	return Players:GetPlayerByUserId(id)
+end
+
+--- Register a dropper. Returns a handle with a step(dt) the loop drives.
+function Income.addDropper(spec)
+	local d = {
+		plot = spec.plot,
+		spawner = spec.spawner,
+		value = spec.value or 1,
+		everySeconds = spec.everySeconds or 2,
+		since = 0,
+		live = {},
+	}
+	table.insert(droppers, d)
+	return d
+end
+
+--- Spawn one drop from a dropper, capping how many it can have alive at once.
+function Income.drop(d)
+	-- No owner, no income. A dropper feeding a plot nobody owns is spawning parts for nothing, and
+	-- it is the state a plot is in for most of a server's life.
+	if Income.ownerOf(d.plot) == nil then
+		return nil
+	end
+
+	-- THE CAP. Destroy the oldest rather than refusing to spawn: refusing would stall a chain whose
+	-- collector is merely slow, and a player watching their dropper stop has no idea why.
+	while #d.live >= MAX_LIVE_PER_DROPPER do
+		local oldest = table.remove(d.live, 1)
+		if oldest ~= nil and oldest.Parent ~= nil then
+			oldest:Destroy()
+		end
+	end
+
+	local part = Instance.new("Part")
+	part.Size = Vector3.new(1, 1, 1)
+	part.CFrame = d.spawner.CFrame
+	part:SetAttribute("DropValue", d.value)
+	part:SetAttribute("DropPlot", d.plot:GetFullName())
+	part.Parent = workspace
+	table.insert(d.live, part)
+	return part
+end
+
+--- Advance every dropper by dt seconds. The loop calls this; a test calls it directly.
+function Income.step(dt)
+	for _, d in ipairs(droppers) do
+		d.since = d.since + dt
+		while d.since >= d.everySeconds do
+			d.since = d.since - d.everySeconds
+			Income.drop(d)
+		end
+		-- forget parts something else destroyed, so the cap counts what is actually there
+		for i = #d.live, 1, -1 do
+			if d.live[i].Parent == nil then
+				table.remove(d.live, i)
+			end
+		end
+	end
+end
+
+--- Wire a collector part. Credits the PLOT'S owner, once per drop.
+function Income.collector(plot, part)
+	part.Touched:Connect(function(hit)
+		local value = hit:GetAttribute("DropValue")
+		if value == nil then
+			return
+		end
+		-- One payout per drop: consuming it here is what makes a Touched storm harmless, because
+		-- the second event finds a part with no attribute and no parent.
+		if hit.Parent == nil then
+			return
+		end
+		local now = os.clock()
+		local previous = lastCollect[hit]
+		if previous ~= nil and now - previous < COLLECT_DEBOUNCE then
+			return
+		end
+		lastCollect[hit] = now
+
+		local owner = Income.ownerOf(plot)
+		hit:Destroy()
+		if owner == nil or awardFn == nil then
+			return
+		end
+		local ok, err = pcall(awardFn, owner, value)
+		if not ok then
+			warn("[Income] award failed: " .. tostring(err))
+		end
+	end)
+end
+
+--- How many drops a dropper currently has alive. For tests and for a HUD.
+function Income.liveCount(d)
+	local n = 0
+	for _, part in ipairs(d.live) do
+		if part.Parent ~= nil then n = n + 1 end
+	end
+	return n
+end
+
+return Income
+`;
+
 export const PREFABS: Record<string, Prefab> = {
   profile_store: {
     id: 'profile_store',
@@ -977,6 +1129,28 @@ export const PREFABS: Record<string, Prefab> = {
       'Profile.commit(player, data) -> boolean  -- persist one table now; for atomic purchase writes',
     ],
     source: PROFILE_SOURCE,
+  },
+  income: {
+    id: 'income',
+    moduleName: 'Income',
+    summary: 'The tycoon dropper-and-collector chain, with a cap so it cannot bury the server in parts.',
+    prevents: [
+      'a dropper spawning parts forever — ten droppers at one a second is 36,000 parts an hour, and the server degrades until it dies with no crash anyone can point at',
+      'paying whoever TOUCHED the collector rather than whoever owns the plot, so a visitor earns a neighbour\'s income',
+      'a drop paying out dozens of times because Touched fires repeatedly while a part rests on the collector',
+      'a dropper feeding a plot nobody owns, which is the state a plot is in for most of a server\'s life',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'Income.configure({ award = function(player, amount) end, maxLive = 24 })',
+      'Income.addDropper({ plot = plotModel, spawner = part, value = 5, everySeconds = 2 })',
+      'Income.collector(plot, part)',
+      'Income.step(dt)   -- the loop calls this; call it directly to test a chain',
+      'Income.ownerOf(plot) -> Player | nil',
+      'Income.liveCount(dropper) -> number',
+    ],
+    source: TYCOON_SOURCE,
   },
   leaderboard: {
     id: 'leaderboard',

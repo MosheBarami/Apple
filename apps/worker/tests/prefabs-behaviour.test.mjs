@@ -1325,3 +1325,233 @@ test('finish on a round that is not running is refused rather than faked', () =>
   ].join('\n'), 'rd-finish-idle');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * Income's harness.
+ *
+ * The bug this module exists for is not a crash, it is an accumulation: a dropper spawning a part
+ * a second with nothing removing them. That is only observable over TIME, which is why `step(dt)`
+ * is public and why this harness stubs `Instance.new` — counting parts is the test.
+ *
+ * Attributes are a real map on each stub part rather than a no-op, because the whole payout path
+ * turns on reading `DropValue` off a part and on that part's Parent going nil when it is consumed.
+ */
+function runIncome(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local nowValue = 0',
+    'os = { clock = function() return nowValue end, time = function() return nowValue end }',
+    'local function advance(s) nowValue = nowValue + s end',
+    '',
+    'Vector3 = { new = function(x, y, z) return { x = x, y = y, z = z } end }',
+    'workspace = { Name = "Workspace" }',
+    '',
+    '-- every part made by the module, so the test can count what a server would be holding',
+    'local created = {}',
+    'local function makeInstance()',
+    '\tlocal attrs = {}',
+    '\tlocal inst',
+    '\tinst = {',
+    '\t\tParent = nil,',
+    '\t\tSetAttribute = function(_, k, v) attrs[k] = v end,',
+    '\t\tGetAttribute = function(_, k) return attrs[k] end,',
+    '\t\tDestroy = function(self) self.Parent = nil end,',
+    '\t\tGetFullName = function() return "plot" end,',
+    '\t}',
+    '\treturn inst',
+    'end',
+    'Instance = { new = function(class)',
+    '\tlocal i = makeInstance()',
+    '\ti.ClassName = class',
+    '\ttable.insert(created, i)',
+    '\treturn i',
+    'end }',
+    '',
+    'local owner = { UserId = 7, Name = "owner" }',
+    'local visitor = { UserId = 9, Name = "visitor" }',
+    'local knownPlayers = { [7] = owner, [9] = visitor }',
+    'game = { GetService = function() return { GetPlayerByUserId = function(_, id) return knownPlayers[id] end } end }',
+    '',
+    '-- a plot whose ownership the test controls, and a spawner with a CFrame',
+    'local function makePlot(ownerId)',
+    '\tlocal attrs = { OwnerUserId = ownerId }',
+    '\treturn {',
+    '\t\tSetAttribute = function(_, k, v) attrs[k] = v end,',
+    '\t\tGetAttribute = function(_, k) return attrs[k] end,',
+    '\t\tGetFullName = function() return "game.Workspace.Plot" end,',
+    '\t}',
+    'end',
+    'local spawner = { CFrame = "at-the-dropper" }',
+    '',
+    '-- a collector whose Touched the test can fire',
+    'local function makeCollector()',
+    '\tlocal handler = nil',
+    '\treturn {',
+    '\t\tTouched = { Connect = function(_, fn) handler = fn end },',
+    '\t\ttouch = function(part) return handler(part) end,',
+    '\t}',
+    'end',
+    '',
+    'local function liveParts()',
+    '\tlocal n = 0',
+    '\tfor _, p in ipairs(created) do if p.Parent ~= nil then n = n + 1 end end',
+    '\treturn n',
+    'end',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.income.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+const INC = [
+  'local paid = {}',
+  'M.configure({ award = function(p, amount) paid[p.Name] = (paid[p.Name] or 0) + amount end, maxLive = 5 })',
+  'local plot = makePlot(7)',
+  'local d = M.addDropper({ plot = plot, spawner = spawner, value = 10, everySeconds = 1 })',
+].join('\n');
+
+test('the income harness runs, and a false assertion in it still fails', () => {
+  const good = runIncome([INC, 'assert(type(M.step) == "function")'].join('\n'), 'in-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runIncome([INC, 'assert(false, "intentional-income")'].join('\n'), 'in-sanity-neg');
+  assert.equal(bad.ok, false);
+  assert.match(bad.output, /intentional-income/);
+});
+
+test('THE PART CAP HOLDS — this is the bug that kills a server, silently', () => {
+  // Ten droppers at one part a second is 36,000 parts an hour. There is no crash to point at:
+  // frame time climbs, players say the game is laggy, and the loop is working exactly as written.
+  const r = runIncome([
+    INC,
+    'M.step(200)   -- two hundred seconds, one drop a second',
+    'assert(M.liveCount(d) <= 5, "live drops must stay under the cap, got " .. tostring(M.liveCount(d)))',
+    'assert(liveParts() <= 5, "and the server must not be holding more than that either")',
+    'M.step(200)',
+    'assert(liveParts() <= 5, "still, after four hundred seconds")',
+  ].join('\n'), 'in-cap');
+  assert.ok(r.ok, r.output);
+});
+
+test('it drops on schedule rather than all at once', () => {
+  const r = runIncome([
+    INC,
+    'M.step(0.5)',
+    'assert(M.liveCount(d) == 0, "half a second is not a second")',
+    'M.step(0.6)',
+    'assert(M.liveCount(d) == 1)',
+    'M.step(3)',
+    'assert(M.liveCount(d) == 4, "three more seconds, three more drops, got " .. tostring(M.liveCount(d)))',
+  ].join('\n'), 'in-schedule');
+  assert.ok(r.ok, r.output);
+});
+
+test('A PLOT NOBODY OWNS PRODUCES NOTHING — the state a plot is in most of the time', () => {
+  const r = runIncome([
+    'local paid = {}',
+    'M.configure({ award = function(p, a) paid[p.Name] = a end, maxLive = 5 })',
+    'local plot = makePlot(nil)',
+    'local d = M.addDropper({ plot = plot, spawner = spawner, value = 10, everySeconds = 1 })',
+    'M.step(60)',
+    'assert(M.liveCount(d) == 0, "an unowned plot must not spawn, got " .. tostring(M.liveCount(d)))',
+    'plot:SetAttribute("OwnerUserId", 7)',
+    'M.step(2)',
+    'assert(M.liveCount(d) > 0, "and must start once it is claimed")',
+  ].join('\n'), 'in-unowned');
+  assert.ok(r.ok, r.output);
+});
+
+test('THE PLOT OWNER IS PAID, not whoever touched the collector', () => {
+  // A visitor standing on a neighbour's collector must not earn their income.
+  const r = runIncome([
+    INC,
+    'local c = makeCollector()',
+    'M.collector(plot, c)',
+    'M.step(1)',
+    'local drop = created[#created]',
+    'c.touch(drop)',
+    'assert(paid.owner == 10, "the plot owner must be paid, got " .. tostring(paid.owner))',
+    'assert(paid.visitor == nil, "the toucher must not be")',
+  ].join('\n'), 'in-owner');
+  assert.ok(r.ok, r.output);
+});
+
+test('ONE PAYOUT PER DROP, however many times Touched fires', () => {
+  // A part resting on the collector fires Touched dozens of times a second.
+  const r = runIncome([
+    INC,
+    'local c = makeCollector()',
+    'M.collector(plot, c)',
+    'M.step(1)',
+    'local drop = created[#created]',
+    'for i = 1, 40 do c.touch(drop) end',
+    'assert(paid.owner == 10, "one drop is one payout, got " .. tostring(paid.owner))',
+    'assert(drop.Parent == nil, "and the drop is consumed")',
+  ].join('\n'), 'in-once');
+  assert.ok(r.ok, r.output);
+});
+
+test('a part that is not a drop is ignored', () => {
+  // A player walking over the collector must not be treated as income.
+  const r = runIncome([
+    INC,
+    'local c = makeCollector()',
+    'M.collector(plot, c)',
+    'local leg = makeInstance()',
+    'leg.Parent = workspace',
+    'c.touch(leg)',
+    'assert(next(paid) == nil, "a limb is not a drop")',
+    'assert(leg.Parent ~= nil, "and must not be destroyed")',
+  ].join('\n'), 'in-notadrop');
+  assert.ok(r.ok, r.output);
+});
+
+test('collected drops free their slot, so the cap counts what is actually there', () => {
+  const r = runIncome([
+    INC,
+    'local c = makeCollector()',
+    'M.collector(plot, c)',
+    'M.step(5)',
+    'assert(M.liveCount(d) == 5, "at the cap")',
+    'for _, part in ipairs(created) do if part.Parent ~= nil then c.touch(part) end end',
+    'M.step(0)',
+    'assert(M.liveCount(d) == 0, "collecting must free the slots, got " .. tostring(M.liveCount(d)))',
+    'M.step(3)',
+    'assert(M.liveCount(d) == 3, "and the dropper resumes normally")',
+  ].join('\n'), 'in-freeslots');
+  assert.ok(r.ok, r.output);
+});
+
+test('an award that throws does not take the collector down with it', () => {
+  const r = runIncome([
+    'M.configure({ award = function() error("currency module exploded") end, maxLive = 5 })',
+    'local plot = makePlot(7)',
+    'local d = M.addDropper({ plot = plot, spawner = spawner, value = 10, everySeconds = 1 })',
+    'local c = makeCollector()',
+    'M.collector(plot, c)',
+    'M.step(2)',
+    'for _, part in ipairs(created) do if part.Parent ~= nil then c.touch(part) end end',
+    'assert(#warnings >= 1, "the failure must be reported")',
+    'M.step(2)',
+    'assert(M.liveCount(d) > 0, "and the chain must still be running")',
+  ].join('\n'), 'in-throwing-award');
+  assert.ok(r.ok, r.output);
+});

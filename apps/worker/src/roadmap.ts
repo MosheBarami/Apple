@@ -993,10 +993,18 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     complexity: 'medium', mode: 'stone', runs: 1, priority: 28,
     dependsOn: ['tycoon_plot', 'economy'], genres: ['tycoon'], satisfiedBy: ['dropper'],
     build: [
+      'Install the reviewed module first: install_module("income"). It already does everything below, and the rules below are then what to check rather than what to write.',
       'Build the dropper, conveyor and collector chain on the plot.',
-      'Credit the owner on the server when a dropped part reaches the collector.',
+      'CAP THE LIVE DROPS PER DROPPER and destroy the oldest at the cap. A dropper that spawns forever is the bug that kills a tycoon server: ten droppers at one part a second is 36,000 parts an hour, there is no crash to point at, and the loop is working exactly as written.',
+      'Credit the PLOT OWNER, read from the plot, never the player who touched the collector — otherwise a visitor standing on a neighbour\'s collector earns their income.',
+      'Consume each drop as it pays out. Touched fires many times a second while a part rests on the collector, and a drop that is not destroyed pays dozens of times.',
+      'Spawn nothing for a plot nobody owns, which is the state a plot is in for most of a server\'s life.',
     ],
-    acceptance: ['Standing still increases the owner currency.', 'Another player cannot collect from your plot.'],
+    acceptance: [
+      'Standing still increases the owner currency.',
+      'Another player cannot collect from your plot.',
+      'A dropper left running for an hour has not filled the workspace with parts.',
+    ],
   },
   {
     id: 'tycoon_buy_buttons',
