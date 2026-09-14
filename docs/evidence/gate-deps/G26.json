@@ -1,0 +1,4 @@
+[
+  "apps/worker/tests/memory.test.mjs",
+  "scripts/assert-tests.mjs"
+]

@@ -47,10 +47,11 @@ and are tracked as handoffs, not gates.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G6; path=6765c31f4f12/53 entries; git-sha=85a6bdc; tree-clean=yes; break-sha=85a6bdc; EXPECT=unmatched; output-sha256=18a9b4cd90aa39cd0660fbd144844358fa4675c4e997934adf766c392e766dcd; output-bytes=1466; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=0a443a1a3cda7802f88ec4ec; at=2026-09-14T17:57:12.823Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=d73baf876d31b412cd5ef03ad6a71bb7048bd6b423b167847475224af373886d; output-bytes=552; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=0a443a1a3cda7802f88ec4ec; at=2026-09-14T18:05:46.642Z
 
-- [ ] G7: No tool is offered that this deployment cannot run
+- [x] G7: No tool is offered that this deployment cannot run
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 7 --label G7 -- node --test tests/asset-library-gating.test.mjs
     EXPECT: G7 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G7; path=6765c31f4f12/53 entries; git-sha=62536fc; tree-clean=yes; break-sha=62536fc; EXPECT=unmatched; output-sha256=92521bec39b5a983214ecf7765efb425848907052403e7510bfced8f5d16736b; output-bytes=1714; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=340a4123b10fd90a8963033a; at=2026-09-14T18:52:01.460Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=aaf7043; tree-clean=yes; EXPECT=matched; output-sha256=b19fd59a4ceeff4e7f0c28883d3182d1e6b58f972d17dc0b553a9f8b5e3784a7; output-bytes=683; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=340a4123b10fd90a8963033a; at=2026-09-14T18:52:26.703Z
   EXPECT-CHANGE: old=fail 0 new=G7 OK reason=derived-floor-7-measured-7-passing
 
 - [x] G8: Billing refuses an unsigned, forged, stale or tampered webhook
@@ -100,10 +101,11 @@ and are tracked as handoffs, not gates.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=2e4450c5c689bd431467c714c6fa3c1dfaeab6985b76734c7d61eea39f87091f; output-bytes=1476; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=edcf3e1c6ae8be2f1af3380c; at=2026-09-14T18:51:50.037Z
   EXPECT-CHANGE: old=fail 0 new=G14 OK reason=derived-floor-18-measured-18-passing
 
-- [ ] G15: A project can be renamed from either surface, and Escape does not save
+- [x] G15: A project can be renamed from either surface, and Escape does not save
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 15 --label G15 -- node --test tests/rename-project.test.mjs
     EXPECT: G15 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G15; path=6765c31f4f12/53 entries; git-sha=64fdb97; tree-clean=yes; break-sha=64fdb97; EXPECT=unmatched; output-sha256=61d7ecdfc572a2a6002af46fafd61c63899f3c25d8438f422c578f1ae815583c; output-bytes=944; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=904c2ee18c9d64b85cfc67eb; at=2026-09-14T18:52:06.904Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=aaf7043; tree-clean=yes; EXPECT=matched; output-sha256=ba13bbd374e327b188c851fdf3904a90ccd625d135ac141fabb96f526d7608cf; output-bytes=1139; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=fe930c44ca1c9c2a55a29c48; at=2026-09-14T18:52:26.703Z
   EXPECT-CHANGE: old=fail 0 new=G15 OK reason=derived-floor-15-measured-15-passing
 
 - [ ] G16: Every action in the product is reachable from the command palette, and the palette is reachable from every signed-in route
@@ -144,10 +146,11 @@ and are tracked as handoffs, not gates.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=d97548f91dc9bbc64e6b8ce4ac4637fea48681b56aa9647edb7e176427abb39d; output-bytes=1206; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=8f594881071fb0d0b6029566; at=2026-09-14T18:51:50.037Z
   EXPECT-CHANGE: old=fail 0 new=G21 OK reason=derived-floor-15-measured-15-passing
 
-- [ ] G81: A package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked
+- [x] G81: A package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G81 -- node --test tests/workspace-coverage.test.mjs
     EXPECT: G81 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G81; path=6765c31f4f12/53 entries; git-sha=83561ea; tree-clean=yes; break-sha=83561ea; EXPECT=unmatched; output-sha256=230277763c442fda5087d3d10ffcfab1475721d517cba65109a59d74dd477e8e; output-bytes=15000; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=82354b912d237878efb67a2c; at=2026-09-14T18:52:20.000Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=aaf7043; tree-clean=yes; EXPECT=matched; output-sha256=f0f3f90d157abac3ab10b91f964a1067748ea65528d52d4b6f7d540e24b792de; output-bytes=993; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=980ac4295f7090e222885233; at=2026-09-14T18:52:26.702Z
   EXPECT-CHANGE: old=fail 0 new=G81 OK reason=derived-floor-12-measured-12-passing
 
 <!-- G80+ gates the verification machinery itself, kept clear of the G1..G79 feature range so two
@@ -180,10 +183,11 @@ and are tracked as handoffs, not gates.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=9f411f2345cc4ae986b1335e51f5911d92ea7008ff235d3c143a0a79ef7f070e; output-bytes=1418; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=b684c34f06c0ea84af04c574; at=2026-09-14T18:51:50.036Z
   EXPECT-CHANGE: old=fail 0 new=G24 OK reason=derived-floor-20-measured-20-passing
 
-- [ ] G26: What Apple believes is visible and correctable, and a correction reaches the copy the agent reads
+- [x] G26: What Apple believes is visible and correctable, and a correction reaches the copy the agent reads
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 29 --label G26 -- node --test tests/memory.test.mjs
     EXPECT: G26 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G26; path=6765c31f4f12/53 entries; git-sha=e30ef66; tree-clean=yes; break-sha=e30ef66; EXPECT=unmatched; output-sha256=4a31710975899e41fca4bcb9e656d691d4d61b205f61dd7d67994fb36143aef3; output-bytes=1664; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=dd60196cedfb574a3cb4e58e; at=2026-09-14T18:52:02.874Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=aaf7043; tree-clean=yes; EXPECT=matched; output-sha256=f9059e8a126952116528f51e7d18c8816f701169fb22a74d9b542af93e9aebe7; output-bytes=2163; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=dd60196cedfb574a3cb4e58e; at=2026-09-14T18:52:26.702Z
   EXPECT-CHANGE: old=fail 0 new=G26 OK reason=derived-floor-29-measured-29-passing
 
 ## §6 oracle repair — the checks on the checkers

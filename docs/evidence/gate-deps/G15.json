@@ -1,0 +1,5 @@
+[
+  "apps/web/src/lib/rename-rules.ts",
+  "apps/web/tests/rename-project.test.mjs",
+  "scripts/assert-tests.mjs"
+]
