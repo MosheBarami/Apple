@@ -305,7 +305,18 @@ if (passLog) {
     // A REAL gate id, not anything starting with G. `G[\w-]+` matched the word GREEN in
     // "SUITE GREEN" and reported the suite passing three passes running as a stall — a detector
     // that fires on its own success message is worse than one that does not fire at all.
-    const idsIn = (rec) => new Set([...rec.matchAll(/\b(w\d+|G\d+|G-[A-Z]+-\d+|OH-\d+)\b/g)].map((m) => m[1]));
+    // Only the CONFESSION section, which is what §6.4 says. A handoff row is REGENERATED every
+    // pass by design (§13.1), so OH-1 appearing in three consecutive records is the table working,
+    // not a stall. Scanning the whole record conflated "I have not done this" with "this is still
+    // blocked on someone else", and those are opposite statements about whose move it is.
+    const confession = (rec) => {
+      const at = rec.indexOf('NOT DONE:');
+      if (at === -1) return '';
+      const rest = rec.slice(at);
+      const end = rest.search(/\n[A-Z][A-Z -]+:/);
+      return end === -1 ? rest : rest.slice(0, end);
+    };
+    const idsIn = (rec) => new Set([...confession(rec).matchAll(/\b(w\d+|G\d+|G-[A-Z]+-\d+|OH-\d+)\b/g)].map((m) => m[1]));
     const [a, b, c] = lastThree.map(idsIn);
     for (const id of a) {
       if (b.has(id) && c.has(id)) {

@@ -346,6 +346,28 @@ test('the three deferral words §6.4 names are all present', () => {
   }
 });
 
+
+test('a CONFESSION repeated three times is a stall; a HANDOFF repeated is not', () => {
+  // §6.4 says "any row-id appearing in three consecutive PASS-LOG confessions". §13.1 says the
+  // handoff table is REGENERATED every pass. Scanning the whole record conflated the two, and the
+  // detector reported OH-1 and OH-2 as stalls for doing exactly what a handoff row is for —
+  // "I have not done this" and "this is blocked on someone else" are opposite statements about
+  // whose move it is.
+  const record = (n, notDone) =>
+    `\nPASS ${n}  HEAD abc${n}\nSTATION: none\nHANDOFFS OPEN: OH-1 — approve-by x — flips 1 row\nNOT DONE:\n${notDone}\nNEXT: something\n`;
+
+  const stalled = withPlant(DIR, 'docs/PASS-LOG.md', () =>
+    [7, 8, 9].map((n) => record(n, '  w42 | still not done | SCHEDULED next')).join(''));
+  assert.equal(stalled.exit, 1, stalled.out);
+  assert.match(stalled.out, /w42 has been confessed in three consecutive passes/);
+
+  // The positive control: the same three records, with the id only in the handoff line.
+  const handoff = withPlant(DIR, 'docs/PASS-LOG.md', () =>
+    [7, 8, 9].map((n) => record(n, '  nothing outstanding')).join(''));
+  assert.equal(handoff.exit, 0, handoff.out);
+  assert.doesNotMatch(handoff.out, /OH-1 has been confessed/);
+});
+
 test('the scratch clone is removed', () => {
   rmSync(DIR, { recursive: true, force: true });
 });

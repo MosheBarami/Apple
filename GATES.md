@@ -174,9 +174,9 @@ test it gated.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e0ba958; tree-clean=yes; EXPECT=matched; output-sha256=5d9b92dadbc0f4e93ff52ea87c6b5e135761abdf0344d5f5450b2081810feaa8; output-bytes=5576; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:13.006Z
 
 - [ ] G-ORACLE-2: Every detector in the escape-hatch checker is proven to fail against a planted violation
-    CHECK: node scripts/assert-tests.mjs --floor 32 --label G-ORACLE-2 -- node --test tests/check-escape-hatches.test.mjs
+    CHECK: node scripts/assert-tests.mjs --floor 33 --label G-ORACLE-2 -- node --test tests/check-escape-hatches.test.mjs
     EXPECT: G-ORACLE-2 OK
-  EXPECT-CHANGE: old=floor-20 new=floor-32 reason=derived-floor
+  EXPECT-CHANGE: old=floor-32 new=floor-33 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
   EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=ef2f14a; tree-clean=no; EXPECT=unmatched; output-sha256=869582ab13ed4662d57ac4ab547f81e5ae0c9d1b25cf4dbb2b568a7b804c7ff3; output-bytes=13633; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=04892b7a73a92064d9a69254; at=2026-09-14T17:38:45.886Z
 
