@@ -2772,7 +2772,7 @@
           "id": "f-d36fa39d",
           "name": "Training logs",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. The logs are apple-v1.log, apple-v2.log and apple-v3.log."
+          "evidence": "packages/training/src/runs.test.mjs — the logs ARE tracked now (36 KB; runs/ was gitignored as collateral to the rule excluding adapters/, which is 210 MB of safetensors). apple-v1/v2/v3.log are parsed into a real loss series, each is asserted traceable to its base via the config it names, and the figures are cross-checked against TRAINING-V1-REPORT.md so neither drifts alone."
         },
         {
           "id": "f-b7614c66",
@@ -2940,7 +2940,7 @@
           "id": "f-ab394828",
           "name": "Local training",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. Zero recurring cost is a property of WHERE it runs, not something any check can assert."
+          "evidence": "RECORD, NOT GUARANTEE. The run logs are tracked now and record Peak mem up to 23.565 GB, which is consistent with a 32 GB M2 Pro — but consistency is not proof of WHERE a process ran, and \"zero recurring cost\" is a property of the machine rather than of anything in this repository. Deliberately left uncited rather than citing peak memory as though it demonstrated the claim."
         },
         {
           "id": "f-4ede36be",
