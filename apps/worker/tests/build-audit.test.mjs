@@ -88,6 +88,54 @@ test('parseAudit reads the pass output back', () => {
   assert.equal(cap.lighting.isDefault, true, 'no effects and touched=0 means untouched');
 });
 
+/**
+ * A COUNT OVER A SAMPLE CANNOT PROVE AN ABSENCE.
+ *
+ * The pass walks every part to count them and emits only the first 1500. Those metrics then went to
+ * threshold rules as if they described the whole place — so a 4,000-part build whose first 1,500
+ * descendants are anchored terrain and shells reported unanchoredParts = 0, the blocking rule
+ * `unanchoredParts > 0` did not fire, and audit_build returned "No confirmed defects" over a green
+ * callout reading "5 of 5 lenses run over 1500 part(s)". On server start 900 props fall.
+ *
+ * The parts past the cap are the ones added most recently, which is exactly where a new defect
+ * lives. This module already withholds coincidentFacePairs above its own cap, with the reasoning
+ * written down — "a rule that fires on a guess is exactly what critic.ts refuses to contain". The
+ * same withholding was missing here.
+ */
+test('A TRUNCATED CAPTURE DOES NOT REPORT ZERO UNANCHORED PARTS', () => {
+  const rows = fixtureRows();
+  // 1500 sampled and all anchored; the place actually holds 4000
+  const sampled = rows.parts.slice(0, 1).map((r) => r);
+  const cap = { parts: BA.parseAudit({ result: JSON.stringify({ ...rows, n: 4000 }) }).parts.map((p) => ({ ...p, anchored: true })), truncated: true, total: 4000 };
+  const m = BA.auditMetrics(cap);
+  assert.equal('unanchoredParts' in m, false,
+    'a zero drawn from a sample must be omitted, not handed to a rule that acts on it');
+  assert.equal(m.partCount, 4000, 'and the part count must be the TRUE total, not the sample size');
+  assert.ok(sampled.length > 0);
+});
+
+test('a truncated capture that DID find unanchored parts still reports them', () => {
+  // A positive from a sample is conclusive: those parts really are unanchored. Withholding it would
+  // trade a false clean bill for a missed defect, which is the wrong direction.
+  const parts = BA.parseAudit({ result: JSON.stringify({ ...fixtureRows(), n: 4000 }) }).parts;
+  const m = BA.auditMetrics({ parts, truncated: true, total: 4000 });
+  assert.equal(m.unanchoredParts, 2, 'what it did find must still be cited');
+  assert.equal(m.partCount, 4000);
+});
+
+test('an untruncated capture reports zero unanchored parts as the fact it is', () => {
+  const parts = BA.parseAudit({ result: JSON.stringify(fixtureRows()) }).parts.map((p) => ({ ...p, anchored: true }));
+  const m = BA.auditMetrics({ parts, truncated: false, total: parts.length });
+  assert.equal(m.unanchoredParts, 0, 'here a zero IS evidence, and the rule should see it');
+});
+
+test('parseAudit carries the true total through, not just the truncated flag', () => {
+  const cap = BA.parseAudit({ result: JSON.stringify({ ...fixtureRows(), n: 4000 }) });
+  assert.equal(cap.truncated, true);
+  assert.equal(cap.total, 4000, 'the count of what is really there');
+  assert.equal(cap.parts.length, 10, 'and the sample that was actually emitted');
+});
+
 test('metrics are computed, and a metric that cannot be measured is OMITTED not zeroed', () => {
   const m = BA.auditMetrics(BA.parseAudit({ result: JSON.stringify(FIXTURE) }));
   assert.equal(m.partCount, 10);

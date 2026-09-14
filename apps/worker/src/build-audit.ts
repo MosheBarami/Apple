@@ -43,6 +43,8 @@ export interface AuditCapture {
   parts: AuditPart[];
   /** True when the place held more parts than the pass was willing to walk. */
   truncated: boolean;
+  /** How many parts the place actually has. Larger than `parts.length` when truncated. */
+  total: number;
   lighting?: CriticInput['lighting'];
 }
 
@@ -148,7 +150,7 @@ export function parseAudit(raw: unknown): AuditCapture | null {
     };
   }
   const n = Number(o.n ?? parts.length);
-  return { parts, truncated: n > parts.length, lighting };
+  return { parts, truncated: n > parts.length, total: Number.isFinite(n) ? n : parts.length, lighting };
 }
 
 // --- metrics -------------------------------------------------------------------------------------
@@ -211,8 +213,19 @@ export function auditMetrics(cap: AuditCapture): Record<string, number> {
   const m: Record<string, number> = {};
   if (parts.length === 0) return m;
 
-  m.partCount = parts.length;
-  m.unanchoredParts = parts.filter((p) => !p.anchored).length;
+  // THE TRUE TOTAL, not the sample size. The pass walks every part to count them and only emits
+  // the first 1500; reporting the sample as the part count understates a big place by any amount.
+  m.partCount = cap.total > 0 ? cap.total : parts.length;
+
+  // A COUNT OVER A SAMPLE CANNOT PROVE AN ABSENCE. `unanchoredParts` feeds a blocking rule that
+  // fires when it is above zero, and a zero drawn from the first 1500 parts of a 4000-part place
+  // says nothing about the other 2500 — which is exactly where parts added late, and so most likely
+  // to be unanchored, will be. Reported when it found something, because a positive from a sample
+  // is still conclusive; omitted when it found nothing, because that is the case it cannot support.
+  // This is the same withholding coincidentFacePairs already does above its own cap, in the place
+  // it was missing.
+  const unanchored = parts.filter((p) => !p.anchored).length;
+  if (unanchored > 0 || !cap.truncated) m.unanchoredParts = unanchored;
   m.distinctMaterials = new Set(parts.map((p) => p.material)).size;
   m.distinctColours = distinctColourCount(parts.map((p) => p.color));
   m.factoryDefaultShare =

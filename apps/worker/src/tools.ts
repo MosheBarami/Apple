@@ -1387,11 +1387,15 @@ export const TOOLS: Record<string, ToolImpl> = {
             tone: confirmed.some((d) => d.severity === 'blocking') ? 'bad' : confirmed.length ? 'warn' : 'good',
             title: confirmed.length ? `${confirmed.length} confirmed defect(s)` : 'No confirmed defects',
             text:
-              `${panel.lensesRun.length} of ${coverage.length} lenses run over ${capture.parts.length} part(s), ${panel.modelCalls} model call(s). ` +
+              (capture.truncated
+                // "run over 1500 parts" reads as complete. It is a sample, and the parts past the
+                // cap are the ones added most recently — the likeliest place for a new defect.
+                ? `${panel.lensesRun.length} of ${coverage.length} lenses run over the FIRST ${capture.parts.length} of ${capture.total} part(s) — this is a sample, not the whole place. ${panel.modelCalls} model call(s). `
+                : `${panel.lensesRun.length} of ${coverage.length} lenses run over ${capture.parts.length} part(s), ${panel.modelCalls} model call(s). `) +
               (notRun.length ? `Not run: ${notRun.map((c) => c.lens).join(', ')} — every rule needs a render. ` : '') +
               (panel.unchecked.length
                 ? `${panel.unchecked.length} rule(s) inside the lenses that did run were skipped for want of a measurement: ${[...new Set(panel.unchecked.map((u) => u.metric))].join(', ')}.`
-                : notRun.length ? '' : 'Every rule in every lens was evaluated.'),
+                : notRun.length ? '' : capture.truncated ? '' : 'Every rule in every lens was evaluated.'),
           },
           ...(confirmed.length
             ? [{
