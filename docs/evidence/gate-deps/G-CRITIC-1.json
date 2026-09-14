@@ -1,0 +1,4 @@
+[
+  "apps/worker/tests/critic-wiring.test.mjs",
+  "scripts/assert-tests.mjs"
+]
