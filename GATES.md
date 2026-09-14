@@ -271,7 +271,7 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G91; path=6765c31f4f12/53 entries; git-sha=318ff3e; tree-clean=yes; break-sha=318ff3e; EXPECT=unmatched; output-sha256=1032c62f2d845efa7ab7c2f3f017919e5cd7aa00cd336900e657dfe710a09002; output-bytes=378; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=e271e0f8a11de1a04df7a4f5; at=2026-09-14T19:07:26.983Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8c91b54; tree-clean=yes; EXPECT=matched; output-sha256=a24e96ebf42e216f24b6a8156c34e4ccfc9fd4bbbabd2e6589cc8769d9da1900; output-bytes=31; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=f3a3865c1296b42eb7d079f2; at=2026-09-14T19:10:26.776Z
 
-- [x] G92: The landing and site E2E pass in every viewport
+- [ ] G92: The landing and site E2E pass in every viewport
     CHECK: pnpm --filter @golem/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=line
     EXPECT: 60 passed
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9c8631d; tree-clean=yes; break-sha=9c8631d; EXPECT=unmatched; output-sha256=206de3ec0a919383b37a45a1204b589187175cd884b3b09258aa6bd09e71cb25; output-bytes=11481; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=30; deps-sha=cc530d454254947b8adcb7da; at=2026-09-14T20:22:29.947Z
