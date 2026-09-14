@@ -79,6 +79,7 @@ and are tracked as handoffs, not gates.
 - [ ] G11: The workspace mirrors correctly in RTL, not just the auth screen
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 4 --label G11 -- node --test tests/rtl-workspace.test.mjs
     EXPECT: G11 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G11; path=6765c31f4f12/53 entries; git-sha=683cdf7; tree-clean=yes; break-sha=683cdf7; EXPECT=unmatched; output-sha256=ee5671b27554dd9b338e3f8bc05c13f9f1899db457bf617c7071fe65ad251416; output-bytes=1376; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=74411d82e7e57151303819cd; at=2026-09-14T18:53:55.594Z
   EXPECT-CHANGE: old=fail 0 new=G11 OK reason=derived-floor-4-measured-4-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=d89a95842367d0710f1dfd831e5030eea9f9ef1d98dfff09e5c115656a17ef15; output-bytes=476
 
@@ -173,6 +174,7 @@ and are tracked as handoffs, not gates.
 - [ ] G23: A failed run can be stopped and run again from the workspace, without retyping
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 13 --label G23 -- node --test tests/retry-run.test.mjs
     EXPECT: G23 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G23; path=6765c31f4f12/53 entries; git-sha=3f0de27; tree-clean=yes; break-sha=3f0de27; EXPECT=unmatched; output-sha256=9a11a64f28acc510fd523a9f008b4af8498710a7fde05e04c32444e7b13114ff; output-bytes=21433; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=de09c5affe12a4db865b3877; at=2026-09-14T18:54:13.670Z
   EXPECT-CHANGE: old=fail 0 new=G23 OK reason=derived-floor-13-measured-13-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=b5f7b8dd1e9e38a26acee9dcfc2f4135b4014d3eb15fced5bfe35ab4b055335f; output-bytes=1018
 
@@ -201,7 +203,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=7693a2a; tree-clean=yes; EXPECT=matched; output-sha256=89ae3014af0f0293668c5d8dc0181a50e6fd1adf3dd4ed239b492ccba5de5b8c; output-bytes=4982; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=d2d90c792bf985a454fe4aa1; at=2026-09-14T18:40:38.640Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=5bf808a; tree-clean=yes; EXPECT=matched; output-sha256=b2d289d5e6472a4a75c4e22bebb1e938ac9881ce6c3e77185fe81703603ff271; output-bytes=5092; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=34a92da96dc325438a2cc579; at=2026-09-14T18:53:34.588Z
 
 - [x] G-CRITIC-1: The visual critic runs on a product path and cannot report a clean build for checks it never ran
     STATION: S7
