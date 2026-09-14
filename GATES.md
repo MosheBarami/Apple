@@ -259,11 +259,13 @@ test it gated.
 - [ ] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G90; path=6765c31f4f12/53 entries; git-sha=6943c26; tree-clean=yes; break-sha=6943c26; EXPECT=unmatched; output-sha256=504c1c10adc6bcba015375f7d75b65ab2a6d3008a0b8e7da0af1e1d9c1fb0ad0; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=173; deps-sha=087b2482e48a9b3f93e1ca0b; at=2026-09-14T19:08:46.376Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=ae718dd1544d455f122ae28e52d73a7255bf0801651cb838823775fd8dfb175a; output-bytes=45
 
 - [ ] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
     EXPECT: TYPECHECK CLEAN
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G91; path=6765c31f4f12/53 entries; git-sha=318ff3e; tree-clean=yes; break-sha=318ff3e; EXPECT=unmatched; output-sha256=1032c62f2d845efa7ab7c2f3f017919e5cd7aa00cd336900e657dfe710a09002; output-bytes=378; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=e271e0f8a11de1a04df7a4f5; at=2026-09-14T19:07:26.983Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=a24e96ebf42e216f24b6a8156c34e4ccfc9fd4bbbabd2e6589cc8769d9da1900; output-bytes=31
 
 - [ ] G92: The landing and site E2E pass in every viewport
