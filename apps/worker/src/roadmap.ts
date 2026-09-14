@@ -1417,7 +1417,7 @@ function topoOrder(specs: MilestoneSpec[]): MilestoneSpec[] {
 /** Detection for one milestone: present if every satisfying feature is present. */
 function detectionFor(spec: MilestoneSpec, shape: ProjectShape): { state: Detected; evidence: string[] } {
   if (!spec.satisfiedBy.length) {
-    return { state: 'unknown', evidence: ['Golem cannot tell from the project files whether this is done'] };
+    return { state: 'unknown', evidence: ['Apple cannot tell from the project files whether this is done'] };
   }
   const states = spec.satisfiedBy.map((f) => shape.features[f]);
   const evidence = spec.satisfiedBy.map((f) => `${f}: ${shape.features[f]?.evidence ?? 'not checked'}`);
@@ -1453,7 +1453,7 @@ export function buildRoadmap(shape: ProjectShape, now = Date.now()): Roadmap {
       deliverables: [...s.build],
       detected: det.state,
       evidence: det.evidence,
-      verify: det.state === 'unknown' ? 'Golem could not confirm this from the project — check before building it again.' : null,
+      verify: det.state === 'unknown' ? 'Apple could not confirm this from the project — check before building it again.' : null,
     };
   });
 
@@ -1478,7 +1478,7 @@ export function buildRoadmap(shape: ProjectShape, now = Date.now()): Roadmap {
   } else if (shape.genreConfidence < 0.34 && shape.runnerUp) {
     notes.push(`This reads as a ${GENRE_LABEL[shape.genre]}, but ${GENRE_LABEL[shape.runnerUp.genre]} is close behind — say which and the roadmap sharpens.`);
   }
-  if (!current && ready.length) notes.push('Everything Golem can detect is already built; what is left could not be verified from the files.');
+  if (!current && ready.length) notes.push('Everything Apple can detect is already built; what is left could not be verified from the files.');
 
   return {
     genre: shape.genre,

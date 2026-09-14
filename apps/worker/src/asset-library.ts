@@ -424,7 +424,7 @@ export function originalAsset(args: { id: string; name: string; kind: AssetKind;
     licenceUrl: GOLEM_ORIGIN,
     commercialUse: true,
     attributionRequired: false,
-    author: 'Golem',
+    author: 'Apple',
     retrievedAt: args.createdAt,
     importedAt: args.robloxAssetId ? args.createdAt : null,
     modifications: [],

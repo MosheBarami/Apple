@@ -238,7 +238,7 @@ export function screenSubject(subject: string): { cleaned: string } | Refusal {
       refused: true,
       reason: 'brand_mark',
       message:
-        'Golem does not generate logos, wordmarks or brand marks. Where a real brand has to appear, use that provider\'s own official asset; where the mark is decorative, describe an original shape instead (for example "a rounded chat bubble icon" rather than a named app icon).',
+        'Apple does not generate logos, wordmarks or brand marks. Where a real brand has to appear, use that provider\'s own official asset; where the mark is decorative, describe an original shape instead (for example "a rounded chat bubble icon" rather than a named app icon).',
       offending: hits,
     };
   }
@@ -547,8 +547,8 @@ function budgetStub(env: Env) {
 }
 
 const BUDGET_MESSAGES: Record<string, string> = {
-  daily_cap: "Golem has reached today's shared building capacity. It resets at midnight UTC.",
-  monthly_cap: "Golem has reached this month's shared building capacity.",
+  daily_cap: "Apple has reached today's shared building capacity. It resets at midnight UTC.",
+  monthly_cap: "Apple has reached this month's shared building capacity.",
   request_too_large: 'That image needs more capacity than a single step allows.',
   killed: 'AI generation is paused right now.',
 };

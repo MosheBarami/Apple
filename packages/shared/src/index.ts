@@ -771,7 +771,7 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typical
 //
 // The internal specialist axis (GolemMode: clay/stone/rune) is deliberately
 // preserved exactly as it is, on the wire and in storage. `ClientMsg.chat`
-// still carries `mode: GolemMode`, the session DO still persists it, and the
+// still carries `mode: AppleMode`, the session DO still persists it, and the
 // Sparks ledger still accounts against it — so sessions written before this
 // mapping existed keep replaying correctly and no budget record changes meaning.
 // Clay, Stone and Rune are internal specialist identities, not user-facing
@@ -793,7 +793,7 @@ export const PRODUCT_MODES: readonly ProductMode[] = ['plan', 'agent', 'super'];
  * builder, which is Stone. Super Agent is long-horizon autonomy, which is Rune.
  *
  * Do not "improve" this mapping: it is what keeps a stored session's
- * `mode: GolemMode` meaning the same thing it meant when it was written.
+ * `mode: AppleMode` meaning the same thing it meant when it was written.
  */
 export const PRODUCT_MODE_TO_SPECIALIST: Record<ProductMode, GolemMode> = {
   plan: 'clay',

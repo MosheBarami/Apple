@@ -223,6 +223,129 @@ test('an HTML-commented example is not a violation either', () => {
   assert.equal(r.exit, 0, r.out);
 });
 
+
+/* ============================================================================================
+ * THE EIGHT DETECTORS A REFUTER FOUND UNPROTECTED
+ * ============================================================================================
+ *
+ * An adversarial refuter disabled each `fail()` site in turn and recorded which tests went red.
+ * Eight could be deleted with nothing failing — which means eight of this checker's claims rested
+ * on nobody having tried. The refuter then bought a green signal with the gap: the floor was 20
+ * and the suite was 22, so deleting the denominator guard and the bare-grep guard left the gate
+ * passing at exactly 20.
+ *
+ * The transferable lesson is about the FALSIFICATION, not the tests. Stubbing `fail()` neuters
+ * every detector at once, so it proves the harness is connected and cannot distinguish a covered
+ * detector from an uncovered one. A red-first record has to break the narrowest path the gate's
+ * sentence claims.
+ */
+
+test('it catches an unparseable package manifest', () => {
+  // Every checker that reads package.json JSON.parses it inside a try. A manifest that throws is
+  // therefore skipped SILENTLY by all of them at once — the package simply stops being checked.
+  const r = withPlant(DIR, 'apps/web/package.json', (s) => `${s.slice(0, -2)},,,`);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /an unparseable package manifest/);
+});
+
+test('it catches GATES.md having been emptied', () => {
+  // §12.1 calls deleting a ledger the worst failure available. An empty file is the same act with
+  // a smaller diff, and every gate count derived from it reads zero-of-zero rather than missing.
+  const r = withPlant(DIR, 'GATES.md', () => '');
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /(GATES\.md is missing|a CHECK|no gates)/);
+});
+
+test('it catches an ABANDON: in WORKLIST.md, not only in GATES.md', () => {
+  // The Stop hook reads WORKLIST.md. An ABANDON: there is the more direct mechanical release of
+  // the two, and it was the untested one.
+  const r = withPlant(DIR, 'WORKLIST.md', (s) => `ABANDON: w12 too hard\n\n${s}`);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /WORKLIST\.md:\d+: an ABANDON: at column 1/);
+});
+
+test('it reports an owner HALT: in GATES.md too, and still exits 0', () => {
+  // Only the WORKLIST.md path was tested. A HALT the checker does not report is one the reader
+  // never learns about; a HALT it FAILS on would make stopping impossible.
+  const r = withPlant(DIR, 'GATES.md', (s) => `HALT: owner says stop\n\n${s}`);
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.out, /OWNER HALT PRESENT — HALT: owner says stop/);
+});
+
+test('it catches a ticked gate with no EVIDENCE line at all', () => {
+  // Distinct from the missing-FALSIFIED case: this is a tick with no measurement of any kind under
+  // it, which is the oldest shape of defect this ledger has had.
+  const r = withPlant(DIR, 'GATES.md', (s) => s.split('\n').filter((l) => !/^ {2}EVIDENCE:/.test(l)).join('\n'));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /is ticked with no EVIDENCE/);
+});
+
+test('it catches evidence stripped of tree-clean, not only of git-sha', () => {
+  // Only git-sha was tested. tree-clean is the field that says whether the measurement was taken
+  // against committed code at all, which is the difference between a record and a decoration.
+  const r = withPlant(DIR, 'GATES.md', (s) => s.replace(/tree-clean=(yes|no); /g, ''));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /evidence lacks tree-clean=/);
+});
+
+test('it catches WORKLIST.md having been untracked', () => {
+  // An untracked ledger vanishes with no trace in git log — §12.1's other mechanical release.
+  const dir = scratch();
+  try {
+    execFileSync('git', ['rm', '--cached', '-q', 'WORKLIST.md'], { cwd: dir });
+    execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'untrack'], { cwd: dir });
+    const r = run(dir);
+    assert.equal(r.exit, 1, r.out);
+    assert.match(r.out, /WORKLIST\.md is not tracked/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('it says out loud when the EXPECT-CHANGE detector could not run', () => {
+  // THE INERT DETECTOR. It diffs against HEAD~1, and the only context CI runs this checker in is a
+  // single-commit scratch clone where HEAD~1 does not exist — so the error was swallowed and the
+  // empty result read as "nothing changed". A detector that cannot fire where it runs is not a
+  // detector, and it looked exactly like a passing one.
+  const r = run(DIR);
+  assert.match(r.out, /no HEAD~1 in this checkout, so the EXPECT-CHANGE detector could not run/);
+});
+
+test('it catches an EXPECT changed with no adjacent EXPECT-CHANGE line, where it CAN look', () => {
+  // The positive control for the test above: in a repo with history, the detector fires.
+  //
+  // It fires even though the ledger ALREADY contains an EXPECT-CHANGE line elsewhere, which is the
+  // point — a global substring search meant one note anywhere excused every change in the file
+  // forever, turning the note into a permission slip rather than a record of one strengthening.
+  const dir = scratch();
+  try {
+    const gates = join(dir, 'GATES.md');
+    writeFileSync(gates, readFileSync(gates, 'utf8').replace(/^ {4}EXPECT: .+$/m, '    EXPECT: loosened'));
+    execFileSync('git', ['add', '-A'], { cwd: dir });
+    execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'loosen'], { cwd: dir });
+    const r = run(dir);
+    assert.equal(r.exit, 1, r.out);
+    assert.match(r.out, /EXPECT changed with no adjacent EXPECT-CHANGE line/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the three deferral words §6.4 names are all present', () => {
+  // `once`, `after` and `carried` were dropped when the detector was narrowed to stop false
+  // positives. The narrowing was right; dropping the words was not, and a refuter demonstrated
+  // three real deferrals that passed while they were missing.
+  for (const [word, sentence] of [
+    ['after', '- Wire the payout route after the key rotation.'],
+    ['once', '- Revisit the critic thresholds once the corpus lands.'],
+    ['carried', '- Carried: implement the missing typecheck.'],
+  ]) {
+    const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) => `${s}\n${sentence}\n`);
+    assert.equal(r.exit, 1, `"${word}" was not caught:\n${r.out}`);
+    assert.match(r.out, /a deferral with no row id/);
+  }
+});
+
 test('the scratch clone is removed', () => {
   rmSync(DIR, { recursive: true, force: true });
 });

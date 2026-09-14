@@ -4603,7 +4603,7 @@ print(
 	string.format(
 		"[Crystal Canyon] world rebuilt — %d parts, seed %d, bounds %.0f x %.0f x %.0f studs (x/y/z)\n"
 			.. "  palette clones (Creator Store) %4d   [%s]\n"
-			.. "  CUBE meshes (Golem-generated)  %4d   [landmark %d, kiosk %d, crystal_cube %d]\n"
+			.. "  CUBE meshes (Apple-generated)  %4d   [landmark %d, kiosk %d, crystal_cube %d]\n"
 			.. "  primitive prop FALLBACKS       %4d   [no palette %d (must be 0) / off palette %d (texture policy)]\n"
 			.. "  primitive detail               %4d   [grass tufts, snow caps, fire ring]\n"
 			.. "  authored terrain/architecture  %4d   [ground, paths, cliffs, landmarks, pads, gate, guidance]\n"

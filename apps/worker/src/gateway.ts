@@ -156,8 +156,8 @@ function budgetStub(env: Env) {
 }
 
 const BUDGET_MESSAGES: Record<string, string> = {
-  daily_cap: "Golem has reached today's shared building capacity. It resets at midnight UTC.",
-  monthly_cap: "Golem has reached this month's shared building capacity.",
+  daily_cap: "Apple has reached today's shared building capacity. It resets at midnight UTC.",
+  monthly_cap: "Apple has reached this month's shared building capacity.",
   request_too_large: 'That request needs more context than a single step allows — try narrowing it.',
   killed: 'AI generation is paused right now.',
 };
@@ -348,7 +348,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
       }
       if (/\b3021\b|rate limit|too many requests/i.test(msg)) {
         throw new RateLimitedError(
-          'Golem is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
+          'Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.',
         );
       }
       throw new Error(`inference failed (${cfg.id}): ${msg}`);

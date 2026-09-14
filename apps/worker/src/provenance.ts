@@ -9,7 +9,7 @@
 //      which asset, and why, in words the owner can act on.
 //
 // And underneath both, the line manifest §42 draws: **third-party material is used under someone
-// else's licence and is never presented as Golem's own work.** The attribution report separates
+// else's licence and is never presented as Apple's own work.** The attribution report separates
 // the three cases explicitly rather than emitting one undifferentiated credits list, because a
 // credits list that does not distinguish them is exactly how the mistake gets made.
 //
@@ -499,7 +499,7 @@ export function renderAttribution(report: AttributionReport): string {
   const out: string[] = ['Credits', '======='];
 
   if (report.original.length) {
-    out.push('', 'Original work, built for this experience by Golem');
+    out.push('', 'Original work, built for this experience by Apple');
     for (const e of report.original) out.push(`  - ${e.name}`);
   }
   if (report.userGenerated.length) {

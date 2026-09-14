@@ -164,7 +164,7 @@ export function pluginCompatibility(protocol: number | null, min: number = MIN_P
   if (protocol < min) {
     return {
       compatible: false,
-      message: `This Golem build is too old for the server and cannot run builds. Update it in ${UPDATE_PATH}.`,
+      message: `This Apple build is too old for the server and cannot run builds. Update it in ${UPDATE_PATH}.`,
     };
   }
   return { compatible: true };
@@ -188,7 +188,7 @@ export function clientNotice(
   if (compareVersions(info.version, latest) === -1) {
     return {
       compatible: true,
-      message: `Golem ${latest} is available. Update it in ${UPDATE_PATH}.`,
+      message: `Apple ${latest} is available. Update it in ${UPDATE_PATH}.`,
     };
   }
   return null;

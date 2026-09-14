@@ -106,7 +106,7 @@ test('every source site is classified as ours, the user’s, or somebody else’
   }
 });
 
-test('AN ORIGINAL GOLEM ASSET is credited as our own work and never as a third party’s', () => {
+test('AN ORIGINAL APPLE ASSET is credited as our own work and never as a third party’s', () => {
   const mine = originalAsset({
     id: 'procedural/market-stall/stall-01',
     name: 'Market Stall',
@@ -115,8 +115,11 @@ test('AN ORIGINAL GOLEM ASSET is credited as our own work and never as a third p
     createdAt: '2026-08-31T11:00:00.000Z',
   });
   assert.equal(validateProvenance(mine).ok, true, validateProvenance(mine).errors.join('; '));
+  // `golem_original` is a PERSISTED originality value written into provenance rows and into user
+  // places; the rebrand exempts it for exactly that reason. `author` is different — it is rendered
+  // in the credits panel, so it carries the brand and follows it.
   assert.equal(originalityOf(mine.source), 'golem_original');
-  assert.equal(mine.author, 'Golem');
+  assert.equal(mine.author, 'Apple');
   assert.equal(mine.attributionRequired, false);
 
   const report = attributionReport(PROJECT, [used(mine)], NOW);
@@ -126,7 +129,7 @@ test('AN ORIGINAL GOLEM ASSET is credited as our own work and never as a third p
   assert.equal(report.userGenerated.length, 0);
 
   const text = renderAttribution(report);
-  assert.match(text, /Original work, built for this experience by Golem/);
+  assert.match(text, /Original work, built for this experience by Apple/);
   assert.doesNotMatch(text, /Third-party/, 'a project of purely original work must not print a third-party heading at all');
 
   // and it is not a commercial problem

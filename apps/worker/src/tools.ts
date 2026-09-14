@@ -1125,7 +1125,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Golem's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
       parameters: S(
         {
           query: { type: 'string' },

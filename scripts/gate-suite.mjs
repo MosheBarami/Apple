@@ -36,7 +36,16 @@ const run = (cmd, args) => {
 // meant a gate could report SUITE GREEN while a workspace package had quietly dropped out of the
 // recursion — which is the exact defect check-workspace-coverage.mjs exists to catch, skipped by
 // the oracle that claims the suite passed.
-const parts = [run('node', ['scripts/check-workspace-coverage.mjs']), run('pnpm', ['-r', 'test'])];
+// The escape-hatch checker runs HERE, not only inside its own test. A refuter found it was
+// referenced by nothing — not this file, not root `pnpm test`, not CI — which under §2.3 makes it
+// a dead end however good it is. Its own test builds a scratch clone and asserts the real tree is
+// clean, so the content was checked indirectly; running it directly is what makes a violation in
+// the live tree fail the suite rather than a copy of it.
+const parts = [
+  run('node', ['scripts/check-workspace-coverage.mjs']),
+  run('node', ['scripts/check-escape-hatches.mjs']),
+  run('pnpm', ['-r', 'test']),
+];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make
 // `node --test` exit non-zero and turn "no root tests" into "the suite is red".
 if (rootTests.length) parts.push(run('node', ['--test', ...rootTests]));

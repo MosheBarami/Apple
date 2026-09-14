@@ -158,6 +158,14 @@ if (gatesText === null) {
   // above it, is a claim rather than a record.
   const gateHeads = [];
   for (const [i, line] of lines.entries()) if (/^- \[[ xX~]\] G[\w-]+/.test(line)) gateHeads.push(i);
+
+  // A ledger with no gates in it. §12.1 names this directly — "removing `- [ ]` lines so a
+  // checklist appears complete" — and it is the cheapest possible green: every count derived from
+  // the file reads zero-of-zero, which is indistinguishable from finished. Emptying the file
+  // entirely is the same act with a tidier diff.
+  if (gateHeads.length === 0) {
+    fail('GATES.md contains no gates', 'GATES.md', 'zero-of-zero reads as complete; removing the rows is how a checklist is faked');
+  }
   for (const [n, start] of gateHeads.entries()) {
     const end = n + 1 < gateHeads.length ? gateHeads[n + 1] : lines.length;
     const block = lines.slice(start, end);
@@ -176,15 +184,37 @@ if (gatesText === null) {
   }
 
   // An EXPECT that changed without an adjacent EXPECT-CHANGE line is a loosened oracle.
-  const changed = git(['diff', '-U0', 'HEAD~1', '--', 'GATES.md'])
-    .split('\n')
-    .filter((l) => /^\+\s{4}EXPECT:/.test(l))
-    .map((l) => l.slice(1).trim());
-  for (const expect of changed) {
-    // Only a CHANGE needs the note; a brand-new gate's first EXPECT does not.
-    const wasRemoved = git(['diff', '-U0', 'HEAD~1', '--', 'GATES.md']).split('\n').some((l) => /^-\s{4}EXPECT:/.test(l));
-    if (wasRemoved && !body.includes('EXPECT-CHANGE:')) {
-      fail('an EXPECT changed with no EXPECT-CHANGE line', 'GATES.md', `an EXPECT may only get stricter, and the strengthening must be shown: ${expect.slice(0, 50)}`);
+  //
+  // THIS DETECTOR WAS STRUCTURALLY INERT. It asks git for a diff against HEAD~1, and the only
+  // context in which CI ever runs this checker is the scratch single-commit clone built by its own
+  // test — where HEAD~1 does not exist, `git()` swallows the error, and the empty result reads as
+  // "nothing changed". A detector that cannot fire where it runs is not a detector, and it looked
+  // exactly like a passing one. So the unavailability is now REPORTED rather than absorbed: the
+  // checker says it could not look, which is the whole principle it exists to enforce.
+  const hasParent = git(['rev-parse', '--verify', '--quiet', 'HEAD~1']) !== '';
+  if (!hasParent) {
+    console.log('  note: no HEAD~1 in this checkout, so the EXPECT-CHANGE detector could not run');
+  } else {
+    const diff = git(['diff', '-U0', 'HEAD~1', '--', 'GATES.md']).split('\n');
+    const added = diff.filter((l) => /^\+\s{4}EXPECT:/.test(l)).map((l) => l.slice(1).trim());
+    const removed = diff.some((l) => /^-\s{4}EXPECT:/.test(l));
+
+    // §5.5 says the note must be ADJACENT. Searching the whole file for `EXPECT-CHANGE:` meant one
+    // such line anywhere excused every EXPECT change in the ledger forever — the note became a
+    // permission slip rather than a record of a specific strengthening. So the note has to live in
+    // the block of the gate whose EXPECT moved.
+    if (removed) {
+      for (const expect of added) {
+        const at = lines.findIndex((l) => l.trim() === expect);
+        if (at === -1) continue;
+        const head = [...lines.keys()].filter((i) => i <= at && /^- \[[ xX~]\] G[\w-]+/.test(lines[i])).pop() ?? at;
+        const next = [...lines.keys()].find((i) => i > at && /^- \[[ xX~]\] G[\w-]+/.test(lines[i])) ?? lines.length;
+        const block = lines.slice(head, next);
+        if (!block.some((l) => /^\s*EXPECT-CHANGE:/.test(l))) {
+          const id = /^- \[[ xX~]\] (G[\w-]+)/.exec(lines[head])?.[1] ?? 'a gate';
+          fail(`${id}'s EXPECT changed with no adjacent EXPECT-CHANGE line`, 'GATES.md', `an EXPECT may only get stricter, and the strengthening must be shown beside the gate it applies to: ${expect.slice(0, 50)}`);
+        }
+      }
     }
   }
 }
@@ -236,7 +266,11 @@ for (const rel of examined) {
 // So both halves must be present on the line: a deferral marker AND a verb that assigns work. That
 // is stricter about what counts as a violation and no weaker about the violation itself; §6.4's
 // point is that the PARAPHRASE is the offence, not a particular wording.
-const DEFERRAL = /\b(will|pending|next pass|later|gated on|parked|deferred|to be done|TODO)\b/i;
+// §6.4 names these words. `once`, `after` and `carried` were dropped in an earlier revision
+// because they produced false positives at LINE granularity; the sentence-plus-work-verb rule
+// below is what makes them safe to carry, and a refuter demonstrated three real deferrals that
+// passed while they were missing — "Wire the payout route after the key rotation" among them.
+const DEFERRAL = /\b(will|pending|next pass|later|once|after|gated on|parked|carried|deferred|to be done|TODO)\b/i;
 const WORK_VERB = /\b(add|fix|build|write|implement|ship|close|land|wire|deploy|do|update|create|finish|revisit|handle)\b/i;
 const ROW_ID = /\b(w\d+|G[\w-]+|F-[A-Za-z0-9-]+|OH-\d+|S\d+|§\d)/;
 

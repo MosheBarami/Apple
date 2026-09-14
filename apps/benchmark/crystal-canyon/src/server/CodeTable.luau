@@ -44,7 +44,7 @@ export type CodeEntry = {
 local CodeTable: { [string]: CodeEntry } = {
 	WELCOME = { Reward = { coins = 250 }, Message = "Welcome to the canyon!" },
 	CANYON = { Reward = { coins = 500 }, Message = "The canyon rewards you." },
-	GOLEM = { Reward = { coins = 1000 }, Message = "Built by Golem." },
+	GOLEM = { Reward = { coins = 1000 }, Message = "Built by Apple." },
 }
 
 return CodeTable

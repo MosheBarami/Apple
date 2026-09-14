@@ -889,7 +889,7 @@ export class SessionDO extends DurableObject<Env> {
   ) {
     const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort));
     if (!attempt.ran) {
-      this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
+      this.broadcast({ type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
     }
   }
 
@@ -901,7 +901,7 @@ export class SessionDO extends DurableObject<Env> {
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
-      this.broadcast({ type: 'error', code: 'busy', message: 'Golem is already working — stop the current run first.' });
+      this.broadcast({ type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
@@ -1003,14 +1003,14 @@ export class SessionDO extends DurableObject<Env> {
     // this line used to skip `setAlarm` entirely — leaving the run at `status: 'running'` with
     // nothing scheduled to advance it. The staleness bypass cannot rescue that one: it requires
     // `agent.step > 0`, and no step has run. The user got a message that never finished and
-    // three minutes of "Golem is already working" before a new run could start.
+    // three minutes of "Apple is already working" before a new run could start.
     //
     // The returned error was also being discarded. A checkpoint is the user's undo point, so
     // failing to take one is worth saying out loud — but it is not a reason to refuse to work,
     // and silently pressing on is the thing this codebase keeps getting wrong.
     if (studioConnected && mode !== 'clay') {
       try {
-        const checkpoint = await this.createCheckpoint('before Golem changes', 'pre_agent'); // broadcasts internally
+        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent'); // broadcasts internally
         if ('error' in checkpoint) {
           this.broadcast({
             type: 'error',
@@ -1088,8 +1088,8 @@ export class SessionDO extends DurableObject<Env> {
         const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
-          `Golem has reached today's shared building capacity, so I stopped here. Everything I finished is saved — your project and checkpoints are untouched. Capacity resets in about ${hours} hour${hours === 1 ? '' : 's'} (midnight UTC), and you can pick up right where we left off.`;
-        this.broadcast({ type: 'error', code: 'capacity', message: `Golem is at capacity for today. Resets in ~${hours}h (midnight UTC).` });
+          `Apple has reached today's shared building capacity, so I stopped here. Everything I finished is saved — your project and checkpoints are untouched. Capacity resets in about ${hours} hour${hours === 1 ? '' : 's'} (midnight UTC), and you can pick up right where we left off.`;
+        this.broadcast({ type: 'error', code: 'capacity', message: `Apple is at capacity for today. Resets in ~${hours}h (midnight UTC).` });
         await this.finishRun(agent, 'quota');
         return;
       }
@@ -2021,7 +2021,7 @@ export class SessionDO extends DurableObject<Env> {
     if (!snap.ok) return { error: snap.error ?? 'snapshot failed' };
     const payload = JSON.stringify(snap.data);
     if (payload.length > MAX_SNAPSHOT_BYTES) {
-      return { error: `This project is too large to checkpoint (${Math.round(payload.length / 1e6)} MB). Golem still edits it normally — use Studio's own undo for large rollbacks.` };
+      return { error: `This project is too large to checkpoint (${Math.round(payload.length / 1e6)} MB). Apple still edits it normally — use Studio's own undo for large rollbacks.` };
     }
     const gz = await gzip(payload);
     const id = crypto.randomUUID();
