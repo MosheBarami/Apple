@@ -81,18 +81,74 @@ const EXEMPT = [
  * Comments are excluded for the same reason: a comment is not shipped to anyone. What IS included
  * is every quoted string, because that is what becomes a label, a prompt, a toast or a page.
  */
+/**
+ * The source with every comment replaced by spaces of the same length.
+ *
+ * Offsets are preserved, because callers report a line number computed from the offset. Walked
+ * rather than regexed: a string can contain `//` (every https:// in the tree) and a comment can
+ * contain a quote, so neither can be found without tracking which one you are inside.
+ */
+function blankComments(src) {
+  const out = src.split('');
+  let i = 0;
+  const blank = (from, to) => { for (let k = from; k < to; k += 1) if (out[k] !== '\n') out[k] = ' '; };
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === '`') {
+      const quote = c;
+      i += 1;
+      while (i < src.length && src[i] !== quote) { if (src[i] === '\\') i += 1; i += 1; }
+      i += 1;
+      continue;
+    }
+    if (c === '/' && src[i + 1] === '/') {
+      const end = src.indexOf('\n', i);
+      blank(i, end === -1 ? src.length : end);
+      i = end === -1 ? src.length : end;
+      continue;
+    }
+    if (c === '/' && src[i + 1] === '*') {
+      const end = src.indexOf('*/', i + 2);
+      const stop = end === -1 ? src.length : end + 2;
+      blank(i, stop);
+      i = stop;
+      continue;
+    }
+    if (c === '-' && src[i + 1] === '-' && src[i + 2] !== '[') {
+      const end = src.indexOf('\n', i);
+      blank(i, end === -1 ? src.length : end);
+      i = end === -1 ? src.length : end;
+      continue;
+    }
+    i += 1;
+  }
+  return out.join('');
+}
+
 function stringLiterals(src, rel) {
   // Astro markup is prose by construction — the whole file renders to a user.
   if (/\.astro$/.test(rel)) return [{ text: src, offset: 0 }];
 
   const out = [];
+  // COMMENTS ARE BLANKED FIRST, and this is not belt-and-braces — it is the difference between
+  // reporting three defects and reporting none.
+  //
+  // JSDoc writes code spans in markdown backticks: `* The runtime mode allowlist. \`GolemMode\` is
+  // a COMPILE-TIME type`. The literal regex below matches a backtick pair as a TEMPLATE LITERAL, so
+  // three comments explaining a type name were reported as un-rebranded user-facing copy. A type
+  // name is neither prose nor user-visible, and §12.5 scopes the rebrand to "prose, copy and
+  // user-visible strings ONLY".
+  //
+  // Blanking cannot be a regex either: `//` appears inside every https:// URL in the tree, and a
+  // naive strip would eat the rest of those lines and the literals on them.
+  const code = blankComments(src);
   // Single, double and backtick strings, and Luau's [[long brackets]]. Escapes are honoured so a
   // quote inside a string does not end it early.
   const re = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`|\[\[[\s\S]*?\]\]/g;
-  for (const m of src.matchAll(re)) {
+  for (const m of code.matchAll(re)) {
     // A Luau long bracket is also the comment syntax `--[[ ... ]]`, so one preceded by `--` is a
     // comment, not a literal.
-    if (m[0].startsWith('[[') && /--\s*$/.test(src.slice(Math.max(0, m.index - 4), m.index))) continue;
+    if (m[0].startsWith('[[') && /--\s*$/.test(code.slice(Math.max(0, m.index - 4), m.index))) continue;
     out.push({ text: m[0], offset: m.index });
   }
   return out;
