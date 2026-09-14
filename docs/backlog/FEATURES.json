@@ -2382,7 +2382,7 @@
           "id": "f-21ce5649",
           "name": "Dataset deduplication",
           "status": "done",
-          "evidence": "build-dataset.mjs sha256 over normalised code"
+          "evidence": "packages/corpus/src/intake/dedupe.test.mjs — identical input scores exactly 1.0 on both the exact and sketched paths, a comment-only fork earns no extra weight, and DIVERGENCE_THRESHOLD sits strictly inside the measured empty band."
         },
         {
           "id": "f-cced8220",
@@ -2412,7 +2412,7 @@
           "id": "f-c2aa7469",
           "name": "Dataset provenance",
           "status": "done",
-          "evidence": "raw/manifest.json per-source SPDX + commit SHA"
+          "evidence": "packages/corpus/src/intake/pipeline-data.test.mjs — a scanned source carries its verdict onto the provenance record, and the domain and quality stages are proven to have actually run."
         },
         {
           "id": "f-9e7d6e1b",
@@ -2430,31 +2430,31 @@
           "id": "f-0302e8ff",
           "name": "Dataset splitting",
           "status": "done",
-          "evidence": "packages/training/src/build-dataset.mjs assignSplits"
+          "evidence": "packages/training/src/build-dataset.test.mjs — splits are balanced by EXAMPLE COUNT, not by repo count, and train takes the largest share."
         },
         {
           "id": "f-86451c36",
           "name": "Train split",
           "status": "done",
-          "evidence": "packages/training/data/train.jsonl (327)"
+          "evidence": "packages/training/src/build-dataset.test.mjs — the split sizes are asserted by the balancing rule rather than by the row count in train.jsonl, which would go stale the next time the corpus grows."
         },
         {
           "id": "f-994c5c57",
           "name": "Validation split",
           "status": "done",
-          "evidence": "packages/training/data/val.jsonl (39)"
+          "evidence": "packages/training/src/build-dataset.test.mjs — the validation share is produced by assignSplits and asserted there."
         },
         {
           "id": "f-db420919",
           "name": "Test split",
           "status": "done",
-          "evidence": "packages/training/data/test.jsonl (38)"
+          "evidence": "packages/training/src/build-dataset.test.mjs — the held-out share is produced by assignSplits and asserted there."
         },
         {
           "id": "f-3fbf815d",
           "name": "Repository-level split",
           "status": "done",
-          "evidence": "build-dataset.mjs — no repo spans splits"
+          "evidence": "packages/training/src/build-dataset.test.mjs — balancing is by example count across repos, so no repository spans a split boundary."
         },
         {
           "id": "f-ca77b444",
@@ -5101,25 +5101,25 @@
           "id": "f-9e3dc3d8",
           "name": "RTL support",
           "status": "done",
-          "evidence": "107 logical props + 26 logical insets + lib/direction.ts; verified in browser (2f63cd0)"
+          "evidence": "apps/web/tests/rtl-workspace.test.mjs — no physical text-flow property survives in any workspace stylesheet, AND the logical replacements are present, so the rules were converted rather than deleted. The second assertion is what stops the first being satisfiable by removing the styling."
         },
         {
           "id": "f-ec85a983",
           "name": "Hebrew UI",
           "status": "done",
-          "evidence": "direction auto-detects he/iw; Hebrew greetings classified as conversation (3d36b3e)"
+          "evidence": "apps/web/tests/direction.test.mjs — Hebrew is recognised with and without a region, and a Hebrew speaker anywhere in the language list gets RTL, not only in first position."
         },
         {
           "id": "f-55016305",
           "name": "Arabic UI",
           "status": "partial",
-          "evidence": "RTL mirrors correctly (ar/fa/ur/ps detected); no Arabic strings"
+          "evidence": "apps/web/tests/direction.test.mjs — the other major RTL scripts (ar/fa/ur/ps) are recognised and mirror correctly. Still partial: there are no Arabic strings, only correct mirroring of English ones."
         },
         {
           "id": "f-1ecb9b65",
           "name": "Localization",
           "status": "partial",
-          "evidence": "direction + lang wired; no translation system or string catalogue yet"
+          "evidence": "apps/web/tests/direction.test.mjs — direction and lang resolution is proven for the languages the product serves, including an empty language list. Still partial: no translation system or string catalogue exists."
         },
         {
           "id": "f-3352ec8c",
