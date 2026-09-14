@@ -176,6 +176,7 @@ test it gated.
 - [ ] G-ORACLE-2: The escape-hatch checker catches every cheap way to buy a green signal
     CHECK: node scripts/assert-tests.mjs --floor 20 --label G-ORACLE-2 -- node --test tests/check-escape-hatches.test.mjs
     EXPECT: G-ORACLE-2 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
 
 ---
 
