@@ -32,6 +32,8 @@ import { generateImage, storeImage, type ImageRequest, type PaletteRole } from '
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau } from './effects';
+import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
+import { runCriticPanel, formatPanelReport } from './critic';
 
 export interface AgentCtx {
   env: Env;
@@ -1205,6 +1207,107 @@ export const TOOLS: Record<string, ToolImpl> = {
       const res = await op(ctx, { op: 'run_code', code: effectLuau(effect, path), timeoutMs: 10_000 }, 25_000);
       if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
       return { attached: effect, to: path, parts: EFFECTS[effect]!.parts.map((x) => x.className) };
+    },
+  },
+  /**
+   * THE ADVERSARIAL CRITIC, FINALLY REACHABLE — and honest about what it did not check.
+   *
+   * critic.ts has had zero importers in apps/worker since it was written. This is its first product
+   * caller. No judge is passed, so every lens takes `runDeterministicLens` and the whole audit costs
+   * ZERO neurons and makes zero model calls — asserted in the test, because a free check that
+   * quietly starts charging is a different product.
+   *
+   * WHY IT REPORTS WHICH LENSES DID NOT RUN. `applyMetricRules` skips any rule whose metric is
+   * undefined, so a partial metric set produces a SHORT defect list rather than an error — and a
+   * short defect list is indistinguishable from a clean build. Two of the six lenses (lighting's
+   * value-structure half, and gameplay_readability entirely) are measured from pixels, which this
+   * pass does not have. They are therefore not run at all, and the result says so in the same
+   * breath as the verdict. Silently omitting them would be the exact failure critic.ts was built to
+   * make impossible.
+   */
+  audit_build: {
+    def: {
+      name: 'audit_build',
+      description:
+        'Audit what has been built against a panel of adversarial critics and get back CONFIRMED defects, each naming the metric it measured, that metric\'s value, and the threshold it violates — unanchored parts that will fall on server start, default-grey Plastic, single-material builds, coplanar faces that will z-fight, sub-perceptual parts, a silhouette that carries no information, an untouched Lighting rig. Costs nothing and calls no model. Run it after building and again after fixing. It judges GEOMETRY and lighting configuration; it does not look at the render, so it complements inspect_visually rather than replacing it.',
+      parameters: S({}),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const raw = await op(ctx, { op: 'run_code', code: AUDIT_LUAU, timeoutMs: 15_000 }, 30_000);
+      if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+      const capture = parseAudit(raw);
+      if (!capture) return { error: 'the audit pass returned something this worker could not read' };
+      if (capture.parts.length === 0) {
+        return { error: 'there is no geometry in Workspace to audit yet — build something first' };
+      }
+
+      const metrics = auditMetrics(capture);
+      const coverage = lensCoverage(metrics);
+      const lenses = runnableLenses(metrics);
+      const panel = await runCriticPanel(
+        {
+          intent: String(a.intent ?? 'the build as it stands'),
+          subject: capture.parts.length > 60 ? 'scene' : 'prop',
+          views: [], // no frame was rendered; every lens that needs one is excluded above
+          metrics,
+          lighting: capture.lighting,
+        },
+        { lenses, alwaysRunDeterministic: true },
+      );
+
+      const skipped = coverage.filter((c) => !c.complete);
+      const confirmed = panel.adjudication.confirmed;
+
+      ctx.uiDetail = {
+        v: 1,
+        title: 'Build audit',
+        blocks: [
+          {
+            type: 'callout',
+            tone: confirmed.some((d) => d.severity === 'blocking') ? 'bad' : confirmed.length ? 'warn' : 'good',
+            title: confirmed.length ? `${confirmed.length} confirmed defect(s)` : 'No confirmed defects',
+            text:
+              `${panel.lensesRun.length} of ${coverage.length} lenses run over ${capture.parts.length} part(s), ${panel.modelCalls} model call(s). ` +
+              (skipped.length
+                ? `Not checked: ${skipped.map((c) => c.lens).join(', ')} — ${skipped.map((c) => c.missing.join('/')).join('; ')} need a render.`
+                : 'Every lens ran.'),
+          },
+          ...(confirmed.length
+            ? [{
+                type: 'table',
+                caption: 'Each defect cites the measurement that confirms it.',
+                columns: ['Severity', 'Subject', 'Measured', 'Fix'],
+                rows: confirmed.map((d) => [
+                  d.severity,
+                  d.subject,
+                  d.claims[0] ?? '',
+                  d.fixes[0] ?? '',
+                ]),
+              }]
+            : []),
+          {
+            type: 'key_values',
+            title: 'What was measured',
+            items: Object.entries(metrics)
+              .sort(([x], [y]) => x.localeCompare(y))
+              .map(([k, v]) => ({ key: k, value: Number.isInteger(v) ? String(v) : v.toFixed(3) })),
+          },
+        ],
+      };
+
+      const note = skipped.length
+        ? `\nNOT CHECKED (no render in this pass): ${skipped.map((c) => `${c.lens} [needs ${c.missing.join(', ')}]`).join('; ')}. Call inspect_visually for those.`
+        : '';
+      return {
+        text: formatPanelReport(panel) + note,
+        confirmed: confirmed.length,
+        blocking: confirmed.filter((d) => d.severity === 'blocking').length,
+        lensesRun: panel.lensesRun,
+        lensesSkipped: skipped.map((c) => c.lens),
+        partsAudited: capture.parts.length,
+        truncated: capture.truncated || undefined,
+      };
     },
   },
   check_composition: {
