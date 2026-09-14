@@ -305,6 +305,9 @@ export function UsagePage() {
             busyPlan={busyPlan}
             // Absent when this deployment has no Stripe key, which makes the ladder render "Not
             // available yet" on each tier rather than a button that cannot work.
+            availability={
+              billing.isPending ? 'checking' : billing.isError ? 'unknown' : billing.data?.checkout ? 'ready' : 'unavailable'
+            }
             onChoose={
               billing.data?.checkout
                 ? (plan) => {

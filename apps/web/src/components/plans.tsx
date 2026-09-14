@@ -19,15 +19,27 @@ import {
   type PlanId,
 } from '@golem/shared';
 
+/**
+ * Whether this deployment can sell anything, as four states rather than two.
+ *
+ * `onChoose` being absent used to mean all of "still asking", "we asked and it cannot", and "we
+ * could not find out" — so every tier rendered "Not available yet" the moment the page opened,
+ * before the answer had arrived. That is a definite claim about a deployment, made from having no
+ * information, and it is the same mistake the usage meter made with a quota that had not loaded.
+ */
+export type PlanAvailability = 'ready' | 'checking' | 'unavailable' | 'unknown';
+
 export function PlanLadder({
   current,
   onChoose,
   busyPlan,
+  availability = 'unavailable',
 }: {
   current: PlanId;
-  /** Absent while checkout is not configured — the tier still renders, it just cannot be bought. */
+  /** Required for 'ready' to mean anything; ignored in every other state. */
   onChoose?: (plan: PlanId) => void;
   busyPlan?: PlanId | null;
+  availability?: PlanAvailability;
 }) {
   const currentIndex = PLAN_IDS.indexOf(current);
 
@@ -91,7 +103,15 @@ export function PlanLadder({
                 <a className="btn" href="mailto:hello@apple.build?subject=Enterprise%20plan">
                   Get in touch
                 </a>
-              ) : onChoose ? (
+              ) : availability === 'checking' ? (
+                // Not "unavailable". We have not asked yet, and saying which is the difference
+                // between a deployment that cannot sell this and a request still in flight.
+                <span className="plan__soon" aria-busy="true">
+                  Checking&hellip;
+                </span>
+              ) : availability === 'unknown' ? (
+                <span className="plan__soon">Couldn&rsquo;t check whether this can be bought</span>
+              ) : availability === 'ready' && onChoose ? (
                 <button
                   type="button"
                   className={`btn${direction === 'up' ? ' btn-primary' : ''}`}
@@ -101,8 +121,9 @@ export function PlanLadder({
                   {busyPlan === id ? 'Opening…' : direction === 'up' ? `Upgrade to ${copy.name}` : `Move to ${copy.name}`}
                 </button>
               ) : (
-                // Checkout is not configured. Saying so is better than a button that fails, and far
-                // better than hiding the tier — the user should still know what exists.
+                // Asked, and this deployment genuinely cannot sell it. Saying so is better than a
+                // button that fails, and far better than hiding the tier — the user should still
+                // know what exists.
                 <span className="plan__soon">Not available yet</span>
               )}
             </div>

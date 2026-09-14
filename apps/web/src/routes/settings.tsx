@@ -82,11 +82,8 @@ export function SettingsPage() {
       </div>
 
       {profile.isError && (
-        <div className="card" role="alert">
+        <div className="card">
           <Failure error={profile.error} onRetry={() => void profile.refetch()} compact />
-          <button type="button" className="btn btn-sm" onClick={() => void profile.refetch()}>
-            Retry
-          </button>
         </div>
       )}
 
@@ -101,7 +98,9 @@ export function SettingsPage() {
               maxLength={60}
               name="displayName"
               id="display-name"
-              placeholder="How Apple should address you"
+              // A disabled field showing "How Apple should address you" reads as "you have not set
+              // one" while the answer is still being fetched. Same conflation as everywhere else.
+              placeholder={profile.isPending ? 'Loading…' : 'How Apple should address you'}
               disabled={profile.isPending}
             />
           </label>
