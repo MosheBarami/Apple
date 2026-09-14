@@ -664,7 +664,13 @@ if (REVERIFY) {
         reasons.push('output-sha256 does not reproduce; delete the stale EVIDENCE line to re-baseline deliberately');
       }
     }
-    if (evLine && evLine.includes('tree-clean=no')) reasons.push('recorded against a dirty tree');
+    // Same deadlock shape as the fingerprint one above: the stored line is itself the reason the
+    // record cannot be rewritten, so a gate whose evidence was once taken on a dirty tree can never
+    // be refreshed by any number of clean runs. Deleting the line is the escape, and a quarantine
+    // that does not name its own remedy is a dead end wearing the costume of a check.
+    if (evLine && evLine.includes('tree-clean=no')) {
+      reasons.push('recorded against a dirty tree; delete the stale EVIDENCE line to re-baseline deliberately');
+    }
 
     const untracked = checkPaths(now.check).filter((f) => !TRACKED.has(f));
     if (untracked.length) reasons.push(`CHECK names untracked path(s): ${untracked.join(', ')}`);
