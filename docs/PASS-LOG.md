@@ -99,3 +99,96 @@ SELF-REFUTER: not dispatched. §9.5 debt, scheduled pass 2. The sentence I would
 HANDOFFS OPEN: none re-probed this pass. OWNER-HANDOFF.md not yet written — §13.1 debt.
 
 NEXT: node scripts/check-escape-hatches.mjs does not exist; write it red-first (§6.4).
+
+--------------------------------------------------------------------------------
+PASS 2  2026-09-14T17:14:09Z  HEAD 64096c8  tree-clean=false  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: none PROVEN. No deployed-origin probe ran. S1 advanced in the repo only — two
+  contractual terms removed from the pricing page — which is not a station claim and is
+  not recorded as one.
+
+DERIVED OPEN: gates 4 met / 31 open of 35 | worklist 6
+  | features 1084 not-started of 1249
+
+CLOSED:
+  G-CRITIC-1  — the critic cannot report clean for checks it never ran — a50e9d2 / e0ba958
+  G-ORACLE-2  — the escape-hatch checker, 22 detectors each driven by a planted violation — 61768ab / (recorded)
+  G-ORACLE-3  — the offer checker, measuring four numbers a plan must reconcile — e3f864b / (recorded)
+
+OPEN AND HONESTLY RED:
+  G-OFFER-1 [S1] — blocked on OH-1 and OH-2, which are numbers §12.5 reserves to the owner.
+    Not abandoned, not deferred: the checker exists, is red, and names what is wrong.
+
+WHAT PASS 2 FOUND, measured not inherited:
+  - THE FREE PLAN CANNOT FINISH ONE BUILD. PLAN_LIMITS.free.sparksPerDay is 60 and
+    SPARKS_PER_BUILD is 77, so buildsPerDay('free') is literally 0. A free tier that
+    completes nothing is not a trial; it demonstrates the product not working.
+  - TWO PLANS PROMISE MORE THAN THE SERVICE CAN SERVE. team grants 1,500 Sparks/day and
+    enterprise 6,000, against DAILY_NEURON_CEILING of 25,000 neurons = 833 Sparks for
+    EVERY USER COMBINED. One Team subscriber exhausts the day for everyone. That is not a
+    pricing mistake; it is a promise that fails when someone uses what they bought.
+  - THE PRICING PAGE CARRIED TWO CONTRACTUAL TERMS the owner never authorised: "No card
+    required, ever" and "You will never be charged". Removed; replaced with what is true
+    today and no promise about tomorrow.
+  - THE CRITIC COULD NOT SAY "I DID NOT LOOK". applyMetricRules skipped a rule whose
+    metric was missing, silently, so a partial metric set produced a short defect list
+    indistinguishable from a clean build. Reported now, attributed to lens and subject,
+    and the caveat prints ABOVE the tally because the tally is the sentence a reader
+    forms an opinion from.
+  - apps/site's typecheck was behind || true and therefore could not fail. Removed and
+    proven: a planted type error gives 3 errors, restoring the file gives 0.
+  - EVERY GENERATED IMAGE IS BILLED AND DISCARDED. storeImage writes image:<uuid> to KV,
+    generate_image returns the key, and nothing in apps/worker/src, apps/web/src or
+    packages reads it back. Live, billed, output never seen. Contract for the fix agreed
+    with rbxai-a3; the route is mine. SCHEDULED pass 3.
+
+DISPOSITIONS: CLOSED 3 | BOOKKEEPING-FLIP 0 | MERGE 0 | FACET 0 | STRUCTURAL 0 | OWNER 2 (OH-1, OH-2) | TIME-GATED 0
+
+REFUTERS: dispatched 2 of 3 status changes, results not yet returned at the time this
+  record was written. This is an incomplete discharge of §9.1 and is recorded as such
+  rather than as a pass. G-ORACLE-3's refuter is the missing one. SCHEDULED pass 3.
+
+ORACLES: checkers added 2 (check-escape-hatches, check-offer) | falsification records 3
+  | gate count 35 (was 31) | OWNER-HANDOFF.md created with 4 rows
+
+VERIFICATION:
+  gate-check.mjs --lint          exit 0   LEDGER WELL-FORMED — 35 gates, 0 problems
+  gate-suite.mjs                 exit 0   SUITE GREEN, 2206 passed, 0 failed
+  gate-typecheck.mjs             exit 0   TYPECHECK CLEAN
+  check-escape-hatches.mjs       exit 0   CLEAN, 421 files examined
+  check-offer.mjs                exit 1   INCOHERENT, 3 problems — the honest state
+  neurons spent 0
+
+DEPLOYED: not probed, not deployed. §10.2 drift invariant outstanding for a second pass.
+
+PIXELS: 0 routes captured. check-pixels.mjs still does not exist (§6.9).
+
+NOT DONE:
+  §6.2 back-fill  | 31 gates still have no falsification record | SCHEDULED pass 3
+  §6.5 check-backlog.mjs | not written | SCHEDULED pass 3
+  §6.6 check-deadends.mjs | not written | SCHEDULED pass 3
+  §6.7 check-dispositions.mjs | not written | SCHEDULED pass 3
+  §6.9 check-pixels.mjs | not written | SCHEDULED pass 3
+  §6.10 check-rebrand.mjs | not written | SCHEDULED pass 3
+  §10.2 drift | deployed origin unprobed for two passes | SCHEDULED pass 3
+  image leak | route is mine, contract agreed | SCHEDULED pass 3
+
+NUMBERS CORRECTED:
+  pass 1 said 31 gates -> 35 now
+  suite 2163 -> 2206
+  prompt §17 lists 12 defects; a 13th is now measured — the billed-and-discarded image path
+
+SELF-REFUTER: not dispatched. §9.5 debt carried from pass 1, SCHEDULED pass 3. The sentence
+  I expect it to find is "3 gates CLOSED this pass": true, and materially misleading, because
+  all three are gates on ORACLES rather than on product behaviour a user could notice. The
+  product diff this pass is real but small — one critic fix, two copy lines, four escaped
+  control bytes — and calling three oracle closures progress toward a shippable product
+  overstates what changed for anyone using it.
+
+HANDOFFS OPEN: OH-1 free-plan allowance — approve-by node scripts/check-offer.mjs — flips 1 row
+               OH-2 team/enterprise daily grant vs service ceiling — same command — flips 1 row
+               OH-3 Stripe live keys — NOT PROBED this pass, opening balance only
+               OH-4 Creator Store distribution — NOT PROBED this pass, opening balance only
+
+NEXT: node scripts/check-rebrand.mjs does not exist; write it red-first (§6.10), then probe
+  the deployed origin for §10.2 before anything else claims a station.

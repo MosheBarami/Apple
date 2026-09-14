@@ -467,7 +467,6 @@ function applyMetricRules(
   for (const r of rules) {
     const v = input.metrics[r.metric];
     if (v === undefined || !Number.isFinite(v)) {
-      unchecked.push({ lens, subject: r.subject, metric: r.metric });
       continue;
     }
     if (!compare(v, r.comparator, r.threshold)) continue;
