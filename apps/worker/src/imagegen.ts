@@ -688,8 +688,23 @@ export const IMAGE_TTL_SECONDS = 3600;
  * metadata does not — the same reasoning render_view already follows when it pushes frames to the
  * browser and strips them from the tool result.
  */
-export async function storeImage(env: Env, pngBase64: string): Promise<string> {
-  const key = `image:${crypto.randomUUID()}`;
-  await env.KV.put(key, pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
-  return key;
+export async function storeImage(env: Env, pngBase64: string, projectId: string): Promise<string> {
+  const imageId = crypto.randomUUID();
+  await env.KV.put(imageKvKey(projectId, imageId), pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
+  return imageId;
+}
+
+/**
+ * The KV key an image lives under.
+ *
+ * SCOPED TO THE PROJECT, and that is the authorisation, not a tidiness choice. The key used to be
+ * `image:<uuid>` with nothing tying the pixels to anyone, so any route that served them would have
+ * had to trust the caller's own id — and a serving route whose only protection is that the
+ * identifier is hard to guess is a serving route with no protection at all, one leaked transcript
+ * later. With the project in the key, the route asks the question it already knows how to ask:
+ * does this user own this project? A caller who owns a different project cannot construct a key
+ * into someone else's images, whatever id they present.
+ */
+export function imageKvKey(projectId: string, imageId: string): string {
+  return `image:${projectId}:${imageId}`;
 }

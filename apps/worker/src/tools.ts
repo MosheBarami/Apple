@@ -1403,7 +1403,11 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('refused' in res) return { error: res.message, reason: res.reason, offending: res.offending };
       // The pixels never enter the transcript — a base64 PNG is ~230k characters of nothing the
       // model can read. They go to KV under a key, exactly as render_view keeps frames out.
-      const imageKey = await storeImage(ctx.env, res.pngBase64);
+      // No project, no parking spot. The pixels are addressed by project, so a tool call with no
+      // project (the admin single-tool route) has nowhere legitimate to put them and must say so
+      // rather than fall back to an unscoped key nobody can authorise a read against.
+      if (!ctx.projectId) return { error: 'generate_image needs a project to store the result against' };
+      const imageKey = await storeImage(ctx.env, res.pngBase64, ctx.projectId);
       return {
         imageKey,
         width: res.width,

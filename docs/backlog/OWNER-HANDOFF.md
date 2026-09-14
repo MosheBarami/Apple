@@ -97,10 +97,20 @@ asks whether a returning user finds their session intact.
 **Rows it unblocks.** S12's image half. Not S12 itself: quota, conversation, memory and export have
 no retention logic at all, so they are true across a day boundary by construction.
 
-**Already built on this side.** The image is stored, scoped to its project, and served by an
-authenticated route; the client shows the alt text and says images are kept for an hour when the
-fetch fails, with that sentence checked against the constant so moving the TTL without moving the
-copy fails a test. Nothing here waits on the number.
+**Already built on this side.** The image is stored scoped to its project and served by an
+authenticated route — `GET /api/projects/:id/images/:imageId`, added this pass. Before that there
+was no image route in the worker at all: `generate_image` parked PNGs in KV and handed back a key
+that nothing could redeem, so every generated image was unreachable.
+
+**CORRECTION.** This row previously also claimed the client shows alt text and says images are
+kept for an hour when the fetch fails, "with that sentence checked against the constant so moving
+the TTL without moving the copy fails a test". None of that exists on main. Nothing in `apps/web`
+consumes `imageKey`; the only `<img>` in the workspace renders render-view screenshots. The claim
+was written about work that lives on a branch. A handoff row that describes unbuilt work as built
+is the precise failure §13.3 exists to prevent, and it survived several regenerations of this file
+because nobody re-probed the sentence — it read like a measurement and was a memory.
+
+The client half is genuinely outstanding and is tracked as such, not here.
 
 **The trade, costed.** KV storage against images up to ~1 MB each. At one image per build and the
 free tier's current allowance, a 30-day retention is under 1 GB per active free user per month.
