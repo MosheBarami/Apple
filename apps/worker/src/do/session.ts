@@ -138,6 +138,62 @@ const MAX_NUDGES = 2;
 /** Output token budget per step before the effort multiplier — matches the gateway model config. */
 const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 1600, stone: 4400, rune: 5200 };
 const STEP_STALE_MS = 180_000;
+
+// ---------------------------------------------------------------------------------------------
+// PLUGIN POLL PACING — this is the largest recurring cost in the system, not inference.
+//
+// The poll used to hold every request open for 6s (4s mid-run) and tell the plugin to come back
+// after 1s. A paired SessionDO was therefore in flight ~85% of wall-clock, continuously, for as
+// long as a project stayed connected — and Durable Object residency is billed by GB-s. One
+// always-connected project consumes roughly the entire monthly allowance on its own. Inference,
+// which the whole budget system was built to guard, is the smaller line item by a wide margin.
+//
+// The original comment was honest that it was trading residency for latency and that "that saving
+// was never measured and this latency was". It has now been measured, so the trade is revisited —
+// but only for the case where the hold buys nothing.
+//
+// Holding is right when work is happening or imminent: `pollWaiter` resolves the instant an op is
+// queued, so latency is near zero. Holding is pure waste when the project has been idle for
+// minutes, because no op is coming. So: hold while active, and when idle return IMMEDIATELY and
+// let the plugin sleep client-side, where sleeping is free.
+//
+// 10s is not arbitrary. The plugin clamps the value it is given to [0.2, 10] seconds
+// (apps/plugin/src/init.server.luau), so 10s is the longest sleep any currently deployed plugin
+// will honour. Issuing more would be silently clamped, and staleness derived from the larger
+// number would then declare a healthy plugin dead. This needs no plugin change to take effect.
+// ---------------------------------------------------------------------------------------------
+
+/** Hold while a run is in flight: ops are arriving, and latency is what the user feels. */
+const POLL_HOLD_ACTIVE_MS = 4_000;
+/** Hold while recently active: the user is still in the conversation and likely to act again. */
+const POLL_HOLD_WARM_MS = 6_000;
+/** No activity for this long and the connection is parked: stop holding requests open. */
+const POLL_IDLE_AFTER_MS = 180_000;
+/**
+ * Client-side sleep while parked.
+ *
+ * 5s, NOT the 10s the plugin would accept, and the difference matters. A blanket 20s backoff was
+ * tried here before and refuted by measurement: ops took 6.5-10.4s to be picked up where holding
+ * gave under 2.5s. That refutation stands, and this must not quietly re-enact it.
+ *
+ * What makes this a different trade is WHEN it applies. The refuted backoff paced every poll; this
+ * one applies only after POLL_IDLE_AFTER_MS of complete silence, and the very first queued op sets
+ * `lastActivity`, which un-parks the connection for everything that follows. So the cost is a
+ * single wait of at most 5s (2.5s on average) on the FIRST op after minutes of inactivity, and
+ * near-zero latency on every op after it — rather than 6.5-10.4s on all of them.
+ *
+ * 5s keeps that worst case inside the band the original measurement found acceptable, while still
+ * cutting idle residency by more than two orders of magnitude.
+ */
+const POLL_WAIT_IDLE_MS = 5_000;
+/**
+ * Grace on top of the sleep we asked for, before the plugin is presumed gone. Covers the request
+ * round trip, Studio's own scheduling jitter, and a slow network. Staleness is DERIVED from what
+ * we told the plugin to do rather than being a second constant that can silently disagree with it
+ * — the previous fixed 8s is exactly what made a 12s hold declare every op "Studio is not
+ * connected".
+ */
+const POLL_STALE_GRACE_MS = 8_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
@@ -300,10 +356,30 @@ export class SessionDO extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Is the plugin still there?
+   *
+   * Judged against the deadline we set when we answered its last poll — last seen, plus the sleep
+   * we TOLD it to take, plus grace. A fixed threshold cannot work once the sleep is adaptive: 8s
+   * was correct for a 1s sleep and would declare a healthy parked plugin dead 2s into a 10s one.
+   * `pollDueBy` is instance state, so after an eviction it falls back to the stored timestamp plus
+   * the widest sleep we ever issue, which errs towards "still connected" for a few seconds rather
+   * than towards a spurious "Studio is not connected" on the first op after a restart.
+   */
   private async pluginConnected(): Promise<boolean> {
     const stored = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
     const last = Math.max(stored, this.lastSeenWrittenAt);
-    return Date.now() - last < 8000;
+    if (!last) return false;
+    const deadline = this.pollDueBy || last + POLL_WAIT_IDLE_MS + POLL_STALE_GRACE_MS;
+    return Date.now() < deadline;
+  }
+
+  /** When this project last did anything: a run stepped, or an op was queued. */
+  private async lastActivityAt(): Promise<number> {
+    if (this.lastActivity) return this.lastActivity;
+    const agent = await this.ctx.storage.get<AgentState>('agent');
+    this.lastActivity = agent?.lastStepAt ?? 0;
+    return this.lastActivity;
   }
 
   // ------------------------------------------------------------------ fetch
@@ -839,6 +915,7 @@ export class SessionDO extends DurableObject<Env> {
     this.currentMsgId = agent.msgId;
     agent.step += 1;
     agent.lastStepAt = Date.now();
+    this.lastActivity = agent.lastStepAt;
 
     if (agent.step > agent.maxSteps) {
       agent.finalText = agent.finalText || 'I reached the step limit for this run. Progress so far is saved — send another message to continue.';
@@ -1526,6 +1603,9 @@ export class SessionDO extends DurableObject<Env> {
       runId: this.currentMsgId,
     };
     this.opQueue.push(op);
+    // Queueing an op is activity: it un-parks the poll so the next one holds again rather than
+    // sleeping through the work that is about to arrive.
+    this.lastActivity = Date.now();
     await this.ctx.storage.put({ opQueue: this.opQueue, seq: this.seq });
     this.pollWaiter?.();
 
@@ -1551,6 +1631,10 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   private lastSeenWrittenAt = 0;
+  /** When the plugin's next poll is due (last answer + the sleep we issued + grace). */
+  private pollDueBy = 0;
+  /** Last run step or queued op, for the idle/parked decision. */
+  private lastActivity = 0;
   private lastClientWrittenAt = 0;
 
   /**
@@ -1638,8 +1722,15 @@ export class SessionDO extends DurableObject<Env> {
     // 12s hold made every op fail with "Studio is not connected" between polls. The hold must stay
     // comfortably inside that window — changing both at once would trade one silent failure for
     // another.
-    const holdMs = agent?.status === 'running' ? 4000 : 6000;
-    if (!this.opQueue.length) {
+    const running = agent?.status === 'running';
+    const idleFor = Date.now() - (await this.lastActivityAt());
+    const parked = !running && idleFor > POLL_IDLE_AFTER_MS;
+    const holdMs = running ? POLL_HOLD_ACTIVE_MS : POLL_HOLD_WARM_MS;
+
+    // Parked: return at once and let the plugin sleep. The cost of not holding is that an op
+    // queued during that sleep waits for the next poll — bounded by POLL_WAIT_IDLE_MS, and only
+    // ever paid on the first op after several minutes of silence.
+    if (!parked && !this.opQueue.length) {
       await new Promise<void>((resolve) => {
         const t = setTimeout(resolve, holdMs);
         this.pollWaiter = () => {
@@ -1679,8 +1770,11 @@ export class SessionDO extends DurableObject<Env> {
     //   at this should take. Until then, losing work is the cheaper mistake. ]]
     const ops = this.opQueue.splice(0, 10);
     if (ops.length) await this.ctx.storage.put('opQueue', this.opQueue);
-    const running = agent?.status === 'running';
-    const res: PollResponse = { ops, waitMs: running ? 400 : 1000 };
+    const waitMs = running ? 400 : parked ? POLL_WAIT_IDLE_MS : 1000;
+    // Record when the next poll is due, so `pluginConnected()` judges against what we actually
+    // asked for instead of a constant that can drift away from it.
+    this.pollDueBy = Date.now() + waitMs + POLL_STALE_GRACE_MS;
+    const res: PollResponse = { ops, waitMs };
     // Omitted entirely when there is nothing to say, which is the common case. An
     // older plugin that does not read this field is unaffected either way.
     if (notice) res.client = notice;
