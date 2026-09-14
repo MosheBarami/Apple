@@ -23,6 +23,11 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 import {
   systemPrompt, MEMORY_UPDATE_PROMPT, MEMORY_FACT_MAX_CHARS, MEMORY_SUMMARY_MAX_CHARS,
@@ -122,10 +127,40 @@ test('MEMORY_UPDATE_PROMPT warns that what it is summarising is untrusted', () =
 });
 
 test('no fence id, no prompt — the parameter is required, not optional', () => {
-  // Making it optional would let a call site silently fall back to an empty id, which is a
-  // constant, which is the bug this replaced.
+  // Making it optional lets a call site fall back to an empty id, and an empty id is not a weaker
+  // secret — it is a CONSTANT one. Every fence in every run would carry the same marker, so any
+  // payload could close it and open a fresh one the model has been told to trust.
+  //
+  // THIS TEST USED TO READ `assert.ok(!sys.includes('id=""') || true)`. `X || true` is `true`, so
+  // it asserted nothing while sitting on top of the product's only prompt-injection boundary.
+  // Dropping the tautology turned it red immediately: the prompt happily emitted id="".
   const { fenceId, ...withoutId } = base;
-  const sys = systemPrompt({ ...withoutId, fenceId: '' });
-  assert.ok(!sys.includes('id=""') || true);
+  assert.throws(() => systemPrompt({ ...withoutId, fenceId: '' }), /fenceId is required/);
   assert.equal(typeof fenceId, 'string');
+
+  // The positive control. Without it the throw above would also pass against a systemPrompt that
+  // had been broken into throwing on everything.
+  const good = systemPrompt({ ...withoutId, fenceId: 'a1b2c3d4' });
+  assert.match(good, /<untrusted-tool-output id="\$\{fenceId\}">|id="a1b2c3d4"/);
+});
+
+test('a run with no persisted fence id is given a fresh one, never a shared constant', () => {
+  // `agent.fenceId ?? ''` shipped on the tool-output fence. The field is legitimately optional —
+  // a run persisted by an older deploy has to keep loading — but the empty-string fallback meant
+  // every such run fenced its tool output with the SAME marker. The untrusted-content rule stakes
+  // everything on that marker being unguessable, so a shared id hands any payload the ability to
+  // close the fence and open one the model has been told to trust.
+  //
+  // Asserted against the source because the fence is built inside the tool loop of a Durable
+  // Object, and the property at stake is "this expression can never evaluate to a constant".
+  const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8');
+
+  const fence = /<untrusted-tool-output id="\$\{([^}]*)\}"/.exec(SESSION);
+  assert.ok(fence, 'the tool-output fence must still exist');
+  assert.doesNotMatch(fence[1], /\?\?\s*''/, 'the fence id must not fall back to a constant');
+  assert.match(fence[1], /fenceIdFor\(agent\)/, 'it must go through the minting helper');
+
+  const helper = SESSION.slice(SESSION.indexOf('private fenceIdFor('), SESSION.indexOf('private captureProvenance('));
+  assert.match(helper, /crypto\.randomUUID\(\)/, 'a missing id must be minted, not defaulted');
+  assert.ok(helper.length > 0 && helper.length < 900, 'the helper must be small enough to read at a glance');
 });

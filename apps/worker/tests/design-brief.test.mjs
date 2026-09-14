@@ -18,6 +18,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { RULES } from '@golem/design';
 
 import { designBrief } from '../src/design-brief.ts';
 import {
@@ -76,19 +77,45 @@ test('the brief is capped, because it is re-sent every step', () => {
 
 // ------------------------------------------------------------------ the licence line
 test('no concrete value from a reference-only rule can reach a prompt', () => {
-  // studs-classic is currently backed by a reference-only rule (unlicensed DevForum
-  // thread + CC-BY creator-docs). Its grammar may be taught; its numbers may not.
+  // A reference-only rule is backed by a source whose GRAMMAR may be taught and whose NUMBERS may
+  // not — an unlicensed DevForum thread, or CC-BY creator-docs. The library refuses to build one
+  // that carries tokens; this is the worker-side half, asserting the brief never reintroduces
+  // values by some other route.
+  //
+  // THIS TEST USED TO READ `assert.ok(!/values:.*studs/i.test(b.text) || true)`. `X || true` is
+  // `true`, so it asserted nothing at all. Dropping the tautology turned it red — and the red was
+  // the regex's fault, not the product's: it matched `values: defaultProximityStuds=10`, a token
+  // NAME from a licence-clear dialogue rule, because the word "studs" happened to appear after
+  // "values:". A negative assertion aimed at a word rather than at the property it stands for will
+  // eventually match something innocent, and then the only ways out are deleting the check or
+  // neutering it. Aim at the property.
   const b = designBrief('make a classic studs style panel');
-  if (b) {
-    assert.ok(!/values:.*studs/i.test(b.text) || true);
-    // The library's own test drives the violation directly; here we assert the worker
-    // path does not reintroduce values by some other route.
-    for (const line of b.text.split('\n')) {
-      if (line.trim().startsWith('values:')) {
-        assert.ok(line.length < 300, 'a values line should be short token pairs, not prose');
-      }
+  assert.ok(b, 'this prompt must produce a brief, or the rest of this test checks nothing');
+
+  const used = b.used.map((id) => RULES.find((r) => r.id === id)).filter(Boolean);
+  assert.equal(used.length, b.used.length, 'every rule the brief cites must exist in the library');
+
+  for (const rule of used) {
+    if (rule.provenance?.kind !== 'reference-only') continue;
+    for (const value of Object.values(rule.tokens ?? {})) {
+      assert.ok(!b.text.includes(String(value)), `${rule.id} is reference-only and leaked ${value}`);
     }
   }
+
+  // REACH, not reasoning. The loop above is empty whenever no reference-only rule is selected, and
+  // an empty loop passes while proving nothing. What makes the worker path safe is the structural
+  // fact that no reference-only rule carries tokens at all, so assert THAT, over the whole library,
+  // where the count cannot quietly fall to zero.
+  const referenceOnly = RULES.filter((r) => r.provenance?.kind === 'reference-only');
+  assert.ok(referenceOnly.length > 0, 'no reference-only rules left in the library — this guard now guards nothing');
+  for (const r of referenceOnly) {
+    assert.equal(Object.keys(r.tokens ?? {}).length, 0, `${r.id} is reference-only and must carry no tokens`);
+  }
+
+  // And the values that DO ship are token pairs, not prose lifted from a source.
+  const valueLines = b.text.split('\n').filter((l) => l.trim().startsWith('values:'));
+  assert.ok(valueLines.length > 0, 'no values reached the brief — the line-shape check below is vacuous');
+  for (const line of valueLines) assert.ok(line.length < 300, `a values line should be short token pairs, not prose: ${line.slice(0, 80)}`);
 });
 
 // ------------------------------------------------------------------ prompt wiring
@@ -100,6 +127,9 @@ test('systemPrompt includes the UI block only when a brief is supplied', () => {
     projectName: 'proj',
     memorySummary: null,
     memoryFacts: [],
+    // This fixture omitted the fence id, and systemPrompt accepted it — which is how a real call
+    // site would have slipped through too. The guard now refuses, so the fixture has to be honest.
+    fenceId: 'f1xtur3a',
   };
   const without = systemPrompt(base);
   assert.ok(!without.includes(UI_BRIEF_START));
