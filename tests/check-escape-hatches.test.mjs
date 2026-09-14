@@ -58,6 +58,22 @@ function withPlant(dir, rel, mutate) {
   }
 }
 
+/**
+ * Remove a scratch clone, retrying.
+ *
+ * Each of these fixtures spawns `git` and the checker inside the directory it is about to delete.
+ * A child that has reported its exit status can still have a write in flight — git's index.lock,
+ * a coverage file — and a plain rmSync then throws ENOTEMPTY on a directory it has just emptied.
+ *
+ * It surfaced only under NODE_V8_COVERAGE, which is how the gate checker runs every CHECK: the
+ * instrumentation is slow enough to widen the race. So the full suite was green when run directly
+ * and RED when run by the gate that asserts it is green — and the failure named a temp directory,
+ * which reads like flake rather than like the one gate whose whole job is noticing.
+ */
+function cleanup(dir) {
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+}
+
 let DIR;
 test('a scratch clone of the tracked tree is clean', () => {
   DIR = scratch();
@@ -298,7 +314,7 @@ test('it catches WORKLIST.md having been untracked', () => {
     assert.equal(r.exit, 1, r.out);
     assert.match(r.out, /WORKLIST\.md is not tracked/);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    cleanup(dir);
   }
 });
 
@@ -344,7 +360,7 @@ test('it catches an EXPECT changed with no adjacent EXPECT-CHANGE line, where it
     assert.equal(r.exit, 1, r.out);
     assert.match(r.out, /EXPECT changed with no adjacent EXPECT-CHANGE line/);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    cleanup(dir);
   }
 });
 
@@ -421,5 +437,5 @@ test('it does NOT fire on `|| true` inside a string, or this file could not name
 });
 
 test('the scratch clone is removed', () => {
-  rmSync(DIR, { recursive: true, force: true });
+  cleanup(DIR);
 });
