@@ -55,7 +55,7 @@ function stubCtx(data = { ok: true }) {
 }
 
 test('the catalogue is real and each entry is complete', () => {
-  assert.equal(P.PREFAB_IDS.length, 4);
+  assert.equal(P.PREFAB_IDS.length, 5);
   for (const id of P.PREFAB_IDS) {
     const p = P.PREFABS[id];
     assert.equal(p.id, id);

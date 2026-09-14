@@ -735,3 +735,189 @@ test('an unknown product retries rather than silently consuming a real purchase'
   ].join('\n'), 'rec-unknown-product');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * Checkpoints' harness.
+ *
+ * All three bugs this module exists to prevent are executable, which is unusual and worth taking:
+ * the stage going backwards is arithmetic, the Touched storm is a clock, and the respawn is an
+ * assignment to a CFrame. So none of them has to be asserted about the source.
+ *
+ * CFrame is stubbed as a tagged table with an __add metamethod, so "the character was moved to the
+ * checkpoint, lifted clear of it" is checkable rather than merely plausible.
+ */
+function runCheckpoints(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local nowValue = 0',
+    'os = { clock = function() return nowValue end, time = function() return nowValue end }',
+    'local function advance(seconds) nowValue = nowValue + seconds end',
+    '',
+    'Vector3 = { new = function(x, y, z) return { x = x, y = y, z = z } end }',
+    'local function cframe(tag)',
+    '\treturn setmetatable({ tag = tag }, { __add = function(a, v) return { tag = a.tag, lifted = v.y } end })',
+    'end',
+    '',
+    '-- a folder of checkpoint parts named by their stage number',
+    'local function makeFolder(count)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, count do',
+    '\t\tparts[i] = { Name = tostring(i), CFrame = cframe("stage" .. i), handlers = {} }',
+    '\t\tparts[i].Touched = { Connect = function(_, fn) table.insert(parts[i].handlers, fn) end }',
+    '\tend',
+    '\treturn {',
+    '\t\tGetChildren = function() return parts end,',
+    '\t\tFindFirstChild = function(_, name)',
+    '\t\t\tfor _, part in ipairs(parts) do if part.Name == name then return part end end',
+    '\t\t\treturn nil',
+    '\t\tend,',
+    '\t\tparts = parts,',
+    '\t}',
+    'end',
+    '',
+    'local function makeCharacter()',
+    '\tlocal root = { CFrame = cframe("spawn") }',
+    '\treturn { root = root, WaitForChild = function(_, name) return root end }',
+    'end',
+    '',
+    'local player = { Name = "runner", spawned = nil }',
+    'player.CharacterAdded = { Connect = function(_, fn) player.spawned = fn end }',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.checkpoints.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+const CP_WIRED = [
+  'local data = { stage = 1 }',
+  'local folder = makeFolder(5)',
+  'M.configure({ get = function(p) return data end, field = "stage", folder = folder })',
+].join('\n');
+
+test('the checkpoints harness runs, and a false assertion in it still fails', () => {
+  const good = runCheckpoints('assert(type(M.reach) == "function", "M.reach")', 'cp-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runCheckpoints('assert(false, "intentional-cp")', 'cp-sanity-neg');
+  assert.equal(bad.ok, false, 'a failing assert did not fail the checkpoints run');
+  assert.match(bad.output, /intentional-cp/);
+});
+
+test('THE STAGE NEVER GOES BACKWARDS — the bug players find instantly', () => {
+  const r = runCheckpoints([
+    CP_WIRED,
+    'assert(M.reach(player, 3) == true, "advancing to 3")',
+    'assert(M.stage(player) == 3)',
+    'assert(M.reach(player, 7) == true, "advancing to 7")',
+    'assert(M.reach(player, 3) == false, "re-touching 3 must not advance")',
+    'assert(M.stage(player) == 7, "and must NOT move the stage back, got " .. tostring(M.stage(player)))',
+    'assert(M.reach(player, 7) == false, "the same stage is not an advance either")',
+    'assert(M.stage(player) == 7)',
+  ].join('\n'), 'cp-backwards');
+  assert.ok(r.ok, r.output);
+});
+
+test('nonsense stages are refused rather than stored', () => {
+  const r = runCheckpoints([
+    CP_WIRED,
+    'assert(M.reach(player, 0) == false, "stage 0")',
+    'assert(M.reach(player, -3) == false, "negative")',
+    'assert(M.reach(player, 2.5) == false, "fractional")',
+    'assert(M.reach(player, "9") == false, "a string")',
+    'assert(M.stage(player) == 1, "none of those may have advanced anything")',
+  ].join('\n'), 'cp-nonsense');
+  assert.ok(r.ok, r.output);
+});
+
+test('A TOUCHED STORM ADVANCES ONCE — a part fires many times a second, and per limb', () => {
+  const r = runCheckpoints([
+    CP_WIRED,
+    'player.Character = "the-character"',
+    'assert(M.bind(player) == true)',
+    'local touch = folder.parts[2].handlers[1]',
+    '-- one arrival, forty Touched events across six limbs',
+    'for i = 1, 40 do touch({ Parent = "the-character" }) end',
+    'assert(M.stage(player) == 2, "stage should be 2")',
+    '-- and a later, genuine arrival at 3 still registers once the cooldown has passed',
+    'advance(1)',
+    'local touch3 = folder.parts[3].handlers[1]',
+    'for i = 1, 40 do touch3({ Parent = "the-character" }) end',
+    'assert(M.stage(player) == 3, "a real later arrival must still count")',
+  ].join('\n'), 'cp-touchstorm');
+  assert.ok(r.ok, r.output);
+});
+
+test("another player's character touching does not advance this player", () => {
+  const r = runCheckpoints([
+    CP_WIRED,
+    'player.Character = "the-character"',
+    'assert(M.bind(player) == true)',
+    'local touch = folder.parts[4].handlers[1]',
+    'touch({ Parent = "someone-elses-character" })',
+    'assert(M.stage(player) == 1, "a stranger\'s limb must not advance us")',
+    'touch({ Parent = nil })',
+    'assert(M.stage(player) == 1, "and neither must a parentless part")',
+  ].join('\n'), 'cp-other');
+  assert.ok(r.ok, r.output);
+});
+
+test('RESPAWN MOVES THE CHARACTER TO THE CHECKPOINT — Roblox has already chosen a spawn', () => {
+  // The third bug: without moving the character AFTER it loads, a player who died at stage 4
+  // restarts at the beginning while their saved stage still says 4.
+  const r = runCheckpoints([
+    CP_WIRED,
+    'player.Character = "the-character"',
+    'assert(M.bind(player) == true)',
+    'M.reach(player, 4)',
+    'local character = makeCharacter()',
+    'assert(character.root.CFrame.tag == "spawn", "starts where Roblox put it")',
+    'player.spawned(character)',
+    'assert(character.root.CFrame.tag == "stage4", "must be moved to the reached checkpoint, got " .. tostring(character.root.CFrame.tag))',
+    'assert(character.root.CFrame.lifted == 4, "and lifted clear of the part rather than inside it")',
+  ].join('\n'), 'cp-respawn');
+  assert.ok(r.ok, r.output);
+});
+
+test('a missing checkpoint part leaves the character where it is rather than erroring', () => {
+  const r = runCheckpoints([
+    'local data = { stage = 1 }',
+    'local folder = makeFolder(2)',
+    'M.configure({ get = function(p) return data end, field = "stage", folder = folder })',
+    'player.Character = "the-character"',
+    'assert(M.bind(player) == true)',
+    'data.stage = 99',
+    'local character = makeCharacter()',
+    'player.spawned(character)',
+    'assert(character.root.CFrame.tag == "spawn", "no part for stage 99, so no move and no error")',
+  ].join('\n'), 'cp-missing');
+  assert.ok(r.ok, r.output);
+});
+
+test('binding is refused when the player has no loaded data', () => {
+  const r = runCheckpoints([
+    'local folder = makeFolder(3)',
+    'M.configure({ get = function(p) return nil end, field = "stage", folder = folder })',
+    'assert(M.bind(player) == false, "no data means nothing to bind")',
+    'assert(M.stage(player) == nil, "and no stage to report")',
+    'assert(M.reach(player, 2) == false, "and nothing to advance")',
+  ].join('\n'), 'cp-noload');
+  assert.ok(r.ok, r.output);
+});

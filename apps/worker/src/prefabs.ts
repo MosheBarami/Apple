@@ -509,6 +509,139 @@ end
 return Currency
 `;
 
+const CHECKPOINTS_SOURCE = `--!strict
+-- Checkpoints — the obby stage loop, with the three bugs every hand-written one has.
+--
+--   1. THE STAGE GOES BACKWARDS. Touching stage 3 after reaching stage 7 sets you to 3, because the
+--      handler assigns instead of comparing. Players find this instantly and it reads as the game
+--      stealing their progress.
+--   2. TOUCHED FIRES CONSTANTLY. A part fires Touched many times a second while a character rests
+--      on it, and once per limb. Without a per-player guard the save is rewritten dozens of times
+--      for one arrival.
+--   3. RESPAWN IGNORES THE CHECKPOINT. Roblox respawns at a SpawnLocation of its own choosing
+--      unless the character is moved after it loads, so a player who died at stage 9 restarts at
+--      the beginning with their stage number still saying 9.
+--
+-- The furthest stage lives in the player's save, not in leaderstats and not on the character, so it
+-- survives a reset, a death and a rejoin.
+--
+-- SETUP (once, in a server Script, after Profile has loaded the player):
+--   local Checkpoints = require(game.ServerScriptService.Checkpoints)
+--   local Profile = require(game.ServerScriptService.Profile)
+--   Checkpoints.configure({ get = Profile.get, field = "stage", folder = workspace.Checkpoints })
+--   Checkpoints.bind(player)   -- after Profile.load(player) returned non-nil
+--
+-- Checkpoint parts are named by their number: "1", "2", "3"...
+local Checkpoints = {}
+
+local getData = nil
+local fieldName = "stage"
+local folder = nil
+local TOUCH_COOLDOWN = 0.5
+
+local lastTouch = {}
+
+function Checkpoints.configure(opts)
+	getData = opts.get
+	fieldName = opts.field or fieldName
+	folder = opts.folder
+end
+
+--- The furthest stage this player has reached, or nil when their data is not loaded.
+function Checkpoints.stage(player)
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return nil
+	end
+	return data[fieldName] or 1
+end
+
+--- Where a given stage is, or nil when no such checkpoint exists.
+function Checkpoints.spawnFor(stage)
+	if folder == nil then
+		return nil
+	end
+	return folder:FindFirstChild(tostring(stage))
+end
+
+--- Record a stage. Returns true only when this actually advanced the player.
+--- NEVER moves the stage backwards: that is bug 1, and a comparison is the whole fix.
+function Checkpoints.reach(player, stage)
+	if type(stage) ~= "number" or stage % 1 ~= 0 or stage < 1 then
+		return false
+	end
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return false
+	end
+	local current = data[fieldName] or 1
+	if stage <= current then
+		return false
+	end
+	data[fieldName] = stage
+	return true
+end
+
+--- Wire a player's touches and respawns. Call after their data has loaded.
+function Checkpoints.bind(player)
+	if getData == nil or folder == nil then
+		warn("[Checkpoints] not configured — call Checkpoints.configure first")
+		return false
+	end
+	if getData(player) == nil then
+		return false
+	end
+
+	for _, part in ipairs(folder:GetChildren()) do
+		local stage = tonumber(part.Name)
+		if stage ~= nil then
+			part.Touched:Connect(function(hit)
+				local character = hit.Parent
+				if character == nil or character ~= player.Character then
+					return
+				end
+				-- Bug 2: Touched fires many times a second, and once per limb.
+				-- Absence of a previous touch means ALLOW, not "touched at time zero". Defaulting the
+				-- timestamp to 0 makes the very first touch compare 0 - 0 against the cooldown and
+				-- lose, which swallows a checkpoint reached in the first moments of a server's life.
+				local now = os.clock()
+				local previous = lastTouch[player]
+				if previous ~= nil and now - previous < TOUCH_COOLDOWN then
+					return
+				end
+				lastTouch[player] = now
+				Checkpoints.reach(player, stage)
+			end)
+		end
+	end
+
+	-- Bug 3: the character has to be MOVED after it loads; Roblox has already chosen a spawn.
+	player.CharacterAdded:Connect(function(character)
+		local stage = Checkpoints.stage(player)
+		if stage == nil then
+			return
+		end
+		local target = Checkpoints.spawnFor(stage)
+		if target == nil then
+			return
+		end
+		local root = character:WaitForChild("HumanoidRootPart", 10)
+		if root ~= nil then
+			root.CFrame = target.CFrame + Vector3.new(0, 4, 0)
+		end
+	end)
+
+	return true
+end
+
+--- Forget a player's touch cooldown. Call on PlayerRemoving.
+function Checkpoints.forget(player)
+	lastTouch[player] = nil
+end
+
+return Checkpoints
+`;
+
 export const PREFABS: Record<string, Prefab> = {
   profile_store: {
     id: 'profile_store',
@@ -529,6 +662,28 @@ export const PREFABS: Record<string, Prefab> = {
       'Profile.commit(player, data) -> boolean  -- persist one table now; for atomic purchase writes',
     ],
     source: PROFILE_SOURCE,
+  },
+  checkpoints: {
+    id: 'checkpoints',
+    moduleName: 'Checkpoints',
+    summary: 'The obby stage loop: progress that only moves forward, survives death, and actually respawns you where you got to.',
+    prevents: [
+      'the stage going BACKWARDS when a player re-touches an earlier checkpoint, which reads as the game stealing their progress',
+      'Touched firing dozens of times a second and once per limb, rewriting the save on every one',
+      'respawning at the default SpawnLocation while the saved stage still says 9, because Roblox picks a spawn before anything can move the character',
+      'the furthest stage living on the character or in leaderstats, where a reset loses it',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'Checkpoints.configure({ get = Profile.get, field = "stage", folder = workspace.Checkpoints })',
+      'Checkpoints.bind(player) -> boolean   -- after Profile.load returns non-nil',
+      'Checkpoints.stage(player) -> number | nil',
+      'Checkpoints.reach(player, stage) -> boolean   -- true only when it advanced',
+      'Checkpoints.spawnFor(stage) -> Instance | nil',
+      'Checkpoints.forget(player)',
+    ],
+    source: CHECKPOINTS_SOURCE,
   },
   currency: {
     id: 'currency',
