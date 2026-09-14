@@ -162,7 +162,7 @@
           "id": "f-7c277f33",
           "name": "Chat streaming",
           "status": "done",
-          "evidence": "apps/worker/src/do/session.ts broadcast deltas; verified live"
+          "evidence": "apps/worker/tests/playtest-stream.test.mjs — a run starts in preparing with nothing claimed, only finished and failed are terminal, and a terminal run is FROZEN against every later update so a late delta cannot resurrect it."
         },
         {
           "id": "f-19c976f0",
@@ -432,7 +432,7 @@
           "id": "f-e47c68bc",
           "name": "Verification mode",
           "status": "done",
-          "evidence": "inspect_visually + semantic/intent checks"
+          "evidence": "apps/worker/tests/verification-tools.test.mjs — all five verifiers exist and are offered so nothing below is vacuous, run_and_check says what it does NOT prove and names what does, and audit_build says it does not replace the visual one."
         },
         {
           "id": "f-3502b987",
@@ -816,7 +816,7 @@
           "id": "f-4ba5a55c",
           "name": "Agent timeouts",
           "status": "done",
-          "evidence": "STEP_STALE_MS + 30s op timeout"
+          "evidence": "apps/worker/tests/poll-residency.test.mjs — staleness is derived from the sleep actually issued, never a fixed constant, which is the property a timeout needs to stay correct when pacing changes."
         },
         {
           "id": "f-6ffead13",
@@ -1050,7 +1050,7 @@
           "id": "f-fac6eefa",
           "name": "Model insertion",
           "status": "done",
-          "evidence": "insert_asset tool"
+          "evidence": "apps/worker/tests/studio-op-parity.test.mjs — insert_asset is one of the ops proven to have a handler on the plugin side, so the tool has a receiver and not only a name."
         },
         {
           "id": "f-e59a294c",
@@ -1140,7 +1140,7 @@
           "id": "f-07f61fe6",
           "name": "ProximityPrompt generation",
           "status": "done",
-          "evidence": "create_instances (verified via Groq tool call)"
+          "evidence": "apps/worker/tests/studio-op-parity.test.mjs — create_instances is proven to have a plugin-side handler, and the plugin handles no op the wire type cannot express."
         },
         {
           "id": "f-a2bdfff9",
@@ -1188,7 +1188,7 @@
           "id": "f-38925eae",
           "name": "Studio plugin sync",
           "status": "done",
-          "evidence": "HTTP long-poll, now idle-parked (37c42eb)"
+          "evidence": "apps/worker/tests/poll-residency.test.mjs — the poll stops holding requests open once a project is parked, activity un-parks the connection, and staleness is derived from the sleep actually issued rather than a fixed constant."
         },
         {
           "id": "f-4882bed0",
@@ -1608,7 +1608,7 @@
           "id": "f-5ce4b850",
           "name": "Scene thumbnail",
           "status": "partial",
-          "evidence": "render_view produces frames; they do not reach the browser"
+          "evidence": "apps/worker/tests/frame-bus.test.mjs — a frame larger than the base64 ceiling is refused rather than truncated, and declared dimensions must match the payload. Still partial: frames are produced and validated but do not reach the browser."
         },
         {
           "id": "f-b856b6a8",
@@ -5293,7 +5293,7 @@
           "id": "f-62d5dd92",
           "name": "Live viewport",
           "status": "partial",
-          "evidence": "software rasteriser only — labelled honestly, not a viewport capture"
+          "evidence": "apps/worker/tests/frame-bus.test.mjs — the frame contract is enforced at the bus: oversized refused, over-claimed pixels refused, dimensions must match. Still partial: software rasteriser only, which is labelled honestly rather than presented as a viewport capture."
         },
         {
           "id": "f-765c01ab",
