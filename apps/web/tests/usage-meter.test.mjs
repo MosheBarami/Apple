@@ -247,3 +247,20 @@ test('the month boundary is the first instant of the next UTC month', () => {
   assert.equal(nextMonthResetIso(Date.UTC(2026, 11, 31, 23, 59)), '2027-01-01T00:00:00.000Z');
   assert.equal(nextMonthResetIso(Date.UTC(2024, 0, 31, 6)), '2024-02-01T00:00:00.000Z');
 });
+
+test('A CALLER THAT KNOWS THE FETCH FAILED SAYS SO, rather than leaving it to be inferred', () => {
+  // The rail used to hand the meter `me.data?.quota`, which is undefined on failure, and the
+  // meter reached UNKNOWN by not recognising the payload. Right answer, accidental route: a
+  // refactor that gave the meter a default object would have turned a failed fetch into a
+  // confident zero, and nothing would have failed.
+  const v = meterView(undefined, NOW, { failed: true });
+  assert.equal(v.tone, 'unknown');
+  assert.match(v.detail, /did not answer/);
+
+  // Stated failure beats a payload that happens to be present: a stale quota alongside a failed
+  // refetch is not current, and presenting it as current is the lie.
+  assert.equal(meterView(quota(), NOW, { failed: true }).tone, 'unknown');
+
+  // And pending still wins over failed — a request in flight has not failed yet.
+  assert.equal(meterView(undefined, NOW, { pending: true, failed: true }).tone, 'pending');
+});

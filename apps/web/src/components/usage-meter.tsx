@@ -19,12 +19,14 @@ const TONE_LABEL: Record<MeterView['tone'], string> = {
  * it is what a request in flight looks like AND what a failed one looks like, and the two need
  * different words. The caller is the only one that knows which.
  */
-export function UsageMeter({ quota, pending = false, now = Date.now() }: {
+export function UsageMeter({ quota, pending = false, failed = false, now = Date.now() }: {
   quota: unknown;
   pending?: boolean;
+  /** The caller knows the fetch failed. Stated rather than inferred from a missing payload. */
+  failed?: boolean;
   now?: number;
 }) {
-  const v = meterView(quota, now, { pending });
+  const v = meterView(quota, now, { pending, failed });
   const pct = Math.round(v.allowanceFraction * 100);
   const bare = v.tone === 'unknown' || v.tone === 'pending';
 

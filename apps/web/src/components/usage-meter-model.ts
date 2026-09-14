@@ -131,10 +131,18 @@ export function nextMonthResetIso(now: number): string {
 
 const finite = (n: unknown): n is number => Number.isFinite(n);
 
-export function meterView(quota: unknown, now: number, opts?: { pending?: boolean }): MeterView {
+export function meterView(
+  quota: unknown,
+  now: number,
+  opts?: { pending?: boolean; failed?: boolean },
+): MeterView {
   // Pending is checked first and on its own: a request in flight has no payload to inspect, and
   // inspecting the absent one is how "not yet" became "the service did not answer".
   if (opts?.pending) return PENDING;
+  // A caller that KNOWS the fetch failed says so, rather than leaving it to be inferred from an
+  // absent payload. The inference gave the right answer, but only by accident of `undefined` —
+  // and a rule that holds by accident is one a refactor silently breaks.
+  if (opts?.failed) return UNKNOWN;
   if (!looksLikeQuota(quota)) return UNKNOWN;
 
   const allowanceRemaining = Math.max(0, Math.floor(quota.allowanceRemaining));

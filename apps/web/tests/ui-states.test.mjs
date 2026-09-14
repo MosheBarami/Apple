@@ -10,23 +10,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROUTES = join(HERE, '..', 'src', 'routes');
+const SRC = join(HERE, '..', 'src');
+const ROUTES = join(SRC, 'routes');
 
-/** Routes that fetch, and therefore can be mid-flight or can fail. */
-const fetching = readdirSync(ROUTES)
-  .filter((f) => f.endsWith('.tsx'))
-  .map((f) => ({ file: f, src: readFileSync(join(ROUTES, f), 'utf8') }))
-  .filter(({ src }) => /useQuery|useSuspenseQuery/.test(src));
+/**
+ * Every .tsx under src, not just src/routes.
+ *
+ * THE GATE SAYS "every user-facing surface" AND THIS CHECKED ONLY ROUTES. Three components fetch
+ * and are as user-facing as any route — layout.tsx carries the rail's usage meter, and the
+ * workspace's memory and credits panels each run their own query. A panel that renders the same
+ * thing whether its fetch is in flight, failed, or returned nothing is the defect in the header of
+ * this file, and it was outside the sweep: the gate could report green over surfaces it had never
+ * looked at, which is the failure the gate exists to prevent, one level up.
+ */
+function tsxUnder(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules') continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...tsxUnder(full));
+    else if (entry.name.endsWith('.tsx')) out.push({ file: relative(SRC, full), src: readFileSync(full, 'utf8') });
+  }
+  return out;
+}
 
-test('there are routes to check, so this cannot pass vacuously', () => {
-  assert.ok(fetching.length >= 5, `expected several fetching routes, found ${fetching.length}`);
+/** Surfaces that fetch, and therefore can be mid-flight or can fail. */
+const fetching = tsxUnder(SRC).filter(({ src }) => /useQuery|useSuspenseQuery/.test(src));
+
+test('there are surfaces to check, so this cannot pass vacuously', () => {
+  assert.ok(fetching.length >= 5, `expected several fetching surfaces, found ${fetching.length}`);
+  // And the sweep must actually reach past routes/, or widening it achieved nothing.
+  const outsideRoutes = fetching.filter(({ file }) => !file.startsWith('routes/'));
+  assert.ok(outsideRoutes.length >= 3,
+    `expected fetching components outside routes/, found ${outsideRoutes.map((f) => f.file).join(', ')}`);
 });
 
-test('every fetching route handles the in-flight state', () => {
+test('every fetching surface handles the in-flight state', () => {
   for (const { file, src } of fetching) {
     assert.match(
       src,
@@ -36,7 +59,7 @@ test('every fetching route handles the in-flight state', () => {
   }
 });
 
-test('every fetching route handles failure', () => {
+test('every fetching surface handles failure', () => {
   for (const { file, src } of fetching) {
     assert.match(
       src,

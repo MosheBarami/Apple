@@ -146,8 +146,8 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
 /* ----------------------------------------------------------------- rail --- */
 
-function Rail({ name, email, isAdmin, quota, quotaPending }:
-  { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean }) {
+function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed }:
+  { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean }) {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
 
   const projects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
@@ -255,7 +255,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending }:
           </span>
         </button>
 
-        <UsageMeter quota={quota} pending={quotaPending} />
+        <UsageMeter quota={quota} pending={quotaPending} failed={quotaFailed} />
         <AccountMenu name={name} email={email} isAdmin={isAdmin} />
       </div>
     </aside>
@@ -273,6 +273,10 @@ function Shell() {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
+  // A FAILED PROFILE FETCH IS NOT "YOU ARE NOT AN ADMIN", and this reads as though it were.
+  // Hiding the link is still the right default — offering one that 403s would be worse — but the
+  // rail has to say the fetch failed rather than quietly rearranging itself. The usage meter,
+  // which sits in the same rail and is handed `failed` below, is what says it.
   const isAdmin = me.data?.profile?.is_admin === true;
 
   useEffect(() => {
@@ -328,7 +332,14 @@ function Shell() {
         Skip to content
       </a>
 
-      <Rail name={name} email={email} isAdmin={isAdmin} quota={me.data?.quota} quotaPending={me.isPending} />
+      <Rail
+        name={name}
+        email={email}
+        isAdmin={isAdmin}
+        quota={me.data?.quota}
+        quotaPending={me.isPending}
+        quotaFailed={me.isError}
+      />
 
       {railOpen && (
         <button type="button" className="gx-scrim" onClick={closeRail} aria-label="Close navigation" />
