@@ -1539,6 +1539,7 @@ export const TOOLS: Record<string, ToolImpl> = {
             alreadyInstalled: prefab.moduleName,
             at: path,
             api: prefab.api,
+            needs: prefab.needs?.length ? prefab.needs : undefined,
             note: 'unchanged — this is the same module, already present',
           };
         }
@@ -1564,7 +1565,14 @@ export const TOOLS: Record<string, ToolImpl> = {
         at: path,
         replaced: found || undefined,
         api: prefab.api,
-        next: `require(${path}) from a Script in ServerScriptService. Read it before changing it — the comments say which lines are load-bearing.`,
+        // Wiring, not imports. A module installed without the one it is handed functions from
+        // loads, configures and silently does nothing, which is the worst way for this to fail.
+        needs: prefab.needs?.length ? prefab.needs : undefined,
+        next:
+          `require(${path}) from a Script in ServerScriptService. Read it before changing it — the comments say which lines are load-bearing.` +
+          (prefab.needs?.length
+            ? ` It has to be wired to ${prefab.needs.map((n) => PREFABS[n]?.moduleName ?? n).join(' and ')} — see its configure line in the API above, and install ${prefab.needs.length > 1 ? 'those' : 'that'} first if not already present.`
+            : ''),
       };
     },
   },

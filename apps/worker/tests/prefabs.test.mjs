@@ -299,3 +299,83 @@ test('the description carries the whole catalogue, so no extra round trip is nee
   const def = T.toolDefs(true, undefined).find((d) => d.name === 'install_module');
   for (const id of P.PREFAB_IDS) assert.ok(def.description.includes(id), `${id} missing from the description`);
 });
+
+// --- how the modules compose ------------------------------------------------------------------
+
+/**
+ * `needs` is WIRING, not imports. Every module is one file with no dependency on the others —
+ * the only shape that survives being dropped into a project the agent did not write. But Receipts
+ * is handed Profile's `get` and `commit`, and Currency is handed Profile's `get`, and installing
+ * one without the other leaves a module that loads, configures, and silently does nothing.
+ *
+ * That is the worst available failure for these: not an error, not a crash, just a save that never
+ * happens or a purchase that never lands, discovered by a player rather than by the developer.
+ */
+
+test('every module named in a `needs` actually exists', () => {
+  for (const id of P.PREFAB_IDS) {
+    for (const need of P.PREFABS[id].needs ?? []) {
+      assert.ok(
+        P.PREFAB_IDS.includes(need),
+        `${id} says it needs "${need}", which is not a module. Available: ${P.PREFAB_IDS.join(', ')}`,
+      );
+      assert.notEqual(need, id, `${id} cannot need itself`);
+    }
+  }
+});
+
+test('the wiring graph has no cycle, so there is always an order to install in', () => {
+  // A cycle would make "install that first" advice impossible to follow.
+  const seen = new Map();
+  const visit = (id, trail) => {
+    if (seen.get(id) === 'done') return;
+    assert.equal(seen.get(id), undefined, `cycle through ${id}: ${[...trail, id].join(' -> ')}`);
+    seen.set(id, 'open');
+    for (const need of P.PREFABS[id].needs ?? []) visit(need, [...trail, id]);
+    seen.set(id, 'done');
+  };
+  for (const id of P.PREFAB_IDS) visit(id, []);
+});
+
+test('a module that is handed another module\'s function declares it', () => {
+  // Read from the API strings rather than from my own memory of which needs which: a configure
+  // line mentioning Profile is the evidence that this module is wired to Profile.
+  for (const id of P.PREFAB_IDS) {
+    const p = P.PREFABS[id];
+    const configure = p.api.find((line) => line.includes('configure')) ?? '';
+    const declared = (p.needs ?? []).map((n) => P.PREFABS[n].moduleName);
+    for (const other of P.PREFAB_IDS) {
+      if (other === id) continue;
+      const name = P.PREFABS[other].moduleName;
+      if (new RegExp(`\\b${name}\\.`).test(configure)) {
+        assert.ok(
+          declared.includes(name),
+          `${id}'s configure line uses ${name}.something but ${id} does not declare needing ${other}`,
+        );
+      }
+    }
+  }
+});
+
+test('install_module reports what a module has to be wired to', async () => {
+  const { ctx } = stubCtx();
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'receipts' });
+  assert.deepEqual(res.needs, ['profile_store']);
+  assert.match(res.next, /Profile/, 'and names it in words, not just as an id');
+  assert.match(res.next, /install/, 'and says to install it');
+});
+
+test('a module that needs nothing says nothing about wiring', () => {
+  // An empty array rendered as "needs: []" reads as a missing dependency rather than none.
+  assert.equal(P.PREFABS.profile_store.needs, undefined);
+  assert.equal(P.PREFABS.remote_guard.needs, undefined);
+});
+
+test('an already-installed module still reports its wiring', async () => {
+  // The likeliest moment to need this is the second time somebody asks, having found it present
+  // and still not working.
+  const { ctx } = stubCtx({ existing: P.PREFABS.currency.source });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'currency' });
+  assert.equal(res.alreadyInstalled, 'Currency');
+  assert.deepEqual(res.needs, ['profile_store']);
+});

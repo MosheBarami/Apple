@@ -33,6 +33,16 @@ export interface Prefab {
   className: 'ModuleScript' | 'Script' | 'LocalScript';
   /** The public functions, so the model can use it without reading the whole file. */
   api: string[];
+  /**
+   * Other modules this one has to be wired to, by id.
+   *
+   * These are NOT imports — every module is one file with no dependency on the others, which is
+   * the only shape that survives being dropped into a project the agent did not write. They are
+   * wiring: Receipts is handed Profile's `get` and `commit`, Currency is handed Profile's `get`.
+   * Installing one without the other leaves a module that loads, configures, and silently does
+   * nothing, which is the failure this field exists to prevent.
+   */
+  needs?: string[];
   source: string;
 }
 
@@ -1132,6 +1142,7 @@ export const PREFABS: Record<string, Prefab> = {
   },
   income: {
     id: 'income',
+    needs: ['currency'],
     moduleName: 'Income',
     summary: 'The tycoon dropper-and-collector chain, with a cap so it cannot bury the server in parts.',
     prevents: [
@@ -1205,6 +1216,7 @@ export const PREFABS: Record<string, Prefab> = {
   },
   checkpoints: {
     id: 'checkpoints',
+    needs: ['profile_store'],
     moduleName: 'Checkpoints',
     summary: 'The obby stage loop: progress that only moves forward, survives death, and actually respawns you where you got to.',
     prevents: [
@@ -1227,6 +1239,7 @@ export const PREFABS: Record<string, Prefab> = {
   },
   currency: {
     id: 'currency',
+    needs: ['profile_store'],
     moduleName: 'Currency',
     summary: 'A currency whose true balance lives in the save, with leaderstats as a display mirror.',
     prevents: [
@@ -1266,6 +1279,7 @@ export const PREFABS: Record<string, Prefab> = {
   },
   receipts: {
     id: 'receipts',
+    needs: ['profile_store'],
     moduleName: 'Receipts',
     summary: 'Developer product purchases granted exactly once or not at all — the award and the receipt id in one write.',
     prevents: [
