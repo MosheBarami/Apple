@@ -132,7 +132,7 @@ and are tracked as handoffs, not gates.
 - [x] G80: The gate checker itself is measured, and cannot report green over a gate that fails
     CHECK: node --test tests/gate-check.test.mjs
     EXPECT: fail 0
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=65172cf1075aadb69a7cb1f77b1294bf30d37b2d291830621ace67f5eba711d6; output-bytes=1383
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=c1a7e85d6485cb16c1024b787a60502f9eae91e6c64043ccd594d2f55bc20f37; output-bytes=2262
 
 - [x] G22: Editing a prompt refuses before it destroys, and says what it does not undo
     CHECK: cd apps/worker && node --test tests/edit-resend.test.mjs

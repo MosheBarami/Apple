@@ -923,3 +923,97 @@ export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
 export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
   ? STUDIO_PLUGIN_URL
   : '/docs/plugin';
+
+// ---------------------------------------------------------------------------
+// The plan ladder, as the product presents it.
+// ---------------------------------------------------------------------------
+//
+// Shared rather than worker-only because the limits are BOTH a server rule and a page of copy, and
+// the two were about to be written down twice. A plan page that disagrees with the ledger enforcing
+// it is a page that lies to the user, and nothing would have caught the drift.
+//
+// Sparks are the RENEWABLE allowance: they reset and do not accumulate, so a plan is a rate, not a
+// balance. Purchased credits are the separate non-expiring balance, spent only once the renewable
+// allowance for the period is gone. Keeping them apart is what makes "your plan includes this, buy
+// more if you need it" expressible without either one quietly subsidising the other.
+
+export const PLAN_LIMITS = {
+  free: { sparksPerDay: 60, sparksPerMonth: 900 },
+  pro: { sparksPerDay: 400, sparksPerMonth: 6_000 },
+  team: { sparksPerDay: 1_500, sparksPerMonth: 30_000 },
+  enterprise: { sparksPerDay: 6_000, sparksPerMonth: 150_000 },
+} as const;
+
+export type PlanId = keyof typeof PLAN_LIMITS;
+
+export const PLAN_IDS = Object.keys(PLAN_LIMITS) as PlanId[];
+
+export function isPlanId(v: unknown): v is PlanId {
+  return typeof v === 'string' && (PLAN_IDS as string[]).includes(v);
+}
+
+export interface PlanCopy {
+  id: PlanId;
+  name: string;
+  /** One line: who the plan is for, not what it costs. */
+  blurb: string;
+  /**
+   * Monthly price in USD, or null for a plan that is not self-serve.
+   *
+   * THESE ARE THE OWNER'S NUMBERS TO SET. They are seeded from the measured unit economics rather
+   * than invented: a quality-gated build is ~2,300 neurons (docs/COST-MODEL.md) at $0.011/1,000
+   * neurons, so Pro's 6,000 Sparks/month is ~$1.98 of inference and Team's 30,000 is ~$9.90.
+   * Enterprise is deliberately null — a plan whose limits are negotiated cannot carry a price tag.
+   */
+  priceUsdMonthly: number | null;
+  /** What this tier adds over the one below it. The bullets a person actually compares. */
+  highlights: string[];
+}
+
+export const PLAN_COPY: Record<PlanId, PlanCopy> = {
+  free: {
+    id: 'free',
+    name: 'Free',
+    blurb: 'Enough to build something real and see whether Apple suits you.',
+    priceUsdMonthly: 0,
+    highlights: ['Every build mode', 'Studio plugin', 'Checkpoints and restore'],
+  },
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    blurb: 'For building most days.',
+    priceUsdMonthly: 12,
+    highlights: ['About 6× the Free allowance', 'Buy credits when you need more', 'Priority during busy periods'],
+  },
+  team: {
+    id: 'team',
+    name: 'Team',
+    blurb: 'For a few people building together on the same places.',
+    priceUsdMonthly: 49,
+    highlights: ['About 5× the Pro allowance', 'Shared projects', 'Everything in Pro'],
+  },
+  enterprise: {
+    id: 'enterprise',
+    name: 'Enterprise',
+    blurb: 'For studios with their own limits, terms and support needs.',
+    priceUsdMonthly: null,
+    highlights: ['Negotiated limits', 'Invoicing', 'Direct support'],
+  },
+};
+
+/** Sparks in one quality-gated build, from the measured neuron cost. */
+export const SPARKS_PER_BUILD = 77;
+
+/**
+ * A plan's allowance in the unit people actually think in.
+ *
+ * "6,000 Sparks" means nothing on first read; "about 78 builds a month" does. Floored, because a
+ * rounded-up figure is a promise the allowance cannot keep.
+ */
+export function buildsPerMonth(plan: PlanId): number {
+  return Math.floor(PLAN_LIMITS[plan].sparksPerMonth / SPARKS_PER_BUILD);
+}
+
+export function buildsPerDay(plan: PlanId): number {
+  return Math.floor(PLAN_LIMITS[plan].sparksPerDay / SPARKS_PER_BUILD);
+}

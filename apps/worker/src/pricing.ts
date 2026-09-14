@@ -99,36 +99,18 @@ export const MAX_NEURONS_PER_REQUEST = 1_200;
  */
 export const NEURONS_PER_SPARK = 30;
 
-/**
- * The plan ladder.
- *
- * Sparks are the RENEWABLE allowance a plan includes. They reset and do not accumulate — a plan is
- * a rate, not a balance. Purchased CREDITS are the separate, non-expiring balance that is consumed
- * only once the renewable allowance for the period is exhausted (see billing.ts). Keeping the two
- * apart is what makes "your plan includes X, buy more if you need it" expressible without either
- * one silently subsidising the other.
- *
- * Every figure below is anchored to a measured unit cost: a quality-gated build is ~2,300 neurons
- * (docs/COST-MODEL.md:77) and a Spark is NEURONS_PER_SPARK neurons, so a build is roughly 77 Sparks.
- * Read the daily numbers as "about N builds a day" and they stay honest.
- */
-export const PLAN_LIMITS = {
-  free: { sparksPerDay: 60, sparksPerMonth: 900 },
-  pro: { sparksPerDay: 400, sparksPerMonth: 6_000 },
-  team: { sparksPerDay: 1_500, sparksPerMonth: 30_000 },
-  enterprise: { sparksPerDay: 6_000, sparksPerMonth: 150_000 },
-} as const;
+// The plan ladder now lives in @golem/shared: the limits are both a server rule and a page of
+// copy, and written down twice they drift — a plan page disagreeing with the ledger that enforces
+// it is a page that lies, and nothing here would have caught it. Re-exported so every existing
+// import of `PLAN_LIMITS` from this module keeps working.
+export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@golem/shared';
 
-export type PlanId = keyof typeof PLAN_LIMITS;
+// SPARKS_PER_BUILD is in @golem/shared too, for the same reason. Asserted against the measured
+// cost here so the shared constant cannot drift away from the arithmetic it came from.
+export { SPARKS_PER_BUILD } from '@golem/shared';
 
-export const PLAN_IDS = Object.keys(PLAN_LIMITS) as PlanId[];
-
-export function isPlanId(v: unknown): v is PlanId {
-  return typeof v === 'string' && (PLAN_IDS as string[]).includes(v);
-}
-
-/** Sparks in one quality-gated build, from the measured neuron cost. Used for honest plan copy. */
-export const SPARKS_PER_BUILD = Math.ceil(2_300 / NEURONS_PER_SPARK);
+/** What the shared constant must equal, derived rather than restated. */
+export const SPARKS_PER_BUILD_DERIVED = Math.ceil(2_300 / NEURONS_PER_SPARK);
 
 export function sparksForNeurons(neurons: number): number {
   return Math.max(1, Math.ceil(neurons / NEURONS_PER_SPARK));
