@@ -499,7 +499,21 @@ test('A1 /api/me and /api/health leak no credential', async () => {
   const health = await call('/api/health');
   assert.equal(health.status, 200);
   assertNoSecret(health.text, 'GET /api/health');
-  assert.deepEqual(Object.keys(health.json).sort(), ['ok', 'time', 'version']);
+  // A CLOSED SET, deliberately, so any new field on an unauthenticated route is reviewed rather
+  // than noticed later. It did its job: adding `buildSha` reddened this test.
+  //
+  // `buildSha` is allowed because §10.2 requires comparing the deployed build to HEAD from
+  // OUTSIDE, every pass — /api/version is behind auth and 401s, and `version` is the package
+  // version, "0.1.0", unchanged across every deploy this project has made. Without it the drift
+  // invariant cannot be performed at all.
+  //
+  // A git sha is not a credential: it grants nothing, and the repository it names is private. It
+  // is build-identity disclosure, which is the deliberate trade — an observable deploy is worth
+  // more here than concealing which commit is live from someone who can already read the bundle.
+  // assertNoSecret above still runs over the whole body, so if it ever carried one, that fails.
+  assert.deepEqual(Object.keys(health.json).sort(), ['buildSha', 'ok', 'time', 'version']);
+  assert.equal(/^[0-9a-f]{7,40}$|^unknown$/.test(health.json.buildSha), true,
+    `buildSha must be a git sha or 'unknown', got ${health.json.buildSha}`);
 });
 
 test('A1 the disabled adapters refuse before the network, so no credential is ever put on the wire', async () => {
