@@ -370,3 +370,84 @@ SELF-REFUTER: still not dispatched. The sentence I expect it to find this pass i
 
 NEXT: node scripts/check-deadends.mjs does not exist; write it, and let it decide
   G-CRITIC-1 rather than deciding that one by hand.
+
+--------------------------------------------------------------------------------
+PASS 5  2026-09-14T17:47:54Z  HEAD 91a8c70  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: S7 ADVANCED(1 of 3 sub-probes green, was 0) — a successful render now also produces a
+  measured critique that reaches the browser. NOT proven: no deployed probe, and the tool is
+  Studio-gated.
+
+DERIVED OPEN: gates 5 met / 31 open of 36 | handoffs 6 | features 1084 of 1249
+
+CLOSED:
+  G-CRITIC-1 [S7] — the critic runs on a product path — ae01cac / recorded
+  G-CRITIC-2      — the critic's rules and evidence gate behave as specified — d5ff368 / recorded
+
+THE DEAD END IS CLOSED, and the measurement is the point. Before this pass the deployed
+  worker bundle contained ZERO occurrences of runCriticPanel, applyMetricRules or
+  lightingConfigCriticisms, against a control of six for inspect_visually. All four now
+  appear. Nine hundred lines of measured rules with an evidence gate were running nowhere
+  while the product asked a vision model for a score instead.
+
+  The missing piece was never the critic. It was twenty lines turning a render result and a
+  Lighting report into a CriticInput.
+
+  FIVE OF EIGHTEEN METRICS ARE DELIBERATELY ABSENT. Their semantics are defined by the eval
+  harness; reproducing them would mean inferring a downsample and a masking rule. A guessed
+  metric feeds the critic a confident wrong number, which is worse than a lens that honestly
+  did not run — and this is only safe BECAUSE pass 2's unchecked work made "partial" a state
+  that can be reported. The earlier fix is what makes this wiring honest.
+
+  The browser renders it, with the incompleteness callout BEFORE the findings. A payload
+  nothing reads is the same dead-end shape one layer out.
+
+WHAT THE RED-FIRST RECORDS LOOK LIKE NOW. Each break removes the NARROWEST path its gate's
+  sentence claims, which is the lesson from the last refutation: stubbing a shared helper
+  neuters everything at once and proves only that the harness is connected.
+    G-CRITIC-1 — the CALLER is unwired; critic.ts is untouched and still correct.
+    G-CRITIC-2 — the silent skip is restored inside applyMetricRules.
+
+ALSO REPAIRED THIS PASS:
+  - .unlazy-hook-state.json was TRACKED, so the working tree was permanently dirty and every
+    evidence record this session had taken carried tree-clean=no for one file of
+    machine-specific session state. Untracked. The five gates now met are the first records
+    with tree-clean=yes.
+  - The stall detector scanned the whole pass record, so it reported OH-1 and OH-2 as stalls
+    for doing exactly what a handoff row is for. §6.4 says confessions; §13.1 says the handoff
+    table is regenerated every pass. Scoped to NOT DONE, with a positive control.
+  - G-ORACLE-2's claim was reworded from "catches every cheap way to buy a green signal" —
+    a claim about a set nobody has enumerated, which is how a refuter bought one — to
+    "every detector is proven to fail against a planted violation", which is what the tests
+    establish.
+
+DISPOSITIONS: CLOSED 2 | OWNER 6 | others 0
+
+REFUTERS: 1 dispatched against G-CRITIC-1's new evidence, per §9.4. Result not yet returned
+  at the time this record was written and is NOT assumed. §9.5's self-refuter still carried,
+  fifth pass.
+
+VERIFICATION:
+  gate-suite.mjs            exit 0   SUITE GREEN, 2230 passed, 0 failed
+  gate-typecheck.mjs        exit 0   TYPECHECK CLEAN
+  check-escape-hatches.mjs  exit 0   CLEAN, 423 files
+  gate-check.mjs --lint     exit 0   WELL-FORMED, 36 gates
+  neurons spent 0 — the panel runs with no judge and makes no model call
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red, which is OH-1 and OH-2.
+
+NOT DONE:
+  §6.2 back-fill | 31 gates without a falsification record | SCHEDULED pass 6
+  §6.5 check-backlog, §6.6 check-deadends, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 6
+  §9.5 self-refuter | carried five passes | SCHEDULED pass 6
+  OH-6 | the duplicated pixel metric | SCHEDULED pass 6
+
+NUMBERS CORRECTED: gates 35 -> 36. Suite 2216 -> 2230. Met 3 -> 5.
+
+SELF-REFUTER: still not dispatched. The sentence I expect it to find is "the dead end is
+  closed": true of the bundle, and misleading because inspect_visually is Studio-gated, so
+  the path only executes for a user with a paired plugin — and plugin distribution is itself
+  an open handoff. Being in the bundle is not the same as being reached.
+
+NEXT: node scripts/check-deadends.mjs — find every remaining critic.ts-shaped module
+  systematically rather than one refutation at a time.
