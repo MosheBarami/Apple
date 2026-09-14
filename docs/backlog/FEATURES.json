@@ -984,7 +984,7 @@
           "id": "f-968b4ca6",
           "name": "Roblox Open Cloud",
           "status": "blocked",
-          "evidence": "needs an Open Cloud asset-upload credential — does not exist"
+          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. An Open Cloud asset-upload credential. Not a code gap: there is no key to hold. This also blocks f-6cb625cf and f-cc078607, and is the same wall as OWNER-HANDOFF OH-4 (Creator Store distribution)."
         },
         {
           "id": "f-6f88885e",
@@ -1020,7 +1020,7 @@
           "id": "f-6cb625cf",
           "name": "Asset import",
           "status": "blocked",
-          "evidence": "same credential blocker"
+          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. Same Open Cloud credential as f-968b4ca6. Nothing to cite until a key exists."
         },
         {
           "id": "f-bd5c9af1",
@@ -1578,7 +1578,7 @@
           "id": "f-899fc918",
           "name": "Desktop companion app",
           "status": "blocked",
-          "evidence": "owner chose rasteriser-only; out of scope for now | DEFERRED by owner 2026-09-14 to a later stage"
+          "evidence": "BLOCKED BY OWNER DECISION, recorded 2026-09-14. Owner chose rasteriser-only. Not started rather than attempted and failed."
         },
         {
           "id": "f-9c110b91",
@@ -1590,19 +1590,19 @@
           "id": "f-8b796181",
           "name": "Studio viewport capture",
           "status": "blocked",
-          "evidence": "measured impossible in-engine; needs a desktop companion + OS permission | DEFERRED by owner 2026-09-14 to a later stage"
+          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. Measured impossible in-engine — Roblox exposes no viewport capture to a plugin. Needs a desktop companion plus an OS screen-recording permission, which is f-899fc918."
         },
         {
           "id": "f-e26f5bc7",
           "name": "Studio screen recording",
           "status": "blocked",
-          "evidence": "same | DEFERRED by owner 2026-09-14 to a later stage"
+          "evidence": "BLOCKED BY OWNER DECISION, recorded 2026-09-14. Deferred to a later stage; depends on the desktop companion (f-899fc918) that was not built."
         },
         {
           "id": "f-c0f694b5",
           "name": "Live viewport stream",
           "status": "blocked",
-          "evidence": "same — and owner chose rasteriser-only | DEFERRED by owner 2026-09-14 to a later stage"
+          "evidence": "BLOCKED BY OWNER DECISION, recorded 2026-09-14. Deferred, and superseded by the rasteriser-only choice."
         },
         {
           "id": "f-5ce4b850",
@@ -1944,13 +1944,13 @@
           "id": "f-c099cc62",
           "name": "Model routing",
           "status": "done",
-          "evidence": "gateway.ts DEFAULT_MODELS per mode; commit 10c1f31"
+          "evidence": "packages/evals/src/providers.test.mjs — the production model id routes to the Workers AI adapter, the GLM path is byte-identical to the pre-refactor gateway, and the catalogued facts match the verified product choices."
         },
         {
           "id": "f-34d9d5d1",
           "name": "Model fallback",
           "status": "done",
-          "evidence": "providers/registry.ts adapterForModelId falls back to Workers AI"
+          "evidence": "packages/evals/src/providers.test.mjs — only Workers AI is available on an env with no provider keys, and DeepSeek reports it cannot serve the vision model key with or without a key."
         },
         {
           "id": "f-5dc9e6eb",
@@ -1968,7 +1968,7 @@
           "id": "f-8165a8af",
           "name": "Model cost tracking",
           "status": "done",
-          "evidence": "pricing.ts + providers/cost.ts, settled per call"
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — cost settles against a bounded runtime ceiling that ratchets down only. NOTE: this proves the cap, not per-call attribution accuracy."
         },
         {
           "id": "f-c8110b8c",
@@ -2256,7 +2256,7 @@
           "id": "f-a3e75bb0",
           "name": "Prompt caching",
           "status": "done",
-          "evidence": "x-session-affinity prefix caching, providers/workers-ai.ts"
+          "evidence": "packages/evals/src/providers.test.mjs — the capability table carries every required field and computes availability per row. NOTE: this proves the adapter surface, not that prefix caching hits; nothing measures cache hit rate."
         },
         {
           "id": "f-8acef06f",
@@ -4459,7 +4459,7 @@
           "id": "f-cc078607",
           "name": "Export Roblox asset",
           "status": "blocked",
-          "evidence": "same credential blocker"
+          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. Same Open Cloud credential as f-968b4ca6."
         },
         {
           "id": "f-09243de2",
@@ -6303,7 +6303,7 @@
           "id": "f-feb204a0",
           "name": "Roblox Studio plugin",
           "status": "blocked",
-          "evidence": "DEFERRED by owner 2026-09-14 (A1 skipped by choice) — nobody can install the plugin until Creator Store distribution is enabled"
+          "evidence": "BLOCKED BY OWNER DECISION, recorded 2026-09-14. A1 skipped by choice. The plugin itself ships; this row is the Developer-Platform distribution of it, which OH-4 also covers."
         },
         {
           "id": "f-8c45e571",
