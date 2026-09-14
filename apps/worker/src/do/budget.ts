@@ -53,6 +53,23 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Math.floor(Number(n) || 0)));
 }
 
+/**
+ * A neuron count this object is willing to act on, or null if nobody could read it.
+ *
+ * WHY THIS IS NOT A CLAMP. Every cap below is a `>` comparison, and `NaN > n` is FALSE — so a cost
+ * that could not be computed trips no guard at all. It does not even arrive as NaN: the body is
+ * JSON, and `JSON.stringify(NaN)` is `null`, so the old `Math.max(1, Math.ceil(neurons))` reserved
+ * ONE neuron for a call of any size and `Math.max(0, Math.ceil(actual))` settled it at ZERO. The
+ * provider billed, the ledger did not move, and nothing said a number had gone missing.
+ *
+ * A clamp does not validate, it hides: it turns "I could not read this" into a confident small
+ * number. An unknown-cost call is not a zero-cost call and the two must never render the same, so
+ * this returns null and each caller below decides how to fail — closed, and loudly.
+ */
+function readableNeurons(n: unknown): number | null {
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -162,7 +179,12 @@ export class BudgetDO extends DurableObject<Env> {
       const { neurons } = (await req.json()) as { neurons: number };
       const s = await this.load();
       const limits = await this.limits();
-      const want = Math.max(1, Math.ceil(neurons));
+      const asked = readableNeurons(neurons);
+      if (asked === null) {
+        // probe must agree with reserve on every verdict, including this one
+        return Response.json({ verdict: 'unreadable_estimate', want: null, projectedDay: null, dayCeiling: FREE_NEURONS_PER_DAY + limits.billableNeuronsPerDay, limits, state: this.view(s, killed, killedReason, limits) });
+      }
+      const want = Math.max(1, Math.ceil(asked));
       const projectedDay = s.dayNeurons + s.dayPending + want;
       const dayCeiling = FREE_NEURONS_PER_DAY + limits.billableNeuronsPerDay;
       const billableAfter = Math.max(0, projectedDay - FREE_NEURONS_PER_DAY);
@@ -179,9 +201,13 @@ export class BudgetDO extends DurableObject<Env> {
       // ADMIN-ONLY test hook: move the ledger without calling a model, so the caps can be
       // demonstrated end-to-end without burning real allocation.
       const { neurons } = (await req.json()) as { neurons: number };
+      const add = readableNeurons(neurons);
+      if (add === null) {
+        return Response.json({ ok: false, reason: 'unreadable_amount' }, { status: 400 });
+      }
       const s = await this.load();
       // additive only: an admin key must not be able to erase spend and slip past a cap
-      s.dayNeurons = s.dayNeurons + Math.max(0, Math.floor(neurons));
+      s.dayNeurons = s.dayNeurons + Math.floor(add);
       const dayBillable = Math.max(0, s.dayNeurons - FREE_NEURONS_PER_DAY);
       s.monthBillableNeurons = Math.max(0, s.monthBillableNeurons + Math.max(0, dayBillable - s.dayBillableNeurons));
       s.dayBillableNeurons = dayBillable;
@@ -214,14 +240,24 @@ export class BudgetDO extends DurableObject<Env> {
           state: this.view(s, killed, killedReason),
         });
       }
-      if (Math.ceil(neurons) > limits.maxNeuronsPerRequest) {
+      // BEFORE the size check, because the size check is a `>` and would admit what it cannot read.
+      const asked = readableNeurons(neurons);
+      if (asked === null) {
+        return Response.json({
+          ok: false,
+          reason: 'unreadable_estimate',
+          message: 'The cost of this request could not be determined, so it was not run.',
+          state: this.view(s, killed, killedReason, limits),
+        });
+      }
+      if (Math.ceil(asked) > limits.maxNeuronsPerRequest) {
         return Response.json({
           ok: false,
           reason: 'request_too_large',
           state: this.view(s, killed, killedReason, limits),
         });
       }
-      const want = Math.max(1, Math.ceil(neurons));
+      const want = Math.max(1, Math.ceil(asked));
 
       const projectedDay = s.dayNeurons + s.dayPending + want;
       const dayCeiling = FREE_NEURONS_PER_DAY + limits.billableNeuronsPerDay;
@@ -248,8 +284,27 @@ export class BudgetDO extends DurableObject<Env> {
         kind: string;
       };
       const s = await this.load();
-      s.dayPending = Math.max(0, s.dayPending - reserved);
-      const spent = Math.max(0, Math.ceil(actual));
+
+      // Settle runs AFTER the provider has been paid, so refusing an unreadable cost here would
+      // record the spend as zero — exactly the failure being prevented. The conservative
+      // reservation is charged instead, and the response says the figure is an estimate so a
+      // caller can never mistake it for a measurement.
+      const heldRaw = readableNeurons(reserved);
+      const actualRaw = readableNeurons(actual);
+      const unreadable: string[] = [];
+      if (heldRaw === null) unreadable.push('reserved');
+      if (actualRaw === null) unreadable.push('actual');
+
+      // An unreadable reservation is NOT subtracted: guessing would let one caller erase another
+      // caller's reservation. It leaks until the UTC rollover, which shrinks capacity — closed.
+      if (heldRaw !== null) s.dayPending = Math.max(0, s.dayPending - heldRaw);
+
+      const spent =
+        actualRaw !== null
+          ? Math.ceil(actualRaw)
+          : heldRaw !== null
+            ? Math.ceil(heldRaw)
+            : (await this.limits()).maxNeuronsPerRequest; // nothing readable: charge the most it could have been
       s.dayNeurons += spent;
       const dayBillable = Math.max(0, s.dayNeurons - FREE_NEURONS_PER_DAY);
       s.monthBillableNeurons += Math.max(0, dayBillable - s.dayBillableNeurons);
@@ -264,14 +319,24 @@ export class BudgetDO extends DurableObject<Env> {
         spent,
       );
       this.sql.exec(`delete from spend where day < ?`, new Date(Date.now() - 62 * 864e5).toISOString().slice(0, 10));
-      return Response.json({ ok: true, state: this.view(s, killed, killedReason) });
+      return Response.json({
+        ok: true,
+        ...(unreadable.length ? { estimated: true, unreadable: unreadable.join('+') } : {}),
+        state: this.view(s, killed, killedReason),
+      });
     }
 
     if (url.pathname === '/release' && req.method === 'POST') {
       // a call failed before consuming anything — hand the reservation back
       const { reserved } = (await req.json()) as { reserved: number };
+      const held = readableNeurons(reserved);
+      if (held === null) {
+        // Subtracting an unreadable amount would either poison the counter with NaN or, clamped,
+        // erase reservations this caller never made. Leaking fails closed; guessing does not.
+        return Response.json({ ok: false, reason: 'unreadable_reservation' }, { status: 400 });
+      }
       const s = await this.load();
-      s.dayPending = Math.max(0, s.dayPending - reserved);
+      s.dayPending = Math.max(0, s.dayPending - held);
       await this.ctx.storage.put(KEY, s);
       return Response.json({ ok: true });
     }
