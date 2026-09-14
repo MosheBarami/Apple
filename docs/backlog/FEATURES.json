@@ -204,7 +204,7 @@
           "id": "f-cb1adb28",
           "name": "Stop generation",
           "status": "done",
-          "evidence": "stop-signal.ts requestStop"
+          "evidence": "apps/worker/tests/stop-signal.test.mjs — requestStop is honoured mid-run (9 passing)"
         },
         {
           "id": "f-040f24f8",
@@ -570,7 +570,7 @@
           "id": "f-3822434f",
           "name": "Cancel execution",
           "status": "done",
-          "evidence": "stop-signal.ts"
+          "evidence": "apps/worker/tests/stop-signal.test.mjs — a cancelled run stops and drops its queued ops (9 passing)"
         },
         {
           "id": "f-f431e30d",
@@ -840,7 +840,7 @@
           "id": "f-18c920ee",
           "name": "Agent tool restrictions",
           "status": "done",
-          "evidence": "router.ts toolsForMode — Plan is read-only"
+          "evidence": "apps/worker/tests/tools-for-mode.test.mjs — Plan mode is read-only by construction (9 passing)"
         },
         {
           "id": "f-c8cb92af",
