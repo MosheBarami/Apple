@@ -1498,7 +1498,23 @@ test('A6 STATIC CHECK — the kill switch is consulted inside the same reservati
   assert.ok(reserveBlock.indexOf('if (killed)') < reserveBlock.indexOf("s.dayPending += want"), 'the kill switch must be checked before any reservation is written');
   // An admin key must not be able to erase spend and slip under a cap.
   const sim = budget.slice(budget.indexOf("'/simulate-usage'"), budget.indexOf("'/reset-ledger'"));
-  assert.match(sim, /s\.dayNeurons = s\.dayNeurons \+ Math\.max\(0, Math\.floor\(neurons\)\)/, 'simulate-usage must be additive only');
+  // ADDITIVE ONLY, asserted as the property rather than as one spelling of it.
+  //
+  // This used to pin `Math.max(0, Math.floor(neurons))` exactly. The guard moved upstream into
+  // readableNeurons — which refuses a negative by name instead of silently clamping it — and this
+  // assertion went red over a change that STRENGTHENED the thing it protects. A static check that
+  // names an implementation fails its own subject the first time someone improves it, and the
+  // cheapest response to that is to delete the check.
+  //
+  // Two ways to be additive-only are acceptable: clamp at the write, or refuse before it. What is
+  // never acceptable is a path where a caller-supplied negative reaches s.dayNeurons.
+  const clamped = /s\.dayNeurons \+ Math\.max\(0,/.test(sim);
+  const refused = /readableNeurons\(/.test(sim) && /=== null/.test(sim);
+  assert.ok(clamped || refused, `simulate-usage must be additive only, by clamp or by refusal: ${sim.slice(0, 200)}`);
+  if (refused) {
+    assert.match(budget, /function readableNeurons[\s\S]{0,1600}n >= 0/,
+      'if simulate-usage refuses rather than clamps, the refusal must reject negatives');
+  }
   // Runtime cap changes are clamped to the COMPILED default, so "no redeploy" cannot mean "no
   // limit" AND cannot mean "raise it either". The clamp used to top out at 2,000,000 neurons/day
   // and 20,000,000/month against compiled defaults of 15,000 and 460,000 — a ~22x raise available

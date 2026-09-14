@@ -655,8 +655,17 @@ test('B8 caps are clamped, so "tunable without a redeploy" cannot mean "unbounde
 test('B8 an admin key cannot erase spend to slip under a cap — simulate-usage is additive only', async () => {
   const { hit } = newBudget();
   await hit('/simulate-usage', { neurons: 5_000 });
-  const after = await hit('/simulate-usage', { neurons: -4_000 });
-  assert.equal(after.state.dayNeurons, 5_000, 'a negative simulation must not reduce the ledger');
+
+  // A negative is now REFUSED rather than clamped to zero, which is the better answer: a negative
+  // here is a caller mistake, and silently treating it as additive hides the mistake. This test
+  // used to assert the clamped shape and went red over the improvement.
+  //
+  // The refusal is not the security property though — the LEDGER NOT MOVING is. A route that
+  // refuses and mutates anyway would satisfy a refusal-only assertion, so both are checked.
+  const refusal = await hit('/simulate-usage', { neurons: -4_000 });
+  assert.equal(refusal.ok, false, 'a negative simulation must be refused');
+  assert.ok(refusal.reason, 'and refused BY NAME, so an operator reading logs can tell it apart');
+  assert.equal((await hit('/state')).dayNeurons, 5_000, 'a negative simulation must not reduce the ledger');
   const probe = await hit('/probe', { neurons: 100 });
   assert.equal(probe.verdict, 'allowed');
   assert.equal((await hit('/state')).dayPending, 0, 'a probe must be a dry run and touch nothing');
