@@ -182,6 +182,7 @@ test it gated.
 - [ ] G-ORACLE-3: The offer checker measures the four numbers a plan has to reconcile
     CHECK: node scripts/assert-tests.mjs --floor 10 --label G-ORACLE-3 -- node --test tests/check-offer.test.mjs
     EXPECT: G-ORACLE-3 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-3; path=6765c31f4f12/53 entries; git-sha=e3f864b; tree-clean=yes; break-sha=e3f864b; EXPECT=unmatched; output-sha256=46a50e46a62a8bbd7c13a58ad0eeaf888afd4f4f59e466081c2ae4c312a65975; output-bytes=1390; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:12:02.906Z
 
 - [ ] G-OFFER-1 [S1]: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
     CHECK: node scripts/check-offer.mjs
