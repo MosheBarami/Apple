@@ -11,10 +11,11 @@ and are tracked as handoffs, not gates.
 
 ## Closed in earlier sessions — re-verified here, not assumed
 
-- [ ] G1: The render payload cannot crash the workspace
+- [x] G1: The render payload cannot crash the workspace
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 7 --label G1 -- node --test src/lib/generative-ui/adapters.test.mjs
     EXPECT: G1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G1; path=6765c31f4f12/53 entries; git-sha=899069f; tree-clean=yes; break-sha=899069f; EXPECT=unmatched; output-sha256=c7c999c8609f15a4085729693ab4d0235ee666d337264257d1bfe394abdfab1c; output-bytes=1426; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=dca3770ad7fb788cc98c3495; at=2026-09-14T19:06:50.027Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=f2e13ba; tree-clean=yes; EXPECT=matched; output-sha256=b3208d6be44b3c6002d07128eabd1dd51cafa058c41ec36093896f2fce6b2b9d; output-bytes=667; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=f02255f4972130c586bd98ea; at=2026-09-14T19:07:05.389Z
   EXPECT-CHANGE: old=fail 0 new=G1 OK reason=derived-floor-7-measured-7-passing
 
 - [x] G2: Conversation is not routed through the build harness, in English or Hebrew
@@ -60,16 +61,18 @@ and are tracked as handoffs, not gates.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G8; path=6765c31f4f12/53 entries; git-sha=323f1bc; tree-clean=yes; break-sha=323f1bc; EXPECT=unmatched; output-sha256=60e445bcc8de8f3223964dc6f060510482696bf214db72db377cf8271156c2e5; output-bytes=2153; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=616c838cf664b1dc7e73e217; at=2026-09-14T17:55:17.480Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=3d9b6f6acc5c854d043e6c87e2eaac46d00445ef7e85df5cf9d8a8ae0338832a; output-bytes=1657; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=616c838cf664b1dc7e73e217; at=2026-09-14T18:05:46.641Z
 
-- [ ] G9: The door benchmark separates a correct door from the real broken outputs
+- [x] G9: The door benchmark separates a correct door from the real broken outputs
     CHECK: cd packages/evals && node ../../scripts/assert-tests.mjs --floor 3 --label G9 -- node --test src/door-benchmark.test.mjs
     EXPECT: G9 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G9; path=6765c31f4f12/53 entries; git-sha=ac2c5f6; tree-clean=yes; break-sha=ac2c5f6; EXPECT=unmatched; output-sha256=ce4dcf7d908279f10fe24d55e097b802bc43365657999884b6ac58fe6fd38ce7; output-bytes=1386; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=dca3770ad7fb788cc98c3495; at=2026-09-14T19:06:51.668Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=f2e13ba; tree-clean=yes; EXPECT=matched; output-sha256=f975d2e6f2b103c38167e5958032f8d1a48700c5385f06e7c37a2a34aa185917; output-bytes=336; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=13; deps-sha=3e0bdbaabda0d6a40c60c96e; at=2026-09-14T19:07:05.389Z
   EXPECT-CHANGE: old=fail 0 new=G9 OK reason=derived-floor-3-measured-3-passing
 
-- [ ] G10: The MLX adapter converts to PEFT with proven delta-W equivalence
+- [x] G10: The MLX adapter converts to PEFT with proven delta-W equivalence
     CHECK: cd packages/training && node ../../scripts/assert-tests.mjs --floor 20 --label G10 -- node --test src/mlx-to-peft.test.mjs src/build-dataset.test.mjs
     EXPECT: G10 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G10; path=6765c31f4f12/53 entries; git-sha=eb69314; tree-clean=yes; break-sha=eb69314; EXPECT=unmatched; output-sha256=3cef487ca8e3fe34a880828372ae37778823326f41ea922d09b494eb43bd83f8; output-bytes=1758; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=72a42f4c08ace0f10d6072a5; at=2026-09-14T19:06:59.758Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=f2e13ba; tree-clean=yes; EXPECT=matched; output-sha256=64c68d77de2e49d0d73be6fb73647ecf36a9ae755efdb5eeadb25908d1ffd730; output-bytes=1492; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=72a42f4c08ace0f10d6072a5; at=2026-09-14T19:07:05.388Z
   EXPECT-CHANGE: old=fail 0 new=G10 OK reason=derived-floor-20-measured-20-passing
 
 ---

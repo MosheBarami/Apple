@@ -1,0 +1,15 @@
+[
+  "packages/design/src/checks.mjs",
+  "packages/design/src/index.mjs",
+  "packages/design/src/playbooks.mjs",
+  "packages/design/src/retrieve.mjs",
+  "packages/design/src/rules.mjs",
+  "packages/evals/src/design-checks.mjs",
+  "packages/evals/src/door-benchmark.test.mjs",
+  "packages/evals/src/grade.mjs",
+  "packages/evals/src/luau.mjs",
+  "packages/evals/src/playbook-checks.mjs",
+  "packages/evals/src/roblox-antipatterns.mjs",
+  "packages/evals/src/tasks.mjs",
+  "scripts/assert-tests.mjs"
+]
