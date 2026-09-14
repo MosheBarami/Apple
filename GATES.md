@@ -33,6 +33,7 @@ and are tracked as handoffs, not gates.
 - [ ] G4: The admin spend route can only ratchet down
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 36 --label G4 -- node --test tests/budget-admission.test.mjs
   CHECK-CHANGE: old=cd apps/worker && node --test tests/spend-ratchet.test.mjs new=budget-admission reason=the-old-check-regexed-source-text-and-never-constructed-the-object
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G4; path=6765c31f4f12/53 entries; git-sha=3176b02; tree-clean=yes; break-sha=3176b02; EXPECT=unmatched; output-sha256=54b036ecb6807dc4e7cd4a69d7cc00564c1c37bb487aefcfd0807ae41ecd2820; output-bytes=1839; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=69008038199854508413fb01; at=2026-09-14T21:34:23.889Z
     EXPECT: G4 OK
 
 - [x] G5: A checkpoint restore reports what it actually put back
