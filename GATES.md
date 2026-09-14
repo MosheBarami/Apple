@@ -255,6 +255,7 @@ test it gated.
 - [ ] G-ORACLE-5: Every disposition rule is proven to fire, and every one carries a control
     CHECK: node scripts/assert-tests.mjs --floor 17 --label G-ORACLE-5 -- node --test tests/check-dispositions.test.mjs
     EXPECT: G-ORACLE-5 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-5; path=6765c31f4f12/53 entries; git-sha=dbb3c2d; tree-clean=yes; break-sha=dbb3c2d; EXPECT=unmatched; output-sha256=e794b7577303bad0a37278f2cb272acd90514b549f64d866f3e84aa2ff91b9f8; output-bytes=2436; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=933ed645b29cea142a3bfaea; at=2026-09-14T20:49:49.710Z
 
 
 - [x] G-OFFER-1: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
