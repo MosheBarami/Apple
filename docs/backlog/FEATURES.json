@@ -858,7 +858,7 @@
           "id": "f-54c8c523",
           "name": "Agent checkpoints",
           "status": "done",
-          "evidence": "pre-agent checkpoint per non-Plan run"
+          "evidence": "packages/evals/src/preserved.test.mjs — a project worth protecting gets a pre-run checkpoint BEFORE Run mode ever starts, an unprotectable playtest is REFUSED rather than run unprotected, and an unreadable census counts as unprotectable."
         },
         {
           "id": "f-4eb26126",
@@ -5389,7 +5389,7 @@
           "id": "f-d5461e1c",
           "name": "Secret scanning",
           "status": "done",
-          "evidence": "scripts/secret-scan.py — tree verified clean"
+          "evidence": "packages/evals/src/security.test.mjs — STATIC CHECK: the pairing token exists in exactly one place and only its hash is stored; no tool can put a credential, a JWT or a pairing token into tool_end.detail; raw provider error text reaches NO ONE. (scripts/secret-scan.py covers the working tree; this covers what can leave it.)"
         },
         {
           "id": "f-bdaeb6a7",
@@ -5407,7 +5407,7 @@
           "id": "f-24c7081a",
           "name": "Prompt injection defense",
           "status": "done",
-          "evidence": "apps/worker/tests/prompt-fence.test.mjs — the fence id differs per run, so a payload learned from one run is useless in the next, and a payload forging the old constant tag cannot match."
+          "evidence": "apps/worker/tests/prompt-fence.test.mjs — the fence id differs per run so a payload learned from one run is useless in the next, a payload forging the old constant tag cannot match, and a remembered fact is CAPPED so one poisoned fact cannot become a document."
         },
         {
           "id": "f-ff322023",
