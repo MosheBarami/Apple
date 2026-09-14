@@ -457,8 +457,12 @@ test("B6 STATIC CHECK — a run that owes work finishes as 'incomplete', and the
   assert.equal(/agent\.finalText \+ .*incomplete/.test(content), false, 'the incomplete text must not be appended to the optimistic prose');
   // The tool trace is still written, so the timeline shows what was attempted.
   assert.match(session, /JSON\.stringify\(agent\.trace\)/);
-  // The stop reason reaches the client.
-  assert.match(session, /this\.broadcast\(\{ type: 'msg_end', msgId: agent\.msgId, stopReason: reason, error \}\)/);
+  // The stop reason reaches the client. Matched on the fields this test is ABOUT, with the closing
+  // brace replaced by `[,}]` so the message may carry more: pinning the exact argument list meant a
+  // correct, unrelated addition — the settled run cost, which msg_end is now the only carrier of —
+  // read as a regression in the stop-reason contract. The guard is unchanged in what it demands;
+  // type, msgId, stopReason and error must all still be there, in that order.
+  assert.match(session, /this\.broadcast\(\{ type: 'msg_end', msgId: agent\.msgId, stopReason: reason, error\s*[,}]/);
 
   const shared = readFileSync(join(REPO, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
   assert.match(shared, /stopReason: 'done' \| 'stopped' \| 'error' \| 'quota' \| 'incomplete'/, "'incomplete' must remain a first-class stop reason on the wire");
