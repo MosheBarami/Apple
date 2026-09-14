@@ -837,7 +837,8 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     dependsOn: ['save_progress'], genres: ['any'], satisfiedBy: ['leaderboard_global'],
     build: [
       'Write the tracked stat to an OrderedDataStore on save.',
-      'Read the board with GetSortedAsync on a timer — once a minute is plenty — never on player join. The limit is per place, not per player, so a join-triggered fetch fails exactly when the server is busiest.',
+      'Read the board with GetSortedAsync on a timer — once a minute is plenty — never on player join.',
+      'GetSortedAsync is a LIST operation: 5 requests a minute plus 2 per player, against 60 plus 40 for an ordinary read. It is the scarcest budget in the API, so do not spend it on the most repetitive request.',
       'Keep the last page that loaded. A failed fetch should leave the previous board on screen; an empty board reads as "nobody has scored".',
       'Render the top entries on a SurfaceGui somewhere players pass.',
     ],

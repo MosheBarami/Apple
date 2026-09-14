@@ -104,11 +104,18 @@ test('monetisation pins both ProcessReceipt bugs that charge a player for nothin
   assert.match(t, /UserOwnsGamePassAsync/, 'and the gamepass path needs its own call named');
 });
 
-test('global_leaderboard knows GetSortedAsync is limited per place, not per player', () => {
+test('global_leaderboard knows GetSortedAsync is a LIST operation, the scarcest budget', () => {
+  // Checked against the current Roblox docs rather than from memory. List operations get
+  // 5 requests/minute + 2 per player; ordinary reads get 60 + 40. An earlier version of this brief
+  // said the limit was "per place, not per player", which is the wrong mechanism — the limits are
+  // per server and they SCALE with player count. The reason not to fetch on join is that list is
+  // the scarcest class, not that it fails when busy.
   const t = brief('global_leaderboard');
   assert.match(t, /GetSortedAsync/);
-  assert.match(t, /per place/i);
-  assert.match(t, /timer|once a minute/i, 'the correct cadence must be given');
+  assert.match(t, /LIST operation/, 'the restrictive class must be named');
+  assert.match(t, /5 requests a minute plus 2 per player/, 'with the actual figure');
+  assert.match(t, /timer|once a minute/i, 'and the correct cadence');
+  assert.doesNotMatch(t, /per place, not per player/, 'the wrong mechanism must not come back');
 });
 
 test('daily_return keys the day off the server clock', () => {
