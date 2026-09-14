@@ -179,6 +179,14 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9528a51; tree-clean=yes; EXPECT=matched; output-sha256=f9849a4ef9d9d5e49fd41b107644667cd83e7fb13999c0787063d80ac9cca7c6; output-bytes=1618; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:27.979Z
 
+- [ ] G-ORACLE-3: The offer checker measures the four numbers a plan has to reconcile
+    CHECK: node scripts/assert-tests.mjs --floor 10 --label G-ORACLE-3 -- node --test tests/check-offer.test.mjs
+    EXPECT: G-ORACLE-3 OK
+
+- [ ] G-OFFER-1 [S1]: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
+    CHECK: node scripts/check-offer.mjs
+    EXPECT: OFFER COHERENT
+
 ---
 
 ## Whole-product gates
