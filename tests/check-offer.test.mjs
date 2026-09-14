@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD, buildsPerDay, buildsPerMonth } from '../packages/shared/src/index.ts';
 import { DAILY_NEURON_CEILING, NEURONS_PER_SPARK, USD_PER_NEURON } from '../apps/worker/src/pricing.ts';
+import { copyProblems, planProblems, termProblems } from '../scripts/lib/offer-rules.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -146,4 +147,131 @@ test('the monthly allowance is reachable within the month', () => {
       `${id} advertises ${PLAN_LIMITS[id].sparksPerMonth}/month but 31 days of its daily cap is only ${reachable}`,
     );
   }
+});
+
+/* ============================================================================================
+   EACH RULE, SHOWN TO FIRE.
+
+   Everything above this line runs the checker against the REAL repository, which is supposed to
+   satisfy every rule. That is worth asserting and it is not enough: a rule that has been deleted
+   is silent, and so is a rule that holds. Measured, not suspected — with the daily-ceiling rule
+   replaced by `if (false)` and the contractual-terms list emptied to `[]`, this suite was 12/12
+   green both times, and G-ORACLE-3 could not be falsified.
+
+   Four of the tests above are written as "if the repository violates this, assert it is reported;
+   otherwise assert silence". Those are correct sentences that exercise nothing, and they check
+   LESS the healthier the repository gets — the worst gradient a guard can have. They stay, because
+   a regression in the real tree should surface there. The cases below are the other half: the
+   rules handed inputs that break them, so the detection path is the thing under test.
+
+   These call the rule functions directly rather than the script. The script's job is to supply
+   the real tables; asking it to also accept fabricated ones would mean a flag that changes what
+   it measures, which is an escape hatch, not a test.
+   ============================================================================================ */
+
+/** A plan table that satisfies every rule, so each case below can break exactly one thing. */
+const HEALTHY = {
+  planIds: ['free', 'paid'],
+  limits: { free: { sparksPerDay: 231, sparksPerMonth: 2_310 }, paid: { sparksPerDay: 416, sparksPerMonth: 12_600 } },
+  copy: { free: { priceUsdMonthly: 0 }, paid: { priceUsdMonthly: 12 } },
+  ceilingSparks: 833,
+  sparksPerBuild: 77,
+  usdPerSpark: 0.00033,
+  margin: 1.4,
+};
+
+test('the fixture itself is clean, or every case below proves nothing', () => {
+  // The control. Without it, a rule function that returned a problem for ANY input would make all
+  // four cases below pass, which is a different way of looking at nothing.
+  const { problems } = planProblems(HEALTHY);
+  assert.deepEqual(problems, [], `the healthy fixture must satisfy every rule:\n${problems.join('\n')}`);
+});
+
+test('RULE 1 FIRES: a priced plan below its margin floor is reported', () => {
+  const { problems } = planProblems({
+    ...HEALTHY,
+    copy: { ...HEALTHY.copy, paid: { priceUsdMonthly: 1 } },
+  });
+  assert.equal(problems.length, 1, problems.join('\n'));
+  assert.match(problems[0], /paid charges \$1\/month .* below the \$\d+\.\d\d floor at 1\.4x/);
+});
+
+test('RULE 2 FIRES: a plan granting more per day than the service can serve is reported', () => {
+  // The rule check-offer's own header calls the one that matters most, and the one that was
+  // disabled without this suite noticing.
+  const { problems } = planProblems({
+    ...HEALTHY,
+    limits: { ...HEALTHY.limits, paid: { sparksPerDay: 6_000, sparksPerMonth: 12_600 } },
+  });
+  assert.equal(problems.length, 1, problems.join('\n'));
+  assert.match(problems[0], /paid grants 6000 Sparks\/day but the WHOLE SERVICE can serve 833/);
+  assert.match(problems[0], /exhausts the day for everyone/);
+});
+
+test('RULE 3 FIRES: a free tier that cannot finish one build is reported', () => {
+  const { problems } = planProblems({
+    ...HEALTHY,
+    limits: { ...HEALTHY.limits, free: { sparksPerDay: 60, sparksPerMonth: 1_800 } },
+  });
+  assert.equal(problems.length, 1, problems.join('\n'));
+  assert.match(problems[0], /the free plan grants 60 Sparks\/day and one quality-gated build costs 77/);
+});
+
+test('RULE 1 EXEMPTS the free tier, and only from that rule', () => {
+  // A margin rule including a $0 plan would make any free tier arithmetically impossible. The
+  // exemption has to be narrow: the same free plan is still held to rule 3, which the case above
+  // proves fires. Here it must produce no margin complaint at any allowance.
+  const { problems } = planProblems({
+    ...HEALTHY,
+    limits: { ...HEALTHY.limits, free: { sparksPerDay: 231, sparksPerMonth: 2_310 } },
+  });
+  assert.deepEqual(problems.filter((p) => p.startsWith('free charges')), []);
+});
+
+test('RULE 4 FIRES: a stated quota no plan grants is reported', () => {
+  const problems = copyProblems(
+    [{ rel: 'fake/page.astro', src: '<p>Start with 60 Sparks a day, then 9,000 Sparks per month.</p>' }],
+    new Set([231, 2_310]),
+  );
+  assert.equal(problems.length, 2, problems.join('\n'));
+  assert.match(problems[0], /fake\/page\.astro states 60 Sparks a day, which no plan grants/);
+  assert.match(problems[1], /states 9000 Sparks a month/);
+});
+
+test('RULE 4 IS SILENT on an enforced figure, and on a number that is not a Spark claim', () => {
+  const problems = copyProblems(
+    [{ rel: 'fake/page.astro', src: '<p>231 Sparks a day.</p><style>.x{width:400px;margin:60px}</style>' }],
+    new Set([231]),
+  );
+  assert.deepEqual(problems, []);
+});
+
+test('RULE 5 FIRES: a contractual term in copy is reported', () => {
+  // The rule that could be deleted outright without this suite noticing.
+  const problems = termProblems([{ rel: 'fake/page.astro', src: '<p>Free forever. You will never be charged.</p>' }]);
+  assert.equal(problems.length, 2, problems.join('\n'));
+  assert.ok(problems.every((p) => p.includes('a contractual term')));
+});
+
+test('RULES 4 AND 5 READ THE SOURCE, NOT THE COMMENTARY ON IT', () => {
+  // A comment explaining why a figure was corrected is exactly the history worth writing down, and
+  // an unstripped scan refuses to let it be written. This reported pricing.astro for a "60 Sparks a
+  // day" that lived in a comment beside the interpolation that replaced it.
+  //
+  // Asymmetry is the reason the rule strips rather than the prose being reworded: a comment can
+  // only ever produce a false alarm here, never hide a real claim, because a comment is not copy.
+  const commented = [{
+    rel: 'fake/page.astro',
+    src: [
+      '// was 60 Sparks a day before the repricing',
+      '/* and we must never write $0 forever */',
+      '<!-- nor free forever -->',
+      '<a href="https://example.com/x">231 Sparks a day</a>',
+    ].join('\n'),
+  }];
+  assert.deepEqual(copyProblems(commented, new Set([231])), []);
+  assert.deepEqual(termProblems(commented), []);
+
+  // And the href's `//` must not have eaten the real claim on that line.
+  assert.equal(copyProblems(commented, new Set([1])).length, 1);
 });

@@ -29,6 +29,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { copyProblems, planProblems, termProblems } from './lib/offer-rules.mjs';
+
 import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD } from '../packages/shared/src/index.ts';
 import {
   BILLABLE_NEURONS_PER_DAY,
@@ -79,117 +81,38 @@ const copySurface = git(['ls-files', 'apps/site/**', 'apps/web/src/**'])
 
 console.log(`DENOMINATOR ${copySurface.length} files; EXCEPTIONS ${EXCEPTIONS.length}: ${EXCEPTIONS.map((e) => e.glob).join(', ')}`);
 
-const problems = [];
-const note = [];
-
-/* ------------------------------------------------- 1. margin on the priced plans --- */
-
-const usdPerSpark = NEURONS_PER_SPARK * USD_PER_NEURON;
-
-for (const id of PLAN_IDS) {
-  const price = PLAN_COPY[id].priceUsdMonthly;
-  if (price === null) { note.push(`${id}: no price — negotiated, so no margin rule applies`); continue; }
-  if (price === 0) continue; // the free tier's rule is #3, not this one
-  const serveCost = PLAN_LIMITS[id].sparksPerMonth * usdPerSpark;
-  const floor = serveCost * MARGIN;
-  if (price <= floor) {
-    problems.push(
-      `${id} charges $${price}/month for ${PLAN_LIMITS[id].sparksPerMonth.toLocaleString()} Sparks, ` +
-      `which cost $${serveCost.toFixed(2)} to serve — below the $${floor.toFixed(2)} floor at ${MARGIN}x`,
-    );
-  } else {
-    note.push(`${id}: $${price} vs $${floor.toFixed(2)} floor (serves for $${serveCost.toFixed(2)})`);
-  }
-}
-
-/* -------------------------------- 2. a promise the service can deliver in one day --- */
-
+// THE RULES ARE IN scripts/lib/offer-rules.mjs, as pure functions of their inputs, and this file
+// is the wiring that hands them the real ones. That split is not tidiness: with the rules inline,
+// the only data they could ever be run against was the real repository — which is supposed to
+// satisfy them — so tests/check-offer.test.mjs could only assert that a healthy repo stays silent.
+// Measured: the daily-ceiling rule replaced by `if (false)` and the contractual-terms list emptied
+// to `[]` both left that suite at 12/12 green, and G-ORACLE-3 could not be falsified. Violating
+// inputs have to come from somewhere other than the tree being checked.
+const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_LIMITS[id].sparksPerDay, PLAN_LIMITS[id].sparksPerMonth]));
 const ceilingSparks = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_SPARK);
 
-for (const id of PLAN_IDS) {
-  const day = PLAN_LIMITS[id].sparksPerDay;
-  if (day > ceilingSparks) {
-    problems.push(
-      `${id} grants ${day} Sparks/day but the WHOLE SERVICE can serve ${ceilingSparks} ` +
-      `(${DAILY_NEURON_CEILING.toLocaleString()} neurons = ${FREE_NEURONS_PER_DAY.toLocaleString()} free + ` +
-      `${BILLABLE_NEURONS_PER_DAY.toLocaleString()} billable). One user on this plan exhausts the day for everyone.`,
-    );
-  }
-}
+const sources = copySurface.flatMap((rel) => {
+  try { return [{ rel, src: readFileSync(join(ROOT, rel), 'utf8') }]; } catch { return []; }
+});
 
-/* ------------------------------ 3. a free tier that can finish one complete job --- */
+const { problems: planIssues, notes: note } = planProblems({
+  planIds: PLAN_IDS,
+  limits: PLAN_LIMITS,
+  copy: PLAN_COPY,
+  ceilingSparks,
+  sparksPerBuild: SPARKS_PER_BUILD,
+  usdPerSpark: NEURONS_PER_SPARK * USD_PER_NEURON,
+  margin: MARGIN,
+  ceilingDetail:
+    ` (${DAILY_NEURON_CEILING.toLocaleString()} neurons = ${FREE_NEURONS_PER_DAY.toLocaleString()} free + ` +
+    `${BILLABLE_NEURONS_PER_DAY.toLocaleString()} billable).`,
+});
 
-const freeDay = PLAN_LIMITS.free.sparksPerDay;
-if (freeDay < SPARKS_PER_BUILD) {
-  problems.push(
-    `the free plan grants ${freeDay} Sparks/day and one quality-gated build costs ${SPARKS_PER_BUILD} — ` +
-    `a free user cannot complete a single build in a day, so the trial demonstrates the product not working`,
-  );
-} else {
-  note.push(`free: ${freeDay} Sparks/day affords ${Math.floor(freeDay / SPARKS_PER_BUILD)} build(s)`);
-}
-
-/* --------------------------- 4. every quota a user reads equals the enforced one --- */
-//
-// A page promising a number the ledger does not grant is a page that lies, and the user finds out
-// at the moment they hit the wall. Numbers are matched only in a Sparks context, so an unrelated
-// 400 in a CSS rule is not a false positive.
-
-const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_LIMITS[id].sparksPerDay, PLAN_LIMITS[id].sparksPerMonth]));
-const SPARK_CLAIM = /(\d[\d,]{1,8})\s*(?:Sparks?|sparks?)\s*(?:a|per|\/)\s*(day|month)/g;
-
-/**
- * COMMENTARY IS NOT COPY. A guard that reads source text must read the source, not the prose
- * explaining it.
- *
- * This reported `pricing.astro states 60 Sparks a day, which no plan grants` against a file whose
- * every rendered figure is interpolated from PLAN_LIMITS. The "claim" was a comment recording why
- * three literals had been replaced — *"against a free tier that granted 60 Sparks a day"* — which
- * is exactly the history worth writing down, and this refused to let it be written.
- *
- * It is the second guard in this repository caught doing it; check-spark-figures.mjs has the same
- * function and the same note, for the same reason. The failure is not symmetric and that is what
- * makes it worth fixing rather than rewording around: a comment can only ever produce a FALSE
- * ALARM here, and the cost of the false alarm is that nobody can explain a number they corrected.
- *
- * `//` is only treated as a comment when the character before it is not `:`, so `https://` in an
- * href survives. A `//` inside some other string literal would be over-stripped; that narrows what
- * this can see rather than widening it, and no file on the copy surface has one.
- */
-const stripComments = (src) =>
-  src
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
-
-for (const rel of copySurface) {
-  let src;
-  try { src = stripComments(readFileSync(join(ROOT, rel), 'utf8')); } catch { continue; }
-  for (const m of src.matchAll(SPARK_CLAIM)) {
-    const claimed = Number(m[1].replace(/,/g, ''));
-    if (!enforced.has(claimed)) {
-      problems.push(`${rel} states ${claimed} Sparks a ${m[2]}, which no plan grants`);
-    }
-  }
-}
-
-/* ---------------------- the promises a free tier must not make about money --- */
-//
-// §12.5 forbids publishing contractual terms without a dated owner statement. "$0 forever" and
-// "no card required, ever" are terms, not descriptions, and they bind a business that now has
-// subscriptions.
-
-const FOREVER = [/\$0\s*forever/i, /no card required,?\s*ever/i, /never be charged/i, /free\s+forever/i];
-for (const rel of copySurface) {
-  let src;
-  // Comments stripped here too — a note saying "we must never write $0 forever" is not a page
-  // writing it, and the rule is worth being able to record next to the code it governs.
-  try { src = stripComments(readFileSync(join(ROOT, rel), 'utf8')); } catch { continue; }
-  for (const re of FOREVER) {
-    const hit = re.exec(src);
-    if (hit) problems.push(`${rel} promises "${hit[0]}" — a contractual term, and this product now has subscriptions`);
-  }
-}
+const problems = [
+  ...planIssues,
+  ...copyProblems(sources, enforced),
+  ...termProblems(sources),
+];
 
 /* ------------------------------------------------------------------ report --- */
 
