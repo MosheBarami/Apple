@@ -114,9 +114,9 @@ export function tokenise(text) {
 export function shingles(text, width = SHINGLE_WIDTH) {
   const tokens = tokenise(text);
   if (tokens.length === 0) return new Set();
-  if (tokens.length < width) return new Set([tokens.join('')]);
+  if (tokens.length < width) return new Set([tokens.join('\x01')]);
   const out = new Set();
-  for (let i = 0; i + width <= tokens.length; i++) out.add(tokens.slice(i, i + width).join(''));
+  for (let i = 0; i + width <= tokens.length; i++) out.add(tokens.slice(i, i + width).join('\x01'));
   return out;
 }
 

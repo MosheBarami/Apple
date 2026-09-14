@@ -113,6 +113,36 @@ if (FALSIFY && ONLY.length !== 1) {
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 
+/**
+ * What the fingerprint is taken over.
+ *
+ * THE DEFECT THIS FIXES. `output-sha256` was computed over the raw stream, and `node --test` prints
+ * a duration on every line. Two identical runs of an unchanged test file therefore produced
+ * different fingerprints, which meant `--reverify` quarantined EVERY test gate in the ledger the
+ * first time it ran — not because anything was wrong, but because the check as written could never
+ * pass. An oracle that always fires is as useless as one that never does, and the tempting repair
+ * is to stop comparing fingerprints at all.
+ *
+ * So the NOISE is removed and everything else is kept. What goes: elapsed times, temp directories
+ * with a random segment in them, absolute paths to this checkout, and timestamps. What stays: every
+ * test name, every count, every assertion message, every diff — so a changed test set still changes
+ * the sha, which is the entire property being relied on. The raw byte count is recorded separately
+ * and un-normalised, so a truncated or empty run is still visible.
+ */
+function normaliseOutput(raw) {
+  return raw
+    // `✔ a test name (38.670292ms)` and `ℹ duration_ms 17046.609625`
+    .replace(/\(\d+(?:\.\d+)?ms\)/g, '(TIMEms)')
+    .replace(/duration_ms [\d.]+/g, 'duration_ms TIME')
+    // mkdtemp directories: the random segment differs on every run
+    .replace(/\/(?:var\/folders|tmp)\/[^\s'"`)]+/g, '/TMPDIR')
+    // this checkout's absolute path, so a fingerprint is not machine-specific
+    .split(ROOT).join('/ROOT')
+    .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, 'TIMESTAMP')
+    // trailing whitespace a runner may or may not emit
+    .replace(/[ \t]+$/gm, '');
+}
+
 /* ------------------------------------------------------------------ parse --- */
 
 /**
@@ -235,6 +265,21 @@ function checkPaths(check) {
 
 /* ---------------------------------------------------------------- execute --- */
 
+/**
+ * The environment a gate runs in.
+ *
+ * `NODE_TEST_CONTEXT` is stripped because a gate whose CHECK is `node --test` must behave the same
+ * whether or not this checker was itself invoked from a test. Inherited, it makes the child report
+ * as a SUBTEST of the parent runner: no summary line, no `pass N`, so the gate reads as unmet for a
+ * reason that has nothing to do with the code it gates. A verifier whose answer depends on who
+ * called it is not a verifier.
+ */
+const GATE_ENV = (() => {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+})();
+
 function runGate(gate) {
   const started = Date.now();
   const proc = spawnSync(SHELL, ['-c', gate.check], {
@@ -242,6 +287,7 @@ function runGate(gate) {
     encoding: 'utf8',
     timeout: TIMEOUT,
     maxBuffer: 64 * 1024 * 1024,
+    env: GATE_ENV,
     // A gate must not be able to ask a human for help and hang the run.
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -263,7 +309,7 @@ const recordLine = (kind, r, extra = '') =>
   `  ${kind}: exit=${r.exit}; shell=${SHELL}; cwd=${ROOT}; path=${PATH_FP}; ` +
   `git-sha=${HEAD}; tree-clean=${DIRTY ? 'no' : 'yes'}; ${extra}` +
   `EXPECT=${r.matched ? 'matched' : 'unmatched'}; ` +
-  `output-sha256=${sha256(r.output)}; output-bytes=${Buffer.byteLength(r.output)}; ` +
+  `output-sha256=${sha256(normaliseOutput(r.output))}; output-bytes=${Buffer.byteLength(r.output)}; ` +
   `node=${TOOLS.node}; luau=${TOOLS.luau}; playwright=${TOOLS.playwright}; at=${stamp()}`;
 
 const evidenceLine = (r) => recordLine('EVIDENCE', r);
@@ -416,7 +462,7 @@ if (REVERIFY) {
 
     const evLine = now.evidenceLine === null ? null : lines[now.evidenceLine];
     const before = storedSha(evLine);
-    if (evLine && before && before !== sha256(r.output)) reasons.push('output-sha256 does not reproduce');
+    if (evLine && before && before !== sha256(normaliseOutput(r.output))) reasons.push('output-sha256 does not reproduce');
     if (evLine && evLine.includes('tree-clean=no')) reasons.push('recorded against a dirty tree');
 
     const untracked = checkPaths(now.check).filter((f) => !TRACKED.has(f));

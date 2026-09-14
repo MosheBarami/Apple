@@ -11,52 +11,52 @@ and are tracked as handoffs, not gates.
 
 ## Closed in earlier sessions — re-verified here, not assumed
 
-- [x] G1: The render payload cannot crash the workspace
+- [ ] G1: The render payload cannot crash the workspace
     CHECK: cd apps/web && node --test src/lib/generative-ui/adapters.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=e253db45422d0dcc05c8ad0f9ddbeb508c23d69502b562d8ad75c8643554f50f; output-bytes=653
 
-- [x] G2: Conversation is not routed through the build harness, in English or Hebrew
+- [ ] G2: Conversation is not routed through the build harness, in English or Hebrew
     CHECK: cd apps/worker && node --test tests/conversational-routing.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=54213e7106c7b2773dba2db4d25689f3e8c21aadb07f76eddaf0d073aa143657; output-bytes=595
 
-- [x] G3: An idle project stops holding a Durable Object open
+- [ ] G3: An idle project stops holding a Durable Object open
     CHECK: cd apps/worker && node --test tests/poll-residency.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=df8bbee6bca735e9bfb606b370468a6429b46f41237ce784bc5f7b9c472d8a28; output-bytes=543
 
-- [x] G4: The admin spend route can only ratchet down
+- [ ] G4: The admin spend route can only ratchet down
     CHECK: cd apps/worker && node --test tests/spend-ratchet.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=7cb0f655e672eaf88e3174d1c6bcb22fab65308a060c5592acdd5929853db9c0; output-bytes=385
 
-- [x] G5: A checkpoint restore reports what it actually put back
+- [ ] G5: A checkpoint restore reports what it actually put back
     CHECK: cd apps/worker && node --test tests/restore-fidelity.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=600802abf00e3ae73817a6d490b75cba654393d1ebe9f4671b2639ef38cd96e5; output-bytes=626
 
-- [x] G6: Asset provenance survives the step boundary
+- [ ] G6: Asset provenance survives the step boundary
     CHECK: cd apps/worker && node --test tests/asset-provenance.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=b6e78dc2206a0b03f5fbac0608420d6a1ff14feb85feb37f09b9cd3de0c54996; output-bytes=549
 
-- [x] G7: No tool is offered that this deployment cannot run
+- [ ] G7: No tool is offered that this deployment cannot run
     CHECK: cd apps/worker && node --test tests/asset-library-gating.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=dc2c7a4702b601a5aeb78d152a6b95ffcf9c8bd6680ae96ad421f4d61ab9d379; output-bytes=663
 
-- [x] G8: Billing refuses an unsigned, forged, stale or tampered webhook
+- [ ] G8: Billing refuses an unsigned, forged, stale or tampered webhook
     CHECK: cd apps/worker && node --test tests/billing.test.mjs tests/billing-route.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=80404cd173b255ad14995cbbdd9f9c49d309e5f671abb1b3bfd2391e7724aa3a; output-bytes=1660
 
-- [x] G9: The door benchmark separates a correct door from the real broken outputs
+- [ ] G9: The door benchmark separates a correct door from the real broken outputs
     CHECK: cd packages/evals && node --test src/door-benchmark.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=46d629f76a5001658f5fef05f66141cccfc4a42191ad5ecea6a8b234e362dfe8; output-bytes=320
 
-- [x] G10: The MLX adapter converts to PEFT with proven delta-W equivalence
+- [ ] G10: The MLX adapter converts to PEFT with proven delta-W equivalence
     CHECK: cd packages/training && node --test src/mlx-to-peft.test.mjs src/build-dataset.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=a2ef3468e7e2343986db5d48ed296850c9a40cb0660d4d5969cf7b3d74440523; output-bytes=1470
@@ -65,62 +65,62 @@ and are tracked as handoffs, not gates.
 
 ## Open
 
-- [x] G11: The workspace mirrors correctly in RTL, not just the auth screen
+- [ ] G11: The workspace mirrors correctly in RTL, not just the auth screen
     CHECK: cd apps/web && node --test tests/rtl-workspace.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=d89a95842367d0710f1dfd831e5030eea9f9ef1d98dfff09e5c115656a17ef15; output-bytes=476
 
-- [x] G12: Every user-facing surface has an explicit empty, loading and error state
+- [ ] G12: Every user-facing surface has an explicit empty, loading and error state
     CHECK: cd apps/web && node --test tests/ui-states.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=501ee60b3de430a690663b5962fd1f45b829d31318f592321bd3f9c9b3f9071a; output-bytes=489
 
-- [x] G13: A run's cost and context use are visible to the user while it happens
+- [ ] G13: A run's cost and context use are visible to the user while it happens
     CHECK: cd apps/web && node --test tests/run-meters.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=f61d6198e9a1b52479a487e9ba1cda5c31eec5d8caee08f9f3fb248c1956bba5; output-bytes=592
 
-- [x] G14: A conversation export is the whole conversation, and cannot forge its own filename
+- [ ] G14: A conversation export is the whole conversation, and cannot forge its own filename
     CHECK: cd apps/worker && node --test tests/export.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=2b99c8c854e0ec6bef7bd64a1420e0e75017278aadf448a296ff921a80be9036; output-bytes=1463
 
-- [x] G15: A project can be renamed from either surface, and Escape does not save
+- [ ] G15: A project can be renamed from either surface, and Escape does not save
     CHECK: cd apps/web && node --test tests/rename-project.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=f88e95c00fa38fa4f90170bd67c857c905acbbca0efef94a319faa8288b2cd8e; output-bytes=1120
 
-- [x] G16: Every action in the product is reachable from the command palette, and the palette is reachable from every signed-in route
+- [ ] G16: Every action in the product is reachable from the command palette, and the palette is reachable from every signed-in route
     CHECK: cd apps/web && node --test tests/command-palette.test.mjs tests/command-match.test.mjs tests/shortcuts.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=9eef9172bd22f3daf2edebe1656fe09161c5881ace6e207ada05bbcbcce8b429; output-bytes=4219
 
-- [x] G17: The palette puts the command you meant first, and lists each one once
+- [ ] G17: The palette puts the command you meant first, and lists each one once
     CHECK: cd apps/web && node --test tests/command-match.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=8945c1bb1c57a46547481182ca58bac084cebbbd6b092e56209c9907fb6a2666; output-bytes=1891
 
-- [x] G18: One keyboard map, with no chord claimed twice and none stolen from the browser
+- [ ] G18: One keyboard map, with no chord claimed twice and none stolen from the browser
     CHECK: cd apps/web && node --test tests/shortcuts.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=311ea7a211e4ba24a7f9488a74bf0a80cf11bd174f3b444d38c2ae7cd43b12a6; output-bytes=1329
 
-- [x] G19: Search reads every message, and its results cannot be stale or mis-highlighted
+- [ ] G19: Search reads every message, and its results cannot be stale or mis-highlighted
     CHECK: cd apps/worker && node --test tests/search.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=a9786747f645dec7e090cd628ee4bf0c44a1ccd56bce1b46dee52b80bd9dcb82; output-bytes=1867
 
-- [x] G20: The search panel names every state and drops responses for a query the user has moved past
+- [ ] G20: The search panel names every state and drops responses for a query the user has moved past
     CHECK: cd apps/web && node --test tests/search-panel.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=c30700df765c4a778bcd9419e9d2f840fd4f23e727e710545d6b45793d7bffe4; output-bytes=1343
 
-- [x] G21: Archiving hides a project everywhere and loses nothing, and restoring brings it all back
+- [ ] G21: Archiving hides a project everywhere and loses nothing, and restoring brings it all back
     CHECK: cd apps/web && node --test tests/archive.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=9339756b8e7cf3a802d0e74bdcaaaf7abeb2f17ec1c6f5a24c3ee35c317e6d54; output-bytes=1188
 
-- [x] G81: A package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked
+- [ ] G81: A package cannot silently fall out of `pnpm -r test`, and the checker that says so is itself checked
     CHECK: node --test tests/workspace-coverage.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=e38fd0e1fccd11b30f9f1406d692ee91c3db677a040646fd43549075cce49003; output-bytes=983
@@ -129,27 +129,27 @@ and are tracked as handoffs, not gates.
      sessions appending gates at the same time cannot collide on a number. Two did, twice, on the
      same afternoon; gate-check.mjs now refuses a ledger with duplicate ids. -->
 
-- [x] G80: The gate checker itself is measured, and cannot report green over a gate that fails
+- [ ] G80: The gate checker itself is measured, and cannot report green over a gate that fails
     CHECK: node --test tests/gate-check.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=c1a7e85d6485cb16c1024b787a60502f9eae91e6c64043ccd594d2f55bc20f37; output-bytes=2262
 
-- [x] G22: Editing a prompt refuses before it destroys, and says what it does not undo
+- [ ] G22: Editing a prompt refuses before it destroys, and says what it does not undo
     CHECK: cd apps/worker && node --test tests/edit-resend.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=4bc6a0e42828c223f347428ec10019794e70fc9dde24881167df4c0a4e8a1236; output-bytes=1333
 
-- [x] G23: A failed run can be stopped and run again from the workspace, without retyping
+- [ ] G23: A failed run can be stopped and run again from the workspace, without retyping
     CHECK: cd apps/web && node --test tests/retry-run.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=b5f7b8dd1e9e38a26acee9dcfc2f4135b4014d3eb15fced5bfe35ab4b055335f; output-bytes=1018
 
-- [x] G24: An unsent message survives a reload, stays with its own project, never breaks the composer, and does not outlive the session that wrote it
+- [ ] G24: An unsent message survives a reload, stays with its own project, never breaks the composer, and does not outlive the session that wrote it
     CHECK: cd apps/web && node --test tests/draft.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=54f08e9139ced928046d7ff7754247203cabfc0c54d60c573f857a4fe68e944c; output-bytes=1405
 
-- [x] G26: What Apple believes is visible and correctable, and a correction reaches the copy the agent reads
+- [ ] G26: What Apple believes is visible and correctable, and a correction reaches the copy the agent reads
     CHECK: cd apps/worker && node --test tests/memory.test.mjs
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=4f198c34edd334b3db55fdda0571a8be67485acfc0c43ea90b0c4d1426d0b807; output-bytes=2148
@@ -161,7 +161,7 @@ ledger row means anything: `--reverify` was a silent no-op, so the first clause 
 condition was vacuously satisfiable, and every EXPECT of `fail 0` was satisfiable by deleting the
 test it gated.
 
-- [x] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
+- [ ] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
@@ -171,17 +171,17 @@ test it gated.
 
 ## Whole-product gates
 
-- [x] G90: The full suite passes
+- [ ] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=ae718dd1544d455f122ae28e52d73a7255bf0801651cb838823775fd8dfb175a; output-bytes=45
 
-- [x] G91: Every package typechecks
+- [ ] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
     EXPECT: TYPECHECK CLEAN
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=a24e96ebf42e216f24b6a8156c34e4ccfc9fd4bbbabd2e6589cc8769d9da1900; output-bytes=31
 
-- [x] G92: The landing and site E2E pass in every viewport
+- [ ] G92: The landing and site E2E pass in every viewport
     CHECK: npx playwright test tests/e2e/landing.spec.ts --reporter=line
     EXPECT: 54 passed
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=4372e08d737d268c5cdab3285675d4d0f75cb9795c538d65388058500cefeeb8; output-bytes=5650

@@ -488,3 +488,82 @@ test('the parser reads a station tag without losing the title', () => {
   assert.match(r.out, /a station-tagged gate/);
   assert.doesNotMatch(r.out, /\[S4\]: a station/, 'the tag must be parsed, not left in the title');
 });
+
+/* ------------------------------------------------ the fingerprint reproduces --- */
+//
+// THE DEFECT. `output-sha256` was taken over the raw stream, and `node --test` prints a duration on
+// every line. Two identical runs of an unchanged file produced different fingerprints, so the first
+// real `--reverify` quarantined EVERY test gate in the ledger — not because anything was wrong, but
+// because the check as written could never pass. An oracle that always fires is as useless as one
+// that never does, and the tempting repair is to stop comparing fingerprints at all.
+
+test('two runs of an unchanged gate produce the same fingerprint', () => {
+  // Without this the whole --reverify mechanism is decorative: it would quarantine every test gate
+  // on every pass, and the obvious "fix" would be to stop comparing fingerprints at all.
+  //
+  // The fixture is a real `node --test` run over a file written for this test — a real runner
+  // printing real per-test durations — rather than one of the repository's own suites, which would
+  // make this test's result depend on that suite's health.
+  const dir = mkdtempSync(join(tmpdir(), 'gate-check-timing-'));
+  const spec = join(dir, 'timing.test.mjs');
+  writeFileSync(spec, "import test from 'node:test';\ntest('a', () => {});\ntest('b', () => {});\n");
+
+  const sha = (l) => {
+    const m = /output-sha256=([0-9a-f]{64})/.exec(l);
+    assert.ok(m, `no EVIDENCE line was written:\n${l}`);
+    return m[1];
+  };
+  const g = `- [ ] G1: timing noise\n    CHECK: node --test ${spec}\n    EXPECT: pass 2\n`;
+  const a = check(g, ['--approve']).ledger();
+  const b = check(g, ['--approve']).ledger();
+  assert.equal(sha(a), sha(b), 'per-test durations must not change the fingerprint');
+});
+
+test('but a CHANGED test set still changes the fingerprint', () => {
+  // The positive control for the test above. Normalising away noise is only safe if it leaves the
+  // signal — a fingerprint that ignores everything would also "reproduce" perfectly.
+  const sha = (l) => /output-sha256=([0-9a-f]{64})/.exec(l)[1];
+  const a = check(gate('G1', 'echo alpha', 'alpha'), ['--approve']).ledger();
+  const b = check(gate('G1', 'echo beta', 'beta'), ['--approve']).ledger();
+  assert.notEqual(sha(a), sha(b));
+});
+
+test('a failing assertion still changes the fingerprint, durations notwithstanding', () => {
+  // The case that matters most: normalisation must not swallow the DIFF text a failure prints.
+  const sha = (l) => /output-sha256=([0-9a-f]{64})/.exec(l)[1];
+  const a = check(gate('G1', 'echo "expected 1 got 1"', 'expected'), ['--approve']).ledger();
+  const b = check(gate('G1', 'echo "expected 1 got 2"', 'expected'), ['--approve']).ledger();
+  assert.notEqual(sha(a), sha(b));
+});
+
+test('output-bytes is NOT normalised, so a truncated run stays visible', () => {
+  // Byte count is the one field that must reflect the raw stream: normalisation would hide a run
+  // that died halfway through and happened to normalise to the same text.
+  const r = check(gate('G1', 'echo measured', 'measured'), ['--approve']).ledger();
+  assert.match(r, new RegExp(`output-bytes=${Buffer.byteLength('measured\n')}`));
+});
+
+test('no tracked source file contains a raw control byte', () => {
+  // A file with a NUL in it is BINARY to grep, to `file(1)`, and to every source-walking checker in
+  // this repository: `grep -c e` over such a file prints nothing at all and exits 1, which a naive
+  // check reads as "no matches" rather than "I could not look".
+  //
+  // Three tracked files had raw NUL bytes, all using NUL as an intentional delimiter or — in
+  // safe-redirect.test.mjs — as a real open-redirect attack vector. The fix is to write the ESCAPE
+  // (`\0`, two characters) rather than the raw byte: identical at runtime, and the file stays text.
+  // DELETING the NUL from safe-redirect.test.mjs would destroy a security test, so a future pass
+  // must escape, never strip.
+  const tracked = spawnSync('git', ['ls-files', '*.ts', '*.tsx', '*.mjs', '*.js', '*.luau', '*.astro', '*.py'], {
+    cwd: ROOT, encoding: 'utf8',
+  }).stdout.split('\n').filter(Boolean);
+  assert.ok(tracked.length > 300, `expected a real denominator, got ${tracked.length} files`);
+
+  const offenders = [];
+  for (const rel of tracked) {
+    const buf = readFileSync(join(ROOT, rel));
+    for (const byte of buf) {
+      if (byte < 9 || (byte > 13 && byte < 32) || byte === 127) { offenders.push(rel); break; }
+    }
+  }
+  assert.deepEqual(offenders, [], `these are binary to every grep-based check: ${offenders.join(', ')}`);
+});
