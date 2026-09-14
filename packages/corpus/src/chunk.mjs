@@ -314,6 +314,29 @@ function toBlocks(text) {
   return blocks;
 }
 
+/**
+ * Shorten an oversized block without making the result look complete.
+ *
+ * The packer used to do `b.slice(0, max) + '\n…'`. Measured on a 400-line Luau sample, that cut
+ * mid-identifier (`local part14`, from `part147`), dropped the closing fence while keeping the
+ * opening one, and left the next section's breadcrumb and prose sitting INSIDE an unterminated code
+ * block. The chunk read as an intact code sample, which is the one thing a corpus the model quotes
+ * from must never do.
+ *
+ * So: cut on a line boundary, re-close the fence if the cut left one open, and put the notice
+ * OUTSIDE it — inside a fence, "…" is part of the program rather than a statement about it.
+ */
+function truncateBlock(block, max) {
+  let cut = block.lastIndexOf('\n', max);
+  if (cut <= 0) cut = max; // a single line longer than max; there is no better boundary available
+  let out = block.slice(0, cut);
+  // Fence markers alternate open/close, so an odd count means the last one opened a fence that is
+  // still open — and it names the marker style (``` or ~~~) needed to close it.
+  const marks = out.match(/^(?:```|~~~)/gm) ?? [];
+  if (marks.length % 2 === 1) out += '\n' + marks[marks.length - 1];
+  return out + '\n[… truncated]';
+}
+
 function packGuideChunks(sections, pageTitle) {
   // sections: [{heading, body}]
   const chunks = []; // {title, text}
@@ -334,7 +357,7 @@ function packGuideChunks(sections, pageTitle) {
         cur.text += `\n## ${sec.heading}\n`;
       }
       let b = block;
-      if (b.length > GUIDE_HARD_MAX * 2) b = b.slice(0, GUIDE_HARD_MAX * 2) + '\n…';
+      if (b.length > GUIDE_HARD_MAX * 2) b = truncateBlock(b, GUIDE_HARD_MAX * 2);
       cur.text += b + '\n\n';
       if (cur.text.length >= GUIDE_TARGET) flush();
     }
@@ -538,4 +561,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 //   Everything below takes text and returns text or structure: no filesystem, no network, no
 //   configuration. They are the part of this file that decides what a documentation chunk IS, and
 //   they were unreachable from a test purely by where they sat. ]]
-export { slugify, cleanRefs, oneLine, stripFrontmatter, stripMdx, toBlocks, splitByH2, packGuideChunks, guidePriority, memberLine, typeStr, paramSig, returnSig };
+export { slugify, cleanRefs, oneLine, stripFrontmatter, stripMdx, toBlocks, splitByH2, packGuideChunks, truncateBlock, guidePriority, memberLine, typeStr, paramSig, returnSig };
