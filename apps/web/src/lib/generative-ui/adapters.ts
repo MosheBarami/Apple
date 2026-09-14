@@ -120,7 +120,49 @@ function viewEntry(view: ViewLike) {
 }
 
 /** A render, optionally with its critique, as an approved document. */
-export function renderResultToDocument(result: RenderViewResult, critique?: CritiqueLike | null): ValidationResult {
+/**
+ * The deterministic panel's report, restated so the web app owns no worker import.
+ *
+ * `unchecked` is the field that matters. Non-empty means the panel's silence is PARTIAL — rules
+ * that never ran because the harness could not measure their metric — and a clean verdict rendered
+ * over a non-empty `unchecked` would be telling the user something the panel did not establish.
+ */
+export interface PanelLike {
+  confirmed: { subject: string; severity: string; claims: string[] }[];
+  unchecked: { lens: string; subject: string; metric: string }[];
+  report: string;
+}
+
+export function looksLikePanel(v: unknown): v is PanelLike {
+  return isObject(v) && Array.isArray(v['unchecked']) && Array.isArray(v['confirmed']);
+}
+
+/**
+ * A callout saying what the panel could NOT check.
+ *
+ * Deliberately placed BEFORE the findings, because the findings are what a reader forms an opinion
+ * from and a caveat underneath arrives too late to qualify anything. Tone is a warning rather than
+ * an error: nothing failed, and that is precisely the problem — a partial pass looks like a pass.
+ */
+function uncheckedCallout(panel: PanelLike) {
+  const metrics = [...new Set(panel.unchecked.map((u) => u.metric))];
+  const subjects = [...new Set(panel.unchecked.map((u) => u.subject))];
+  return {
+    type: 'callout',
+    tone: 'warn',
+    title: 'This check is incomplete',
+    text:
+      `${panel.unchecked.length} rule${panel.unchecked.length === 1 ? '' : 's'} could not run — nothing measured ` +
+      `${metrics.slice(0, 4).join(', ')}${metrics.length > 4 ? ` and ${metrics.length - 4} more` : ''}. ` +
+      `Nothing below covers ${subjects.slice(0, 3).join(', ')}${subjects.length > 3 ? ' and others' : ''}.`,
+  };
+}
+
+export function renderResultToDocument(
+  result: RenderViewResult,
+  critique?: CritiqueLike | null,
+  panel?: PanelLike | null,
+): ValidationResult {
   const blocks: unknown[] = [
     {
       type: 'render_review',
@@ -135,6 +177,8 @@ export function renderResultToDocument(result: RenderViewResult, critique?: Crit
       lighting: lightingRows(result.lighting),
     },
   ];
+  // Before the critique, for the same reason the worker's own report prints it before the tally.
+  if (panel?.unchecked.length) blocks.push(uncheckedCallout(panel));
   if (critique) blocks.push(critiqueBlock(critique));
   return sanitizeDocument({ v: 1, blocks });
 }
@@ -332,8 +376,13 @@ export function documentFromToolDetail(detail: unknown): ValidationResult | null
   // { render: RenderViewResult, critique?: VisualCritique }
   const render = detail['render'] ?? detail['result'] ?? (looksLikeRenderResult(detail) ? detail : null);
   const critique = detail['critique'] ?? (looksLikeCritique(detail) ? detail : null);
+  const panel = detail['panel'];
   if (looksLikeRenderResult(render)) {
-    return renderResultToDocument(render, looksLikeCritique(critique) ? critique : null);
+    return renderResultToDocument(
+      render,
+      looksLikeCritique(critique) ? critique : null,
+      looksLikePanel(panel) ? panel : null,
+    );
   }
   if (looksLikeCritique(critique)) return critiqueToDocument(critique);
 

@@ -30,6 +30,8 @@ import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, 
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
+import { formatPanelReport, runCriticPanel } from './critic';
+import { criticInputFromRender } from './critic-input';
 
 export interface AgentCtx {
   env: Env;
@@ -1075,8 +1077,26 @@ export const TOOLS: Record<string, ToolImpl> = {
       const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all');
       if ('error' in res) return res;
       ctx.lastRender = res;
-      const critique = await critiqueViews(ctx.env, res, String(a.intent ?? 'a well-built Roblox scene'));
+      const intent = String(a.intent ?? 'a well-built Roblox scene');
+      const critique = await critiqueViews(ctx.env, res, intent);
       ctx.lastCritique = critique;
+
+      // THE DETERMINISTIC PANEL, alongside the model's opinion.
+      //
+      // `critic.ts` shipped in zero bytes until now: its only importer anywhere was a test, and the
+      // deployed bundle contained no trace of it. It is 900 lines of measured rules with an evidence
+      // gate — a criticism that cannot cite a number is DISCARDED rather than down-weighted — and it
+      // was running nowhere while the product asked a vision model for a score instead.
+      //
+      // The two are complementary and are reported separately on purpose. `critiqueViews` is a
+      // model's judgement of pixels; the panel is arithmetic over what the plugin measured. Where
+      // they disagree, that disagreement is information.
+      //
+      // The panel runs with NO judge, so it makes zero model calls and costs nothing. Five of its
+      // eighteen metrics are pixel-derived and are not supplied, because reproducing them here would
+      // mean inferring a downsample and a masking rule defined in the eval harness — and the panel
+      // now REPORTS what it could not check, so a partial run says so instead of looking clean.
+      const panel = await runCriticPanel(criticInputFromRender(res, intent));
 
       // SHOW THE USER WHAT THE CRITIC LOOKED AT.
       //
@@ -1102,6 +1122,14 @@ export const TOOLS: Record<string, ToolImpl> = {
               views: [{ name: hero.name, pngDataUrl: png, meta: hero.meta }],
             },
             critique,
+            panel: {
+              confirmed: panel.adjudication.confirmed,
+              // Non-empty means this verdict is PARTIAL. The browser renders it as such rather than
+              // as a clean result, because a clean result over unchecked rules is the failure this
+              // whole subsystem exists to prevent.
+              unchecked: panel.unchecked,
+              report: formatPanelReport(panel),
+            },
           };
         }
       }
