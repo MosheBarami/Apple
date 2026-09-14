@@ -388,7 +388,7 @@ function runProfile(body, tag) {
     '\treturn updated',
     'end',
     '',
-    'local removingHandler, closeHandler = nil, nil',
+    'local removingHandler, closeHandler, heartbeat = nil, nil, nil',
     'game = {',
     '\tJobId = "server-A",',
     '\tGetService = function(self, name)',
@@ -401,7 +401,7 @@ function runProfile(body, tag) {
     '\t\t\t\tGetPlayers = function() return {} end,',
     '\t\t\t}',
     '\t\tend',
-    '\t\treturn { IsStudio = function() return false end }',
+    '\t\treturn { IsStudio = function() return false end, Heartbeat = { Connect = function(_, fn) heartbeat = fn end } }',
     '\tend,',
     '\tBindToClose = function(self, fn) closeHandler = fn end,',
     '}',
@@ -485,6 +485,134 @@ test('A FAILED LOAD WRITES NOTHING ON RELEASE — the rule that saves accounts',
     'assert(store.writes == writesBefore, "and must not have written AT ALL")',
     'assert(store.data["u_7"].value.coins == 500, "the real account is untouched")',
   ].join('\n'), 'prof-failed-load');
+  assert.ok(r.ok, r.output);
+});
+
+/**
+ * THE LOCK HAS TO SURVIVE THE SESSION, not just start it.
+ *
+ * Rule 3 says one writable copy per player, enforced by a lock another server may take once it has
+ * gone stale. The lock was taken at load and then never touched again, so LOCK_STALE_SECONDS was
+ * counting from the moment the player joined rather than from the last sign this server was alive.
+ * Fifteen minutes is an ordinary session length. A second server would load the same player while
+ * the first was still playing them, and then both would save — which is the exact outcome the
+ * whole module exists to prevent, reached by the mechanism meant to prevent it.
+ *
+ * So the lock is refreshed on a heartbeat and re-checked on every write. These drive the refresh
+ * directly; the connection itself is asserted separately below.
+ */
+test('THE HEARTBEAT KEEPS A LIVE SESSION FROM GOING STALE UNDER ANOTHER SERVER', () => {
+  const r = runProfile([
+    'assert(M.load(player) ~= nil, "the session loads")',
+    'local takenAt = store.data["u_7"].lock.at',
+    '',
+    // most of an ordinary session passes with no purchase, so nothing has written
+    'advance(800)',
+    'M.refreshAllLocks()',
+    'assert(store.data["u_7"].lock.at == takenAt + 800, "the lock must move forward with the clock")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "and still be ours")',
+    '',
+    // and the value is untouched: this is a lock refresh, not an autosave
+    'assert(store.data["u_7"].value.coins == 0, "the refresh must not write player data")',
+    '',
+    // THE PROPERTY, stated as the thing another server can observe: with the session refreshed,
+    // a takeover attempt well past LOCK_STALE_SECONDS from the original login is still refused.
+    'local otherServer = { UserId = 7 }',
+    'game.JobId = "server-B"',
+    'assert(M.load(player) ~= nil, "same server reloading is fine")',
+    'game.JobId = "server-A"',
+    '',
+    // and once this server stops refreshing, the lock does go stale and a takeover succeeds
+    'store.data["u_7"].lock = { serverId = "server-B", at = os.time() }',
+    'advance(901)',
+    'assert(M.load(player) ~= nil, "an unrefreshed lock must eventually be takeable")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "by whoever is still alive")',
+  ].join('\n'), 'prof-heartbeat');
+  assert.ok(r.ok, r.output);
+});
+
+test('the refresh is wired to Heartbeat and only fires once the interval has passed', () => {
+  const r = runProfile([
+    'assert(type(heartbeat) == "function", "the module must connect the refresh to Heartbeat")',
+    'assert(M.load(player) ~= nil)',
+    'local takenAt = store.data["u_7"].lock.at',
+    '',
+    'advance(60)',
+    'heartbeat(60)',
+    'assert(store.data["u_7"].lock.at == takenAt, "a minute in, nothing should have been written")',
+    '',
+    'advance(130)',
+    'heartbeat(130)',
+    'assert(store.data["u_7"].lock.at == takenAt + 190, "past the interval it refreshes")',
+  ].join('\n'), 'prof-heartbeat-wiring');
+  assert.ok(r.ok, r.output);
+});
+
+test('A REFRESH THAT FINDS THE LOCK TAKEN STOPS THIS SESSION SAVING', () => {
+  // If another server has the player, our in-memory copy is a fork. Continuing to save would
+  // replace their live session with ours, which is the account-wiping write rule 2 is about —
+  // arriving by a different road.
+  const r = runProfile([
+    'assert(M.load(player) ~= nil)',
+    'M.get(player).coins = 250',
+    '',
+    // the handover: another server takes the key while we are idle
+    'store.data["u_7"] = { value = { coins = 900 }, lock = { serverId = "server-B", at = os.time() } }',
+    'M.refreshAllLocks()',
+    'assert(M.get(player) == nil, "a session that lost its lock must stop handing out a writable table")',
+    '',
+    'assert(M.commit(player, { coins = 250 }) == false, "we must refuse to save after losing the lock")',
+    'assert(M.release(player) == false, "and refuse on the way out too")',
+    'assert(store.data["u_7"].value.coins == 900, "their data must be intact, has " .. tostring(store.data["u_7"].value.coins))',
+    'assert(store.data["u_7"].lock.serverId == "server-B", "and their lock still theirs")',
+    'assert(#warnings > 0, "losing a lock is not a silent event")',
+  ].join('\n'), 'prof-lock-lost');
+  assert.ok(r.ok, r.output);
+});
+
+test('RELEASE REFUSES TO WRITE OVER A LOCK THAT IS NO LONGER OURS', () => {
+  // The handover this covers is the one nothing warned us about: the lock went to another server
+  // between our last refresh and the player leaving, so canSave is still true and release believes
+  // it is doing the right thing. Writing here would replace a live session on another server with
+  // a snapshot from before the handover, and clearing the lock would leave that session unguarded.
+  const r = runProfile([
+    'assert(M.load(player) ~= nil)',
+    'M.get(player).coins = 40',
+    '',
+    // taken silently — no refresh has run, so this session still thinks it may save
+    'store.data["u_7"] = { value = { coins = 900 }, lock = { serverId = "server-B", at = os.time() } }',
+    'assert(M.get(player) ~= nil, "this session has not noticed yet — that is the point")',
+    '',
+    'assert(M.release(player) == false, "release must refuse once it sees the foreign lock")',
+    'assert(store.data["u_7"].value.coins == 900, "their data intact, has " .. tostring(store.data["u_7"].value.coins))',
+    'assert(store.data["u_7"].lock ~= nil, "AND their lock must not be cleared out from under them")',
+    'assert(store.data["u_7"].lock.serverId == "server-B")',
+  ].join('\n'), 'prof-release-foreign-lock');
+  assert.ok(r.ok, r.output);
+});
+
+test('a commit refuses when another server holds the lock, even without a refresh first', () => {
+  // The write path checks for itself. A purchase must get a false here, because a false is what
+  // stops the receipt being consumed.
+  const r = runProfile([
+    'assert(M.load(player) ~= nil)',
+    'store.data["u_7"].lock = { serverId = "server-B", at = os.time() }',
+    'assert(M.commit(player, { coins = 999 }) == false, "a commit under a foreign lock must fail")',
+    'assert(store.data["u_7"].value.coins ~= 999, "and must not have written")',
+  ].join('\n'), 'prof-commit-foreign-lock');
+  assert.ok(r.ok, r.output);
+});
+
+test('a successful commit doubles as a lock refresh, because a write proves we are alive', () => {
+  const r = runProfile([
+    'assert(M.load(player) ~= nil)',
+    'local takenAt = store.data["u_7"].lock.at',
+    'advance(400)',
+    'assert(M.commit(player, { coins = 120 }) == true)',
+    'assert(store.data["u_7"].lock.at == takenAt + 400, "the commit must move the lock forward")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "and keep it ours")',
+    'assert(store.data["u_7"].value.coins == 120)',
+  ].join('\n'), 'prof-commit-refreshes');
   assert.ok(r.ok, r.output);
 });
 

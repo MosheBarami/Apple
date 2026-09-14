@@ -54,7 +54,8 @@ const PROFILE_SOURCE = `--!strict
 --      two servers saving the same player cannot silently overwrite one another.
 --   2. If the LOAD failed, this session never saves. Writing a fresh default over a read that
 --      errored is how an account is wiped, and on the server it looks exactly like a good save.
---   3. One writable copy per player. A second server takes over only after the lock goes stale.
+--   3. One writable copy per player. The lock is REFRESHED while the session runs and re-checked
+--      on every write, so a second server takes over only when this one has actually gone.
 --   4. BindToClose as well as PlayerRemoving — a shutting-down server does not always fire
 --      PlayerRemoving for everyone before it goes.
 local DataStoreService = game:GetService("DataStoreService")
@@ -65,7 +66,15 @@ local Profile = {}
 
 local STORE = DataStoreService:GetDataStore("PlayerProfile_v1")
 local RETRIES = 4
+
+-- How long a lock may go untouched before another server may take it. This is a claim about a
+-- server being GONE, so it has to be refreshed while the session is alive — see the heartbeat
+-- below. Without that refresh, "stale" would mean "fifteen minutes after they logged in", and a
+-- second server would take over a player who is still happily playing on the first.
 local LOCK_STALE_SECONDS = 900
+local LOCK_REFRESH_SECONDS = 180
+
+local SERVER_ID = game.JobId ~= "" and game.JobId or "studio"
 
 -- Edit this to match your game. Every field a player can earn belongs here.
 local DEFAULTS = {
@@ -104,7 +113,7 @@ end
 --- Load a player's profile and take the session lock. Yields.
 --- Returns the data table, or nil when the read failed — and nil MUST disable saving.
 function Profile.load(player)
-	local serverId = game.JobId ~= "" and game.JobId or "studio"
+	local serverId = SERVER_ID
 	local ok, data = attempt(function()
 		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
 			local now = os.time()
@@ -146,18 +155,37 @@ function Profile.release(player)
 		-- The load failed, so there is nothing trustworthy to write. This is the rule.
 		return false
 	end
-	local ok = attempt(function()
-		return STORE:UpdateAsync(keyFor(player.UserId), function()
+	local ok, written = attempt(function()
+		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
+			-- THE LOCK IS CHECKED ON THE WAY OUT TOO. Taking it at load is not enough: if this
+			-- server stalled long enough for the lock to go stale, another one has legitimately
+			-- taken this player over and is writing their live session. Writing ours on top would
+			-- replace a real session with a snapshot from before the handover, and clearing the
+			-- lock would leave a live session unprotected on top of that.
+			if stored ~= nil and stored.lock ~= nil and stored.lock.serverId ~= SERVER_ID then
+				return nil
+			end
 			return { value = entry.value, lock = nil }
 		end)
 	end)
+	if ok and written == nil then
+		warn("[Profile] another server holds " .. keyFor(player.UserId) .. " — did not save over it")
+		return false
+	end
 	return ok
 end
 
 --- The live table for a player, or nil when this session may not save them.
 function Profile.get(player)
 	local entry = cache[player.UserId]
-	return entry and entry.value or nil
+	-- canSave is checked, not just assumed from value being nil. Those two agreed by accident while
+	-- the only way to be unsaveable was a failed load, which also left value nil. A session can now
+	-- lose its lock to another server mid-play, and a caller handed the table after that would go on
+	-- writing into something that will never be saved, with nothing to tell them.
+	if entry == nil or not entry.canSave then
+		return nil
+	end
+	return entry.value
 end
 
 --- Persist a SPECIFIC table for this player now, and adopt it as the session's data on success.
@@ -171,17 +199,90 @@ function Profile.commit(player, data)
 	if entry == nil or not entry.canSave then
 		return false
 	end
-	local ok = attempt(function()
+	local ok, written = attempt(function()
 		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
 			local lock = stored and stored.lock or nil
-			return { value = data, lock = lock }
+			if lock ~= nil and lock.serverId ~= SERVER_ID then
+				-- Not ours any more. Refusing is the only safe answer: the caller checks the
+				-- return, and for a purchase a false means the receipt is not consumed.
+				return nil
+			end
+			-- A successful write is proof this session is alive, so it doubles as a lock refresh.
+			return { value = data, lock = { serverId = SERVER_ID, at = os.time() } }
 		end)
 	end)
+	if ok and written == nil then
+		entry.canSave = false
+		warn("[Profile] lost the lock on " .. keyFor(player.UserId) .. " — this session may no longer save")
+		return false
+	end
 	if ok then
 		entry.value = data
 	end
 	return ok
 end
+
+--- Push this session's lock timestamp forward for one player. Yields. Returns false when the lock
+--- is no longer ours, which also disables saving for that player.
+function Profile.refreshLock(userId)
+	local entry = cache[userId]
+	if entry == nil or not entry.canSave then
+		return false
+	end
+	local ok, written = attempt(function()
+		return STORE:UpdateAsync(keyFor(userId), function(stored)
+			if stored == nil or stored.lock == nil or stored.lock.serverId ~= SERVER_ID then
+				return nil
+			end
+			stored.lock.at = os.time()
+			return stored
+		end)
+	end)
+	if ok and written == nil then
+		-- Another server has taken this player. Continuing to save would overwrite a live session
+		-- with ours, so this session stops writing — the same refusal a failed load produces.
+		entry.canSave = false
+		warn("[Profile] lock on " .. keyFor(userId) .. " was taken by another server; saving disabled")
+		return false
+	end
+	return ok
+end
+
+--- Touch every live lock this server holds. Yields. Called by the heartbeat below; a test calls it
+--- directly, which is the only reason the refresh is checkable without waiting three minutes.
+function Profile.refreshAllLocks()
+	local ids = {}
+	for userId, entry in pairs(cache) do
+		if entry.canSave then
+			table.insert(ids, userId)
+		end
+	end
+	-- Collected first: refreshLock yields, and mutating cache while iterating it is undefined.
+	for _, userId in ipairs(ids) do
+		Profile.refreshLock(userId)
+	end
+end
+
+-- THE HEARTBEAT. A lock records the last moment this server was known to be alive, so it has to be
+-- touched while the session runs. Left alone, LOCK_STALE_SECONDS would expire during an ordinary
+-- play session and a second server would load the same player — two writable copies, which is
+-- exactly what rule 3 exists to prevent.
+--
+-- The cost is one small write per player per interval, far inside the per-server budget of
+-- 60 + 10 per player per minute. It is not an autosave: only the timestamp moves.
+--
+-- An accumulator on Heartbeat rather than a while-loop, because a loop that nothing can stop is
+-- also a loop nothing can test, and the refresh has to be driven deliberately to be checked at all.
+-- The work is spawned because a Heartbeat handler must not yield, and DataStore calls do.
+local sinceRefresh = 0
+RunService.Heartbeat:Connect(function(dt)
+	sinceRefresh = sinceRefresh + dt
+	if sinceRefresh < LOCK_REFRESH_SECONDS then
+		return
+	end
+	sinceRefresh = 0
+	task.spawn(Profile.refreshAllLocks)
+end)
 
 Players.PlayerRemoving:Connect(function(player)
 	Profile.release(player)
