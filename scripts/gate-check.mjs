@@ -421,7 +421,27 @@ function dependencySet(covDir) {
 }
 
 /** A fingerprint of those files' CONTENTS, so a rename or an edit both move it. */
-function dependencyFingerprint(deps) {
+/**
+ * A checker's DATA inputs, which V8 coverage cannot see.
+ *
+ * `dependencySet` is built from coverage, so it holds the JavaScript a gate executed and nothing
+ * else. check-offer reads 115 .astro/.ts/.md copy files; none appears in its dependency set, so
+ * adding one page changes its output while its fingerprint says nothing changed — and the record
+ * is quarantined for an "unexplained" change that is entirely explained.
+ *
+ * Left alone, that trains whoever meets it to re-baseline reflexively, which is the habit the
+ * quarantine exists to prevent.
+ *
+ * So a checker may DECLARE its data inputs by printing one line: `INPUTS-SHA <hex>`. It is folded
+ * into the dependency fingerprint, so a change to the data it read explains a change in its
+ * output exactly as a change to its code does. Opt-in, and a checker that prints nothing behaves
+ * as before.
+ */
+function declaredInputs(output) {
+  return /^INPUTS-SHA ([0-9a-f]{8,64})$/m.exec(output ?? '')?.[1] ?? null;
+}
+
+function dependencyFingerprint(deps, inputsSha = null) {
   const h = createHash('sha256');
   for (const rel of deps) {
     h.update(rel);
@@ -429,6 +449,9 @@ function dependencyFingerprint(deps) {
     try { h.update(readFileSync(join(ROOT, rel))); } catch { h.update('MISSING'); }
     h.update('\0');
   }
+  // A checker's DECLARED data inputs, folded in so a change to what it READ explains a change in
+  // what it printed, exactly as a change to its code does.
+  if (inputsSha) { h.update('INPUTS'); h.update('\0'); h.update(inputsSha); }
   return h.digest('hex').slice(0, 24);
 }
 
@@ -459,7 +482,7 @@ function runGate(gate) {
   return {
     ...gate, exit, matched, met: exit === 0 && matched, output,
     ms: Date.now() - started, timedOut: proc.status === null,
-    deps, depsSha: dependencyFingerprint(deps),
+    deps, depsSha: dependencyFingerprint(deps, declaredInputs(output)),
   };
 }
 

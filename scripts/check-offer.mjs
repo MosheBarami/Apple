@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 import { copyProblems, planProblems, termProblems } from './lib/offer-rules.mjs';
 
+import { createHash } from 'node:crypto';
 import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD } from '../packages/shared/src/index.ts';
 import {
   BILLABLE_NEURONS_PER_DAY,
@@ -119,6 +120,20 @@ const problems = [
 for (const n of note) console.log(`  ok  ${n}`);
 
 if (!problems.length) {
+  // DECLARE THE DATA INPUTS, so gate-check can tell an explained output change from an
+  // unexplained one. This checker reads copy files that V8 coverage cannot see — they are data,
+  // not executed JavaScript — so adding one page changed the printed count while the dependency
+  // fingerprint said nothing had changed, and the gate was quarantined for a change that was
+  // entirely explained. Left alone, that trains whoever meets it to re-baseline reflexively,
+  // which is the habit the quarantine exists to prevent.
+  const inputs = createHash('sha256');
+  for (const f of [...copySurface].sort()) {
+    inputs.update(f);
+    inputs.update('\0');
+    try { inputs.update(readFileSync(f)); } catch { inputs.update('MISSING'); }
+    inputs.update('\0');
+  }
+  console.log(`INPUTS-SHA ${inputs.digest('hex').slice(0, 24)}`);
   console.log(`OFFER COHERENT — ${PLAN_IDS.length} plans, ${copySurface.length} copy files checked`);
   process.exit(0);
 }
