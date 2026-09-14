@@ -1,0 +1,25 @@
+w17 — whole suite, typecheck and E2E on grow/main @ 13eea14
+
+  typecheck   pnpm -r typecheck — every package clean (site, web, worker, shared, evals, design, training, corpus)
+  unit        1,407 passing / 1 failing / 4 skipped across 6 packages
+                apps/benchmark/crystal-canyon    4/4
+                packages/design                 80/80
+                packages/training               16/20  (4 skipped)
+                packages/corpus                231/231
+                apps/web                       493/493
+                apps/worker                    583/584
+  e2e         54/54 — landing.spec.ts across desktop, laptop and mobile
+  the one red  "no registered tool relies on the phase default" — phaseForTool needs cases for the
+               11 tools this branch adds, in packages/shared, which is rbxai-1d's file. Agreed with
+               them that it lands with the merge; it is the only failure and it is expected.
+
+GATE EVIDENCE IS NOT RECORDED, deliberately. Writing it would mean running scripts/gate-check.mjs
+against main's GATES.md, and all four of these say not to:
+  - rbxai-1d asked me directly not to touch main's GATES.md; it is the ledger their verification
+    loop writes to, and I have already got it wrong once today.
+  - They are mid-edit on GATES.md AND on gate-check.mjs itself right now.
+  - Evidence records carry tree-clean; main's tree is dirty with their in-flight work.
+  - Most importantly: this code is on grow/main. Recording evidence on main for a suite that main
+    does not contain would be false evidence, which is the one thing the gate system exists to stop.
+The numbers above are the honest record until the branch merges; the evidence belongs to whoever
+runs the gates on main afterwards.
