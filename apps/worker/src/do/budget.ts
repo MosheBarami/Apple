@@ -66,6 +66,19 @@ function clamp(n: number, lo: number, hi: number): number {
  * number. An unknown-cost call is not a zero-cost call and the two must never render the same, so
  * this returns null and each caller below decides how to fail — closed, and loudly.
  */
+/**
+ * Why a value could not be read. Three causes were collapsed into one null — not a number,
+ * negative, and non-finite — so a caller billed its reservation for sending -1 could not tell from
+ * the response why. Reporting only; `readableNeurons` remains the decision.
+ */
+function whyUnreadable(n: unknown): 'not_a_number' | 'negative' | 'not_finite' | null {
+  if (typeof n !== 'number') return 'not_a_number';
+  if (Number.isNaN(n)) return 'not_a_number';
+  if (!Number.isFinite(n)) return 'not_finite';
+  if (n < 0) return 'negative';
+  return null;
+}
+
 function readableNeurons(n: unknown): number | null {
   // `Number.isFinite` CANNOT BE FALSIFIED TODAY, and that is worth saying so nobody mistakes it for
   // a tested clause. `>= 0` already rejects NaN (NaN >= 0 is false) and -Infinity, so +Infinity is
@@ -305,14 +318,35 @@ export class BudgetDO extends DurableObject<Env> {
 
       // An unreadable reservation is NOT subtracted: guessing would let one caller erase another
       // caller's reservation. It leaks until the UTC rollover, which shrinks capacity — closed.
-      if (heldRaw !== null) s.dayPending = Math.max(0, s.dayPending - heldRaw);
+      if (heldRaw !== null) {
+        s.dayPending = Math.max(0, s.dayPending - heldRaw);
+      } else {
+        // THE LEAK IS ANNOUNCED. Not subtracting is correct — guessing would let one caller erase
+        // another caller's reservation — but the reservation then sits until the UTC rollover,
+        // capacity quietly shrinks, and /reserve starts refusing with `daily_cap`. An operator
+        // would see a full budget with no spend to match it, which is indistinguishable from
+        // genuine demand. `estimated` reaches the caller; this reaches whoever is reading logs.
+        // Found by rbxai-1d reviewing the commit that added the guard above.
+        console.warn(
+          `budget: unreadable reservation (${whyUnreadable(reserved)}) from model=${String(model).slice(0, 80)} ` +
+            `kind=${String(kind).slice(0, 40)}; the hold is NOT released and leaks until the UTC rollover`,
+        );
+      }
 
-      const spent =
-        actualRaw !== null
-          ? Math.ceil(actualRaw)
-          : heldRaw !== null
-            ? Math.ceil(heldRaw)
-            : (await this.limits()).maxNeuronsPerRequest; // nothing readable: charge the most it could have been
+      let spent: number;
+      if (actualRaw !== null) {
+        spent = Math.ceil(actualRaw);
+      } else if (heldRaw !== null) {
+        spent = Math.ceil(heldRaw);
+      } else {
+        // Nothing readable at all: charge the most it could have been. A true upper bound, because
+        // /reserve already refused anything above it.
+        spent = (await this.limits()).maxNeuronsPerRequest;
+        console.warn(
+          `budget: neither reservation nor actual was readable for model=${String(model).slice(0, 80)} ` +
+            `kind=${String(kind).slice(0, 40)}; charging the per-request ceiling ${spent} as an upper bound`,
+        );
+      }
       s.dayNeurons += spent;
       const dayBillable = Math.max(0, s.dayNeurons - FREE_NEURONS_PER_DAY);
       s.monthBillableNeurons += Math.max(0, dayBillable - s.dayBillableNeurons);
@@ -329,7 +363,13 @@ export class BudgetDO extends DurableObject<Env> {
       this.sql.exec(`delete from spend where day < ?`, new Date(Date.now() - 62 * 864e5).toISOString().slice(0, 10));
       return Response.json({
         ok: true,
-        ...(unreadable.length ? { estimated: true, unreadable: unreadable.join('+') } : {}),
+        ...(unreadable.length
+          ? {
+              estimated: true,
+              unreadable: unreadable.join('+'),
+              unreadableWhy: whyUnreadable(actualRaw === null ? actual : reserved),
+            }
+          : {}),
         state: this.view(s, killed, killedReason),
       });
     }

@@ -59,12 +59,19 @@ function budget(seed = {}) {
     sql: { exec(q, ...args) { rows.push({ q, args }); return { toArray: () => [] }; } },
   };
   const o = new BudgetDO({ storage, blockConcurrencyWhile: (fn) => fn() }, {});
-  const call = async (path, body, method = 'POST') =>
-    (await o.fetch(new Request('https://do' + path, {
-      method, ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
-    }))).json();
+  const warnings = [];
+  const call = async (path, body, method = 'POST') => {
+    // A leak that nobody can grep is the thing being tested, so the log is captured, not ignored.
+    const realWarn = console.warn;
+    console.warn = (...a) => warnings.push(a.map(String).join(' '));
+    try {
+      return await (await o.fetch(new Request('https://do' + path, {
+        method, ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
+      }))).json();
+    } finally { console.warn = realWarn; }
+  };
   return {
-    call, sql: rows, stored: () => m.get('budget'),
+    call, sql: rows, warnings, stored: () => m.get('budget'),
     state: () => call('/state', null, 'GET'),
     reserve: (neurons, model = 'm') => call('/reserve', { neurons, model }),
     settle: (reserved, actual, model = 'm', kind = 'k') => call('/settle', { reserved, actual, model, kind }),
@@ -373,4 +380,68 @@ test('CONTROL: lowering a cap actually BINDS', async () => {
   const blocked = await b.reserve(100);
   assert.equal(blocked.ok, false, 'a lowered daily cap must refuse');
   assert.equal(blocked.reason, 'daily_cap');
+});
+
+/* ------------------------------------- a silent leak is still a silent failure --- */
+
+/**
+ * Found by rbxai-1d reviewing bf64b0d, and it is the pattern one layer in from where I fixed it.
+ *
+ * When `reserved` is unreadable /settle deliberately does NOT subtract it — guessing would let one
+ * caller erase another caller's reservation. That is right, and it fails closed. But the
+ * reservation then leaks until the UTC rollover, capacity silently shrinks, /reserve starts
+ * refusing with `daily_cap`, and an operator sees a full budget with no spend to match it —
+ * indistinguishable from genuine demand. `estimated: true` reaches the CALLER; it reaches nobody
+ * reading logs at 3am. budget.ts had no logging of any kind.
+ */
+
+test('a leaked reservation is announced, not just survived', async () => {
+  const b = budget();
+  await b.reserve(500);
+  const s = await b.call('/settle', { reserved: 'abc', actual: 100, model: 'glm-5.3-flash', kind: 'chat' });
+  assert.equal(s.unreadable, 'reserved');
+  assert.equal(b.warnings.length >= 1, true, 'a leaked reservation must leave a line someone can grep');
+  const line = b.warnings.join(' ');
+  assert.match(line, /budget/i, 'the warning must be identifiable as the budget guard');
+  assert.match(line, /glm-5\.3-flash/, 'and must name the model, or it cannot be traced to a caller');
+});
+
+test('charging the upper bound because nothing was readable is announced too', async () => {
+  const b = budget();
+  const s = await b.call('/settle', { reserved: null, actual: null, model: 'glm-5.3-flash', kind: 'chat' });
+  assert.equal(s.estimated, true);
+  assert.equal(s.state.dayNeurons, MAX_PER_REQUEST, 'nothing readable charges the most it could have been');
+  // NOT `warnings.length >= 1`. Both fields are unreadable here, so the leaked-reservation warning
+  // already satisfies a bare count — and it did: deleting this branch's warn entirely left the test
+  // green. The assertion has to name the line it is looking for.
+  const upperBound = b.warnings.filter((w) => /upper bound/.test(w));
+  assert.equal(upperBound.length, 1, `expected one upper-bound warning, got: ${JSON.stringify(b.warnings)}`);
+  assert.match(upperBound[0], new RegExp(String(MAX_PER_REQUEST)), 'the warning must name the figure charged');
+});
+
+test('the response says WHY a figure was unreadable, not only that it was', async () => {
+  // Three different causes were collapsed into one null: not a number, negative, and non-finite.
+  // A caller billed the reservation for sending -1 could not tell why from the response alone.
+  const cases = [
+    [-5, 'negative'],
+    ['abc', 'not_a_number'],
+    [null, 'not_a_number'],
+  ];
+  for (const [value, why] of cases) {
+    const b = budget();
+    await b.reserve(800);
+    const s = await b.call('/settle', { reserved: 800, actual: value, model: 'm', kind: 'k' });
+    assert.equal(s.estimated, true);
+    assert.equal(s.unreadableWhy, why, `actual=${JSON.stringify(value)} should report "${why}"`);
+  }
+});
+
+test('CONTROL: a readable settle warns about nothing and says nothing was unreadable', async () => {
+  // A guard that warned on every settle would satisfy all three tests above and drown the signal.
+  const b = budget();
+  await b.reserve(800);
+  const s = await b.call('/settle', { reserved: 800, actual: 640, model: 'm', kind: 'k' });
+  assert.equal(s.estimated, undefined);
+  assert.equal(s.unreadableWhy, undefined);
+  assert.deepEqual(b.warnings, [], 'a normal settle must be silent, or the warning means nothing');
 });
