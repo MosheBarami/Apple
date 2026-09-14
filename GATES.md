@@ -15,7 +15,7 @@ and are tracked as handoffs, not gates.
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 7 --label G1 -- node --test src/lib/generative-ui/adapters.test.mjs
     EXPECT: G1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G1; path=6765c31f4f12/53 entries; git-sha=899069f; tree-clean=yes; break-sha=899069f; EXPECT=unmatched; output-sha256=c7c999c8609f15a4085729693ab4d0235ee666d337264257d1bfe394abdfab1c; output-bytes=1426; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=dca3770ad7fb788cc98c3495; at=2026-09-14T19:06:50.027Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=f2e13ba; tree-clean=yes; EXPECT=matched; output-sha256=b3208d6be44b3c6002d07128eabd1dd51cafa058c41ec36093896f2fce6b2b9d; output-bytes=667; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=f02255f4972130c586bd98ea; at=2026-09-14T19:07:05.389Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=b3208d6be44b3c6002d07128eabd1dd51cafa058c41ec36093896f2fce6b2b9d; output-bytes=666; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=7; deps-sha=79dcab76ea963eb26d805bed; at=2026-09-14T19:30:15.156Z
   EXPECT-CHANGE: old=fail 0 new=G1 OK reason=derived-floor-7-measured-7-passing
 
 - [x] G2: Conversation is not routed through the build harness, in English or Hebrew
@@ -59,7 +59,7 @@ and are tracked as handoffs, not gates.
     CHECK: cd apps/worker && node --test tests/billing.test.mjs tests/billing-route.test.mjs
     EXPECT: fail 0
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G8; path=6765c31f4f12/53 entries; git-sha=323f1bc; tree-clean=yes; break-sha=323f1bc; EXPECT=unmatched; output-sha256=60e445bcc8de8f3223964dc6f060510482696bf214db72db377cf8271156c2e5; output-bytes=2153; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=616c838cf664b1dc7e73e217; at=2026-09-14T17:55:17.480Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3ff955d; tree-clean=yes; EXPECT=matched; output-sha256=3d9b6f6acc5c854d043e6c87e2eaac46d00445ef7e85df5cf9d8a8ae0338832a; output-bytes=1657; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=616c838cf664b1dc7e73e217; at=2026-09-14T18:05:46.641Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=3d9b6f6acc5c854d043e6c87e2eaac46d00445ef7e85df5cf9d8a8ae0338832a; output-bytes=1662; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=077a2ceb384e24b324cd0c12; at=2026-09-14T19:30:15.156Z
 
 - [x] G9: The door benchmark separates a correct door from the real broken outputs
     CHECK: cd packages/evals && node ../../scripts/assert-tests.mjs --floor 3 --label G9 -- node --test src/door-benchmark.test.mjs
@@ -228,13 +228,13 @@ test it gated.
     EXPECT: G-ORACLE-2 OK
   EXPECT-CHANGE: old=floor-32 new=floor-33 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-2; path=6765c31f4f12/53 entries; git-sha=61768ab; tree-clean=yes; break-sha=61768ab; EXPECT=unmatched; output-sha256=8eef22c1a5d2c10adbd2db4604bb1541dffdfea51fa3c7193b3849eabdd10f8a; output-bytes=14354; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:10:18.358Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1eca9a7; tree-clean=yes; EXPECT=matched; output-sha256=2034fd679cc136ca8369f84af39012dfc6313ccb011570fbd0a9dfff18b98c30; output-bytes=2759; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=8c85597e3e7eaa6bcac8da0c; at=2026-09-14T19:05:29.189Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=2034fd679cc136ca8369f84af39012dfc6313ccb011570fbd0a9dfff18b98c30; output-bytes=2761; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=bcf3af1da5ba923e67883208; at=2026-09-14T19:30:15.155Z
 
 - [x] G-ORACLE-3: The offer checker measures the four numbers a plan has to reconcile
     CHECK: node scripts/assert-tests.mjs --floor 10 --label G-ORACLE-3 -- node --test tests/check-offer.test.mjs
     EXPECT: G-ORACLE-3 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-3; path=6765c31f4f12/53 entries; git-sha=e3f864b; tree-clean=yes; break-sha=e3f864b; EXPECT=unmatched; output-sha256=46a50e46a62a8bbd7c13a58ad0eeaf888afd4f4f59e466081c2ae4c312a65975; output-bytes=1390; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:12:02.906Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=670a974; tree-clean=yes; EXPECT=matched; output-sha256=1f9cc07b14d6eb4fbc22b13ef4f6d8bb57c63bf9fd840a7bc3f17cb2c18bb5c5; output-bytes=1077; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=5; deps-sha=fc379c2ad2e80a77a98bbadf; at=2026-09-14T17:44:09.024Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=1f9cc07b14d6eb4fbc22b13ef4f6d8bb57c63bf9fd840a7bc3f17cb2c18bb5c5; output-bytes=1068; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=5; deps-sha=a09c15c4e56d94420669c054; at=2026-09-14T19:30:15.155Z
 
 - [x] G-CRITIC-2: The critic's rules, evidence gate and adjudication behave as specified
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-2 -- node --test packages/evals/src/critic.test.mjs
@@ -246,7 +246,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 13 --label G-ORACLE-4 -- node --test tests/check-deadends.test.mjs
     EXPECT: G-ORACLE-4 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-4; path=6765c31f4f12/53 entries; git-sha=9e60f65; tree-clean=yes; break-sha=9e60f65; EXPECT=unmatched; output-sha256=d7a766db8e441089bc63819e48bdd0ad52ac0d8482d049f451cfb0a54e3effc7; output-bytes=1968; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=849a707d7e2395fdffe292e6; at=2026-09-14T17:53:27.432Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=7693a2a; tree-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1074; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=725a1855f9984f9403e8fed3; at=2026-09-14T18:40:38.638Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1077; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=61017c88de5b58016cab9ece; at=2026-09-14T19:30:15.155Z
 
 - [x] G-OFFER-1: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
     STATION: S1
@@ -263,7 +263,7 @@ test it gated.
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G90; path=6765c31f4f12/53 entries; git-sha=6943c26; tree-clean=yes; break-sha=6943c26; EXPECT=unmatched; output-sha256=504c1c10adc6bcba015375f7d75b65ab2a6d3008a0b8e7da0af1e1d9c1fb0ad0; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=173; deps-sha=087b2482e48a9b3f93e1ca0b; at=2026-09-14T19:08:46.376Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=a5302495f6d69c1a218d4e0e9be1ab5080ec9fd8e20a4eab23d39fa3570b55a6; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=221; deps-sha=3e9005051ee31fca040c8734; at=2026-09-14T19:28:57.920Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=92e3931; tree-clean=yes; EXPECT=matched; output-sha256=a5302495f6d69c1a218d4e0e9be1ab5080ec9fd8e20a4eab23d39fa3570b55a6; output-bytes=45; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=221; deps-sha=3e9005051ee31fca040c8734; at=2026-09-14T19:30:15.153Z
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs

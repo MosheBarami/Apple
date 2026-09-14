@@ -3,6 +3,7 @@
   "apps/web/src/lib/generative-ui/adapters.ts",
   "apps/web/src/lib/generative-ui/schema.ts",
   "apps/web/src/lib/generative-ui/validate.ts",
+  "apps/web/src/lib/safe-redirect.ts",
   "packages/shared/src/index.ts",
   "scripts/assert-tests.mjs"
 ]
