@@ -3018,7 +3018,7 @@
           "id": "f-6171a8e9",
           "name": "Luau task suite",
           "status": "done",
-          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — the Luau suite loads and is populated. NOTE: reference answers are graded on every check EXCEPT luau_syntax when no local luau-lsp is present, and it is absent here."
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — the Luau suite loads and is populated, and its reference answers are graded on luau_syntax by a checker that is present and working. CORRECTION 2026-09-15: I previously caveated this row with \"luau-lsp is absent in this environment\", citing the gate ledger recording luau=ABSENT. THE TOOLCHAIN IS INSTALLED — luau, luau-lsp, lune, selene and stylua are all on PATH, and resolveLuauChecker() returns \"luau-lsp (PATH)\" and correctly fails a bad snippet. The ledger field is wrong because gate-check probes with `luau --version`, which luau does not accept, so the probe throws and records ABSENT. I asserted an environment fact from a ledger field instead of from the machine."
         },
         {
           "id": "f-6ca6f7c3",
@@ -3042,7 +3042,7 @@
           "id": "f-45b2109f",
           "name": "Script syntax tests",
           "status": "done",
-          "evidence": "DELIBERATELY UNCITED. The obvious citation is scripting-curriculum.test.mjs, and it would be wrong: that file does `if (!checker) ... graded on every check EXCEPT luau_syntax`, and luau-lsp is absent from this environment (the gate ledger records luau=ABSENT). The test passes without ever running the syntax check this row claims. Needs a citation that fails when the checker is missing."
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — reference answers ARE graded on luau_syntax: resolveLuauChecker() resolves to luau-lsp on PATH, a good snippet passes and a bad one fails. This row was DELIBERATELY UNCITED on the belief that the checker was missing. CORRECTION 2026-09-15: I previously caveated this row with \"luau-lsp is absent in this environment\", citing the gate ledger recording luau=ABSENT. THE TOOLCHAIN IS INSTALLED — luau, luau-lsp, lune, selene and stylua are all on PATH, and resolveLuauChecker() returns \"luau-lsp (PATH)\" and correctly fails a bad snippet. The ledger field is wrong because gate-check probes with `luau --version`, which luau does not accept, so the probe throws and records ABSENT. I asserted an environment fact from a ledger field instead of from the machine."
         },
         {
           "id": "f-ffb80770",
@@ -3714,7 +3714,7 @@
           "id": "f-2f267946",
           "name": "Luau parser",
           "status": "done",
-          "evidence": "packages/evals/src/door-benchmark.test.mjs and scripting-curriculum.test.mjs both resolve the checker through luau.mjs. NOTE: when no local luau-lsp is present they grade every check EXCEPT luau_syntax, and luau-lsp is absent in this environment (the gate ledger records luau=ABSENT), so this citation proves the integration exists, not that syntax checking ran."
+          "evidence": "packages/evals/src/door-benchmark.test.mjs and scripting-curriculum.test.mjs — the parser is reached through luau.mjs and the syntax check genuinely runs. CORRECTION 2026-09-15: I previously caveated this row with \"luau-lsp is absent in this environment\", citing the gate ledger recording luau=ABSENT. THE TOOLCHAIN IS INSTALLED — luau, luau-lsp, lune, selene and stylua are all on PATH, and resolveLuauChecker() returns \"luau-lsp (PATH)\" and correctly fails a bad snippet. The ledger field is wrong because gate-check probes with `luau --version`, which luau does not accept, so the probe throws and records ABSENT. I asserted an environment fact from a ledger field instead of from the machine."
         },
         {
           "id": "f-b8db08a7",
@@ -3738,7 +3738,7 @@
           "id": "f-c6bad20f",
           "name": "luau-lsp integration",
           "status": "done",
-          "evidence": "packages/evals/src/door-benchmark.test.mjs and scripting-curriculum.test.mjs resolve the checker through luau.mjs. NOTE: both grade every check EXCEPT luau_syntax when no local luau-lsp is present, and it is absent here, so this proves the integration exists rather than that it ran."
+          "evidence": "packages/evals/src/luau.mjs resolveLuauChecker(), exercised by door-benchmark.test.mjs and scripting-curriculum.test.mjs. It probes with a GOOD and a BAD snippet and accepts a candidate only if it passes the first and fails the second, so a checker that accepts everything is rejected as no checker at all. CORRECTION 2026-09-15: I previously caveated this row with \"luau-lsp is absent in this environment\", citing the gate ledger recording luau=ABSENT. THE TOOLCHAIN IS INSTALLED — luau, luau-lsp, lune, selene and stylua are all on PATH, and resolveLuauChecker() returns \"luau-lsp (PATH)\" and correctly fails a bad snippet. The ledger field is wrong because gate-check probes with `luau --version`, which luau does not accept, so the probe throws and records ABSENT. I asserted an environment fact from a ledger field instead of from the machine."
         },
         {
           "id": "f-8be838cc",
