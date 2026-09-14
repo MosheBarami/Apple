@@ -52,10 +52,22 @@ measure-tmp.mjs
 # Training: local venv, model weights, datasets and adapters. Re-buildable from
 # src/build-dataset.mjs + the pinned corpus manifest; none of it belongs in git.
 packages/training/.venv/
-packages/training/data/
 packages/training/adapters/
-packages/training/runs/
 packages/training/mlxdata/
+
+# THE TRAINING ARTEFACTS: large and derived are ignored, small and CITED are not.
+#
+# runs/ and data/ were ignored wholesale alongside adapters/, and adapters/ is 210 MB of
+# safetensors so that rule is right for it. runs/ is 36 KB of plain-text logs, and four backlog
+# rows cite those logs as their only evidence — so ignoring them meant four rows nobody but the
+# machine that ran the training could ever verify. That is collateral from a rule aimed at
+# something else.
+#
+# data/ stays ignored because train/val/test.jsonl are DERIVED — build-dataset.mjs regenerates
+# them — but dataset-card.json is 8 KB, is cited by a row, and is the provenance record for a
+# dataset that is not itself tracked. It is re-included by name.
+packages/training/data/*
+!packages/training/data/dataset-card.json
 packages/training/mlxdata-text/
 packages/training/mlxdata/
 

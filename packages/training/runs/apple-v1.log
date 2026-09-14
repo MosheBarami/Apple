@@ -1,0 +1,45 @@
+Loading configuration file lora-apple-v1.yaml
+Loading pretrained model
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 3772.47it/s]
+Loading datasets
+Training
+Trainable parameters: 0.065% (2.621M/4022.468M)
+Starting training..., iters: 250
+Calculating loss...:   0%|          | 0/9 [00:00<?, ?it/s]Calculating loss...:  11%|█         | 1/9 [00:04<00:34,  4.36s/it]Calculating loss...:  22%|██▏       | 2/9 [00:10<00:36,  5.28s/it]Calculating loss...:  33%|███▎      | 3/9 [00:12<00:22,  3.81s/it]Calculating loss...:  44%|████▍     | 4/9 [00:14<00:16,  3.23s/it]Calculating loss...:  56%|█████▌    | 5/9 [00:16<00:10,  2.70s/it]Calculating loss...:  67%|██████▋   | 6/9 [00:18<00:07,  2.58s/it]Calculating loss...:  78%|███████▊  | 7/9 [00:21<00:05,  2.51s/it]Calculating loss...:  89%|████████▉ | 8/9 [00:23<00:02,  2.56s/it]Calculating loss...: 100%|██████████| 9/9 [00:26<00:00,  2.69s/it]Calculating loss...: 100%|██████████| 9/9 [00:26<00:00,  2.98s/it]
+Iter 1: Val loss 2.812, Val took 26.809s
+Iter 10: Train loss 1.937, Learning Rate 1.000e-04, It/sec 0.152, Tokens/sec 88.288, Trained Tokens 5823, Peak mem 18.813 GB
+Iter 20: Train loss 1.500, Learning Rate 1.000e-04, It/sec 0.175, Tokens/sec 92.169, Trained Tokens 11084, Peak mem 18.813 GB
+Iter 30: Train loss 1.318, Learning Rate 1.000e-04, It/sec 0.146, Tokens/sec 97.536, Trained Tokens 17767, Peak mem 20.504 GB
+[WARNING] Some sequences are longer than 1024 tokens. The longest sentence 1078 will be truncated to 1024. Consider pre-splitting your data to save memory.
+Iter 40: Train loss 1.378, Learning Rate 1.000e-04, It/sec 0.119, Tokens/sec 99.665, Trained Tokens 26114, Peak mem 23.554 GB
+Calculating loss...:   0%|          | 0/9 [00:00<?, ?it/s]Calculating loss...:  11%|█         | 1/9 [00:02<00:16,  2.06s/it]Calculating loss...:  22%|██▏       | 2/9 [00:04<00:18,  2.57s/it]Calculating loss...:  33%|███▎      | 3/9 [00:07<00:14,  2.47s/it]Calculating loss...:  44%|████▍     | 4/9 [00:09<00:12,  2.42s/it]Calculating loss...:  56%|█████▌    | 5/9 [00:15<00:14,  3.67s/it]Calculating loss...:  67%|██████▋   | 6/9 [00:18<00:09,  3.32s/it]Calculating loss...:  78%|███████▊  | 7/9 [00:22<00:07,  3.58s/it]Calculating loss...:  89%|████████▉ | 8/9 [00:24<00:03,  3.18s/it]Calculating loss...: 100%|██████████| 9/9 [00:26<00:00,  2.73s/it]Calculating loss...: 100%|██████████| 9/9 [00:26<00:00,  2.93s/it]
+Iter 50: Val loss 1.294, Val took 26.403s
+Iter 50: Train loss 1.396, Learning Rate 1.000e-04, It/sec 0.168, Tokens/sec 111.227, Trained Tokens 32722, Peak mem 23.554 GB
+Iter 50: Saved adapter weights to adapters/apple-v1/adapters.safetensors and adapters/apple-v1/0000050_adapters.safetensors.
+Iter 60: Train loss 1.238, Learning Rate 1.000e-04, It/sec 0.146, Tokens/sec 112.699, Trained Tokens 40445, Peak mem 23.554 GB
+Iter 70: Train loss 1.431, Learning Rate 1.000e-04, It/sec 0.186, Tokens/sec 116.504, Trained Tokens 46692, Peak mem 23.554 GB
+Iter 80: Train loss 1.414, Learning Rate 1.000e-04, It/sec 0.183, Tokens/sec 99.761, Trained Tokens 52146, Peak mem 23.554 GB
+Iter 90: Train loss 0.856, Learning Rate 1.000e-04, It/sec 0.174, Tokens/sec 108.741, Trained Tokens 58411, Peak mem 23.554 GB
+Calculating loss...:   0%|          | 0/9 [00:00<?, ?it/s]Calculating loss...:  11%|█         | 1/9 [00:05<00:47,  5.90s/it]Calculating loss...:  22%|██▏       | 2/9 [00:08<00:26,  3.80s/it]Calculating loss...:  33%|███▎      | 3/9 [00:11<00:20,  3.40s/it]Calculating loss...:  44%|████▍     | 4/9 [00:13<00:14,  2.89s/it]Calculating loss...:  56%|█████▌    | 5/9 [00:15<00:10,  2.70s/it]Calculating loss...:  67%|██████▋   | 6/9 [00:18<00:07,  2.59s/it]Calculating loss...:  78%|███████▊  | 7/9 [00:19<00:04,  2.33s/it]Calculating loss...:  89%|████████▉ | 8/9 [00:24<00:02,  2.93s/it]Calculating loss...: 100%|██████████| 9/9 [00:26<00:00,  2.87s/it]Calculating loss...: 100%|██████████| 9/9 [00:26<00:00,  2.97s/it]
+Iter 100: Val loss 1.318, Val took 26.764s
+Iter 100: Train loss 1.056, Learning Rate 1.000e-04, It/sec 0.179, Tokens/sec 101.408, Trained Tokens 64076, Peak mem 23.554 GB
+Iter 100: Saved adapter weights to adapters/apple-v1/adapters.safetensors and adapters/apple-v1/0000100_adapters.safetensors.
+Iter 110: Train loss 0.937, Learning Rate 1.000e-04, It/sec 0.143, Tokens/sec 95.738, Trained Tokens 70762, Peak mem 23.554 GB
+[WARNING] Some sequences are longer than 1024 tokens. The longest sentence 1078 will be truncated to 1024. Consider pre-splitting your data to save memory.
+Iter 120: Train loss 0.994, Learning Rate 1.000e-04, It/sec 0.161, Tokens/sec 86.543, Trained Tokens 76153, Peak mem 23.565 GB
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/moshe/Desktop/RbxAI/packages/training/.venv/lib/python3.12/site-packages/mlx_lm/__main__.py", line 6, in <module>
+    cli.main()
+  File "/Users/moshe/Desktop/RbxAI/packages/training/.venv/lib/python3.12/site-packages/mlx_lm/cli.py", line 40, in main
+    submodule.main()
+  File "/Users/moshe/Desktop/RbxAI/packages/training/.venv/lib/python3.12/site-packages/mlx_lm/lora.py", line 369, in main
+    run(types.SimpleNamespace(**args))
+  File "/Users/moshe/Desktop/RbxAI/packages/training/.venv/lib/python3.12/site-packages/mlx_lm/lora.py", line 341, in run
+    train_model(args, model, train_set, valid_set, training_callback)
+  File "/Users/moshe/Desktop/RbxAI/packages/training/.venv/lib/python3.12/site-packages/mlx_lm/lora.py", line 295, in train_model
+    train(
+  File "/Users/moshe/Desktop/RbxAI/packages/training/.venv/lib/python3.12/site-packages/mlx_lm/tuner/trainer.py", line 328, in train
+    mx.eval(state, losses, n_tokens, grad_accum)
+RuntimeError: [METAL] Command buffer execution failed: Impacting Interactivity (0000000e:kIOGPUCommandBufferCallbackErrorImpactingInteractivity).

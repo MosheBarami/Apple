@@ -482,7 +482,7 @@ function runGate(gate) {
   return {
     ...gate, exit, matched, met: exit === 0 && matched, output,
     ms: Date.now() - started, timedOut: proc.status === null,
-    deps, depsSha: dependencyFingerprint(deps, declaredInputs(output)),
+    deps, inputsSha: declaredInputs(output), depsSha: dependencyFingerprint(deps, declaredInputs(output)),
   };
 }
 
@@ -505,7 +505,7 @@ const recordLine = (kind, r, extra = '') =>
   `EXPECT=${r.matched ? 'matched' : 'unmatched'}; ` +
   `output-sha256=${sha256(normaliseOutput(r.output))}; output-bytes=${Buffer.byteLength(r.output)}; ` +
   `node=${TOOLS.node}; luau=${TOOLS.luau}; playwright=${TOOLS.playwright}; ` +
-  `deps=${r.deps?.length ?? 0}; deps-sha=${r.depsSha ?? 'none'}; at=${stamp()}`;
+  `deps=${r.deps?.length ?? 0}; deps-sha=${r.depsSha ?? 'none'}; ${r.inputsSha ? `inputs-sha=${r.inputsSha}; ` : ''}at=${stamp()}`;
 
 const evidenceLine = (r) => recordLine('EVIDENCE', r);
 const falsifiedLine = (r, breakSha) => recordLine('FALSIFIED', r, `break-sha=${breakSha}; `);
@@ -554,7 +554,14 @@ if (STATUS) {
         let deps = null;
         try { deps = JSON.parse(readFileSync(join(DEPS_DIR, `${g.id}.json`), 'utf8')); } catch { /* none recorded */ }
         if (!deps) stale = 'no-deps';
-        else if (dependencyFingerprint(deps) !== recorded) stale = 'STALE';
+        else {
+          // The recorded inputs-sha is folded back in. Without this, a checker that DECLARES data
+          // inputs stores a fingerprint that includes them and --status recomputes one that does
+          // not — so the gate reads STALE for ever, seconds after a clean re-verify. That is what
+          // it did, and it looked exactly like two other sessions editing the surface underneath.
+          const recordedInputs = /inputs-sha=([0-9a-f]+)/.exec(text.split('\n')[g.evidenceLine])?.[1] ?? null;
+          if (dependencyFingerprint(deps, recordedInputs) !== recorded) stale = 'STALE';
+        }
       }
     }
 

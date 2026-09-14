@@ -1,0 +1,294 @@
+{
+  "generatedAt": "2026-09-14T14:13:54.058Z",
+  "builder": "packages/training/src/build-dataset.mjs",
+  "sources": [
+    {
+      "url": "https://github.com/Crabzzai/SimpleDialogue",
+      "spdx": "MIT",
+      "sha": "25bb85f5e17eb7a26989c664c63891d0eec40329",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/DLinacre/slime-factory-tycoon",
+      "spdx": "MIT",
+      "sha": "c471a2ef7d8b9d880178b99bf132bc57a4c7d8ab",
+      "split": "val",
+      "examples": 23
+    },
+    {
+      "url": "https://github.com/Diabetoss/NotificationSystem",
+      "spdx": "MIT",
+      "sha": "38a47898a27444a99a82ecdb90ba7cd4b5ef6f09",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/LolplePlays/framer",
+      "spdx": "Apache-2.0",
+      "sha": "ca5886eab186c05ecdd90065cfe762bda1810cbb",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/MadStudioRoblox/ProfileService",
+      "spdx": "Apache-2.0",
+      "sha": "d736800444eda6bf75b18397f77dfb2c8f31f60f",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/MadStudioRoblox/ProfileStore",
+      "spdx": "Apache-2.0",
+      "sha": "45c9847cbcf1fc260369c50eb335aba7c35aecdd",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/Quenty/NevermoreEngine",
+      "spdx": "MIT",
+      "sha": "22ecce3068464d33ab5aedeafde9d959cdd3d0de",
+      "split": "train",
+      "examples": 178
+    },
+    {
+      "url": "https://github.com/Reselim/Flipper",
+      "spdx": "MIT",
+      "sha": "41380da19278a14ed2c5a34db4f958d090b1994a",
+      "split": "val",
+      "examples": 1
+    },
+    {
+      "url": "https://github.com/Roblox/otter",
+      "spdx": "MIT",
+      "sha": "ffcb1be528f4f9bade0bcebbba80fa7ec292ec9a",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/Roblox/react-luau",
+      "spdx": "MIT",
+      "sha": "9351444c2db37caa08b38ad5de90f438db9221ea",
+      "split": "train",
+      "examples": 72
+    },
+    {
+      "url": "https://github.com/Roblox/roact",
+      "spdx": "Apache-2.0",
+      "sha": "1676d95c4886d51ee2b21bfcd55c6e50ece799e5",
+      "split": "test",
+      "examples": 10
+    },
+    {
+      "url": "https://github.com/SirMallard/Iris",
+      "spdx": "MIT",
+      "sha": "801973f1c3e0df5e788f26a824fa64a2a42e4054",
+      "split": "test",
+      "examples": 8
+    },
+    {
+      "url": "https://github.com/Sleitnick/Knit",
+      "spdx": "MIT",
+      "sha": "bb1ecf3dea69ca89147b9abe802a8c14399cb5e5",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/Sleitnick/RbxCameraShaker",
+      "spdx": "MIT",
+      "sha": "15412099389d746af13a2a661ec1196f980d726b",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/Sleitnick/RbxUtil",
+      "spdx": "MIT",
+      "sha": "31f9120fca021e3dec275b42bc7047d626962082",
+      "split": "val",
+      "examples": 1
+    },
+    {
+      "url": "https://github.com/Starstruck-Studios-Developers/framer",
+      "spdx": "Apache-2.0",
+      "sha": "fe07a202d9d619ce3d93802d202256cb3ef7a71d",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/afrxo/roblox-agent-skills",
+      "spdx": "MIT",
+      "sha": "ff50be7a8a000a24c0f85254e1747a0eb35d857f",
+      "split": "test",
+      "examples": 2
+    },
+    {
+      "url": "https://github.com/centau/vide",
+      "spdx": "MIT",
+      "sha": "f3bfc65607834370ce84a6e16722282c4d30316c",
+      "split": "test",
+      "examples": 1
+    },
+    {
+      "url": "https://github.com/chriscerie/roact-spring",
+      "spdx": "MIT",
+      "sha": "0334ee5d9d562e2cc09d7614a6a14d0939775ac2",
+      "split": "test",
+      "examples": 3
+    },
+    {
+      "url": "https://github.com/ddust1n/CameraShaker",
+      "spdx": "MIT",
+      "sha": "d4ab467eea25e480cd1381375184bf984a1f8269",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/dphfox/Fusion",
+      "spdx": "MIT",
+      "sha": "2790f7b6272bdf7cd0bbfee259a2f9d79ea20810",
+      "split": "test",
+      "examples": 11
+    },
+    {
+      "url": "https://github.com/evaera/Cmdr",
+      "spdx": "MIT",
+      "sha": "505abc937b94e053af89c2ac12f9c173c30a13f1",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/evaera/roblox-lua-promise",
+      "spdx": "MIT",
+      "sha": "031d429c82ee458a849e79fa523523bd349d7695",
+      "split": "val",
+      "examples": 2
+    },
+    {
+      "url": "https://github.com/ffrostfall/ByteNet",
+      "spdx": "MIT",
+      "sha": "fbdb156b6dafdd9ba58741ded20610215de3a39e",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/gcaptn/cyan-ui",
+      "spdx": "MIT",
+      "sha": "11cfcedd77f32e46a6e8b7e659f6739e5b7a0275",
+      "split": "val",
+      "examples": 1
+    },
+    {
+      "url": "https://github.com/gue-hub/roblox-tycoon-kit",
+      "spdx": "MIT",
+      "sha": "13bbda651d369f6be5fb6a79ad389ad99fb3ebe7",
+      "split": "test",
+      "examples": 2
+    },
+    {
+      "url": "https://github.com/howmanysmall/Janitor",
+      "spdx": "MIT",
+      "sha": "47acf39d7b265fad409e438e976affa9468ff0a2",
+      "split": "val",
+      "examples": 4
+    },
+    {
+      "url": "https://github.com/littensy/charm",
+      "spdx": "MIT",
+      "sha": "b05f3a9de6fc5b784ad95681908c52d1ee418cc0",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/loneka/onyx-ui",
+      "spdx": "MIT",
+      "sha": "978b53c5e1d25cc51acef0a6282365a52ed21f99",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/luau-lang/site",
+      "spdx": "MIT",
+      "sha": "81c1c1858c407d1c9ee6dd414eaf7b3e728581a1",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/matter-ecs/matter",
+      "spdx": "MIT",
+      "sha": "f31981ba5dbc481f637c08e9fa3765419d566501",
+      "split": "test",
+      "examples": 1
+    },
+    {
+      "url": "https://github.com/nightcycle/synthetic",
+      "spdx": "Apache-2.0",
+      "sha": "1a0c0d5bb16b9838567e49bfb405eaa6eda691bf",
+      "split": "val",
+      "examples": 1
+    },
+    {
+      "url": "https://github.com/phocodes/rice-simulator",
+      "spdx": "Apache-2.0",
+      "sha": "73be294dcefb31c4d2165b70753a174f598aec73",
+      "split": "train",
+      "examples": 77
+    },
+    {
+      "url": "https://github.com/red-blox/zap",
+      "spdx": "MIT",
+      "sha": "8cd17ab78192217600eec6f688ed8f8aab18d707",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/stravant/goodsignal",
+      "spdx": "MIT",
+      "sha": "99497c8cd6e5b50c5f4f12796d4ebc3e7dbf9d1f",
+      "split": "(no examples)",
+      "examples": 0
+    },
+    {
+      "url": "https://github.com/tijnepema/lucide-roblox",
+      "spdx": "MIT",
+      "sha": "793dcaedc8055269487537255f57401a85a0b8a1",
+      "split": "val",
+      "examples": 6
+    },
+    {
+      "url": "https://github.com/zhsj0089944/roblox-free-assets.skill",
+      "spdx": "MIT",
+      "sha": "f48d055028a1e98a0f2dd919822e54980e08dde0",
+      "split": "(no examples)",
+      "examples": 0
+    }
+  ],
+  "splitSizes": {
+    "train": 327,
+    "val": 39,
+    "test": 38
+  },
+  "excluded": [
+    {
+      "url": "https://github.com/Roblox/creator-docs",
+      "spdx": "CC-BY-4.0",
+      "reason": "registry marks training: forbidden (CC-BY-4.0)"
+    }
+  ],
+  "verification": {
+    "syntax": "luau-lsp via packages/evals/src/luau.mjs (checkLuauSyntax)",
+    "semantics": "packages/evals/src/roblox-antipatterns.mjs (checkNoAntipattern, error-severity rules)",
+    "contamination": "8-word shingle overlap against packages/evals/tasks prompts",
+    "instructionQuality": "looksLikeDescription() — rejects section banners, annotations and commented-out code",
+    "split": "whole repositories assigned greedily by example yield to 80/10/10; no repo spans splits"
+  },
+  "stats": {
+    "files": 11092,
+    "candidates": 419,
+    "lowQualityDoc": 180,
+    "dupe": 8,
+    "contaminated": 0,
+    "syntaxFail": 3,
+    "antipatternFail": 4,
+    "kept": 404
+  }
+}
