@@ -67,6 +67,14 @@ function clamp(n: number, lo: number, hi: number): number {
  * this returns null and each caller below decides how to fail — closed, and loudly.
  */
 function readableNeurons(n: unknown): number | null {
+  // `Number.isFinite` CANNOT BE FALSIFIED TODAY, and that is worth saying so nobody mistakes it for
+  // a tested clause. `>= 0` already rejects NaN (NaN >= 0 is false) and -Infinity, so +Infinity is
+  // the only value whose answer it changes — and every caller reaches this object through
+  // `.fetch('https://do/...')` with a JSON body (gateway.ts:166/179/185/511/514, imagegen.ts:546),
+  // where JSON.stringify turns Infinity into null. It is kept because Durable Object RPC uses
+  // structured clone, which DOES preserve Infinity and NaN: the day any call site moves off fetch,
+  // this clause becomes load-bearing. Found by rbxai-a3, whose falsification of it turned nothing
+  // red. (Removing `>= 0` instead is falsifiable — the negative case covers it.)
   return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
 }
 

@@ -60,13 +60,42 @@ function count(env: Env, key: string) {
 
 // Sliding-ish limiter. Per-isolate and therefore best-effort, which is why it is defence in
 // depth only: the authoritative spend controls are the Budget and Quota Durable Objects.
-const ipHits = new Map<string, { n: number; at: number }>();
+//
+// THE OVERFLOW POLICY IS SECURITY-RELEVANT, which is not obvious and was wrong here.
+//
+// This map used to do `if (ipHits.size > 5000) ipHits.clear()` to bound memory. One map holds every
+// counter, so that clear also wiped `admin-fail:` — and the entries are created by
+// `/api/studio/claim` and the studio poll route, both UNAUTHENTICATED. Measured end to end: 120
+// wrong admin keys from one address earns a 429; a flood from 5,200 distinct addresses against the
+// unauthenticated claim route then returns that same address to 403 with a fresh 120 guesses. The
+// flood is repeatable, so the bound on admin-key guessing was not a bound at all.
+//
+// It defeats the guarantee the admin gate states about itself (see the comment there): "what
+// matters is that unbounded guessing becomes bounded". Against a high-entropy key the time-to-break
+// stays effectively infinite either way, which is why this is a defect and not an incident — but
+// the stated property was false, and a defence nobody can rely on should not read like one.
+//
+// So: never clear wholesale. Sweep entries whose window has already passed — they carry no live
+// decision — and only if that frees nothing, evict the LEAST active, which under a flood is the
+// flood's own one-hit entries rather than the counter that is currently blocking somebody.
+const ipHits = new Map<string, { n: number; at: number; w: number }>();
+const IP_HITS_MAX = 5000;
+
+function sweepIpHits(now: number): void {
+  for (const [k, v] of ipHits) if (now - v.at > v.w) ipHits.delete(k);
+  if (ipHits.size <= IP_HITS_MAX) return;
+  // Everything is still inside its window. Drop the least active first; a counter with one hit is
+  // the flood, a counter with many is the thing the limiter exists to keep.
+  const leastActiveFirst = [...ipHits.entries()].sort((a, b) => a[1].n - b[1].n);
+  for (const [k] of leastActiveFirst.slice(0, ipHits.size - IP_HITS_MAX)) ipHits.delete(k);
+}
+
 function ipLimited(ip: string, limit = 20, windowMs = 60_000): boolean {
   const now = Date.now();
-  if (ipHits.size > 5000) ipHits.clear(); // bound memory under a distributed flood
+  if (ipHits.size > IP_HITS_MAX) sweepIpHits(now);
   const rec = ipHits.get(ip);
-  if (!rec || now - rec.at > windowMs) {
-    ipHits.set(ip, { n: 1, at: now });
+  if (!rec || now - rec.at > rec.w) {
+    ipHits.set(ip, { n: 1, at: now, w: windowMs });
     return false;
   }
   rec.n += 1;
