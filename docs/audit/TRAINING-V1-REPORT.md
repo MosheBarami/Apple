@@ -196,3 +196,49 @@ Until one of those exists, a third training run would move the same numbers by t
 
 **Artifacts.** `adapters/apple-v2/` (rank 16, 5.243M trainable params, 0.130%, seed 20260914),
 config `lora-apple-v2.yaml`, log `runs/apple-v2.log`, six checkpoints at 20-iteration intervals.
+
+---
+
+# Correction: a hosted serving path exists after all
+
+Recorded because it reverses a claim made twice in this document and once in the provider survey.
+
+**The claim was:** Cloudflare accepts custom LoRA adapters only on `mistral`/`gemma`/`llama` bases,
+ours is Qwen, therefore no free hosted provider will serve a trained artifact and local serving is
+the only option. That came from the docs' `model_type` field, which really does list only those three.
+
+**Queried live** — once the API token gained Workers AI scope — this account lists nine LoRA-capable
+models, including two Qwen ones:
+
+```
+@cf/qwen/qwen2.5-coder-32b-instruct        @cf/google/gemma-2b-it-lora
+@cf/qwen/qwq-32b                            @cf/google/gemma-7b-it-lora
+@cf/meta/llama-3.2-3b-instruct              @cf/meta-llama/llama-2-7b-chat-hf-lora
+@cf/meta/llama-3.2-11b-vision-instruct      @cf/mistral/mistral-7b-instruct-v0.2-lora
+@cf/meta/llama-guard-3-8b
+```
+
+**The real constraint is narrower and harder than the one I reported.** It is not "no Qwen". It is
+that a LoRA adapter is dimension-specific: `apple-v1` and `apple-v2` were trained on Qwen3-4B and
+cannot load onto Qwen2.5-Coder-32B, whatever the family. Serving through Workers AI means retraining
+against a base Cloudflare actually hosts.
+
+**What that changes about v3.** The base is now chosen by what can be SERVED, not only by what
+trains well locally:
+
+| Candidate | Case for it | Case against |
+|---|---|---|
+| `@cf/meta/llama-3.2-3b-instruct` | Small; trains in minutes on the M2 Pro at the memory profile v2 measured (5.3GB peak) | Not coder-tuned |
+| `@cf/qwen/qwen2.5-coder-32b-instruct` | Coder-tuned, the best fit for Luau of the nine | 32B: QLoRA on 32GB unified is tight and slow |
+| `@cf/mistral/mistral-7b-instruct-v0.2-lora` | Purpose-built by Cloudflare for adapter serving | A 2023-era base, weaker than what production runs today |
+
+`llama-3.2-3b` is the right first experiment precisely because it is cheap: it tests the whole
+upload-and-serve path end to end for the cost of a short run, and the path is what is unproven.
+
+**Unchanged.** The provider survey's wider finding holds — no other free provider hosts a custom
+adapter. Cloudflare is the exception, and the feature is free while in open beta. Upload limits:
+rank <= 8 (up to 32), adapter < 300MB, files named exactly `adapter_config.json` and
+`adapter_model.safetensors`. The account currently has **0 finetunes uploaded**.
+
+**Also unchanged: neither v1 nor v2 is promoted.** A serving path existing does not make an adapter
+worth serving, and v2 still does not beat its own base.
