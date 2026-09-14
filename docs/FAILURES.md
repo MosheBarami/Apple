@@ -62,6 +62,29 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-61 · A green that described a tree which no longer existed
+**Believed:** `gate-suite` printed `SUITE GREEN — 2867 passed, 0 failed`, so the tree was green.
+**True:** it was a CORRECT answer about a tree that had already been edited. The suite had passed
+the evals package before the edit landed, and the run was concurrent with the editing. An evals
+test was failing by the time the line printed.
+**Cost of the error:** a verification apparatus reporting on a snapshot while reading as a report
+on now. Nothing in the output says WHICH packages were measured WHEN, so the tell is invisible —
+this is not a wrong number, it is a right number about the wrong moment, which is strictly harder
+to notice.
+**Caught by:** `check-backlog`, which re-runs every cited test file against the live tree. It is
+currently the only thing in the repository that does so, which makes it an accidental staleness
+detector for everything else. **If that execution is ever optimised out for speed, the detector
+goes with it silently.**
+**The rule:** a suite that can be run concurrently with editing must record the git sha and
+tree-clean state at START and at END, and refuse to print GREEN if they differ. GATES.md already
+applies exactly this fingerprint discipline to EVIDENCE lines; the precedent is there and the
+suite runner did not inherit it. Relying on "do not edit while verifying" is relying on a rule
+people forget under time pressure, which is the condition the rule is for.
+
+---
+
+## 2026-09-15 (earlier)
+
 ### F-60 · A test-count floor cannot be tripped by adding tests
 **Believed:** a tight floor on `assert-tests.mjs` goes red whenever someone adds a case,
 so it should be set below the current count to avoid churn.
