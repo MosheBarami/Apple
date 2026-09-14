@@ -27,9 +27,9 @@
 
 ## Billing — the SaaS the owner asked for
 
-- [ ] w12: Plans and credits surfaced in the product, not only in the webhook
-- [ ] w13: Usage meter against plan allowance, visible before the run not after
-- [ ] w14: Upgrade and downgrade path through the UI, with the entitlement recomputed
+- [x] w12: Plans and credits surfaced in the product, not only in the webhook — on grow/main (b0f86ae), pending merge
+- [x] w13: Usage meter against plan allowance, visible before the run not after — on grow/main, pending merge
+- [x] w14: Upgrade and downgrade path through the UI, with the entitlement recomputed — on grow/main (ba72fec), pending merge; needs STRIPE_SECRET_KEY + price ids set to go live
 
 ## Quality
 
