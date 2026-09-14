@@ -1,0 +1,8 @@
+[
+  "packages/evals/src/luau.mjs",
+  "packages/evals/src/roblox-antipatterns.mjs",
+  "packages/training/src/build-dataset.mjs",
+  "packages/training/src/build-dataset.test.mjs",
+  "packages/training/src/mlx-to-peft.test.mjs",
+  "scripts/assert-tests.mjs"
+]

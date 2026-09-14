@@ -293,6 +293,14 @@ export function systemPrompt(opts: {
   //   `get_logs` forwards it; Creator Store asset names are third-party authored — so an
   //   unbounded, unfenced write here promotes that text from fenced data to trusted
   //   instruction, permanently. The cap bounds one poisoned fact; the fence keeps it data. ]]
+  //[[ NO FENCE ID, NO PROMPT. The id is the only thing separating real tool output from content
+  //   that is pretending to be tool output, and the prompt above stakes the whole untrusted-content
+  //   rule on it being random and unguessable. An empty id is not a weaker secret, it is a CONSTANT
+  //   one: every fence in every run carries the same marker, and any payload can close it and open
+  //   a fresh one that the model has been instructed to trust. Refusing here is what makes the
+  //   optionality unrepresentable rather than merely discouraged. ]]
+  if (!opts.fenceId) throw new Error('systemPrompt: fenceId is required — an empty fence id is a constant one');
+
   const facts = opts.memoryFacts.slice(-20).map((f) => f.slice(0, MEMORY_FACT_MAX_CHARS));
   const memory = [
     opts.memorySummary

@@ -37,9 +37,12 @@ function kvStub() {
   return { store, env: { KV: { put: async (k, v, o) => store.set(k, { v, o }) } } };
 }
 
+// MERGE NOTE: storeImage's signature is main's — (env, pngBase64, projectId) returning the bare
+// id. Mine was (env, projectId, pngBase64) returning { imageId }. Main's landed with the serving
+// route that reads what it writes, so main's is the one the rest of the system agrees with.
 test('the stored key carries the project, so the reader can re-derive authority', async () => {
   const { store, env } = kvStub();
-  const { imageId } = await IG.storeImage(env, 'proj_abc', 'BASE64PNG');
+  const imageId = await IG.storeImage(env, 'BASE64PNG', 'proj_abc');
   const key = [...store.keys()][0];
   assert.equal(key, `image:proj_abc:${imageId}`);
   assert.equal(key, IG.imageKvKey('proj_abc', imageId), 'writer and reader must spell the key once');
@@ -47,15 +50,15 @@ test('the stored key carries the project, so the reader can re-derive authority'
 
 test('only the id is returned — the namespace-qualified key never leaves the worker', async () => {
   const { env } = kvStub();
-  const res = await IG.storeImage(env, 'proj_abc', 'BASE64PNG');
-  assert.deepEqual(Object.keys(res), ['imageId']);
-  assert.doesNotMatch(res.imageId, /proj_abc/, 'the id must not embed the project either');
-  assert.doesNotMatch(res.imageId, /^image:/);
+  const imageId = await IG.storeImage(env, 'BASE64PNG', 'proj_abc');
+  assert.equal(typeof imageId, 'string');
+  assert.doesNotMatch(imageId, /proj_abc/, 'the id must not embed the project either');
+  assert.doesNotMatch(imageId, /^image:/);
 });
 
 test('an image is still given a TTL, so a forgotten image is not stored forever', async () => {
   const { store, env } = kvStub();
-  await IG.storeImage(env, 'p', 'X');
+  await IG.storeImage(env, 'X', 'p');
   const { o } = [...store.values()][0];
   assert.ok(o.expirationTtl > 0, 'the TTL was dropped');
   assert.equal(o.expirationTtl, IG.IMAGE_TTL_SECONDS);
@@ -63,8 +66,8 @@ test('an image is still given a TTL, so a forgotten image is not stored forever'
 
 test('two images under one project do not collide', async () => {
   const { store, env } = kvStub();
-  await IG.storeImage(env, 'p', 'A');
-  await IG.storeImage(env, 'p', 'B');
+  await IG.storeImage(env, 'A', 'p');
+  await IG.storeImage(env, 'B', 'p');
   assert.equal(store.size, 2);
 });
 

@@ -1,0 +1,4 @@
+[
+  "apps/worker/tests/asset-library-gating.test.mjs",
+  "scripts/assert-tests.mjs"
+]

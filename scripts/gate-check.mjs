@@ -44,11 +44,49 @@ import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SHELL = '/bin/sh';
+
+/**
+ * Refuse to verify a tree the caller is not standing in.
+ *
+ * ROOT is derived from THIS FILE's location, so `node /abs/path/to/main/scripts/gate-check.mjs`
+ * run from inside a worktree executes every CHECK against main while the caller believes it is
+ * testing the worktree. In the falsification direction that fails safe — the break is not present,
+ * the gate is green, and the record is refused. In the `--reverify` direction it does not: it
+ * would stamp EVIDENCE describing main's state onto a run the caller performed elsewhere, and the
+ * git sha in that record would be main's too, so nothing in the record would reveal the mix-up.
+ *
+ * This cost a real G5 record before it existed. The fix is to compare git toplevels and say so.
+ */
+function assertSameTree() {
+  const top = (cwd) => {
+    try {
+      return execSync('git rev-parse --show-toplevel', { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return null;
+    }
+  };
+  const rootTop = top(ROOT);
+  const hereTop = top(process.cwd());
+  if (!rootTop || rootTop === hereTop) return;
+  // A cwd that is not a git repository AT ALL used to return here silently, and that is the exact
+  // case that did the damage: a scratch directory holding a one-gate fixture, from which this
+  // checker read and rewrote the real 37-gate ledger. "I cannot tell which tree you mean" is a
+  // reason to stop, not a reason to proceed.
+  if (!hereTop) {
+    console.error(`gate-check: ${process.cwd()} is not a git repository, but this checker verifies ${rootTop}.`);
+    console.error(`gate-check: run it from inside the tree you mean to verify.`);
+    process.exit(2);
+  }
+  console.error(`gate-check: this checker verifies ${rootTop}, but you are standing in ${hereTop}.`);
+  console.error('gate-check: every CHECK would run against the OTHER tree. Invoke that tree\'s own copy:');
+  console.error(`gate-check:   cd ${hereTop} && node scripts/gate-check.mjs ...`);
+  process.exit(2);
+}
 
 /* ------------------------------------------------------------------ flags --- */
 
@@ -72,7 +110,11 @@ function parseArgs(argv) {
       i += 1;
       if (a === '--gate') flags.gate.push(v);
       else if (a === '--timeout') flags.timeout = Number(v) || flags.timeout;
-      else if (a === '--file') flags.file = v;
+      // RESOLVED AGAINST THE CALLER'S CWD, not against ROOT. The default is `join(ROOT, 'GATES.md')`,
+      // and a bare relative `--file GATES.md` used to inherit that base — so running this checker
+      // from a scratch directory with a one-gate fixture silently read and REWROTE the real
+      // 37-gate ledger instead. That happened, and it degraded six clean-tree evidence records.
+      else if (a === '--file') flags.file = resolve(process.cwd(), v);
       else if (a === '--break-sha') flags.breakSha = v;
       continue;
     }
@@ -92,11 +134,12 @@ function parseArgs(argv) {
     console.error(`gate-check: expected at most one ledger path, got ${positional.length}`);
     process.exit(2);
   }
-  if (positional.length === 1) flags.file = positional[0];
+  if (positional.length === 1) flags.file = resolve(process.cwd(), positional[0]);
 
   return { ...flags, bools };
 }
 
+assertSameTree();
 const ARGS = parseArgs(process.argv.slice(2));
 const APPROVE = ARGS.bools.has('--approve');
 const LINT = ARGS.bools.has('--lint');
@@ -162,18 +205,36 @@ function parseGates(text) {
   let current = null;
 
   for (const [i, line] of lines.entries()) {
-    // `- [ ] G12 [S4]: title` — the station tag is optional and is captured so §16.1 can require
-    // at least one gate per station without a second file listing them.
+    // `- [ ] G12: title`, with the station on its own `STATION: S4` line below.
+    //
+    // WHY THE STATION LEFT THE HEADING. It used to sit between the id and the colon —
+    // `- [ ] G12 [S4]: title` — which this parser read fine and the unlazy skill's parser did not:
+    // that one takes the first non-space run and requires it to end in a colon, so every stationed
+    // heading failed it. Two checkers read this file, and a format only one of them can parse is a
+    // defect in the FORMAT, not in either checker. Trying to satisfy both in one heading is
+    // impossible: the skill needs the colon immediately after the id, and the station needs to be
+    // somewhere. So it moved to where the rest of a gate's metadata already lives, beside CHECK and
+    // EXPECT, and both parsers now read the same headings.
+    //
+    // The old inline spelling is still ACCEPTED, because rewriting history is not a migration
+    // strategy and a stale branch may carry it. It is normalised on write and --lint names it.
     const head = /^- \[([ xX~])\] (G[\w-]+)(?:\s+\[(S\d+)\])?: (.*)$/.exec(line);
     if (head) {
       if (current) gates.push(current);
       current = {
         id: head[2], mark: head[1], station: head[3] ?? null, title: head[4],
         headLine: i, check: null, expect: null, evidenceLine: null, falsifiedLine: null,
+        stationLine: null,
       };
       continue;
     }
     if (!current) continue;
+    const station = /^\s{4}STATION:\s*(S\d+)\s*$/.exec(line);
+    if (station && current.stationLine === null) {
+      current.station = station[1];
+      current.stationLine = i;
+      continue;
+    }
     const check = /^\s{4}CHECK:\s*(.+)$/.exec(line);
     if (check && current.check === null) { current.check = check[1].trim(); continue; }
     const expect = /^\s{4}EXPECT:\s*(.+)$/.exec(line);
@@ -261,7 +322,12 @@ function checkPaths(check) {
   const files = [...check.matchAll(/(?:^|\s)((?:[\w.@-]+\/)+[\w.@-]+\.(?:mjs|js|ts|tsx|py|luau|astro))/g)].map((m) => m[1]);
   const cd = /cd\s+([\w./-]+)\s*&&/.exec(check);
   const prefix = cd ? `${cd[1].replace(/^\.\//, '')}/` : '';
-  return files.map((f) => `${prefix}${f}`);
+  // NORMALISED before it is compared against the tracked set. A CHECK that cds into a package and
+  // then reaches back up — `cd apps/worker && node ../../scripts/assert-tests.mjs …`, which is how
+  // every floor-bearing gate is written — produced the literal string
+  // `apps/worker/../../scripts/assert-tests.mjs`, which matches nothing in `git ls-files` and was
+  // reported as an untracked path. The file is tracked; the comparison was not comparing paths.
+  return files.map((f) => normalize(`${prefix}${f}`));
 }
 
 /* ---------------------------------------------------------------- execute --- */
@@ -447,6 +513,25 @@ if (STATUS) {
 if (LINT) {
   const problems = [];
   for (const g of gates) {
+    // A STATION TAG STRANDED IN THE TITLE. The heading grammar puts the station before the colon
+    // — `- [x] G1 [S7]: title` — and the parser only recognises it there. A heading rewritten as
+    // `- [x] G1: [S7] title` still parses, but the station silently becomes part of the title and
+    // the gate stops belonging to any station. Nothing else in this file would notice: the id is
+    // intact, the checkbox is intact, the CHECK still runs.
+    //
+    // Two rows drifted into that shape in the working tree this pass. This runs for EVERY gate,
+    // ticked or not, because an unticked gate loses its station just as quietly.
+    // A station in the HEADING at all, in either spelling. `G1 [S7]: title` is the old form that
+    // only this parser could read; `G1: [S7] title` is what an attempt to fix that produced, and it
+    // parses as a title containing brackets — the gate silently belongs to no station. Both are now
+    // wrong for the same reason: the station belongs on its own STATION: line, where the unlazy
+    // skill's parser and this one agree on the heading.
+    if (/^\[S\d+\]/.test(g.title)) {
+      problems.push(`${g.id}: its station tag is inside the title — move it to an indented \`STATION: S…\` line`);
+    }
+    if (g.stationLine === null && g.station !== null) {
+      problems.push(`${g.id}: its station is in the heading — move it to an indented \`STATION: ${g.station}\` line`);
+    }
     if (g.mark === ' ') continue;
     if (g.mark === '~') { problems.push(`${g.id}: abandoned in a file that has no vocabulary for it`); continue; }
     // A gate with EVIDENCE and no FALSIFIED is VOID: nobody has ever seen it fail, so nothing
@@ -539,6 +624,7 @@ if (REVERIFY) {
   const lines = readFileSync(FILE, 'utf8').split('\n');
   const current = new Map(parseGates(lines.join('\n')).map((g) => [g.id, g]));
   const quarantined = [];
+  const refreshed = [];
 
   for (const r of results.sort((a, b) => b.headLine - a.headLine)) {
     const now = current.get(r.id);
@@ -550,8 +636,46 @@ if (REVERIFY) {
 
     const evLine = now.evidenceLine === null ? null : lines[now.evidenceLine];
     const before = storedSha(evLine);
-    if (evLine && before && before !== sha256(normaliseOutput(r.output))) reasons.push('output-sha256 does not reproduce');
-    if (evLine && evLine.includes('tree-clean=no')) reasons.push('recorded against a dirty tree');
+    // The raw field, not just a hex match: `deps-sha=none` is a RECORDED absence of dependencies
+    // and must not be mistaken for a record that predates the field entirely. The two call for
+    // opposite answers.
+    const beforeDeps = /deps-sha=([0-9a-z]+)/.exec(evLine ?? '')?.[1] ?? null;
+    const nowDeps = r.depsSha ?? 'none';
+    if (evLine && before && before !== sha256(normaliseOutput(r.output))) {
+      // A fingerprint that stops reproducing means one of two very different things, and the
+      // DEPENDENCY fingerprint is what separates them.
+      //
+      // If the gate's own sources changed, the output is SUPPOSED to differ and the record is
+      // merely out of date — refreshing it is what --reverify is for. If the sources are
+      // byte-identical and the output moved anyway, that is nondeterminism or environment drift
+      // and the evidence is worthless.
+      //
+      // Collapsing the two was a deadlock, not a strictness: the stale fingerprint was itself the
+      // reason the record could never be rewritten, so the first legitimate edit to a gate's code
+      // pinned that gate at unmet permanently and no amount of green could release it. Six gates
+      // were sitting in exactly that state.
+      if (beforeDeps !== null && beforeDeps !== 'none' && nowDeps !== 'none' && beforeDeps !== nowDeps) {
+        refreshed.push(`${r.id} (its dependencies changed)`);
+      } else {
+        // Everything else is an UNEXPLAINED output change: matching fingerprints (byte-identical
+        // sources, different output — nondeterminism or environment drift), dependencies that
+        // stopped being discoverable, or a record old enough to carry no fingerprint at all.
+        //
+        // None of those may refresh automatically. Refreshing marks the gate MET, and marking a
+        // gate met because the checker could not work out why its output moved is precisely the
+        // overclaim this ledger exists to prevent. The deadlock it creates for a legacy record is
+        // real but it is not a reason to auto-close: the operator deletes that EVIDENCE line and
+        // re-runs, which re-baselines in a way that shows up in the diff as a deliberate act.
+        reasons.push('output-sha256 does not reproduce; delete the stale EVIDENCE line to re-baseline deliberately');
+      }
+    }
+    // Same deadlock shape as the fingerprint one above: the stored line is itself the reason the
+    // record cannot be rewritten, so a gate whose evidence was once taken on a dirty tree can never
+    // be refreshed by any number of clean runs. Deleting the line is the escape, and a quarantine
+    // that does not name its own remedy is a dead end wearing the costume of a check.
+    if (evLine && evLine.includes('tree-clean=no')) {
+      reasons.push('recorded against a dirty tree; delete the stale EVIDENCE line to re-baseline deliberately');
+    }
 
     const untracked = checkPaths(now.check).filter((f) => !TRACKED.has(f));
     if (untracked.length) reasons.push(`CHECK names untracked path(s): ${untracked.join(', ')}`);
@@ -560,10 +684,10 @@ if (REVERIFY) {
       quarantined.push({ id: r.id, reasons });
       // Marked UNMET IN THE FILE, not merely reported: a report is something the next reader has
       // to find, and the checkbox is what they will actually trust.
-      lines[now.headLine] = `- [ ] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
+      lines[now.headLine] = `- [ ] ${r.id}: ${now.title}`;
     } else {
       writeDeps(r.id, r.deps);
-      lines[now.headLine] = `- [x] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
+      lines[now.headLine] = `- [x] ${r.id}: ${now.title}`;
       if (now.evidenceLine !== null) lines[now.evidenceLine] = evidenceLine(r);
       else lines.splice(insertAt(now), 0, evidenceLine(r));
     }
@@ -576,6 +700,7 @@ if (REVERIFY) {
   const met = after.filter((g) => g.mark === 'x' || g.mark === 'X').length;
   const unmet = after.length - met;
 
+  for (const id of refreshed) console.error(`gate-check: REFRESHED ${id}`);
   for (const q of quarantined) console.error(`gate-check: QUARANTINED ${q.id} — ${q.reasons.join('; ')}`);
   console.log(`REVERIFY ${unmet === 0 ? 'GREEN' : 'RED'} — ${after.length} gates, ${met} met, ${unmet} unmet, ${quarantined.length} quarantined`);
   process.exit(unmet === 0 ? 0 : 1);
@@ -610,12 +735,19 @@ if (APPROVE) {
   for (const r of results) {
     const now = current.get(r.id);
     if (!now || now.check !== r.check || now.expect !== r.expect) { skipped.push(r.id); continue; }
-    applied.push({ ...r, headLine: now.headLine, evidenceLine: now.evidenceLine, station: now.station });
+    // TITLE FROM THE FRESH PARSE, like headLine and station beside it. `r` was parsed when the run
+    // STARTED; `now` is a re-read taken at write time, and a long run can straddle an edit to the
+    // ledger. Assembling one heading out of both parses writes a line that never existed in either:
+    // a stale title carrying its own `[S7]` prefix, plus a freshly-read station prefixed again, and
+    // the result was `G-CRITIC-1 [S7]: [S7] The visual critic…`. The inverse race drops the station
+    // into the title instead, where it parses as ordinary words and the gate silently belongs to no
+    // station at all. Both happened to this ledger in one pass.
+    applied.push({ ...r, title: now.title, headLine: now.headLine, evidenceLine: now.evidenceLine, station: now.station });
   }
 
   // Bottom-up, so an insertion never shifts a line number still to be used.
   for (const r of applied.sort((a, b) => b.headLine - a.headLine)) {
-    lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}${r.station ? ` [${r.station}]` : ''}: ${r.title}`;
+    lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}: ${r.title}`;
     writeDeps(r.id, r.deps);
     const line = evidenceLine(r);
     if (r.evidenceLine !== null) lines[r.evidenceLine] = line;

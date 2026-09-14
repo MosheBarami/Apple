@@ -19,6 +19,7 @@ import {
   structureLine,
 } from './composition';
 import { analyseLayout } from './layout';
+import { ROBLOX_DEFAULT_LIGHTING as DEFAULT_LIGHTING } from './roblox-defaults';
 
 /** At most this many frames go to the model in one critique — each image costs input tokens. */
 const MAX_FRAMES = 3;
@@ -139,8 +140,9 @@ function parseCritique(text: string): { score?: number; summary?: string; defect
   return null;
 }
 
-/** Roblox's own defaults. A scene still sitting on these has had no lighting pass at all. */
-const DEFAULT_LIGHTING = { brightness: 3, clockTime: 14.5, ambient: [0, 0, 0] as const };
+// The defaults live in ONE place. This file used to carry its own copy, and a second — written
+// later, with different numbers — appeared in critic-input.ts. Both answered the same question,
+// "has anyone lit this scene?", so the product could give two answers about one scene.
 
 function lightingSummary(l: RenderViewResult['lighting']): string {
   if (!l) return 'not reported — treat lighting as unknown and do not score it.';

@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -566,4 +566,228 @@ test('no tracked source file contains a raw control byte', () => {
     }
   }
   assert.deepEqual(offenders, [], `these are binary to every grep-based check: ${offenders.join(', ')}`);
+});
+
+test('the checker refuses to verify a tree the caller is not standing in', () => {
+  // ROOT is derived from gate-check.mjs's OWN path, so invoking it by absolute path from another
+  // tree runs every CHECK against the checker's tree while the caller believes it is testing theirs.
+  // Falsification fails safe that way (the break is absent, the gate is green, the record refused),
+  // but --reverify does not: it would stamp EVIDENCE describing the wrong tree, carrying the wrong
+  // tree's git sha, with nothing in the record to show the mix-up. This happened while recording G5.
+  const scratch = mkdtempSync(join(tmpdir(), 'gate-check-othertree-'));
+  try {
+    spawnSync('git', ['init', '-q'], { cwd: scratch });
+    const elsewhere = spawnSync(process.execPath, [join(ROOT, 'scripts', 'gate-check.mjs'), '--status', join(ROOT, 'GATES.md')], {
+      cwd: scratch, encoding: 'utf8',
+    });
+    assert.equal(elsewhere.status, 2, 'a run from another tree must refuse, not verify the wrong one');
+    assert.match(elsewhere.stderr, /you are standing in/);
+
+    // POSITIVE CONTROL. Without this the assertion above would also pass if the checker were broken
+    // outright and exited 2 on everything.
+    const athome = spawnSync(process.execPath, [join(ROOT, 'scripts', 'gate-check.mjs'), '--status', join(ROOT, 'GATES.md')], {
+      cwd: ROOT, encoding: 'utf8',
+    });
+    assert.notEqual(athome.status, 2, 'the same command from the checker\'s own tree must still run');
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+/* ------------------------------------- a fingerprint that stops reproducing --- */
+
+// An EVIDENCE line carrying a deliberately wrong output-sha256, so --reverify must decide what a
+// non-reproducing fingerprint MEANS. `tree-clean=yes` is written in so the fixture does not also
+// trip the dirty-tree reason and mask which branch fired.
+const evidence = (depsField) =>
+  `  EVIDENCE: exit=0; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=deadbee; tree-clean=yes; ` +
+  `EXPECT=matched; output-sha256=${'0'.repeat(64)}; output-bytes=1; ` +
+  `node=v1; luau=ABSENT; playwright=ABSENT; deps=0${depsField}; at=2020-01-01T00:00:00.000Z\n`;
+
+const falsified =
+  `  FALSIFIED: exit=1; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=deadbee; tree-clean=yes; ` +
+  `break-sha=deadbee; EXPECT=unmatched; output-sha256=${'1'.repeat(64)}; output-bytes=1; ` +
+  `node=v1; luau=ABSENT; playwright=ABSENT; deps=0; deps-sha=none; at=2020-01-01T00:00:00.000Z\n`;
+
+test('a record too old to carry a fingerprint is quarantined, and told how to re-baseline', () => {
+  // There IS a deadlock here — a stale output-sha256 is itself the reason the record can never be
+  // rewritten — but auto-refreshing is the wrong escape, because refreshing marks the gate MET.
+  // Closing a gate because the checker could not work out why its output moved is the overclaim
+  // this ledger exists to prevent. The escape is deliberate: delete the line, re-run, see it in
+  // the diff. So the message has to name the remedy, or the operator is merely stuck.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified + evidence(''), ['--reverify']);
+  assert.match(r.out, /QUARANTINED G1/);
+  assert.match(r.out, /delete the stale EVIDENCE line to re-baseline deliberately/);
+  assert.match(r.ledger(), /- \[ \] G1:/, 'an unexplained change must leave the gate unmet');
+});
+
+test('deleting the stale EVIDENCE line is a real escape, not just advice', () => {
+  // The positive control for the sentence above. If the remedy the message names did not actually
+  // work, the quarantine would be a dead end dressed up as guidance.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified, ['--reverify']);
+  assert.doesNotMatch(r.out, /QUARANTINED G1/);
+  assert.match(r.ledger(), /- \[x\] G1:/, 'with the stale line gone the gate must close on its own merits');
+  assert.match(r.ledger(), /EVIDENCE: exit=0;/, 'and a fresh record must be written in its place');
+});
+
+test('a fingerprint that moves with NO dependency change is still quarantined', () => {
+  // The case the check exists for: byte-identical sources, different output. That is
+  // nondeterminism or environment drift, and evidence that cannot be reproduced is not evidence.
+  // Without this the loosened rule would be a blanket amnesty rather than a discrimination.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified + evidence('; deps-sha=none'), ['--reverify']);
+  assert.match(r.out, /QUARANTINED G1 — output-sha256 does not reproduce/);
+  assert.match(r.ledger(), /- \[ \] G1:/, 'a quarantined gate must be marked unmet IN THE FILE');
+});
+
+test('a fingerprint that moves BECAUSE the dependencies moved is refreshed', () => {
+  // Both fingerprints are real and they differ, which is the one shape that explains the change.
+  const r = check(gate('G1', 'echo hello', 'hello', ' ') + falsified + evidence('; deps-sha=abc123'), ['--reverify']);
+  assert.match(r.out, /REFRESHED G1 \(its dependencies changed\)/);
+  assert.doesNotMatch(r.out, /QUARANTINED G1/);
+});
+
+test('--lint catches a station tag that has drifted into the title', () => {
+  // The heading grammar puts the station BEFORE the colon — `- [x] G1 [S7]: title` — and the
+  // parser only recognises it there. A heading rewritten as `- [x] G1: [S7] title` still parses
+  // perfectly: the id is intact, the checkbox is intact, the CHECK still runs. The only thing
+  // lost is the station, which silently becomes part of the title, and the gate stops belonging
+  // to any station at all. Two rows drifted into that shape in this repository's working tree.
+  const bad = check('- [x] G1: [S7] a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.equal(bad.exit, 1, bad.out);
+  assert.match(bad.out, /station tag is inside the title/);
+
+  // It must fire for an UNTICKED gate too — one of the two that drifted was unticked, and an
+  // unticked gate loses its station just as quietly.
+  const untickedBad = check('- [ ] G1: [S7] a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.match(untickedBad.out, /station tag is inside the title/);
+
+  // THE CONTROL. The correct spelling must stay silent, or the rule would just forbid stations.
+  const good = check('- [ ] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.doesNotMatch(good.out, /station tag is inside the title/);
+});
+
+/* ------------------------------------------- writing the ledger you meant to --- */
+
+test('a relative --file resolves against the CALLER, not against the checker', () => {
+  // The default is `join(ROOT, 'GATES.md')`, and a bare relative `--file GATES.md` inherited that
+  // base. So running the checker from a scratch directory holding a one-gate fixture read and
+  // REWROTE the real 37-gate ledger instead — silently, reporting "37 gates" while the fixture sat
+  // untouched. It degraded six clean-tree evidence records before anyone noticed.
+  //
+  // Run from a SUBDIRECTORY of this repo, so the same-tree guard is satisfied and only the
+  // resolution base is under test. `apps/worker/GATES.md` does not exist, so a checker resolving
+  // against the caller must fail to find it; one resolving against ROOT would happily lint 37 gates.
+  const sub = spawnSync(process.execPath, [CHECKER, '--lint', '--file', 'GATES.md'], {
+    cwd: join(ROOT, 'apps', 'worker'), encoding: 'utf8',
+  });
+  const out = `${sub.stdout}${sub.stderr}`;
+  assert.doesNotMatch(out, /37 gates/, 'it read the repository ledger from a directory that has none');
+  assert.notEqual(sub.status, 0);
+
+  // POSITIVE CONTROL: the same invocation from the root does find the real ledger.
+  //
+  // It asserts that the ledger was FOUND, not that it is currently healthy. Asserting
+  // WELL-FORMED would couple this test to the live ledger's state, so an unrelated gate with
+  // dirty-tree evidence would redden a test about path resolution — and the obvious way to
+  // silence that is to weaken the test rather than fix the gate.
+  const atRoot = spawnSync(process.execPath, [CHECKER, '--lint', '--file', 'GATES.md'], { cwd: ROOT, encoding: 'utf8' });
+  assert.match(`${atRoot.stdout}${atRoot.stderr}`, /LEDGER (WELL-FORMED|MALFORMED) — \d+ gates/);
+});
+
+test('a cwd that is not a git repository at all is refused, not guessed at', () => {
+  // The same-tree guard compared two git toplevels and returned silently when the caller's was
+  // null — which is precisely the scratch-directory case that did the damage. "I cannot tell which
+  // tree you mean" is a reason to stop, not a reason to proceed.
+  const scratch = mkdtempSync(join(tmpdir(), 'gate-check-norepo-'));
+  try {
+    const r = spawnSync(process.execPath, [CHECKER, '--status', join(ROOT, 'GATES.md')], { cwd: scratch, encoding: 'utf8' });
+    assert.equal(r.status, 2, `${r.stdout}${r.stderr}`);
+    assert.match(r.stderr, /is not a git repository/);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('--reverify leaves a stationed heading byte-identical', () => {
+  // THE FIXED POINT. Heading rewrites took `title` from the parse at RUN START while taking
+  // `station` and `headLine` from a re-read at WRITE time. A long run that straddled an edit to the
+  // ledger assembled one heading out of both parses and wrote a line that had never existed in
+  // either: `G1 [S7]: [S7] a stationed gate`. The inverse race drops the station INTO the title,
+  // where it parses as ordinary words and the gate silently belongs to no station at all.
+  //
+  // Both happened to this repository's ledger in a single pass. A fixed-point test is the cheapest
+  // thing that would have caught either.
+  const head = '- [x] G1: a stationed gate';
+  const r = check(`${head}\n    STATION: S7\n    CHECK: echo hi\n    EXPECT: hi\n${falsified}`, ['--reverify']);
+  const written = r.ledger().split('\n').find((l) => l.startsWith('- ['));
+  assert.equal(written, head, 'a reverify that changes nothing must rewrite the heading unchanged');
+
+  // The legacy inline spelling is still ACCEPTED — a stale branch may carry it, and rewriting
+  // history is not a migration strategy — but it is NORMALISED rather than preserved, so the
+  // format converges on one spelling instead of two drifting.
+  const legacy = check(`- [x] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n${falsified}`, ['--reverify']);
+  assert.match(legacy.ledger(), /^- \[x\] G1: a stationed gate$/m, 'the inline station must be normalised out of the heading');
+});
+
+/* ------------------------------------------------- the station is a field --- */
+
+test('the station is read from its own STATION: line', () => {
+  // It used to sit between the id and the colon — `- [ ] G1 [S7]: title` — which THIS parser read
+  // fine and the unlazy skill's parser did not: that one takes the first non-space run and requires
+  // it to end in a colon, so every stationed heading failed it. Two checkers read this file, and a
+  // format only one of them can parse is a defect in the FORMAT.
+  //
+  // The two cannot be satisfied by one heading: the skill needs the colon straight after the id,
+  // and the station needs to live somewhere. So it moved to where the rest of a gate's metadata
+  // already is, beside CHECK and EXPECT.
+  const r = check('- [ ] G1: a stationed gate\n    STATION: S7\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.doesNotMatch(r.out, /station/i, `a STATION line is the correct spelling: ${r.out}`);
+});
+
+test('--lint rejects a station left in the heading, in either spelling', () => {
+  const inline = check('- [ ] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.equal(inline.exit, 1, inline.out);
+  assert.match(inline.out, /its station is in the heading/);
+
+  const stranded = check('- [ ] G1: [S7] a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.equal(stranded.exit, 1, stranded.out);
+  assert.match(stranded.out, /its station tag is inside the title/);
+
+  // THE CONTROL. An unstationed gate must stay silent, or the rule would just forbid plain gates.
+  const plain = check('- [ ] G1: an ordinary gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.doesNotMatch(plain.out, /station/i);
+});
+
+test('a rewrite preserves the STATION line instead of folding it into the heading', () => {
+  // The fixed point again, for the new shape: the heading is rewritten on every --reverify, and the
+  // station must not be dragged back into it. Folding it in is how the whole episode started.
+  const body = '- [x] G1: a stationed gate\n    STATION: S7\n    CHECK: echo hi\n    EXPECT: hi\n';
+  const r = check(body + falsified, ['--reverify']);
+  const out = r.ledger();
+  assert.match(out, /^- \[x\] G1: a stationed gate$/m, 'the heading must carry no station tag');
+  assert.match(out, /^    STATION: S7$/m, 'the STATION line must survive the rewrite');
+});
+
+test('a CHECK that cds into a package and reaches back up names a TRACKED path', () => {
+  // Every floor-bearing gate is written `cd apps/worker && node ../../scripts/assert-tests.mjs …`,
+  // which produced the literal string `apps/worker/../../scripts/assert-tests.mjs`. That matches
+  // nothing in `git ls-files`, so the checker reported a tracked file as untracked and quarantined
+  // five gates at once. The comparison was not comparing paths.
+  const r = check(
+    '- [x] G1: a gate whose CHECK reaches back up\n'
+    + '    CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 1 --label G1 -- echo hi\n'
+    + '    EXPECT: G1 OK\n' + falsified,
+    ['--reverify'],
+  );
+  assert.doesNotMatch(r.out, /untracked path/, r.out);
+
+  // POSITIVE CONTROL: a genuinely untracked path must still be caught, or the fix would be a way
+  // of never noticing one again.
+  const bogus = check(
+    '- [x] G1: a gate naming a file that does not exist\n'
+    + '    CHECK: cd apps/worker && node ../../scripts/not-a-real-checker.mjs\n'
+    + '    EXPECT: G1 OK\n' + falsified,
+    ['--reverify'],
+  );
+  assert.match(bogus.out, /untracked path/);
 });

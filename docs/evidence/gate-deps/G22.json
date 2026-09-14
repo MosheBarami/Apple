@@ -1,0 +1,4 @@
+[
+  "apps/worker/tests/edit-resend.test.mjs",
+  "scripts/assert-tests.mjs"
+]

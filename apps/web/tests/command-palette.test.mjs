@@ -144,9 +144,46 @@ test('every signed-in route is a child of the shell, so every one of them has th
   const block = /<AppLayout[\s\S]*?\n\s*>\n([\s\S]*?)\n\s*<\/Route>/.exec(app);
   assert.ok(block, 'could not find the AppLayout layout route — has the route tree changed shape?');
 
-  const paths = (chunk) => [...chunk.matchAll(/<Route\b[^>]*?\bpath="([^"]+)"/g)].map((m) => m[1]);
+  // `[^>]*` CANNOT CROSS THE `>` INSIDE A JSX ARROW FUNCTION. `<Route element={() => …} path="/y" />`
+  // truncates at the arrow and the path is never seen. Today every Route here writes `path=` before
+  // `element=`, so this finds all of them — which is the dangerous kind of correct: it starts
+  // silently checking fewer routes the day someone reorders two attributes, and a sweep that
+  // quietly shrinks passes rather than failing.
+  //
+  // So the tag is matched up to its self-closing `/>` rather than the first `>`, and the number of
+  // paths found is reconciled against the number of Route tags present. Reported by rbxai-a3, who
+  // hit the same idiom in two of their own tests where the loop matched nothing at all.
+  // A SCANNER, NOT A CLEVERER REGEX. No regex reads this correctly: the `>` that ends the tag and
+  // the `>` inside `element={<WorkspacePage />}` are the same character, so every pattern either
+  // stops early or runs past the end. Brace depth is the thing that distinguishes them, and a
+  // scanner can count braces where a regex cannot.
+  const routeTags = (chunk) => {
+    const tags = [];
+    for (let i = chunk.indexOf('<Route'); i !== -1; i = chunk.indexOf('<Route', i + 1)) {
+      let depth = 0;
+      for (let j = i; j < chunk.length; j += 1) {
+        const c = chunk[j];
+        if (c === '{') depth += 1;
+        else if (c === '}') depth -= 1;
+        else if (c === '>' && depth === 0) { tags.push(chunk.slice(i, j + 1)); break; }
+      }
+    }
+    return tags;
+  };
+  const paths = (chunk) => routeTags(chunk).map((t) => /\bpath="([^"]+)"/.exec(t)?.[1]).filter(Boolean);
+  const routeCount = (chunk) => [...chunk.matchAll(/<Route\b/g)].length;
+
   const inside = paths(block[1]);
   const outside = paths(app.replace(block[0], ''));
+
+  // The reconciliation. An index route legitimately has no path, so this is an upper bound, not an
+  // equality — but a sweep finding far fewer paths than there are Routes has stopped looking.
+  const totalRoutes = routeCount(app);
+  assert.ok(totalRoutes > 0, 'no Route tags found at all — the route tree moved');
+  assert.ok(
+    inside.length + outside.length >= totalRoutes - 2,
+    `found ${inside.length + outside.length} paths across ${totalRoutes} Route tags — the sweep is missing routes`,
+  );
 
   // The only routes that legitimately live outside the shell are the guest pages: someone who is
   // not signed in has no projects to command.

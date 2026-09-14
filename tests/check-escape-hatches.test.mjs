@@ -320,7 +320,24 @@ test('it catches an EXPECT changed with no adjacent EXPECT-CHANGE line, where it
   const dir = scratch();
   try {
     const gates = join(dir, 'GATES.md');
-    writeFileSync(gates, readFileSync(gates, 'utf8').replace(/^ {4}EXPECT: .+$/m, '    EXPECT: loosened'));
+    // Planted on a gate that has NO adjacent EXPECT-CHANGE line, chosen rather than assumed. This
+    // used to take the FIRST EXPECT in the file, which silently stopped testing anything the day
+    // that gate gained a legitimate EXPECT-CHANGE — the plant became an excused change and the
+    // detector was right not to fire, so a green test meant the fixture had rotted, not that the
+    // detector worked.
+    const before = readFileSync(gates, 'utf8').split('\n');
+    // The predicate has to be the DETECTOR'S: it scans the whole gate BLOCK for an EXPECT-CHANGE
+    // line, not the line immediately after the EXPECT. A first fix here checked only the next
+    // line, which is a different question and picked gates the detector would rightly excuse.
+    const heads = [...before.keys()].filter((i) => /^- \[[ xX~]\] G[\w-]+/.test(before[i]));
+    const blockOf = (i) => before.slice(i, heads.find((h) => h > i) ?? before.length);
+    const target = heads
+      .filter((h) => !blockOf(h).some((l) => /^\s*EXPECT-CHANGE:/.test(l)))
+      .map((h) => blockOf(h).findIndex((l) => /^ {4}EXPECT: /.test(l)) + h)
+      .find((i) => i > 0);
+    assert.ok(target !== undefined, 'every gate block carries an EXPECT-CHANGE line; this plant can no longer isolate the rule');
+    before[target] = '    EXPECT: loosened';
+    writeFileSync(gates, before.join('\n'));
     execFileSync('git', ['add', '-A'], { cwd: dir });
     execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'loosen'], { cwd: dir });
     const r = run(dir);
@@ -366,6 +383,41 @@ test('a CONFESSION repeated three times is a stall; a HANDOFF repeated is not', 
     [7, 8, 9].map((n) => record(n, '  nothing outstanding')).join(''));
   assert.equal(handoff.exit, 0, handoff.out);
   assert.doesNotMatch(handoff.out, /OH-1 has been confessed/);
+});
+
+/* ---------------------------------------------- assertions that cannot fail --- */
+
+test('it catches `assert.ok(X || true)`, the assertion that asserts nothing', () => {
+  // Two of these shipped on main and were found by a peer session, not by this checker. One sat on
+  // top of the product's only prompt-injection boundary while the fence emitted a constant id
+  // underneath it. The line reads as care, which is exactly why nothing caught it for so long.
+  const r = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\n// planted\nconst PLANT = () => assert.ok(1 === 2 || true);"));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /an assertion that cannot fail/);
+  assert.match(r.out, /`X \|\| true` is `true`/);
+});
+
+test('it catches the mirror forms — `&& false` under a negation, and a bare literal', () => {
+  const andFalse = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\nconst PLANT = () => assert.ok(!(1 === 2 && false));"));
+  assert.equal(andFalse.exit, 1, andFalse.out);
+  assert.match(andFalse.out, /an assertion that cannot fail/);
+
+  const literal = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\nconst PLANT = () => assert.ok(true, 'nothing measured here');"));
+  assert.equal(literal.exit, 1, literal.out);
+  assert.match(literal.out, /a literal `true` is not a measurement/);
+});
+
+test('it does NOT fire on `|| true` inside a string, or this file could not name the pattern', () => {
+  // The negative control. A detector that matches its own description makes itself unmentionable
+  // in comments, test names and documentation — and the usual repair for that is to delete the
+  // detector. Strings and comments are stripped before the scan for exactly this reason.
+  const quoted = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\n// a comment naming X || true\nconst PLANT = 'assert.ok(x || true)';"));
+  assert.equal(quoted.exit, 0, quoted.out);
+  assert.doesNotMatch(quoted.out, /an assertion that cannot fail/);
 });
 
 test('the scratch clone is removed', () => {

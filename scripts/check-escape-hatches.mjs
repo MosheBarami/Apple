@@ -88,6 +88,39 @@ for (const rel of examined.filter((f) => /\.test\.(mjs|js|ts|tsx)$/.test(f))) {
   const skipped = [...src.matchAll(/(?<![.\w])(?:test|it|describe)\s*\.\s*(?:skip|todo)\s*\(/g)].length;
   if (live === 0 && skipped === 0) fail('a test file with no tests in it', rel, 'node --test reports this as `fail 0` and exits 0');
   else if (live === 0) fail(`a test file where all ${skipped} test(s) are skipped`, rel, 'reports `fail 0` and exits 0');
+
+  // AN ASSERTION THAT CANNOT FAIL. `assert.ok(X || true)` is `assert.ok(true)` for every X, so the
+  // property it was written to protect is unprotected while the line still reads as care. Two
+  // shipped on main: one sat on top of the product's only prompt-injection boundary and the fence
+  // was emitting a constant id underneath it the whole time.
+  //
+  // Detected on the whole call, not on the line, because the disarming `|| true` is often at the
+  // end of an argument that wraps. The mirror cases are `&& false` under a negation and a bare
+  // literal: `assert.ok(true)`, `assert.equal(1, 1)`. Each is a tautology dressed as a check.
+  //
+  // `|| true` inside a STRING is left alone — this file, and the tests for it, must be able to
+  // name the pattern without tripping over the name.
+  const withoutStrings = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    .replace(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g, "''");
+  for (const m of withoutStrings.matchAll(/assert(?:\.\w+)?\s*\(/g)) {
+    const call = balanced(withoutStrings, m.index + m[0].length - 1);
+    if (call === null) continue;
+    if (/\|\|\s*true\b/.test(call)) fail('an assertion that cannot fail', rel, '`X || true` is `true`, so this asserts nothing');
+    else if (/&&\s*false\b/.test(call)) fail('an assertion that cannot fail', rel, '`X && false` is `false`, so a negated form asserts nothing');
+    else if (/^\(\s*true\s*[,)]/.test(call)) fail('an assertion that cannot fail', rel, 'a literal `true` is not a measurement');
+  }
+}
+
+/** The balanced `(...)` starting at `open`, or null if it never closes. */
+function balanced(text, open) {
+  let depth = 0;
+  for (let i = open; i < text.length; i += 1) {
+    if (text[i] === '(') depth += 1;
+    else if (text[i] === ')') { depth -= 1; if (depth === 0) return text.slice(open, i + 1); }
+  }
+  return null;
 }
 
 /* ----------------------------------------------- 2/3. typecheck that cannot fail --- */

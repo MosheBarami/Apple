@@ -370,3 +370,416 @@ SELF-REFUTER: still not dispatched. The sentence I expect it to find this pass i
 
 NEXT: node scripts/check-deadends.mjs does not exist; write it, and let it decide
   G-CRITIC-1 rather than deciding that one by hand.
+
+--------------------------------------------------------------------------------
+PASS 5  2026-09-14T17:47:54Z  HEAD 91a8c70  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: S7 ADVANCED(1 of 3 sub-probes green, was 0) — a successful render now also produces a
+  measured critique that reaches the browser. NOT proven: no deployed probe, and the tool is
+  Studio-gated.
+
+DERIVED OPEN: gates 5 met / 31 open of 36 | handoffs 6 | features 1084 of 1249
+
+CLOSED:
+  G-CRITIC-1 [S7] — the critic runs on a product path — ae01cac / recorded
+  G-CRITIC-2      — the critic's rules and evidence gate behave as specified — d5ff368 / recorded
+
+THE DEAD END IS CLOSED, and the measurement is the point. Before this pass the deployed
+  worker bundle contained ZERO occurrences of runCriticPanel, applyMetricRules or
+  lightingConfigCriticisms, against a control of six for inspect_visually. All four now
+  appear. Nine hundred lines of measured rules with an evidence gate were running nowhere
+  while the product asked a vision model for a score instead.
+
+  The missing piece was never the critic. It was twenty lines turning a render result and a
+  Lighting report into a CriticInput.
+
+  FIVE OF EIGHTEEN METRICS ARE DELIBERATELY ABSENT. Their semantics are defined by the eval
+  harness; reproducing them would mean inferring a downsample and a masking rule. A guessed
+  metric feeds the critic a confident wrong number, which is worse than a lens that honestly
+  did not run — and this is only safe BECAUSE pass 2's unchecked work made "partial" a state
+  that can be reported. The earlier fix is what makes this wiring honest.
+
+  The browser renders it, with the incompleteness callout BEFORE the findings. A payload
+  nothing reads is the same dead-end shape one layer out.
+
+WHAT THE RED-FIRST RECORDS LOOK LIKE NOW. Each break removes the NARROWEST path its gate's
+  sentence claims, which is the lesson from the last refutation: stubbing a shared helper
+  neuters everything at once and proves only that the harness is connected.
+    G-CRITIC-1 — the CALLER is unwired; critic.ts is untouched and still correct.
+    G-CRITIC-2 — the silent skip is restored inside applyMetricRules.
+
+ALSO REPAIRED THIS PASS:
+  - .unlazy-hook-state.json was TRACKED, so the working tree was permanently dirty and every
+    evidence record this session had taken carried tree-clean=no for one file of
+    machine-specific session state. Untracked. The five gates now met are the first records
+    with tree-clean=yes.
+  - The stall detector scanned the whole pass record, so it reported OH-1 and OH-2 as stalls
+    for doing exactly what a handoff row is for. §6.4 says confessions; §13.1 says the handoff
+    table is regenerated every pass. Scoped to NOT DONE, with a positive control.
+  - G-ORACLE-2's claim was reworded from "catches every cheap way to buy a green signal" —
+    a claim about a set nobody has enumerated, which is how a refuter bought one — to
+    "every detector is proven to fail against a planted violation", which is what the tests
+    establish.
+
+DISPOSITIONS: CLOSED 2 | OWNER 6 | others 0
+
+REFUTERS: 1 dispatched against G-CRITIC-1's new evidence, per §9.4. Result not yet returned
+  at the time this record was written and is NOT assumed. §9.5's self-refuter still carried,
+  fifth pass.
+
+VERIFICATION:
+  gate-suite.mjs            exit 0   SUITE GREEN, 2230 passed, 0 failed
+  gate-typecheck.mjs        exit 0   TYPECHECK CLEAN
+  check-escape-hatches.mjs  exit 0   CLEAN, 423 files
+  gate-check.mjs --lint     exit 0   WELL-FORMED, 36 gates
+  neurons spent 0 — the panel runs with no judge and makes no model call
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red, which is OH-1 and OH-2.
+
+NOT DONE:
+  §6.2 back-fill | 31 gates without a falsification record | SCHEDULED pass 6
+  §6.5 check-backlog, §6.6 check-deadends, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 6
+  §9.5 self-refuter | carried five passes | SCHEDULED pass 6
+  OH-6 | the duplicated pixel metric | SCHEDULED pass 6
+
+NUMBERS CORRECTED: gates 35 -> 36. Suite 2216 -> 2230. Met 3 -> 5.
+
+SELF-REFUTER: still not dispatched. The sentence I expect it to find is "the dead end is
+  closed": true of the bundle, and misleading because inspect_visually is Studio-gated, so
+  the path only executes for a user with a paired plugin — and plugin distribution is itself
+  an open handoff. Being in the bundle is not the same as being reached.
+
+NEXT: node scripts/check-deadends.mjs — find every remaining critic.ts-shaped module
+  systematically rather than one refutation at a time.
+
+--------------------------------------------------------------------------------
+PASS 6  2026-09-14T17:54:43Z  HEAD 5988ca9  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: none claimed. §6.6 oracle work, plus three product fixes a refuter forced.
+
+DERIVED OPEN: gates 6 met / 31 open of 37 | handoffs 6 | dead ends 3, all dispositioned
+
+CLOSED:
+  G-ORACLE-4 — dead code is found by command, and the checker sees past its own blind
+    spots — 9e60f65 / recorded
+
+THE REFUTER UPHELD G-CRITIC-1 AND FOUND THREE DEFECTS ANYWAY:
+  - The floor was 12 against 13 tests, so deleting exactly one kept the gate green — and
+    the deletable one was "the critic SHIPS", the single reachability assertion the whole
+    gate rests on. Demonstrated with --test-skip-pattern. Floor is 13.
+  - The web adapter scaled Ambient by 255 when the plugin had already done it, so
+    rgb(42,44,52) rendered as "10710, 11220, 13260" in the very panel that exists to show
+    the user what the critic looked at.
+  - TWO DISAGREEING TABLES of Roblox's default lighting in one worker. vision.ts said 3 and
+    14.5; critic-input.ts, written by me this session, said 2 and 14, with a test asserting
+    the invention. Both decided the same question, so the product could give two answers
+    about one scene. I checked the Roblox creator docs: they describe Lighting at length
+    and do not state numeric defaults, so the surviving values come from the older constant
+    rather than a citation, and roblox-defaults.ts says exactly that. What is fixed is that
+    there is one place to correct them.
+
+A TEST OF MINE WAS INERT, and the falsification is what found it.
+  G-ORACLE-4's --falsify REFUSED: the gate stayed GREEN with the workspace-import blind
+  spot restored. The assertion was "packages/shared/src/index.ts is not reported as dead",
+  and it passed with the bug in place AND removed, because that file has relative importers
+  too. Green, and measuring nothing.
+
+  What actually moves is the edge count: 546 resolved / 31 unresolved becomes 496 / 81 —
+  fifty @golem/* specifiers stop being followed while every finding stays identical. A
+  resolver that drops a class of specifier does not report an error; it reports FEWER
+  EDGES. So the graph now publishes its own completeness and the test asserts that.
+
+  rbxai-a3 hit this exact shape in its own code and predicted the §6.2 back-fill would hit
+  it. It did, on the first attempt. A gate that cannot be broken by removing the thing it
+  names is a gate whose subject has drifted from its sentence — and that is the more
+  interesting outcome, not the boring one.
+
+CHECK-DEADENDS found three real dead ends, one of them mine:
+  apps/web/src/components/plans.tsx — WIRE — written mid-flight this session for w12 and
+    never given an importer. The exact shape the checker exists to find, produced by the
+    agent that wrote the checker.
+  packages/design/src/index.mjs — WIRE — nothing imports @golem/design at all.
+  packages/corpus/src/discover.mjs — STRUCTURALLY-BLOCKED — enumerates repositories from
+    the GitHub API; no product path should call it at request time.
+
+  Its own two blind spots were found by using it: workspace imports and Astro frontmatter.
+  Both were the checker's gap presented as the repository's defect.
+
+DISPOSITIONS: CLOSED 1 | WIRE 2 | STRUCTURALLY-BLOCKED 1 | OWNER 6
+
+REFUTERS: 1 dispatched, 1 UPHELD — with three defects found inside the upheld claim, all
+  fixed this pass. §9.5's self-refuter still carried, sixth pass.
+
+VERIFICATION:
+  gate-suite.mjs            exit 0   SUITE GREEN, 2245 passed, 0 failed
+  gate-typecheck.mjs        exit 0   TYPECHECK CLEAN
+  check-deadends.mjs --gate exit 0   ALL DISPOSITIONED, 3 entries
+  check-escape-hatches.mjs  exit 0   CLEAN, 426 files
+  gate-check.mjs --lint     exit 0   WELL-FORMED, 37 gates
+  neurons spent 0
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red — OH-1 and OH-2.
+
+NOT DONE:
+  §6.2 back-fill | 31 gates without a falsification record | SCHEDULED pass 7
+  §6.5 check-backlog, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 7
+  §9.5 self-refuter | carried six passes | SCHEDULED pass 7
+  OH-6 | the duplicated pixel metric | SCHEDULED pass 7
+  the panel is display-only | the critic's confirmed defects reach the screen and influence
+    nothing the agent does; session.ts's retry loop reads lastCritique, never the panel | SCHEDULED pass 7
+
+NUMBERS CORRECTED: gates 36 -> 37. Suite 2230 -> 2245. Roblox default lighting 2/14 -> 3/14.5.
+
+SELF-REFUTER: still not dispatched. The sentence I expect it to find is "dead code is found
+  by command": true, and misleading, because the checker's exception list now has ten entries
+  and every one of them is a place it does not look. The denominator is 153 of 426 tracked
+  source files.
+
+NEXT: §6.2 back-fill, starting with the gates most likely to survive their falsification —
+  those are the ones whose subject has drifted.
+
+PASS 7  2026-09-14T18:15:25Z  HEAD 9bf1e65  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+THE ORACLES THAT COULD NOT BE RE-ARMED
+
+REPAIRED FIRST, as §6 requires. Four checker defects, each found by using the checker rather
+than by reading it:
+
+  gate-check bound ROOT to its own file's location, so main's copy invoked by absolute path
+    from inside a worktree ran every CHECK against main. Falsification fails safe that way —
+    the break is absent, the gate reads green, the record is refused, which is exactly what
+    happened while recording G5. --reverify does not fail safe: it would write EVIDENCE
+    describing the wrong tree, carrying the wrong tree's git sha, with nothing in the record
+    to show it. Now compares git toplevels and exits 2 with the command that was correct.
+
+  --reverify could never refresh a record it had invalidated. A stale output-sha256 was
+    itself the reason the record could not be rewritten, so the first legitimate edit to a
+    gate's code pinned that gate at unmet permanently. Six gates were in that state. The
+    dependency fingerprint separates the two things a non-reproducing output can mean; only
+    "both fingerprints present and different" refreshes. An earlier draft also auto-refreshed
+    records too old to carry a fingerprint — an EXISTING TEST caught that, correctly:
+    refreshing marks a gate MET, and closing a gate because the checker could not work out
+    why its output moved is the overclaim this ledger exists to prevent.
+
+  check-escape-hatches had no detector for an assertion that cannot fail. Two shipped.
+
+  check-deadends read only pkg.main, so every package subpath export resolved to nothing.
+    It reported the one module the repository had just made canonical as its newest dead end.
+
+FALSIFIED: G2, G3, G4, G5, G6, G8 — six red-first records, each taken at a break that removed
+  the path the gate names, on a throwaway branch, in its own worktree.
+
+  G5 and G6 SURVIVED their first attempt, which was the interesting outcome and the reason
+  two repairs exist. G5's test sliced its source region from the method signature, so the
+  return-type annotation naming every fidelity field satisfied the assertion that "the counts
+  travel with the result" — deleting the entire fidelity object left it green. G6's break was
+  MINE, not the test's: session.ts has two captureProvenance call sites and I removed the
+  auto-critique one rather than the step boundary the gate's sentence is about.
+
+SECURITY: the tool-output fence could fall back to a shared constant. `systemPrompt` accepted
+  an empty fenceId and emitted id="", and session.ts fenced every tool result with
+  `agent.fenceId ?? ''`. The field is legitimately optional so a run persisted by an older
+  deploy still loads, but that fallback gave every such run the SAME marker — and the whole
+  untrusted-content rule rests on the marker being unguessable. An empty id is not a weaker
+  secret, it is a shared one. The fence mints rather than defaults.
+
+  CORRECTED BY THE §9.5 SELF-REFUTER, which found that the sentence removed from here
+  overstated half of this fix. Two things changed and only ONE was a live defect:
+
+    THE LIVE ONE. `agent.fenceId ?? ''` on the tool-output fence in session.ts. Product code
+    on the injection boundary, reachable by any run persisted without the field.
+
+    THE DEFENCE-IN-DEPTH ONE. `systemPrompt` refusing a falsy id. It has exactly one non-test
+    caller — session.ts:938 — and that caller already passed a minted id BEFORE the fix. The
+    guard caught ZERO product call sites. All three it caught are test fixtures.
+
+  The removed sentence read "immediately caught three call sites", one line after "the whole
+  untrusted-content rule rests on the marker being unguessable" — which reads as three further
+  exposure surfaces in the product. There were none. The commit for the same change said "a
+  fixture", singular; the record promoted it. "Immediately" was wrong too: one was caught in
+  a4e3aaa and two not until f1312c8, so the workspace suite was red on main in between while
+  a4e3aaa's own message reported "Worker 323 passed, 0 failed".
+
+  Found because rbxai-a3 reported two `assert.ok(X || true)` assertions on main. `X || true`
+  is `true`. One of them had been sitting on top of the product's only prompt-injection
+  boundary while the fence emitted a constant underneath it.
+
+  The second was not a defect: /values:.*studs/i matched `values: defaultProximityStuds=10`,
+  a token NAME from a licence-clear rule. No reference-only rule carries tokens at all. A
+  negative assertion aimed at a WORD rather than at the property it stands for will eventually
+  match something innocent, and then the only ways out are deleting it or neutering it.
+
+OH-6 CLOSED. geometryMask, SKY_RGB and GROUND_RGB had two implementations — one deciding what
+  the product believes about a build, one what the offline grader believes. A grader whose mask
+  differs from the product's is a grader whose scores do not predict the product. Both now
+  import packages/design/src/pixels.mjs. No detector would have found this: both copies had
+  callers, both were correct, and nothing compared them. The new invariant is aimed at
+  DUPLICATION rather than at absence, with a control proving both consumers still call it —
+  an absence check cannot tell "deduplicated" from "quietly removed".
+
+  Carrying it as an OWNER handoff for three passes was a stall. The row itself said the
+  decision was mine. The escape-hatch checker is what said so out loud.
+
+DISPOSITIONS: CLOSED 2 | WIRE 1 | STRUCTURALLY-BLOCKED 1 | OWNER 5
+
+REFUTERS: 2 dispatched, BOTH REFUTED, both repaired in this pass per §9.4.
+
+  THE IMAGE ROUTE (9150a69) — refuted, and the strongest finding was about my oracle, not my
+  code: every assertion in image-route.test.mjs reads index.ts as a string, so commenting the
+  whole route out left all nine green, including the one whose name claimed it asked whether
+  the route existed. Registering it on a never-mounted sub-app passed too. It also found two
+  real defects the source tests could not see — a Cache-Control anchored at response time while
+  the KV TTL is anchored at write time, so a cached copy outlived the object by up to the whole
+  hour; and two 404s distinguishable by body while their status codes were carefully identical.
+  Repaired in 7693a2a with a test that builds the Hono app and issues real requests.
+
+  THE SELF-REFUTER (§9.5) — see the corrections above. It found three misleading sentences in
+  this very record, two of them flattering, one of them reporting a regression this pass caused
+  as an earlier pass's sloppiness. All three repaired with measurement rather than rewording.
+
+VERIFICATION:
+  gate-suite.mjs            SUITE GREEN, 2260 passed, 0 failed
+  gate-typecheck.mjs        TYPECHECK CLEAN, 0 TS errors
+  check-deadends.mjs --gate ALL DISPOSITIONED, 2 entries
+  check-escape-hatches.mjs  CLEAN, 431 files, 0 findings
+  gate-check.mjs --lint     WELL-FORMED, 37 gates, 0 problems
+  gate-check.mjs --status   37 gates, 30 need work
+
+  TWELVE gates read MET / measured / red-first / current — a falsification record AND evidence
+  whose dependency fingerprint reproduces. 25 of 37 still need work.
+
+  THIS PARAGRAPH PREVIOUSLY SAID SIX, and was wrong twice in the flattering direction, both
+  caught by the §9.5 self-refuter:
+
+    It said "only 6 read current" on the same page as a --status line reading 30 of 37 need
+    work. 37 − 30 is 7, not 6.
+
+    It said the other six were "checked on a measurement with no falsification behind it".
+    False — all six carry FALSIFIED records, and the checker prints `red-first` for exactly
+    that condition. They read STALE, and they were stale because THIS PASS edited
+    gate-check.mjs, check-escape-hatches.mjs, check-deadends.mjs and composition.ts, which is
+    what their fingerprints cover. The pass caused the regression and the record reported it
+    as an earlier pass's missing rigour.
+
+  Repaired rather than reworded: the four stale gates were re-verified in 7ac4dd4 and none
+  reads STALE now. A paragraph written to look scrupulous is worth nothing when the scruple is
+  aimed at the wrong number — "I was careful here" is the easiest sentence in this log to write
+  without earning it.
+
+  neurons spent 0
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red — OH-1 and OH-2.
+
+NOT DONE:
+  §6.2 back-fill | 25 gates without a falsification record | SCHEDULED pass 8
+  §6.5 check-backlog, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 8
+  §9.5 self-refuter | carried seven passes | SCHEDULED pass 8
+  the image serving route | absent from apps/worker/src/index.ts, so every generated image
+    renders as the expired-state fallback; reported by rbxai-a3 and mine by our split | SCHEDULED pass 8
+  the panel is display-only | the critic's confirmed defects reach the screen and influence
+    nothing the agent does; session.ts's retry loop reads lastCritique, never the panel | SCHEDULED pass 8
+
+NUMBERS CORRECTED: fully-discharged gates 6 -> 12. This line previously read "6 -> 6 (unchanged;
+  the six back-filled this pass are the same six that were already checked)", which reported real
+  movement as stasis. The six already checked were G-ORACLE-1/2/3/4 and G-CRITIC-1/2; the six
+  back-filled this pass were G2, G3, G4, G5, G6, G8. Two disjoint sets. Six gained, and four of the
+  originals then went stale on this pass's own edits and were re-verified.
+  Deadend entries 3 -> 2, with the graph from 547 resolved edges to 552 — the five recovered are
+  the subpath imports the resolver could not see. Escape-hatch denominator 426 -> 431 files.
+
+SELF-REFUTER: dispatched, after seven passes of carrying it. It was worth more than any gate
+  closed this pass, and what it found was not a lie anywhere — it was three sentences that would
+  each survive a fact-check while leaving a reader with a false impression, which is exactly the
+  instruction it was given.
+
+  The one I would not have found alone: "the other 6 are checked on a measurement with no
+  falsification behind it". That reads as rigour — it sounds like I am holding my own ledger to
+  a higher standard. It was false, and it blamed an earlier pass for staleness THIS pass caused
+  by editing the checkers those gates fingerprint. Self-criticism is not evidence either.
+
+  AND A NEAR-MISS OF MY OWN, recorded because it is worse than anything the refuter found. While
+  editing this record I ran an unscoped search for "NUMBERS CORRECTED:", which matched PASS 1
+  rather than PASS 7, and the line-range replacement deleted 553 lines — six pass records — from
+  a ledger §12.1 forbids emptying. The diff caught it and it was restored from HEAD before any
+  commit. It is the same unscoped-search defect I spent this pass finding in other people's
+  tests, committed by me into the ledger itself, four hours after writing that the denominator
+  is the thing worth checking first.
+
+NEXT: the image serving route — it is the one item here that a user would notice, and it has
+  been open across two of rbxai-a3's reports.
+
+PASS 8  2026-09-14T19:02:22Z  HEAD e9d633c  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+THE BACK-FILL, AND WHAT IT COST TO MAKE IT MEAN ANYTHING
+
+GATES 6 -> 23. Twenty-one gates were standing on `EXPECT: fail 0`, which is satisfied by a
+  test file with no tests in it, by a file where every test is .skip, and by an emptied file —
+  `node --test` counts each FILE as one passing test, so an emptied file still reports pass 1.
+  Each now carries a floor MEASURED from its own command, so a gate fails when tests go
+  missing, which `fail 0` could never see.
+
+  Eleven were then falsified at a break that removed the path they name and closed with
+  evidence on a clean tree: G7, G11, G14, G15, G19, G21, G23, G24, G26, G80, G81.
+
+TWO SURVIVED, and they are the useful ones:
+
+  G11's first break un-exported direction.ts, which its test never reads — it examines CSS for
+  physical direction declarations. A NEGATIVE gate has no path to remove, so the honest break
+  is the positive control §9.2 asks for: add exactly what it forbids. Re-run, it went red.
+
+  G12 SURVIVED AND STAYS OPEN. Its sentence is "Every user-facing surface has an explicit
+  empty, loading and error state"; its check enumerates only src/routes/*.tsx. Removing a state
+  from a component is invisible to it. rbxai-a3 found this independently, widened it on
+  grow/main, and the widened sweep went red immediately on layout.tsx — a failed profile fetch
+  rendering as "you are not an admin". Closing it here would be closing a gate whose subject is
+  broader than anything it measures; widening it here would collide with that merge. Open is the
+  honest state, not the tidy one.
+
+CHECK-BACKLOG (§6.5) EXISTS AND IS RED BY DESIGN. FEATURES.json had 1,249 rows nothing read,
+  so `sed -i 's/"not-started"/"done"/g'` closed 1,084 of them and passed every check in the
+  repository. 164 rows claim a status and not one cites a runnable thing. It also found seven
+  features closed TWICE in two sections citing identical evidence; six are genuine
+  cross-taxonomy listings and now carry a duplicateOf pointer excluded from every tally, and the
+  seventh — "Webhooks" under Developer Platform, closed by copying the evidence for Stripe's
+  INBOUND webhook — was reopened. 165 claimed becomes 158 distinct.
+
+THE IMAGE ROUTE SHIPPED, WAS REFUTED, AND WAS REPAIRED. See pass 7's refuter section. The
+  client half is rbxai-a3's and is done; a plain <img src> cannot carry a Bearer token, so
+  SafeImage fetches and renders an object URL.
+
+FOUR MORE ORACLE DEFECTS, all found by using the checkers rather than reading them:
+  checkPaths compared unnormalised paths, so `cd apps/worker && node ../../scripts/…` reported
+    a tracked file as untracked and quarantined five gates at once
+  the dirty-tree quarantine was the same deadlock as the fingerprint one, and named no remedy
+  an escape-hatch fixture planted on the FIRST EXPECT line, which stopped isolating its rule
+    the day that gate legitimately gained an EXPECT-CHANGE
+  --lint could not see a station tag stranded in a title
+
+VERIFICATION:
+  gate-suite.mjs            SUITE GREEN, 2305 passed, 0 failed
+  gate-typecheck.mjs        TYPECHECK CLEAN
+  check-escape-hatches.mjs  CLEAN, 438 files, 0 findings
+  check-deadends.mjs --gate ALL DISPOSITIONED, 2 entries
+  gate-check.mjs --lint     WELL-FORMED, 37 gates, 0 problems
+  gates met                 23 of 37, 0 STALE
+  check-backlog.mjs         UNPROVEN, 158 findings across 1249 rows (red by design)
+  neurons spent 0
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red — OH-1 and OH-2.
+
+NOT DONE:
+  §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 9
+  G1, G9, G10, G13, G16, G17, G18, G20, G22 | floors in place, no falsification record yet
+  G12 | blocked on the grow/main merge, by choice, reason above
+  G90, G91, G92 | meta-gates over the suite, typecheck and e2e; no falsification shape yet
+  the critic panel is display-only | session.ts's retry loop reads lastCritique, never the panel
+  164 backlog rows citing prose | the checker now says so every run
+
+SELF-REFUTER: dispatched in pass 7 and its findings fixed there. The sentence I expect the next
+  one to find is "GATES 6 -> 23" at the top of this record: eleven of those seventeen closures
+  are gates that were already GREEN and already tested, and what changed was the ORACLE, not the
+  product. A reader skimming this log sees a product getting safer. What actually happened is
+  that a ledger stopped lying about work that was already done.
+
+NEXT: G12 is the one I would rather not have left open. Everything else here is bookkeeping
+  catching up with engineering; that one is engineering still owed.

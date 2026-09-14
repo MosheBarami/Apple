@@ -644,6 +644,21 @@ const TOOL_ARGS = {
   search_docs: { query: 'BasePart' },
   remember: { fact: 'the user prefers stone' },
   create_checkpoint: { label: 'manual' },
+
+  // The eleven tools the growth branch added. Arguments chosen to reach each body rather than to
+  // satisfy the enumeration — a fixture that returns early at a validation guard would pass A2's
+  // count while testing none of the egress the rest of this file exists to check.
+  get_instance: { path: 'game.Workspace.A' },
+  get_selection: {},
+  focus_camera: { path: 'game.Workspace.A' },
+  select_instances: { paths: ['game.Workspace.A'] },
+  viewport_info: {},
+  set_mood: { mood: 'night' },
+  add_effect: { effect: 'fire', path: 'game.Workspace.A' },
+  remove_effect: { path: 'game.Workspace.A' },
+  audit_build: {},
+  run_spec: { cases: [{ name: 'a placed part is anchored', code: 'assert(true)' }] },
+  install_module: { module: 'profile_store' },
 };
 
 test('A2 every registered tool has an argument fixture — the enumeration cannot silently go stale', () => {
@@ -1265,7 +1280,13 @@ test('A5 STATIC CHECK — every tool result entering the transcript is fenced as
       //
       //   A per-run random id fixes that without touching the payload. Asserting only
       //   "there is a fence" would pass against a constant tag again. ]]
-      assert.match(p, /id="\$\{agent\.fenceId/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
+      //   The id now goes through `fenceIdFor(agent)`, which MINTS one when a run persisted by an
+      //   older deploy arrives without it. The expression this used to pin was `agent.fenceId ?? ''`,
+      //   and that fallback was the same defect one layer down: every legacy run fenced its output
+      //   with the SAME id, so the secret was shared rather than per-run. Pin the property — a
+      //   per-run id and no constant fallback — rather than the spelling.
+      assert.match(p, /id="\$\{(?:agent\.fenceId|this\.fenceIdFor\(agent\))/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
+      assert.doesNotMatch(p, /fenceId\s*\?\?\s*''/, 'the fence id must never fall back to a constant');
       fenced++;
     } else {
       // The only other tool-role push is Golem's own static refusal text; it must interpolate

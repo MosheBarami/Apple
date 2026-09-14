@@ -1401,7 +1401,7 @@ export class SessionDO extends DurableObject<Env> {
       // fence tool output as untrusted data — it can contain attacker-authored text
       agent.llm.push({
         role: 'tool',
-        content: `[${call.name}]\n<untrusted-tool-output id="${agent.fenceId ?? ''}" tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
+        content: `[${call.name}]\n<untrusted-tool-output id="${this.fenceIdFor(agent)}" tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
         toolCallId: call.id,
         name: call.name,
       });
@@ -1445,6 +1445,24 @@ export class SessionDO extends DurableObject<Env> {
    * in a loop would otherwise grow the persisted state without limit. The newest ids are kept,
    * since those are the ones an insert in the next step is actually about.
    */
+  /**
+   * The run's fence id, minted if a run persisted by an older deploy arrives without one.
+   *
+   * NEVER a constant. The `?? ''` that stood here gave every such run the SAME marker, and the
+   * untrusted-content rule stakes everything on the marker being unguessable: content that knows
+   * the id can close the fence and open a fresh one the model has been instructed to trust. An
+   * empty id is not a weaker secret, it is a shared one.
+   *
+   * A minted id will not match the system prompt a legacy run is already carrying, and that is the
+   * FAIL-CLOSED direction on purpose — the prompt tells the model that a closing tag without the
+   * exact id was written by the content, and that everything after it is still inside the fence.
+   * Unrecognised beats forgeable.
+   */
+  private fenceIdFor(agent: AgentState): string {
+    if (!agent.fenceId) agent.fenceId = crypto.randomUUID().slice(0, 8);
+    return agent.fenceId;
+  }
+
   private captureProvenance(agent: AgentState, ctx: AgentCtx): void {
     const CAP = 200;
     if (ctx.discoveredAssetIds?.size) agent.discoveredAssetIds = [...ctx.discoveredAssetIds].slice(-CAP);

@@ -97,10 +97,27 @@ asks whether a returning user finds their session intact.
 **Rows it unblocks.** S12's image half. Not S12 itself: quota, conversation, memory and export have
 no retention logic at all, so they are true across a day boundary by construction.
 
-**Already built on this side.** The image is stored, scoped to its project, and served by an
-authenticated route; the client shows the alt text and says images are kept for an hour when the
-fetch fails, with that sentence checked against the constant so moving the TTL without moving the
-copy fails a test. Nothing here waits on the number.
+**Already built on this side.** The image is stored scoped to its project and served by an
+authenticated route — `GET /api/projects/:id/images/:imageId`, added this pass. Before that there
+was no image route in the worker at all: `generate_image` parked PNGs in KV and handed back a key
+that nothing could redeem, so every generated image was unreachable.
+
+**On the client half, and a correction I got wrong in both directions.** This row also claims the
+client shows alt text and says images are kept for an hour when the fetch fails, "with that
+sentence checked against the constant so moving the TTL without moving the copy fails a test".
+
+I could not find any of it on main and struck it as an overstatement. That was wrong. It is real,
+tested code on `grow/main` — `SafeImage` in `apps/web/src/lib/generative-ui/render.tsx` renders the
+alt text on the failed branch, and `apps/web/tests/image-expiry.test.mjs` imports
+`IMAGE_TTL_SECONDS` from the worker and asserts the copy against it. So the sentence was a
+measurement of a branch, not a memory dressed as one.
+
+It is restored, SCOPED: true on `grow/main`, not yet on main. Both of my readings were wrong in
+the same way — I checked one tree and reported a conclusion about the repository. A claim about
+"the client" in a multi-branch repo has to name the branch, or it is unfalsifiable by whoever
+reads it next.
+
+Nothing in OH-5 waits on the number; the retention value is the only missing input.
 
 **The trade, costed.** KV storage against images up to ~1 MB each. At one image per build and the
 free tier's current allowance, a 30-day retention is under 1 GB per active free user per month.
@@ -108,21 +125,29 @@ The number is yours because it is a storage bill, not an engineering constraint.
 
 ---
 
-## OH-6 · One pixel metric, two implementations
+## OH-6 · One pixel metric, two implementations — RESOLVED, not an owner action
 
-**The action.** None yet — this is recorded as a row so it is not lost, and the decision of which
-implementation survives is an engineering one this session will make. It is listed here because it
-is a DRIFT surface with no checker on it and no dead-end detector would find it: both copies have
-callers, which is exactly why they can disagree indefinitely.
+**Status.** Closed this pass. It was never owner-blocked: the row said so when it was written
+("the decision of which implementation survives is an engineering one this session will make"),
+and carrying it here for three passes was a stall, which the escape-hatch checker eventually said
+out loud.
 
-**Measured this pass.** `geometryMask` and `figureGroundContrast` exist in both
-`apps/worker/src/composition.ts` and `packages/evals/src/props.mjs`. One decides what the offline
-grader believes about a build; the other decides what the product would. They agree until they do
-not, and nothing would say when that happened.
+**What was decided.** `geometryMask`, `SKY_RGB` and `GROUND_RGB` now have ONE implementation, in
+`packages/design/src/pixels.mjs`. Both former copies — `apps/worker/src/composition.ts` (what the
+product believes about a build) and `packages/evals/src/props.mjs` (what the offline grader
+believes) — import it. They had to agree: a grader whose mask differs from the product's is a
+grader whose scores do not predict the product.
 
-**Found by.** rbxai-a3, while declining to port five further pixel metrics into the product for the
-same reason — metrics derived by inference feed the critic confident wrong numbers, which is worse
-than a lens that honestly did not run.
+**Why the design package.** It is the only package both consumers already depend on, so the shared
+module needed no new workspace wiring. A dedicated `@golem/pixels` package would carry a better
+name; that is recorded as reversible, and moving it later is an import rewrite in two files.
+
+**What keeps it closed.** `tests/pixel-primitives.test.mjs` asserts each name is defined exactly
+once, with a positive control that both consumers still import AND still call it — an absence
+check alone cannot tell "deduplicated" from "quietly removed". The hand-written ambient
+declaration the worker typechecks against is the one seam the dedup could not remove, so its
+exported names are compared against the module's. Falsified: reintroducing a second `SKY_RGB` in
+composition.ts turns it red.
 
 ---
 

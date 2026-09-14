@@ -1,0 +1,4 @@
+[
+  "apps/web/tests/rtl-workspace.test.mjs",
+  "scripts/assert-tests.mjs"
+]

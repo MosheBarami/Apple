@@ -44,6 +44,7 @@ const visual = P.systemPrompt({
   studioConnected: true,
   memoryFacts: [],
   sceneKind: 'a cosy tavern interior',
+  fenceId: 'ev4lf3nc',
 });
 
 test('a visual Stone run carries the art-direction brief', () => {
@@ -52,7 +53,7 @@ test('a visual Stone run carries the art-direction brief', () => {
 });
 
 test('a non-visual run never pays for the brief', () => {
-  const plain = P.systemPrompt({ mode: 'stone', projectName: 'Test', studioConnected: true, memoryFacts: [] });
+  const plain = P.systemPrompt({ mode: 'stone', projectName: 'Test', studioConnected: true, memoryFacts: [], fenceId: 'ev4lf3nc' });
   assert.ok(!plain.includes(P.BRIEF_START));
   assert.ok(plain.length < visual.length - 6_000, 'the brief should be most of the difference');
 });
@@ -72,7 +73,7 @@ test('collapsing removes the brief, keeps the instruction, and leaves no sentine
 test('collapsing twice is a no-op, so calling it every step is safe', () => {
   const once = P.collapseArtDirection(visual);
   assert.equal(P.collapseArtDirection(once), once);
-  const plain = P.systemPrompt({ mode: 'clay', projectName: 'T', studioConnected: false, memoryFacts: [] });
+  const plain = P.systemPrompt({ mode: 'clay', projectName: 'T', studioConnected: false, memoryFacts: [], fenceId: 'ev4lf3nc' });
   assert.equal(P.collapseArtDirection(plain), plain);
 });
 

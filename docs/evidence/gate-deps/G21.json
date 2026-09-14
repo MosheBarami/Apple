@@ -1,0 +1,5 @@
+[
+  "apps/web/src/lib/archive.ts",
+  "apps/web/tests/archive.test.mjs",
+  "scripts/assert-tests.mjs"
+]

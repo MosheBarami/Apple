@@ -1,0 +1,9 @@
+[
+  "packages/design/src/pixels.mjs",
+  "packages/evals/src/critic.mjs",
+  "packages/evals/src/critic.test.mjs",
+  "packages/evals/src/props.mjs",
+  "packages/evals/src/render-scene.mjs",
+  "packages/evals/tasks-visual/props/build-fixtures.mjs",
+  "scripts/assert-tests.mjs"
+]

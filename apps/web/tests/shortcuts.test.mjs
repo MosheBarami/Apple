@@ -173,7 +173,12 @@ test('the New chat badge shows the chord that actually works', () => {
   // reads it — and it was showing exactly that until the binding moved.
   assert.match(LAYOUT, /shortcutLabel\(SHORTCUTS\.newProject\)/);
   // Comments are allowed to name the old chord (they explain the move); rendered markup is not.
-  for (const [, body] of LAYOUT.matchAll(/<kbd\b[^>]*>([\s\S]*?)<\/kbd>/g)) {
+  // REACH, then the assertion. `[^>]*` cannot cross the `>` inside a JSX expression, so a
+  // `<kbd className={cn(a, b)}>` would end the match early and the loop would silently iterate
+  // zero times — passing while checking nothing. An empty sweep must fail, not pass.
+  const rendered = [...LAYOUT.matchAll(/<kbd\b[\s\S]*?>([\s\S]*?)<\/kbd>/g)];
+  assert.ok(rendered.length > 0, 'no <kbd> elements found — this sweep is checking nothing');
+  for (const [, body] of rendered) {
     assert.equal(/[⌘⇧⌥]|Ctrl\+/.test(body), false, `a hard-coded chord is rendered: ${body.trim()}`);
   }
 });

@@ -33,7 +33,8 @@ import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau, removeEffectLuau, parseInstancePath } from './effects';
 import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
-import { runCriticPanel, formatPanelReport } from './critic';
+import { formatPanelReport, runCriticPanel } from './critic';
+import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
 import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
 
@@ -1795,7 +1796,54 @@ export const TOOLS: Record<string, ToolImpl> = {
       const res = await renderViews(ctx, a.target ? String(a.target) : undefined, 'all');
       if ('error' in res) return res;
       ctx.lastRender = res;
-      const critique = await critiqueViews(ctx.env, res, String(a.intent ?? 'a well-built Roblox scene'));
+      const intent = String(a.intent ?? 'a well-built Roblox scene');
+      const critique = await critiqueViews(ctx.env, res, intent);
+
+      // THE DETERMINISTIC PANEL, alongside the model's opinion.
+      //
+      // `critic.ts` shipped in zero bytes until now: its only importer anywhere was a test, and the
+      // deployed bundle contained no trace of it. It is 900 lines of measured rules with an evidence
+      // gate — a criticism that cannot cite a number is DISCARDED rather than down-weighted — and it
+      // was running nowhere while the product asked a vision model for a score instead.
+      //
+      // The two are complementary and are reported separately on purpose. `critiqueViews` is a
+      // model's judgement of pixels; the panel is arithmetic over what the plugin measured. Where
+      // they disagree, that disagreement is information.
+      //
+      // The panel runs with NO judge, so it makes zero model calls and costs nothing. Five of its
+      // eighteen metrics are pixel-derived and are not supplied, because reproducing them here would
+      // mean inferring a downsample and a masking rule defined in the eval harness — and the panel
+      // now REPORTS what it could not check, so a partial run says so instead of looking clean.
+      const panel = await runCriticPanel(criticInputFromRender(res, intent));
+
+      // THE PANEL'S VERDICT REACHES THE AGENT, not only the screen.
+      //
+      // Until now `panel` went into `ctx.uiDetail` and nowhere else. `uiDetail` is the browser.
+      // The retry loop reads `ctx.lastCritique`, and `session.ts` decides `visualDefectsFound`
+      // from it — so the panel could confirm a measured defect, print it in the workspace, and the
+      // run would still report a clean build and move on. A critic whose findings reach the screen
+      // and influence nothing the agent does is a display, not a critic, and this repository has
+      // twice recorded that the panel "is display-only" as an item to fix rather than fixing it.
+      //
+      // `hardFails` is the seam, because it is already DEFINED as "rules tripped by measured
+      // structure, independent of the model's opinion" — which is exactly what the panel produces.
+      // It already flows to the model's text via critiqueToText, to the workspace through the
+      // generative-ui adapter, and to the retry decision through `passed`. Nothing new is threaded;
+      // the measured verdict simply stops being discarded.
+      //
+      // CONFIRMED ONLY. `panel.unchecked` is an absence of evidence and must never fail a build —
+      // that distinction is the whole point of the evidence gate, and inverting it here would make
+      // a partial run indistinguishable from a bad one.
+      if (panel.adjudication.confirmed.length) {
+        critique.hardFails = [
+          ...critique.hardFails,
+          ...panel.adjudication.confirmed.map((d) => `${d.subject} — ${d.claims[0] ?? 'measured defect'} [${d.severity}, confirmed by ${d.confirmedBy}]`),
+        ];
+        // A measured, evidence-backed defect is not a clean build, whatever the model said. The
+        // two verdicts are complementary and this is the direction the disagreement has to resolve:
+        // the panel cites numbers the model never saw.
+        critique.passed = false;
+      }
       ctx.lastCritique = critique;
 
       // SHOW THE USER WHAT THE CRITIC LOOKED AT.
@@ -1822,6 +1870,14 @@ export const TOOLS: Record<string, ToolImpl> = {
               views: [{ name: hero.name, pngDataUrl: png, meta: hero.meta }],
             },
             critique,
+            panel: {
+              confirmed: panel.adjudication.confirmed,
+              // Non-empty means this verdict is PARTIAL. The browser renders it as such rather than
+              // as a clean result, because a clean result over unchecked rules is the failure this
+              // whole subsystem exists to prevent.
+              unchecked: panel.unchecked,
+              report: formatPanelReport(panel),
+            },
           };
         }
       }
@@ -2053,7 +2109,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_image',
       description:
-        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The image is SHOWN to the user in the workspace and is retrievable for an hour under `imageId`. There is still NO path that uploads it to Roblox or applies it to a Decal, so never tell the user it has been placed in their game — they can see it, not use it yet.",
+        "Generate an original 2D image — UI icon, decal, tiling texture, thumbnail or concept study — art-directed to the Roblox simulator style (thick near-black outlines, saturated colour, chunky flat-shaded forms). Describe the SUBJECT only and set the structured fields; the style grammar is applied for you, so do not write 'roblox style' into the subject. Two things are refused rather than attempted: words baked into the image (put type in a TextLabel with a UIStroke instead — it is sharper and stays editable) and logos or brand marks (use the provider's own official asset). The result reports a deterministic flatness check: 'too_detailed' means the render came back realistic and should be regenerated or discarded. The image is SHOWN to the user in the workspace and is retrievable for an hour under `imageId`. There is still NO path that uploads it to Roblox or applies it to a Decal, so never tell the user the image has been placed in their game — they can see it, not use it yet.",
       parameters: S(
         {
           subject: { type: 'string', description: 'What to draw, as a plain noun phrase. No words to render, no brand names.' },
@@ -2095,23 +2151,21 @@ export const TOOLS: Record<string, ToolImpl> = {
       if ('refused' in res) return { error: res.message, reason: res.reason, offending: res.offending };
       // The pixels never enter the transcript — a base64 PNG is ~230k characters of nothing the
       // model can read. They go to KV under a key, exactly as render_view keeps frames out.
-      // No project means no scoped key and therefore no route that could serve it — the eval
-      // harness and the admin run-tool route both build an AgentCtx with no project. Generating
-      // without somewhere to put it is still useful to those callers, so it is reported rather
-      // than refused, and the model is told the pixels are not retrievable.
-      if (!ctx.projectId) {
-        return {
-          notStored: 'generated, but there is no project to store it under, so it cannot be shown',
-          width: res.width,
-          height: res.height,
-          bytes: res.bytes,
-          flatness: res.flatness.verdict,
-        };
-      }
-      const { imageId } = await storeImage(ctx.env, ctx.projectId, res.pngBase64);
+      // MERGE NOTE: main's refusal, not my partial result. Mine reported "generated, but there is
+      // nowhere to put it" with the dimensions, on the grounds that an eval harness might still
+      // want them. But the pixels are addressed BY PROJECT, so without one the image is
+      // unretrievable by anyone, and handing back its size is a description of something nobody
+      // can ever see. Refusing says the same thing without pretending a result exists.
+      //
+      // Worth a follow-up either way: both versions check this AFTER generating, so the neurons
+      // are spent before anyone notices there is nowhere to put the result. The check belongs
+      // before the call, and that is a change rather than a merge resolution.
+      if (!ctx.projectId) return { error: 'generate_image needs a project to store the result against' };
+      const imageId = await storeImage(ctx.env, res.pngBase64, ctx.projectId);
 
       // The pixels reach the BROWSER by path, never through the transcript. A 1024x1024 PNG as a
-      // data URL is far past MAX_UI_DETAIL_CHARS, and the model could not read it anyway.
+      // data URL is far past MAX_UI_DETAIL_CHARS, and the model could not read it anyway. This
+      // half is mine; main had the store and the route but nothing that put an image on screen.
       ctx.uiDetail = imagePanel(ctx.projectId, imageId, req.subject, {
         width: res.width,
         height: res.height,

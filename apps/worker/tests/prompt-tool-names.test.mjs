@@ -36,6 +36,11 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
 const T = await import(`file://${out}`);
 
 const BASE = {
+  // An id is REQUIRED now: systemPrompt refuses a falsy one, because an empty fence id is not a
+  // weaker secret but a SHARED one, and the untrusted-content rule rests entirely on the marker
+  // being unguessable. rbxai-1d hardened that after I reported the assert.ok(X || true) beside it;
+  // supplying an id here is the right response to the guard, not relaxing it.
+  fenceId: 'f3c0d91a',
   mode: 'stone',
   studioConnected: true,
   placeName: 'Test Place',

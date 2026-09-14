@@ -1,0 +1,4 @@
+[
+  "apps/web/tests/retry-run.test.mjs",
+  "scripts/assert-tests.mjs"
+]

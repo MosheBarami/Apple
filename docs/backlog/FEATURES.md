@@ -48,7 +48,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 
 ## Sections
 
-### מוצר וחשבון — 24 items  (done 0, partial 0)
+### מוצר וחשבון — 24 items  (done 1, partial 0)
 
 - [ ] הרשמה והתחברות
 - [ ] Clerk / OAuth / Passkeys
@@ -735,7 +735,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Comment generation
 - [ ] Changelog generation
 
-### 3D and Creative — 79 items  (done 0, partial 2)
+### 3D and Creative — 79 items  (done 0, partial 1)
 
 - [~] Text-to-3D — generate_model reaches GenerationService but result does not persist as a Roblox asset
 - [ ] Image-to-3D
@@ -898,7 +898,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] License scanner
 - [ ] Vulnerability scanner
 
-### Product UX — 59 items  (done 3, partial 2)
+### Product UX — 59 items  (done 10, partial 4)
 
 - [x] Dark mode — apple-brand.css dark-native tokens
 - [ ] Light mode
@@ -1019,7 +1019,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Incident response
 - [ ] Security alerts
 
-### Infrastructure — 54 items  (done 13, partial 0)
+### Infrastructure — 54 items  (done 11, partial 0)
 
 - [x] Multi-provider routing — providers/ registry with 4 adapters
 - [x] Provider health checks — providers/registry.ts providerAvailability
@@ -1076,7 +1076,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Status page
 - [ ] Health dashboard
 
-### Billing and Monetization — 36 items  (done 0, partial 0)
+### Billing and Monetization — 36 items  (done 12, partial 5)
 
 - [ ] Free plan
 - [×] Pro plan — conflicts with zero-recurring-cost
@@ -1193,7 +1193,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Private templates
 - [ ] Community publishing
 
-### Analytics and Observability — 37 items  (done 3, partial 0)
+### Analytics and Observability — 37 items  (done 1, partial 0)
 
 - [ ] Request logs
 - [x] Agent traces — ToolTraceEntry persisted per run
@@ -1233,7 +1233,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Data export
 - [ ] Scheduled reports
 
-### Release and Quality — 40 items  (done 4, partial 0)
+### Release and Quality — 40 items  (done 3, partial 0)
 
 - [x] CI/CD — .github/workflows/ci.yml — deterministic, no secrets, no paid calls
 - [x] Automated tests — pnpm -r test in CI

@@ -680,6 +680,11 @@ function extractImageBase64(raw: unknown): string | null {
 /** How long a generated image stays retrievable. Long enough to place it, short enough not to accrete. */
 export const IMAGE_TTL_SECONDS = 3600;
 
+/** What is stored beside the pixels: the unix second at which KV drops them. */
+export interface ImageMeta {
+  expiresAt: number;
+}
+
 /**
  * Park the pixels in KV and return the key.
  *
@@ -688,38 +693,40 @@ export const IMAGE_TTL_SECONDS = 3600;
  * metadata does not — the same reasoning render_view already follows when it pushes frames to the
  * browser and strips them from the tool result.
  */
-/**
- * Park a generated PNG where a route can serve it back, keyed to the project that made it.
- *
- * THE KEY CARRIES THE PROJECT ON PURPOSE. It used to be `image:<uuid>`, which is UNGUESSABLE but
- * not SCOPED, and those differ at exactly the moment the key leaks — a shared transcript, a log
- * line, a screenshot of devtools. An unguessable key is a bearer token for an object nobody ever
- * decided you could see; a scoped one lets the serving route re-derive authority from the thing it
- * was asked for, rather than trusting that the asker could only have arrived legitimately.
- *
- * Only the `imageId` half goes back to the caller. If the client never holds the namespace-
- * qualified key, a leaked tool transcript does not carry a fetchable handle to anything.
- */
-export async function storeImage(
-  env: Env,
-  projectId: string,
-  pngBase64: string,
-): Promise<{ imageId: string }> {
+export async function storeImage(env: Env, pngBase64: string, projectId: string): Promise<string> {
   const imageId = crypto.randomUUID();
-  await env.KV.put(imageKvKey(projectId, imageId), pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
-  return { imageId };
+  // `expiresAt` is written alongside because the TTL is anchored HERE, at write time, and every
+  // reader is somewhere else in time. A reader that assumes a full life left will hand out a
+  // cache directive that outlives the object — see the route's Cache-Control.
+  await env.KV.put(imageKvKey(projectId, imageId), pngBase64, {
+    expirationTtl: IMAGE_TTL_SECONDS,
+    metadata: { expiresAt: Math.floor(Date.now() / 1000) + IMAGE_TTL_SECONDS } satisfies ImageMeta,
+  });
+  return imageId;
 }
 
 /**
- * The one place the storage key is spelled, so the writer and the reader cannot drift apart.
+ * The KV key an image lives under.
  *
- * Named to match the serving route that landed on main. It was `imageKeyFor` here while the reader
- * did not exist; now that one does, the writer takes the reader's name rather than leaving two
- * spellings of the same key to be reconciled by whoever merges.
+ * SCOPED TO THE PROJECT, and that is the authorisation, not a tidiness choice. The key used to be
+ * `image:<uuid>` with nothing tying the pixels to anyone, so any route that served them would have
+ * had to trust the caller's own id — and a serving route whose only protection is that the
+ * identifier is hard to guess is a serving route with no protection at all, one leaked transcript
+ * later. With the project in the key, the route asks the question it already knows how to ask:
+ * does this user own this project? A caller who owns a different project cannot construct a key
+ * into someone else's images, whatever id they present.
  */
 export function imageKvKey(projectId: string, imageId: string): string {
   return `image:${projectId}:${imageId}`;
 }
+
+/**
+ * MERGE NOTE. storeImage and imageKvKey above are main's, deliberately: main's version writes an
+ * `expiresAt` into KV metadata so the serving route can hand out a Cache-Control anchored at WRITE
+ * time rather than at response time. Mine had neither the metadata nor a reader to need it. The
+ * two below are the half main did not have — the panel that puts an image in front of the user,
+ * and the path the browser asks for.
+ */
 
 /**
  * The panel that puts a generated image in front of the user.

@@ -44,6 +44,7 @@ const run = (cmd, args) => {
 const parts = [
   run('node', ['scripts/check-workspace-coverage.mjs']),
   run('node', ['scripts/check-escape-hatches.mjs']),
+  run('node', ['scripts/check-deadends.mjs', '--gate']),
   run('pnpm', ['-r', 'test']),
 ];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make

@@ -1,0 +1,5 @@
+[
+  "scripts/assert-tests.mjs",
+  "scripts/check-workspace-coverage.mjs",
+  "tests/workspace-coverage.test.mjs"
+]

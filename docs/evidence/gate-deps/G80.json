@@ -1,0 +1,5 @@
+[
+  "scripts/assert-tests.mjs",
+  "scripts/gate-check.mjs",
+  "tests/gate-check.test.mjs"
+]

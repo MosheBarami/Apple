@@ -1,0 +1,8 @@
+[
+  "apps/web/src/lib/command-match.ts",
+  "apps/web/src/lib/shortcuts.ts",
+  "apps/web/tests/command-match.test.mjs",
+  "apps/web/tests/command-palette.test.mjs",
+  "apps/web/tests/shortcuts.test.mjs",
+  "scripts/assert-tests.mjs"
+]

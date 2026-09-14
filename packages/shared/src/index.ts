@@ -329,6 +329,11 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'search_asset_library':
     case 'find_verified_asset':
     case 'inspect_model':
+    // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
+    // announcing "building" while they run tells the user work is happening that is not.
+    case 'get_instance':
+    case 'get_selection':
+    case 'viewport_info':
       return 'inspecting';
     case 'edit_script':
       return 'writing_luau';
@@ -339,11 +344,25 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'generate_model':
     case 'generate_image':
     case 'run_luau':
+    // These DO change the place: lighting, ambient effects, and writing a vetted module into it.
+    // They are building even though none of them creates geometry.
+    case 'set_mood':
+    case 'add_effect':
+    case 'remove_effect':
+    case 'install_module':
+    // Moving the user's camera and selection changes what they SEE rather than what is there,
+    // but it happens as part of building and there is no truer phase for it.
+    case 'focus_camera':
+    case 'select_instances':
       return 'building';
     case 'render_view':
       return 'rendering';
     case 'check_composition':
     case 'inspect_visually':
+    // audit_build and run_spec are judgement, not construction: they measure what is already
+    // there and report defects. They belong beside the other critics.
+    case 'audit_build':
+    case 'run_spec':
       return 'critiquing';
     case 'run_and_check':
       return 'playtesting';

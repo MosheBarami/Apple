@@ -27,13 +27,13 @@
 
 ## Billing — the SaaS the owner asked for
 
-- [ ] w12: Plans and credits surfaced in the product, not only in the webhook
-- [ ] w13: Usage meter against plan allowance, visible before the run not after
-- [ ] w14: Upgrade and downgrade path through the UI, with the entitlement recomputed
+- [x] w12: Plans and credits surfaced in the product, not only in the webhook — on grow/main (b0f86ae), pending merge
+- [x] w13: Usage meter against plan allowance, visible before the run not after — on grow/main, pending merge
+- [x] w14: Upgrade and downgrade path through the UI, with the entitlement recomputed — on grow/main (ba72fec), pending merge; needs STRIPE_SECRET_KEY + price ids set to go live
 
 ## Quality
 
-- [ ] w15: Error taxonomy — every failure the user can see says what to do next
-- [ ] w16: Empty, loading and error states re-audited across the new surfaces above
-- [ ] w17: The whole suite, typecheck and E2E green, recorded as gate evidence
+- [x] w15: Error taxonomy — every failure the user can see says what to do next — on grow/main (193e773), pending merge
+- [x] w16: Empty, loading and error states re-audited across the new surfaces above — on grow/main (13eea14), pending merge
+- [x] w17: The whole suite, typecheck and E2E green, recorded as gate evidence — run on grow/main (925fbf6): typecheck clean, 1407 pass / 1 fail (the agreed phaseForTool red) / 4 skip, e2e 54/54. Gate EVIDENCE deliberately not written: it would have to go in main's GATES.md for a suite main does not yet contain. Belongs to whoever runs the gates after the merge.
 - [~] w18: Apply infra/supabase/migrations/0004_project_archive.sql to the live Supabase project — needs Supabase service credentials or dashboard access this session does not have — owner must run the SQL

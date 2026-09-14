@@ -36,8 +36,8 @@
 import { verticalElementHeights } from '@golem/shared';
 
 /** Background fill constants — must match the rasteriser in apps/plugin/src/Render.luau. */
-export const SKY_RGB = [0x9f, 0xc7, 0xe8] as const;
-export const GROUND_RGB = [0x6e, 0x7a, 0x63] as const;
+export { SKY_RGB, GROUND_RGB, geometryMask } from '@golem/design/pixels';
+import { geometryMask } from '@golem/design/pixels';
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
@@ -76,19 +76,6 @@ export function normEntropy(values: number[]): number {
 }
 
 /** Build the geometry mask from an already-rendered RGB buffer. 1 = geometry, 0 = background. */
-export function geometryMask(rgb: Uint8Array, width: number, height: number): Uint8Array {
-  const px = width * height;
-  const mask = new Uint8Array(px);
-  for (let i = 0; i < px; i++) {
-    const r = rgb[i * 3]!;
-    const g = rgb[i * 3 + 1]!;
-    const b = rgb[i * 3 + 2]!;
-    const isSky = r === SKY_RGB[0] && g === SKY_RGB[1] && b === SKY_RGB[2];
-    const isGround = r === GROUND_RGB[0] && g === GROUND_RGB[1] && b === GROUND_RGB[2];
-    mask[i] = isSky || isGround ? 0 : 1;
-  }
-  return mask;
-}
 
 export interface CompositionMetrics {
   /** fraction of the frame occupied by geometry */
