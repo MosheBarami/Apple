@@ -1,17 +1,17 @@
-# Graph Report - RbxAI-grow  (2026-09-14)
+# Graph Report - RbxAI  (2026-09-14)
 
 ## Corpus Check
-- 672 files · ~2,916,639 words
+- 767 files · ~4,182,869 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 18 file(s) not represented in the graph (top: .css 7, (none) 5, .jsonl 4)
+- Unclassified: 19 file(s) not represented in the graph (top: .css 7, (none) 4, .jsonl 4)
 
 ## Summary
-- 5950 nodes · 9439 edges · 476 communities (376 shown, 22 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 84 edges (avg confidence: 0.85)
+- 6934 nodes · 10586 edges · 621 communities (507 shown, 34 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 88 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `dcf466cc`
+- Built from commit: `9a0dbb4f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -28,7 +28,7 @@
 - workspace.tsx
 - render.tsx
 - grade-visual.mjs
-- turn.tsx
+- thinking-model.ts
 - layout.tsx
 - chunk.mjs
 - critic.ts
@@ -58,7 +58,7 @@
 - asset-safety.test.mjs
 - prompts.ts
 - evidence-model.ts
-- playtest-card.tsx
+- playtest-stream.ts
 - SessionDO
 - Found by the critics and NOT yet fixed
 - Blockers
@@ -83,13 +83,13 @@
 - persist.ts
 - hash.mjs
 - Paths.luau
-- react
+- pairing-dialog.tsx
 - rules.mjs
 - Phase IV+ completion ledger
 - byCategory
 - provenance.ts
 - composition-families.mjs
-- brokerAsset
+- commands.tsx
 - 2. Third-Party Tools & Startups
 - props.test.mjs
 - billing.ts
@@ -116,7 +116,7 @@
 - Golem — Roblox simulator/tycoon style specification
 - fetch.mjs
 - composition-ladder.mjs
-- report
+- check-offer.mjs
 - tasks.mjs
 - crystal-canyon/tests/run.mjs
 - Base.astro
@@ -129,13 +129,13 @@
 - visual-bench.mjs
 - Crystal Canyon — playtest 01
 - plugin/tests/mutation-check.mjs
-- verifyCreatorStoreAsset
+- brokerAsset
 - Workers AI Model Pricing — Cost Model for Golem
 - inspect-plugin-build.py
-- package.json
+- check-pixels.mjs
 - sources
 - evals/package.json
-- pages/index.astro
+- activity.tsx
 - The asset pipeline
 - Meshy 3D Assets on a High-End Marketing Site (Build-Time Pipeline) — 2026 Best Practice
 - Roblox Studio Plugin Capabilities for an AI Agent Integration
@@ -144,7 +144,7 @@
 - manifest.mjs
 - layout-metrics.mjs
 - direction.ts
-- registry.ts
+- prefabs-behaviour.test.mjs
 - Design intelligence: retrieval instead of a blank canvas
 - Golem — Roblox source intelligence
 - upload.mjs
@@ -152,7 +152,7 @@
 - asset-qc.test.mjs
 - providers.test.mjs
 - Art pass — asset acquisition (first real use of the broker)
-- scoreAssetCoherence
+- check-deadends.mjs
 - stop-signal.ts
 - edit-resend.test.mjs
 - memory.test.mjs
@@ -224,7 +224,7 @@
 - gate-suite.mjs
 - secret-scan.py
 - run-meters.test.mjs
-- export.ts
+- turn.tsx
 - export.test.mjs
 - search.test.mjs
 - 3d-asset-pipeline.md
@@ -254,7 +254,7 @@
 - draft.test.mjs
 - retry-run.test.mjs
 - search-panel.test.mjs
-- searchAssetLibrary
+- check-backlog.mjs
 - asset-library-gating.test.mjs
 - conversational-routing.test.mjs
 - worldbuilding.test.mjs
@@ -316,7 +316,7 @@
 - fresh
 - Cursor.astro
 - scanInsertedHierarchy
-- ProviderAdapter
+- check-escape-hatches.mjs
 - luau-ingress.test.mjs
 - tools-for-mode.test.mjs
 - Deployment paths — one controlled path, by decision
@@ -394,13 +394,13 @@
 - 9. Validation before this benchmark is trusted
 - checkpoint-test.mjs
 - pair-helper.mjs
-- asset-marketplace-sample.test.mjs
+- usage-meter-model.ts
 - plugin-lifecycle.test.mjs
 - shared/tsconfig.json
 - init.client.luau
 - drawer-a11y.test.mjs
 - topbar-layout.test.mjs
-- BrokerOptions
+- composition.ts
 - Golem eval results
 - 1. What is wrong with the current site (and what must be preserved)
 - reasoning.test.mjs
@@ -414,6 +414,149 @@
 - COMPONENTS
 - RULES
 - STYLE_FAMILIES
+- effects.ts
+- validateDocument
+- panels.ts
+- check-rebrand.mjs
+- plugin-version.ts
+- roadmap-briefs.test.mjs
+- handoff/manifest.json
+- activity-motion.test.mjs
+- normaliseLicence
+- build-audit.test.mjs
+- spec-runner.test.mjs
+- tools-art-direction.test.mjs
+- OWNER HANDOFF
+- check-backlog.test.mjs
+- effects.test.mjs
+- prefabs.test.mjs
+- usage-page-wiring.test.mjs
+- PASS STATE
+- error-taxonomy.test.mjs
+- image-expiry.test.mjs
+- critic-input.ts
+- critic-wiring.test.mjs
+- quota-day-boundary.test.mjs
+- tagged-values.test.mjs
+- rebrand-literals.mjs
+- usage-meter.test.mjs
+- PlaytestBus
+- billing-checkout.test.mjs
+- image-route.test.mjs
+- DEAD ENDS
+- check-escape-hatches.test.mjs
+- single-flight.ts
+- verification-tools.test.mjs
+- Refutations — pass 3
+- apps/benchmark/crystal-canyon/assets/palette.json
+- apps/benchmark/crystal-canyon/package.json
+- apps/benchmark/crystal-canyon/src/client/Effects.luau
+- apps/benchmark/crystal-canyon/src/client/Gates.luau
+- apps/benchmark/crystal-canyon/src/client/Hud.luau
+- apps/benchmark/crystal-canyon/src/client/Icons.luau
+- apps/benchmark/crystal-canyon/src/client/init.client.luau
+- apps/benchmark/crystal-canyon/src/client/Objective.luau
+- apps/benchmark/crystal-canyon/src/client/Panels.luau
+- apps/benchmark/crystal-canyon/src/client/Stories.luau
+- apps/benchmark/crystal-canyon/src/client/Theme.luau
+- apps/benchmark/crystal-canyon/src/server/Codes.luau
+- apps/benchmark/crystal-canyon/src/server/CodeTable.luau
+- apps/benchmark/crystal-canyon/src/server/Collect.luau
+- apps/benchmark/crystal-canyon/src/server/DataService.luau
+- apps/benchmark/crystal-canyon/src/server/init.server.luau
+- apps/benchmark/crystal-canyon/src/server/Net.luau
+- apps/benchmark/crystal-canyon/src/server/Objectives.luau
+- apps/benchmark/crystal-canyon/src/server/Profile.luau
+- apps/benchmark/crystal-canyon/src/server/Shop.luau
+- apps/benchmark/crystal-canyon/src/server/Upgrades.luau
+- apps/benchmark/crystal-canyon/src/server/Zones.luau
+- apps/benchmark/crystal-canyon/src/shared/Config.luau
+- apps/benchmark/crystal-canyon/src/shared/Palette.luau
+- apps/benchmark/crystal-canyon/src/shared/Remotes.luau
+- apps/benchmark/crystal-canyon/src/shared/Util.luau
+- apps/benchmark/crystal-canyon/tests/config.spec.luau
+- apps/benchmark/crystal-canyon/tests/dataservice-production.spec.luau
+- apps/benchmark/crystal-canyon/tests/dataservice-studio.spec.luau
+- apps/benchmark/crystal-canyon/tests/harness.luau
+- apps/benchmark/crystal-canyon/tests/manifest.test.mjs
+- apps/benchmark/crystal-canyon/tests/movement.spec.luau
+- apps/benchmark/crystal-canyon/tests/mutation-check.mjs
+- apps/benchmark/crystal-canyon/tests/objectives.spec.luau
+- apps/benchmark/crystal-canyon/tests/profile.spec.luau
+- apps/benchmark/crystal-canyon/tests/run.mjs
+- apps/benchmark/crystal-canyon/tests/shop.spec.luau
+- apps/benchmark/crystal-canyon/tests/util.spec.luau
+- apps/benchmark/crystal-canyon/tests/zones.spec.luau
+- apps/benchmark/crystal-canyon/world/Build.luau
+- apps/benchmark/crystal-canyon/world/Install.luau
+- apps/benchmark/crystal-canyon/world/MotionProbe.luau
+- apps/benchmark/crystal-canyon/world/Viewpoints.luau
+- apps/plugin/default.project.json
+- apps/plugin/globalTypes.d.luau
+- apps/plugin/package.json
+- apps/plugin/sourcemap.json
+- apps/plugin/src/Generation.luau
+- apps/plugin/src/init.server.luau
+- apps/plugin/src/Ops.luau
+- apps/plugin/src/Paths.luau
+- apps/plugin/src/Render.luau
+- apps/plugin/src/Serializer.luau
+- apps/plugin/src/Version.luau
+- apps/plugin/tests/editscript.spec.luau
+- apps/plugin/tests/generation.spec.luau
+- apps/plugin/tests/handlers.spec.luau
+- apps/plugin/tests/harness.luau
+- apps/plugin/tests/inspect.spec.luau
+- apps/plugin/tests/mutation-check.mjs
+- apps/plugin/tests/ops.spec.luau
+- apps/plugin/tests/paths.spec.luau
+- apps/plugin/tests/rasteriser.spec.luau
+- apps/plugin/tests/render.spec.luau
+- apps/plugin/tests/run.mjs
+- apps/plugin/tests/serializer.spec.luau
+- apps/plugin/tests/snapshot.spec.luau
+- apps/plugin/tests/syntax-check.mjs
+- apps/site/astro.config.mjs
+- apps/site/package.json
+- apps/site/src/components/AppleMark.astro
+- apps/site/src/components/Cursor.astro
+- apps/site/src/components/FAQ.astro
+- apps/site/src/components/Footer.astro
+- apps/site/src/components/Nav.astro
+- apps/site/src/components/SparkMeter.astro
+- apps/site/src/layouts/Base.astro
+- apps/site/src/layouts/DocsLayout.astro
+- apps/site/src/layouts/Landing.astro
+- apps/site/src/layouts/LegalLayout.astro
+- apps/site/src/lib/studio-plugin.ts
+- apps/site/src/pages/404.astro
+- apps/site/src/pages/changelog.astro
+- apps/site/src/pages/docs/build-from-source.astro
+- apps/site/src/pages/docs/connect.astro
+- apps/site/src/pages/docs/faq.astro
+- apps/site/src/pages/docs/getting-started.astro
+- apps/site/src/pages/docs/index.astro
+- apps/site/src/pages/docs/modes.astro
+- apps/site/src/pages/docs/plugin.astro
+- apps/site/src/pages/docs/privacy-and-data.astro
+- apps/site/src/pages/docs/sparks-and-limits.astro
+- apps/site/src/pages/docs/troubleshooting.astro
+- apps/site/src/pages/docs/updating.astro
+- .claude/launch.json
+- .claude/settings.local.json
+- .unlazy-hook-state.json
+- .vscode/settings.json
+- image-src.test.mjs
+- surface-states.test.mjs
+- image-delivery.test.mjs
+- supa.mjs
+- tools-viewport.test.mjs
+- check-deadends.test.mjs
+- pixel-primitives.test.mjs
+- DurableObject
+- golem-pixels.d.ts
+- GROUND_RGB
+- SKY_RGB
 
 ## God Nodes (most connected - your core abstractions)
 1. `react` - 42 edges
@@ -424,7 +567,7 @@
 6. `spdx` - 38 edges
 7. `classifiedAs` - 38 edges
 8. `classifiedSpdx` - 38 edges
-9. `SessionDO` - 35 edges
+9. `SessionDO` - 36 edges
 10. `Env` - 31 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -432,85 +575,85 @@
   apps/worker/src/persist.ts → packages/shared/src/index.ts
 - `Props` --references--> `ProductMode`  [EXTRACTED]
   apps/web/src/components/roadmap/brief-dialog.tsx → packages/shared/src/index.ts
+- `meterView` --calls--> `isPlanId()`  [EXTRACTED]
+  apps/web/src/components/usage-meter-model.ts → packages/shared/src/index.ts
 - `PhaseEvent` --references--> `AgentPhase`  [EXTRACTED]
   apps/web/src/components/ws/activity-model.ts → packages/shared/src/index.ts
 - `Props` --references--> `ProductMode`  [EXTRACTED]
   apps/web/src/components/ws/composer.tsx → packages/shared/src/index.ts
-- `TimelineInput` --references--> `RunIntent`  [EXTRACTED]
-  apps/web/src/components/ws/thinking-model.ts → packages/shared/src/index.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (476 total, 22 thin omitted)
+## Communities (621 total, 34 thin omitted)
 
 ### Community 0 - "assets.ts"
 Cohesion: 0.02
-Nodes (77): ASSET_NEEDS, ASSET_SOURCES, AssetDescription, AssetEnv, AssetRequest, AssetSource, AssetTransform, AssetVerdictCode (+69 more)
+Nodes (106): ASSET_NEEDS, ASSET_SOURCES, assetDecisionTable(), AssetDescription, AssetEnv, AssetRequest, AssetSource, AssetTransform (+98 more)
 
 ### Community 1 - "activity-model.ts"
-Cohesion: 0.05
-Nodes (51): Activity(), Elapsed(), ActivityEvent, ActivityInput, ActivityPhase, ActivityStep, byTime(), clean() (+43 more)
+Cohesion: 0.08
+Nodes (37): ActivityEvent, ActivityInput, ActivityPhase, ActivityStep, byTime(), clean(), Elapsed, ElapsedBasis (+29 more)
 
 ### Community 2 - "session.ts"
-Cohesion: 0.04
-Nodes (59): ChatItem, AgentState, gunzip(), gzip(), MODE_BASE_TOKENS, MUTATING_TOOLS, PollResponse, restate() (+51 more)
+Cohesion: 0.06
+Nodes (44): ChatItem, AgentState, gunzip(), gzip(), MODE_BASE_TOKENS, MUTATING_TOOLS, PollResponse, restate() (+36 more)
 
 ### Community 3 - "roadmap.tsx"
 Cohesion: 0.06
-Nodes (55): BriefDialog(), modeForIntent(), Props, COMPLEXITY, ComplexityMark(), EmptyRoadmapMark(), READINESS_LABEL, ReadinessNode() (+47 more)
+Nodes (56): BriefDialog(), modeForIntent(), Props, COMPLEXITY, ComplexityMark(), EmptyRoadmapMark(), READINESS_LABEL, ReadinessNode() (+48 more)
 
 ### Community 4 - "tools.ts"
-Cohesion: 0.05
-Nodes (50): ACCEPTABLE_ASSET_TYPES, AssetNeed, AssetProvenanceSource, AssetVerdict, FetchLike, SCAN_LIMITS, ScannedScriptInput, Census (+42 more)
+Cohesion: 0.04
+Nodes (63): ACCEPTABLE_ASSET_TYPES, AssetNeed, AssetProvenanceSource, AssetVerdict, FetchLike, SCAN_LIMITS, ScannedScriptInput, Census (+55 more)
 
 ### Community 5 - "app.tsx"
 Cohesion: 0.06
-Nodes (45): queryClient, Cursor(), Grain(), isFinePointer(), prefersReducedMotion(), AppleGlyph(), LostAppleIllustration(), RunePulse() (+37 more)
+Nodes (46): queryClient, UiLabPage, Cursor(), Grain(), isFinePointer(), prefersReducedMotion(), ErrorBoundary, State (+38 more)
 
 ### Community 6 - "google.ts"
-Cohesion: 0.08
-Nodes (52): DEEPSEEK_BASE_URL, DEEPSEEK_MODELS, deepseekAdapter, deepseekUnsupportedKeys(), dataUrlToInlineData(), decodeGemini(), encodeGemini(), fromGeminiFunctionCall() (+44 more)
+Cohesion: 0.07
+Nodes (53): DEEPSEEK_BASE_URL, DEEPSEEK_MODELS, deepseekAdapter, deepseekUnsupportedKeys(), dataUrlToInlineData(), decodeGemini(), encodeGemini(), fromGeminiFunctionCall() (+45 more)
 
 ### Community 7 - "vision.ts"
-Cohesion: 0.06
-Nodes (54): clamp01(), clusterMasses(), COMPOSITION_GATES, compositionHardFails(), compositionLine(), compositionMetrics, EMPTY_METRICS, gini() (+46 more)
+Cohesion: 0.09
+Nodes (36): compositionHardFails(), compositionLine(), structureFromLayout(), structureLine(), analyseLayout(), LAYOUT_BANDS, LayoutReport, P (+28 more)
 
 ### Community 8 - "validate.ts"
 Cohesion: 0.06
-Nodes (55): ASSET_KINDS, AssetItem, AssetKind, Block, BLOCK_TYPES, BlockType, CASE_STATUSES, CaseStatus (+47 more)
+Nodes (52): ASSET_KINDS, AssetItem, AssetKind, BlockType, CalloutBlock, CASE_STATUSES, CaseStatus, CHANGE_KINDS (+44 more)
 
 ### Community 9 - "workspace.tsx"
-Cohesion: 0.07
-Nodes (42): ICON_PATH, IconName, Composer(), Props, TONE, ConnectStudio(), ConnectStudioProps, Drawer() (+34 more)
+Cohesion: 0.11
+Nodes (31): ICON_PATH, IconName, Composer(), Props, TONE, ConnectStudio(), ConnectStudioProps, clock() (+23 more)
 
 ### Community 10 - "render.tsx"
 Cohesion: 0.04
-Nodes (37): CalloutView(), CASE_STATUS, CHANGE_MARK, DIFF_SIGIL, ErrorDiagnosisView(), KeyValueRow(), MetricView(), ProgressView() (+29 more)
+Nodes (35): CalloutView(), CASE_STATUS, CHANGE_MARK, DIFF_SIGIL, ErrorDiagnosisView(), GenerativeUIFallback(), KeyValueRow(), MetricView() (+27 more)
 
 ### Community 11 - "grade-visual.mjs"
 Cohesion: 0.08
 Nodes (46): applyHardFailCap(), buildCritiquePrompt(), checkCriticalFloor(), clampPromptFidelity(), critiqueDefectIds(), critiqueScore(), detectHardFails(), discoverRunTasks() (+38 more)
 
-### Community 12 - "turn.tsx"
-Cohesion: 0.07
-Nodes (43): ActivityTerminal(), ActivityRun, eventsFromTurn(), useNow(), ActionRow, ActionState, buildActions(), buildTimeline() (+35 more)
+### Community 12 - "thinking-model.ts"
+Cohesion: 0.17
+Nodes (16): ActionRow, ActionState, buildActions(), buildTimeline(), clean(), headerHint(), nonEmpty(), PHASE_LABEL (+8 more)
 
 ### Community 13 - "layout.tsx"
-Cohesion: 0.08
-Nodes (38): CommandPalette(), fetchRecentProjects(), Rail(), Shell(), GROUPS, ShortcutsDialog(), useGlobalShortcut(), Command (+30 more)
+Cohesion: 0.11
+Nodes (30): fetchRecentProjects(), Rail(), Shell(), GROUPS, ShortcutsDialog(), useGlobalShortcut(), useCommands(), shortRelative() (+22 more)
 
 ### Community 14 - "chunk.mjs"
 Cohesion: 0.06
 Nodes (50): dependencies, yaml, description, name, private, scripts, all, bootstrap (+42 more)
 
 ### Community 15 - "critic.ts"
-Cohesion: 0.05
-Nodes (49): adjudicate(), Adjudication, AdjudicationRule, ALL_LENSES, applyMetricRules(), Box, buildLensPrompt(), Comparator (+41 more)
+Cohesion: 0.04
+Nodes (65): AUDIT_LUAU, AuditCapture, auditMetrics(), AuditPart, coincidentFacePairs(), CoverageStatus, DEFAULT_GREY, distinctColourCount() (+57 more)
 
 ### Community 16 - "worker/src/index.ts"
-Cohesion: 0.07
-Nodes (29): bearerToken(), verifyJwt(), AdminDO, Pairing, PairingDO, AuthedUser, Env, ADMIN_STUDIO_OPS (+21 more)
+Cohesion: 0.06
+Nodes (36): bearerToken(), verifyJwt(), AdminDO, Pairing, PairingDO, AuthedUser, Env, escapeHtml() (+28 more)
 
 ### Community 17 - "roadmap.ts"
 Cohesion: 0.05
@@ -518,7 +661,7 @@ Nodes (46): analyzeProject(), buildIndex(), buildRoadmap(), CATALOGUE, Complexit
 
 ### Community 18 - "semantic.ts"
 Cohesion: 0.07
-Nodes (44): blankDoubleNegatives(), categorise(), categoriseAll(), cleanTerm(), con(), ConstraintSource, countTerms(), Enclosed (+36 more)
+Nodes (42): blankDoubleNegatives(), categorise(), categoriseAll(), cleanTerm(), con(), ConstraintSource, countTerms(), Enclosed (+34 more)
 
 ### Community 19 - "Cloudflare AI Gateway + Workers AI **binding** — Golem research"
 Cohesion: 0.04
@@ -526,15 +669,15 @@ Nodes (46): (a) Routing `env.AI.run()` through a gateway, Are cached responses b
 
 ### Community 20 - "imagegen.ts"
 Cohesion: 0.06
-Nodes (43): ArtDirection, AspectRatio, AVOID_LIST, BACKGROUND, BackgroundStyle, base64ByteLength(), BUDGET_MESSAGES, budgetStub() (+35 more)
+Nodes (47): ArtDirection, AspectRatio, AVOID_LIST, BACKGROUND, BackgroundStyle, base64ByteLength(), BUDGET_MESSAGES, budgetStub() (+39 more)
 
 ### Community 21 - "dashboard.tsx"
-Cohesion: 0.08
-Nodes (33): EditableProjectTitle(), ToastContext, ToastItem, ToastKind, ToastProvider(), useToast(), PROJECT_COLUMNS, PROJECT_LIST_KEYS (+25 more)
+Cohesion: 0.09
+Nodes (32): EditableProjectTitle(), ToastContext, ToastItem, ToastKind, useToast(), purgeProject(), PROJECT_COLUMNS, PROJECT_LIST_KEYS (+24 more)
 
 ### Community 22 - "lib/mock.ts"
-Cohesion: 0.08
-Nodes (39): MeResponse, Box, boxesFor(), MOCK_PLAYTEST_ID, mockAttribution(), mockBuildPlanDetail(), mockCheckpoints, mockCritique (+31 more)
+Cohesion: 0.09
+Nodes (34): Box, boxesFor(), MOCK_PLAYTEST_ID, mockBuildPlanDetail(), mockCheckpoints, mockCritique, mockDiffDetail(), mockFrames() (+26 more)
 
 ### Community 23 - "1. CURRENT STATE — what genuinely works end-to-end"
 Cohesion: 0.05
@@ -542,19 +685,19 @@ Nodes (41): 1.1 Agent execution engine (real, complete, tested), 1.2 Spend enfor
 
 ### Community 24 - "build-fixtures.mjs"
 Cohesion: 0.10
-Nodes (41): box(), boxify(), buildSuiteFixtures(), clone(), cubeScale(), DARK_STONE, deconflict(), equalise() (+33 more)
+Nodes (40): box(), boxify(), clone(), cubeScale(), DARK_STONE, deconflict(), DEGRADATIONS, equalise() (+32 more)
 
 ### Community 25 - "api.ts"
-Cohesion: 0.10
-Nodes (38): AdminPage, PairingDialog(), MemoryPanel(), AdminCounterRow, adminKillSwitch(), adminModelTest(), adminRagTest(), adminSpend() (+30 more)
+Cohesion: 0.06
+Nodes (56): AdminPage, Failure(), MemoryPanel(), SearchPanel(), AdminCounterRow, adminKillSwitch(), adminModelTest(), adminRagTest() (+48 more)
 
 ### Community 26 - "ui-lab.tsx"
-Cohesion: 0.09
-Nodes (34): UiLabPage, EmptyState(), EmptyStateProps, EMPTY_STATES, EmptyStateName, EmptyStateSpec, EmptyTone, M06_NOT_MODELLED (+26 more)
+Cohesion: 0.10
+Nodes (31): EmptyState(), EmptyStateProps, EMPTY_STATES, EmptyStateName, EmptyStateSpec, EmptyTone, M06_NOT_MODELLED, TONE_CLASS (+23 more)
 
 ### Community 27 - "shared/src/index.ts"
-Cohesion: 0.08
-Nodes (37): PlanLadder(), advance(), countConsole(), elapsedMs(), frameFreshness, isTerminal(), parseLogEntries(), startPlaytest() (+29 more)
+Cohesion: 0.07
+Nodes (29): PlaytestCardProps, MeResponse, ProjectSocket, OpPartition, partitionOpsByRun(), ChatAttachment, CheckpointMeta, GatewayContentPart (+21 more)
 
 ### Community 28 - "web/package.json"
 Cohesion: 0.06
@@ -569,56 +712,56 @@ Cohesion: 0.10
 Nodes (35): DESIGNED_HARD_CASES, FAMILIES, makeRng(), aggregateViews(), cameraSensitivity(), confusion(), CONTROLS, COUNTERFACTUALS (+27 more)
 
 ### Community 31 - "buildBlock"
-Cohesion: 0.23
-Nodes (37): buildBlock(), checkKeys(), compact(), fail(), isPlainObject(), object(), readArray(), readAssetItem() (+29 more)
+Cohesion: 0.25
+Nodes (34): buildBlock(), checkKeys(), compact(), fail(), object(), readArray(), readAssetItem(), readBoolean() (+26 more)
 
 ### Community 32 - "critic.mjs"
-Cohesion: 0.11
-Nodes (32): coincidentFacePairs(), criticInputFromScene(), DEFAULT_LIGHTING, faceValueSpread(), HERE, isIdentity(), lightingTouchedProperties(), loadCriticModule() (+24 more)
+Cohesion: 0.12
+Nodes (29): geometryMask(), coincidentFacePairs(), criticInputFromScene(), DEFAULT_LIGHTING, faceValueSpread(), HERE, isIdentity(), lightingTouchedProperties() (+21 more)
 
 ### Community 33 - "gate-check.mjs"
-Cohesion: 0.06
-Nodes (24): all, APPROVE, ARGS, evidenceLine(), falsifiedLine(), FALSIFY, HEAD, KNOWN_BOOL (+16 more)
+Cohesion: 0.05
+Nodes (30): all, APPROVE, ARGS, dependencyFingerprint(), dependencySet(), DEPS_DIR, evidenceLine(), falsifiedLine() (+22 more)
 
 ### Community 34 - "economics.mjs"
-Cohesion: 0.10
-Nodes (33): ACTIVITY_LEVELS, CLAY_QUESTION_NEURONS, CRITIQUES_PER_GATED_BUILD, DAILY_ACTIVE_FRACTION, DOC_SEARCH_NEURONS, DOCUMENTED_GATED_BUILD_NEURONS, FREE_NEURONS_PER_DAY_ACCOUNT_WIDE, GATED_BUILD_NEURONS (+25 more)
+Cohesion: 0.08
+Nodes (53): ACTIVITY_LEVELS, allowanceCeilingUsdPerUserPerMonth(), blendedRequestsPerTask(), blendedTaskNeurons(), breakEvenPrice(), CLAY_QUESTION_NEURONS, CRITIQUES_PER_GATED_BUILD, DAILY_ACTIVE_FRACTION (+45 more)
 
 ### Community 35 - "src/security.test.mjs"
 Cohesion: 0.07
 Nodes (31): allFetched, call(), CF_SHIM, CRITIQUE_JSON, doNamespace(), ESBUILD, HERE, jose (+23 more)
 
 ### Community 36 - "gateway.ts"
-Cohesion: 0.13
-Nodes (31): BUDGET_MESSAGES, BudgetError, budgetReport(), budgetState(), budgetStub(), chat(), ChatOptions, DEFAULT_MODELS (+23 more)
+Cohesion: 0.08
+Nodes (44): BUDGET_MESSAGES, BudgetError, budgetReport(), budgetState(), budgetStub(), chat(), ChatOptions, DEFAULT_MODELS (+36 more)
 
 ### Community 37 - "forks.mjs"
 Cohesion: 0.12
 Nodes (29): DEFAULT_MAX_FORKS, enumerateForks(), GITHUB_API, nextLink(), parseRepo(), provisionalId(), request(), resolveUpstream() (+21 more)
 
 ### Community 38 - "frame-bus.ts"
-Cohesion: 0.08
-Nodes (24): frame, PNG, admitFrame(), decodeBase64(), encodeBase64(), FRAME_RING_CAPACITY, FRAME_RING_MAX_BYTES, FrameAdmission (+16 more)
+Cohesion: 0.07
+Nodes (27): frame, PNG, admitFrame(), decodeBase64(), encodeBase64(), FRAME_RING_CAPACITY, FRAME_RING_MAX_BYTES, FrameAccepted (+19 more)
 
 ### Community 39 - "asset-safety.test.mjs"
 Cohesion: 0.07
 Nodes (24): adminEnv(), adminOp(), cleanModel, COHERENT_BUSH, dir, execStudioOp(), fakeStore(), fetched (+16 more)
 
 ### Community 40 - "prompts.ts"
-Cohesion: 0.09
-Nodes (27): BRIEF_END, BRIEF_REMINDER, BRIEF_START, collapseArtDirection(), collapseBlock(), MEMORY_FACT_MAX_CHARS, MEMORY_SUMMARY_MAX_CHARS, MEMORY_UPDATE_PROMPT (+19 more)
+Cohesion: 0.07
+Nodes (33): BRIEF_END, BRIEF_REMINDER, BRIEF_START, collapseArtDirection(), collapseBlock(), MEMORY_FACT_MAX_CHARS, MEMORY_SUMMARY_MAX_CHARS, MEMORY_UPDATE_PROMPT (+25 more)
 
 ### Community 41 - "evidence-model.ts"
 Cohesion: 0.11
-Nodes (21): EvidenceCard(), AssetEvidence, buildEvidence(), clean(), DiffEvidence, EMPTY_COPY, Evidence, EvidenceBase (+13 more)
+Nodes (20): EvidenceCard(), AssetEvidence, clean(), DiffEvidence, EMPTY_COPY, Evidence, EvidenceBase, EvidenceFault (+12 more)
 
-### Community 42 - "playtest-card.tsx"
-Cohesion: 0.12
-Nodes (19): clock(), PlaytestCard(), PlaytestCardProps, useFrameCanvas(), decodeFrame(), fromBase64(), paintFrame(), rleDecode() (+11 more)
+### Community 42 - "playtest-stream.ts"
+Cohesion: 0.13
+Nodes (22): decodeFrame(), fromBase64(), rleDecode(), frameFreshness, framesForRun(), PLAYTEST_TICK_MS, playtestView, seconds() (+14 more)
 
 ### Community 43 - "SessionDO"
-Cohesion: 0.20
-Nodes (3): assetLibraryAvailable(), json(), SessionDO
+Cohesion: 0.16
+Nodes (8): assetLibraryAvailable(), json(), SessionDO, sceneSignature(), shouldRebuild(), toolDefs(), toolNames(), critiqueToText()
 
 ### Community 44 - "Found by the critics and NOT yet fixed"
 Cohesion: 0.06
@@ -649,16 +792,16 @@ Cohesion: 0.15
 Nodes (27): assertComparable(), cluster(), DIVERGENCE_THRESHOLD, fileSimilarity(), fnv1a(), isDivergent(), isSignature(), jaccardEstimated() (+19 more)
 
 ### Community 51 - "adapters.ts"
-Cohesion: 0.15
-Nodes (26): CHECKPOINT_KIND_LABEL, checkpointComparisonToDocument(), comparisonToDocument(), critiqueBlock(), CritiqueLike, critiqueToDocument(), decodeBase64(), documentFromToolDetail() (+18 more)
+Cohesion: 0.17
+Nodes (25): CHECKPOINT_KIND_LABEL, checkpointComparisonToDocument(), comparisonToDocument(), critiqueBlock(), CritiqueLike, critiqueToDocument(), decodeBase64(), documentFromToolDetail() (+17 more)
 
 ### Community 52 - "asset-library.ts"
 Cohesion: 0.08
-Nodes (20): ASSET_ORIGINALITIES, ASSET_ORIGINALITY, ASSET_SOURCE_SITES, ASSET_VECTOR_PREFIX, AssetStatus, bindValues(), COLUMNS, LibraryEnv (+12 more)
+Nodes (23): ASSET_ORIGINALITIES, ASSET_ORIGINALITY, ASSET_SOURCE_SITES, ASSET_VECTOR_PREFIX, AssetStatus, COLUMNS, ftsSearch(), keep() (+15 more)
 
 ### Community 53 - "Sections"
 Cohesion: 0.07
-Nodes (28): 3D and Creative — 79 items  (done 0, partial 2), Agent מערכת — 50 items  (done 5, partial 0), AI Models — 74 items  (done 5, partial 1), Analytics and Observability — 37 items  (done 3, partial 0), Apple — feature backlog, Automation and Tools — 43 items  (done 0, partial 0), Billing and Monetization — 36 items  (done 0, partial 0), Blocked on the owner (+20 more)
+Nodes (28): 3D and Creative — 79 items  (done 0, partial 1), Agent מערכת — 50 items  (done 5, partial 0), AI Models — 74 items  (done 5, partial 1), Analytics and Observability — 37 items  (done 1, partial 0), Apple — feature backlog, Automation and Tools — 43 items  (done 0, partial 0), Billing and Monetization — 36 items  (done 12, partial 5), Blocked on the owner (+20 more)
 
 ### Community 54 - "preserved.test.mjs"
 Cohesion: 0.08
@@ -669,8 +812,8 @@ Cohesion: 0.12
 Nodes (26): admissibleSources(), args, assignSplits(), cleanComment(), contaminated(), dirForSource(), docBefore(), EVAL_TASKS (+18 more)
 
 ### Community 56 - "pricing.ts"
-Cohesion: 0.11
-Nodes (21): BudgetDO, BudgetState, clamp(), DEFAULT_LIMITS, Limits, Stored, thisMonth(), today() (+13 more)
+Cohesion: 0.14
+Nodes (16): BudgetDO, BudgetState, clamp(), DEFAULT_LIMITS, Limits, Stored, thisMonth(), today() (+8 more)
 
 ### Community 57 - "4. The design (only if the trigger in §7 fires)"
 Cohesion: 0.07
@@ -685,8 +828,8 @@ Cohesion: 0.07
 Nodes (26): (a) Do account-level / per-product billing caps, spend alerts, or budgets exist?, AI Gateway → Rate limiting — hard block on request COUNT (not dollars), AI Gateway → Spend limits — **THE ONLY HARD BLOCK**, Architecture implications for Golem, (b) Workers Paid plan — exact inclusions and overage rates, Billable Usage dashboard — OBSERVE ONLY, BOTTOM LINE (read this first), Budget alerts — ALERT ONLY, DOES NOT BLOCK (+18 more)
 
 ### Community 60 - "worker/package.json"
-Cohesion: 0.08
-Nodes (25): dependencies, @golem/design, @golem/shared, hono, jose, devDependencies, @cloudflare/workers-types, esbuild (+17 more)
+Cohesion: 0.06
+Nodes (32): dependencies, @golem/design, @golem/shared, hono, jose, devDependencies, @cloudflare/workers-types, esbuild (+24 more)
 
 ### Community 61 - "Golem scripting curriculum"
 Cohesion: 0.08
@@ -697,8 +840,8 @@ Cohesion: 0.22
 Nodes (21): audit(), checkClusterOverlap(), checkCounterMotionAgreement(), checkFocusFeedback(), checkGamepadReachability(), checkInertSurfaceFlags(), checkMotionGate(), checkPaletteCollisions() (+13 more)
 
 ### Community 63 - "props.mjs"
-Cohesion: 0.15
-Nodes (23): atLeast(), atMost(), bandScore(), clamp01(), DEFAULT_MATERIALS, ev(), FACTORY_PART, GREY_SATURATION (+15 more)
+Cohesion: 0.12
+Nodes (29): GROUND_RGB, SKY_RGB, atLeast(), atMost(), bandScore(), clamp01(), DEFAULT_MATERIALS, detailScale() (+21 more)
 
 ### Community 64 - "persist.ts"
 Cohesion: 0.12
@@ -712,9 +855,9 @@ Nodes (21): CONTENT_JSON, hashCheckout(), main(), RAW, ROOT, SKIP_DIRS, SKIP_FIL
 Cohesion: 0.14
 Nodes (20): assetIdsIn(), assetUriIds(), needsBrackets(), Paths.decode(), Paths.encode(), Paths.fullPath(), Paths.parse(), Paths.resolve() (+12 more)
 
-### Community 67 - "react"
-Cohesion: 0.12
-Nodes (15): ErrorBoundary, State, Forge(), ForgeProps, HEADLINE, Spinner(), useReducedMotion(), Modal() (+7 more)
+### Community 67 - "pairing-dialog.tsx"
+Cohesion: 0.08
+Nodes (26): canonical, ogImage, cells, navLinks, string, RunePulse(), Forge(), ForgeProps (+18 more)
 
 ### Community 68 - "rules.mjs"
 Cohesion: 0.16
@@ -729,28 +872,28 @@ Cohesion: 0.08
 Nodes (23): byCategory, engineering, full-game, generation, huggingface, motion, official, studs (+15 more)
 
 ### Community 71 - "provenance.ts"
-Cohesion: 0.13
-Nodes (22): AssetOriginality, AssetSourceSite, LICENCES, normaliseLicence(), originalityOf(), AssetUse, attributionReport, commercialUseReport (+14 more)
+Cohesion: 0.15
+Nodes (16): AssetSourceSite, LICENCES, AssetUse, COMPLIANCE_CODES, ComplianceCode, ComplianceFinding, CreditEntry, exportProjectAttribution() (+8 more)
 
 ### Community 72 - "composition-families.mjs"
 Cohesion: 0.13
 Nodes (19): buildFamilies(), clutter(), ENCLOSED_FAMILIES, FAMILY_BUILDERS, GREY, INTENT, jc(), jit() (+11 more)
 
-### Community 73 - "brokerAsset"
-Cohesion: 0.11
-Nodes (21): assetDecisionTable(), brokerAsset(), brokerSummary(), buildNormaliseLuau(), buildTransformLuau(), checkScale(), chooseAssetSource(), clamp01() (+13 more)
+### Community 73 - "commands.tsx"
+Cohesion: 0.16
+Nodes (17): CommandPalette(), Command, dedupeByTitle(), groupBySection(), initialsHit(), rankCommands(), scoreCommand(), Scored (+9 more)
 
 ### Community 74 - "2. Third-Party Tools & Startups"
 Cohesion: 0.09
 Nodes (21): 1.1 Assistant in Studio (free, built in), 1.2 Studio's built-in MCP server (the door Golem walks through), 1.3 Cube 3D / CubePart / 4D generation (assets), 1.4 Texture Generator (beta) and Material Generator, 1.5 Code Assist, 1.6 Roblox Build (July 2026) — the consumer-grade threat, 1. Roblox's Official AI (the platform incumbent), 2.1 Nilo (nilo.io) — best-funded-looking direct adjacent (+13 more)
 
 ### Community 75 - "props.test.mjs"
-Cohesion: 0.11
-Nodes (21): detectHardFails(), FIXTURES_DIR, formatPropReport(), GATE, getPropSpec(), gradeProp(), loadFixture(), loadJson() (+13 more)
+Cohesion: 0.12
+Nodes (19): detectHardFails(), FIXTURES_DIR, formatPropReport(), GATE, gradeProp(), saturation(), SCORED_SIGNALS, SIGNALS (+11 more)
 
 ### Community 76 - "billing.ts"
-Cohesion: 0.17
-Nodes (12): BillingOutcome, entitlementFor(), ENTITLING_STATUSES, FREE_SUBSCRIPTION, hex(), interpretStripeEvent(), Subscription, timingSafeEqual() (+4 more)
+Cohesion: 0.10
+Nodes (27): BillingConfig, billingConfigured(), BillingOutcome, buildCheckoutRequest(), buildPortalRequest(), checkoutConfigured(), CheckoutEnv, CheckoutRefusal (+19 more)
 
 ### Community 77 - "4. MIGRATION NOTE — `apps/worker/src/providers/` and `gateway.ts`"
 Cohesion: 0.10
@@ -773,16 +916,16 @@ Cohesion: 0.10
 Nodes (19): Client contracts, Codes, Collect, Crystal Canyon — architecture contract, DataService, Economy, Effects, Hud (+11 more)
 
 ### Community 82 - "site/package.json"
-Cohesion: 0.10
-Nodes (18): dependencies, astro, @astrojs/check, @astrojs/sitemap, typescript, typescript, name, private (+10 more)
+Cohesion: 0.09
+Nodes (20): dependencies, astro, @astrojs/check, @astrojs/sitemap, @golem/shared, typescript, @golem/shared, typescript (+12 more)
 
 ### Community 83 - "Apple v1 — training report"
 Cohesion: 0.10
 Nodes (19): 1. What was run, 2. What happened, 3. Root causes, 4. Repair plan, 5. What this does and does not establish, Apple v1 — training report, Apple v2 — the repair, and what it did and did not fix, Consequence for v3 and v4 (+11 more)
 
 ### Community 84 - "Golem — Architecture Decision Record (living)"
-Cohesion: 0.10
-Nodes (19): ADR-001 — Brand: "Golem", ADR-002 — Platform: Cloudflare Workers as the spine, ADR-003 — Data & auth: Supabase, ADR-004 — Studio integration: real plugin, typed op protocol, ADR-005 — AI strategy: measure, don't vibe, ADR-006 — Business model: free tier with hard quotas, Pro later, ADR-007 — Monorepo, ADR-008 — No purchases without approval (+11 more)
+Cohesion: 0.09
+Nodes (21): ADR-001 — Brand: "Golem", ADR-002 — Platform: Cloudflare Workers as the spine, ADR-003 — Data & auth: Supabase, ADR-004 — Studio integration: real plugin, typed op protocol, ADR-005 — AI strategy: measure, don't vibe, ADR-006 — Business model: free tier with hard quotas, Pro later, ADR-007 — Monorepo, ADR-008 — No purchases without approval (+13 more)
 
 ### Community 85 - "MISSION-PROMPT.md"
 Cohesion: 0.10
@@ -844,9 +987,9 @@ Nodes (17): dirNameFor(), FETCHABLE_CLASSES, findLicenseFile(), git(), GIT_ENV, 
 Cohesion: 0.32
 Nodes (17): blockout(), buildLadder(), clone(), confetti(), equalise(), flatten(), greyPlate(), HERE (+9 more)
 
-### Community 100 - "report"
-Cohesion: 0.15
-Nodes (18): allowanceCeilingUsdPerUserPerMonth(), blendedRequestsPerTask(), blendedTaskNeurons(), breakEvenPrice(), heading(), maxBillableNeuronsPerMonth(), maxUsdPerMonth(), money() (+10 more)
+### Community 100 - "check-offer.mjs"
+Cohesion: 0.12
+Nodes (19): PlanAvailability, PlanLadder(), DAILY_NEURON_CEILING, NEURONS_PER_SPARK, USD_PER_NEURON, buildsPerDay(), buildsPerMonth(), PLAN_IDS (+11 more)
 
 ### Community 101 - "tasks.mjs"
 Cohesion: 0.15
@@ -857,7 +1000,7 @@ Cohesion: 0.18
 Nodes (15): baseline, dir, HERE, MUTATIONS, runSuite(), specs, buildChunk(), declaredModules() (+7 more)
 
 ### Community 103 - "Base.astro"
-Cohesion: 0.13
+Cohesion: 0.16
 Nodes (5): year, links, menu, canonical, ogImage
 
 ### Community 104 - "2. Workspace / chat"
@@ -896,9 +1039,9 @@ Nodes (15): A testing trap worth writing down, Boot, Crystal Canyon — playtest
 Cohesion: 0.21
 Nodes (14): baseline, dir, HERE, MUTATIONS, runSuite(), specs, buildChunk(), declaredModules() (+6 more)
 
-### Community 113 - "verifyCreatorStoreAsset"
-Cohesion: 0.23
-Nodes (15): assetThumbnailUrl(), blankVerdict(), defaultFetch(), findVerifiedAssets(), HttpResponseLike, judgeAssetDetails(), num(), obj() (+7 more)
+### Community 113 - "brokerAsset"
+Cohesion: 0.12
+Nodes (26): assetThumbnailUrl(), blankVerdict(), brokerAsset(), buildNormaliseLuau(), buildTransformLuau(), defaultFetch(), findVerifiedAssets(), HttpResponseLike (+18 more)
 
 ### Community 114 - "Workers AI Model Pricing — Cost Model for Golem"
 Cohesion: 0.12
@@ -908,9 +1051,9 @@ Nodes (15): 1. Headline numbers, 2. Per-model pricing — the models Golem uses 
 Cohesion: 0.21
 Nodes (15): Exception, decode_chunks(), extract_strings(), InspectionError, lz4_block_decompress(), main(), Newer Rojo/Studio writers may emit zstd chunks. Decode or refuse., Yield (name, decompressed_payload) for every chunk. Raises on anything odd. (+7 more)
 
-### Community 116 - "package.json"
-Cohesion: 0.12
-Nodes (14): devDependencies, @playwright/test, wrangler, wrangler, name, packageManager, private, scripts (+6 more)
+### Community 116 - "check-pixels.mjs"
+Cohesion: 0.06
+Nodes (25): devDependencies, @playwright/test, wrangler, wrangler, name, packageManager, private, scripts (+17 more)
 
 ### Community 117 - "sources"
 Cohesion: 0.12
@@ -920,9 +1063,9 @@ Nodes (15): counts, checkouts, classified, fetchableInCorpus, licenceConflicts, 
 Cohesion: 0.12
 Nodes (15): dependencies, @golem/design, description, @golem/design, name, private, scripts, check (+7 more)
 
-### Community 119 - "pages/index.astro"
-Cohesion: 0.19
-Nodes (10): canonical, ogImage, cells, navLinks, string, STUDIO_PLUGIN_ASSET_ID, STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE (+2 more)
+### Community 119 - "activity.tsx"
+Cohesion: 0.10
+Nodes (14): Activity(), ActivityTerminal(), Elapsed(), ActivityRun, elapsedTitle(), formatElapsed(), kindForPhase(), motionPlan (+6 more)
 
 ### Community 120 - "The asset pipeline"
 Cohesion: 0.13
@@ -956,9 +1099,9 @@ Nodes (12): dist2(), latticeScore(), LAYOUT_BANDS, layoutMetrics(), neighbourSpa
 Cohesion: 0.24
 Nodes (11): App(), applyDirection(), detectDirection(), Direction, initDirection(), isRtlLanguage(), resolveDirection(), RTL_LANGS (+3 more)
 
-### Community 128 - "registry.ts"
-Cohesion: 0.19
-Nodes (12): blendedPricePer1M(), adapterForModelId(), ADAPTERS, allModels(), AutoSelection, AutoSelectOptions, capabilityTable(), modelById() (+4 more)
+### Community 128 - "prefabs-behaviour.test.mjs"
+Cohesion: 0.10
+Nodes (9): BB, CP_WIRED, INC, out, RD, SETUP, TMP, WIRED (+1 more)
 
 ### Community 129 - "Design intelligence: retrieval instead of a blank canvas"
 Cohesion: 0.14
@@ -973,8 +1116,8 @@ Cohesion: 0.23
 Nodes (13): API_BASE, buildBatches(), CHUNKS_PATH, fail(), limitArg, loadChunks(), loadProgress(), main() (+5 more)
 
 ### Community 132 - "design/package.json"
-Cohesion: 0.14
-Nodes (13): description, exports, ./checks, ./playbooks, ./retrieve, ./rules, name, private (+5 more)
+Cohesion: 0.13
+Nodes (14): description, exports, ./checks, ./pixels, ./playbooks, ./retrieve, ./rules, name (+6 more)
 
 ### Community 133 - "asset-qc.test.mjs"
 Cohesion: 0.14
@@ -988,9 +1131,9 @@ Nodes (10): BASELINE_DIR, CANNED, ESBUILD, gatewayFile, HERE, providersFile, REQ
 Cohesion: 0.15
 Nodes (12): Art pass — asset acquisition (first real use of the broker), Camera note added 2026-08-31 — how these shots are actually taken, Canonical camera positions — AFTER must be shot from these, Correction, 2026-09-01 — the "unpublished place" blocker above is WRONG, Creator Store: 27 assets acquired, 0 scripts found, Cube / GenerationService: BLOCKED, with the reason measured, Failure conditions the next pass is graded against, How to reproduce the baseline exactly (+4 more)
 
-### Community 136 - "scoreAssetCoherence"
-Cohesion: 0.24
-Nodes (13): buildPaletteContext(), chooseRetint(), cullPalette(), densityOf(), expectedTier(), hueOf(), inBand(), median() (+5 more)
+### Community 136 - "check-deadends.mjs"
+Cohesion: 0.11
+Nodes (16): args, DECLARED_ENTRIES, DISPOSITIONS, ENTRYPOINTS, examined, EXCEPTIONS, findings, GATE (+8 more)
 
 ### Community 137 - "stop-signal.ts"
 Cohesion: 0.24
@@ -1272,9 +1415,9 @@ Nodes (8): head_blobs(), jwt_role(), load_register(), main(), The `role` claim o
 Cohesion: 0.25
 Nodes (7): HERE, ROOT, SESSION, SHARED, SOCKET, THINKING, WEB
 
-### Community 208 - "export.ts"
-Cohesion: 0.36
-Nodes (7): escapeHtml(), exportFilename(), renderTranscriptMarkdown(), speaker(), traceRows(), TranscriptExport, TranscriptMessage
+### Community 208 - "turn.tsx"
+Cohesion: 0.18
+Nodes (14): eventsFromTurn(), useNow(), buildEvidence(), GateRow, PlannedStep, OUTCOME, Stamp(), Turn() (+6 more)
 
 ### Community 209 - "export.test.mjs"
 Cohesion: 0.25
@@ -1377,8 +1520,8 @@ Cohesion: 0.38
 Nodes (4): DataService.init(), join(), loadedPlayer(), player()
 
 ### Community 234 - "pricing.astro"
-Cohesion: 0.29
-Nodes (3): general, limitFaq, modeRows
+Cohesion: 0.20
+Nodes (5): general, paid, limitFaq, modeRows, paid
 
 ### Community 235 - "draft.test.mjs"
 Cohesion: 0.29
@@ -1392,9 +1535,9 @@ Nodes (5): COMPOSER, HERE, TURN, WEB, WS
 Cohesion: 0.29
 Nodes (5): API, HERE, PANEL, WEB, WS
 
-### Community 238 - "searchAssetLibrary"
-Cohesion: 0.33
-Nodes (7): ftsSearch(), keep(), rerankMultiplier(), searchAssetLibrary(), selectByIds(), toHit(), vecSearch()
+### Community 238 - "check-backlog.mjs"
+Cohesion: 0.11
+Nodes (16): byId, byName, closedRows, findings, GATES_PATH, JSON_PATH, jsonNames, md (+8 more)
 
 ### Community 239 - "asset-library-gating.test.mjs"
 Cohesion: 0.29
@@ -1605,8 +1748,8 @@ Cohesion: 0.29
 Nodes (7): zhsj0089944__roblox-free-assets.skill, category, classified, corpusId, licence, sha, url
 
 ### Community 291 - "simulateUserMonth"
-Cohesion: 0.33
-Nodes (7): intensityMultiplier(), makeRng(), pickKind(), poisson(), simulateCohort(), simulateUserMonth(), standardNormal()
+Cohesion: 0.50
+Nodes (5): intensityMultiplier(), pickKind(), poisson(), simulateUserMonth(), standardNormal()
 
 ### Community 292 - "luau.mjs"
 Cohesion: 0.62
@@ -1639,6 +1782,10 @@ Nodes (5): fine, kick(), labelEl, loop(), reduced
 ### Community 300 - "scanInsertedHierarchy"
 Cohesion: 0.53
 Nodes (6): excerptOf(), scanInsertedHierarchy(), scanRequires(), scanScriptSource(), scanShape(), worseSeverity()
+
+### Community 301 - "check-escape-hatches.mjs"
+Cohesion: 0.11
+Nodes (11): examined, excepted, EXCEPTIONS, findings, gatesText, manifests, passLog, ROOT (+3 more)
 
 ### Community 302 - "luau-ingress.test.mjs"
 Cohesion: 0.33
@@ -1749,8 +1896,8 @@ Cohesion: 0.40
 Nodes (3): HERE, PLUGIN, SESSION
 
 ### Community 332 - "restore-fidelity.test.mjs"
-Cohesion: 0.40
-Nodes (4): body, HERE, SERIALIZER, SESSION
+Cohesion: 0.33
+Nodes (5): body, HERE, SERIALIZER, SESSION, SIG
 
 ### Community 333 - "spend-ratchet.test.mjs"
 Cohesion: 0.40
@@ -1837,8 +1984,8 @@ Cohesion: 0.50
 Nodes (3): HERE, out, WEB
 
 ### Community 357 - "ui-states.test.mjs"
-Cohesion: 0.50
-Nodes (3): fetching, HERE, ROUTES
+Cohesion: 0.40
+Nodes (5): fetching, HERE, ROUTES, SRC, tsxUnder()
 
 ### Community 358 - "golem-design.d.ts"
 Cohesion: 0.50
@@ -1928,9 +2075,9 @@ Nodes (3): { access_token: jwt }, cp, H
 Cohesion: 0.50
 Nodes (3): { access_token: jwt }, pair, projects
 
-### Community 382 - "asset-marketplace-sample.test.mjs"
-Cohesion: 0.67
-Nodes (3): detailsFor(), OBSERVED, store()
+### Community 382 - "usage-meter-model.ts"
+Cohesion: 0.17
+Nodes (14): BLANK, finite(), looksLikeQuota(), MeterPeriod, MeterTone, meterView, nextMonthResetIso(), PENDING (+6 more)
 
 ### Community 383 - "plugin-lifecycle.test.mjs"
 Cohesion: 0.50
@@ -1940,33 +2087,553 @@ Nodes (3): code, HERE, source
 Cohesion: 0.50
 Nodes (3): extends, include, ../../tsconfig.base.json
 
-### Community 395 - "BrokerOptions"
-Cohesion: 0.67
-Nodes (3): BrokerOptions, SearchOptions, VerifyOptions
+### Community 395 - "composition.ts"
+Cohesion: 0.22
+Nodes (15): clamp01(), clusterMasses(), COMPOSITION_GATES, compositionMetrics, EMPTY_METRICS, gini(), GRID, isGroundPlane() (+7 more)
 
 ### Community 397 - "1. What is wrong with the current site (and what must be preserved)"
 Cohesion: 0.67
 Nodes (3): 1. What is wrong with the current site (and what must be preserved), Fix — defects confirmed in the repo, Preserve (these are assets, not debt)
 
+### Community 476 - "effects.ts"
+Cohesion: 0.17
+Nodes (11): c3(), colorSeq(), EFFECT_NAMES, effectCatalogue(), effectLuau(), EffectPart, EffectPreset, EFFECTS (+3 more)
+
+### Community 477 - "validateDocument"
+Cohesion: 0.17
+Nodes (13): GenerativeUIPanel(), BLOCK_TYPES, LIMITS, documentByteLength(), extractUIFence(), isPlainObject(), isSafeHref(), isSafeImageSrc() (+5 more)
+
+### Community 478 - "panels.ts"
+Cohesion: 0.23
+Nodes (12): Block, RenderReviewBlock, UIDocument, ValidationOk, buildComparison(), extractPanels(), firstRender(), hasRenderWithImage() (+4 more)
+
+### Community 479 - "check-rebrand.mjs"
+Cohesion: 0.15
+Nodes (8): args, BUNDLE, EXEMPT, problems, REFETCH, ROOT, SOURCE_GLOBS, sources
+
+### Community 480 - "plugin-version.ts"
+Cohesion: 0.24
+Nodes (10): clientNotice(), compareVersions(), CURRENT_PLUGIN_PROTOCOL, LATEST_PLUGIN_VERSION, MIN_PLUGIN_PROTOCOL, parseProtocol(), PluginClientInfo, pluginCompatibility (+2 more)
+
+### Community 481 - "roadmap-briefs.test.mjs"
+Cohesion: 0.18
+Nodes (8): HERE, out, pfOut, roadmap, SCAN, shape, WIRED, WORKER
+
+### Community 482 - "handoff/manifest.json"
+Cohesion: 0.18
+Nodes (10): apps/benchmark/crystal-canyon/src/server/Economy.luau, ast_hash, mtime, seen, semantic_hash, apps/benchmark/crystal-canyon/src/server/Movement.luau, ast_hash, mtime (+2 more)
+
+### Community 483 - "activity-motion.test.mjs"
+Cohesion: 0.20
+Nodes (3): CSS, REDUCE_BLOCK, [REDUCE_FROM, REDUCE_TO]
+
+### Community 484 - "normaliseLicence"
+Cohesion: 0.22
+Nodes (10): AssetOriginality, bindValues(), normaliseLicence(), originalityOf(), rowsPerStatement(), upsertAssets(), validateProvenance(), attributionReport (+2 more)
+
+### Community 485 - "build-audit.test.mjs"
+Cohesion: 0.20
+Nodes (4): FIXTURE, HERE, TMP, WORKER
+
+### Community 486 - "spec-runner.test.mjs"
+Cohesion: 0.20
+Nodes (4): HERE, OK, TMP, WORKER
+
+### Community 487 - "tools-art-direction.test.mjs"
+Cohesion: 0.22
+Nodes (7): HERE, INSTANCE, LUAU_TMP, moodCode(), out, stubCtx(), WORKER
+
+### Community 488 - "OWNER HANDOFF"
+Cohesion: 0.20
+Nodes (9): Notes on what is NOT here, OH-1 · ~~The free plan cannot complete a single build~~ — CLOSED 2026-09-14, OH-2 · ~~Two plans promise more per day than the service can serve~~ — CLOSED 2026-09-14, OH-3 · Stripe live keys, OH-4 · Creator Store plugin distribution, OH-5 · Generated images are kept for one hour, OH-6 · One pixel metric, two implementations — RESOLVED, not an owner action, OH-9 · The budget supports a hobby; the plans describe a business (+1 more)
+
+### Community 489 - "check-backlog.test.mjs"
+Cohesion: 0.20
+Nodes (4): CHECKER, CLEAN, DIRS, ROOT
+
+### Community 490 - "effects.test.mjs"
+Cohesion: 0.22
+Nodes (5): HERE, out, TMP, toolOut, WORKER
+
+### Community 491 - "prefabs.test.mjs"
+Cohesion: 0.25
+Nodes (4): NOT_FOUND(), stubCtx(), TMP, WORKER
+
+### Community 492 - "usage-page-wiring.test.mjs"
+Cohesion: 0.25
+Nodes (6): css, plans, sharedOut, usage, usageCode, WEB
+
+### Community 493 - "PASS STATE"
+Cohesion: 0.25
+Nodes (7): §6 discharge status, Derived open counts — computed this pass, not remembered, Exact next action, Observable live surfaces (§8.1), PASS STATE, Rows in flight, Second agent
+
+### Community 494 - "error-taxonomy.test.mjs"
+Cohesion: 0.33
+Nodes (5): api(), ApiError, out, REAL_STATUSES, WEB
+
+### Community 495 - "image-expiry.test.mjs"
+Cohesion: 0.29
+Nodes (5): api, out, RENDER, STYLES, WEB
+
+### Community 496 - "critic-input.ts"
+Cohesion: 0.52
+Nodes (5): criticInputFromRender(), metricsFromRender(), lightingIsDefault(), lightingTouchedProperties(), ROBLOX_DEFAULT_LIGHTING
+
+### Community 497 - "critic-wiring.test.mjs"
+Cohesion: 0.29
+Nodes (5): ESBUILD, HERE, out, RENDER, WORKER
+
+### Community 498 - "quota-day-boundary.test.mjs"
+Cohesion: 0.29
+Nodes (3): out, sharedOut, WORKER
+
+### Community 499 - "tagged-values.test.mjs"
+Cohesion: 0.33
+Nodes (4): assertNoLeakedWrapper(), assertSummarised(), toolOut, WORKER
+
+### Community 500 - "rebrand-literals.mjs"
+Cohesion: 0.29
+Nodes (5): DRY, EXEMPT, files, ROOT, touched
+
+### Community 501 - "usage-meter.test.mjs"
+Cohesion: 0.33
+Nodes (4): NOW, out, sharedOut, WEB
+
+### Community 503 - "billing-checkout.test.mjs"
+Cohesion: 0.33
+Nodes (3): LIVE, out, WORKER
+
+### Community 504 - "image-route.test.mjs"
+Cohesion: 0.33
+Nodes (5): HERE, INDEX, out, route, WORKER
+
+### Community 505 - "DEAD ENDS"
+Cohesion: 0.33
+Nodes (5): apps/web/src/components/plans.tsx — WIRE, pass 6, DEAD ENDS, packages/corpus/src/discover.mjs — STRUCTURALLY-BLOCKED, packages/design/src/index.mjs — WIRE, pass 6, What the checker does NOT look for, and why
+
+### Community 506 - "check-escape-hatches.test.mjs"
+Cohesion: 0.40
+Nodes (3): ROOT, run(), withPlant()
+
+### Community 508 - "verification-tools.test.mjs"
+Cohesion: 0.40
+Nodes (3): out, VERIFIERS, WORKER
+
+### Community 509 - "Refutations — pass 3"
+Cohesion: 0.40
+Nodes (4): G-CRITIC-1 — REFUTED, G-ORACLE-2 — REFUTED, Refutations — pass 3, The process defect both refuters hit
+
+### Community 510 - "apps/benchmark/crystal-canyon/assets/palette.json"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/assets/palette.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 511 - "apps/benchmark/crystal-canyon/package.json"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/package.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 512 - "apps/benchmark/crystal-canyon/src/client/Effects.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Effects.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 513 - "apps/benchmark/crystal-canyon/src/client/Gates.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Gates.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 514 - "apps/benchmark/crystal-canyon/src/client/Hud.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Hud.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 515 - "apps/benchmark/crystal-canyon/src/client/Icons.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Icons.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 516 - "apps/benchmark/crystal-canyon/src/client/init.client.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/init.client.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 517 - "apps/benchmark/crystal-canyon/src/client/Objective.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Objective.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 518 - "apps/benchmark/crystal-canyon/src/client/Panels.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Panels.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 519 - "apps/benchmark/crystal-canyon/src/client/Stories.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Stories.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 520 - "apps/benchmark/crystal-canyon/src/client/Theme.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/client/Theme.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 521 - "apps/benchmark/crystal-canyon/src/server/Codes.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Codes.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 522 - "apps/benchmark/crystal-canyon/src/server/CodeTable.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/CodeTable.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 523 - "apps/benchmark/crystal-canyon/src/server/Collect.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Collect.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 524 - "apps/benchmark/crystal-canyon/src/server/DataService.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/DataService.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 525 - "apps/benchmark/crystal-canyon/src/server/init.server.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/init.server.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 526 - "apps/benchmark/crystal-canyon/src/server/Net.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Net.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 527 - "apps/benchmark/crystal-canyon/src/server/Objectives.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Objectives.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 528 - "apps/benchmark/crystal-canyon/src/server/Profile.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Profile.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 529 - "apps/benchmark/crystal-canyon/src/server/Shop.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Shop.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 530 - "apps/benchmark/crystal-canyon/src/server/Upgrades.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Upgrades.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 531 - "apps/benchmark/crystal-canyon/src/server/Zones.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/server/Zones.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 532 - "apps/benchmark/crystal-canyon/src/shared/Config.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/shared/Config.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 533 - "apps/benchmark/crystal-canyon/src/shared/Palette.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/shared/Palette.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 534 - "apps/benchmark/crystal-canyon/src/shared/Remotes.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/shared/Remotes.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 535 - "apps/benchmark/crystal-canyon/src/shared/Util.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/src/shared/Util.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 536 - "apps/benchmark/crystal-canyon/tests/config.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/config.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 537 - "apps/benchmark/crystal-canyon/tests/dataservice-production.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/dataservice-production.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 538 - "apps/benchmark/crystal-canyon/tests/dataservice-studio.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/dataservice-studio.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 539 - "apps/benchmark/crystal-canyon/tests/harness.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/harness.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 540 - "apps/benchmark/crystal-canyon/tests/manifest.test.mjs"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/manifest.test.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 541 - "apps/benchmark/crystal-canyon/tests/movement.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/movement.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 542 - "apps/benchmark/crystal-canyon/tests/mutation-check.mjs"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/mutation-check.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 543 - "apps/benchmark/crystal-canyon/tests/objectives.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/objectives.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 544 - "apps/benchmark/crystal-canyon/tests/profile.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/profile.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 545 - "apps/benchmark/crystal-canyon/tests/run.mjs"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/run.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 546 - "apps/benchmark/crystal-canyon/tests/shop.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/shop.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 547 - "apps/benchmark/crystal-canyon/tests/util.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/util.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 548 - "apps/benchmark/crystal-canyon/tests/zones.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/tests/zones.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 549 - "apps/benchmark/crystal-canyon/world/Build.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/world/Build.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 550 - "apps/benchmark/crystal-canyon/world/Install.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/world/Install.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 551 - "apps/benchmark/crystal-canyon/world/MotionProbe.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/world/MotionProbe.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 552 - "apps/benchmark/crystal-canyon/world/Viewpoints.luau"
+Cohesion: 0.40
+Nodes (5): apps/benchmark/crystal-canyon/world/Viewpoints.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 553 - "apps/plugin/default.project.json"
+Cohesion: 0.40
+Nodes (5): apps/plugin/default.project.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 554 - "apps/plugin/globalTypes.d.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/globalTypes.d.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 555 - "apps/plugin/package.json"
+Cohesion: 0.40
+Nodes (5): apps/plugin/package.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 556 - "apps/plugin/sourcemap.json"
+Cohesion: 0.40
+Nodes (5): apps/plugin/sourcemap.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 557 - "apps/plugin/src/Generation.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/Generation.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 558 - "apps/plugin/src/init.server.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/init.server.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 559 - "apps/plugin/src/Ops.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/Ops.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 560 - "apps/plugin/src/Paths.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/Paths.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 561 - "apps/plugin/src/Render.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/Render.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 562 - "apps/plugin/src/Serializer.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/Serializer.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 563 - "apps/plugin/src/Version.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/src/Version.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 564 - "apps/plugin/tests/editscript.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/editscript.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 565 - "apps/plugin/tests/generation.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/generation.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 566 - "apps/plugin/tests/handlers.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/handlers.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 567 - "apps/plugin/tests/harness.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/harness.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 568 - "apps/plugin/tests/inspect.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/inspect.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 569 - "apps/plugin/tests/mutation-check.mjs"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/mutation-check.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 570 - "apps/plugin/tests/ops.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/ops.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 571 - "apps/plugin/tests/paths.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/paths.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 572 - "apps/plugin/tests/rasteriser.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/rasteriser.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 573 - "apps/plugin/tests/render.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/render.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 574 - "apps/plugin/tests/run.mjs"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/run.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 575 - "apps/plugin/tests/serializer.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/serializer.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 576 - "apps/plugin/tests/snapshot.spec.luau"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/snapshot.spec.luau, ast_hash, mtime, seen, semantic_hash
+
+### Community 577 - "apps/plugin/tests/syntax-check.mjs"
+Cohesion: 0.40
+Nodes (5): apps/plugin/tests/syntax-check.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 578 - "apps/site/astro.config.mjs"
+Cohesion: 0.40
+Nodes (5): apps/site/astro.config.mjs, ast_hash, mtime, seen, semantic_hash
+
+### Community 579 - "apps/site/package.json"
+Cohesion: 0.40
+Nodes (5): apps/site/package.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 580 - "apps/site/src/components/AppleMark.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/components/AppleMark.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 581 - "apps/site/src/components/Cursor.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/components/Cursor.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 582 - "apps/site/src/components/FAQ.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/components/FAQ.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 583 - "apps/site/src/components/Footer.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/components/Footer.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 584 - "apps/site/src/components/Nav.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/components/Nav.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 585 - "apps/site/src/components/SparkMeter.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/components/SparkMeter.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 586 - "apps/site/src/layouts/Base.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/layouts/Base.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 587 - "apps/site/src/layouts/DocsLayout.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/layouts/DocsLayout.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 588 - "apps/site/src/layouts/Landing.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/layouts/Landing.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 589 - "apps/site/src/layouts/LegalLayout.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/layouts/LegalLayout.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 590 - "apps/site/src/lib/studio-plugin.ts"
+Cohesion: 0.40
+Nodes (5): apps/site/src/lib/studio-plugin.ts, ast_hash, mtime, seen, semantic_hash
+
+### Community 591 - "apps/site/src/pages/404.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/404.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 592 - "apps/site/src/pages/changelog.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/changelog.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 593 - "apps/site/src/pages/docs/build-from-source.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/build-from-source.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 594 - "apps/site/src/pages/docs/connect.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/connect.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 595 - "apps/site/src/pages/docs/faq.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/faq.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 596 - "apps/site/src/pages/docs/getting-started.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/getting-started.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 597 - "apps/site/src/pages/docs/index.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/index.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 598 - "apps/site/src/pages/docs/modes.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/modes.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 599 - "apps/site/src/pages/docs/plugin.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/plugin.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 600 - "apps/site/src/pages/docs/privacy-and-data.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/privacy-and-data.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 601 - "apps/site/src/pages/docs/sparks-and-limits.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/sparks-and-limits.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 602 - "apps/site/src/pages/docs/troubleshooting.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/troubleshooting.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 603 - "apps/site/src/pages/docs/updating.astro"
+Cohesion: 0.40
+Nodes (5): apps/site/src/pages/docs/updating.astro, ast_hash, mtime, seen, semantic_hash
+
+### Community 604 - ".claude/launch.json"
+Cohesion: 0.40
+Nodes (5): .claude/launch.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 605 - ".claude/settings.local.json"
+Cohesion: 0.40
+Nodes (5): .claude/settings.local.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 606 - ".unlazy-hook-state.json"
+Cohesion: 0.40
+Nodes (5): .unlazy-hook-state.json, ast_hash, mtime, seen, semantic_hash
+
+### Community 607 - ".vscode/settings.json"
+Cohesion: 0.40
+Nodes (5): .vscode/settings.json, ast_hash, mtime, seen, semantic_hash
+
 ## Knowledge Gaps
-- **2840 isolated node(s):** `name`, `version`, `private`, `type`, `description` (+2835 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3388 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **22 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **3457 isolated node(s):** `name`, `version`, `private`, `type`, `description` (+3452 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 4103 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **34 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `QuotaState` connect `lib/mock.ts` to `session.ts`, `SessionDO`, `billing.ts`, `adapters.ts`, `api.ts`, `shared/src/index.ts`?**
-  _High betweenness centrality (0.024) - this node is a cross-community bridge._
-- **Why does `sub()` connect `render-scene.mjs` to `Base.astro`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
-- **Why does `react` connect `react` to `activity-model.ts`, `roadmap.tsx`, `app.tsx`, `workspace.tsx`, `playtest-card.tsx`, `render.tsx`, `turn.tsx`, `layout.tsx`, `dashboard.tsx`, `lib/mock.ts`, `api.ts`, `ui-lab.tsx`, `web/package.json`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
+- **Why does `geometryMask()` connect `critic.mjs` to `props.test.mjs`, `composition.ts`, `props.mjs`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
+- **Why does `QuotaState` connect `shared/src/index.ts` to `session.ts`, `SessionDO`, `billing.ts`, `adapters.ts`, `lib/mock.ts`, `api.ts`, `usage-meter-model.ts`?**
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+- **Why does `renderScene()` connect `render-scene.mjs` to `critic.mjs`, `composition.test.mjs`, `composition-calibration.mjs`, `props.test.mjs`, `composition-generalization.mjs`, `props.mjs`?**
+  _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _2840 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _3457 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `assets.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.024390243902439025 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.02364864864864865 - nodes in this community are weakly interconnected._
 - **Should `activity-model.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.04507042253521127 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08232118758434548 - nodes in this community are weakly interconnected._
 - **Should `session.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.04386317907444668 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.058823529411764705 - nodes in this community are weakly interconnected._

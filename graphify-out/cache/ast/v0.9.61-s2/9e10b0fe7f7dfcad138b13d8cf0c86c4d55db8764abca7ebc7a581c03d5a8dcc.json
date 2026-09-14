@@ -1,1 +1,0 @@
-{"nodes": [{"id": "$graphify-root$_apps_benchmark_crystal_canyon_world_motionprobe_luau", "label": "MotionProbe.luau", "file_type": "code", "source_file": "apps/benchmark/crystal-canyon/world/MotionProbe.luau", "source_location": "L1"}], "edges": [], "raw_calls": [], "parse_errors": {"first_error_line": 36, "multiline_error": true}}

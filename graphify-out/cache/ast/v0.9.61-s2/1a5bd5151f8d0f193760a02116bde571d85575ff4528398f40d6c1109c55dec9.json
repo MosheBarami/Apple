@@ -1,1 +1,0 @@
-{"nodes": [{"id": "$graphify-root$_apps_benchmark_crystal_canyon_src_client_panels_luau", "label": "Panels.luau", "file_type": "code", "source_file": "apps/benchmark/crystal-canyon/src/client/Panels.luau", "source_location": "L1"}], "edges": [], "raw_calls": [], "parse_errors": {"first_error_line": 81, "multiline_error": true}}

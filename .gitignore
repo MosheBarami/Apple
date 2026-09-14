@@ -75,3 +75,14 @@ packages/training/mlxdata/
 docs/evidence/pixels/*
 !docs/evidence/pixels/baseline/
 !docs/evidence/pixels/final/
+
+# graphify's generated map. `graphify update .` rewrites graph.json (6MB), graph.html and an AST
+# cache on every run, and nothing in this repository reads any of it — checked with grep across
+# scripts/, apps/*/src, tests/ and packages/*/src before ignoring it. Tracking it meant a ~12MB
+# diff per rebuild for an artifact that regenerates from source in about a minute.
+#
+# GRAPH_REPORT.md stays tracked: it is small, it is the part a person reads, and its "built from
+# commit" line is what tells you the rest is stale.
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+handoff/
