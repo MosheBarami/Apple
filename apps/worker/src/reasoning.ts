@@ -58,6 +58,11 @@ export interface ReasoningSignals {
   multiSystemTask?: boolean;
   /** the request is under-specified and needs interpretation */
   ambiguousRequest?: boolean;
+  /**
+   * The message is talk rather than work — a greeting, thanks, or a question about the assistant.
+   * It must not escalate effort and must not make the run "owe" a mutation; see classifyRequest.
+   */
+  conversational?: boolean;
   /** the next action deletes, overwrites or restores at scale */
   irreversibleChange?: boolean;
 }
@@ -89,15 +94,46 @@ const MULTI_SYSTEM_RE =
 
 const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make it (?:good|better|nice|cool)|improve|fix it|idk|not sure)\b/i;
 
+/**
+ * Talk, not work: greetings, thanks, acknowledgements, and questions about the assistant itself.
+ *
+ * These need a reply, not a build, and the distinction is not cosmetic. Before this existed the
+ * only short-text signal was `ambiguousRequest`, which fires on anything under 25 characters — so
+ * "hi" was classified as an under-specified BUILD request. In Agent mode with Studio connected that
+ * escalated the step to `high` effort, spent a Spark, took a full `snapshot` of the user's place,
+ * fired the "you have not changed the project yet" nudge twice more, and ended by apologising:
+ * "I did not change anything in your project... which is a fault on my side". For the word "hi".
+ *
+ * The competitive capture shows the same class of waste from the other side: a greeting there
+ * carried 458 input tokens plus 16,654 cache-creation tokens of build harness.
+ *
+ * NOTE ON \b — it is deliberately NOT used here. JavaScript's word boundary is defined over
+ * [A-Za-z0-9_], so no Hebrew letter is a word character and `\u05e9\u05dc\u05d5\u05dd\b` never matches at end of
+ * input. Every Hebrew greeting would have fallen through to `ambiguousRequest` and routed an entire
+ * language's small talk into a build. The Unicode-aware `(?![\p{L}\p{N}])` with the `u` flag is
+ * what makes the boundary mean the same thing in both scripts.
+ */
+const CONVERSATIONAL_RE =
+  /^(?:\s*(?:hi|hey|hello|yo|sup|hiya|howdy|thanks?|thank you|thx|ty|ok|okay|k|cool|nice|great|awesome|got it|sure|yes|yeah|no|nope|bye|goodbye|see ya|good (?:morning|afternoon|evening|night)|\u05e9\u05dc\u05d5\u05dd|\u05d4\u05d9\u05d9|\u05d0\u05d4\u05dc\u05df|\u05ea\u05d5\u05d3\u05d4|\u05d0\u05d5\u05e7\u05d9\u05d9|\u05d1\u05e1\u05d3\u05e8|\u05d9\u05d5\u05e4\u05d9|\u05de\u05e2\u05d5\u05dc\u05d4|\u05d1\u05d9\u05d9)(?![\p{L}\p{N}])[\s!.,?]*)+$/iu;
+
+/** Questions ABOUT the assistant rather than about the project — also talk, not work. */
+const META_QUESTION_RE =
+  /\b(?:who are you|what are you|what can you do|what do you do|how do you work|which model|what model|are you (?:an? )?(?:ai|bot|human)|help me understand you|what is apple|what's apple)\b/i;
+
 /** Cheap request classification, so the policy gets signals without paying a model for them. */
 export function classifyRequest(
   text: string,
-): Pick<ReasoningSignals, 'visualDesignTask' | 'uiDesignTask' | 'multiSystemTask' | 'ambiguousRequest'> {
+): Pick<ReasoningSignals, 'visualDesignTask' | 'uiDesignTask' | 'multiSystemTask' | 'ambiguousRequest' | 'conversational'> {
+  const trimmed = text.trim();
+  const conversational = CONVERSATIONAL_RE.test(trimmed) || META_QUESTION_RE.test(trimmed);
   return {
     visualDesignTask: VISUAL_RE.test(text),
     uiDesignTask: UI_RE.test(text),
     multiSystemTask: MULTI_SYSTEM_RE.test(text),
-    ambiguousRequest: AMBIGUOUS_RE.test(text) || text.trim().length < 25,
+    // Short conversational text is not an under-specified request — it is a complete one that
+    // happens to be short. Only genuinely terse BUILD asks ("a door") remain ambiguous.
+    ambiguousRequest: !conversational && (AMBIGUOUS_RE.test(text) || trimmed.length < 25),
+    conversational,
   };
 }
 
@@ -122,6 +158,13 @@ export function classifyRequest(
 const BASELINE: Record<GolemMode, Effort> = { clay: 'low', stone: 'high', rune: 'high' };
 
 export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
+  // Talk costs `low`, in every mode, with no escalation path. A greeting has nothing to deliberate
+  // about, and the signals below would otherwise raise it: `ambiguousRequest` used to fire on any
+  // text under 25 characters, which is most greetings. This returns before any of them run.
+  if (s.conversational && !s.priorStepFailed) {
+    return { effort: 'low', reason: 'conversational: reply, do not build' };
+  }
+
   let effort = BASELINE[s.mode];
   const reasons: string[] = [`${s.mode} baseline`];
 

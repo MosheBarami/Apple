@@ -89,7 +89,7 @@ interface AgentState {
   /** the last visual critique failed its quality gate */
   visualDefectsFound?: boolean;
   /** what the user's request looks like, classified once when the run starts */
-  traits?: Pick<ReasoningSignals, 'visualDesignTask' | 'multiSystemTask' | 'ambiguousRequest'>;
+  traits?: Pick<ReasoningSignals, 'visualDesignTask' | 'multiSystemTask' | 'ambiguousRequest' | 'conversational'>;
   /** pins the reasoning tier for the whole run; set only by the A/B harness, never in production */
   forcedEffort?: Effort;
   /** a mutating tool has succeeded this run, so there is something to show for it */
@@ -1018,7 +1018,14 @@ export class SessionDO extends DurableObject<Env> {
         }
       }
 
-      const owesWork = agent.mode !== 'clay' && !agent.mutated && studioConnected;
+      // A run only OWES a mutation if the user asked for work. Without the conversational test
+      // this fired on "hi": the greeting reached here unmutated, the nudge below told the model
+      // "You have not changed the project yet" twice — two more paid calls — and the run then
+      // finished as `incomplete`, printing "I did not change anything in your project... which is
+      // a fault on my side". The guard itself is right and stays; it simply must not be applied to
+      // a message that never requested a change. See classifyRequest in reasoning.ts.
+      const owesWork =
+        agent.mode !== 'clay' && !agent.mutated && studioConnected && !agent.traits?.conversational;
       if (owesWork && (agent.nudges ?? 0) < MAX_NUDGES && agent.step < agent.maxSteps) {
         agent.nudges = (agent.nudges ?? 0) + 1;
         agent.llm.push({
