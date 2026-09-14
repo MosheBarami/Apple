@@ -17,13 +17,13 @@
 - [x] w5: Conversation search — across a project's messages, server-side, not a client filter
 - [x] w6: Conversation archive — hide without deleting, restore, and a way to see archived
 - [x] w7: Message edit and resend — correct a prompt without retyping the thread
-- [ ] w8: Stop and retry a run from the workspace, not only from the plugin
-- [ ] w9: Drafts — an unsent message survives a reload
+- [x] w8: Stop and retry a run from the workspace, not only from the plugin
+- [x] w9: Drafts — an unsent message survives a reload
 
 ## Memory
 
-- [ ] w10: Memory viewer — what Apple believes about this project, readable
-- [ ] w11: Memory editor — correct or delete a belief, with the change taking effect next run
+- [x] w10: Memory viewer — what Apple believes about this project, readable
+- [x] w11: Memory editor — correct or delete a belief, with the change taking effect next run
 
 ## Billing — the SaaS the owner asked for
 

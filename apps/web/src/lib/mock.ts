@@ -846,3 +846,23 @@ export async function mockAttribution(): Promise<AttributionResponse> {
     },
   };
 }
+
+/**
+ * Design-review memory. Deliberately contains a fact that is WRONG — the viewer's whole reason to
+ * exist is that a stale belief steers every later run, and a mock where everything is correct
+ * makes the screen look like a status panel rather than something you read critically.
+ */
+export const mockMemory = {
+  memory: {
+    summary:
+      'A neon obby set on floating islands. The player respawns at the last checkpoint ring rather '
+      + 'than at spawn, and the difficulty curve was deliberately flattened after stage 6.',
+    facts: [
+      'Checkpoint rings are named CP_1..CP_12 under Workspace/Course.',
+      'Coins award 5 points and play rbxassetid://9118823103.',
+      'The lobby uses a custom DoorService module.',
+      'Stage 7 was rebuilt to remove the disappearing-platform section.',
+    ],
+  },
+  editedAt: null,
+};

@@ -23,6 +23,7 @@ import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
+import { MemoryPanel } from '../components/ws/memory-panel';
 import { ApiError, downloadExport } from '../lib/api';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
@@ -127,6 +128,24 @@ export function WorkspacePage() {
     },
     [projectId, toast],
   );
+
+  /**
+   * Run the last prompt again.
+   *
+   * Reuses `edit_resend` with the text unchanged rather than adding a second "re-run" path: the
+   * server behaviour a retry needs — drop the failed turn, run the prompt again — is exactly what
+   * an edit does, and a second endpoint would be a second definition of what re-running means.
+   *
+   * No confirmation, because it is only ever offered on the LAST turn: the only thing discarded is
+   * the failed attempt itself. Retrying something older WOULD throw away everything after it, and
+   * that is the edit path, which asks first.
+   */
+  const retryLast = useCallback(() => {
+    if (running) return;
+    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+    if (!lastUser) return;
+    editAndResend(lastUser.id, lastUser.content, PRODUCT_MODE_TO_SPECIALIST[mode]);
+  }, [messages, running, editAndResend, mode]);
 
   // Which of my own messages is being edited, if any.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
@@ -531,6 +550,9 @@ export function WorkspacePage() {
               // there when it works.
               editable={item.role === 'user' && !running}
               onEdit={(id, content) => setEditing({ id, content })}
+              // Only the last turn, and only while idle. An offer that is present but inert is a
+              // worse answer than no offer.
+              onRetry={item.id === lastAssistantId && !running ? retryLast : undefined}
             />
             </div>
           ))}
@@ -564,6 +586,7 @@ export function WorkspacePage() {
         <Composer
           onSend={send}
           onStop={stop}
+          draftKey={projectId}
           running={running}
           disabled={conn !== 'open'}
           mode={mode}
@@ -661,14 +684,10 @@ export function WorkspacePage() {
       </Drawer>
 
       <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Apple remembers">
-        {project.data?.memory_summary ? (
-          <p className="gx-memory">{project.data.memory_summary}</p>
-        ) : (
-          <p className="gx-empty">
-            Nothing yet. As you build, Apple keeps a short note about how your project is put
-            together and uses it on later turns.
-          </p>
-        )}
+        {/* Mounted only while open: the panel holds unsaved edits, and closing the drawer is the
+            gesture people use to abandon them. Keeping it mounted would silently preserve a
+            half-finished edit and re-present it later as if it had been saved. */}
+        {drawer === 'memory' && <MemoryPanel projectId={projectId} />}
       </Drawer>
 
       {showPairing && (

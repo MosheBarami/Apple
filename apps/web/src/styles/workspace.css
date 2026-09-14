@@ -3286,3 +3286,141 @@
 .edit-warn__quiet {
   color: var(--gx-ink-3);
 }
+
+/* --------------------------------------------------------- run outcome --- */
+/* The outcome line grew a control, so it is a row rather than a paragraph. Baseline-aligned: the
+   button is a continuation of the sentence, not a call to action sitting under it. */
+
+.gx-outcome {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gx-outcome__text {
+  margin: 0;
+}
+
+.gx-outcome__retry {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gx-accent, #6aa7ff);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.gx-outcome__retry:hover {
+  text-decoration-thickness: 2px;
+}
+
+.gx-outcome__retry:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ------------------------------------------------------------- memory panel --- */
+
+.mem {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mem__summary {
+  width: 100%;
+  resize: vertical;
+}
+
+.mem__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mem__none {
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.85rem;
+}
+
+.mem__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mem__item,
+.mem__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The fact is the content; the control beside it is not. The input takes the room and the button
+   takes only what its word needs, so a column of facts reads as a list rather than as a form. */
+.mem__fact {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 7px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+  color: var(--gx-ink);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.mem__fact:focus {
+  border-color: var(--gx-accent, #6aa7ff);
+  outline: none;
+}
+
+.mem__drop,
+.mem__addbtn {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 7px;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.mem__drop:hover,
+.mem__addbtn:hover:not(:disabled) {
+  color: var(--gx-ink);
+  border-color: var(--gx-line-strong, rgb(255 255 255 / 20%));
+}
+
+.mem__addbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mem__foot {
+  display: flex;
+  gap: 8px;
+}
+
+.mem__note {
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.mem__note--quiet {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}

@@ -53,12 +53,21 @@ export function Turn({
   isLast,
   onEdit,
   editable,
+  onRetry,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
   /** Offered only on user turns, and only when nothing is running. */
   onEdit?: (messageId: string, current: string) => void;
   editable?: boolean;
+  /**
+   * Run the prompt that produced this turn again.
+   *
+   * Offered only on the LAST turn, and only when the run did not succeed. Retrying an older
+   * failure would discard everything after it — that is the edit path, and it has a dialog for
+   * exactly that reason.
+   */
+  onRetry?: () => void;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
    * flight. Undefined for every other turn, because `agent_status` carries no
@@ -194,9 +203,17 @@ export function Turn({
         ))}
 
         {outcome && (
-          <p className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
-            {item.error ? item.error : outcome.text}
-          </p>
+          <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
+            <p className="gx-outcome__text">{item.error ? item.error : outcome.text}</p>
+            {/* No retry on a quota stop: the run did not fail, the account ran out, and a button
+                that re-runs into the same wall teaches the user the product is broken rather than
+                that they are out of Sparks. The outcome text already says when they come back. */}
+            {onRetry && item.stopReason !== 'quota' && (
+              <button type="button" className="gx-outcome__retry" onClick={onRetry}>
+                Try again
+              </button>
+            )}
+          </div>
         )}
 
         <Stamp at={item.createdAt} align="start" />

@@ -19,6 +19,12 @@
 //   node scripts/gate-check.mjs --approve   the same run, then rewrites each gate's checkbox and
 //                                           EVIDENCE line from what was actually measured.
 //
+//   node scripts/gate-check.mjs --status     parse only, execute nothing. Lists every gate, its
+//                                           mark, whether it carries measured evidence, and
+//                                           whether its CHECK even points at something that
+//                                           exists — which is how a gate gets written for a test
+//                                           nobody wrote. Read-only inspection.
+//
 //   node scripts/gate-check.mjs --lint       parse only, execute nothing. Checks the ledger's
 //                                           SHAPE: no duplicate ids, every gate falsifiable, every
 //                                           ticked gate carrying evidence. Seconds rather than
@@ -43,7 +49,7 @@
 //                     not a gate
 import { execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -53,6 +59,7 @@ const SHELL = '/bin/sh';
 const args = process.argv.slice(2);
 const APPROVE = args.includes('--approve');
 const LINT = args.includes('--lint');
+const STATUS = args.includes('--status');
 const ONLY = args.reduce((acc, a, i) => (a === '--gate' && args[i + 1] ? [...acc, args[i + 1]] : acc), []);
 const TIMEOUT = Number(args[args.indexOf('--timeout') + 1]) || 15 * 60_000;
 const FILE = args.includes('--file') ? args[args.indexOf('--file') + 1] : join(ROOT, 'GATES.md');
@@ -106,6 +113,18 @@ function parseGates(text) {
   const dupes = [...byId].filter(([, n]) => n > 1).map(([id, n]) => `${id} x${n}`);
   if (dupes.length) {
     console.error(`gate-check: duplicate gate ids — ${dupes.join(', ')}. Renumber before this ledger means anything.`);
+    process.exit(2);
+  }
+
+  // Distinct ids running the IDENTICAL command are one gate counted twice. The id check above
+  // cannot see it, and the total at the foot of the ledger reads higher for no extra coverage —
+  // which is the ledger padding itself. This happened: two sessions each wrote a drafts gate
+  // against `tests/draft.test.mjs`, and the file reported 31 gates while proving 30 things.
+  const byCheck = new Map();
+  for (const g of gates) byCheck.set(g.check, [...(byCheck.get(g.check) ?? []), g.id]);
+  const sameCheck = [...byCheck].filter(([, ids]) => ids.length > 1).map(([c, ids]) => `${ids.join(' and ')} both run: ${c}`);
+  if (sameCheck.length) {
+    console.error(`gate-check: gates duplicating a CHECK — ${sameCheck.join(' | ')}. Merge them, or give each its own command.`);
     process.exit(2);
   }
   return gates;
@@ -174,6 +193,31 @@ if (!gates.length) {
   process.exit(2);
 }
 
+if (STATUS) {
+  // Inspection, never execution: this is what you run when you want to know the shape of the work
+  // without spending ten minutes proving it.
+  let needWork = 0;
+  for (const g of gates) {
+    const mark = g.mark === 'x' ? 'MET' : g.mark === '~' ? 'ABANDONED' : 'OPEN';
+    const ev = g.evidenceLine === null ? 'no-evidence'
+      : text.split('\n')[g.evidenceLine].includes('git=') ? 'measured' : 'hand-written';
+    // A CHECK naming a file that is not there is a gate written for a test nobody wrote. It is
+    // indistinguishable from a real gate until something runs it, so it is called out here.
+    const files = [...g.check.matchAll(/(?:^|\s)((?:[\w.@-]+\/)+[\w.@-]+\.(?:mjs|js|ts|tsx|test\.mjs|py))/g)].map((m) => m[1]);
+    const cdMatch = /cd\s+([\w./-]+)\s*&&/.exec(g.check);
+    const base = cdMatch ? join(ROOT, cdMatch[1]) : ROOT;
+    const missing = files.filter((f) => !existsSync(join(base, f)));
+    const work = mark !== 'MET' || ev !== 'measured' || missing.length > 0;
+    if (work) needWork += 1;
+    console.log(
+      `${work ? '!' : ' '} ${g.id.padEnd(4)} ${mark.padEnd(9)} ${ev.padEnd(12)} ${g.title.slice(0, 62)}` +
+      (missing.length ? `\n       CHECK names a file that does not exist: ${missing.join(', ')}` : ''),
+    );
+  }
+  console.log(`\n${gates.length} gate(s), ${needWork} need(s) work`);
+  process.exit(needWork ? 1 : 0);
+}
+
 if (LINT) {
   // parseGates has already rejected duplicate ids and gates with no CHECK:/EXPECT:. What is left
   // is the claim a reader actually relies on: that a ticked box has a measurement under it.
@@ -184,8 +228,12 @@ if (LINT) {
     if (g.evidenceLine === null) problems.push(`${g.id}: ticked with no EVIDENCE line`);
     else {
       const line = text.split('\n')[g.evidenceLine];
-      for (const field of ['exit=', 'EXPECT=', 'output-sha256=']) {
-        if (!line.includes(field)) problems.push(`${g.id}: evidence is missing ${field}`);
+      // `git=` and `tree=` are the fields that cannot be written from memory: they say WHICH
+      // commit was measured and whether the code was even committed. Requiring them is what makes
+      // hand-writing an evidence line fail instead of pass — which is not hypothetical, it has
+      // happened three times in this file, twice since the checker existed.
+      for (const field of ['exit=', 'EXPECT=', 'output-sha256=', 'output-bytes=', 'git=', 'tree=']) {
+        if (!line.includes(field)) problems.push(`${g.id}: evidence is missing ${field} — write it with --approve rather than by hand`);
       }
       if (line.includes('EXPECT=MISSED')) problems.push(`${g.id}: ticked, but its own evidence records EXPECT=MISSED`);
       if (/exit=(?!0;)/.test(line)) problems.push(`${g.id}: ticked, but its own evidence records a non-zero exit`);

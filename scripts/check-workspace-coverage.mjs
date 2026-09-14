@@ -18,10 +18,16 @@
 // A package may opt out ONLY by declaring why, in the file itself, beside its name.
 // An opt-out that is merely absent is a failure.
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// `--root <dir>` points the check at another tree. That exists so this file can be
+// tested against fixtures: a checker whose own failure mode is a quiet pass is the
+// defect it exists to catch, and until now nothing established that it still fails.
+const rootArg = process.argv.indexOf('--root');
+const ROOT = rootArg >= 0 && process.argv[rootArg + 1]
+  ? resolve(process.argv[rootArg + 1])
+  : join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Directories that are workspace members but ship no logic a test could hold.
 // Each needs a reason, and the reason has to be checkable by reading the directory.

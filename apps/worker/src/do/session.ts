@@ -49,6 +49,7 @@ import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRec
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 import { partitionOpsByRun } from '../op-attribution';
 import { MIN_QUERY, escapeLike, isSearchable, snippetAround } from '../search';
+import { normaliseMemory } from '../memory';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -500,6 +501,35 @@ export class SessionDO extends DurableObject<Env> {
           createdAt: new Date(r.created_at).toISOString(),
         })),
       });
+    }
+
+    if (path === '/memory' && req.method === 'GET') {
+      // The DO's copy is authoritative. The Supabase columns are a MIRROR kept for the dashboard,
+      // written best-effort at the tail of a run with whatever JWT happened to be live — so it can
+      // lag, and reading it here would show the user something the agent is not actually using.
+      const stored = (await this.ctx.storage.get<unknown>('memory')) ?? null;
+      return json({ memory: normaliseMemory(stored), editedAt: (await this.ctx.storage.get<string>('memoryEditedAt')) ?? null });
+    }
+
+    if (path === '/memory' && req.method === 'PUT') {
+      //[[ CORRECT WHAT APPLE BELIEVES.
+      //
+      //   Memory is written by a model from the conversation, unreviewed, and then steers every
+      //   later run. A fact that is wrong — "the doors use a custom DoorService" after the user
+      //   tore that out — is not a cosmetic problem: it is a wrong instruction the agent keeps
+      //   following, and until now there was no way to reach it.
+      //
+      //   The whole memory is REPLACED rather than patched. A partial update needs the client and
+      //   the server to agree on identity for a list of free-text strings that the model rewrites
+      //   every few turns, and they would not agree for long. ]]
+      const body = (await req.json().catch(() => null)) as unknown;
+      if (!body || typeof body !== 'object') return json({ error: 'expected a memory object' }, 400);
+
+      const memory = normaliseMemory((body as { memory?: unknown }).memory ?? body);
+      await this.ctx.storage.put('memory', memory);
+      const editedAt = new Date().toISOString();
+      await this.ctx.storage.put('memoryEditedAt', editedAt);
+      return json({ memory, editedAt });
     }
 
     if (path === '/search' && req.method === 'GET') {

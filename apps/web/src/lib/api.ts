@@ -4,7 +4,7 @@ import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@go
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
 
 export class ApiError extends Error {
@@ -105,6 +105,50 @@ export interface SearchResponse {
  */
 export const searchConversation = (projectId: string, q: string): Promise<SearchResponse> =>
   request<SearchResponse>(`/api/projects/${encodeURIComponent(projectId)}/search?q=${encodeURIComponent(q)}`);
+
+// ------------------------------------------------------------------- memory
+
+/** The shape the worker stores and the panel edits. Mirrors apps/worker/src/memory.ts. */
+export interface Memory {
+  summary: string | null;
+  facts: string[];
+}
+
+export interface MemoryResponse {
+  memory: Memory;
+  /** ISO timestamp of the last human correction, or null if only the model has written it. */
+  editedAt: string | null;
+}
+
+/**
+ * What Apple actually believes about this project.
+ *
+ * Read from the Durable Object rather than from the `projects.memory_summary` column the dashboard
+ * uses. That column is a MIRROR, written best-effort at the tail of a run, so it lags — a viewer
+ * showing it would be telling the user something the agent is not using. It also carries only the
+ * summary, never the facts, which are the part most likely to be wrong in a way that matters.
+ */
+export const fetchMemory = (projectId: string): Promise<MemoryResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockMemory)
+    : request<MemoryResponse>(`/api/projects/${encodeURIComponent(projectId)}/memory`);
+
+/**
+ * Replace what Apple believes about this project.
+ *
+ * The WHOLE memory is sent, not a patch. Facts are free-text strings a model rewrites every few
+ * turns, so client and server would need a shared notion of identity for them and would not agree
+ * for long. The server normalises what it receives — trimming, deduplicating, capping — and returns
+ * what it actually stored, which is what the panel then shows: a caller that kept its own copy
+ * would display a fact the agent will never read.
+ */
+export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryResponse> =>
+  MOCK_MODE
+    ? Promise.resolve({ memory, editedAt: new Date().toISOString() })
+    : request<MemoryResponse>(`/api/projects/${encodeURIComponent(projectId)}/memory`, {
+        method: 'PUT',
+        body: JSON.stringify({ memory }),
+      });
 
 export const fetchCheckpoints = (projectId: string) =>
   request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);

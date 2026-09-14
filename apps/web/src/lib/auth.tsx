@@ -4,6 +4,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import type { Session } from '@supabase/supabase-js';
 import { Forge } from '../components/loading';
 import { MOCK_MODE } from './mock';
+import { clearAllDrafts } from './draft';
 import { supabase } from './supabase';
 
 interface AuthState {
@@ -38,7 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         if (!cancelled) setLoading(false);
       });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      // Drafts are the only user content this product keeps outside Postgres and outside RLS: the
+      // user's own unsent words, in localStorage, on a device that may not be theirs. Nothing
+      // cleared them, so a prompt typed by one person was waiting in the composer for whoever
+      // signed in next. Hooked to the EVENT rather than to the signOut button so that a token
+      // expiry and a session replaced by another account clear them too.
+      if (event === 'SIGNED_OUT') clearAllDrafts();
       setSession(next);
       setLoading(false);
     });

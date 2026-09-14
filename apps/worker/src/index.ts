@@ -176,6 +176,55 @@ app.get('/api/projects/:id/messages', async (c) => {
 });
 
 /**
+ * Read what Apple believes about a project.
+ *
+ * From the Durable Object, not from the Supabase columns: those are a mirror written best-effort
+ * at the tail of a run, and showing the user a stale copy of the thing the agent is steering by
+ * would defeat the point of showing it at all.
+ */
+app.get('/api/projects/:id/memory', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  return ctx.stub.fetch('https://do/memory');
+});
+
+/**
+ * Correct it.
+ *
+ * Writes BOTH copies. The DO's is what the agent reads on the next run, so an edit that only
+ * touched Supabase would change what the dashboard shows and nothing about what Apple does — the
+ * user would delete a wrong fact, watch it disappear, and see the agent keep acting on it.
+ *
+ * The Supabase write goes through the caller's own JWT and RLS, exactly like every other write in
+ * this product; it is deliberately best-effort, because failing the whole edit over a stale mirror
+ * would refuse a correction that has in fact already taken effect.
+ */
+app.put('/api/projects/:id/memory', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+
+  const res = await ctx.stub.fetch('https://do/memory', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: await c.req.text(),
+  });
+  if (!res.ok) return res;
+
+  const out = (await res.json()) as { memory: { summary: string | null; facts: string[] }; editedAt: string };
+  await fetch(`${c.env.SUPABASE_URL}/rest/v1/projects?id=eq.${encodeURIComponent(ctx.project.id)}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: c.env.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${ctx.user.jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ memory_summary: out.memory.summary, memory_facts: out.memory.facts }),
+  }).catch(() => {});
+
+  return c.json(out);
+});
+
+/**
  * Search one project's conversation.
  *
  * Server-side because `/messages` only pages the most recent hundred into the client: a filter over

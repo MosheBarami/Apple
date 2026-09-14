@@ -192,6 +192,50 @@ test('--approve does not clobber a gate that appeared while the run was executin
   assert.match(after, /G2:/, 'the gate that landed mid-run must survive the write-back');
 });
 
+test('two gates running the IDENTICAL command is a hard error', () => {
+  // The id check cannot see this: the ids differ, so nothing complains, and the total at the foot
+  // of the ledger reads higher for no extra coverage — the ledger padding itself. It happened:
+  // two sessions each wrote a drafts gate against tests/draft.test.mjs, and GATES.md reported 31
+  // gates while proving 30 things.
+  const r = check(gate('G1', 'echo same', 'same') + '\n' + gate('G2', 'echo same', 'same'));
+  assert.equal(r.exit, 2);
+  assert.match(r.out, /duplicating a CHECK/);
+});
+
+/* ---------------------------------------------------------------- --status --- */
+
+test('--status executes nothing and names the gates that need work', () => {
+  const r = check(gate('G1', 'exit 9', 'never', 'x'), ['--status']);
+  assert.doesNotMatch(r.out, /GATES (GREEN|RED)/, '--status must not execute');
+  assert.match(r.out, /need\(s\) work/);
+  assert.equal(r.exit, 1, 'a gate needing work must fail the process so a hook can act on it');
+});
+
+test('--status flags a CHECK that names a file which does not exist', () => {
+  // How a gate gets written for a test nobody wrote. Until something runs it, it is
+  // indistinguishable from a real gate — and it sat open in this ledger exactly that way.
+  const r = check(gate('G1', 'cd apps/web && node --test tests/never-written.test.mjs', 'fail 0', 'x'), ['--status']);
+  assert.match(r.out, /CHECK names a file that does not exist/);
+  assert.match(r.out, /never-written\.test\.mjs/);
+});
+
+test('--status reports a clean ledger as needing no work', () => {
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: echo hi\n    EXPECT: hi\n' +
+    '  EVIDENCE: exit=0; git=abc1234; tree=clean; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n';
+  const r = check(ledger, ['--status']);
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.out, /0 need\(s\) work/);
+});
+
+test('--status distinguishes measured evidence from hand-written', () => {
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: echo hi\n    EXPECT: hi\n' +
+    '  EVIDENCE: exit=0; EXPECT=matched; output-sha256=deadbeef\n';
+  const r = check(ledger, ['--status']);
+  assert.match(r.out, /hand-written/);
+});
+
 /* ------------------------------------------------------------------ --lint --- */
 
 test('--lint executes nothing', () => {
@@ -214,7 +258,7 @@ test('--lint fails a gate whose own evidence contradicts its tick', () => {
   // A ticked box above `EXPECT=MISSED` is worse than an untested gate, because it reads as proof.
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
-    '  EVIDENCE: exit=0; EXPECT=MISSED; output-sha256=deadbeef\n';
+    '  EVIDENCE: exit=0; git=abc1234; tree=clean; EXPECT=MISSED; output-sha256=deadbeef; output-bytes=2\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 1);
   assert.match(r.out, /records EXPECT=MISSED/);
@@ -223,16 +267,30 @@ test('--lint fails a gate whose own evidence contradicts its tick', () => {
 test('--lint fails a gate ticked over a non-zero exit', () => {
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
-    '  EVIDENCE: exit=2; EXPECT=matched; output-sha256=deadbeef\n';
+    '  EVIDENCE: exit=2; git=abc1234; tree=clean; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 1);
   assert.match(r.out, /non-zero exit/);
 });
 
+test('--lint rejects evidence that was written by hand rather than measured', () => {
+  // `git=` and `tree=` are the two fields nobody can write from memory: which commit was measured,
+  // and whether the code was committed at all. Requiring them is what makes a hand-written
+  // evidence line FAIL — not hypothetical, it happened three times in this repository's ledger,
+  // twice after the checker existed to prevent it.
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  EVIDENCE: exit=0; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1);
+  assert.match(r.out, /missing git=/);
+  assert.match(r.out, /missing tree=/);
+});
+
 test('--lint passes a well-formed ledger, so it is not just a failure machine', () => {
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
-    '  EVIDENCE: exit=0; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n' +
+    '  EVIDENCE: exit=0; git=abc1234; tree=clean; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n' +
     '\n- [ ] G2: an honest open gate\n    CHECK: false\n    EXPECT: y\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 0);

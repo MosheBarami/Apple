@@ -19,6 +19,7 @@
 // vocabulary. Nothing in this file may name a provider or a model id.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { PRODUCT_MODES, PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
+import { clearDraft, readDraft, writeDraft } from '../../lib/draft';
 import { Icon, PATH, Popover } from './primitives';
 
 /**
@@ -55,6 +56,13 @@ interface Props {
   onModeChange: (m: ProductMode) => void;
   seed?: string;
   placeholder?: string;
+  /**
+   * Which project this composer belongs to.
+   *
+   * Drafts are kept per project: one shared key would show project A's unsent message in project
+   * B, which is worse than losing it — the user sends the wrong thing to the wrong place.
+   */
+  draftKey?: string;
 }
 
 export function Composer({
@@ -66,8 +74,11 @@ export function Composer({
   onModeChange,
   seed,
   placeholder,
+  draftKey,
 }: Props) {
-  const [text, setText] = useState('');
+  // Read synchronously on the first render rather than in an effect: restoring in an effect paints
+  // an empty box first, and the user starts retyping into it before the draft lands on top.
+  const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [modeOpen, setModeOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
 
@@ -77,6 +88,24 @@ export function Composer({
       box.current?.focus();
     }
   }, [seed]);
+
+  // Switching projects swaps the draft. Without this the composer keeps the previous project's
+  // text, which is the exact failure the per-project key exists to prevent.
+  const lastKey = useRef(draftKey);
+  useEffect(() => {
+    if (draftKey === lastKey.current) return;
+    lastKey.current = draftKey;
+    setText(draftKey ? readDraft(draftKey) : '');
+  }, [draftKey]);
+
+  // Persisted on a delay, not on every keystroke: localStorage writes are synchronous, and one per
+  // character is measurable on a long message. 400ms is under the time it takes to reach for the
+  // reload the draft is meant to survive.
+  useEffect(() => {
+    if (!draftKey) return;
+    const timer = setTimeout(() => writeDraft(draftKey, text), 400);
+    return () => clearTimeout(timer);
+  }, [text, draftKey]);
 
   // Grow with the content, up to the CSS max-height.
   useEffect(() => {
@@ -92,6 +121,9 @@ export function Composer({
     if (!value || running || disabled) return;
     onSend(value);
     setText('');
+    // Cleared here, at the point the message actually left, rather than optimistically: a send
+    // refused because the socket had closed must leave the draft where it was.
+    if (draftKey) clearDraft(draftKey);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
