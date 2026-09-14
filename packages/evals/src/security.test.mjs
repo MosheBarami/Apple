@@ -1265,7 +1265,13 @@ test('A5 STATIC CHECK — every tool result entering the transcript is fenced as
       //
       //   A per-run random id fixes that without touching the payload. Asserting only
       //   "there is a fence" would pass against a constant tag again. ]]
-      assert.match(p, /id="\$\{agent\.fenceId/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
+      //   The id now goes through `fenceIdFor(agent)`, which MINTS one when a run persisted by an
+      //   older deploy arrives without it. The expression this used to pin was `agent.fenceId ?? ''`,
+      //   and that fallback was the same defect one layer down: every legacy run fenced its output
+      //   with the SAME id, so the secret was shared rather than per-run. Pin the property — a
+      //   per-run id and no constant fallback — rather than the spelling.
+      assert.match(p, /id="\$\{(?:agent\.fenceId|this\.fenceIdFor\(agent\))/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
+      assert.doesNotMatch(p, /fenceId\s*\?\?\s*''/, 'the fence id must never fall back to a constant');
       fenced++;
     } else {
       // The only other tool-role push is Golem's own static refusal text; it must interpolate

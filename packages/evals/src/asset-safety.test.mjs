@@ -1665,7 +1665,7 @@ test('THE SYSTEM PROMPT NO LONGER CONTRADICTS THE TOOLS it is describing', () =>
   // not that a particular tool is always named. `search_asset_library` is now withheld where the
   // curated library's tables were never created, and naming a tool the model cannot see would be
   // the same contradiction this test was written to catch, pointing the other way.
-  const base = { mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [] };
+  const base = { mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [], fenceId: 'ev4lf3nc' };
 
   for (const assetLibraryAvailable of [true, false]) {
     const sys = P.systemPrompt({ ...base, assetLibraryAvailable });

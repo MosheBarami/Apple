@@ -54,8 +54,8 @@ export const FIXTURES_DIR = join(PROPS_DIR, 'fixtures');
 
 /** Background constants of the software rasteriser. Must match src/render-scene.mjs; a test
  *  renders a known scene and asserts the mask recovers, so drift is caught rather than assumed. */
-export const SKY_RGB = [0x9f, 0xc7, 0xe8];
-export const GROUND_RGB = [0x6e, 0x7a, 0x63];
+export { SKY_RGB, GROUND_RGB, geometryMask } from '@golem/design/pixels';
+import { SKY_RGB, GROUND_RGB, geometryMask } from '@golem/design/pixels';
 
 /** Roblox's out-of-the-box Part. Medium stone grey, Plastic. The thing "just grey Parts" means. */
 export const FACTORY_PART = { material: 'Plastic', color: [163, 162, 165] };
@@ -286,19 +286,6 @@ export function materialFamilies(materialCounts, families) {
 // ---------------------------------------------------------------------------------------------
 
 /** 1 where geometry was drawn, 0 where the background constants show through. */
-export function geometryMask(rgb, width, height) {
-  const px = width * height;
-  const mask = new Uint8Array(px);
-  for (let i = 0; i < px; i++) {
-    const r = rgb[i * 3];
-    const g = rgb[i * 3 + 1];
-    const b = rgb[i * 3 + 2];
-    const isSky = r === SKY_RGB[0] && g === SKY_RGB[1] && b === SKY_RGB[2];
-    const isGround = r === GROUND_RGB[0] && g === GROUND_RGB[1] && b === GROUND_RGB[2];
-    mask[i] = isSky || isGround ? 0 : 1;
-  }
-  return mask;
-}
 
 /**
  * The silhouette statistics. This is the measure that separates "a trophy" from "three boxes".

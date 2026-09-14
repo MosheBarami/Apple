@@ -368,6 +368,41 @@ test('a CONFESSION repeated three times is a stall; a HANDOFF repeated is not', 
   assert.doesNotMatch(handoff.out, /OH-1 has been confessed/);
 });
 
+/* ---------------------------------------------- assertions that cannot fail --- */
+
+test('it catches `assert.ok(X || true)`, the assertion that asserts nothing', () => {
+  // Two of these shipped on main and were found by a peer session, not by this checker. One sat on
+  // top of the product's only prompt-injection boundary while the fence emitted a constant id
+  // underneath it. The line reads as care, which is exactly why nothing caught it for so long.
+  const r = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\n// planted\nconst PLANT = () => assert.ok(1 === 2 || true);"));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /an assertion that cannot fail/);
+  assert.match(r.out, /`X \|\| true` is `true`/);
+});
+
+test('it catches the mirror forms — `&& false` under a negation, and a bare literal', () => {
+  const andFalse = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\nconst PLANT = () => assert.ok(!(1 === 2 && false));"));
+  assert.equal(andFalse.exit, 1, andFalse.out);
+  assert.match(andFalse.out, /an assertion that cannot fail/);
+
+  const literal = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\nconst PLANT = () => assert.ok(true, 'nothing measured here');"));
+  assert.equal(literal.exit, 1, literal.out);
+  assert.match(literal.out, /a literal `true` is not a measurement/);
+});
+
+test('it does NOT fire on `|| true` inside a string, or this file could not name the pattern', () => {
+  // The negative control. A detector that matches its own description makes itself unmentionable
+  // in comments, test names and documentation — and the usual repair for that is to delete the
+  // detector. Strings and comments are stripped before the scan for exactly this reason.
+  const quoted = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
+    src.replace("import test from 'node:test';", "import test from 'node:test';\n// a comment naming X || true\nconst PLANT = 'assert.ok(x || true)';"));
+  assert.equal(quoted.exit, 0, quoted.out);
+  assert.doesNotMatch(quoted.out, /an assertion that cannot fail/);
+});
+
 test('the scratch clone is removed', () => {
   rmSync(DIR, { recursive: true, force: true });
 });

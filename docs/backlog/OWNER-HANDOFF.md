@@ -108,21 +108,29 @@ The number is yours because it is a storage bill, not an engineering constraint.
 
 ---
 
-## OH-6 · One pixel metric, two implementations
+## OH-6 · One pixel metric, two implementations — RESOLVED, not an owner action
 
-**The action.** None yet — this is recorded as a row so it is not lost, and the decision of which
-implementation survives is an engineering one this session will make. It is listed here because it
-is a DRIFT surface with no checker on it and no dead-end detector would find it: both copies have
-callers, which is exactly why they can disagree indefinitely.
+**Status.** Closed this pass. It was never owner-blocked: the row said so when it was written
+("the decision of which implementation survives is an engineering one this session will make"),
+and carrying it here for three passes was a stall, which the escape-hatch checker eventually said
+out loud.
 
-**Measured this pass.** `geometryMask` and `figureGroundContrast` exist in both
-`apps/worker/src/composition.ts` and `packages/evals/src/props.mjs`. One decides what the offline
-grader believes about a build; the other decides what the product would. They agree until they do
-not, and nothing would say when that happened.
+**What was decided.** `geometryMask`, `SKY_RGB` and `GROUND_RGB` now have ONE implementation, in
+`packages/design/src/pixels.mjs`. Both former copies — `apps/worker/src/composition.ts` (what the
+product believes about a build) and `packages/evals/src/props.mjs` (what the offline grader
+believes) — import it. They had to agree: a grader whose mask differs from the product's is a
+grader whose scores do not predict the product.
 
-**Found by.** rbxai-a3, while declining to port five further pixel metrics into the product for the
-same reason — metrics derived by inference feed the critic confident wrong numbers, which is worse
-than a lens that honestly did not run.
+**Why the design package.** It is the only package both consumers already depend on, so the shared
+module needed no new workspace wiring. A dedicated `@golem/pixels` package would carry a better
+name; that is recorded as reversible, and moving it later is an import rewrite in two files.
+
+**What keeps it closed.** `tests/pixel-primitives.test.mjs` asserts each name is defined exactly
+once, with a positive control that both consumers still import AND still call it — an absence
+check alone cannot tell "deduplicated" from "quietly removed". The hand-written ambient
+declaration the worker typechecks against is the one seam the dedup could not remove, so its
+exported names are compared against the module's. Falsified: reintroducing a second `SKY_RGB` in
+composition.ts turns it red.
 
 ---
 
