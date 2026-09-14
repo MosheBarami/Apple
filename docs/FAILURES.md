@@ -8,6 +8,71 @@ Newest first. Each entry: what was believed, what was true, how it was caught.
 
 ---
 
+## 2026-09-15
+
+### F-58 · A falsification that turns nothing red usually means the BREAK was mis-aimed
+**Believed:** red-first is settled practice here. Break the mechanism, watch the gate go
+red, restore. If the break turns nothing red, the test is vacuous or the mechanism it
+claims to guard is absent — the two readings we had.
+**True:** there are five readings, and the one we were missing is the most common. A
+break that reports 0 red most often landed somewhere other than where it was recorded as
+landing, because it was applied by replacing the FIRST OCCURRENCE of a string that
+appears at several call sites.
+
+The five, in descending order of how often they actually occur:
+
+1. **Mis-aimed break.** The edit landed on a different call site than the one named.
+2. **Vacuous test.** The assertion can never fire — `if (over.length)` on an array that
+   is supposed to be empty; a rollover fixture stranding 1,000 neurons against a 25,000
+   ceiling, so inheriting the stale hold refuses nothing.
+3. **Dead harness.** The test never ran what you think it ran. A dependency stubbed and
+   another not; the throws asynchronous, so every case passes while the process exits
+   non-zero. *Tell: the run is too fast, and stderr carries TypeErrors while the summary
+   says pass.*
+4. **Absent mechanism.** The clause cannot fire through the real interface.
+5. **Unfalsifiable by construction, kept for a stated future.** Correct code no test can
+   redden today, load-bearing the day a named condition changes. Legitimate — but it must
+   say so in a comment, or it sits there looking tested.
+
+**Cost of the error:** three sessions reached a wrong conclusion about their own work in
+one night. Two breaks aimed at `/reserve` landed on `/probe`, because
+`projectedDay = dayNeurons + dayPending + want` appears in both and `/probe` is first —
+and the resulting green was read as "the test detects nothing" rather than "the break
+missed". A G6 falsification hit the wrong `captureProvenance` call site and was read as
+the gate having drifted. A G16 falsification un-exported a component whose test reads the
+command registry rather than the component.
+
+**Caught by:** the 0-red heuristic itself, applied recursively. Every one of these was
+found by refusing to accept a quiet falsification and asking what the break had actually
+touched.
+
+**The rule:** never falsify by replacing the first occurrence of a string. Locate the
+break by ROUTE or CALL SITE, assert the occurrence count before writing it, and if the
+break turns nothing red, suspect the aim before the test.
+
+### F-59 · A count assertion over a shared channel is vacuous if the fixture can trip it twice
+**Believed:** `warnings.length >= 1` proves the warning under test was emitted.
+**True:** it proves *a* warning was emitted. The fixture made two fields unreadable, so a
+second, unrelated warning satisfied the count — and deleting the warning actually under
+test left the assertion green.
+**Cost of the error:** a logging guard that looked covered and was not, on the code path
+that announces a leaked budget reservation.
+**Caught by:** deleting the warning under test and watching the assertion stay green.
+**The rule:** generalises past logs to any assertion counting events on one stream. Assert
+the CONTENT of the event you mean, or assert an exact count with a fixture that can
+produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
+
+### F-60 · A test-count floor cannot be tripped by adding tests
+**Believed:** a tight floor on `assert-tests.mjs` goes red whenever someone adds a case,
+so it should be set below the current count to avoid churn.
+**True:** `scripts/assert-tests.mjs:88` is `if (passed < floor)`. Adding cases only raises
+`passed`. A floor set six below the real count does not prevent churn — it permits six
+silent deletions, which is the exact failure the floor exists to catch.
+**Caught by:** one engineer asserting the looser floor confidently, another correcting it,
+and the first verifying the source rather than accepting the correction.
+
+---
+
 ## 2026-09-01
 
 ### F-12 · A comment was load-bearing, and it was wrong
