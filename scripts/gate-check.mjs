@@ -42,7 +42,8 @@
 //   at                                              when, so a stale record is visible as stale
 import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -280,17 +281,71 @@ const GATE_ENV = (() => {
   return env;
 })();
 
+/**
+ * Which repository files a gate actually touched, discovered by running it.
+ *
+ * §10.1: "a deployed-origin station probe is valid for the HEAD sha it was recorded against, and is
+ * re-probed when HEAD changes the code path it exercises, proven by a path diff." The same logic
+ * applies to every gate — evidence recorded against one commit is not evidence about different
+ * code — and the hard part is knowing WHICH code a gate exercises without asking the author to
+ * declare it, because a declaration drifts exactly like a prose tally does.
+ *
+ * V8's coverage output answers it for free: every module the run loaded, from the runtime rather
+ * than from a manifest. A file the gate never loaded cannot affect it, and a file it did load can.
+ *
+ * THIS IS NOT THEORETICAL. Two commits in this repository silently reverted code while its gates
+ * still read green, because nobody re-ran them between the sweep and the discovery. A recorded
+ * dependency fingerprint makes that visible from `--status`, in a second, without re-running
+ * anything.
+ */
+function dependencySet(covDir) {
+  const seen = new Set();
+  let files = [];
+  try { files = readdirSync(covDir).filter((f) => f.endsWith('.json')); } catch { return []; }
+  const prefix = `file://${ROOT}/`;
+  for (const f of files) {
+    let parsed;
+    try { parsed = JSON.parse(readFileSync(join(covDir, f), 'utf8')); } catch { continue; }
+    for (const r of parsed.result ?? []) {
+      if (!r.url?.startsWith(prefix)) continue;
+      const rel = r.url.slice(prefix.length);
+      // node_modules is not ours and changes only with a lockfile bump, which is its own signal.
+      if (rel.includes('node_modules/')) continue;
+      seen.add(rel);
+    }
+  }
+  return [...seen].sort();
+}
+
+/** A fingerprint of those files' CONTENTS, so a rename or an edit both move it. */
+function dependencyFingerprint(deps) {
+  const h = createHash('sha256');
+  for (const rel of deps) {
+    h.update(rel);
+    h.update('\0');
+    try { h.update(readFileSync(join(ROOT, rel))); } catch { h.update('MISSING'); }
+    h.update('\0');
+  }
+  return h.digest('hex').slice(0, 24);
+}
+
+const DEPS_DIR = join(ROOT, 'docs', 'evidence', 'gate-deps');
+
 function runGate(gate) {
   const started = Date.now();
+  // A fresh coverage directory per gate, so one gate's dependency set cannot inherit another's.
+  const covDir = mkdtempSync(join(tmpdir(), 'gate-cov-'));
   const proc = spawnSync(SHELL, ['-c', gate.check], {
     cwd: ROOT,
     encoding: 'utf8',
     timeout: TIMEOUT,
     maxBuffer: 64 * 1024 * 1024,
-    env: GATE_ENV,
+    env: { ...GATE_ENV, NODE_V8_COVERAGE: covDir },
     // A gate must not be able to ask a human for help and hang the run.
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  const deps = dependencySet(covDir);
+  rmSync(covDir, { recursive: true, force: true });
 
   const output = `${proc.stdout ?? ''}${proc.stderr ?? ''}`;
   const exit = proc.status === null ? 124 : proc.status;
@@ -298,19 +353,33 @@ function runGate(gate) {
   // writes errors to stderr, and a gate looking at one would miss half of what it gates.
   const matched = output.includes(gate.expect);
 
-  return { ...gate, exit, matched, met: exit === 0 && matched, output, ms: Date.now() - started, timedOut: proc.status === null };
+  return {
+    ...gate, exit, matched, met: exit === 0 && matched, output,
+    ms: Date.now() - started, timedOut: proc.status === null,
+    deps, depsSha: dependencyFingerprint(deps),
+  };
 }
 
 /* --------------------------------------------------------------- evidence --- */
 
 const stamp = () => new Date().toISOString();
 
+/** The dependency LIST lives beside the ledger; only its fingerprint goes on the record line. */
+function writeDeps(id, deps) {
+  if (!deps?.length) return;
+  try {
+    mkdirSync(DEPS_DIR, { recursive: true });
+    writeFileSync(join(DEPS_DIR, `${id}.json`), `${JSON.stringify(deps, null, 2)}\n`);
+  } catch { /* the fingerprint still records; the list is a convenience for reading */ }
+}
+
 const recordLine = (kind, r, extra = '') =>
   `  ${kind}: exit=${r.exit}; shell=${SHELL}; cwd=${ROOT}; path=${PATH_FP}; ` +
   `git-sha=${HEAD}; tree-clean=${DIRTY ? 'no' : 'yes'}; ${extra}` +
   `EXPECT=${r.matched ? 'matched' : 'unmatched'}; ` +
   `output-sha256=${sha256(normaliseOutput(r.output))}; output-bytes=${Buffer.byteLength(r.output)}; ` +
-  `node=${TOOLS.node}; luau=${TOOLS.luau}; playwright=${TOOLS.playwright}; at=${stamp()}`;
+  `node=${TOOLS.node}; luau=${TOOLS.luau}; playwright=${TOOLS.playwright}; ` +
+  `deps=${r.deps?.length ?? 0}; deps-sha=${r.depsSha ?? 'none'}; at=${stamp()}`;
 
 const evidenceLine = (r) => recordLine('EVIDENCE', r);
 const falsifiedLine = (r, breakSha) => recordLine('FALSIFIED', r, `break-sha=${breakSha}; `);
@@ -345,11 +414,29 @@ if (STATUS) {
     const ev = g.evidenceLine === null ? 'no-evidence'
       : text.split('\n')[g.evidenceLine].includes('git-sha=') ? 'measured' : 'hand-written';
     const missing = checkPaths(g.check).filter((f) => !existsSync(join(ROOT, f)));
-    const work = mark !== 'MET' || ev !== 'measured' || missing.length > 0 || g.falsifiedLine === null;
+
+    // STALENESS, WITHOUT RUNNING ANYTHING. The recorded fingerprint covers the contents of every
+    // file the gate actually loaded when it was measured. Recomputing it over those same files
+    // today says, in a second, whether the evidence is about the code that is here now — which is
+    // the question `--reverify` answers in ten minutes and `--status` previously could not ask at
+    // all. Two commits in this repository silently reverted code while its gates read green.
+    let stale = '';
+    if (g.evidenceLine !== null) {
+      const recorded = /deps-sha=([0-9a-f]+)/.exec(text.split('\n')[g.evidenceLine])?.[1];
+      if (!recorded) stale = 'no-deps';
+      else {
+        let deps = null;
+        try { deps = JSON.parse(readFileSync(join(DEPS_DIR, `${g.id}.json`), 'utf8')); } catch { /* none recorded */ }
+        if (!deps) stale = 'no-deps';
+        else if (dependencyFingerprint(deps) !== recorded) stale = 'STALE';
+      }
+    }
+
+    const work = mark !== 'MET' || ev !== 'measured' || missing.length > 0 || g.falsifiedLine === null || stale === 'STALE';
     if (work) needWork += 1;
     console.log(
       `${work ? '!' : ' '} ${g.id.padEnd(16)} ${mark.padEnd(9)} ${ev.padEnd(12)} ` +
-      `${g.falsifiedLine === null ? 'no-falsified' : 'red-first  '} ${g.title.slice(0, 50)}` +
+      `${g.falsifiedLine === null ? 'no-falsified' : 'red-first  '} ${(stale || 'current').padEnd(8)} ${g.title.slice(0, 42)}` +
       (missing.length ? `\n       CHECK names a file that does not exist: ${missing.join(', ')}` : ''),
     );
   }
@@ -427,6 +514,7 @@ if (FALSIFY) {
   const lines = readFileSync(FILE, 'utf8').split('\n');
   const fresh = parseGates(lines.join('\n')).find((x) => x.id === g.id);
   if (!fresh) { console.error(`gate-check: ${g.id} vanished mid-run`); process.exit(2); }
+  writeDeps(g.id, r.deps);
   const line = falsifiedLine(r, breakSha);
   if (fresh.falsifiedLine !== null) lines[fresh.falsifiedLine] = line;
   else lines.splice(fresh.headLine + 3, 0, line);
@@ -474,6 +562,7 @@ if (REVERIFY) {
       // to find, and the checkbox is what they will actually trust.
       lines[now.headLine] = `- [ ] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
     } else {
+      writeDeps(r.id, r.deps);
       lines[now.headLine] = `- [x] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
       if (now.evidenceLine !== null) lines[now.evidenceLine] = evidenceLine(r);
       else lines.splice(insertAt(now), 0, evidenceLine(r));
@@ -527,6 +616,7 @@ if (APPROVE) {
   // Bottom-up, so an insertion never shifts a line number still to be used.
   for (const r of applied.sort((a, b) => b.headLine - a.headLine)) {
     lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}${r.station ? ` [${r.station}]` : ''}: ${r.title}`;
+    writeDeps(r.id, r.deps);
     const line = evidenceLine(r);
     if (r.evidenceLine !== null) lines[r.evidenceLine] = line;
     else if (r.met) lines.splice(insertAt(r), 0, line);

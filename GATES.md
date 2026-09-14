@@ -161,11 +161,11 @@ ledger row means anything: `--reverify` was a silent no-op, so the first clause 
 condition was vacuously satisfiable, and every EXPECT of `fail 0` was satisfiable by deleting the
 test it gated.
 
-- [x] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
+- [ ] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=4c8a015; tree-clean=yes; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3966; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:07:51.660Z
+  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d7f2910; tree-clean=no; EXPECT=unmatched; output-sha256=9566eb1fde7e8ebd06b38bd8f0fca5936745b05b9880a8bc2ddac3ff118ff191; output-bytes=5149; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=91864ab3af3decf691265962; at=2026-09-14T17:31:48.251Z
 
 - [ ] G-CRITIC-1: The visual critic cannot report a clean build for checks it never ran
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-1 -- node --test packages/evals/src/critic.test.mjs
