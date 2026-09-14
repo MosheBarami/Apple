@@ -94,7 +94,14 @@ test('every snake_case name in a verifier description is a real tool', () => {
 });
 
 test('each of the three free verifiers says so, so cost is comparable at a glance', () => {
-  for (const v of ['check_composition', 'audit_build']) {
+  // THE LOOP USED TO NAME THREE AND CHECK TWO. run_spec is free by this file's own opening
+  // paragraph and was left out of the list, and its description said nothing about cost — so the
+  // invariant this test is named after was already false of the shipped product while the test was
+  // green. A test that names more than it checks is a worse failure than one that checks nothing,
+  // because the name is what anybody reads.
+  const free = ['check_composition', 'audit_build', 'run_spec'];
+  assert.equal(free.length, 3, 'the name says three');
+  for (const v of free) {
     assert.match(describe(v), /costs? nothing|free|no model call/i, `${v} should say it is free`);
   }
 });

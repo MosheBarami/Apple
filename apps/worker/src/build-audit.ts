@@ -20,8 +20,11 @@
 // So handing the panel a partial metric set does not fail — it silently runs fewer checks and
 // returns a shorter defect list, which is indistinguishable from a clean build. A lens that did not
 // run must never be reported as a lens that found nothing. Everything below exists to make that
-// distinction explicit: this module runs only the lenses whose every rule it can feed, and states
-// which rules were not evaluated and why.
+// distinction explicit, in three states rather than two: a lens is COMPLETE when every rule could
+// be fed, PARTIAL when some could and some could not, and NONE when none could. Lighting is the
+// reason partial exists — its configuration half is measurable from a Workspace walk and its
+// value-structure half is not — and the rules skipped inside a lens that did run are returned on
+// `unchecked` rather than dropped.
 //
 // The three geometry lenses cost zero neurons: no judge is passed, so `runCriticPanel` takes the
 // deterministic path for each and no model is called at all.

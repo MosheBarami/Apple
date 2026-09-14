@@ -1311,9 +1311,6 @@ export const TOOLS: Record<string, ToolImpl> = {
         return { error: `unknown effect "${effect}". Choose one of: ${EFFECT_NAMES.join(', ')}.` };
       }
       if (!path) return { error: 'path is required' };
-      // The path is embedded in generated source as a quoted literal. A quote, a backslash or a
-      // newline in it could not break out of the string (it is JSON-escaped), but a path containing
-      // them is not a real instance path and refusing is cheaper than reasoning about it.
       // Parsed, not pattern-matched. The old filter rejected every quote, which meant it rejected
       // game.Workspace["Camp Fire"].Logs — the exact form Paths.fullPath RETURNS for any name that
       // is not a bare identifier. Every instance with a space, a hyphen or a leading digit in its
@@ -1335,13 +1332,14 @@ export const TOOLS: Record<string, ToolImpl> = {
    * ZERO neurons and makes zero model calls — asserted in the test, because a free check that
    * quietly starts charging is a different product.
    *
-   * WHY IT REPORTS WHICH LENSES DID NOT RUN. `applyMetricRules` skips any rule whose metric is
-   * undefined, so a partial metric set produces a SHORT defect list rather than an error — and a
-   * short defect list is indistinguishable from a clean build. Two of the six lenses (lighting's
-   * value-structure half, and gameplay_readability entirely) are measured from pixels, which this
-   * pass does not have. They are therefore not run at all, and the result says so in the same
-   * breath as the verdict. Silently omitting them would be the exact failure critic.ts was built to
-   * make impossible.
+   * WHY IT REPORTS WHICH LENSES DID NOT RUN. `applyMetricRules` runs only the rules whose metric it
+   * has, so a partial metric set produces a SHORT defect list rather than an error — and a short
+   * defect list is indistinguishable from a clean build. gameplay_readability is measured entirely
+   * from pixels, which this pass does not have, so it does not run at all; lighting runs PARTIAL,
+   * because its configuration half is measurable here and its value-structure half is not. Both
+   * facts are reported in the same breath as the verdict, and the rules skipped inside a lens that
+   * did run come back on `unchecked` rather than vanishing. Silently omitting either would be the
+   * exact failure critic.ts was built to make impossible.
    */
   audit_build: {
     def: {
@@ -1469,7 +1467,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_spec',
       description:
-        'Run assertions against the modules this project actually contains, and get a per-case pass/fail report. Each case is { name, code }; the code runs as a function body, and a case PASSES by returning and FAILS by erroring — use assert(condition, message). Require project modules by path, e.g. require(game.ServerScriptService.Shop). Use this after building a system that has rules — economy, saving, cooldowns, access — because run_and_check only proves nothing errored, not that anything is correct. Cases are pcall-isolated, so one failure does not hide the rest. LIMIT: a plugin cannot start Play Solo, so there is no LocalPlayer and no client here; assert against server and shared modules.',
+        'Run assertions against the modules this project actually contains, and get a per-case pass/fail report. Each case is { name, code }; the code runs as a function body, and a case PASSES by returning and FAILS by erroring — use assert(condition, message). Require project modules by path, e.g. require(game.ServerScriptService.Shop). Use this after building a system that has rules — economy, saving, cooldowns, access — because run_and_check only proves nothing errored, not that anything is correct. A case that ERRORS is caught on its own, so one failing assertion does not hide the rest — but every case is compiled together, so a case that does not PARSE takes the whole run with it and you get a compile error instead of a report. Costs nothing: no model calls, no images. LIMIT: a plugin cannot start Play Solo, so there is no LocalPlayer and no client here; assert against server and shared modules.',
       parameters: S(
         {
           cases: {
