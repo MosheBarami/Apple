@@ -264,6 +264,18 @@ export interface ChatAttachment {
 
 export type ClientMsg =
   | { type: 'chat'; text: string; mode: GolemMode; attachments?: ChatAttachment[] }
+  /**
+   * Correct an earlier prompt and run again from there.
+   *
+   * Everything from `messageId` onward is DISCARDED — the edited message replaces it and the
+   * conversation continues from that point, which is what makes this a correction rather than a
+   * new question. That discard is permanent and is the reason the client confirms first.
+   *
+   * It does NOT undo anything already built in the Roblox place. The conversation is rewound; the
+   * work is not. Checkpoints are the tool for that, and the two are deliberately separate — a
+   * wording fix should not silently revert a working door.
+   */
+  | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
   | { type: 'checkpoint_create'; label: string }
@@ -535,6 +547,14 @@ export interface RunSnapshotTool {
 
 export type ServerMsg =
   | { type: 'hello'; sessionId: string; studioConnected: boolean; quota: QuotaState }
+  /**
+   * The conversation was rewound to just before `fromMessageId`.
+   *
+   * Broadcast to EVERY client, not just the one that asked: a second tab showing messages the
+   * server has deleted will keep showing them forever, and the user cannot tell that stale view
+   * apart from a live one.
+   */
+  | { type: 'history_truncated'; fromMessageId: string; removed: number }
   | { type: 'studio_status'; connected: boolean; state?: StudioEventState }
   | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
   | { type: 'delta'; msgId: string; text: string }

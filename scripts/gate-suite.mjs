@@ -4,13 +4,40 @@
 // `pnpm -r test` prints per-package counts and exits non-zero on failure, but a gate needs a single
 // success-only string that cannot appear in a partial run. Grepping for "fail 0" is not that: a run
 // where five packages pass and one fails still contains "fail 0" five times.
+//
+// AND `pnpm -r test` IS NOT THE WHOLE SUITE. It recurses over workspace MEMBERS. Tests at the
+// repository root are in no member, so `tests/gate-check.test.mjs` — the test of the program that
+// decides whether every gate in GATES.md is met — ran nowhere near the gate that claims the suite
+// passes. This is the same shape as the defect check-workspace-coverage.mjs exists for, one level
+// out: not a package pnpm could not see, but a directory pnpm was never asked about. Both are run
+// here now, and both are summed.
 import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-let out = '';
-try {
-  out = execFileSync('pnpm', ['-r', 'test'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
-} catch (e) {
-  out = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Root-level `*.test.mjs`. `tests/e2e` is Playwright and belongs to its own gate. */
+const rootTests = readdirSync(join(ROOT, 'tests'))
+  .filter((f) => f.endsWith('.test.mjs'))
+  .map((f) => join('tests', f));
+
+const run = (cmd, args) => {
+  try {
+    return { out: execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }), ok: true };
+  } catch (e) {
+    return { out: `${e.stdout ?? ''}${e.stderr ?? ''}`, ok: false };
+  }
+};
+
+const parts = [run('pnpm', ['-r', 'test'])];
+// Skipped rather than passed vacuously if the directory holds none: an empty glob would make
+// `node --test` exit non-zero and turn "no root tests" into "the suite is red".
+if (rootTests.length) parts.push(run('node', ['--test', ...rootTests]));
+
+let out = parts.map((p) => p.out).join('\n');
+if (parts.some((p) => !p.ok)) {
   console.log(summarise(out));
   console.log('SUITE RED');
   process.exit(1);

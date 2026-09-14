@@ -8,6 +8,7 @@ import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { downloadExport, purgeProject, ApiError } from '../lib/api';
 import { PROJECT_NAME_MAX, isRenameWorthwhile, useRenameProject } from '../lib/rename-project';
+import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, type ProjectScope } from '../lib/archive';
 import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
@@ -17,17 +18,25 @@ import { useCommands } from '../lib/commands';
 import { useProvideNewProject } from '../lib/shell';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 
-async function fetchProjects(): Promise<ProjectRow[]> {
-  if (MOCK_MODE) return mockProjects;
-  const { data, error } = await supabase
-    .from('projects')
-    .select('id, owner_id, name, description, place_name, place_id, memory_summary, created_at, updated_at, last_activity_at')
-    .order('updated_at', { ascending: false });
+/**
+ * The project list for one scope.
+ *
+ * Archived rows are filtered in the QUERY, not after it arrives: a client-side filter would still
+ * download every archived project on every dashboard load, and the whole point of archiving is
+ * that the pile grows without bound.
+ */
+async function fetchProjects(scope: ProjectScope = 'active'): Promise<ProjectRow[]> {
+  if (MOCK_MODE) return scope === 'active' ? mockProjects : [];
+  const q = supabase.from('projects').select(PROJECT_COLUMNS);
+  const { data, error } =
+    scope === 'active'
+      ? await q.is('archived_at', null).order('updated_at', { ascending: false })
+      : await q.not('archived_at', 'is', null).order('archived_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as ProjectRow[];
 }
 
-function ProjectMenu({ onDelete, onExport, onRename }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void }) {
+function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void; onArchive: () => void; archived: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -81,6 +90,19 @@ function ProjectMenu({ onDelete, onExport, onRename }: { onDelete: () => void; o
             }}
           >
             Rename…
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onArchive();
+            }}
+          >
+            {archived ? 'Restore' : 'Archive'}
           </button>
           {/* Markdown first: it is what someone actually reads. JSON is for feeding somewhere. */}
           <button
@@ -321,8 +343,40 @@ export function DashboardPage() {
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
   const [renaming, setRenaming] = useState<ProjectRow | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
-  const projects = useQuery({ queryKey: ['projects'], queryFn: fetchProjects });
+  const [scope, setScope] = useState<ProjectScope>('active');
+  const qc = useQueryClient();
   const { toast } = useToast();
+
+  const projects = useQuery({
+    queryKey: scope === 'active' ? ['projects'] : ['projects-archived'],
+    queryFn: () => fetchProjects(scope),
+  });
+
+  // Counted separately and always, so the Archived tab can show how many are in there without
+  // switching to it — a tab that might be empty is a tab nobody clicks.
+  const archived = useQuery({ queryKey: ['projects-archived'], queryFn: () => fetchProjects('archived') });
+
+  const setArchived = useMutation({
+    mutationFn: async ({ project, archive }: { project: ProjectRow; archive: boolean }) => {
+      const { error } = await supabase
+        .from('projects')
+        .update({ archived_at: archive ? new Date().toISOString() : null })
+        .eq('id', project.id);
+      if (error) throw new Error(error.message);
+      return { project, archive };
+    },
+    onSuccess: ({ project, archive }) => {
+      // The row moves between two lists AND leaves the sidebar, so three caches are stale at once.
+      for (const key of PROJECT_LIST_KEYS) void qc.invalidateQueries({ queryKey: key });
+      // Undo in the toast rather than a confirmation before the fact: archiving is reversible, and
+      // a dialog guarding a reversible action just trains people to dismiss dialogs.
+      toast(
+        archive ? `"${project.name}" archived` : `"${project.name}" restored`,
+        'success',
+      );
+    },
+    onError: (e: Error) => toast(`Could not archive: ${e.message}`, 'error'),
+  });
 
   // Stable identity: the shell stores this and re-registering on every render
   // would reset the handoff each time the project list refetched.
@@ -381,6 +435,32 @@ export function DashboardPage() {
         </button>
       </div>
 
+      {/* The Archived tab appears only once something is in it. An always-present tab that is
+          always empty is chrome; one that appears when it has contents is an answer to "where did
+          that project go?". */}
+      {(archived.data?.length ?? 0) > 0 && (
+        <div className="scope-tabs" role="tablist" aria-label="Project scope">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'active'}
+            className={`scope-tab${scope === 'active' ? ' is-on' : ''}`}
+            onClick={() => setScope('active')}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'archived'}
+            className={`scope-tab${scope === 'archived' ? ' is-on' : ''}`}
+            onClick={() => setScope('archived')}
+          >
+            Archived <span className="scope-tab__count">{archived.data?.length}</span>
+          </button>
+        </div>
+      )}
+
       {projects.isPending && (
         <div className="card-grid" aria-busy="true" aria-label="Loading projects">
           {[0, 1, 2].map((i) => (
@@ -405,7 +485,14 @@ export function DashboardPage() {
         />
       )}
 
-      {projects.isSuccess && projects.data.length === 0 && (
+      {/* An empty ARCHIVED list is not the same emptiness as having no projects at all: offering
+          "Summon a project" here answers a question nobody asked. In practice the tab is hidden
+          when it is empty, so this is the race where the last archived project was just restored. */}
+      {projects.isSuccess && projects.data.length === 0 && scope === 'archived' && (
+        <p className="page-note">Nothing archived. Archived projects keep everything — restore one any time.</p>
+      )}
+
+      {projects.isSuccess && projects.data.length === 0 && scope === 'active' && (
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
@@ -424,7 +511,13 @@ export function DashboardPage() {
             <Link key={p.id} to={`/projects/${p.id}`} className="project-card">
               <div className="project-card-top">
                 <h2 className="project-card-name">{p.name}</h2>
-                <ProjectMenu onDelete={() => setDeleting(p)} onExport={(f) => void runExport(p, f)} onRename={() => setRenaming(p)} />
+                <ProjectMenu
+                  onDelete={() => setDeleting(p)}
+                  onExport={(f) => void runExport(p, f)}
+                  onRename={() => setRenaming(p)}
+                  onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
+                  archived={Boolean(p.archived_at)}
+                />
               </div>
               <p className="project-card-desc">
                 {p.memory_summary

@@ -115,6 +115,25 @@ and are tracked as handoffs, not gates.
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=b3b9903e971b4452136aec56f8403e74acc038b4077ccde1b5c9171fdf7fe1bc; output-bytes=1346
 
+- [x] G21: Archiving hides a project everywhere and loses nothing, and restoring brings it all back
+    CHECK: cd apps/web && node --test tests/archive.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=a929de7a0579f05ac726492bdba9c1ae3230e0980b4fd04f4da8eadca6b06d46; output-bytes=1191
+
+<!-- G80+ gates the verification machinery itself, kept clear of the G1..G79 feature range so two
+     sessions appending gates at the same time cannot collide on a number. Two did, twice, on the
+     same afternoon; gate-check.mjs now refuses a ledger with duplicate ids. -->
+
+- [x] G80: The gate checker itself is measured, and cannot report green over a gate that fails
+    CHECK: node --test tests/gate-check.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=e3250a5fd4b443d38dbb4ae9da95e08ab48c425be95e7dd028b7072c0c7d3de6; output-bytes=1380
+
+- [x] G22: Editing a prompt refuses before it destroys, and says what it does not undo
+    CHECK: cd apps/worker && node --test tests/edit-resend.test.mjs
+    EXPECT: fail 0
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; EXPECT=matched; output-sha256=7e9fe90aae2c818d29b61a3146a9ea2c6729de73ddeb6005ed6eaea0c1bd0816; output-bytes=1338
+
 ---
 
 ## Whole-product gates

@@ -142,6 +142,8 @@ export interface ProjectSocket {
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
   sendChat: (text: string, mode: GolemMode) => boolean;
+  /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
+  editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
   stop: () => void;
   createCheckpoint: (label: string) => void;
   restoreCheckpoint: (checkpointId: string) => void;
@@ -450,6 +452,16 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           return next;
         });
         break;
+      case 'history_truncated': {
+        // The server has deleted these rows. Dropping them here is not cosmetic: a client that
+        // keeps showing them is showing a conversation that no longer exists, and every later
+        // index — the "last assistant" the phase marks attach to, most of all — is then wrong.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.fromMessageId);
+          return idx === -1 ? list : list.slice(0, idx);
+        });
+        break;
+      }
       case 'msg_end':
         setRunning(false);
         setAgentStatus(null);
@@ -713,6 +725,36 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   }, [connect, reconnectNow]);
 
   // ---------------------------------------------------------------- actions
+  /**
+   * Replace an earlier prompt and run again from there.
+   *
+   * The optimistic update mirrors what the server does — drop everything from the edited message
+   * on, then append the new one — because the alternative is a visible flash in which the old
+   * messages are still there while the round trip completes, and the user cannot tell whether the
+   * edit took.
+   *
+   * `history_truncated` arrives moments later and is idempotent against this: it slices from a
+   * message id that has already gone, finds nothing, and changes nothing.
+   */
+  const editAndResend = useCallback(
+    (messageId: string, text: string, mode: GolemMode): boolean => {
+      const ok = sendRaw({ type: 'edit_resend', messageId, text, mode });
+      if (ok) {
+        setRunning(true);
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === messageId);
+          const kept = idx === -1 ? list : list.slice(0, idx);
+          return [
+            ...kept,
+            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now() },
+          ];
+        });
+      }
+      return ok;
+    },
+    [sendRaw],
+  );
+
   const sendChat = useCallback(
     (text: string, mode: GolemMode): boolean => {
       const ok = sendRaw({ type: 'chat', text, mode });
@@ -769,6 +811,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     checkpoints,
     checkpointsState,
     sendChat,
+    editAndResend,
     stop,
     createCheckpoint,
     restoreCheckpoint,

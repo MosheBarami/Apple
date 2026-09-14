@@ -22,6 +22,7 @@ import { useCommands } from '../lib/commands';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
+import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { ApiError, downloadExport } from '../lib/api';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
@@ -95,6 +96,7 @@ export function WorkspacePage() {
     frames,
     playtest,
     sendChat,
+    editAndResend,
     stop,
     createCheckpoint,
     restoreCheckpoint,
@@ -125,6 +127,15 @@ export function WorkspacePage() {
     },
     [projectId, toast],
   );
+
+  // Which of my own messages is being edited, if any.
+  const [editing, setEditing] = useState<{ id: string; content: string } | null>(null);
+
+  // How much the edit throws away, counted from what is actually on screen rather than described.
+  // "Later messages" reads as two or three; forty-seven does not.
+  const discardCount = editing
+    ? Math.max(0, messages.length - messages.findIndex((m) => m.id === editing.id) - 1)
+    : 0;
 
   /**
    * Scroll to a message found by search.
@@ -515,6 +526,11 @@ export function WorkspacePage() {
               // attributed to the run in flight — the last assistant turn.
               phaseMarks={item.id === lastAssistantId ? phaseMarks : undefined}
               isLast={item.id === lastAssistantId}
+              // Offered only while nothing is running: the server refuses an edit mid-run, and a
+              // control that is always there but sometimes refuses is worse than one that is only
+              // there when it works.
+              editable={item.role === 'user' && !running}
+              onEdit={(id, content) => setEditing({ id, content })}
             />
             </div>
           ))}
@@ -618,6 +634,21 @@ export function WorkspacePage() {
           </div>
         ))}
       </Drawer>
+
+      {editing && (
+        <EditMessageDialog
+          current={editing.content}
+          discards={discardCount}
+          busy={running}
+          onCancel={() => setEditing(null)}
+          onConfirm={(text) => {
+            // Same translation the composer does: `mode` is the PRODUCT mode the user picked,
+            // and the wire carries the specialist it maps to.
+            editAndResend(editing.id, text, PRODUCT_MODE_TO_SPECIALIST[mode]);
+            setEditing(null);
+          }}
+        />
+      )}
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
         <SearchPanel projectId={projectId} onJump={jumpToMessage} />

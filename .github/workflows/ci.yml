@@ -87,6 +87,22 @@ jobs:
         # Offline by construction. See the cost policy at the top of this file.
         run: pnpm -r test
 
+      - name: Root tests
+        # `pnpm -r test` recurses over workspace MEMBERS. Tests at the repository root are in no
+        # member, so tests/gate-check.test.mjs — the test of the program that decides whether every
+        # gate in GATES.md is met — ran nowhere in CI. Same shape as the apps/plugin gap that
+        # check-workspace-coverage.mjs exists for, one level out.
+        run: node --test tests/*.test.mjs
+
+      - name: Ledger is well-formed
+        # Executes nothing: seconds, not the ten minutes a full gate pass costs. It checks the
+        # SHAPE of GATES.md — no duplicate gate ids, every gate falsifiable, no box ticked without
+        # evidence under it, no box ticked ABOVE evidence that records a failure. Every defect
+        # found in this ledger so far has been a shape defect rather than a failing command: an
+        # EVIDENCE line credited to a checker that had never existed, and two sessions appending a
+        # G19 within minutes of each other.
+        run: node scripts/gate-check.mjs --lint
+
   # ----------------------------------------------------------------- build --
   build:
     name: Build site and web

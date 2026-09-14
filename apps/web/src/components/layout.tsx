@@ -21,6 +21,7 @@ import { shortRelative } from '../lib/format';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
 import { useCommands } from '../lib/commands';
+import { PROJECT_COLUMNS } from '../lib/archive';
 import { CommandPalette } from './command-palette';
 import { ShortcutsDialog, useGlobalShortcut } from './shortcuts-dialog';
 import { SHORTCUTS, matchesShortcut, shortcutLabel } from '../lib/shortcuts';
@@ -34,9 +35,13 @@ const RAIL_LIMIT = 8;
 
 async function fetchRecentProjects(): Promise<ProjectRow[]> {
   if (MOCK_MODE) return mockProjects;
+  // Archived projects are excluded here as well as on the dashboard. An archived project that
+  // still sits in the sidebar has not been archived from the user's point of view — the sidebar is
+  // the list they actually look at.
   const { data, error } = await supabase
     .from('projects')
-    .select('id, owner_id, name, description, place_name, place_id, memory_summary, created_at, updated_at, last_activity_at')
+    .select(PROJECT_COLUMNS)
+    .is('archived_at', null)
     .order('updated_at', { ascending: false })
     .limit(20);
   if (error) throw new Error(error.message);

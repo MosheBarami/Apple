@@ -748,6 +748,62 @@ export class SessionDO extends DurableObject<Env> {
       case 'chat':
         await this.startRun(bind, msg.text.slice(0, 8000), msg.mode);
         return;
+      case 'edit_resend': {
+        //[[ CORRECT AN EARLIER PROMPT AND RUN AGAIN FROM THERE.
+        //
+        //   Everything from the edited message onward is deleted. That is what makes this a
+        //   correction rather than a new question appended to a thread that still contains the
+        //   mistake and the answer to it.
+        //
+        //   Three refusals before anything is destroyed, because this is irreversible:
+        //
+        //     1. Not mid-run. A run holds a copy of the agent blob for the length of a step and
+        //        writes it back at the tail; deleting the messages it is writing about leaves a
+        //        run narrating a conversation that no longer exists.
+        //     2. The message must exist. A stale client — a tab open across a previous truncation
+        //        — can ask to edit a row that is already gone, and the id of a deleted row must
+        //        not silently become "truncate from the beginning".
+        //     3. It must be a USER message. Editing what Apple said and replaying from there
+        //        would let the transcript assert the assistant produced text it never produced. ]]
+        const agent = await this.ctx.storage.get<AgentState>('agent');
+        if (agent && agent.status !== 'idle') {
+          this.broadcast({ type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
+          return;
+        }
+
+        const row = this.sql
+          .exec(`select id, role, created_at from messages where id = ?`, msg.messageId)
+          .toArray()[0] as { id: string; role: string; created_at: number } | undefined;
+        if (!row) {
+          this.broadcast({ type: 'error', code: 'edit', message: 'That message is no longer in the conversation.' });
+          return;
+        }
+        if (row.role !== 'user') {
+          this.broadcast({ type: 'error', code: 'edit', message: 'Only your own messages can be edited.' });
+          return;
+        }
+
+        const text = msg.text.slice(0, 8000).trim();
+        if (!text) {
+          this.broadcast({ type: 'error', code: 'edit', message: 'An edited message cannot be empty.' });
+          return;
+        }
+
+        // Counted BEFORE the delete: afterwards there is nothing left to count, and reporting a
+        // number the client cannot verify is how "removed: 0" ends up on screen after 40 messages
+        // vanish.
+        const removed = (
+          this.sql.exec(`select count(*) as n from messages where created_at >= ?`, row.created_at).one() as { n: number }
+        ).n;
+        this.sql.exec(`delete from messages where created_at >= ?`, row.created_at);
+
+        // Every client, not just the asker: a second tab would otherwise keep showing messages the
+        // server has deleted, and nothing distinguishes that stale view from a live one.
+        this.broadcast({ type: 'history_truncated', fromMessageId: row.id, removed });
+
+        await this.startRun(bind, text, msg.mode);
+        return;
+      }
       case 'stop': {
         // Written to its OWN key, never into the agent blob. The run holds a copy of that blob
         // for the length of a step and writes it back at the tail, so a stop written into the

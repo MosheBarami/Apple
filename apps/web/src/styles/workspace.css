@@ -3218,3 +3218,71 @@
     outline-offset: 2px;
   }
 }
+
+/* ------------------------------------------------ edit an earlier message --- */
+
+.gx-user__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Hidden until the turn is hovered or something inside it has focus. A control on every one of
+   your own messages competes with the messages; this is a repair tool, not a normal action. The
+   :focus-within half is what keeps it keyboard-reachable. */
+.gx-user__edit {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+.gx-turn--user:hover .gx-user__edit,
+.gx-turn--user:focus-within .gx-user__edit {
+  opacity: 1;
+}
+
+.gx-user__edit:hover {
+  color: var(--gx-ink);
+}
+
+.gx-user__edit:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Touch has no hover. Showing it always there is better than a control nobody can reach. */
+@media (hover: none) {
+  .gx-user__edit {
+    opacity: 1;
+  }
+}
+
+.edit-warn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-block: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 8px;
+  background: var(--gx-surface-1, rgb(255 255 255 / 4%));
+}
+
+.edit-warn p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.edit-warn__quiet {
+  color: var(--gx-ink-3);
+}

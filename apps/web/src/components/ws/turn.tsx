@@ -51,9 +51,14 @@ export function Turn({
   status,
   phaseMarks,
   isLast,
+  onEdit,
+  editable,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
+  /** Offered only on user turns, and only when nothing is running. */
+  onEdit?: (messageId: string, current: string) => void;
+  editable?: boolean;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
    * flight. Undefined for every other turn, because `agent_status` carries no
@@ -135,7 +140,23 @@ export function Turn({
     return (
       <div className="gx-turn gx-turn--user gx-msg-in">
         <div className="gx-user">{item.content}</div>
-        <Stamp at={item.createdAt} align="end" />
+        <div className="gx-user__foot">
+          {/* Revealed on hover or focus rather than always drawn: a control on every one of your
+              own messages competes with the messages themselves, and this is a repair tool, not
+              something anyone reaches for on a normal turn. It stays keyboard-reachable because
+              `:focus-within` shows it too. */}
+          {editable && onEdit && (
+            <button
+              type="button"
+              className="gx-user__edit"
+              onClick={() => onEdit(item.id, item.content)}
+              title="Edit this message and run again from here"
+            >
+              Edit
+            </button>
+          )}
+          <Stamp at={item.createdAt} align="end" />
+        </div>
       </div>
     );
   }

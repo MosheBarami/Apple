@@ -15,8 +15,9 @@
 // repository's own GATES.md.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
+import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -112,6 +113,16 @@ test('a gate missing a CHECK or EXPECT is a hard error, never a silent skip', ()
   assert.match(r.out, /missing a CHECK: or EXPECT:/);
 });
 
+test('two gates with the same id is a hard error', () => {
+  // Not tidiness. `--gate G19` runs both, the ledger counts one id twice, and --approve writes a
+  // tick onto whichever the parser saw first — so a gate can be ticked by its namesake passing.
+  // Two sessions appended a G19 to this repository's ledger within minutes of each other, and
+  // nothing noticed until a single-gate run reported "2 run".
+  const r = check(gate('G1', 'echo a', 'a') + '\n' + gate('G1', 'echo b', 'b'));
+  assert.equal(r.exit, 2);
+  assert.match(r.out, /duplicate gate ids/);
+});
+
 test('asking for a gate that does not exist is an error, not an empty pass', () => {
   const r = check(gate('G1', 'echo hi', 'hi'), ['--gate', 'G99']);
   assert.equal(r.exit, 2);
@@ -154,6 +165,84 @@ test('the fingerprint tracks the output, so a changed test set cannot reuse old 
 test('a failing gate is not given an evidence line it did not earn', () => {
   const r = check(gate('G1', 'echo boom; exit 1', 'boom'), ['--approve']);
   assert.doesNotMatch(r.ledger(), /EVIDENCE:/, 'an unmet gate with no prior evidence must record none');
+});
+
+test('--approve does not clobber a gate that appeared while the run was executing', async () => {
+  // The ledger is shared and a full run takes minutes. Two sessions appended to this repository's
+  // GATES.md within the same afternoon; writing back the copy read at startup would have deleted
+  // whichever landed second.
+  const dir = mkdtempSync(join(tmpdir(), 'gate-check-race-'));
+  const file = join(dir, 'GATES.md');
+  writeFileSync(file, `# fixture\n\n## Open\n\n${gate('G1', 'sleep 1; echo slow', 'slow')}\n`);
+
+  const child = spawn('node', [CHECKER, '--file', file, '--approve'], { cwd: ROOT, stdio: 'ignore' });
+  // Lands while G1 is still sleeping inside the checker.
+  const appended = new Promise((resolve) => {
+    setTimeout(() => {
+      appendFileSync(file, `${gate('G2', 'echo late', 'late')}\n`);
+      resolve();
+    }, 300);
+  });
+  await appended;
+  await once(child, 'close');
+
+  const after = readFileSync(file, 'utf8');
+  assert.match(after, /^- \[x\] G1:/m, 'the measured gate must be recorded');
+  assert.match(after, /EVIDENCE:/, 'and must still get its evidence');
+  assert.match(after, /G2:/, 'the gate that landed mid-run must survive the write-back');
+});
+
+/* ------------------------------------------------------------------ --lint --- */
+
+test('--lint executes nothing', () => {
+  // The whole point: cheap enough for CI on every push. If it ran the commands it would be the
+  // same ten minutes as a full pass and would be turned off.
+  const r = check(gate('G1', 'exit 7', 'never', 'x'), ['--lint']);
+  assert.doesNotMatch(r.out, /GATES (GREEN|RED)/, '--lint must not report an execution result');
+  assert.match(r.out, /LEDGER/);
+});
+
+test('--lint fails a gate that is ticked with no evidence under it', () => {
+  // The shape every defect in this ledger has had: a claim with no measurement beneath it.
+  const r = check(gate('G1', 'true', 'x', 'x'), ['--lint']);
+  assert.equal(r.exit, 1);
+  assert.match(r.out, /ticked with no EVIDENCE/);
+  assert.match(r.out, /LEDGER MALFORMED/);
+});
+
+test('--lint fails a gate whose own evidence contradicts its tick', () => {
+  // A ticked box above `EXPECT=MISSED` is worse than an untested gate, because it reads as proof.
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  EVIDENCE: exit=0; EXPECT=MISSED; output-sha256=deadbeef\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1);
+  assert.match(r.out, /records EXPECT=MISSED/);
+});
+
+test('--lint fails a gate ticked over a non-zero exit', () => {
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  EVIDENCE: exit=2; EXPECT=matched; output-sha256=deadbeef\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1);
+  assert.match(r.out, /non-zero exit/);
+});
+
+test('--lint passes a well-formed ledger, so it is not just a failure machine', () => {
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  EVIDENCE: exit=0; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n' +
+    '\n- [ ] G2: an honest open gate\n    CHECK: false\n    EXPECT: y\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 0);
+  assert.match(r.out, /LEDGER WELL-FORMED/);
+});
+
+test('--lint passes this repository\'s own ledger', () => {
+  const proc = spawnSync('node', [CHECKER, '--lint'], { cwd: ROOT, encoding: 'utf8', timeout: 30_000 });
+  assert.equal(proc.status, 0, `${proc.stdout}${proc.stderr}`);
+  assert.match(proc.stdout, /LEDGER WELL-FORMED/);
 });
 
 /* ------------------------------------------------- it reads the real ledger --- */

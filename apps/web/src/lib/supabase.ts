@@ -33,6 +33,8 @@ export interface ProjectRow {
   created_at: string;
   updated_at: string;
   last_activity_at: string | null;
+  /** Null while the project is active. Set when it is archived — see lib/archive.ts. */
+  archived_at?: string | null;
 }
 
 /** Current access token, refreshed by supabase-js when expired. */

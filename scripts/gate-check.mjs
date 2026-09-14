@@ -19,6 +19,13 @@
 //   node scripts/gate-check.mjs --approve   the same run, then rewrites each gate's checkbox and
 //                                           EVIDENCE line from what was actually measured.
 //
+//   node scripts/gate-check.mjs --lint       parse only, execute nothing. Checks the ledger's
+//                                           SHAPE: no duplicate ids, every gate falsifiable, every
+//                                           ticked gate carrying evidence. Seconds rather than
+//                                           minutes, so CI can run it on every push — which is the
+//                                           point, because every defect found in this ledger so far
+//                                           was a shape defect, not a failing command.
+//
 // Flags: --gate G16 (one gate, repeatable), --timeout <ms>, --file <path> (another ledger, which
 // is how this checker is itself tested — a verifier with no test is the same unbacked claim it
 // exists to stop).
@@ -45,6 +52,7 @@ const SHELL = '/bin/sh';
 
 const args = process.argv.slice(2);
 const APPROVE = args.includes('--approve');
+const LINT = args.includes('--lint');
 const ONLY = args.reduce((acc, a, i) => (a === '--gate' && args[i + 1] ? [...acc, args[i + 1]] : acc), []);
 const TIMEOUT = Number(args[args.indexOf('--timeout') + 1]) || 15 * 60_000;
 const FILE = args.includes('--file') ? args[args.indexOf('--file') + 1] : join(ROOT, 'GATES.md');
@@ -86,6 +94,18 @@ function parseGates(text) {
   const broken = gates.filter((g) => !g.check || !g.expect);
   if (broken.length) {
     console.error(`gate-check: these gates are missing a CHECK: or EXPECT: — ${broken.map((g) => g.id).join(', ')}`);
+    process.exit(2);
+  }
+
+  // Two gates with the same id is not a tidiness problem. `--gate G19` then runs both, the
+  // ledger's own total counts one id twice, and a checkbox written back by --approve lands on
+  // whichever the parser saw — so a gate can be ticked by its namesake passing. This happened:
+  // two sessions appended a G19 within minutes of each other.
+  const byId = new Map();
+  for (const g of gates) byId.set(g.id, (byId.get(g.id) ?? 0) + 1);
+  const dupes = [...byId].filter(([, n]) => n > 1).map(([id, n]) => `${id} x${n}`);
+  if (dupes.length) {
+    console.error(`gate-check: duplicate gate ids — ${dupes.join(', ')}. Renumber before this ledger means anything.`);
     process.exit(2);
   }
   return gates;
@@ -154,6 +174,28 @@ if (!gates.length) {
   process.exit(2);
 }
 
+if (LINT) {
+  // parseGates has already rejected duplicate ids and gates with no CHECK:/EXPECT:. What is left
+  // is the claim a reader actually relies on: that a ticked box has a measurement under it.
+  const problems = [];
+  for (const g of gates) {
+    if (g.mark === ' ') continue;
+    if (g.mark === '~') { problems.push(`${g.id}: abandoned in a file that has no vocabulary for it`); continue; }
+    if (g.evidenceLine === null) problems.push(`${g.id}: ticked with no EVIDENCE line`);
+    else {
+      const line = text.split('\n')[g.evidenceLine];
+      for (const field of ['exit=', 'EXPECT=', 'output-sha256=']) {
+        if (!line.includes(field)) problems.push(`${g.id}: evidence is missing ${field}`);
+      }
+      if (line.includes('EXPECT=MISSED')) problems.push(`${g.id}: ticked, but its own evidence records EXPECT=MISSED`);
+      if (/exit=(?!0;)/.test(line)) problems.push(`${g.id}: ticked, but its own evidence records a non-zero exit`);
+    }
+  }
+  for (const line of problems) console.error(`gate-check: ${line}`);
+  console.log(`LEDGER ${problems.length ? 'MALFORMED' : 'WELL-FORMED'} — ${gates.length} gates, ${problems.length} problem(s)`);
+  process.exit(problems.length ? 1 : 0);
+}
+
 const results = [];
 for (const gate of gates) {
   process.stderr.write(`· ${gate.id} …`);
@@ -168,9 +210,28 @@ for (const gate of gates) {
 }
 
 if (APPROVE) {
-  // Rewrite bottom-up so an insertion never shifts a line number still to be used.
-  const lines = text.split('\n');
-  for (const r of [...results].sort((a, b) => b.headLine - a.headLine)) {
+  // A full run takes minutes. The ledger is a shared file and another session can append a gate
+  // while this one is still executing — that happened twice in one afternoon here — so writing
+  // back the copy read at startup would silently delete whatever landed in between.
+  //
+  // So the file is RE-READ and RE-PARSED at write time, and a result is only applied to a gate
+  // that is still there with the same CHECK: and EXPECT:. A gate whose command changed under us
+  // was not the gate that was measured, and stale evidence on it would be a false record rather
+  // than a missing one.
+  const fresh = readFileSync(FILE, 'utf8');
+  const lines = fresh.split('\n');
+  const current = new Map(parseGates(fresh).map((g) => [g.id, g]));
+
+  const applied = [];
+  const skipped = [];
+  for (const r of results) {
+    const now = current.get(r.id);
+    if (!now || now.check !== r.check || now.expect !== r.expect) { skipped.push(r.id); continue; }
+    applied.push({ ...r, headLine: now.headLine, evidenceLine: now.evidenceLine });
+  }
+
+  // Bottom-up, so an insertion never shifts a line number still to be used.
+  for (const r of applied.sort((a, b) => b.headLine - a.headLine)) {
     lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}: ${r.title}`;
     const line = evidenceLine(r);
     if (r.evidenceLine !== null) lines[r.evidenceLine] = line;
@@ -178,7 +239,10 @@ if (APPROVE) {
     // An unmet gate with no prior evidence gets no evidence line: there is nothing to record.
   }
   writeFileSync(FILE, lines.join('\n'));
-  console.error(`\ngate-check: GATES.md updated from measurement (git=${HEAD}, tree=${DIRTY ? 'dirty' : 'clean'})`);
+  console.error(`\ngate-check: ${applied.length} gate(s) written from measurement (git=${HEAD}, tree=${DIRTY ? 'dirty' : 'clean'})`);
+  // Never silent: a gate that changed under the run is one this pass did NOT record, and saying so
+  // is the difference between an incomplete ledger and a ledger that looks complete.
+  if (skipped.length) console.error(`gate-check: changed or removed mid-run, NOT recorded — ${skipped.join(', ')}`);
 }
 
 const met = results.filter((r) => r.met).length;
