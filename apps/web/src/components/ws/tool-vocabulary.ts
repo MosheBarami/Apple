@@ -124,6 +124,7 @@ export const TOOL = {
   set_mood: { kind: 'building', label: 'Set the lighting mood' },
   add_effect: { kind: 'building', label: 'Added an ambient effect' },
   audit_build: { kind: 'critiquing', label: 'Audited the build' },
+  run_spec: { kind: 'verifying', label: 'Ran a spec against the project' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },

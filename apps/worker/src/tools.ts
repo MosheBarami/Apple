@@ -34,6 +34,7 @@ import { MOODS, PALETTES, moodLuau } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau } from './effects';
 import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { runCriticPanel, formatPanelReport } from './critic';
+import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
 
 export interface AgentCtx {
   env: Env;
@@ -1307,6 +1308,111 @@ export const TOOLS: Record<string, ToolImpl> = {
         lensesSkipped: skipped.map((c) => c.lens),
         partsAudited: capture.parts.length,
         truncated: capture.truncated || undefined,
+      };
+    },
+  },
+  /**
+   * ASSERTIONS AGAINST THE PROJECT'S OWN MODULES.
+   *
+   * `run_and_check` answers "did anything error in five seconds of server simulation". It cannot
+   * answer "does the shop debit the right amount", "does the save round-trip", "does the cooldown
+   * expire" — every failure where the code runs perfectly and does the wrong thing, which is most
+   * of them. This runs real assertions and reports them per case.
+   *
+   * UNLIKE set_mood AND add_effect, THE CODE HERE IS MODEL-AUTHORED. Those two generate Luau from
+   * tables in this repository, so nothing the model writes becomes code and the ingress filter is
+   * belt-and-braces. A spec case body is the model's own Luau at exactly run_luau's trust level, so
+   * the ASSEMBLED source goes through `refuseLuauIngress` before it is sent — a spec harness is a
+   * fine place to hide `require(12345)`, and requiring project modules by path is the whole point of
+   * the tool, so that rule is load-bearing rather than incidental here.
+   *
+   * This is the first producer of the `test_report` block. Its renderer, its validator, its
+   * gates.ts consumer and the TestEvidence card have all existed since they were written with
+   * nothing in the product emitting one — mock.ts was the only source.
+   */
+  run_spec: {
+    def: {
+      name: 'run_spec',
+      description:
+        'Run assertions against the modules this project actually contains, and get a per-case pass/fail report. Each case is { name, code }; the code runs as a function body, and a case PASSES by returning and FAILS by erroring — use assert(condition, message). Require project modules by path, e.g. require(game.ServerScriptService.Shop). Use this after building a system that has rules — economy, saving, cooldowns, access — because run_and_check only proves nothing errored, not that anything is correct. Cases are pcall-isolated, so one failure does not hide the rest. LIMIT: a plugin cannot start Play Solo, so there is no LocalPlayer and no client here; assert against server and shared modules.',
+      parameters: S(
+        {
+          cases: {
+            type: 'array',
+            description: `Up to ${SPEC_LIMITS.maxCases} cases, each { name, code }.`,
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'What this case proves, as a sentence.' },
+                code: { type: 'string', description: 'Luau function body. assert(...) to fail it.' },
+              },
+              required: ['name', 'code'],
+            },
+          },
+          title: { type: 'string', description: 'Optional name for the run, e.g. "Shop economy".' },
+        },
+        ['cases'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const refusal = refuseSpecCases(a.cases);
+      if (refusal) return { error: refusal };
+      const cases = (a.cases as SpecCase[]).map((c) => ({ name: String(c.name), code: String(c.code) }));
+
+      const source = specLuau(cases);
+      // Model-authored code. Same gate run_luau applies, for the same reason.
+      const blocked = refuseLuauIngress(source);
+      if (blocked) return blocked;
+
+      const raw = await op(ctx, { op: 'run_code', code: source, timeoutMs: 20_000 }, 40_000);
+      if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+
+      const run = parseSpecRun(raw);
+      if (!run) return { error: 'the spec harness returned something this worker could not read' };
+
+      // A case whose body cannot even be compiled never reaches the harness's result table, so the
+      // report would simply be shorter than the spec. Reporting "3 passed" for a four-case spec is
+      // the same defect as a critic reporting a lens it never ran.
+      const missing = missingCases(cases, run);
+      const allCases = [
+        ...run.cases,
+        ...missing.map((name) => ({
+          name,
+          status: 'fail' as const,
+          message: 'this case did not run — the harness never reached it, usually a syntax error in its body',
+        })),
+      ];
+      const failed = run.failed + missing.length;
+
+      ctx.uiDetail = {
+        v: 1,
+        blocks: [
+          {
+            type: 'test_report',
+            title: typeof a.title === 'string' && a.title.trim() ? a.title.trim().slice(0, 48) : 'Spec run',
+            passed: run.passed,
+            failed,
+            skipped: run.skipped,
+            cases: allCases.map((c) => ({
+              name: c.name,
+              status: c.status,
+              ...(c.message ? { message: c.message } : {}),
+              ...(Number.isFinite((c as { durationMs?: number }).durationMs)
+                ? { durationMs: (c as { durationMs?: number }).durationMs }
+                : {}),
+            })),
+          },
+        ],
+      };
+
+      return {
+        passed: run.passed,
+        failed,
+        text: allCases
+          .map((c) => `${c.status === 'pass' ? 'PASS' : 'FAIL'}  ${c.name}${c.message ? ` — ${c.message}` : ''}`)
+          .join('\n'),
+        ...(missing.length ? { didNotRun: missing } : {}),
       };
     },
   },
