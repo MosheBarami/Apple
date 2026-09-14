@@ -144,3 +144,30 @@ test('only the three words count as a disposition', () => {
   const src = readFileSync(CHECKER, 'utf8');
   assert.match(src, /WIRE\|DELETE\|STRUCTURALLY-BLOCKED/);
 });
+
+test('a package subpath export resolves, so the module behind it is not reported dead', () => {
+  // The resolver read only `pkg.main`, so `@golem/design/pixels` — and ./rules, ./retrieve,
+  // ./checks, ./playbooks alongside it — resolved to nothing, and every module behind those
+  // specifiers looked imported by nothing at all.
+  //
+  // The worst case is the one that actually happened: a module that had JUST been made canonical
+  // by deduplicating two copies into it was reported as the repository's newest dead end. A
+  // checker's blind spot presented as the repository's defect is the most expensive kind of
+  // finding, because it is confident, specific and wrong — and the obvious remedy is to undo the
+  // very change that was right.
+  const out = spawnSync('node', [CHECKER], { cwd: ROOT, encoding: 'utf8', timeout: 60_000 });
+  const combined = `${out.stdout}${out.stderr}`;
+
+  assert.doesNotMatch(combined, /packages\/design\/src\/pixels\.mjs/, 'the shared pixel module is imported by two packages');
+
+  // POSITIVE CONTROL. The assertion above is an absence, and an absence also holds if the checker
+  // stopped reporting anything at all. The graph line is the measurement that cannot be satisfied
+  // by silence.
+  const graph = /GRAPH (\d+) import edge\(s\) resolved, (\d+) in-repo specifier\(s\) unresolved/.exec(combined);
+  assert.ok(graph, 'the checker must still publish its graph size');
+  assert.ok(Number(graph[1]) > 500, `expected a real graph, got ${graph[1]} edges`);
+
+  // And the subpaths are genuinely in the map, not merely absent from the findings.
+  const src = readFileSync(CHECKER, 'utf8');
+  assert.match(src, /pkg\.exports/, 'the resolver must read the exports map');
+});

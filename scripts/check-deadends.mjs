@@ -140,8 +140,24 @@ const WORKSPACE = (() => {
     try {
       const pkg = JSON.parse(readFileSync(join(ROOT, manifest), 'utf8'));
       if (!pkg.name?.startsWith('@')) continue;
+      const dir = dirname(manifest);
       const entry = pkg.main ?? pkg.module ?? 'src/index.ts';
-      map.set(pkg.name, `${dirname(manifest)}/${entry}`);
+      map.set(pkg.name, `${dir}/${entry}`);
+
+      // SUBPATH EXPORTS. `@golem/design` publishes ./rules, ./retrieve, ./checks, ./playbooks and
+      // ./pixels, and reading only `main` left every one of those specifiers unresolvable — so each
+      // module they point at looked imported by nothing, and the count of unresolved in-repo
+      // specifiers was inflated by exactly those imports. A shared module that has just been
+      // deduplicated INTO a subpath export is the worst case: the checker reports the one file the
+      // repository most recently made canonical as dead. Restoring this takes the graph from 547
+      // resolved edges to 552, and drops 5 unresolved specifiers.
+      for (const [sub, target] of Object.entries(pkg.exports ?? {})) {
+        const file = typeof target === 'string' ? target : (target?.import ?? target?.default);
+        if (typeof file !== 'string') continue;
+        const name = sub === '.' ? pkg.name : `${pkg.name}/${sub.replace(/^\.\//, '')}`;
+        map.set(name, `${dir}/${file.replace(/^\.\//, '')}`);
+      }
+
     } catch { /* an unparseable manifest is check-escape-hatches' finding, not this one */ }
   }
   return map;
