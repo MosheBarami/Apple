@@ -433,7 +433,17 @@ test('B5 STATIC CHECK — the run loop wires the gate and the rebuild order into
 
 test("B6 STATIC CHECK — a run that owes work finishes as 'incomplete', and the text is overridden", () => {
   const session = read('do/session.ts');
-  assert.match(session, /const owesWork = agent\.mode !== 'clay' && !agent\.mutated && studioConnected;/, 'the "owes work" condition must remain mode + mutation + Studio');
+  // The condition gained a fourth clause and must keep all four. A run owes a mutation only when
+  // the user asked for work: mode is not Plan, nothing has been mutated, Studio is connected, and
+  // the message was not conversation. The last clause was added because "hi" satisfied the first
+  // three, so a greeting was nudged twice and then reported as an incomplete build. Each clause is
+  // asserted separately so deleting any one of them fails loudly rather than silently widening or
+  // narrowing the guard.
+  const owes = session.slice(session.indexOf('const owesWork ='), session.indexOf('if (owesWork &&'));
+  assert.match(owes, /agent\.mode !== 'clay'/, 'Plan mode cannot owe work — it cannot mutate');
+  assert.match(owes, /!agent\.mutated/, 'a run that mutated something does not owe work');
+  assert.match(owes, /studioConnected/, 'without Studio there is nothing to mutate');
+  assert.match(owes, /!agent\.traits\?\.conversational/, 'a greeting never owes a mutation');
   assert.match(session, /await this\.finishRun\(agent, owesWork \? 'incomplete' : 'done'\);/, 'falling through the nudges must NOT report success');
   // 'incomplete' OVERRIDES the model's own prose rather than appending to it — on the run this was
   // written for, that prose was the single word "Done."
