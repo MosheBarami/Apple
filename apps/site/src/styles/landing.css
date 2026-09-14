@@ -160,13 +160,13 @@ body {
    and collapse the nav's side padding to zero on every device without an inset —
    which is every desktop. */
 .nav {
-  padding-left: max(var(--gutter), env(safe-area-inset-left));
-  padding-right: max(var(--gutter), env(safe-area-inset-right));
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-left));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-right));
 }
 
 .strip__cell {
-  padding-left: max(var(--gutter), env(safe-area-inset-left));
-  padding-right: max(var(--gutter), env(safe-area-inset-right));
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-left));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-right));
 }
 
 /* --------------------------------------------------------------------------
@@ -317,7 +317,7 @@ body {
   display: flex;
   align-items: center;
   gap: clamp(1rem, 2.2vw, 1.85rem);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .nav__links a {
@@ -511,7 +511,7 @@ body {
 }
 
 .strip__cell + .strip__cell {
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
 }
 
 .strip__icon {
@@ -556,7 +556,7 @@ body {
 }
 
 .skip-link:focus {
-  left: 0;
+  inset-inline-start: 0;
 }
 
 /* One visible focus treatment for every interactive element. Never removed. */
@@ -615,7 +615,7 @@ a:focus-visible {
   }
 
   .nav__cta {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 }
 
@@ -645,7 +645,7 @@ a:focus-visible {
   }
 
   .strip__cell + .strip__cell {
-    border-left: 0;
+    border-inline-start: 0;
     border-top: 1px solid var(--line);
   }
 

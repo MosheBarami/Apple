@@ -818,7 +818,7 @@ table {
 
 th,
 td {
-  text-align: left;
+  text-align: start;
   padding: 0.82rem 1.1rem;
   border-bottom: 1px solid var(--hairline);
 }
@@ -935,7 +935,7 @@ html.no-js .kinetic > span > span {
 
 .skip-link {
   position: fixed;
-  left: 1rem;
+  inset-inline-start: 1rem;
   top: -5rem;
   z-index: 10001;
   background: var(--accent);
@@ -984,7 +984,7 @@ html.no-js .kinetic > span > span {
 .cursor {
   position: fixed;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 10000;
   pointer-events: none;
   display: none;
@@ -1023,7 +1023,7 @@ html.no-js .kinetic > span > span {
 
 .cursor__label {
   position: absolute;
-  left: 22px;
+  inset-inline-start: 22px;
   top: 12px;
   font-family: var(--font-mono);
   font-size: 0.63rem;
