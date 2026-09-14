@@ -178,6 +178,13 @@ function normaliseOutput(raw) {
     // `✔ a test name (38.670292ms)` and `ℹ duration_ms 17046.609625`
     .replace(/\(\d+(?:\.\d+)?ms\)/g, '(TIMEms)')
     .replace(/duration_ms [\d.]+/g, 'duration_ms TIME')
+    // Playwright's own tally: `60 passed (12.8s)`, and `(1.2m)` on a slow machine. Without this a
+    // browser gate's output never reproduces, so its fingerprint can only ever refresh — the same
+    // consequence the cache-busted dependency paths had, by a different mechanism. Two ways to
+    // make a check that always differs, and a check that always differs always passes.
+    .replace(/\((?:\d+(?:\.\d+)?)(?:ms|s|m)\)/g, '(TIME)')
+    // A port the OS chose for a server, which differs per run.
+    .replace(/localhost:\d+/g, 'localhost:PORT')
     // mkdtemp directories: the random segment differs on every run
     .replace(/\/(?:var\/folders|tmp)\/[^\s'"`)]+/g, '/TMPDIR')
     // this checkout's absolute path, so a fingerprint is not machine-specific
