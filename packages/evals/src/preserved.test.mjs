@@ -21,6 +21,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+// Compiled spend defaults — the runtime clamp now tops out at these, so the test reads the same
+// source of truth the code does rather than restating the numbers.
+import * as P from '../../../apps/worker/src/pricing.ts';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -636,12 +639,14 @@ test('B8 lowering a cap takes effect on the very next reservation, with no redep
   assert.equal(next.reason, 'request_too_large');
 });
 
-test('B8 caps are clamped, so "tunable without a redeploy" cannot mean "unbounded"', async () => {
+test('B8 caps are clamped, so "tunable without a redeploy" cannot mean "unbounded" OR "raisable"', async () => {
   const { hit } = newBudget();
+  // Asking for an absurd number must land on the COMPILED default, not on a wider runtime ceiling.
+  // Raising a limit now requires a deploy — where it is a diff someone reviews — rather than a POST.
   const wild = await hit('/limits', { billableNeuronsPerDay: 9e12, billableNeuronsPerMonth: 9e12, maxNeuronsPerRequest: 9e12 });
-  assert.equal(wild.limits.billableNeuronsPerDay, 2_000_000);
-  assert.equal(wild.limits.billableNeuronsPerMonth, 20_000_000);
-  assert.equal(wild.limits.maxNeuronsPerRequest, 50_000);
+  assert.equal(wild.limits.billableNeuronsPerDay, P.BILLABLE_NEURONS_PER_DAY);
+  assert.equal(wild.limits.billableNeuronsPerMonth, P.BILLABLE_NEURONS_PER_MONTH);
+  assert.equal(wild.limits.maxNeuronsPerRequest, P.MAX_NEURONS_PER_REQUEST);
   const negative = await hit('/limits', { billableNeuronsPerDay: -5, maxNeuronsPerRequest: -5 });
   assert.equal(negative.limits.billableNeuronsPerDay, 0);
   assert.equal(negative.limits.maxNeuronsPerRequest, 100, 'the per-request floor keeps the product usable');

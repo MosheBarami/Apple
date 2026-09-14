@@ -132,10 +132,26 @@ export class BudgetDO extends DurableObject<Env> {
     if (url.pathname === '/limits' && req.method === 'POST') {
       const body = (await req.json()) as Partial<Limits>;
       const cur = await this.limits();
+      // THIS ROUTE CAN ONLY RATCHET DOWN. The upper bound is the COMPILED default, not a wider
+      // runtime ceiling.
+      //
+      // It used to clamp at 2,000,000 neurons/day and 20,000,000/month — $22/day and $220/month at
+      // $0.011 per 1,000 — against compiled defaults of 15,000/day and 460,000/month. So a single
+      // static secret could raise the bill roughly 22x, and `/api/admin/*` is exempt from user auth
+      // (index.ts:74) and throttled only by a best-effort per-isolate limiter.
+      //
+      // That was survivable while the plan was a free tier that blocks. It is not now: the AI
+      // Gateway is on STANDARD billing (owner-confirmed 2026-09-14), which bills overage with no
+      // platform ceiling, and Cloudflare's budget alerts neither pause usage nor fire promptly.
+      // BudgetDO is the only thing between a runaway loop and the invoice.
+      //
+      // Raising a limit is still possible — it just has to go through a deploy, where it is a diff
+      // someone reviews, rather than a POST. Lowering stays instant, because lowering is what you
+      // want to do quickly and in a hurry.
       const next: Limits = {
-        billableNeuronsPerDay: clamp(body.billableNeuronsPerDay ?? cur.billableNeuronsPerDay, 0, 2_000_000),
-        billableNeuronsPerMonth: clamp(body.billableNeuronsPerMonth ?? cur.billableNeuronsPerMonth, 0, 20_000_000),
-        maxNeuronsPerRequest: clamp(body.maxNeuronsPerRequest ?? cur.maxNeuronsPerRequest, 100, 50_000),
+        billableNeuronsPerDay: clamp(body.billableNeuronsPerDay ?? cur.billableNeuronsPerDay, 0, DEFAULT_LIMITS.billableNeuronsPerDay),
+        billableNeuronsPerMonth: clamp(body.billableNeuronsPerMonth ?? cur.billableNeuronsPerMonth, 0, DEFAULT_LIMITS.billableNeuronsPerMonth),
+        maxNeuronsPerRequest: clamp(body.maxNeuronsPerRequest ?? cur.maxNeuronsPerRequest, 100, DEFAULT_LIMITS.maxNeuronsPerRequest),
       };
       await this.ctx.storage.put(LIMITS_KEY, next);
       return Response.json({ ok: true, limits: next });

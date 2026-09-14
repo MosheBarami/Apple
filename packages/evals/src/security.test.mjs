@@ -1446,9 +1446,15 @@ test('A6 STATIC CHECK — the kill switch is consulted inside the same reservati
   // An admin key must not be able to erase spend and slip under a cap.
   const sim = budget.slice(budget.indexOf("'/simulate-usage'"), budget.indexOf("'/reset-ledger'"));
   assert.match(sim, /s\.dayNeurons = s\.dayNeurons \+ Math\.max\(0, Math\.floor\(neurons\)\)/, 'simulate-usage must be additive only');
-  // Runtime cap changes are clamped, so "no redeploy" cannot mean "no limit".
-  assert.match(budget, /billableNeuronsPerDay: clamp\([^)]*, 0, 2_000_000\)/);
-  assert.match(budget, /maxNeuronsPerRequest: clamp\([^)]*, 100, 50_000\)/);
+  // Runtime cap changes are clamped to the COMPILED default, so "no redeploy" cannot mean "no
+  // limit" AND cannot mean "raise it either". The clamp used to top out at 2,000,000 neurons/day
+  // and 20,000,000/month against compiled defaults of 15,000 and 460,000 — a ~22x raise available
+  // to one static secret on a route exempt from user auth. With the AI Gateway on Standard billing
+  // (uncapped overage), BudgetDO is the only thing between a runaway loop and the invoice.
+  assert.match(budget, /billableNeuronsPerDay: clamp\([^)]*, 0, DEFAULT_LIMITS\.billableNeuronsPerDay\)/);
+  assert.match(budget, /billableNeuronsPerMonth: clamp\([^)]*, 0, DEFAULT_LIMITS\.billableNeuronsPerMonth\)/);
+  assert.match(budget, /maxNeuronsPerRequest: clamp\([^)]*, 100, DEFAULT_LIMITS\.maxNeuronsPerRequest\)/);
+  assert.equal(/clamp\([^)]*,\s*2_000_000\)/.test(budget), false, 'the 22x runtime headroom must stay gone');
 });
 
 // ===========================================================================

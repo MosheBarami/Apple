@@ -1578,7 +1578,7 @@
      "id": "f-899fc918",
      "name": "Desktop companion app",
      "status": "blocked",
-     "evidence": "owner chose rasteriser-only; out of scope for now"
+     "evidence": "owner chose rasteriser-only; out of scope for now | DEFERRED by owner 2026-09-14 to a later stage"
     },
     {
      "id": "f-9c110b91",
@@ -1590,19 +1590,19 @@
      "id": "f-8b796181",
      "name": "Studio viewport capture",
      "status": "blocked",
-     "evidence": "measured impossible in-engine; needs a desktop companion + OS permission"
+     "evidence": "measured impossible in-engine; needs a desktop companion + OS permission | DEFERRED by owner 2026-09-14 to a later stage"
     },
     {
      "id": "f-e26f5bc7",
      "name": "Studio screen recording",
      "status": "blocked",
-     "evidence": "same"
+     "evidence": "same | DEFERRED by owner 2026-09-14 to a later stage"
     },
     {
      "id": "f-c0f694b5",
      "name": "Live viewport stream",
      "status": "blocked",
-     "evidence": "same — and owner chose rasteriser-only"
+     "evidence": "same — and owner chose rasteriser-only | DEFERRED by owner 2026-09-14 to a later stage"
     },
     {
      "id": "f-5ce4b850",
@@ -2327,14 +2327,14 @@
     {
      "id": "f-a860dc89",
      "name": "Dedicated inference",
-     "status": "conflicts-with-decision",
-     "evidence": "recurring cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-5e1a1ea1",
      "name": "Inference autoscaling",
-     "status": "conflicts-with-decision",
-     "evidence": "recurring cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     }
    ]
   },
@@ -5633,8 +5633,8 @@
     {
      "id": "f-21a8551b",
      "name": "SOC2 readiness",
-     "status": "conflicts-with-decision",
-     "evidence": "external audit, five figures, not an engineering task"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-42322161",
@@ -5933,8 +5933,8 @@
     {
      "id": "f-a13defd7",
      "name": "Multi-region deployment",
-     "status": "conflicts-with-decision",
-     "evidence": "recurring cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-e79a03da",
@@ -5993,26 +5993,26 @@
     {
      "id": "f-09ffc4fa",
      "name": "Pro plan",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with zero-recurring-cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-451ebbdd",
      "name": "Team plan",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with zero-recurring-cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-326435f4",
      "name": "Enterprise plan",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with zero-recurring-cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-3e9a9d8a",
      "name": "Usage-based billing",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with zero-recurring-cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-d5791876",
@@ -6029,8 +6029,8 @@
     {
      "id": "f-79a5680b",
      "name": "GPU billing",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with zero-recurring-cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-577b2e57",
@@ -6041,8 +6041,8 @@
     {
      "id": "f-290cbb32",
      "name": "Seat billing",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with zero-recurring-cost"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-3676cf20",
@@ -6125,8 +6125,8 @@
     {
      "id": "f-1248ded5",
      "name": "Stripe",
-     "status": "conflicts-with-decision",
-     "evidence": "conflicts with the zero-recurring-cost decision (no payments)"
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
     },
     {
      "id": "f-05d54330",
@@ -6300,7 +6300,7 @@
      "id": "f-feb204a0",
      "name": "Roblox Studio plugin",
      "status": "blocked",
-     "evidence": "STUDIO_PLUGIN_STORE_LIVE=false — nobody can install it"
+     "evidence": "DEFERRED by owner 2026-09-14 (A1 skipped by choice) — nobody can install the plugin until Creator Store distribution is enabled"
     },
     {
      "id": "f-8c45e571",
