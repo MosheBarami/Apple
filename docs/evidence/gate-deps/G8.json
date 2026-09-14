@@ -1,0 +1,4 @@
+[
+  "apps/worker/tests/billing-route.test.mjs",
+  "apps/worker/tests/billing.test.mjs"
+]
