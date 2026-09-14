@@ -1,6 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
+import { rgbBase64ToDataUrl } from './png';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocs } from './rag';
@@ -69,6 +70,20 @@ export interface AgentCtx {
   /** last render/critique produced this run, so the loop can escalate reasoning on a failure */
   lastRender?: RenderViewResult;
   lastCritique?: VisualCritique;
+  /**
+   * A payload for the BROWSER only, never for the model.
+   *
+   * `detailForUi` derives the UI payload from the model-facing result, which is why the visual
+   * tools could never show anything: their result is deliberately image-free, because tool results
+   * are re-sent to the model on every later step and a frame is ~207KB of base64 RGB. The pixels
+   * therefore stayed in `lastRender` on the server and the user never saw what the critic saw —
+   * a verification step whose evidence is invisible is indistinguishable from one that did not run.
+   *
+   * A tool sets this when it has something to SHOW that must not be something to READ. `runTool`
+   * prefers it over the derived detail, so the two payloads can differ by construction rather than
+   * by a size cap accidentally dropping one of them.
+   */
+  uiDetail?: unknown;
   /**
    * Asset ids that came out of a verified search in THIS session.
    *
@@ -1062,6 +1077,34 @@ export const TOOLS: Record<string, ToolImpl> = {
       ctx.lastRender = res;
       const critique = await critiqueViews(ctx.env, res, String(a.intent ?? 'a well-built Roblox scene'));
       ctx.lastCritique = critique;
+
+      // SHOW THE USER WHAT THE CRITIC LOOKED AT.
+      //
+      // The model gets text, a score and a verdict — deliberately no pixels, because this result is
+      // re-sent on every later step and a frame is ~207KB of base64 RGB. The BROWSER gets the image,
+      // once, on this row. Without it the workspace showed a score with nothing behind it, which is
+      // the same shape as the failure this whole product exists to prevent: a verdict the user is
+      // asked to trust with no evidence attached.
+      //
+      // One view, not all of them. The hero is what the critique is mostly about, and a gallery
+      // would cost four times the bytes to say the same thing.
+      const hero = res.views.find((v) => v.name === 'hero') ?? res.views[0];
+      if (hero) {
+        // Encoded HERE rather than in the browser. The client used to convert raw RGB itself, which
+        // meant sending 207KB to deliver a picture that is ~25KB as PNG.
+        const png = await rgbBase64ToDataUrl(hero.rgbBase64, hero.meta.width, hero.meta.height).catch(() => null);
+        if (png) {
+          ctx.uiDetail = {
+            render: {
+              subject: res.subject,
+              boundsSize: res.boundsSize,
+              lighting: res.lighting,
+              views: [{ name: hero.name, pngDataUrl: png, meta: hero.meta }],
+            },
+            critique,
+          };
+        }
+      }
       return { text: critiqueToText(critique), score: critique.score, passed: critique.passed };
     },
   },
@@ -1404,6 +1447,24 @@ export function toolDefs(studioConnected: boolean, allowed?: Set<string>): Gatew
 const MAX_DETAIL_CHARS = 24_000;
 
 /**
+ * The cap for an explicit UI payload, which is a different thing from a derived one.
+ *
+ * MAX_DETAIL_CHARS protects the socket from tool results that are ALSO re-sent to the model every
+ * step. An evidence panel is sent once, on one tool row, and carries an encoded image. The socket
+ * already streams 200KB playtest frames (frame-bus.ts), so the constraint here is "one screenshot,
+ * not a gallery" rather than "keep it tiny".
+ */
+const MAX_UI_DETAIL_CHARS = 96_000;
+
+function capUiDetail(value: unknown): unknown {
+  try {
+    return JSON.stringify(value).length > MAX_UI_DETAIL_CHARS ? undefined : value;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Structured results are forwarded to the UI, plain strings are not.
  *
  * A tool that returns a bare string has nothing a component could render, and
@@ -1442,11 +1503,17 @@ export async function runTool(
     return { summary: `${name}: bad arguments`, resultForLlm: JSON.stringify({ error: 'arguments were not valid JSON' }), ok: false };
   }
   try {
+    ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row
     const result = await impl.run(ctx, args);
     let str = typeof result === 'string' ? result : JSON.stringify(result);
     if (str.length > MAX_RESULT_CHARS) str = str.slice(0, MAX_RESULT_CHARS) + `\n...[truncated ${str.length - MAX_RESULT_CHARS} chars]`;
     const failed = typeof result === 'object' && result !== null && 'error' in (result as Record<string, unknown>);
-    return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed, detail: detailForUi(result) };
+    // An explicit UI payload wins. It is capped separately and more generously than the derived
+    // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
+    // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
+    const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(result);
+    ctx.uiDetail = undefined;
+    return { summary: summarize(name, args, failed), resultForLlm: str, ok: !failed, detail };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     /* §1: provider and model identity are implementation details and must not

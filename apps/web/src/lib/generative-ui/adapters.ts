@@ -98,8 +98,17 @@ function lightingRows(lighting: SceneLighting | undefined) {
   return rows;
 }
 
-function viewEntry(view: RenderedView) {
-  const src = rgbBase64ToPngDataUrl(view.rgbBase64, view.meta.width, view.meta.height);
+/**
+ * A view may arrive with its image already encoded.
+ *
+ * The worker now encodes the hero frame as a PNG before sending it, because converting in the
+ * browser meant shipping ~207KB of raw base64 RGB to deliver a ~25KB picture. `rgbBase64` is still
+ * accepted so a playtest frame or an older payload renders unchanged.
+ */
+type ViewLike = RenderedView & { pngDataUrl?: string };
+
+function viewEntry(view: ViewLike) {
+  const src = view.pngDataUrl ?? rgbBase64ToPngDataUrl(view.rgbBase64, view.meta.width, view.meta.height);
   return {
     name: view.name,
     image: src ? { src, alt: `${view.name} view of the scene`, width: view.meta.width, height: view.meta.height } : undefined,
@@ -291,14 +300,18 @@ function looksLikeRenderResult(v: unknown): v is RenderViewResult {
 
   const views = v['views'];
   if (!Array.isArray(views) || views.length === 0) return false;
-  return views.every(
-    (view) =>
-      isObject(view) &&
-      typeof view['rgbBase64'] === 'string' &&
-      isObject(view['meta']) &&
-      typeof (view['meta'] as Record<string, unknown>)['width'] === 'number' &&
-      typeof (view['meta'] as Record<string, unknown>)['height'] === 'number',
-  );
+  return views.every((view) => {
+    if (!isObject(view)) return false;
+    // Pixels, in either accepted form — raw rows the browser encodes, or an image the worker
+    // already encoded. What must never pass is a view with NO pixels at all: that is the
+    // image-free `render_view` summary, and forcing it into a visual panel is what used to
+    // dereference an absent field and take the workspace to the ErrorBoundary.
+    const hasPixels = typeof view['rgbBase64'] === 'string'
+      || (typeof view['pngDataUrl'] === 'string' && (view['pngDataUrl'] as string).startsWith('data:image/'));
+    if (!hasPixels) return false;
+    const meta = view['meta'];
+    return isObject(meta) && typeof meta['width'] === 'number' && typeof meta['height'] === 'number';
+  });
 }
 
 function looksLikeCritique(v: unknown): v is CritiqueLike {
