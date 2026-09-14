@@ -806,7 +806,7 @@ function Checkpoints.bind(player)
 	end
 
 	-- Bug 3: the character has to be MOVED after it loads; Roblox has already chosen a spawn.
-	player.CharacterAdded:Connect(function(character)
+	local function placeAtStage(character)
 		local stage = Checkpoints.stage(player)
 		if stage == nil then
 			return
@@ -819,7 +819,19 @@ function Checkpoints.bind(player)
 		if root ~= nil then
 			root.CFrame = target.CFrame + Vector3.new(0, 4, 0)
 		end
-	end)
+	end
+
+	player.CharacterAdded:Connect(placeAtStage)
+
+	-- AND THE CHARACTER THAT IS ALREADY STANDING THERE. Connecting CharacterAdded only handles
+	-- deaths from here on; it does nothing about the life the player is already living. By the call
+	-- order this module documents -- bind after Profile.load returns -- their character has almost
+	-- always spawned already, because CharacterAutoLoads fires on join while Profile.load is still
+	-- yielding on a DataStore round trip. So the very case bug 3 describes, a returning player put
+	-- back at the start, survived the fix for it: the module only moved them on their SECOND life.
+	if player.Character ~= nil then
+		task.spawn(placeAtStage, player.Character)
+	end
 
 	return true
 end
@@ -866,6 +878,11 @@ local boardSize = 10
 local refreshSeconds = 60
 local monotonic = true
 local running = false
+-- Bumped by every start, so a loop suspended in task.wait that wakes to a restarted module exits
+-- instead of running beside the new one. stop() then start() within refreshSeconds would otherwise
+-- leave both alive, and each extra loop is another GetSortedAsync against a LIST budget of 5 a
+-- minute plus 2 per player -- the one budget this module exists to stay inside.
+local generation = 0
 
 -- The last page that successfully loaded. Never cleared by a failure.
 local cached = {}
@@ -963,8 +980,10 @@ function Leaderboard.start()
 		return false
 	end
 	running = true
+	generation = generation + 1
+	local mine = generation
 	task.spawn(function()
-		while running do
+		while running and generation == mine do
 			Leaderboard.refresh()
 			task.wait(refreshSeconds)
 		end
@@ -1183,6 +1202,9 @@ local Income = {}
 
 local MAX_LIVE_PER_DROPPER = 24
 local COLLECT_DEBOUNCE = 0.1
+-- One drop per two frames is already more than the cap can absorb; below this the period stops
+-- being a rate and starts being a way to wedge the thread.
+local MIN_DROP_SECONDS = 0.05
 
 local droppers = {}
 local awardFn = nil
@@ -1220,11 +1242,21 @@ end
 
 --- Register a dropper. Returns a handle with a step(dt) the loop drives.
 function Income.addDropper(spec)
+	-- A period of zero is not "as fast as possible", it is a thread that never returns: step's
+	-- catch-up loop subtracts the period from the accumulator, and subtracting zero never ends.
+	-- Lua treats 0 as truthy, so the old "everySeconds or 2" default accepted it. Every other
+	-- module here validates its numbers; this one validated nothing.
+	local period = tonumber(spec.everySeconds) or 2
+	if period < MIN_DROP_SECONDS then
+		warn("[Income] everySeconds of " .. tostring(spec.everySeconds) .. " is not usable; using " .. MIN_DROP_SECONDS)
+		period = MIN_DROP_SECONDS
+	end
+
 	local d = {
 		plot = spec.plot,
 		spawner = spec.spawner,
 		value = spec.value or 1,
-		everySeconds = spec.everySeconds or 2,
+		everySeconds = period,
 		since = 0,
 		live = {},
 	}
@@ -1269,9 +1301,17 @@ end
 function Income.step(dt)
 	for _, d in ipairs(droppers) do
 		d.since = d.since + dt
-		while d.since >= d.everySeconds do
+		-- Bounded as well as validated. The clamp above is what keeps this terminating; the bound is
+		-- here because a loop that can freeze a server should not be one assertion away from doing
+		-- it, and a dt large enough to owe 200 drops is a stall that dropping more parts cannot fix.
+		local owed = 0
+		while d.since >= d.everySeconds and owed < 200 do
 			d.since = d.since - d.everySeconds
+			owed = owed + 1
 			Income.drop(d)
+		end
+		if owed >= 200 then
+			d.since = 0
 		end
 		-- forget parts something else destroyed, so the cap counts what is actually there
 		for i = #d.live, 1, -1 do

@@ -1094,6 +1094,11 @@ function runCheckpoints(body, tag) {
     'os = { clock = function() return nowValue end, time = function() return nowValue end }',
     'local function advance(seconds) nowValue = nowValue + seconds end',
     '',
+    // bind() places an already-spawned character through task.spawn, because placing it yields on
+    // WaitForChild and bind runs during the join sequence. Synchronous here so the test can assert
+    // the placement happened; the same infidelity the Profile harness declares.
+    'task = { spawn = function(f, ...) f(...) end, wait = function() end }',
+    '',
     'Vector3 = { new = function(x, y, z) return { x = x, y = y, z = z } end }',
     'local function cframe(tag)',
     '\treturn setmetatable({ tag = tag }, { __add = function(a, v) return { tag = a.tag, lifted = v.y } end })',
@@ -1185,16 +1190,16 @@ test('nonsense stages are refused rather than stored', () => {
 test('A TOUCHED STORM ADVANCES ONCE — a part fires many times a second, and per limb', () => {
   const r = runCheckpoints([
     CP_WIRED,
-    'player.Character = "the-character"',
+    'player.Character = makeCharacter()  -- already spawned, as it is by the time bind runs',
     'assert(M.bind(player) == true)',
     'local touch = folder.parts[2].handlers[1]',
     '-- one arrival, forty Touched events across six limbs',
-    'for i = 1, 40 do touch({ Parent = "the-character" }) end',
+    'for i = 1, 40 do touch({ Parent = player.Character }) end',
     'assert(M.stage(player) == 2, "stage should be 2")',
     '-- and a later, genuine arrival at 3 still registers once the cooldown has passed',
     'advance(1)',
     'local touch3 = folder.parts[3].handlers[1]',
-    'for i = 1, 40 do touch3({ Parent = "the-character" }) end',
+    'for i = 1, 40 do touch3({ Parent = player.Character }) end',
     'assert(M.stage(player) == 3, "a real later arrival must still count")',
   ].join('\n'), 'cp-touchstorm');
   assert.ok(r.ok, r.output);
@@ -1203,7 +1208,7 @@ test('A TOUCHED STORM ADVANCES ONCE — a part fires many times a second, and pe
 test("another player's character touching does not advance this player", () => {
   const r = runCheckpoints([
     CP_WIRED,
-    'player.Character = "the-character"',
+    'player.Character = makeCharacter()  -- already spawned, as it is by the time bind runs',
     'assert(M.bind(player) == true)',
     'local touch = folder.parts[4].handlers[1]',
     'touch({ Parent = "someone-elses-character" })',
@@ -1219,7 +1224,7 @@ test('RESPAWN MOVES THE CHARACTER TO THE CHECKPOINT — Roblox has already chose
   // restarts at the beginning while their saved stage still says 4.
   const r = runCheckpoints([
     CP_WIRED,
-    'player.Character = "the-character"',
+    'player.Character = makeCharacter()  -- already spawned, as it is by the time bind runs',
     'assert(M.bind(player) == true)',
     'M.reach(player, 4)',
     'local character = makeCharacter()',
@@ -1231,12 +1236,57 @@ test('RESPAWN MOVES THE CHARACTER TO THE CHECKPOINT — Roblox has already chose
   assert.ok(r.ok, r.output);
 });
 
+/**
+ * THE JOIN CASE, which the fix for bug 3 did not cover.
+ *
+ * bind connects CharacterAdded, and that handles every life from the second one on. It does nothing
+ * about the life the player is ALREADY living — and by the call order this module documents (bind
+ * after Profile.load returns), that life has almost always begun: CharacterAutoLoads spawns them on
+ * join while Profile.load is still yielding on a DataStore round trip, retries included.
+ *
+ * So the returning player stood at the start of the obby with Checkpoints.stage(player) reporting
+ * 9 — which is bug 3's own description, word for word, surviving inside the module written to fix
+ * it. The module only ever moved them after they died once.
+ */
+test('A PLAYER WHO IS ALREADY STANDING THERE IS MOVED TOO, not only on their next life', () => {
+  const r = runCheckpoints([
+    'local data = { stage = 9 }',
+    'local folder = makeFolder(12)',
+    'M.configure({ get = function(p) return data end, field = "stage", folder = folder })',
+    '',
+    // exactly what Roblox has done by the time bind is called
+    'local already = makeCharacter()',
+    'player.Character = already',
+    'assert(already.root.CFrame.tag == "spawn", "Roblox put them at the default spawn")',
+    '',
+    'assert(M.bind(player) == true)',
+    'assert(already.root.CFrame.tag == "stage9", "bind must move the character that already exists, got " .. tostring(already.root.CFrame.tag))',
+    'assert(already.root.CFrame.lifted == 4, "and lift it clear of the part")',
+  ].join('\n'), 'cp-already-spawned');
+  assert.ok(r.ok, r.output);
+});
+
+test('binding before the character exists still works, and does not move anything early', () => {
+  const r = runCheckpoints([
+    'local data = { stage = 3 }',
+    'local folder = makeFolder(5)',
+    'M.configure({ get = function(p) return data end, field = "stage", folder = folder })',
+    'player.Character = nil',
+    'assert(M.bind(player) == true, "no character yet is not an error")',
+    '',
+    'local character = makeCharacter()',
+    'player.spawned(character)',
+    'assert(character.root.CFrame.tag == "stage3", "and the spawn that follows is still handled")',
+  ].join('\n'), 'cp-no-character-yet');
+  assert.ok(r.ok, r.output);
+});
+
 test('a missing checkpoint part leaves the character where it is rather than erroring', () => {
   const r = runCheckpoints([
     'local data = { stage = 1 }',
     'local folder = makeFolder(2)',
     'M.configure({ get = function(p) return data end, field = "stage", folder = folder })',
-    'player.Character = "the-character"',
+    'player.Character = makeCharacter()  -- already spawned, as it is by the time bind runs',
     'assert(M.bind(player) == true)',
     'data.stage = 99',
     'local character = makeCharacter()',
@@ -1281,7 +1331,15 @@ function runLeaderboard(body, tag) {
     'os = { time = function() return nowValue end, clock = function() return nowValue end }',
     '',
     'local spawned = nil',
-    'task = { spawn = function(f) spawned = f end, wait = function() end }',
+    'local spawnedLoops = {}',
+    'local waits = 0',
+    'task = {',
+    '\tspawn = function(f) spawned = f; table.insert(spawnedLoops, f) end,',
+    '\twait = function()',
+    '\t\twaits = waits + 1',
+    '\t\tif waits > 200 then error("task.wait called 200 times — a loop is not terminating") end',
+    '\tend,',
+    '}',
     '',
     'local store = {',
     '\tdata = {},',
@@ -1336,6 +1394,46 @@ test('the leaderboard harness runs, and a false assertion in it still fails', ()
   const bad = runLeaderboard([LB, 'assert(false, "intentional-lb")'].join('\n'), 'lb-sanity-neg');
   assert.equal(bad.ok, false, 'a failing assert did not fail the leaderboard run');
   assert.match(bad.output, /intentional-lb/);
+});
+
+/**
+ * THE SAME RESTART HOLE AS ROUNDS, on the budget this module exists to protect.
+ *
+ * stop() flips the running flag but the loop is suspended inside task.wait(refreshSeconds); a
+ * start() before it wakes leaves the old thread alive and spawns another. The idempotence guard
+ * covers a duplicate start(), not a restart — and stopping the board between rounds and restarting
+ * it at the next one is in the published API.
+ *
+ * Each surviving loop is another GetSortedAsync per refresh against a LIST budget of 5 a minute
+ * plus 2 per player. Over budget, the calls fail, refresh() returns false, and by this module's own
+ * correct design the previous board stands — so the leaderboard silently freezes on a stale
+ * snapshot. The docstring names this exact consequence: double the spend on the one budget this
+ * module exists to stay inside.
+ */
+test('STOP THEN START DOES NOT LEAVE A SECOND REFRESH LOOP SPENDING THE LIST BUDGET', () => {
+  const r = runLeaderboard([
+    LB,
+    'assert(M.start() == true)',
+    'local firstLoop = spawnedLoops[1]',
+    'M.stop()',
+    'assert(M.start() == true, "restarting between rounds is in the API")',
+    'assert(#spawnedLoops == 2, "the restart spawns its own loop")',
+    '',
+    'local before = store.fetches',
+    'firstLoop()   -- the superseded thread waking from its task.wait',
+    'assert(store.fetches == before, "the old loop must not issue another GetSortedAsync, issued " .. tostring(store.fetches - before))',
+  ].join('\n'), 'lb-no-double-loop');
+  assert.ok(r.ok, r.output);
+});
+
+test('a second start while running is still refused', () => {
+  const r = runLeaderboard([
+    LB,
+    'assert(M.start() == true)',
+    'assert(M.start() == false, "a duplicate start must be refused")',
+    'assert(#spawnedLoops == 1, "and must not spawn a second loop")',
+  ].join('\n'), 'lb-idempotent-start');
+  assert.ok(r.ok, r.output);
 });
 
 test('a refresh builds a ranked board from the store', () => {
@@ -1913,6 +2011,59 @@ test('a hundred collections leave nothing behind', () => {
     'created = {}',
     'assert(stillReferenced() == 0, "the server is holding drops it collected")',
   ].join('\n'), 'in-no-leak-many');
+  assert.ok(r.ok, r.output);
+});
+
+/**
+ * A PERIOD OF ZERO IS NOT A FAST DROPPER, IT IS A THREAD THAT NEVER RETURNS.
+ *
+ * step's catch-up loop subtracts the period from the accumulator until it is spent; subtracting
+ * zero never spends it. Lua treats 0 as truthy, so `spec.everySeconds or 2` accepted it, and
+ * "drop as fast as possible" — or a computed value that rounds down — wedges the thread inside the
+ * while loop. The server does not error, it stops.
+ *
+ * Every other module in this set validates its numbers. This one validated none of them.
+ */
+test('A DROP PERIOD OF ZERO IS CLAMPED RATHER THAN HANGING THE THREAD', () => {
+  const r = runIncome([
+    'local paid = {}',
+    'M.configure({ award = function(p, n) paid[p.Name] = (paid[p.Name] or 0) + n end, maxLive = 5 })',
+    'local plot = makePlot(7)',
+    'local d = M.addDropper({ plot = plot, spawner = spawner, value = 10, everySeconds = 0 })',
+    '',
+    'assert(#warnings == 1, "an unusable period must be reported, not silently accepted")',
+    'assert(string.find(warnings[1], "everySeconds") ~= nil, "and the warning must name it")',
+    'assert(d.everySeconds > 0, "the stored period must be positive, is " .. tostring(d.everySeconds))',
+    '',
+    // the call that used to never return
+    'M.step(1)',
+    'assert(M.liveCount(d) <= 5, "the cap still holds, " .. tostring(M.liveCount(d)) .. " alive")',
+  ].join('\n'), 'in-zero-period');
+  assert.ok(r.ok, r.output);
+});
+
+test('a negative or non-numeric period is clamped the same way', () => {
+  const r = runIncome([
+    'local paid = {}',
+    'M.configure({ award = function() end, maxLive = 5 })',
+    'local plot = makePlot(7)',
+    'local a = M.addDropper({ plot = plot, spawner = spawner, everySeconds = -3 })',
+    'local b = M.addDropper({ plot = plot, spawner = spawner, everySeconds = "soon" })',
+    'assert(a.everySeconds > 0 and b.everySeconds > 0, "both must be usable periods")',
+    'M.step(2)',
+    'assert(#warnings >= 1, "and at least the unusable number must be reported")',
+  ].join('\n'), 'in-bad-period');
+  assert.ok(r.ok, r.output);
+});
+
+test('a huge dt owes a bounded number of drops rather than an unbounded catch-up', () => {
+  // A stalled server resuming with a large dt should not answer by allocating thousands of parts.
+  const r = runIncome([
+    INC,
+    'M.step(100000)',
+    'assert(M.liveCount(d) <= 5, "the cap holds, " .. tostring(M.liveCount(d)) .. " alive")',
+    'assert(#created <= 400, "and the catch-up is bounded, created " .. tostring(#created))',
+  ].join('\n'), 'in-huge-dt');
   assert.ok(r.ok, r.output);
 });
 
