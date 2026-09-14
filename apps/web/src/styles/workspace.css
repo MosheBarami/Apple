@@ -359,6 +359,21 @@
     135deg, var(--gx-line-2) 0 4px, transparent 4px 8px
   );
 }
+/* Loading is a sweep, not a hatch. The hatch above means "we asked and got nothing back"; this
+   means "we have not heard yet", and a user who sees the hatch on every page load learns to ignore
+   the one state that was worth reading. Reduced motion gets the still version. */
+.gx-usage__fill.is-pending {
+  inset: 0;
+  background: linear-gradient(
+    90deg, transparent 0%, var(--gx-line-2) 45%, var(--gx-line-2) 55%, transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: gx-usage-sweep 1.1s var(--gx-ease, ease) infinite;
+}
+@keyframes gx-usage-sweep {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
 /* The purchased band. Sits at the far end, does not move with the allowance. */
 .gx-usage__credits {
   position: absolute;
@@ -2265,6 +2280,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The usage meter's loading sweep. It belongs in THIS block specifically: the stylesheet has
+     five reduced-motion blocks and activity-motion.test.mjs reads only the first one, so a rule
+     placed anywhere else is unverified, and a new block opened above this one silently moves the
+     window the test inspects. That is a sharp edge in the test rather than in the CSS -- noted
+     here because the next person to add an animation will meet it too. */
+  .gx-usage__fill.is-pending { animation: none; background-position: 50% 0; }
+
   .gx-drawer,
   .gx-scrim,
   .gx-pop,

@@ -19,6 +19,19 @@
 //    deliberately not what this renders as the headline — a single figure hides which kind of zero
 //    you are looking at, and the two have different next actions.
 //
+// 3a. NOT ASKED YET IS NOT THE SAME AS ASKED AND FAILED. The first version of this file had one
+//    fallback for both, so every page load flashed "The usage service did not answer" during the
+//    ordinary fetch — a claim about a service that was working fine, made before it had been given
+//    a chance to answer. A failure to observe must not render as an observation. `pending` is its
+//    own state and says only that the number is not here yet.
+//
+// 4. THE METER NAMES THE LIMIT THAT IS ACTUALLY BITING. `allowanceRemaining` is the smaller of
+//    what is left today and what is left this month, so a spent month reads as zero on a fresh
+//    day. Saying "the daily allowance is spent" then, and offering a reset a few hours away, is
+//    wrong twice: wrong about which limit stopped them and wrong about when it lifts. The plan's
+//    monthly figure is in the same table as the daily one, so the meter can tell which is binding
+//    and say so.
+//
 // 3. AN UNREADABLE QUOTA IS NEVER DRAWN AS A HEALTHY ONE. If the query failed, or the payload is
 //    not shaped like a quota, the verdict is `unknown` and says so. Rendering a missing number as
 //    an empty bar reads as "you have nothing"; rendering it as a full one reads as "you have
@@ -27,7 +40,10 @@
 //    mistake in a different subsystem.
 import { PLAN_LIMITS, PLAN_COPY, SPARKS_PER_BUILD, isPlanId, type QuotaState } from '@golem/shared';
 
-export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown';
+export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
+
+/** Which limit is currently the binding one. The copy and the reset both hang off this. */
+export type MeterPeriod = 'day' | 'month';
 
 export interface MeterView {
   tone: MeterTone;
@@ -48,20 +64,38 @@ export interface MeterView {
   /** "about 3 builds" — omitted entirely when the remainder cannot afford one. */
   buildsHint: string | null;
   resetsIn: string | null;
+  /** Which limit the numbers above describe. `day` unless the month ran out first. */
+  period: MeterPeriod;
 }
 
-const UNKNOWN: MeterView = {
-  tone: 'unknown',
+const BLANK = {
   planName: null,
   allowanceRemaining: 0,
   allowanceTotal: 0,
   allowanceFraction: 0,
   credits: 0,
-  headline: 'Balance unavailable',
-  detail: 'The usage service did not answer. Your balance is unchanged — this is a display problem, not a charge.',
   nextAction: null,
   buildsHint: null,
   resetsIn: null,
+  period: 'day' as MeterPeriod,
+};
+
+const UNKNOWN: MeterView = {
+  ...BLANK,
+  tone: 'unknown',
+  headline: 'Balance unavailable',
+  detail: 'The usage service did not answer. Your balance is unchanged — this is a display problem, not a charge.',
+};
+
+/**
+ * Not an error. The request is in flight and no claim is being made about anything yet — which is
+ * the entire difference between this and UNKNOWN, and the reason both exist.
+ */
+const PENDING: MeterView = {
+  ...BLANK,
+  tone: 'pending',
+  headline: 'Checking your balance',
+  detail: 'One moment.',
 };
 
 function looksLikeQuota(q: unknown): q is QuotaState {
@@ -85,17 +119,47 @@ export function resetsIn(iso: string | undefined, now: number): string | null {
   return hrs < 24 ? `resets in ${hrs}h` : `resets in ${Math.round(hrs / 24)}d`;
 }
 
-export function meterView(quota: unknown, now: number): MeterView {
+/**
+ * The first instant of the next UTC month. The wire carries the DAILY reset only, and when the
+ * month is the binding limit that figure is the wrong answer to "when does this lift". This is the
+ * same UTC arithmetic the ledger keys by, not a second opinion about policy.
+ */
+export function nextMonthResetIso(now: number): string {
+  const d = new Date(now);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();
+}
+
+const finite = (n: unknown): n is number => Number.isFinite(n);
+
+export function meterView(quota: unknown, now: number, opts?: { pending?: boolean }): MeterView {
+  // Pending is checked first and on its own: a request in flight has no payload to inspect, and
+  // inspecting the absent one is how "not yet" became "the service did not answer".
+  if (opts?.pending) return PENDING;
   if (!looksLikeQuota(quota)) return UNKNOWN;
 
   const allowanceRemaining = Math.max(0, Math.floor(quota.allowanceRemaining));
   const credits = Math.max(0, Math.floor(quota.credits));
   const plan = isPlanId(quota.plan) ? quota.plan : null;
 
+  // WHICH LIMIT IS BITING. allowanceRemaining is already the smaller of the two, so this only
+  // decides what to CALL it. The month wins ties: at the moment they are equal, the day is about to
+  // renew into a month that will not, and naming the month is the more useful of the two truths.
+  const dayLeft = finite(quota.sparksDaily) && finite(quota.sparksUsedToday)
+    ? Math.max(0, quota.sparksDaily - quota.sparksUsedToday)
+    : null;
+  const monthLeft = finite(quota.sparksMonthly) && finite(quota.sparksUsedThisMonth)
+    ? Math.max(0, quota.sparksMonthly - quota.sparksUsedThisMonth)
+    : null;
+  const period: MeterPeriod = dayLeft !== null && monthLeft !== null && monthLeft <= dayLeft ? 'month' : 'day';
+
   // The enforced table first; the wire's own figure only as a fallback for a plan we do not know.
+  const wireTotal = period === 'month' ? quota.sparksMonthly : quota.sparksDaily;
   const allowanceTotal = plan
-    ? PLAN_LIMITS[plan].sparksPerDay
-    : Number.isFinite(quota.sparksDaily) ? Math.max(0, Math.floor(quota.sparksDaily)) : 0;
+    ? (period === 'month' ? PLAN_LIMITS[plan].sparksPerMonth : PLAN_LIMITS[plan].sparksPerDay)
+    : finite(wireTotal) ? Math.max(0, Math.floor(wireTotal)) : 0;
+
+  const per = period === 'month' ? 'a month' : 'a day';
+  const window = period === 'month' ? 'this month' : 'today';
 
   const allowanceFraction = allowanceTotal > 0 ? Math.min(1, allowanceRemaining / allowanceTotal) : 0;
   const spendable = allowanceRemaining + credits;
@@ -108,21 +172,25 @@ export function meterView(quota: unknown, now: number): MeterView {
 
   if (allowanceRemaining > 0) {
     tone = allowanceFraction <= 0.15 ? 'warn' : 'good';
-    headline = `${allowanceRemaining.toLocaleString()} Sparks left today`;
+    headline = `${allowanceRemaining.toLocaleString()} Sparks left ${window}`;
     detail = credits > 0
-      ? `of ${allowanceTotal.toLocaleString()} a day, plus ${credits.toLocaleString()} purchased`
-      : `of ${allowanceTotal.toLocaleString()} a day`;
+      ? `of ${allowanceTotal.toLocaleString()} ${per}, plus ${credits.toLocaleString()} purchased`
+      : `of ${allowanceTotal.toLocaleString()} ${per}`;
   } else if (credits > 0) {
     // A real distinction: the day's allowance is gone but the account is not empty, and nothing
     // the user does next is blocked.
     tone = 'warn';
-    headline = "Today's allowance is used up";
+    headline = period === 'month' ? "This month's allowance is used up" : "Today's allowance is used up";
     detail = `Running on ${credits.toLocaleString()} purchased credit${credits === 1 ? '' : 's'}, which do not expire.`;
   } else {
     tone = 'bad';
     headline = 'No Sparks left';
-    detail = 'The daily allowance is spent and there are no purchased credits.';
-    nextAction = 'Wait for the reset, or add credits.';
+    detail = period === 'month'
+      ? "This month's allowance is spent and there are no purchased credits. The daily limit is not what stopped this."
+      : 'The daily allowance is spent and there are no purchased credits.';
+    nextAction = period === 'month'
+      ? 'Add credits, or upgrade — the monthly limit does not lift until next month.'
+      : 'Wait for the reset, or add credits.';
   }
 
   return {
@@ -138,6 +206,9 @@ export function meterView(quota: unknown, now: number): MeterView {
     // Withheld below one whole build rather than shown as "0 builds", which reads as a fault in the
     // account rather than what it is — a remainder smaller than one job.
     buildsHint: builds >= 1 ? `about ${builds} more build${builds === 1 ? '' : 's'}` : null,
-    resetsIn: resetsIn(quota.resetsAtIso, now),
+    // The wire's resetsAtIso is the DAILY reset. Offering it while the month is what ran out would
+    // promise the allowance back in a few hours when it is weeks away.
+    resetsIn: period === 'month' ? resetsIn(nextMonthResetIso(now), now) : resetsIn(quota.resetsAtIso, now),
+    period,
   };
 }

@@ -11,11 +11,22 @@ const TONE_LABEL: Record<MeterView['tone'], string> = {
   warn: 'Usage — running low',
   bad: 'Usage — nothing left',
   unknown: 'Usage — unavailable',
+  pending: 'Usage — loading',
 };
 
-export function UsageMeter({ quota, now = Date.now() }: { quota: unknown; now?: number }) {
-  const v = meterView(quota, now);
+/**
+ * `pending` is passed in rather than inferred from an absent quota, because absence is ambiguous:
+ * it is what a request in flight looks like AND what a failed one looks like, and the two need
+ * different words. The caller is the only one that knows which.
+ */
+export function UsageMeter({ quota, pending = false, now = Date.now() }: {
+  quota: unknown;
+  pending?: boolean;
+  now?: number;
+}) {
+  const v = meterView(quota, now, { pending });
   const pct = Math.round(v.allowanceFraction * 100);
+  const bare = v.tone === 'unknown' || v.tone === 'pending';
 
   return (
     <div className={`gx-usage is-${v.tone}`}>
@@ -31,8 +42,10 @@ export function UsageMeter({ quota, now = Date.now() }: { quota: unknown; now?: 
         role="img"
         aria-label={`${TONE_LABEL[v.tone]}. ${v.headline}. ${v.detail}`}
       >
-        {v.tone === 'unknown' ? (
-          <span className="gx-usage__fill is-unknown" />
+        {bare ? (
+          // No width, in either case: a bar drawn at some length is a claim about a number nobody
+          // has. The class differs so a load reads as a load and a failure reads as a failure.
+          <span className={v.tone === 'pending' ? 'gx-usage__fill is-pending' : 'gx-usage__fill is-unknown'} />
         ) : (
           <>
             <span className="gx-usage__fill" style={{ width: `${pct}%` }} />

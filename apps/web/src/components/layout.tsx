@@ -146,8 +146,8 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
 /* ----------------------------------------------------------------- rail --- */
 
-function Rail({ name, email, isAdmin, quota }:
-  { name: string | null; email: string; isAdmin: boolean; quota: unknown }) {
+function Rail({ name, email, isAdmin, quota, quotaPending }:
+  { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean }) {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
 
   const projects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
@@ -255,7 +255,7 @@ function Rail({ name, email, isAdmin, quota }:
           </span>
         </button>
 
-        <UsageMeter quota={quota} />
+        <UsageMeter quota={quota} pending={quotaPending} />
         <AccountMenu name={name} email={email} isAdmin={isAdmin} />
       </div>
     </aside>
@@ -328,7 +328,7 @@ function Shell() {
         Skip to content
       </a>
 
-      <Rail name={name} email={email} isAdmin={isAdmin} quota={me.data?.quota} />
+      <Rail name={name} email={email} isAdmin={isAdmin} quota={me.data?.quota} quotaPending={me.isPending} />
 
       {railOpen && (
         <button type="button" className="gx-scrim" onClick={closeRail} aria-label="Close navigation" />
