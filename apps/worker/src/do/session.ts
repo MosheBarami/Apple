@@ -1830,7 +1830,21 @@ export class SessionDO extends DurableObject<Env> {
     return cp;
   }
 
-  async restoreCheckpoint(id: string): Promise<{ ok: boolean; error?: string }> {
+  async restoreCheckpoint(id: string): Promise<{
+    ok: boolean;
+    error?: string;
+    /** What the plugin reports it actually put back. Absent when the op never reached Studio. */
+    fidelity?: {
+      instancesCreated: number;
+      scriptsRestored: number;
+      scriptsExpected: number;
+      failedInstances: number;
+      failedScripts: number;
+      failedProperties: number;
+    };
+    /** A caveat worth showing the user even though the restore succeeded. */
+    note?: string;
+  }> {
     if (!(await this.pluginConnected())) return { ok: false, error: 'Studio is not connected' };
     const chunks = this.sql.exec(`select data from checkpoint_chunks where checkpoint_id = ? order by idx`, id).toArray() as { data: ArrayBuffer }[];
     if (!chunks.length) return { ok: false, error: 'checkpoint not found' };
@@ -1844,7 +1858,56 @@ export class SessionDO extends DurableObject<Env> {
     const jsonStr = await gunzip(buf);
     const applied = await this.execStudioOp({ op: 'restore', root: 'game', snapshot: JSON.parse(jsonStr) }, 120_000);
     if (!applied.ok) return { ok: false, error: applied.error };
-    return { ok: true };
+
+    // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —
+    // instancesCreated, scriptsRestored against scriptsExpected, and counts of instances, scripts
+    // and properties that could not be written. All of it used to be dropped here in favour of a
+    // bare `{ ok: true }`, so a restore that recreated every instance with the wrong Size, CFrame
+    // and Material reported plain success and the user had no reason to look.
+    //
+    // That is the same defect as a green check over a failed build, on the one path whose entire
+    // purpose is getting a user's work back. `ok` now reflects the plugin's own `restored` verdict,
+    // and the counts travel with it so the UI can say what was actually recovered.
+    const d = (applied.data ?? {}) as {
+      restored?: boolean;
+      instancesCreated?: number;
+      scriptsRestored?: number;
+      scriptsExpected?: number;
+      failedInstances?: number;
+      failedScripts?: number;
+      failedProperties?: number;
+      error?: string;
+    };
+    const fidelity = {
+      instancesCreated: d.instancesCreated ?? 0,
+      scriptsRestored: d.scriptsRestored ?? 0,
+      scriptsExpected: d.scriptsExpected ?? 0,
+      failedInstances: d.failedInstances ?? 0,
+      failedScripts: d.failedScripts ?? 0,
+      failedProperties: d.failedProperties ?? 0,
+    };
+
+    // A pre-0.2.0 plugin returns no report at all. Absent evidence is reported as absent rather
+    // than as success: `restored === undefined` must not read as "restored fine".
+    if (d.restored === undefined) {
+      return { ok: true, fidelity, note: 'This Studio plugin is too old to report what it restored, so the result could not be verified.' };
+    }
+
+    if (!d.restored) {
+      return { ok: false, error: d.error ?? 'restore incomplete', fidelity };
+    }
+
+    // Every instance and script came back, but properties can still have failed — and a part with
+    // the wrong Size and CFrame is not the part the user checkpointed. Successful, with a caveat
+    // the UI is expected to show.
+    if (fidelity.failedProperties > 0) {
+      return {
+        ok: true,
+        fidelity,
+        note: `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`,
+      };
+    }
+    return { ok: true, fidelity };
   }
 
   private async quotaSpend(userId: string, sparks: number, kind: string): Promise<{ ok: boolean; state: QuotaState }> {
