@@ -44,7 +44,7 @@ import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,7 +72,16 @@ function assertSameTree() {
   };
   const rootTop = top(ROOT);
   const hereTop = top(process.cwd());
-  if (!rootTop || !hereTop || rootTop === hereTop) return;
+  if (!rootTop || rootTop === hereTop) return;
+  // A cwd that is not a git repository AT ALL used to return here silently, and that is the exact
+  // case that did the damage: a scratch directory holding a one-gate fixture, from which this
+  // checker read and rewrote the real 37-gate ledger. "I cannot tell which tree you mean" is a
+  // reason to stop, not a reason to proceed.
+  if (!hereTop) {
+    console.error(`gate-check: ${process.cwd()} is not a git repository, but this checker verifies ${rootTop}.`);
+    console.error(`gate-check: run it from inside the tree you mean to verify.`);
+    process.exit(2);
+  }
   console.error(`gate-check: this checker verifies ${rootTop}, but you are standing in ${hereTop}.`);
   console.error('gate-check: every CHECK would run against the OTHER tree. Invoke that tree\'s own copy:');
   console.error(`gate-check:   cd ${hereTop} && node scripts/gate-check.mjs ...`);
@@ -101,7 +110,11 @@ function parseArgs(argv) {
       i += 1;
       if (a === '--gate') flags.gate.push(v);
       else if (a === '--timeout') flags.timeout = Number(v) || flags.timeout;
-      else if (a === '--file') flags.file = v;
+      // RESOLVED AGAINST THE CALLER'S CWD, not against ROOT. The default is `join(ROOT, 'GATES.md')`,
+      // and a bare relative `--file GATES.md` used to inherit that base — so running this checker
+      // from a scratch directory with a one-gate fixture silently read and REWROTE the real
+      // 37-gate ledger instead. That happened, and it degraded six clean-tree evidence records.
+      else if (a === '--file') flags.file = resolve(process.cwd(), v);
       else if (a === '--break-sha') flags.breakSha = v;
       continue;
     }
@@ -121,7 +134,7 @@ function parseArgs(argv) {
     console.error(`gate-check: expected at most one ledger path, got ${positional.length}`);
     process.exit(2);
   }
-  if (positional.length === 1) flags.file = positional[0];
+  if (positional.length === 1) flags.file = resolve(process.cwd(), positional[0]);
 
   return { ...flags, bools };
 }
@@ -634,10 +647,10 @@ if (REVERIFY) {
       quarantined.push({ id: r.id, reasons });
       // Marked UNMET IN THE FILE, not merely reported: a report is something the next reader has
       // to find, and the checkbox is what they will actually trust.
-      lines[now.headLine] = `- [ ] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
+      lines[now.headLine] = `- [ ] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${now.title}`;
     } else {
       writeDeps(r.id, r.deps);
-      lines[now.headLine] = `- [x] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
+      lines[now.headLine] = `- [x] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${now.title}`;
       if (now.evidenceLine !== null) lines[now.evidenceLine] = evidenceLine(r);
       else lines.splice(insertAt(now), 0, evidenceLine(r));
     }
@@ -685,7 +698,14 @@ if (APPROVE) {
   for (const r of results) {
     const now = current.get(r.id);
     if (!now || now.check !== r.check || now.expect !== r.expect) { skipped.push(r.id); continue; }
-    applied.push({ ...r, headLine: now.headLine, evidenceLine: now.evidenceLine, station: now.station });
+    // TITLE FROM THE FRESH PARSE, like headLine and station beside it. `r` was parsed when the run
+    // STARTED; `now` is a re-read taken at write time, and a long run can straddle an edit to the
+    // ledger. Assembling one heading out of both parses writes a line that never existed in either:
+    // a stale title carrying its own `[S7]` prefix, plus a freshly-read station prefixed again, and
+    // the result was `G-CRITIC-1 [S7]: [S7] The visual critic…`. The inverse race drops the station
+    // into the title instead, where it parses as ordinary words and the gate silently belongs to no
+    // station at all. Both happened to this ledger in one pass.
+    applied.push({ ...r, title: now.title, headLine: now.headLine, evidenceLine: now.evidenceLine, station: now.station });
   }
 
   // Bottom-up, so an insertion never shifts a line number still to be used.

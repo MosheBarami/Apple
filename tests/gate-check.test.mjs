@@ -665,3 +665,55 @@ test('--lint catches a station tag that has drifted into the title', () => {
   const good = check('- [ ] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
   assert.doesNotMatch(good.out, /station tag is inside the title/);
 });
+
+/* ------------------------------------------- writing the ledger you meant to --- */
+
+test('a relative --file resolves against the CALLER, not against the checker', () => {
+  // The default is `join(ROOT, 'GATES.md')`, and a bare relative `--file GATES.md` inherited that
+  // base. So running the checker from a scratch directory holding a one-gate fixture read and
+  // REWROTE the real 37-gate ledger instead — silently, reporting "37 gates" while the fixture sat
+  // untouched. It degraded six clean-tree evidence records before anyone noticed.
+  //
+  // Run from a SUBDIRECTORY of this repo, so the same-tree guard is satisfied and only the
+  // resolution base is under test. `apps/worker/GATES.md` does not exist, so a checker resolving
+  // against the caller must fail to find it; one resolving against ROOT would happily lint 37 gates.
+  const sub = spawnSync(process.execPath, [CHECKER, '--lint', '--file', 'GATES.md'], {
+    cwd: join(ROOT, 'apps', 'worker'), encoding: 'utf8',
+  });
+  const out = `${sub.stdout}${sub.stderr}`;
+  assert.doesNotMatch(out, /37 gates/, 'it read the repository ledger from a directory that has none');
+  assert.notEqual(sub.status, 0);
+
+  // POSITIVE CONTROL: the same invocation from the root does find the real ledger.
+  const atRoot = spawnSync(process.execPath, [CHECKER, '--lint', '--file', 'GATES.md'], { cwd: ROOT, encoding: 'utf8' });
+  assert.match(`${atRoot.stdout}${atRoot.stderr}`, /LEDGER WELL-FORMED/);
+});
+
+test('a cwd that is not a git repository at all is refused, not guessed at', () => {
+  // The same-tree guard compared two git toplevels and returned silently when the caller's was
+  // null — which is precisely the scratch-directory case that did the damage. "I cannot tell which
+  // tree you mean" is a reason to stop, not a reason to proceed.
+  const scratch = mkdtempSync(join(tmpdir(), 'gate-check-norepo-'));
+  try {
+    const r = spawnSync(process.execPath, [CHECKER, '--status', join(ROOT, 'GATES.md')], { cwd: scratch, encoding: 'utf8' });
+    assert.equal(r.status, 2, `${r.stdout}${r.stderr}`);
+    assert.match(r.stderr, /is not a git repository/);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('--reverify leaves a stationed heading byte-identical', () => {
+  // THE FIXED POINT. Heading rewrites took `title` from the parse at RUN START while taking
+  // `station` and `headLine` from a re-read at WRITE time. A long run that straddled an edit to the
+  // ledger assembled one heading out of both parses and wrote a line that had never existed in
+  // either: `G1 [S7]: [S7] a stationed gate`. The inverse race drops the station INTO the title,
+  // where it parses as ordinary words and the gate silently belongs to no station at all.
+  //
+  // Both happened to this repository's ledger in a single pass. A fixed-point test is the cheapest
+  // thing that would have caught either.
+  const head = '- [x] G1 [S7]: a stationed gate';
+  const r = check(`${head}\n    CHECK: echo hi\n    EXPECT: hi\n${falsified}`, ['--reverify']);
+  const written = r.ledger().split('\n').find((l) => l.startsWith('- ['));
+  assert.equal(written, head, 'a reverify that changes nothing must rewrite the heading unchanged');
+});
