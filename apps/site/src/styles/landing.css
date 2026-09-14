@@ -1,25 +1,28 @@
 /* ==========================================================================
    APPLE — landing surface.
 
-   One viewport. No scroll. The whole proposition held in a single frame,
-   CENTRED — the composition is symmetrical about the vertical axis, from the
-   eyebrow down to the peak of the stage behind it.
+   Blue-black ground, a blue→violet accent ramp, and display type set in Archivo
+   at font-stretch:118%. Owner-supplied direction; the exact values and the
+   artifact they came from are quoted in docs/DECISIONS.md (ADR-020).
 
-   The material is warm-neutral charcoal, never blue-black. Large matte planes
-   form a prism rising from the bottom centre; a single warm amber glow sits
-   behind its peak; long thin diagonals sweep the upper corners. The amber
-   appears exactly twice on the whole page: the dash before the eyebrow, and
-   that glow. Nothing else emits.
+   THE STRETCH AXIS IS LOAD-BEARING. Archivo is a variable font with a width
+   axis, and every display line here sets 118%. At the default 100% the same
+   markup reads as an ordinary grotesque and the design is simply gone. If the
+   webfont fails to load, the fallback stack cannot honour the axis — which is
+   why the fallback is a condensed system face rather than a neutral one, so the
+   unstyled frame is at least the right shape.
 
-   Deliberately dark-committed. This surface is a designed image rather than a
-   reading environment, so it does not follow the theme toggle; docs, pricing
-   and the app all still do.
+   SUPERSEDED: "one viewport, no scroll". This surface used to hold the whole
+   proposition in a single frame, with how-it-works and pricing deliberately
+   moved off it onto real routes. The owner's design brings them back as
+   sections. docs/DESIGN-SPEC.md §0–§1 is updated to match; if you are reading
+   this because the two disagree, this file and the ADR are the current ones.
 
-   This file is the ENTIRE stylesheet for the root route. It does not import
-   global.css. Keep it that way — the landing's payload discipline depends on
-   it.
-
-   See docs/DESIGN-SPEC.md §0 and §1. That document is the source of truth.
+   STILL TRUE, and worth keeping: this is the ENTIRE stylesheet for the root
+   route. It does not import global.css, and the route ships zero JavaScript.
+   Every animation here is CSS, every layout is intrinsic, and the one-request
+   font load is in Landing.astro. The payload discipline is the reason the page
+   is fast on a phone on a bad connection, which is most of who sees it.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -27,58 +30,65 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  /* --- material ---------------------------------------------------------
-     Sampled from the product mark (apps/site/public/brand/apple-mark-3d.png): the
-     chromatic, bright pixels of its glow sweep from 180deg cyan through a dominant
-     210-220deg azure to ~265deg violet, on a body that is ~70% near-black gloss. The
-     ground carries a blue cast for the same reason the mark does — pure #000 makes the
-     mark's own black read grey beside it.
+  /* --- ground and surfaces --------------------------------------------- */
+  --ground: #080a0f; /* page base */
+  --ground-deep: #0a0c13; /* the deepest inset, rails */
+  --surface: #10131c; /* every card face */
 
-     Every ratio below is computed against --ground (WCAG 2.1 relative luminance), not
-     estimated. The previous warm palette (#0b0a09 ground, #c98a3c amber) belonged to
-     Golem and is gone; do not reintroduce warm tones here. */
-  --ground: #07080f; /* page base */
-  --surface: #0e1018; /* raised card face */
-  --surface-2: #151826; /* second raise, chips */
+  /* --- ink -------------------------------------------------------------
+     Ratios are against --ground unless noted, computed rather than guessed;
+     the landing e2e measures every text node against what is actually behind
+     it, so a tone that only passes on the ground is not good enough for type
+     sitting on --surface. */
+  --ink: #f3f5f9; /* 16.8:1 — body and card titles */
+  --ink-bright: #ffffff; /* 18.4:1 — the hero's first line only */
+  --ink-2: #b9c0cf; /* 9.4:1 — card body copy */
+  --muted: #8d95a8; /* 5.9:1 — section copy, all mono metadata */
+  --on-gradient: #cfe0f7; /* the hero sub, over the blue backdrop */
 
-  --ink: #eaf0ff; /* 17.5:1 — primary type, headline line 1 */
-  --ink-warm: #94a3c4; /* 7.9:1 — headline line 2, secondary. Cool now, not warm. */
-  --muted: #94a3c4; /* 7.9:1 — body copy */
+  /* --- the accent ramp -------------------------------------------------- */
+  --cyan: #38b6ff;
+  --blue: #2f7dff;
+  --blue-soft: #6fa8ff; /* links, eyebrows, step numerals — 8.2:1 on --ground */
 
-  /* The floor. Every use of --faint on this page is 12-13px type, which has to clear 4.5:1 —
-     so this is the dimmest tone allowed to carry text anywhere. Derived against the LIGHTEST
-     surface, not the ground: the first value cleared --ground at 4.73:1 and still failed a
-     raised card at 4.49:1. Worst case is now 4.61:1. If it ever goes lower, the type has to
-     get bigger first. */
-  --faint: #7582a4;
+  /* THE DESIGN'S RAMP, DARKENED, BECAUSE THIS ONE CARRIES WHITE TEXT.
+     The artifact fills its primary button with #38b6ff → #2f7dff → #8b5cf6 and
+     labels it in white. Measured against white those stops are 2.26:1, 3.82:1
+     and 4.23:1 — every one of them under the 4.5:1 a 14px label needs, and the
+     brightest barely half of it. It looks completely fine, which is why the
+     rendered-pixel audit in tests/e2e/landing.spec.ts is what caught it and no
+     palette table would have.
 
-  --line: rgba(148, 163, 196, 0.16); /* hairline */
-  --line-2: rgba(148, 163, 196, 0.32); /* readable border */
+     Same hue path, same 135° sweep, shifted dark enough to carry a label: the
+     worst point of this interpolation measures 5.16:1. The bright stops above
+     stay as marks and fills — the eyebrow dot, the list bullets, the focus ring
+     — where nothing sits on top of them. The design's violet has no token of
+     its own: it appears only as a tuned end stop inside two gradients, and a
+     token nothing references is a decision nobody made. */
+  --btn-grad: linear-gradient(135deg, #2563eb, #7c3aed);
 
-  --cream: #eaf0ff; /* primary CTA fill */
-  --cream-ink: #07080f; /* type on the CTA */
+  /* --- lines ------------------------------------------------------------ */
+  --line: rgba(255, 255, 255, 0.055); /* section seams */
+  --line-2: rgba(255, 255, 255, 0.085); /* card borders */
+  --line-3: rgba(255, 255, 255, 0.13); /* interactive borders */
 
-  --amber: #0080f0; /* the single accent — azure, the mark's peak hue (5.09:1) */
+  /* --- type ------------------------------------------------------------- */
+  --font-display: 'Archivo', 'Arial Narrow', 'Helvetica Neue Condensed', sans-serif;
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --stretch: 118%;
 
-  /* --- type -------------------------------------------------------------
-     A tight grotesque at 600, not a serif. The earlier Fraunces display
-     treatment is superseded. Mono is the platform's own — nothing on this
-     page justifies a third webfont request. */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
-    'Liberation Mono', monospace;
-
-  /* --- geometry --------------------------------------------------------- */
-  --gutter: clamp(1.25rem, 4.5vw, 4rem);
-
-  /* --- motion ----------------------------------------------------------- */
+  /* --- rhythm ----------------------------------------------------------- */
+  --gutter: clamp(1.1rem, 4vw, 1.6rem);
+  --r-sm: 9px;
+  --r-md: 14px;
+  --r-lg: 18px;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-fast: 140ms;
+  --dur: 220ms;
 }
 
 /* --------------------------------------------------------------------------
-   2. Reset — only what this page actually uses
+   2. Reset and base
    -------------------------------------------------------------------------- */
 
 *,
@@ -88,644 +98,960 @@
 }
 
 html {
+  /* The nav scrolls to sections on the same page, and a sticky header would
+     otherwise cover the heading it just scrolled to. */
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
   -webkit-text-size-adjust: 100%;
 }
 
-body,
-h1,
-h2,
-p {
+body {
   margin: 0;
-  padding: 0;
-}
-
-img,
-svg {
-  display: block;
-  max-width: 100%;
-}
-
-/* --------------------------------------------------------------------------
-   3. Page frame
-   -------------------------------------------------------------------------- */
-
-html,
-body {
-  height: 100%;
-}
-
-body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 16px;
-  line-height: 1.55;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-synthesis-weight: none;
+  /* Nothing on this page may scroll sideways at any width. The e2e asserts it
+     at three viewports; this is the belt, and every `min-width: 0` below is the
+     braces. A single unbreakable string in a card is all it takes. */
+  overflow-x: hidden;
 }
 
-/* Three rows at exactly one viewport tall. The middle row is the only one that
-   flexes, so the hero sits optically centred and the strip is pinned to the
-   bottom edge without any overflow trickery.
-
-   min-height rather than height, and no overflow clipping, so a reader who
-   enlarges text to 200% gets a page that grows and scrolls normally instead of
-   having its content cut off. The one-screen promise is a design target at
-   supported sizes, not a cage. */
-.frame {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  min-height: 100dvh;
-  isolation: isolate;
+::selection {
+  background: rgba(47, 125, 255, 0.32);
 }
 
-/*[[ SAFE AREAS, because 100dvh is not the same as 100dvh you can SEE.
- *
- *   Measured at 375x812: the page is exactly one viewport, overflow 0, and all three
- *   strip cells report their bottom at 812 — so it fits, on paper. On a phone with a
- *   home indicator the bottom ~34px is reserved, and "fits exactly" means the last
- *   line of the last cell sits underneath it. The same applies at the top on a
- *   notched device, where the nav would run under the status bar.
- *
- *   The insets are added to the two rows that touch the edges rather than to .frame,
- *   so the hero (the 1fr row) absorbs the difference and the page stays one screen.
- *   env() resolves to 0 where there is no inset, so nothing changes on a desktop or
- *   on a phone without one. ]] */
-.nav {
-  padding-top: max(clamp(0.7rem, 2.6vh, 1.9rem), env(safe-area-inset-top));
-}
-
-.strip {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* The horizontal insets must never shrink the gutter, only grow past it. Written as
-   max() against --gutter because a bare env() here would override the shorthand above
-   and collapse the nav's side padding to zero on every device without an inset —
-   which is every desktop. */
-.nav {
-  padding-inline-start: max(var(--gutter), env(safe-area-inset-left));
-  padding-inline-end: max(var(--gutter), env(safe-area-inset-right));
-}
-
-.strip__cell {
-  padding-inline-start: max(var(--gutter), env(safe-area-inset-left));
-  padding-inline-end: max(var(--gutter), env(safe-area-inset-right));
-}
-
-/* --------------------------------------------------------------------------
-   4. The stage — a prism rising from bottom centre
-   -------------------------------------------------------------------------- */
-
-/* Everything here is decorative and non-interactive: CSS planes, one inline
-   SVG line drawing, one noise tile. No images, no canvas, no 3D, no script. */
-.stage {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-/* The warm glow. Drawn after the far ridge and before the near facets —
-   painted first it is simply invisible, because the ridge is opaque and covers
-   everything below 60vh.
-
-   WHERE THE LIGHT IS ALLOWED TO LAND is the whole design of this element, and
-   it is decided by two fixed obstacles:
-
-   1. Type. At 1366x768 the CTA micro-line occupies 76.2–78.6vh and the summit
-      is at 78.0vh — they OVERLAP. There is no gap to thread. So a bloom bright
-      enough to see directly above the summit is, at that size, a bloom sitting
-      on 12px type, and the contrast audit fails.
-   2. The near facets. They are painted after this element and span 78→100vh at
-      up to 26vw of half-width, so anything centred behind them is simply not
-      on screen.
-
-   Sinking the core to 94vh — the previous attempt at (1) — put it squarely
-   inside (2): at 94vh the facets are 18.9vw wide and swallowed the core whole.
-   Measured, that glow moved the brightest pixel on the page by ZERO and the
-   centre column by at most 3/765. It was not a dim glow, it was no glow.
-
-   So the light rises from BELOW the frame and spills around the mountain's
-   shoulders — the flanks, in the 79–91vh band that carries no type at any
-   supported size. The peak silhouettes against it, which is the read the spec
-   asks for, and the summit itself stays dark because that is the one place the
-   type cannot afford it. If you lift the centre or widen the vertical radius,
-   the laptop micro-line is the number that breaks first. */
-.stage__glow {
-  position: absolute;
-  left: 50%;
-  /* Core below the fold: the visible gradient is its upper flank. */
-  bottom: -3vh;
-  transform: translate(-50%, 50%);
-  width: min(1620px, 112vw);
-  height: min(700px, 60vh);
-  background: radial-gradient(
-    50% 50% at 50% 50%,
-    rgba(0, 128, 240, 0.30) 0%,
-    rgba(43, 91, 240, 0.16) 34%,
-    rgba(123, 77, 240, 0.06) 60%,
-    transparent 80%
-  );
-}
-
-/* The planes. A broad ridge set back and off-centre for mass, then the near
-   prism split into a lit left facet and a shadowed right one. The seam where
-   those two meet is the crest, and it lands directly under the CTA row. */
-.prism {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-}
-
-.prism--far {
-  width: 128vw;
-  height: 40vh;
-  /* Kept dark at its own summit: the glow is composited on top of this plane,
-     so a lighter ridge here shows up directly as lost contrast on the type
-     standing in front of it. */
-  background: linear-gradient(172deg, #0e1018 0%, #0a0c14 100%);
-  /* Apex off-centre so the far ridge and the near peak read as two separate
-     masses rather than one symmetrical arrow. */
-  clip-path: polygon(38% 0, 100% 100%, 0 100%);
-  filter: drop-shadow(0 -1px 0 rgba(245, 242, 236, 0.05));
-}
-
-/* Both near facets share a box, so their apexes land on exactly the same pixel
-   and the crest is a single clean line rather than a notch. Narrow enough that
-   the slope reads as a prism and not as a horizon. */
-.prism--left,
-.prism--right {
-  width: 52vw;
-  height: 22vh;
-}
-
-/* Both facets stay darker than the light behind them, so the summit reads as a
-   silhouette. The left one still catches enough to separate the two planes. */
-.prism--left {
-  background: linear-gradient(198deg, #151826 0%, #0e1018 100%);
-  clip-path: polygon(50% 0, 50% 100%, 0 100%);
-  /* Lights the clipped edge — i.e. the crest — without a second element. */
-  filter: drop-shadow(1px 0 0 rgba(245, 242, 236, 0.11));
-}
-
-.prism--right {
-  background: linear-gradient(162deg, #0a0c14 0%, #06070d 100%);
-  clip-path: polygon(50% 0, 100% 100%, 50% 100%);
-}
-
-/* Long thin diagonals sweeping the upper corners. They live in the outer
-   sixths and stop well short of the headline. */
-.stage__rules {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* Fine material grain. Kept very low so it is felt, not seen. */
-.stage__grain {
-  position: absolute;
-  inset: -50%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
-  opacity: 0.035;
-  mix-blend-mode: overlay;
-}
-
-/* --------------------------------------------------------------------------
-   5. Navigation
-   -------------------------------------------------------------------------- */
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: clamp(1rem, 3vw, 2.25rem);
-  padding: clamp(0.7rem, 2.6vh, 1.9rem) var(--gutter);
-  border-bottom: 1px solid var(--line);
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.62rem;
-  color: var(--ink);
+a {
+  color: var(--blue-soft);
   text-decoration: none;
-  font-weight: 600;
-  font-size: 1.02rem;
-  letter-spacing: -0.02em;
 }
 
-.nav__links {
+a:hover {
+  text-decoration: underline;
+}
+
+/* One visible focus treatment for everything focusable. The e2e tabs through
+   the page and asserts a ring appears; :focus-visible keeps it off mouse
+   clicks without keeping it off keyboards. */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   3. Type
+   -------------------------------------------------------------------------- */
+
+.ap-display {
+  font-family: var(--font-display);
+  font-stretch: var(--stretch);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.ap-eyebrow {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 2.2vw, 1.85rem);
-  margin-inline-start: auto;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--blue-soft);
 }
 
-.nav__links a {
+/* A CHILD ELEMENT, NOT `::before`. The dot is the brightest thing inside the
+   eyebrow's box, and the contrast audit samples the brightest backdrop pixel
+   under a text element — so as a pseudo-element it was measured as the surface
+   the words sit on, reporting 1.59:1 on type that is really 8.22:1. Pseudo
+   elements have no box in the DOM and cannot be excluded from the sample; a
+   child span can, and is. The same reasoning applies to every decorative mark
+   that shares a box with text. */
+.ap-eyebrow__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blue);
+  flex: none;
+}
+
+.ap-lede {
+  margin: 0 0 2rem;
+  max-width: 62ch;
+  font-size: 1rem;
+  line-height: 1.65;
   color: var(--muted);
-  text-decoration: none;
-  font-size: 0.94rem;
-  /* 44px of hit area without 44px of visual weight. */
-  padding: 0.65rem 0;
-  transition: color var(--dur-fast) var(--ease);
+  text-wrap: pretty;
 }
 
-.nav__links a:hover {
-  color: var(--ink);
+.ap-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --------------------------------------------------------------------------
-   6. Buttons
+   4. Header
    -------------------------------------------------------------------------- */
 
-.btn {
+.ap-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 0.8rem var(--gutter);
+  border-bottom: 1px solid var(--line);
+  background: rgba(8, 10, 15, 0.84);
+  backdrop-filter: blur(14px);
+}
+
+.ap-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: none;
+  font-family: var(--font-display);
+  font-stretch: var(--stretch);
+  font-weight: 800;
+  font-size: 1.06rem;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.ap-wordmark:hover {
+  text-decoration: none;
+}
+
+.ap-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-left: 1.1rem;
+  font-size: 0.87rem;
+  font-weight: 500;
+  /* The nav is the first thing to run out of room. It wraps rather than
+     pushing the CTA off the edge. */
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ap-nav a {
+  color: var(--muted);
+}
+
+.ap-nav a:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.ap-header__end {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-left: auto;
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. Buttons
+   -------------------------------------------------------------------------- */
+
+.ap-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 44px;
-  padding: 0 1.15rem;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  font-size: 0.92rem;
-  font-weight: 550;
-  letter-spacing: -0.005em;
-  text-decoration: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background-color var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease),
-    color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
-}
-
-.btn--cream {
-  background: var(--cream);
-  color: var(--cream-ink);
-}
-
-.btn--cream:hover {
-  background: #f2ecdf;
-}
-
-.btn--outline {
-  color: var(--ink);
-  border-color: var(--line-2);
+  padding: 0.62rem 1.05rem;
+  border: 1px solid var(--line-3);
+  border-radius: var(--r-sm);
   background: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
-.btn--outline:hover {
-  border-color: rgba(245, 242, 236, 0.28);
-  background: rgba(245, 242, 236, 0.04);
+.ap-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--line-3);
+  text-decoration: none;
 }
 
-.btn:active {
-  transform: translateY(0.5px);
+.ap-btn--primary {
+  border-color: transparent;
+  background: var(--btn-grad);
+  color: #fff;
+  font-weight: 700;
 }
 
-/* The two hero calls to action are taller and set a shade larger. */
-.btn--lg {
-  min-height: 52px;
-  padding: 0 1.5rem;
-  font-size: 0.98rem;
+.ap-btn--primary:hover {
+  /* Brightness UP on a fill that only just clears its contrast floor walks it
+     back down. 1.08 took the worst point of the ramp from 5.16:1 to roughly
+     4.4:1 — a hover state that fails the check the resting state passes. Lift
+     the border instead and leave the fill where it was measured. */
+  background: var(--btn-grad);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
 }
 
-.btn__arrow {
-  flex: none;
-  opacity: 0.85;
+.ap-btn--lg {
+  padding: 0.78rem 1.3rem;
+  font-size: 0.95rem;
+}
+
+.ap-btn--sm {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
 }
 
 /* --------------------------------------------------------------------------
-   7. Hero — centred
+   6. Hero
    -------------------------------------------------------------------------- */
 
-.hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: clamp(1rem, 3vh, 2.5rem) var(--gutter);
+.ap-hero {
+  position: relative;
+  padding: 5rem var(--gutter) 4.5rem;
+  overflow: hidden;
+  background: radial-gradient(
+    ellipse 120% 90% at 50% -10%,
+    #1f5fd0 0%,
+    #123a8a 34%,
+    #0b1733 62%,
+    var(--ground) 88%
+  );
 }
 
-/* An amber dash, a gap, then the line in mono caps. Centred as a unit. */
-.eyebrow {
+.ap-hero__inner {
+  max-width: 62rem;
+  margin: 0 auto;
+}
+
+.ap-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.85rem;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.eyebrow__dash {
-  width: 28px;
-  height: 1.5px;
-  background: var(--amber);
-  border-radius: 1px;
-}
-
-.title {
-  margin-top: clamp(0.9rem, 2.4vh, 1.6rem);
-  /* Capped against the viewport HEIGHT as well as its width: at 768px tall the
-     width-derived size would push the strip off the bottom edge. */
-  font-size: clamp(3rem, min(7.5vw, 12vh), 6.5rem);
+  gap: 0.5rem;
+  height: 34px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line-3);
+  border-radius: 999px;
+  background: rgba(10, 14, 26, 0.55);
+  backdrop-filter: blur(8px);
+  color: #eaf2ff;
+  font-size: 0.82rem;
   font-weight: 600;
-  line-height: 0.98;
-  letter-spacing: -0.035em;
-  color: var(--ink);
-  text-wrap: balance;
 }
 
-/* Line two steps into the warm secondary so the pair reads as a statement and
-   its consequence rather than one shouted phrase. */
-.title em {
+.ap-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  flex: none;
+}
+
+.ap-hero h1 {
+  margin: 1.5rem 0 0;
+  font-size: clamp(2.5rem, 7vw, 4.7rem);
+  line-height: 0.92;
+}
+
+.ap-hero__l1 {
   display: block;
-  font-style: normal;
-  color: var(--ink-warm);
+  color: var(--ink-bright);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.3);
 }
 
-.lede {
-  max-width: 52ch;
-  margin-top: clamp(1rem, 2.6vh, 1.75rem);
-  color: var(--muted);
-  font-size: clamp(1rem, 1.05vw, 1.13rem);
-  line-height: 1.6;
+/* Line two is a gradient-clipped phrase. `color: transparent` with a clipped
+   background has no fallback if the clip is unsupported, so the colour is set
+   first and the clip layered over it — an unsupporting browser gets readable
+   pale-blue type rather than an invisible headline. */
+.ap-hero__l2 {
+  display: block;
+  color: #c4e8ff;
+  background: linear-gradient(180deg, #f6fcff, #c4e8ff 58%, #e2d8ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .ap-hero__l2 {
+    color: transparent;
+  }
+}
+
+.ap-hero__sub {
+  max-width: 54ch;
+  margin: 1.4rem 0 0;
+  font-size: 1.08rem;
+  line-height: 1.62;
+  color: var(--on-gradient);
   text-wrap: pretty;
 }
 
-.lede strong {
-  color: var(--ink);
+.ap-hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.9rem;
+}
+
+.ap-hero__note {
+  margin: 1.1rem 0 0;
+  font-size: 0.8rem;
+  color: #9fb4d4;
+}
+
+.ap-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 2.2rem;
+}
+
+.ap-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.8rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: rgba(10, 14, 26, 0.55);
+  backdrop-filter: blur(8px);
+  color: #eaf2ff;
+  font-size: 0.83rem;
   font-weight: 500;
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.7rem;
-  margin-top: clamp(1.2rem, 3.2vh, 2.3rem);
-}
-
-.micro {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 0 0.85rem;
-  margin-top: clamp(0.9rem, 2.4vh, 1.6rem);
-  color: var(--faint);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  line-height: 1.5;
-}
-
-/* The middots are punctuation, not claims, but they are still rendered text —
-   so they hold the same passing tone rather than being dimmed decoratively. */
-.micro span {
-  color: inherit;
-}
-
 /* --------------------------------------------------------------------------
-   8. Bottom strip — three cells, hairline dividers
+   7. Sections
    -------------------------------------------------------------------------- */
 
-.strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.ap-section {
+  padding: 4rem var(--gutter) 5rem;
+}
+
+.ap-section--seam {
   border-top: 1px solid var(--line);
 }
 
-.strip__cell {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: start;
-  gap: 0 0.7rem;
-  padding: clamp(0.75rem, 1.9vh, 1.3rem) var(--gutter);
-  min-width: 0;
+.ap-section__inner {
+  max-width: 68rem;
+  margin: 0 auto;
 }
 
-.strip__cell + .strip__cell {
-  border-inline-start: 1px solid var(--line);
-}
-
-.strip__icon {
-  grid-row: 1 / span 2;
-  margin-top: 0.15rem;
-  color: var(--muted);
-  flex: none;
-}
-
-.strip__title {
-  /* An h2 since the cells became a labelled region rather than a footer, and it needs
-     nothing added for that: the reset at the top of this file already zeroes heading
-     margins, and measurement at 375x812 confirms the page stays exactly one viewport
-     either way — the hero is the 1fr row and absorbs the difference. */
-  color: var(--ink);
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: -0.012em;
-  line-height: 1.3;
-}
-
-.strip__sub {
-  color: var(--faint);
-  font-size: 0.79rem;
-  line-height: 1.4;
+.ap-section h2 {
+  margin: 0 0 0.7rem;
+  font-size: clamp(1.8rem, 3.6vw, 2.7rem);
+  line-height: 0.98;
+  max-width: 24ch;
 }
 
 /* --------------------------------------------------------------------------
-   9. Accessibility
+   8. Cards
+   -------------------------------------------------------------------------- */
+
+.ap-grid {
+  display: grid;
+  gap: 1rem;
+  /* auto-fit with a min that is comfortably under a phone's width, so a row
+     collapses to one column rather than forcing the page sideways. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  align-items: stretch;
+}
+
+.ap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.35rem 1.4rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.ap-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.ap-card__body {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.ap-card__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ap-list {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+.ap-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+/* See .ap-eyebrow__dot: a child, so the audit can exclude it. */
+.ap-list__dot {
+  width: 5px;
+  height: 5px;
+  margin-top: 0.42em;
+  border-radius: 50%;
+  background: var(--blue);
+  flex: none;
+  align-self: flex-start;
+}
+
+/* --------------------------------------------------------------------------
+   9. Steps
+   -------------------------------------------------------------------------- */
+
+.ap-step__n {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--blue-soft);
+  letter-spacing: 0.04em;
+}
+
+/* --------------------------------------------------------------------------
+   10. Model / plan cards
+   -------------------------------------------------------------------------- */
+
+.ap-model__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.ap-model__name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-stretch: var(--stretch);
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.022em;
+  color: var(--ink);
+}
+
+.ap-tag {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ap-price {
+  margin: 0.2rem 0 0.1rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.ap-price__n {
+  font-family: var(--font-display);
+  font-stretch: var(--stretch);
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ap-price__per {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.ap-card--featured {
+  border-color: rgba(47, 125, 255, 0.55);
+}
+
+.ap-pill {
+  display: inline-block;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(47, 125, 255, 0.16);
+  color: var(--blue-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ap-card__action {
+  margin-top: auto;
+  padding-top: 0.9rem;
+}
+
+.ap-card__action .ap-btn {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   11. Footer
+   -------------------------------------------------------------------------- */
+
+.ap-footer {
+  padding: 2.6rem var(--gutter) 3rem;
+  border-top: 1px solid var(--line);
+}
+
+.ap-footer__inner {
+  max-width: 68rem;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.ap-footer__note {
+  margin: 1.2rem 0 0;
+  width: 100%;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------------------
+   12. Motion
+   -------------------------------------------------------------------------- */
+
+@keyframes ap-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrance only, and from a VISIBLE resting state: the animation runs on load
+   rather than on scroll, so nothing is ever parked at opacity 0 waiting for an
+   observer that may never fire. A thumbnail, a shared link and a reader with
+   scripting off all get the finished page. */
+.ap-in {
+  animation: ap-rise 620ms var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Not `animation: none` on a `both`-filled entrance — that would leave the
+     element at its from-state, invisible. The animation is collapsed to an
+     instant instead, so the finished frame is what renders. */
+  .ap-in {
+    animation-duration: 1ms;
+    animation-delay: 0ms !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   13. Skip link
+
+   Off-screen until focused, then a real button at the top-left. Not
+   `display:none` — that would take it out of the tab order entirely, which is
+   the one thing it exists to be in.
    -------------------------------------------------------------------------- */
 
 .skip-link {
   position: absolute;
   left: -9999px;
   top: 0;
-  z-index: 50;
-  padding: 0.7rem 1.1rem;
-  background: var(--cream);
-  color: var(--cream-ink);
-  border-radius: 0 0 10px 0;
-  font-size: 0.9rem;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  border-radius: 0 0 var(--r-sm) 0;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
 }
 
 .skip-link:focus {
-  inset-inline-start: 0;
-}
-
-/* One visible focus treatment for every interactive element. Never removed. */
-a:focus-visible {
-  outline: 2px solid var(--amber);
-  outline-offset: 3px;
-  border-radius: 6px;
+  left: 0;
+  text-decoration: none;
 }
 
 /* --------------------------------------------------------------------------
-   10. Entrance — one settle, then still
+   14. The example run
+
+   A STILL FRAME OF A REAL RUN, drawn in markup. The design this came from
+   animated it — a composer that typed, streamed steps, and ticked a credit
+   counter. That would be the only JavaScript on the route, and the route's
+   whole payload argument is that it has none, so the panel is rendered at its
+   finished state instead: every step already resolved, the reply already
+   written, the diff already counted.
+
+   It is labelled "Example" in visible copy and in its accessible name, because
+   a panel showing object counts and a place name that a reader could mistake
+   for their own data is a lie told in layout.
    -------------------------------------------------------------------------- */
 
-@media (prefers-reduced-motion: no-preference) {
-  .reveal {
-    animation: settle 620ms var(--ease) both;
-  }
+.ap-demo {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+  /* The transcript wants the room; the place-state rail is fixed-ish. Below
+     the breakpoint they stack, transcript first. */
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  align-items: start;
+}
 
-  .reveal-1 {
-    animation-delay: 40ms;
+@media (max-width: 860px) {
+  .ap-demo {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .reveal-2 {
-    animation-delay: 110ms;
-  }
-  .reveal-3 {
-    animation-delay: 180ms;
-  }
-  .reveal-4 {
-    animation-delay: 250ms;
-  }
-  .reveal-5 {
-    animation-delay: 320ms;
-  }
+}
 
-  @keyframes settle {
-    from {
-      opacity: 0;
-      transform: translateY(9px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
+.ap-panel {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ap-panel__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.95rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--ground-deep);
+}
+
+.ap-panel__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.ap-panel__sub {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ap-panel__end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ap-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.ap-live__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #35d07f;
+  flex: none;
+}
+
+.ap-panel__body {
+  padding: 1rem 0.95rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* The person's message: a right-aligned bubble that stops well short of the
+   full width, so the exchange reads as an exchange. */
+.ap-said {
+  align-self: flex-end;
+  max-width: min(100%, 32rem);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--r-md) var(--r-md) 4px var(--r-md);
+  background: rgba(47, 125, 255, 0.14);
+  border: 1px solid rgba(47, 125, 255, 0.28);
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.ap-said__time {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* Each step: a check, what it did, and what it touched. The rail down the left
+   is a border on the list, not a pseudo-element per row — one line that stays
+   continuous however the rows wrap. */
+.ap-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 1rem;
+  border-left: 1px solid var(--line-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.ap-steps li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  min-width: 0;
+}
+
+.ap-steps__tick {
+  color: #35d07f;
+  font-size: 0.8rem;
+  flex: none;
+}
+
+.ap-steps__what {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ap-steps__got {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ap-reply {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.ap-panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.95rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  color: var(--muted);
+}
+
+/* The place-state rail. */
+.ap-place {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.ap-place__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.ap-place__row:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ap-place__val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.ap-place__was {
+  color: var(--muted);
 }
 
 /* --------------------------------------------------------------------------
-   11. Responsive — reflow, never clip
+   15. Footer nav
    -------------------------------------------------------------------------- */
 
-/* Narrow desktop / tablet landscape: the nav sheds its middle links. They stay
-   reachable from the docs nav on every other route. */
-@media (max-width: 900px) {
-  .nav__links {
+.ap-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin-left: auto;
+  font-size: 0.86rem;
+}
+
+.ap-footer__nav a {
+  color: var(--muted);
+}
+
+.ap-footer__nav a:hover {
+  color: var(--ink);
+}
+
+.ap-after {
+  margin: 1.4rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------------------------
+   16. Inline code, and the hero's entrance stagger
+   -------------------------------------------------------------------------- */
+
+/* Paths and file names inside prose. `overflow-wrap: anywhere` because
+   `PortalTeleport.server.luau` has no break opportunity a browser will take on
+   its own, and one unbreakable token is all it takes to push the page
+   sideways at 390px. */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  color: var(--blue-soft);
+  overflow-wrap: anywhere;
+}
+
+/* Rise in order rather than all at once. Delays only — the animation itself is
+   defined once — and the reduced-motion block above zeroes every one of them
+   with `!important`, so this cannot reintroduce motion for someone who asked
+   for none. */
+.ap-hero__inner > .ap-in:nth-child(1) { animation-delay: 0ms; }
+.ap-hero__inner > .ap-in:nth-child(2) { animation-delay: 60ms; }
+.ap-hero__inner > .ap-in:nth-child(3) { animation-delay: 120ms; }
+.ap-hero__inner > .ap-in:nth-child(4) { animation-delay: 180ms; }
+.ap-hero__inner > .ap-in:nth-child(5) { animation-delay: 240ms; }
+.ap-hero__inner > .ap-in:nth-child(6) { animation-delay: 300ms; }
+
+/* --------------------------------------------------------------------------
+   17. Narrow screens
+
+   LAST IN THE FILE ON PURPOSE. This block sat next to the header rules it
+   overrides, which read better and did not work: `.ap-sign-in { display:none }`
+   and `.ap-btn { display:inline-flex }` have identical specificity, so the base
+   rule three sections further down simply won, and the same went for the hero's
+   padding and headline size against their own shorthands in §6. Three of the
+   six rules here were dead and the page looked almost right, which is the worst
+   way for a stylesheet to be wrong.
+
+   Everything that narrows the page lives here, after every base rule, so
+   "later wins" is working for these rules rather than against them.
+   -------------------------------------------------------------------------- */
+
+/* THE NARROW HEADER IS A DIFFERENT LAYOUT, not the same one squeezed.
+   Left to wrap on its own, this header grew to 253px tall at 390px wide — five
+   nav links each taking a row — and pushed the hero's own buttons below the
+   fold on a phone. Measured, not guessed: the header is 63px on a desktop and
+   was four times that on the device most people will actually open this on.
+
+   So below 760px it becomes two rows: identity and the one call to action on
+   the first, the section nav on the second as a single row that scrolls
+   sideways INSIDE ITSELF. That last part is the whole trick — `overflow-x` on
+   the nav means the links keep going past the right edge without the document
+   ever gaining a horizontal scrollbar, which is a promise asserted separately
+   at seven viewport widths.
+
+   Nothing is removed from the document. The links stay in the DOM and in the
+   tab order at every width, because a nav that exists only above a breakpoint
+   is a nav that is missing for whoever is below it. */
+@media (max-width: 760px) {
+  .ap-header {
+    flex-wrap: wrap;
+    gap: 0.55rem 0.8rem;
+    padding: 0.7rem var(--gutter) 0.5rem;
+  }
+
+  .ap-nav {
+    order: 3;
+    flex: 1 0 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 1.05rem;
+    /* The scrollbar itself would be a 15px band of chrome under a 20px row. */
+    scrollbar-width: none;
+  }
+
+  .ap-nav::-webkit-scrollbar {
     display: none;
   }
 
-  .nav__cta {
-    margin-inline-start: auto;
-  }
-}
-
-/* Portrait: the strip stacks, and its dividers turn horizontal. */
-@media (max-width: 720px) {
-  .lede {
-    font-size: 0.98rem;
+  .ap-nav a {
+    white-space: nowrap;
   }
 
-  .actions {
-    flex-direction: column;
-    align-self: stretch;
-    gap: 0.6rem;
-  }
-
-  .actions .btn {
-    width: 100%;
-  }
-
-  .strip {
-    grid-template-columns: 1fr;
-  }
-
-  .strip__cell {
-    padding-top: 0.55rem;
-    padding-bottom: 0.55rem;
-  }
-
-  .strip__cell + .strip__cell {
-    border-inline-start: 0;
-    border-top: 1px solid var(--line);
-  }
-
-  /* Portrait rewrites the problem. The strip stacks into three rows and takes
-     the whole 80–100vh band, so the flank window the wide layout paints into
-     does not exist here — every pixel of it is under a 12.6px subtitle. What
-     portrait has instead is clear air between the micro-line (ends 71.9vh) and
-     the strip (starts 80.5vh), with the summit at 82vh, so here the glow sits
-     ABOVE the peak rather than behind its shoulders.
-
-     The alphas are the wide layout's, scaled back: those were raised for a core
-     that is off-screen and half-occluded, and at this size the core is neither. */
-  .stage__glow {
-    bottom: 26vh;
-    width: min(560px, 96vw);
-    height: min(460px, 46vh);
-    opacity: 0.46;
-  }
-
-  /* The prism keeps its slope as the viewport narrows rather than flattening
-     into a horizon line. */
-  .prism--far {
-    width: 150vw;
-    height: 30vh;
-  }
-
-  .prism--left,
-  .prism--right {
-    width: 86vw;
-    height: 18vh;
-  }
-}
-
-/* Short landscape — laptops at 768px tall and phones turned sideways. Tighten
-   the vertical rhythm rather than shrink the type past readability. */
-@media (max-height: 700px) and (min-width: 721px) {
-  .title {
-    font-size: clamp(2.4rem, min(6vw, 13vh), 4.4rem);
-  }
-
-  .lede {
-    font-size: 1rem;
-  }
-
-  .btn--lg {
-    min-height: 46px;
-  }
-}
-
-/* Very short landscape (a phone turned sideways, ~390px tall). Everything that
-   carries the proposition survives — headline, lede, both calls to action —
-   and only the strip's subtitles step aside. */
-@media (max-height: 560px) {
-  .hero {
-    padding-top: 0.8rem;
-    padding-bottom: 0.8rem;
-  }
-
-  .title {
-    font-size: clamp(1.9rem, min(5vw, 14vh), 2.7rem);
-  }
-
-  .lede {
-    font-size: 0.92rem;
-    line-height: 1.5;
-  }
-
-  .btn--lg {
-    min-height: 44px;
-    font-size: 0.92rem;
-  }
-
-  .strip__sub {
+  /* Sign in and Start building both land on /app, and the second is the one
+     worth the width. */
+  .ap-sign-in {
     display: none;
+  }
+
+  .ap-hero {
+    padding-top: 3.25rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .ap-hero h1 {
+    /* 7vw bottoms out at the 2.5rem floor on a phone, which set the headline
+       over five lines and cost 184px. A steeper vw with a lower floor keeps it
+       to four and keeps the buttons on the first screen. */
+    font-size: clamp(2rem, 8.6vw, 4.7rem);
+  }
+
+  .ap-chips {
+    margin-top: 1.6rem;
   }
 }

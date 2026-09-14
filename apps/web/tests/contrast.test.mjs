@@ -130,13 +130,54 @@ test('the docs site clears 4.5:1 in both themes, on every surface', () => {
   }
 });
 
-test('the landing already passed, and still does', () => {
-  // Recorded rather than assumed: the landing is where this ramp was right, and its
-  // --faint is what the app's corrected tertiary ink converged towards.
-  const [faint] = occurrences(LANDING, 'faint');
-  for (const surface of ['ground', 'surface', 'surface-2']) {
-    const [bg] = occurrences(LANDING, surface);
-    const r = contrast(faint, bg);
-    assert.ok(r >= 4.5, `--faint on --${surface} is ${r.toFixed(2)}:1`);
+test('the landing ink ramp clears 4.5:1 on every surface it can sit on', () => {
+  // WAS: a single assertion about --faint on three surfaces, written when the
+  // landing was the one file that had this ramp right. The redesign rebuilt the
+  // stylesheet and --faint, --surface-2 and --accent-grad came out of it — the
+  // dimmest text tier is --muted now, and hairlines are rgba rules rather than a
+  // solid token. This measures the ramp the landing ACTUALLY uses, which is both
+  // more of the page than the old assertion covered and harder to satisfy by
+  // accident.
+  //
+  // It is a token check, and it cannot replace the rendered-pixel audit in
+  // tests/e2e/landing.spec.ts: the hero's type sits on a four-stop gradient that
+  // no pair of hex values describes, and the failure that audit caught — white
+  // on the design's own accent ramp at 2.26:1 — is invisible from here because
+  // the ramp is not a token either page puts text on. Two checks, two different
+  // things.
+  const INK = ['ink', 'ink-bright', 'ink-2', 'muted'];
+  const SURFACES = ['ground', 'ground-deep', 'surface'];
+
+  for (const name of INK) {
+    const [fg] = occurrences(LANDING, name);
+    assert.ok(fg, `the landing declares no --${name}`);
+    for (const surface of SURFACES) {
+      const [bg] = occurrences(LANDING, surface);
+      assert.ok(bg, `the landing declares no --${surface}`);
+      const r = contrast(fg, bg);
+      assert.ok(r >= 4.5, `--${name} on --${surface} is ${r.toFixed(2)}:1, needs 4.5:1`);
+    }
   }
+
+  // And the ramp must descend, or the tiers are four names for one colour.
+  const [ground] = occurrences(LANDING, 'ground');
+  const ratios = INK.map((n) => contrast(occurrences(LANDING, n)[0], ground));
+  const dimmest = Math.min(...ratios);
+  assert.equal(
+    dimmest,
+    ratios[ratios.length - 1],
+    `--muted must be the dimmest tier; ramp on --ground is ${ratios.map((r) => r.toFixed(1)).join(' / ')}`,
+  );
+});
+
+test('the landing declares no colour token it does not use', () => {
+  // --faint, --surface-2, --accent-grad and --violet all survived the redesign as
+  // declarations with no `var()` reading them. Three of the four were harmless;
+  // --faint was not, because a test asserted a contract on it and went on passing
+  // while nothing on the page was governed by it. A token nothing references is a
+  // decision nobody made, and an assertion about one measures nothing.
+  const declared = [...new Set([...LANDING.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]))];
+  assert.ok(declared.length > 15, `only ${declared.length} tokens found — did the selector change?`);
+  const unused = declared.filter((n) => !new RegExp(`var\\(--${n}[,)]`).test(LANDING));
+  assert.deepEqual(unused, [], `landing.css declares tokens nothing reads: ${unused.join(', ')}`);
 });

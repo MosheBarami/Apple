@@ -11,10 +11,27 @@ wins**.
 
 ## 0. Shared identity
 
+> **Rewritten 2026-09-14.** Sections 0 and 1 described a warm charcoal landing
+> with an amber accent, Inter throughout, and one screen that does not scroll.
+> None of that was on the page any more, and two separate changes had left it
+> behind: the warm palette went when Golem became Apple — `landing.css` says so
+> in its own header, *"the previous warm palette (#0b0a09 ground, #c98a3c amber)
+> belonged to Golem and is gone"* — and the single screen went when the owner
+> supplied a five-section design (docs/DECISIONS.md ADR-019, ADR-020).
+>
+> That matters more here than in most files, because of the line six paragraphs
+> up: *"where this document and an older written description disagree, this
+> document wins."* A spec that claims precedence and describes a page nobody can
+> open is worse than no spec — anyone following it faithfully would have undone
+> two decisions on purpose. The transcription of the 2026-08-31 reference images
+> that used to be here is not lost; it is what §3 still forbids, and the parts of
+> it that survived are below.
+
 ### The mark
 
-A **hexagonal outline containing an isometric cube**. Not a monolith, not a
-face, not a character. Geometry only.
+Unchanged, and the one thing that has never moved. A **hexagonal outline
+containing an isometric cube**. Not a monolith, not a face, not a character.
+Geometry only.
 
 - Outer regular hexagon, flat-top orientation, stroked ~1.6px at 32px, never
   filled.
@@ -25,110 +42,201 @@ face, not a character. Geometry only.
 - Stroke inherits the surrounding text colour. There is **no accent fill and no
   animation**. A mark that blinks or reacts is a mascot; the mascot direction
   is cancelled.
-- Used at: 32px beside the wordmark in the landing nav, ~28px in the workspace
-  rail, and ~22px as the assistant avatar in the conversation.
+- Used at: ~26px beside the wordmark in the landing header, ~28px in the
+  workspace rail, ~22px in the landing footer and as the assistant avatar.
 
 ### Palette
 
-Warm-neutral charcoal. Never blue-black.
+**Blue-black. Never warm.** This is the reverse of what this section said for
+two weeks after it stopped being true.
 
 | token | value | use |
 |---|---|---|
-| `--ground` | `#0B0A09` | page base |
-| `--surface` | `#121110` | raised card face |
-| `--surface-2` | `#171614` | second raise, chips |
-| `--ink` | `#F5F2EC` | primary type, headline line 1 |
-| `--ink-warm` | `#C9C0B2` | headline line 2, warm secondary |
-| `--muted` | `#9A938A` | body copy |
-| `--faint` | `#6E6862` | meta, timestamps, disclaimers |
-| `--line` | `rgba(245,242,236,0.08)` | hairline |
-| `--line-2` | `rgba(245,242,236,0.14)` | readable border |
-| `--cream` | `#E6DECF` | primary CTA fill |
-| `--cream-ink` | `#14120F` | type on cream |
-| `--amber` | `#C98A3C` | the single accent |
+| `--ground` | `#080A0F` | page base |
+| `--ground-deep` | `#0A0C13` | panel bars, the deepest inset |
+| `--surface` | `#10131C` | every card face |
+| `--ink` | `#F3F5F9` | body and card titles — 16.8:1 |
+| `--ink-bright` | `#FFFFFF` | the hero's first line only |
+| `--ink-2` | `#B9C0CF` | card body copy — 10.2:1 on `--surface` |
+| `--muted` | `#8D95A8` | section copy, all mono metadata — 5.9:1 |
+| `--cyan` | `#38B6FF` | focus ring |
+| `--blue` | `#2F7DFF` | marks: the eyebrow dot, list bullets |
+| `--blue-soft` | `#6FA8FF` | links, eyebrows, step numerals — 8.2:1 |
+| `--line` | `rgba(255,255,255,0.055)` | section seams |
+| `--line-2` | `rgba(255,255,255,0.085)` | card borders |
+| `--line-3` | `rgba(255,255,255,0.13)` | interactive borders |
+| `--btn-grad` | `linear-gradient(135deg,#2563EB,#7C3AED)` | any fill under white type |
 
-The amber appears **twice on the whole landing**: as the short dash before the
-eyebrow, and as a very low-alpha glow rising from bottom centre. Nothing else
-emits.
+**The two gradients are different on purpose, and this is the part worth
+reading.** The supplied design fills its primary button with its bright accent
+ramp — `#38B6FF → #2F7DFF → #8B5CF6` — and labels it in white. Those stops
+measure 2.26:1, 3.82:1 and 4.23:1 against white; a 14px label needs 4.5:1. It
+looks completely fine. `--btn-grad` is the same hue path and the same 135°
+sweep, shifted dark enough that the worst point of the interpolation measures
+5.16:1. So: the bright ramp for marks and fills nothing sits on top of,
+`--btn-grad` the moment type lands on it.
+
+This was caught by the rendered-pixel audit in `tests/e2e/landing.spec.ts`,
+which screenshots the page with every glyph made transparent and measures each
+text box against the brightest pixel actually behind it. No palette table would
+have found it, because the ramp is not a token anything declares text on.
 
 ### Type
 
-- **Display**: a tight grotesque sans — Inter (or the platform grotesque),
-  weight 600, tracking `-0.035em`, line-height `0.98`. **Not a serif.** The
-  earlier Fraunces treatment is superseded.
-- **Body**: Inter 400.
-- **Micro / eyebrow / meta**: monospace, uppercase where shown, tracking
-  `0.14em` for the eyebrow and `0.06em` for the CTA micro-line.
+Three variable families, one stylesheet request, each with one job.
+
+- **Display**: **Archivo**, weight 800, `font-stretch: 118%`, uppercase,
+  `letter-spacing: -0.022em`. Headline `line-height: 0.92`; section headings
+  `clamp(1.8rem, 3.6vw, 2.7rem)` at `0.98`.
+  **The width axis is load-bearing.** At the default 100% the same markup reads
+  as an ordinary grotesque and the direction is simply gone, with nothing
+  visibly broken to notice — which is why the landing suite asserts the computed
+  `font-stretch` and that Archivo actually finished loading, rather than trusting
+  that the declaration is in the file.
+- **Body**: **Figtree**, 300–900.
+- **Micro / metadata**: **Geist Mono** — timestamps, Spark counts, step
+  numerals, file names. Nothing else.
+
+Superseded: Inter throughout, and the Fraunces serif before it.
 
 ---
 
 ## 1. Landing page
 
-Still **one screen, no scroll**, no mascot, no Meshy, **no model-provider
-branding anywhere**, no marketing sprawl. What changes is the composition.
+**Five sections that scroll**, no mascot, no Meshy, **no model-provider
+branding anywhere**, and still **zero JavaScript on the route**.
 
-### Layout — centred, not left-aligned
+### What replaced "one screen, no scroll"
+
+The single-frame composition was the founding constraint of this page, and it
+was a real one: how-it-works and pricing were deliberately moved onto their own
+routes so the landing could hold one idea. The owner's design brings them back.
+See docs/DECISIONS.md ADR-020 for the decision and the artifact it came from.
+
+The promise underneath it survives, and is now asserted directly instead of
+through the proxy. A reader must not have to scroll to learn what this is or how
+to start: the headline, both calls to action and the free-to-start line are all
+inside the first frame at 1440×900, 1366×768 and 390×844. The page being exactly
+one screen tall was the means; that is the end.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ⬡ Golem      How it works  Modes  Pricing  Docs  Changelog   │
-│                                        [ Open Golem  ↗ ]     │  nav, ~104px
+│ ⬡ APPLE   Product Modes How-it-works Pricing Docs            │
+│                                    [Sign in] [Start building]│  sticky, 63px
 ├──────────────────────────────────────────────────────────────┤
+│  · Works inside Roblox Studio                                │  badge
 │                                                              │
-│                  — AI BUILDER FOR ROBLOX                     │  eyebrow, centred
+│  DESCRIBE A ROBLOX GAME.                                     │  ink-bright
+│  APPLE BUILDS IT.                                            │  clipped gradient
 │                                                              │
-│                     Describe it.                             │  ink
-│                   Golem builds it.                           │  ink-warm
+│  The parts, the scripts, the systems — straight into the     │  on-gradient
+│  place you have open in Studio.                              │
 │                                                              │
-│            Go from an idea in your head to a working         │
-│            experience in Roblox Studio. Golem reads your     │  centred, 3 lines
-│            project, writes the code, writes the instances    │
-│            — then presses Play to prove it works.            │
-│                                                              │
-│        [ Start building — free ↗ ]  [ Install Studio plugin ]│
-│                                                              │
-│      Free to start • No card required • Works in your project│  mono, faint
-│                                                              │
+│  [ Start building — free ]  [ Install for Studio ]           │  #top
+│  Free to start · No card required · Works in your project    │  mono
+│  ( Build a shop UI ) ( Create claimable plots ) ( … )        │  example prompts
 ├──────────────────────────────────────────────────────────────┤
-│ ⛨ Built for creators │ ⚡ Fast. Reliable.  │ ⛊ Loved by teams │
-│   Trusted by builders │   From idea to …   │   Indie devs …   │
+│  · The product                                               │
+│  ONE CONVERSATION, AND THE PLACE CHANGES.                    │  #product
+│  ┌───────────────────────────────┐ ┌────────────────────┐    │
+│  │ Neon Arena · run 4 · example  │ │ The place          │    │
+│  │      [ what the person said ] │ │ Objects   41 → 44  │    │
+│  │  ✓ Read the lobby   41 objects│ │ Scripts    3 → 4   │    │
+│  │  ✓ … five resolved steps      │ │ Checkpoints     4  │    │
+│  │  Done — the portal is in …    │ │                    │    │
+│  └───────────────────────────────┘ └────────────────────┘    │
+├──────────────────────────────────────────────────────────────┤
+│  · Modes                                                     │
+│  PICK HOW HARD IT SHOULD THINK.                              │  #modes
+│  [ PLAN 2 sparks ] [ AGENT 4 sparks ] [ SUPER AGENT 10 ]     │
+├──────────────────────────────────────────────────────────────┤
+│  · How it works                                              │
+│  THREE STEPS, THEN IT IS IN YOUR PLACE.                      │  #how
+│  [ 01 Connect Studio ] [ 02 Say what … ] [ 03 Playtest … ]   │
+├──────────────────────────────────────────────────────────────┤
+│  · Pricing                                                   │
+│  SPARKS, NOT SEATS.                                          │  #pricing
+│  [ FREE $0 ] [ BUILDER $12/mo · Popular ] [ STUDIO $40/mo ]  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ### Details that matter
 
-- **Nav** is full-width with generous padding and a hairline bottom border.
-  Links are `--muted`, ~15px. `Open Golem` is a **cream filled button with a ↗
-  arrow**, radius ~10px.
-- **Eyebrow**: a ~28px amber horizontal dash, a gap, then
-  `AI BUILDER FOR ROBLOX` in mono caps, `--muted`, ~12px, tracking `0.14em`.
-  Centred as a unit.
-- **Headline**: two lines, centred. Line 1 `Describe it.` in `--ink`. Line 2
-  `Golem builds it.` in `--ink-warm`. Size `clamp(3rem, 7.5vw, 6.5rem)`.
-- **Lede**: centred, max-width ~52ch, `--muted`, with `Roblox Studio` picked out
-  in `--ink`.
-- **Two CTAs**, centred, side by side, ~52px tall:
-  - `Start building — free ↗` — cream fill, dark ink.
-  - `Install Studio plugin` — transparent with a `--line-2` border, ink text.
-- **Micro-line**: monospace, `--faint`, ~12px, three claims separated by a
-  middot with generous spacing.
-- **Bottom strip**: three cells separated by vertical hairline dividers, each
-  `icon + bold title + faint subtitle` stacked in two lines:
-  - shield · **Built for creators** / Trusted by builders
-  - lightning · **Fast. Reliable. Consistent.** / From idea to working prototype
-  - people · **Loved by teams** / Indie devs to studios
+- **Header** is sticky, 63px, hairline bottom border, `rgba(8,10,15,0.84)` with
+  a 14px backdrop blur. Below 760px it becomes two rows — identity and the one
+  call to action, then the section nav as a single row that scrolls sideways
+  *inside itself*. Left to wrap it grew to 253px on a 390px screen and pushed
+  the hero's own buttons under the fold.
+- **The nav points at anchors**, which the previous version of this page
+  forbade in as many words. That ban existed because the one-screen rebuild had
+  deleted the sections `/#how`, `/#modes` and `/#proof` named. They exist again,
+  so the rule is the one the ban was standing in for: no destination may be
+  dead. A route must answer 200 and an anchor must name an element that is
+  actually on the page — which is strictly more than the ban ever checked.
+- **Hero background** is one radial:
+  `ellipse 120% 90% at 50% -10%, #1F5FD0 → #123A8A 34% → #0B1733 62% → #080A0F 88%`.
+  No planes, no prism, no glow, no SVG. The amber-glow stage is gone with the
+  warm palette it belonged to.
+- **Headline line 2** is painted through `background-clip: text`. The fallback
+  colour is set *before* the `@supports` block that makes it transparent, so a
+  browser without the clip gets readable pale blue rather than an invisible
+  headline.
+- **Eyebrow**: a 6px `--blue` dot as a **child `<span>`**, then the label in
+  `--blue-soft`. A `::before` would have been tidier and is wrong — a
+  pseudo-element has no box the contrast audit can exclude, so the dot gets
+  measured as the surface the words sit on. Same for list bullets. Any
+  decorative mark sharing a box with text is a child element here.
+- **The example run is a still frame.** The design animates it — a composer that
+  types, streams steps and ticks a counter. That would be the only JavaScript on
+  the route. It is rendered at its finished state instead, and labelled
+  "example" in the copy *and* in the panel's accessible name, because object
+  counts and a place name shown without that label are the reader's own data as
+  far as the reader can tell.
+- **Entrance animation** runs on load from a visible resting state, never on
+  scroll. Nothing is ever parked at `opacity: 0` waiting for an observer, so a
+  thumbnail, a shared link and a reader with scripting off all get the finished
+  page. `prefers-reduced-motion` collapses it to 1ms rather than removing it —
+  `animation: none` on a `both`-filled entrance leaves the element invisible.
+- **Every figure is read, never typed.** Plan names, prices, Spark allowances and
+  builds-per-month come from `PLAN_LIMITS` / `PLAN_COPY` in `packages/shared`;
+  the install destination comes from `STUDIO_PLUGIN_INSTALL_HREF`.
+  `scripts/check-offer.mjs` and `scripts/check-spark-figures.mjs` enforce it.
 
-  Icons are 16px line icons in `--muted`.
+### Three deliberate departures from the supplied design
 
-### The stage (background)
+Each is a place the design states something the product cannot keep. Recorded
+here as well as in `apps/site/src/pages/index.astro`, because the next person to
+compare the page against the artifact will notice and need the reason.
 
-Large matte planes forming a **prism/mountain silhouette rising from the bottom
-centre**, with a warm amber glow behind the peak. Long thin diagonal hairlines
-sweep across the upper left and upper right. All CSS + one inline SVG. No
-images, no canvas, no 3D, **zero JavaScript on the route**.
+1. **"Two models" → "Modes".** There is one authoring model; `router.ts` sends
+   every authoring mode to the same one. What differs is how much work the mode
+   does — which is exactly what the design's own lede says, *"same builder, two
+   settings"*. Only the eyebrow overclaims, so only the eyebrow changed, and the
+   count is three because the product has three.
+2. **"Apple model only" on the free tier is gone.** A plan-conditional model
+   entitlement has no code path in `gateway.ts`. Publishing it would advertise a
+   restriction nothing enforces and a capability nothing withholds.
+3. **"Credits" → "Sparks".** Credits already means something else here: the
+   purchased, non-expiring balance. Two meanings for one word, on the page that
+   introduces the unit, is how a reader budgets against the wrong number.
 
-The bottom third reads darker and heavier than the top, so the type sits in the
-lighter upper field. The peak apex sits roughly under the CTA row.
+### What the landing may never say
+
+`tests/e2e/landing.spec.ts` fails on all of it, and each entry is there because
+the page said it once:
+
+- Any model-provider name.
+- "Two models", "both models", "Apple MAX", "model only".
+- "Credits" anywhere in the pricing section.
+- "One click", "available now", "get it now", "already installed" — the plugin
+  asset is uploaded but not distributable, so the page may point at the store
+  and may not claim the trip will work.
+- "$0 forever", "no card required, ever", "free forever" — contractual terms,
+  and `scripts/check-offer.mjs` fails the build on them.
+- Adoption claims. "Trusted by builders", "Loved by teams" and "Indie devs to
+  studios" were on the bottom strip of the previous design, and Apple has no
+  adoption to claim. The example prompts under the hero are labelled as examples
+  for the same reason.
 
 ---
 

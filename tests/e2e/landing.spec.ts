@@ -8,35 +8,90 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../pack
  * The landing page's invariants.
  *
  * These are not "does it render" tests. Each one encodes a decision that is
- * expensive to re-litigate and easy to lose by accident: one viewport, no
- * JavaScript, no mascot, and no model-provider branding on a public marketing
- * page. If someone reintroduces any of them, this suite is where they find out.
+ * expensive to re-litigate and easy to lose by accident: no JavaScript, no
+ * mascot, no model-provider branding on a public marketing page, and no
+ * destination that goes nowhere.
+ *
+ * ONE INVARIANT WAS DELIBERATELY RETIRED, and it is written down here rather
+ * than deleted quietly, because it was the load-bearing one for two years of
+ * this file's history: **one viewport, nothing below the fold**. The owner's
+ * redesign makes the landing a five-section scrolling page — hero, product,
+ * modes, how it works, pricing — and docs/DECISIONS.md ADR-020 records that
+ * call, the artifact it came from, and the fact that it supersedes
+ * docs/DESIGN-SPEC.md §0–§1. Two tests asserted it. They are replaced, not
+ * dropped:
+ *
+ *   - `is one viewport with nothing below the fold` becomes
+ *     `opens on the whole proposition`. What that rule was really protecting
+ *     is that a reader sees the offer without working for it; the page being
+ *     exactly one screen tall was the means, not the end. So the end is
+ *     asserted directly — headline, both calls to action and the free-to-start
+ *     line are all inside the first frame at every supported size.
+ *   - `is one viewport at every supported size` keeps its horizontal half,
+ *     which was always a separate promise, and loses its vertical half.
+ *
+ * A SECOND RULE INVERTED, for the same reason. `never an anchor` existed
+ * because the one-viewport rebuild deleted the sections `/#how`, `/#modes` and
+ * `/#proof` named, and links to them survived — so a reader landed at the top
+ * of a page with nothing to see. The ban was a proxy for "no dead
+ * destination". The sections exist again, so the proxy is replaced with the
+ * thing itself: every nav destination must resolve, which for a route means
+ * HTTP 200 and for an anchor means an element with that id that is actually
+ * on the page. That is strictly more than the ban ever checked — the ban
+ * could not have caught an anchor pointing at an id that had been renamed.
  */
+
+/** Every section the nav and the design promise, by id. */
+const SECTIONS = ['top', 'product', 'modes', 'how', 'pricing'];
 
 test('renders the proposition', async ({ page }) => {
   await page.goto('/');
   const h1 = page.getByRole('heading', { level: 1 });
   await expect(h1).toBeVisible();
-  await expect(h1).toContainText('Describe it.');
+  await expect(h1).toContainText('Describe a Roblox game.');
   await expect(h1).toContainText('Apple builds it.');
   // Exactly one h1: the page has one thing to say.
   await expect(page.locator('h1')).toHaveCount(1);
 });
 
-test('is one viewport with nothing below the fold', async ({ page }) => {
-  await page.goto('/');
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollHeight - window.innerHeight,
-  );
-  // A pixel or two of rounding is fine; a second section is not.
-  expect(overflow).toBeLessThanOrEqual(2);
+test('opens on the whole proposition', async ({ page }) => {
+  // The replacement for "one viewport, nothing below the fold". The page may
+  // scroll now; what may NOT happen is a reader having to scroll to find out
+  // what this is or how to start. Measured at the shortest supported height as
+  // well as the tallest, because the failure mode is a hero that fits on a
+  // 27-inch display and pushes its own buttons under the fold on a laptop.
+  const sizes = [
+    { width: 1440, height: 900 },
+    { width: 1366, height: 768 },
+    { width: 390, height: 844 },
+  ];
+  const mustBeVisible = [
+    'h1',
+    'a:has-text("Start building — free")',
+    'a:has-text("Install for Studio")',
+    '.ap-hero__note',
+  ];
+  const bad: string[] = [];
+
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    for (const sel of mustBeVisible) {
+      const below = await page.locator(sel).first().evaluate((el, h) => {
+        const r = el.getBoundingClientRect();
+        return Math.round(r.bottom - h);
+      }, size.height);
+      if (below > 0) bad.push(`${size.width}x${size.height}: ${sel} ends ${below}px below the fold`);
+    }
+  }
+
+  expect(bad, `the offer is not in the first frame:\n${bad.join('\n')}`).toEqual([]);
 });
 
-test('is one viewport at every supported size', async ({ page }) => {
-  // The three Playwright projects only cover three of these. The composition
-  // has to hold at all of them, and the failure mode — a strip pushed just
-  // under the fold on a 768px-tall laptop — is invisible until someone opens
-  // the page on one.
+test('never scrolls horizontally at any supported size', async ({ page }) => {
+  // The three Playwright projects only cover three of these, and the failure —
+  // one unbreakable token in a card, a grid column with a min wider than the
+  // screen — is invisible until someone opens the page on the size that has it.
   const sizes = [
     { width: 1920, height: 1080 },
     { width: 1728, height: 1117 },
@@ -44,95 +99,129 @@ test('is one viewport at every supported size', async ({ page }) => {
     { width: 1366, height: 768 },
     { width: 1024, height: 768 },
     { width: 390, height: 844 },
+    { width: 320, height: 568 },
   ];
   const bad: string[] = [];
 
   for (const size of sizes) {
     await page.setViewportSize(size);
     await page.goto('/');
-    const { overflowY, overflowX } = await page.evaluate(() => ({
-      overflowY: document.documentElement.scrollHeight - window.innerHeight,
-      overflowX:
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    }));
-    if (overflowY > 2) bad.push(`${size.width}x${size.height}: ${overflowY}px below the fold`);
+    const overflowX = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
     if (overflowX > 1) bad.push(`${size.width}x${size.height}: ${overflowX}px of horizontal scroll`);
   }
 
-  expect(bad, `one-viewport promise broken:\n${bad.join('\n')}`).toEqual([]);
+  expect(bad, `horizontal scroll:\n${bad.join('\n')}`).toEqual([]);
 });
 
 test('holds the approved composition', async ({ page }) => {
   await page.goto('/');
 
-  // Centred, not left-aligned. The whole point of the rebuild.
-  await expect(page.locator('.hero')).toHaveCSS('text-align', 'center');
+  // Five sections, each with an id the nav can reach.
+  for (const id of SECTIONS) {
+    await expect(page.locator(`#${id}`), `#${id} is missing`).toHaveCount(1);
+  }
 
-  // Two calls to action, not one.
+  // Two calls to action in the hero, not one.
   await expect(page.getByRole('link', { name: 'Start building — free' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Install for Studio' })).toBeVisible();
 
   // The mono micro-line under them.
-  await expect(page.locator('.micro')).toContainText('Free to start');
-  await expect(page.locator('.micro')).toContainText('No card required');
+  await expect(page.locator('.ap-hero__note')).toContainText('Free to start');
+  await expect(page.locator('.ap-hero__note')).toContainText('No card required');
 
-  // Three strip cells, each icon + title + subtitle.
-  await expect(page.locator('.strip__cell')).toHaveCount(3);
-  await expect(page.locator('.strip__title')).toHaveCount(3);
-  await expect(page.locator('.strip__icon')).toHaveCount(3);
+  // Three modes and three plans. Two of either is the design's count, not the
+  // product's, and the difference is the whole of ADR-020's departure note.
+  await expect(page.locator('#modes .ap-card')).toHaveCount(3);
+  await expect(page.locator('#pricing .ap-card')).toHaveCount(3);
 
-  // A grotesque display face at 600, not a serif. Fraunces is superseded.
+  // THE DISPLAY FACE, AND ITS WIDTH AXIS. Archivo at font-stretch 118% is the
+  // design; Archivo at the default 100% is an ordinary grotesque and the
+  // direction is simply gone, with nothing visibly broken to notice. A stack
+  // that silently falls back would read as sans-serif and pass every other
+  // assertion here, so the axis is asserted directly.
   const display = await page.locator('h1').evaluate((el) => {
     const s = getComputedStyle(el);
-    return { family: s.fontFamily.toLowerCase(), weight: s.fontWeight };
+    return {
+      family: s.fontFamily.toLowerCase(),
+      weight: s.fontWeight,
+      stretch: s.fontStretch,
+      transform: s.textTransform,
+    };
   });
+  expect(display.family).toContain('archivo');
   expect(display.family).not.toContain('fraunces');
   expect(display.family).not.toContain('georgia');
-  // The generic at the end of the stack decides what a reader without Inter
-  // sees. It has to be sans-serif, not serif.
+  // The generic at the end of the stack decides what a reader without the
+  // webfont sees. It has to be sans-serif, not serif.
   expect(display.family.split(',').pop()!.trim()).toBe('sans-serif');
-  expect(display.weight).toBe('600');
+  expect(display.weight).toBe('800');
+  expect(display.stretch, 'the width axis is the design').toBe('118%');
+  expect(display.transform).toBe('uppercase');
 
   // The mark is a hexagon containing a cube, not the old monolith.
-  await expect(page.locator('.brand .gm__hex')).toHaveCount(1);
-  await expect(page.locator('.brand .gm__cube')).toHaveCount(1);
-  await expect(page.locator('.brand .gm__eye')).toHaveCount(0);
+  await expect(page.locator('.ap-header .gm__hex')).toHaveCount(1);
+  await expect(page.locator('.ap-header .gm__cube')).toHaveCount(1);
+  await expect(page.locator('.ap-header .gm__eye')).toHaveCount(0);
 });
 
-test('every nav destination is a real route, never an anchor', async ({ page }) => {
-  // Dead `/#how`-style anchors have shipped here before. They land the reader
-  // at the top of a page with nothing to see and no explanation.
+test('the webfont actually loads, so the width axis is real', async ({ page }) => {
+  // `font-stretch: 118%` computes to 118% whether or not Archivo arrived — the
+  // declaration is in the stylesheet either way. Only document.fonts knows
+  // whether a face that can honour the axis is loaded, and if it is not, every
+  // other assertion in this file still passes against a page that looks
+  // nothing like the design.
   await page.goto('/');
-  const links = await page.$$eval('.nav a', (as) =>
+  await page.evaluate(() => document.fonts.ready);
+  const loaded = await page.evaluate(() =>
+    [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family),
+  );
+  expect(loaded, `families loaded: ${loaded.join(', ') || 'none'}`).toContain('Archivo');
+});
+
+test('every nav destination resolves', async ({ page }) => {
+  // Replaces `never an anchor`. The old rule banned anchors because the
+  // sections they named had been deleted; the sections exist again, so the
+  // rule is now the one the ban was standing in for. An anchor has to name an
+  // element ON THIS PAGE, and a route has to answer 200.
+  await page.goto('/');
+  const links = await page.$$eval('.ap-nav a', (as) =>
     as.map((a) => ({
       label: (a.textContent ?? '').trim(),
       href: a.getAttribute('href') ?? '',
     })),
   );
 
-  expect(links.length).toBeGreaterThanOrEqual(6);
+  expect(links.length).toBeGreaterThanOrEqual(5);
+  const bad: string[] = [];
+
   for (const { label, href } of links) {
-    expect(href, `${label} has no href`).toBeTruthy();
-    expect(href.startsWith('#'), `${label} must not be a scroll anchor`).toBe(false);
-    expect(href.includes('/#'), `${label} must not be a scroll anchor`).toBe(false);
+    if (!href) {
+      bad.push(`${label} has no href`);
+      continue;
+    }
+    if (href.startsWith('#')) {
+      const target = page.locator(href);
+      if ((await target.count()) !== 1) {
+        bad.push(`${label} -> ${href} names no element on this page`);
+      } else if (!(await target.isVisible())) {
+        bad.push(`${label} -> ${href} names an element that is not visible`);
+      }
+      continue;
+    }
+    const res = await page.request.get(href);
+    if (res.status() !== 200) bad.push(`${label} -> ${href} (HTTP ${res.status()})`);
   }
 
-  // Both routes the spec names explicitly, plus the plugin guide the docs and
-  // footer still link to. (The second CTA now leaves the site for the Creator
-  // Store, so it is asserted separately rather than fetched here.)
-  for (const route of ['/docs/getting-started', '/docs/modes', '/docs/plugin']) {
+  expect(bad, `dead nav destinations:\n${bad.join('\n')}`).toEqual([]);
+
+  // The routes the docs and footer still link to, checked whether or not the
+  // nav happens to name them today.
+  for (const route of ['/docs/getting-started', '/docs/modes', '/docs/plugin', '/docs']) {
     const res = await page.request.get(route);
     expect(res.status(), `${route} should resolve`).toBe(200);
   }
-});
-
-test('never scrolls horizontally', async ({ page }) => {
-  await page.goto('/');
-  const overflowX = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflowX).toBeLessThanOrEqual(1);
 });
 
 test('ships no JavaScript and no 3D', async ({ page }) => {
@@ -153,6 +242,32 @@ test('shows no model-provider branding', async ({ page }) => {
   for (const brand of ['glm', 'gpt', 'openai', 'gemini', 'deepseek', 'anthropic', 'claude']) {
     expect(text, `landing must not mention "${brand}"`).not.toContain(brand);
   }
+});
+
+test('claims no second model, because there is not one', async ({ page }) => {
+  // The design this page implements is titled "Two models", and apps/worker's
+  // router sends every authoring mode to the same one. What differs between
+  // modes is how much work they do, which is what the design's own lede says.
+  // Shipping the heading would have been a capability claim with no capability
+  // under it — the exact class of thing the strip cells were rewritten for.
+  await page.goto('/');
+  const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
+  for (const claim of ['two models', 'both models', 'apple max', 'model only']) {
+    expect(text, `landing must not claim "${claim}"`).not.toContain(claim);
+  }
+});
+
+test('counts in Sparks, not credits', async ({ page }) => {
+  // "Credits" is already taken here: it is the purchased, non-expiring balance,
+  // and the allowance a plan grants is measured in Sparks. The design uses
+  // "credits" for both. One word with two meanings on the page that introduces
+  // the unit is how a reader ends up budgeting against the wrong number.
+  await page.goto('/');
+  const pricing = ((await page.locator('#pricing').textContent()) ?? '').toLowerCase();
+  expect(pricing).toContain('sparks');
+  expect(pricing, 'the allowance is Sparks; "credits" means the purchased balance').not.toContain(
+    'credits',
+  );
 });
 
 test('the primary call to action reaches the app', async ({ page }) => {
@@ -200,6 +315,9 @@ test('no copy on the landing promises the plugin is installable today', async ({
   // The asset is uploaded but NOT distributed: toolbox-service returns 404 for
   // it, so a "Get Plugin" button may not be there when a reader arrives. The
   // button may point at the store; the page may not claim the trip will work.
+  //
+  // "One click in Studio" is step 01 of the design's how-it-works section, which
+  // is why this list is longer than the phrasing anyone would write by accident.
   await page.goto('/');
   const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
   for (const claim of [
@@ -216,19 +334,21 @@ test('no copy on the landing promises the plugin is installable today', async ({
   }
 });
 
-test('"How it works" is a real route, not a dead anchor', async ({ page }) => {
+test('"How it works" reaches a section that is really there', async ({ page }) => {
   await page.goto('/');
-  // Queried out of the DOM rather than by role: below 900px the nav sheds its
-  // middle links, so at mobile widths this one is deliberately not in the
-  // accessibility tree. Where it points still has to be real.
-  const href = await page.$$eval('.nav a', (as) => {
+  // Queried out of the DOM rather than by role: at narrow widths the nav wraps
+  // and sheds nothing, but this stays robust to it doing so later. Where it
+  // points still has to be real.
+  const href = await page.$$eval('.ap-nav a', (as) => {
     const el = as.find((a) => (a.textContent ?? '').trim() === 'How it works');
     return el?.getAttribute('href') ?? null;
   });
   expect(href, 'the nav must offer "How it works"').toBeTruthy();
-  expect(href!.startsWith('#'), 'must not be a scroll anchor').toBe(false);
-  const res = await page.request.get(href!);
-  expect(res.status(), `${href} should resolve`).toBe(200);
+  const target = page.locator(href!);
+  await expect(target).toHaveCount(1);
+  await expect(target).toBeVisible();
+  // And the section has to say what it claims to: three numbered steps.
+  await expect(page.locator('#how .ap-card')).toHaveCount(3);
 });
 
 test('is keyboard reachable and keeps a visible focus ring', async ({ page }) => {
@@ -252,38 +372,45 @@ test('is keyboard reachable and keeps a visible focus ring', async ({ page }) =>
 
 test('text enlargement scrolls rather than clipping', async ({ page }) => {
   await page.goto('/');
-  // 200% text: the one-screen promise must yield to legibility, and content
-  // must remain reachable rather than being cut off by an overflow rule.
+  // 200% text: legibility wins, and content must remain reachable rather than
+  // being cut off by an overflow rule.
   await page.addStyleTag({ content: 'html { font-size: 32px !important; }' });
   const clipped = await page.evaluate(() => {
-    const frame = document.querySelector('.frame') as HTMLElement;
-    return getComputedStyle(frame).overflow === 'hidden';
+    const main = document.querySelector('main') as HTMLElement;
+    return getComputedStyle(main).overflow === 'hidden';
   });
-  expect(clipped, 'the frame must not clip its own content').toBe(false);
+  expect(clipped, 'main must not clip its own content').toBe(false);
   await expect(page.getByRole('link', { name: 'Start building — free' })).toBeVisible();
 });
 
 test('every text element clears WCAG AA against what is actually behind it', async ({ page }) => {
-  // Not a token audit. The stage paints an amber glow and three matte planes
-  // under the type, so the only honest backdrop is the rendered pixel. The
-  // first cut of this page had a glow bright enough to drop the 12px mono
-  // micro-line to 4.4:1, which no palette table would have caught.
+  // Not a token audit. The hero paints a four-stop radial gradient under the
+  // type and the cards sit on their own surface, so the only honest backdrop is
+  // the rendered pixel. An earlier cut of this page had a glow bright enough to
+  // drop a 12px mono line to 4.4:1, which no palette table would have caught.
+  //
+  // NOW AUDITS THE WHOLE DOCUMENT, not the first screen. When this page was one
+  // viewport, "visible in the viewport" and "on the page" were the same set.
+  // They are not any more, and four of the five sections are below the fold —
+  // filtering to the viewport would have quietly reduced this from an audit of
+  // the page to an audit of the hero.
   await page.goto('/');
-  // The entrance runs 620ms with delays out to 320ms. Measuring boxes before
-  // it lands records positions the elements have already left.
+  // The entrance runs 620ms with delays out to 300ms. Measuring boxes before it
+  // lands records positions the elements have already left.
   await page.waitForTimeout(1200);
 
   const boxes = await page.evaluate(() => {
     const out: {
       label: string;
       color: string;
+      clip: string | null;
       size: number;
       bold: boolean;
       rect: { x: number; y: number; w: number; h: number };
       holes: { x: number; y: number; w: number; h: number }[];
     }[] = [];
     const seen = new Set<Element>();
-    for (const el of document.querySelectorAll<HTMLElement>('.frame *')) {
+    for (const el of document.querySelectorAll<HTMLElement>('body *')) {
       // Leaf elements carrying their own visible text.
       const text = [...el.childNodes]
         .filter((n) => n.nodeType === 3)
@@ -294,38 +421,73 @@ test('every text element clears WCAG AA against what is actually behind it', asy
       const s = getComputedStyle(el);
       if (s.visibility === 'hidden' || s.display === 'none' || s.opacity === '0') continue;
       const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > innerHeight) continue;
+      if (r.width < 2 || r.height < 2) continue;
+      // The skip link parks itself at left:-9999px until focused. Sampling it
+      // clamps to x=0 and audits whatever happens to be in the top-left corner.
+      if (r.right < 0 || r.left > innerWidth) continue;
       seen.add(el);
+      // A heading whose glyphs are painted by a clipped background has a
+      // computed `color` of transparent. Measuring that as the foreground
+      // reports pure black on a bright gradient — a spectacular false failure
+      // on text that is in fact the brightest thing on the page. The honest
+      // foreground is the DARKEST stop of the gradient doing the painting.
+      const clipped = s.webkitBackgroundClip === 'text' || s.backgroundClip === 'text';
       out.push({
         label: `${el.className || el.tagName} "${text.slice(0, 28)}"`,
         color: s.color,
+        clip: clipped ? s.backgroundImage : null,
         size: parseFloat(s.fontSize),
         bold: parseInt(s.fontWeight, 10) >= 600,
-        rect: { x: r.x, y: r.y, w: r.width, h: r.height },
+        rect: { x: r.x + scrollX, y: r.y + scrollY, w: r.width, h: r.height },
         // An element's own text never sits on top of its element children, so
-        // their boxes are excluded from the sample. Without this the eyebrow
-        // is "measured" against its 28px amber dash, which carries no text.
+        // their boxes are excluded from the sample. Without this an eyebrow is
+        // "measured" against its own 6px dot, which carries no text.
         holes: [...el.children].map((ch) => {
           const cr = ch.getBoundingClientRect();
-          return { x: cr.x, y: cr.y, w: cr.width, h: cr.height };
+          return { x: cr.x + scrollX, y: cr.y + scrollY, w: cr.width, h: cr.height };
         }),
       });
     }
     return out;
   });
 
-  expect(boxes.length, 'found no text to audit').toBeGreaterThan(6);
+  expect(boxes.length, 'found no text to audit').toBeGreaterThan(30);
 
   // Make the glyphs transparent and shoot again. Element backgrounds and
-  // borders still paint, so a label inside the cream CTA is measured against
-  // the cream — not against the stage two layers below it — while no glyph
+  // borders still paint, so a label inside the gradient CTA is measured against
+  // the gradient — not against the section two layers below it — while no glyph
   // pixel is left to pollute the sample.
-  await page.addStyleTag({ content: '.frame, .frame * { color: transparent !important }' });
+  await page.addStyleTag({
+    content: 'body, body * { color: transparent !important; text-shadow: none !important }',
+  });
+  // CLIPPED TEXT DOES NOT GO AWAY WHEN `color` DOES. A heading painted through
+  // `background-clip: text` draws its glyphs from its BACKGROUND, so blanking
+  // the colour left the gradient letterforms sitting in the backdrop shot — and
+  // the audit then measured the headline against its own brightest glyph pixel
+  // and reported 1.26:1 on text that is in fact the brightest thing on the
+  // page. No CSS selector can reach "elements whose computed background-clip is
+  // text", so the background-image is removed element by element, which is also
+  // what makes the true backdrop underneath visible for sampling.
+  const unclipped = await page.evaluate(() => {
+    let n = 0;
+    for (const el of document.querySelectorAll<HTMLElement>('body *')) {
+      const s = getComputedStyle(el);
+      if (s.webkitBackgroundClip === 'text' || s.backgroundClip === 'text') {
+        el.style.setProperty('background-image', 'none', 'important');
+        n += 1;
+      }
+    }
+    return n;
+  });
+  // If this ever reaches zero, the clipped headline has been restyled and the
+  // `clip` branch below is dead code measuring a gradient nothing paints.
+  expect(unclipped, 'no background-clip:text element found — is the hero headline still clipped?')
+    .toBeGreaterThan(0);
   // addStyleTag resolves when the sheet is applied, not when the next frame is
   // painted. Shooting immediately captures the glyphs still on screen, which
   // reads back as a catastrophic contrast failure on every label.
   await page.waitForTimeout(400);
-  const backdrop = (await page.screenshot()).toString('base64');
+  const backdrop = (await page.screenshot({ fullPage: true })).toString('base64');
 
   const failures = await page.evaluate(
     async ({ boxes, backdrop }) => {
@@ -337,7 +499,20 @@ test('every text element clears WCAG AA against what is actually behind it', asy
       c.height = img.height;
       const g = c.getContext('2d')!;
       g.drawImage(img, 0, 0);
-      const dpr = img.width / innerWidth;
+
+      // THE SCALE IS READ, NOT INFERRED. This was `img.width / innerWidth`, and
+      // on a device-scale-factor-2.625 phone that is 1082 / 412 = 2.62621 —
+      // 0.05% high, because the screenshot's pixel width is the rounded-up
+      // product. A 0.05% error is nothing at the top of the page and 2.6 device
+      // pixels 5,700 CSS pixels down it, which is how a 6px dot ended up one
+      // row outside its own exclusion box and got measured as the backdrop its
+      // eyebrow sits on: 1.59:1 reported on type that is really 8.22:1. It
+      // failed on the phone project and passed on both desktop ones, which is
+      // exactly the shape of an error that scales with distance.
+      const dpr = devicePixelRatio;
+      if (Math.abs(img.width - innerWidth * dpr) > 2) {
+        return [`backdrop is ${img.width}px wide; ${innerWidth} CSS px at ${dpr}x should be ~${innerWidth * dpr}`];
+      }
 
       const lin = (v: number) =>
         v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
@@ -349,13 +524,16 @@ test('every text element clears WCAG AA against what is actually behind it', asy
         const { x, y, w, h } = box.rect;
         const x0 = Math.max(0, Math.round(x * dpr));
         const y0 = Math.max(0, Math.round(y * dpr));
-        const bw = Math.max(1, Math.round(w * dpr));
-        const bh = Math.max(1, Math.round(h * dpr));
+        const bw = Math.max(1, Math.min(Math.round(w * dpr), c.width - x0));
+        const bh = Math.max(1, Math.min(Math.round(h * dpr), c.height - y0));
+        if (bw < 1 || bh < 1) continue;
         const px = g.getImageData(x0, y0, bw, bh).data;
-        // Grown by 2px: a 1.5px amber rule at a fractional offset antialiases
-        // a pixel past its own bounding box, and that stray pixel is bright
-        // enough to look like a contrast failure.
-        const PAD = 2;
+        // Grown by 2 CSS px — not 2 device px, which is what this was and which
+        // is under a pixel of real slack on a 3x screen. A hairline or a small
+        // round mark at a fractional offset antialiases past its own bounding
+        // box, and one stray bright pixel is all it takes to look like a
+        // contrast failure.
+        const PAD = 2 * dpr;
         const holes = box.holes.map((hl) => ({
           x0: hl.x * dpr - PAD,
           y0: hl.y * dpr - PAD,
@@ -363,8 +541,8 @@ test('every text element clears WCAG AA against what is actually behind it', asy
           y1: (hl.y + hl.h) * dpr + PAD,
         }));
 
-        // Worst case: the brightest backdrop pixel under the element, since
-        // all type on this page is light on dark.
+        // Worst case: the brightest backdrop pixel under the element, since all
+        // type on this page is light on dark.
         let worst = 0;
         let sampled = 0;
         for (let row = 0; row < bh; row++) {
@@ -384,10 +562,31 @@ test('every text element clears WCAG AA against what is actually behind it', asy
         }
         if (!sampled) continue; // wholly covered by children; audited via them
 
-        const m = box.color.match(/[\d.]+/g)!.map(Number);
-        const fg = lum(m[0], m[1], m[2]);
-        const ratio =
-          (Math.max(fg, worst) + 0.05) / (Math.min(fg, worst) + 0.05);
+        // The foreground. For clipped text it is the darkest stop of the
+        // gradient painting the glyphs; otherwise it is simply the colour.
+        let fg: number;
+        if (box.clip) {
+          const stops = [...box.clip.matchAll(/rgba?\(([^)]+)\)/g)].map((m) => {
+            const [r, gg, b] = m[1].split(',').map((v) => parseFloat(v));
+            return lum(r, gg, b);
+          });
+          if (!stops.length) {
+            bad.push(`${box.label} — background-clip:text with no readable colour stops`);
+            continue;
+          }
+          fg = Math.min(...stops);
+        } else {
+          const m = box.color.match(/[\d.]+/g)!.map(Number);
+          // A fully transparent colour paints no glyph. If it is not clipped
+          // text, that is invisible copy, not a contrast question.
+          if (m.length > 3 && m[3] === 0) {
+            bad.push(`${box.label} — colour is fully transparent and nothing paints it`);
+            continue;
+          }
+          fg = lum(m[0], m[1], m[2]);
+        }
+
+        const ratio = (Math.max(fg, worst) + 0.05) / (Math.min(fg, worst) + 0.05);
         // "Large" per WCAG: >=24px, or >=18.66px when bold.
         const large = box.size >= 24 || (box.bold && box.size >= 18.66);
         const need = large ? 3 : 4.5;
@@ -416,24 +615,32 @@ test('no link anywhere on the site points at a section that no longer exists', a
   // Cutting the landing down to one viewport deleted /#how, /#modes and
   // /#proof. Links to them survived in the shared nav and footer, which put a
   // dead anchor on every other page — the reader lands at the top of the
-  // landing with nothing to see and no explanation. This asserts every
-  // internal link resolves to something real.
+  // landing with nothing to see and no explanation. This asserts every internal
+  // link resolves to something real, INCLUDING the anchors the redesign brought
+  // back: a bare `#modes` on the landing and a `/#modes` from any other page
+  // both have to name an element that is on the page they claim.
   const routes = ['/', '/pricing', '/docs', '/changelog', '/privacy', '/terms'];
   const bad: string[] = [];
 
   for (const route of routes) {
     await page.goto(route);
     const hrefs = await page.$$eval('a[href]', (as) =>
-      as.map((a) => a.getAttribute('href') ?? '').filter((h) => h.startsWith('/')),
+      as.map((a) => a.getAttribute('href') ?? '').filter((h) => h.startsWith('/') || h.startsWith('#')),
     );
     for (const href of new Set(hrefs)) {
       const [path, hash] = href.split('#');
-      // /app is the React workspace, served by the worker out of D1. The
-      // static preview this suite runs against does not have it, so a 404
-      // here says nothing about production. Its own links are covered by the
-      // app's tests, not this one.
+      // /app is the React workspace, served by the worker out of D1. The static
+      // preview this suite runs against does not have it, so a 404 here says
+      // nothing about production. Its own links are covered by the app's tests.
       if (path.startsWith('/app')) continue;
-      const target = path || route;
+      // A bare `#id` is a link into the page we are already on.
+      if (path === '') {
+        if (hash && (await page.locator(`#${hash}`).count()) !== 1) {
+          bad.push(`${route} -> ${href} (no #${hash} on ${route})`);
+        }
+        continue;
+      }
+      const target = path;
       const res = await page.request.get(target);
       if (res.status() !== 200) {
         bad.push(`${route} -> ${href} (HTTP ${res.status()})`);

@@ -350,7 +350,7 @@ product is worse than one with a gap, because it is read as current.
 
 ---
 
-## ADR-00X — Plans, prices and allowances: Free / Builder / Studio
+## ADR-019 — Plans, prices and allowances: Free / Builder / Studio
 
 **Date.** 2026-09-14
 
@@ -403,7 +403,7 @@ that number.
 
 ---
 
-## ADR-00Y — Visual direction: deep blue, Archivo over Figtree
+## ADR-020 — Visual direction: deep blue, Archivo over Figtree
 
 **Date.** 2026-09-14
 
@@ -420,12 +420,62 @@ that number.
 - display type **Archivo**, 800 weight, `font-stretch: 118%`, uppercase, `letter-spacing: -0.022em`
 - body **Figtree**, mono **Geist Mono**
 
-**THIS REVERSES A RECORDED DECISION.** The direction previously on file is minimal cinematic
-charcoal stone — warm near-black `#0b0a09` with an ember accent. Deep blue with condensed uppercase
-display type is a different product's face, and that is the owner's call to make. It is written
-down because the failure mode otherwise is specific and has already happened twice in miniature
-this week: the next agent reads the old entry, finds the site contradicting it, and "fixes" the
-site back.
+**CORRECTION, same day.** This entry first said the change "reverses a recorded decision" — that
+the direction on file was minimal cinematic charcoal stone, warm `#0b0a09` with an ember accent. I
+wrote that from memory and did not open the stylesheet. `apps/site/src/styles/landing.css:38-40`
+says the opposite in as many words: *"The previous warm palette (#0b0a09 ground, #c98a3c amber)
+belonged to Golem and is gone; do not reintroduce warm tones here."* The landing already grounds at
+`#07080f` with an azure accent sampled from the product mark. That reversal happened before this
+change; I nearly recorded it twice.
+
+Leaving the mistake visible rather than editing it away, because the entry immediately below it
+warns about exactly this failure — a decision log that contradicts the shipped product is read as
+current — and I produced an instance of it inside the warning.
+
+**So what actually changes is smaller and different in kind.** The palette barely moves: `#07080f`
+to `#080a0f`, one azure accent to a three-stop blue-violet ramp. The real change is TYPOGRAPHY and
+STRUCTURE:
+
+- Inter throughout → **Archivo** at `font-stretch: 118%`, weight 800, uppercase, for all display
+  type, over **Figtree** for body and **Geist Mono** for metadata. The stretch axis is not optional:
+  without it the type reads as a different design entirely.
+- One viewport with nothing below the fold → a scrolling page with five sections: hero, product,
+  models, how it works, pricing.
+
+That second one supersedes the landing's own founding constraint, recorded in
+`apps/site/src/styles/landing.css:1-22` and `docs/DESIGN-SPEC.md` §0–§1: *"One viewport. No scroll.
+The whole proposition held in a single frame."* Subjects that were deliberately moved off the
+landing — how it works, pricing — come back onto it. That is the owner's call, and DESIGN-SPEC has
+to be updated with it rather than left to contradict the page.
 
 **Scope.** `apps/site` — the public marketing surface. The signed-in app keeps its own palette for
 now; a half-migrated app is worse than either whole direction.
+
+**Three departures from the artifact, and why each one is not a liberty.** The design is
+implemented section for section, with its own headings, its own lede sentences and its own
+composition. Three lines of its copy state things this product cannot keep, and shipping them
+would have been a capability claim with no capability under it:
+
+1. **"Two models" → "Modes", and two cards → three.** `apps/worker/src/router.ts` routes every
+   authoring mode to the same model. What differs between modes is how much work the mode does.
+   The artifact's OWN lede — *"Same builder, two settings"* — is exactly right; only the eyebrow
+   above it overclaims, so only the eyebrow changed. The count is three because the product has
+   three: Plan, Agent, Super Agent (ADR-018).
+2. **"Apple model only" on the free tier is dropped.** A plan-conditional model entitlement has no
+   code path in `gateway.ts`. It would advertise a restriction nothing enforces and, in the same
+   breath, a capability nothing withholds.
+3. **"Credits" → "Sparks".** Credits already names the purchased, non-expiring balance in this
+   product. Two meanings for one word on the page that introduces the unit is how a reader plans
+   against the wrong number.
+
+**Consequence.** `docs/DESIGN-SPEC.md` §0 and §1 are rewritten. They had been describing the warm
+Golem palette, Inter, and one non-scrolling screen — none of which was on the page, and two
+separate changes had left them behind. That file opens by claiming precedence over "an older
+written description", so a stale copy of it is not merely unhelpful: anyone following it faithfully
+would have reverted two decisions on purpose.
+
+`tests/e2e/landing.spec.ts` retires the one-viewport assertions deliberately rather than deleting
+them, and replaces the `never an anchor` ban with the rule it was standing in for — every
+destination must resolve, which for an anchor means naming an element that is on the page. That is
+strictly more than the ban checked. The three departures above are asserted as prohibitions, so
+re-introducing the artifact's wording fails the build rather than shipping.
