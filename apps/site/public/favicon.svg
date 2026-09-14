@@ -1,27 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Apple">
   <!--
-    The flat cut of the product mark, for small sizes.
+    THE PRODUCT MARK: a hexagonal outline containing an isometric cube.
 
-    The supplied artwork is a 1254px glossy 3D render and resolves to ~136 distinct colours at
-    16px, which a favicon cannot carry. This keeps only what survives: the angular A, the orbital
-    ring, and the centre spark — the three things that identify the mark at a glance. Two stops of
-    the measured hue sweep (cyan 180deg -> azure 210deg -> violet 265deg) stand in for the full
-    gradient; more stops are invisible at this size and only cost bytes.
+    WHAT THIS REPLACED, and why it had to. The previous favicon drew a different mark entirely — an
+    angular "A", a tilted orbital ring and a four-point centre spark — flattened from a glossy 3D
+    render. Three things were wrong with it, and none was visible from inside this repository:
+
+      1. That mark appears NOWHERE ELSE. The product mark is the hexagon-and-cube: it is what
+         AppleMark.astro draws, what DESIGN-SPEC.md §0 specifies, and what the landing suite
+         asserts by class (.gm__hex, .gm__cube). The tab showed one identity and the page another.
+      2. It was derived from apps/site/public/brand/apple-mark-3d.png, and the 3D direction is
+         cancelled. Its own comment said so: "the supplied artwork is a 1254px glossy 3D render".
+      3. Its ground was #07080F — the palette from before the current one.
+
+    Geometry is the 32-unit mark scaled to a 48-unit tile: a regular pointy-top hexagon of
+    circumradius 15 about (24,24), and three lines from the apex through the centre to the two
+    lower vertices, describing a cube's top, left and right faces without drawing one of them.
+
+    DRAWN FOR 16px, WHICH IS THE SIZE THAT MATTERS. The product mark strokes at 1.6/32 (5% of the
+    canvas); at 16px that is 0.8 of a device pixel and the hexagon disappears into grey. This
+    strokes at 3/48 (6.25%) and drops the cube's interior lines to a lighter weight, so at a
+    favicon's real size the silhouette survives even when the inner detail cannot.
+
+    The gradient is the design's accent ramp (#38b6ff, #2f7dff, #8b5cf6). It carries no text,
+    which is the only reason the bright ramp is allowed here; landing.css keeps a darker ramp for
+    anything type sits on, and says why beside it.
+
+    NOTE FOR WHOEVER EDITS THIS COMMENT: an XML comment may not contain a double hyphen. Naming a
+    CSS custom property in here the obvious way makes the whole file fail to parse, and a favicon
+    that fails to parse renders as nothing at all — no console error, no build failure, no icon.
   -->
   <defs>
-    <linearGradient id="a" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#00E5FF"/>
-      <stop offset=".5" stop-color="#0080F0"/>
-      <stop offset="1" stop-color="#7B4DF0"/>
+    <linearGradient id="a" x1="10" y1="8" x2="38" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38B6FF"/>
+      <stop offset=".52" stop-color="#2F7DFF"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="11" fill="#07080F"/>
-  <!-- the A: two bladed strokes meeting at an apex -->
-  <path d="M24 9 L37 39 L31.6 39 L24 20.4 L16.4 39 L11 39 Z" fill="url(#a)"/>
-  <!-- orbital ring, tilted -->
-  <ellipse cx="24" cy="28" rx="16" ry="6.4" transform="rotate(-18 24 28)"
-           fill="none" stroke="url(#a)" stroke-width="2.1" opacity=".9"/>
-  <!-- centre spark: a four-point star -->
-  <path d="M24 22.2 L25.5 26.3 L29.6 27.8 L25.5 29.3 L24 33.4 L22.5 29.3 L18.4 27.8 L22.5 26.3 Z"
-        fill="#FEFEFE"/>
+
+  <rect width="48" height="48" rx="11" fill="#080A0F"/>
+
+  <g fill="none" stroke="url(#a)" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="24 9 36.99 16.5 36.99 31.5 24 39 11.01 31.5 11.01 16.5" stroke-width="3"/>
+    <path d="M24 10.5V24M24 24 11.88 31M24 24l12.12 7" stroke-width="2.4" opacity=".92"/>
+  </g>
 </svg>

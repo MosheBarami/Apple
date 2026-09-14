@@ -1,0 +1,196 @@
+<!doctype html>
+<!--
+  THE SOURCE OF apps/site/public/og.png. Rendered by scripts/make-brand-assets.mjs.
+
+  Why an HTML source rasterised to PNG, rather than the SVG this replaced:
+
+  1. og:image WANTS A RASTER. The tag pointed at /og.svg. The major consumers of Open Graph
+     (Facebook, X, LinkedIn, Slack, iMessage) document PNG/JPEG/GIF/WEBP for og:image and do not
+     list SVG — so the most likely reading of the old setup is that every share of this site showed
+     no preview image at all. That is stated as the documented platform requirement rather than as
+     something measured here: this repository cannot exercise those crawlers, and the honest
+     summary is "the format was outside what they document", not "I watched it fail".
+  2. THE TYPE IS THE DESIGN. The landing's identity is Archivo at font-stretch 118%. An SVG can
+     name a font it does not carry and will silently substitute; a browser rendering this HTML
+     loads the real variable font, and the generator asserts the face arrived before it shoots.
+
+  WHAT THIS REPLACED, because the diff is startling. The previous og.svg was untouched Golem: a
+  warm #17150F ground, an #FF9A4D amber lamp, a stone-grey monolith, and a Georgia serif wordmark
+  that read "Golem". It was the single most-shared image the product had, and it named a product
+  that no longer exists in a palette that was deleted two rebrands ago.
+
+  Kept deliberately narrow: no claim, no price, no adoption. A share card is seen by people who
+  have not opened the page yet, so everything on it has to be true without the page to qualify it.
+-->
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Figtree:wght@300..900&family=Geist+Mono:wght@100..900&display=block"
+/>
+<style>
+  /* `display=block` above, not `swap`. A swap renders fallback type first and repaints when the
+     real face lands — fine for a page a human is reading, wrong for a one-shot screenshot, which
+     can capture the fallback frame. Block holds the text invisible until the face is ready, and
+     the generator waits on document.fonts before it shoots either way. */
+  * {
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+  }
+
+  body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 72px;
+    background: #080a0f;
+    font-family: 'Figtree', sans-serif;
+    color: #f3f5f9;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The landing's hero gradient, re-aimed. On the page it is an ellipse centred above the
+     viewport; here the card is wider than it is tall, so the same stops are pulled to the
+     upper-left to leave the headline sitting in the darker half. */
+  .ground {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse 95% 130% at 18% -18%,
+      #1f5fd0 0%,
+      #123a8a 32%,
+      #0b1733 60%,
+      #080a0f 86%
+    );
+  }
+
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mark {
+    flex: none;
+  }
+
+  .mark path,
+  .mark polygon {
+    fill: none;
+    stroke: #f3f5f9;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .wordmark,
+  h1 {
+    font-family: 'Archivo', sans-serif;
+    font-stretch: 118%;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.022em;
+  }
+
+  .wordmark {
+    font-size: 30px;
+  }
+
+  main {
+    position: relative;
+  }
+
+  h1 {
+    font-size: 86px;
+    line-height: 0.92;
+  }
+
+  .l1 {
+    display: block;
+    color: #ffffff;
+  }
+
+  /* Line two is painted by a clipped gradient, exactly as on the landing. The colour is set first
+     so a renderer without background-clip gets pale blue rather than nothing. */
+  .l2 {
+    display: block;
+    color: #c4e8ff;
+    background: linear-gradient(180deg, #f6fcff, #c4e8ff 58%, #e2d8ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .l2 {
+      color: transparent;
+    }
+  }
+
+  .sub {
+    margin-top: 26px;
+    max-width: 30ch;
+    font-size: 24px;
+    line-height: 1.45;
+    color: #cfe0f7;
+  }
+
+  footer {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 19px;
+    color: #8d95a8;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #38b6ff;
+    flex: none;
+  }
+
+  .sep {
+    color: #4a5163;
+  }
+</style>
+
+<div class="ground"></div>
+
+<header class="row">
+  <!-- The product mark, identical geometry to apps/site/src/components/AppleMark.astro: a regular
+       hexagon of circumradius 13 on a 32-unit canvas, and three lines describing a cube's top,
+       left and right faces without drawing one of them. -->
+  <svg class="mark" width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
+    <polygon points="16 3 27.26 9.5 27.26 22.5 16 29 4.74 22.5 4.74 9.5"></polygon>
+    <path d="M16 3.4V16m0 0-11.05 6.38M16 16l11.05 6.38"></path>
+  </svg>
+  <span class="wordmark">Apple</span>
+</header>
+
+<main>
+  <h1>
+    <span class="l1">Describe a</span>
+    <span class="l1">Roblox game.</span>
+    <span class="l2">Apple builds it.</span>
+  </h1>
+  <p class="sub">The parts, the scripts, the systems — straight into the place you have open in Studio.</p>
+</main>
+
+<footer>
+  <span class="dot"></span>
+  <span>Works inside Roblox Studio</span>
+  <span class="sep">·</span>
+  <span>Free to start</span>
+</footer>

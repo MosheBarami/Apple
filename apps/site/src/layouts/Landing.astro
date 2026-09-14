@@ -30,7 +30,12 @@ interface Props {
 const { title, description } = Astro.props;
 const site = Astro.site ?? new URL('https://appleworks.pages.dev');
 const canonical = new URL(Astro.url.pathname, site);
-const ogImage = new URL('/og.svg', site);
+// A PNG, not the SVG this was. Facebook, X, LinkedIn and Slack all document PNG/JPEG/GIF/WEBP
+// for og:image and none of them list SVG, so the old tag most likely produced no preview image at
+// all — a failure with no symptom anywhere inside this repository. Generated from
+// apps/site/brand/og.html by scripts/make-brand-assets.mjs; `pnpm brand:check` fails the build if
+// the committed PNG has drifted from its source.
+const ogImage = new URL('/og.png', site);
 ---
 
 <!doctype html>
@@ -50,6 +55,10 @@ const ogImage = new URL('/og.svg', site);
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Apple — describe a Roblox game, Apple builds it." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />

@@ -18,16 +18,33 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  /* --- type ------------------------------------------------------------- */
-  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino,
-    Georgia, serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Helvetica, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular,
+  /* --- type -------------------------------------------------------------
+     THE SAME THREE FAMILIES AS THE LANDING. These were Fraunces (a serif),
+     Inter and JetBrains Mono — and this stylesheet dresses SEVENTEEN of the
+     site's eighteen pages, so the redesign that landed on the landing left
+     every other route in the previous identity. One click from an Archivo
+     headline in 118% condensed caps, /docs rendered its own title in a
+     Scotch-Roman serif.
+
+     That was not a competing design decision left standing on purpose.
+     docs/DESIGN-SPEC.md §0 has said "the earlier Fraunces treatment is
+     superseded" since before this change, and tests/e2e/landing.spec.ts fails
+     if the landing's h1 family so much as contains "fraunces". The supersession
+     was recorded and applied to one file.
+
+     Fallbacks matter more here than on the landing. Archivo's width axis is
+     load-bearing, and no system face has one, so the fallback is a CONDENSED
+     stack rather than a neutral one — an unstyled frame in the right shape
+     beats one in the wrong shape. See ADR-020. */
+  --font-display: 'Archivo', 'Arial Narrow', 'Helvetica Neue Condensed',
+    'Liberation Sans Narrow', sans-serif;
+  --font-body: 'Figtree', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular,
     'Cascadia Code', Menlo, Consolas, monospace;
 
-  /* carved display: sharp Scotch-Roman cut, no wonk, high optical size */
-  --display-vf: 'SOFT' 0, 'WONK' 0, 'opsz' 120;
+  /* The width axis, the one setting the direction cannot survive losing. */
+  --stretch: 118%;
 
   /* --- geometry --------------------------------------------------------- */
   --content: 1200px;
@@ -51,9 +68,15 @@
 }
 
 /* ---- LIGHT: "daylight" — Apple's palette on a pale ground ---------------
-   The mark is dark-native (see apple-brand.css: ~70% of it is near-black gloss),
-   so light mode darkens the brand blues rather than reusing them. #0080F0 is only
-   3.0:1 on white and fails body text there; #0060C4 clears it. */
+   The mark is dark-native, so light mode darkens the brand blues rather than
+   reusing them. #0080F0 is only 3.0:1 on white and fails body text there;
+   #0060C4 clears it.
+
+   (Cited apple-brand.css until that file was deleted. It was 101 lines no
+   stylesheet imported, whose header claimed "canonical source; apps/web imports
+   the same values" — nothing did, and its only consumers were two comments
+   including this one. The measurement it recorded was taken from a 3D render
+   that is itself cancelled.) */
 :root,
 :root[data-theme='light'] {
   color-scheme: light;
@@ -108,10 +131,15 @@
 }
 
 /* ---- DARK: the mark's native ground ------------------------------------
-   Values from apps/site/src/styles/apple-brand.css, which derives them by sampling the
-   chromatic, bright pixels of the product mark. Contrast against --paper is computed,
-   not estimated: ink 17.5:1, muted 7.9:1, faint 4.7:1, azure 5.1:1. Violet reaches only
-   3.96:1 and is therefore a UI colour, never body copy. */
+   Contrast against --paper is computed, not estimated: ink 17.5:1, muted 7.9:1,
+   faint 4.7:1, azure 5.1:1. Violet reaches only 3.96:1 and is therefore a UI
+   colour, never body copy — apps/web/tests/contrast.test.mjs holds these to the
+   4.5:1 floor on every surface, which is what keeps the figures above honest
+   rather than decorative.
+
+   These values are the source of truth now; the file this used to defer to is
+   gone, and packages/design/src/tokens.mjs is where a checker reads the
+   vocabulary from. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
@@ -304,7 +332,7 @@ video {
 }
 
 /* --------------------------------------------------------------------------
-   3. Typography — carved
+   3. Typography — condensed
    -------------------------------------------------------------------------- */
 
 h1,
@@ -313,15 +341,20 @@ h3,
 h4,
 .display {
   font-family: var(--font-display);
-  font-variation-settings: var(--display-vf);
-  font-weight: 600;
+  /* WAS `font-variation-settings: var(--display-vf)` with 'SOFT' 0, 'WONK' 0,
+     'opsz' 120 — three axes that belong to Fraunces and do not exist on
+     Archivo. An unknown axis is ignored rather than rejected, so leaving it
+     would have been dead declaration nobody could see, and the token it read
+     is gone. The axis that matters now is width, set the ordinary way so it
+     also reaches a static fallback that happens to have one. */
+  font-stretch: var(--stretch);
+  font-weight: 800;
+  text-transform: uppercase;
   line-height: 1.04;
   letter-spacing: -0.022em;
   color: var(--ink);
   margin: 0 0 0.45em;
   text-wrap: balance;
-  /* Fraunces defaults to old-style figures at some optical sizes; big numbers
-     must sit on the baseline like lining figures or they read as a mistake. */
   font-variant-numeric: lining-nums tabular-nums;
   font-feature-settings: 'onum' 0, 'lnum' 1, 'tnum' 1;
 }
@@ -440,12 +473,18 @@ pre code {
 }
 
 /* Display numerals.
-   Fraunces has no lining-figure feature, so its digits descend below the
-   baseline — correct for running prose, wrong for a big readout. Numbers that
-   are the point of a component are set in the body face instead. */
+   THE REASON CHANGED; THE RULE DID NOT. This read "Fraunces has no
+   lining-figure feature, so its digits descend below the baseline" — true of
+   Fraunces and irrelevant now, since the display face is Archivo and its
+   figures are lining. What still holds is that a big readout should not be
+   uppercased: display type here is `text-transform: uppercase`, which does
+   nothing to digits but does mangle any unit or suffix beside them. So a
+   number that IS the component stays in the body face, and says so for a
+   reason that is currently true. */
 .numeral {
   font-family: var(--font-body);
   font-weight: 620;
+  text-transform: none;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
