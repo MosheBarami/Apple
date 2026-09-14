@@ -537,3 +537,115 @@ SELF-REFUTER: still not dispatched. The sentence I expect it to find is "dead co
 
 NEXT: §6.2 back-fill, starting with the gates most likely to survive their falsification —
   those are the ones whose subject has drifted.
+
+PASS 7  2026-09-14T18:15:25Z  HEAD 9bf1e65  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+THE ORACLES THAT COULD NOT BE RE-ARMED
+
+REPAIRED FIRST, as §6 requires. Four checker defects, each found by using the checker rather
+than by reading it:
+
+  gate-check bound ROOT to its own file's location, so main's copy invoked by absolute path
+    from inside a worktree ran every CHECK against main. Falsification fails safe that way —
+    the break is absent, the gate reads green, the record is refused, which is exactly what
+    happened while recording G5. --reverify does not fail safe: it would write EVIDENCE
+    describing the wrong tree, carrying the wrong tree's git sha, with nothing in the record
+    to show it. Now compares git toplevels and exits 2 with the command that was correct.
+
+  --reverify could never refresh a record it had invalidated. A stale output-sha256 was
+    itself the reason the record could not be rewritten, so the first legitimate edit to a
+    gate's code pinned that gate at unmet permanently. Six gates were in that state. The
+    dependency fingerprint separates the two things a non-reproducing output can mean; only
+    "both fingerprints present and different" refreshes. An earlier draft also auto-refreshed
+    records too old to carry a fingerprint — an EXISTING TEST caught that, correctly:
+    refreshing marks a gate MET, and closing a gate because the checker could not work out
+    why its output moved is the overclaim this ledger exists to prevent.
+
+  check-escape-hatches had no detector for an assertion that cannot fail. Two shipped.
+
+  check-deadends read only pkg.main, so every package subpath export resolved to nothing.
+    It reported the one module the repository had just made canonical as its newest dead end.
+
+FALSIFIED: G2, G3, G4, G5, G6, G8 — six red-first records, each taken at a break that removed
+  the path the gate names, on a throwaway branch, in its own worktree.
+
+  G5 and G6 SURVIVED their first attempt, which was the interesting outcome and the reason
+  two repairs exist. G5's test sliced its source region from the method signature, so the
+  return-type annotation naming every fidelity field satisfied the assertion that "the counts
+  travel with the result" — deleting the entire fidelity object left it green. G6's break was
+  MINE, not the test's: session.ts has two captureProvenance call sites and I removed the
+  auto-critique one rather than the step boundary the gate's sentence is about.
+
+SECURITY: the tool-output fence could fall back to a shared constant. `systemPrompt` accepted
+  an empty fenceId and emitted id="", and session.ts fenced every tool result with
+  `agent.fenceId ?? ''`. The field is legitimately optional so a run persisted by an older
+  deploy still loads, but that fallback gave every such run the SAME marker — and the whole
+  untrusted-content rule rests on the marker being unguessable. An empty id is not a weaker
+  secret, it is a shared one. The prompt now refuses a falsy id, which immediately caught
+  three call sites that had been omitting it. The fence mints rather than defaults.
+
+  Found because rbxai-a3 reported two `assert.ok(X || true)` assertions on main. `X || true`
+  is `true`. One of them had been sitting on top of the product's only prompt-injection
+  boundary while the fence emitted a constant underneath it.
+
+  The second was not a defect: /values:.*studs/i matched `values: defaultProximityStuds=10`,
+  a token NAME from a licence-clear rule. No reference-only rule carries tokens at all. A
+  negative assertion aimed at a WORD rather than at the property it stands for will eventually
+  match something innocent, and then the only ways out are deleting it or neutering it.
+
+OH-6 CLOSED. geometryMask, SKY_RGB and GROUND_RGB had two implementations — one deciding what
+  the product believes about a build, one what the offline grader believes. A grader whose mask
+  differs from the product's is a grader whose scores do not predict the product. Both now
+  import packages/design/src/pixels.mjs. No detector would have found this: both copies had
+  callers, both were correct, and nothing compared them. The new invariant is aimed at
+  DUPLICATION rather than at absence, with a control proving both consumers still call it —
+  an absence check cannot tell "deduplicated" from "quietly removed".
+
+  Carrying it as an OWNER handoff for three passes was a stall. The row itself said the
+  decision was mine. The escape-hatch checker is what said so out loud.
+
+DISPOSITIONS: CLOSED 2 | WIRE 1 | STRUCTURALLY-BLOCKED 1 | OWNER 5
+
+REFUTERS: 0 dispatched this pass. §9.5's self-refuter still carried, seventh pass — and it is
+  now the oldest unkept commitment in this log, which is itself the finding.
+
+VERIFICATION:
+  gate-suite.mjs            SUITE GREEN, 2260 passed, 0 failed
+  gate-typecheck.mjs        TYPECHECK CLEAN, 0 TS errors
+  check-deadends.mjs --gate ALL DISPOSITIONED, 2 entries
+  check-escape-hatches.mjs  CLEAN, 431 files, 0 findings
+  gate-check.mjs --lint     WELL-FORMED, 37 gates, 0 problems
+  gate-check.mjs --status   37 gates, 30 need work
+
+  TWO GATE COUNTS, because they measure different things and reporting either alone would
+  flatter the ledger. 12 rows are marked [x]. Only 6 of those — G2, G3, G4, G5, G6, G8 —
+  read MET / measured / red-first / current, meaning they carry a falsification record AND
+  evidence whose dependency fingerprint still reproduces. The other 6 are checked on a
+  measurement with no falsification behind it, which §0 says is not yet evidence. The
+  honest headline is 6, and the 30 that --status says need work is the number to act on.
+
+  neurons spent 0
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red — OH-1 and OH-2.
+
+NOT DONE:
+  §6.2 back-fill | 25 gates without a falsification record | SCHEDULED pass 8
+  §6.5 check-backlog, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 8
+  §9.5 self-refuter | carried seven passes | SCHEDULED pass 8
+  the image serving route | absent from apps/worker/src/index.ts, so every generated image
+    renders as the expired-state fallback; reported by rbxai-a3 and mine by our split | SCHEDULED pass 8
+  the panel is display-only | the critic's confirmed defects reach the screen and influence
+    nothing the agent does; session.ts's retry loop reads lastCritique, never the panel | SCHEDULED pass 8
+
+NUMBERS CORRECTED: fully-discharged gates 6 -> 6 (unchanged; the six back-filled this pass are
+  the same six that were already checked, now with falsification behind them). Checkboxes 6 -> 12.
+  Deadend entries 3 -> 2, with the graph from 547 resolved edges to 552 — the five recovered are
+  the subpath imports the resolver could not see. Escape-hatch denominator 426 -> 431 files.
+
+SELF-REFUTER: still not dispatched, seventh pass. The sentence I now expect it to find is in
+  this very entry: "repaired first, as §6 requires". Four oracles were repaired, and all four
+  were found by tripping over them mid-task, not by auditing them. That is luck with a
+  procedure written around it afterwards.
+
+NEXT: the image serving route — it is the one item here that a user would notice, and it has
+  been open across two of rbxai-a3's reports.
