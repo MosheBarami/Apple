@@ -112,8 +112,15 @@ function Profile.load(player)
 	end)
 
 	if not ok or data == nil then
-		-- Either the service failed, or another server holds a live lock. Both mean: do not save.
-		cache[player.UserId] = nil
+		-- Either the service failed, or another server holds a live lock. Both mean: DO NOT SAVE.
+		--
+		-- Remembered as an unsaveable session rather than simply forgotten. Clearing the entry would
+		-- also work today, because release and commit both refuse a nil entry — but then canSave
+		-- would be a flag that is never false, and the rule it names would be enforced by an absence
+		-- somewhere else. A later change that caches a failed load for any reason would reintroduce
+		-- the account-wiping write with nothing left to stop it. A nil value keeps get() returning
+		-- nil, and the flag does the refusing.
+		cache[player.UserId] = { value = nil, canSave = false }
 		return nil
 	end
 

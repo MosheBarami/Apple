@@ -340,3 +340,220 @@ test('each player gets their own bucket', () => {
   ].join('\n'), 'guard-per-player');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * Profile's harness — a fake DataStore whose failures are scriptable.
+ *
+ * This is the module where being wrong costs a player their account, and until now every one of its
+ * four rules was asserted by matching a word in the source. `assert.match(s, /canSave/)` proves a
+ * flag is mentioned. It does not prove that a session whose load errored writes nothing.
+ *
+ * The stub implements UpdateAsync with real read-modify-write semantics — the transform receives
+ * the stored value and its return is stored — so the session-lock logic is exercised as written
+ * rather than described. `store.failNext` makes a transient service failure a thing the test can
+ * schedule, which is the only way to reach the branch that matters most.
+ *
+ * ONE DELIBERATE INFIDELITY, stated because it bounds what these prove: `task.spawn` runs
+ * synchronously here. That is fine for everything below, and it means this file does NOT test
+ * BindToClose's parallel-save behaviour — only that release() itself is correct.
+ */
+function runProfile(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local nowValue = 1000000',
+    'local realOs = os',
+    'os = { time = function() return nowValue end, clock = function() return nowValue end }',
+    'local function advance(seconds) nowValue = nowValue + seconds end',
+    '',
+    'task = { wait = function() end, spawn = function(f, ...) f(...) end }',
+    '',
+    '-- A DataStore with real read-modify-write semantics and schedulable failures.',
+    'local store = { data = {}, writes = 0, failNext = 0 }',
+    'function store:UpdateAsync(key, transform)',
+    '\tif self.failNext > 0 then',
+    '\t\tself.failNext = self.failNext - 1',
+    '\t\terror("DataStore unavailable")',
+    '\tend',
+    '\tself.writes = self.writes + 1',
+    '\tlocal updated = transform(self.data[key])',
+    '\tif updated ~= nil then',
+    '\t\tself.data[key] = updated',
+    '\tend',
+    '\treturn updated',
+    'end',
+    '',
+    'local removingHandler, closeHandler = nil, nil',
+    'game = {',
+    '\tJobId = "server-A",',
+    '\tGetService = function(self, name)',
+    '\t\tif name == "DataStoreService" then',
+    '\t\t\treturn { GetDataStore = function() return store end }',
+    '\t\tend',
+    '\t\tif name == "Players" then',
+    '\t\t\treturn {',
+    '\t\t\t\tPlayerRemoving = { Connect = function(_, fn) removingHandler = fn end },',
+    '\t\t\t\tGetPlayers = function() return {} end,',
+    '\t\t\t}',
+    '\t\tend',
+    '\t\treturn { IsStudio = function() return false end }',
+    '\tend,',
+    '\tBindToClose = function(self, fn) closeHandler = fn end,',
+    '}',
+    '',
+    'local player = { UserId = 7, Name = "tester" }',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.profile_store.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+test('the profile harness runs, and a false assertion in it still fails', () => {
+  const good = runProfile('assert(type(M.load) == "function", "M.load")', 'prof-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runProfile('assert(false, "intentional-profile")', 'prof-sanity-neg');
+  assert.equal(bad.ok, false, 'a failing assert did not fail the profile run');
+  assert.match(bad.output, /intentional-profile/);
+});
+
+test('a first load returns the defaults and takes the lock', () => {
+  const r = runProfile([
+    'local data = M.load(player)',
+    'assert(data ~= nil, "a fresh profile must load")',
+    'assert(data.coins == 0 and data.level == 1, "defaults")',
+    'assert(store.data["u_7"].lock ~= nil, "the lock must be taken")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "by this server")',
+  ].join('\n'), 'prof-first');
+  assert.ok(r.ok, r.output);
+});
+
+test('ANOTHER SERVER HOLDING A FRESH LOCK IS REFUSED — this is the duplication guard', () => {
+  const r = runProfile([
+    'store.data["u_7"] = { value = { coins = 500 }, lock = { serverId = "server-B", at = os.time() } }',
+    'local data = M.load(player)',
+    'assert(data == nil, "a live lock elsewhere must refuse the load")',
+    'assert(M.get(player) == nil, "and there must be no session data")',
+    'assert(store.data["u_7"].lock.serverId == "server-B", "the other lock must be intact")',
+    'assert(store.data["u_7"].value.coins == 500, "and their balance untouched")',
+  ].join('\n'), 'prof-locked');
+  assert.ok(r.ok, r.output);
+});
+
+test('a STALE lock is taken over, so a crashed server does not lock a player out forever', () => {
+  const r = runProfile([
+    'store.data["u_7"] = { value = { coins = 500 }, lock = { serverId = "server-B", at = os.time() } }',
+    'assert(M.load(player) == nil, "fresh lock refuses")',
+    'advance(1000)',
+    'local data = M.load(player)',
+    'assert(data ~= nil, "a stale lock must be taken over")',
+    'assert(data.coins == 500, "and the real balance loaded, not the defaults")',
+    'assert(store.data["u_7"].lock.serverId == "server-A", "we now hold it")',
+  ].join('\n'), 'prof-stale');
+  assert.ok(r.ok, r.output);
+});
+
+test('A FAILED LOAD WRITES NOTHING ON RELEASE — the rule that saves accounts', () => {
+  // The single highest-stakes branch in these modules. A session that could not READ must never
+  // WRITE, because the write it would make is a fresh default over a real account, and on the
+  // server it is indistinguishable from a successful save.
+  const r = runProfile([
+    'store.data["u_7"] = { value = { coins = 500 }, lock = nil }',
+    'store.failNext = 99',
+    'local data = M.load(player)',
+    'assert(data == nil, "the load must fail")',
+    'store.failNext = 0',
+    'local writesBefore = store.writes',
+    'assert(M.release(player) == false, "a failed-load session must refuse to save")',
+    'assert(store.writes == writesBefore, "and must not have written AT ALL")',
+    'assert(store.data["u_7"].value.coins == 500, "the real account is untouched")',
+  ].join('\n'), 'prof-failed-load');
+  assert.ok(r.ok, r.output);
+});
+
+test('a good session saves and releases the lock', () => {
+  const r = runProfile([
+    'local data = M.load(player)',
+    'data.coins = 250',
+    'assert(M.release(player) == true, "release should succeed")',
+    'assert(store.data["u_7"].value.coins == 250, "the balance persisted")',
+    'assert(store.data["u_7"].lock == nil, "the lock must be released")',
+    'assert(M.get(player) == nil, "and the session forgotten")',
+  ].join('\n'), 'prof-release');
+  assert.ok(r.ok, r.output);
+});
+
+test('release is safe to call twice', () => {
+  const r = runProfile([
+    'M.load(player)',
+    'assert(M.release(player) == true)',
+    'local writes = store.writes',
+    'assert(M.release(player) == false, "a second release has nothing to save")',
+    'assert(store.writes == writes, "and must not write again")',
+  ].join('\n'), 'prof-double-release');
+  assert.ok(r.ok, r.output);
+});
+
+test('a transient failure is retried rather than lost', () => {
+  const r = runProfile([
+    'store.failNext = 2',
+    'local data = M.load(player)',
+    'assert(data ~= nil, "two transient failures must be ridden out, not surfaced")',
+  ].join('\n'), 'prof-retry');
+  assert.ok(r.ok, r.output);
+});
+
+test('commit persists one table, keeps the lock, and honours the failed-load rule', () => {
+  // This is the call Receipts depends on for its atomic purchase write.
+  const r = runProfile([
+    'local data = M.load(player)',
+    'local working = { coins = 999, receipts = { ["abc"] = os.time() } }',
+    'assert(M.commit(player, working) == true, "commit should succeed")',
+    'assert(store.data["u_7"].value.coins == 999, "the table was written")',
+    'assert(store.data["u_7"].value.receipts["abc"] ~= nil, "including the receipt, in the SAME write")',
+    'assert(store.data["u_7"].lock ~= nil, "commit must NOT drop the session lock")',
+    'assert(M.get(player).coins == 999, "and the session adopted it")',
+  ].join('\n'), 'prof-commit');
+  assert.ok(r.ok, r.output);
+});
+
+test('commit refuses for a session that could not load', () => {
+  const r = runProfile([
+    'store.failNext = 99',
+    'assert(M.load(player) == nil)',
+    'store.failNext = 0',
+    'local writes = store.writes',
+    'assert(M.commit(player, { coins = 1 }) == false, "no data means no write")',
+    'assert(store.writes == writes, "nothing may be written")',
+  ].join('\n'), 'prof-commit-refuse');
+  assert.ok(r.ok, r.output);
+});
+
+test('a failed commit does not let the session adopt the unsaved table', () => {
+  const r = runProfile([
+    'local data = M.load(player)',
+    'data.coins = 10',
+    'store.failNext = 99',
+    'assert(M.commit(player, { coins = 777 }) == false, "the write failed")',
+    'store.failNext = 0',
+    'assert(M.get(player).coins == 10, "the session must still hold the old table, got " .. tostring(M.get(player).coins))',
+  ].join('\n'), 'prof-commit-fail');
+  assert.ok(r.ok, r.output);
+});
