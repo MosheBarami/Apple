@@ -815,3 +815,28 @@ test('a dependency fingerprint is stable across runs of a gate that starts a dev
   ]);
   assert.deepEqual([...seen], ['apps/site/astro.config.mjs'], 'two cache-busted URLs are one dependency');
 });
+
+test('a browser gate\'s output reproduces across runs', () => {
+  // Playwright prints its own wall clock — `54 passed (12.8s)` — and a server given a port by the
+  // OS prints that too. Neither is a property of the tree, so without normalising them a browser
+  // gate's output NEVER reproduces and its fingerprint can only ever refresh.
+  //
+  // That is the same consequence the cache-busted dependency paths had, by a different mechanism,
+  // and it is worth naming as one thing: a check that always differs is a check that always
+  // passes, and it passes GREEN, which is the direction nobody investigates.
+  const src = readFileSync(CHECKER, 'utf8');
+  // JUST the one function. Slicing to the next named function swept in its neighbours, which
+  // reference helpers this scope does not have — the test then failed with a ReferenceError that
+  // says nothing about normalisation.
+  const from = src.indexOf('function normaliseOutput(');
+  const fn = src.slice(from, src.indexOf('\n}\n', from) + 3);
+  const normalise = new Function('raw', 'ROOT', `${fn}\nreturn normaliseOutput(raw);`);
+
+  const a = normalise('54 passed (12.8s)\nserved on http://localhost:60706/', '/x');
+  const b = normalise('54 passed (13.4s)\nserved on http://localhost:61112/', '/x');
+  assert.equal(a, b, 'two identical runs differing only in wall clock and port must fingerprint alike');
+
+  // THE CONTROL: a real difference must still survive normalisation, or this is just erasure.
+  const c = normalise('53 passed (12.8s)\nserved on http://localhost:60706/', '/x');
+  assert.notEqual(a, c, 'a different test count is a real difference and must not be normalised away');
+});
