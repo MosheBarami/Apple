@@ -822,7 +822,7 @@
           "id": "f-6ffead13",
           "name": "Agent budgets",
           "status": "done",
-          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — the runtime ceiling is the compiled default rather than a wider number, and the ceiling a compromised ADMIN_KEY could reach stays bounded."
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — NOTE ON WHAT THIS PROVES: it readFileSync-es do/budget.ts and scans the SOURCE, so it proves the admin route cannot WIDEN the compiled ceiling. It never executes BudgetDO, so reserve/settle atomicity, concurrent double-spend, an orphaned reservation and rollover release are all uncovered. MAX_NEURONS_PER_REQUEST is proven to clamp to the compiled default in source."
         },
         {
           "id": "f-1007b8e4",
@@ -1968,7 +1968,7 @@
           "id": "f-8165a8af",
           "name": "Model cost tracking",
           "status": "done",
-          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — cost settles against a bounded runtime ceiling that ratchets down only. NOTE: this proves the cap, not per-call attribution accuracy."
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — NOTE ON WHAT THIS PROVES: it readFileSync-es do/budget.ts and scans the SOURCE, so it proves the admin route cannot WIDEN the compiled ceiling. It never executes BudgetDO, so reserve/settle atomicity, concurrent double-spend, an orphaned reservation and rollover release are all uncovered. Settlement is bounded by a ceiling the route cannot raise. Per-call cost attribution accuracy is separately untested."
         },
         {
           "id": "f-c8110b8c",
@@ -5841,7 +5841,7 @@
           "id": "f-e564d073",
           "name": "Daily budgets",
           "status": "done",
-          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — the runtime daily ceiling is the compiled default rather than a wider number, and the ceiling a compromised ADMIN_KEY could reach stays bounded."
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — NOTE ON WHAT THIS PROVES: it readFileSync-es do/budget.ts and scans the SOURCE, so it proves the admin route cannot WIDEN the compiled ceiling. It never executes BudgetDO, so reserve/settle atomicity, concurrent double-spend, an orphaned reservation and rollover release are all uncovered. billableNeuronsPerDay is proven to clamp to DEFAULT_LIMITS in source. The 22x headroom the old route allowed is proven gone."
         },
         {
           "id": "f-3388e6be",
@@ -5853,7 +5853,7 @@
           "id": "f-5a5b76b1",
           "name": "Hard spending caps",
           "status": "done",
-          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — the runtime ceiling is the compiled default, lowering is allowed and raising is not, and a compromised ADMIN_KEY stays bounded."
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — NOTE ON WHAT THIS PROVES: it readFileSync-es do/budget.ts and scans the SOURCE, so it proves the admin route cannot WIDEN the compiled ceiling. It never executes BudgetDO, so reserve/settle atomicity, concurrent double-spend, an orphaned reservation and rollover release are all uncovered. The cap is proven unwidenable in source; whether it holds at runtime is untested, and BudgetDO is the only guard against uncapped AI Gateway overage."
         },
         {
           "id": "f-39605354",
@@ -6027,7 +6027,7 @@
           "id": "f-7c0cf0ed",
           "name": "Token billing",
           "status": "done",
-          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs and spend-ratchet.test.mjs — settlement is metered against a bounded ceiling, and the day and month counters roll independently at UTC midnight."
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — the metering arithmetic is EXECUTED: it bundles src/quota-math.ts, the same module do/quota.ts imports, and proves day and month keys roll at UTC midnight independently. spend-ratchet.test.mjs additionally scans the source for the ceiling, but does not execute BudgetDO."
         },
         {
           "id": "f-79a5680b",
@@ -6063,7 +6063,7 @@
           "id": "f-9471650e",
           "name": "Spending limits",
           "status": "done",
-          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — lowering is allowed and zero is reachable, raising past the compiled default is not, and the old 22x headroom is gone."
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — NOTE ON WHAT THIS PROVES: it readFileSync-es do/budget.ts and scans the SOURCE, so it proves the admin route cannot WIDEN the compiled ceiling. It never executes BudgetDO, so reserve/settle atomicity, concurrent double-spend, an orphaned reservation and rollover release are all uncovered. Lowering and zero are reachable, raising past the compiled default is not — asserted against the source of the admin route."
         },
         {
           "id": "f-26beae43",
