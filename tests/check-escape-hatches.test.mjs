@@ -326,8 +326,16 @@ test('it catches an EXPECT changed with no adjacent EXPECT-CHANGE line, where it
     // detector was right not to fire, so a green test meant the fixture had rotted, not that the
     // detector worked.
     const before = readFileSync(gates, 'utf8').split('\n');
-    const target = before.findIndex((l, i) => /^ {4}EXPECT: /.test(l) && !/^ {2}EXPECT-CHANGE:/.test(before[i + 1] ?? ''));
-    assert.ok(target !== -1, 'every gate carries an EXPECT-CHANGE line; this plant can no longer isolate the rule');
+    // The predicate has to be the DETECTOR'S: it scans the whole gate BLOCK for an EXPECT-CHANGE
+    // line, not the line immediately after the EXPECT. A first fix here checked only the next
+    // line, which is a different question and picked gates the detector would rightly excuse.
+    const heads = [...before.keys()].filter((i) => /^- \[[ xX~]\] G[\w-]+/.test(before[i]));
+    const blockOf = (i) => before.slice(i, heads.find((h) => h > i) ?? before.length);
+    const target = heads
+      .filter((h) => !blockOf(h).some((l) => /^\s*EXPECT-CHANGE:/.test(l)))
+      .map((h) => blockOf(h).findIndex((l) => /^ {4}EXPECT: /.test(l)) + h)
+      .find((i) => i > 0);
+    assert.ok(target !== undefined, 'every gate block carries an EXPECT-CHANGE line; this plant can no longer isolate the rule');
     before[target] = '    EXPECT: loosened';
     writeFileSync(gates, before.join('\n'));
     execFileSync('git', ['add', '-A'], { cwd: dir });

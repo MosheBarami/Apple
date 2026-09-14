@@ -1,0 +1,5 @@
+[
+  "apps/plugin/tests/syntax-check.mjs",
+  "apps/site/astro.config.mjs?t=1789413017626",
+  "scripts/gate-typecheck.mjs"
+]
