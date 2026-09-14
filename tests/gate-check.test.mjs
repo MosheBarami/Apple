@@ -712,8 +712,53 @@ test('--reverify leaves a stationed heading byte-identical', () => {
   //
   // Both happened to this repository's ledger in a single pass. A fixed-point test is the cheapest
   // thing that would have caught either.
-  const head = '- [x] G1 [S7]: a stationed gate';
-  const r = check(`${head}\n    CHECK: echo hi\n    EXPECT: hi\n${falsified}`, ['--reverify']);
+  const head = '- [x] G1: a stationed gate';
+  const r = check(`${head}\n    STATION: S7\n    CHECK: echo hi\n    EXPECT: hi\n${falsified}`, ['--reverify']);
   const written = r.ledger().split('\n').find((l) => l.startsWith('- ['));
   assert.equal(written, head, 'a reverify that changes nothing must rewrite the heading unchanged');
+
+  // The legacy inline spelling is still ACCEPTED — a stale branch may carry it, and rewriting
+  // history is not a migration strategy — but it is NORMALISED rather than preserved, so the
+  // format converges on one spelling instead of two drifting.
+  const legacy = check(`- [x] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n${falsified}`, ['--reverify']);
+  assert.match(legacy.ledger(), /^- \[x\] G1: a stationed gate$/m, 'the inline station must be normalised out of the heading');
+});
+
+/* ------------------------------------------------- the station is a field --- */
+
+test('the station is read from its own STATION: line', () => {
+  // It used to sit between the id and the colon — `- [ ] G1 [S7]: title` — which THIS parser read
+  // fine and the unlazy skill's parser did not: that one takes the first non-space run and requires
+  // it to end in a colon, so every stationed heading failed it. Two checkers read this file, and a
+  // format only one of them can parse is a defect in the FORMAT.
+  //
+  // The two cannot be satisfied by one heading: the skill needs the colon straight after the id,
+  // and the station needs to live somewhere. So it moved to where the rest of a gate's metadata
+  // already is, beside CHECK and EXPECT.
+  const r = check('- [ ] G1: a stationed gate\n    STATION: S7\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.doesNotMatch(r.out, /station/i, `a STATION line is the correct spelling: ${r.out}`);
+});
+
+test('--lint rejects a station left in the heading, in either spelling', () => {
+  const inline = check('- [ ] G1 [S7]: a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.equal(inline.exit, 1, inline.out);
+  assert.match(inline.out, /its station is in the heading/);
+
+  const stranded = check('- [ ] G1: [S7] a stationed gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.equal(stranded.exit, 1, stranded.out);
+  assert.match(stranded.out, /its station tag is inside the title/);
+
+  // THE CONTROL. An unstationed gate must stay silent, or the rule would just forbid plain gates.
+  const plain = check('- [ ] G1: an ordinary gate\n    CHECK: echo hi\n    EXPECT: hi\n', ['--lint']);
+  assert.doesNotMatch(plain.out, /station/i);
+});
+
+test('a rewrite preserves the STATION line instead of folding it into the heading', () => {
+  // The fixed point again, for the new shape: the heading is rewritten on every --reverify, and the
+  // station must not be dragged back into it. Folding it in is how the whole episode started.
+  const body = '- [x] G1: a stationed gate\n    STATION: S7\n    CHECK: echo hi\n    EXPECT: hi\n';
+  const r = check(body + falsified, ['--reverify']);
+  const out = r.ledger();
+  assert.match(out, /^- \[x\] G1: a stationed gate$/m, 'the heading must carry no station tag');
+  assert.match(out, /^    STATION: S7$/m, 'the STATION line must survive the rewrite');
 });

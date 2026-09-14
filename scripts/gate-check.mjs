@@ -205,18 +205,36 @@ function parseGates(text) {
   let current = null;
 
   for (const [i, line] of lines.entries()) {
-    // `- [ ] G12 [S4]: title` — the station tag is optional and is captured so §16.1 can require
-    // at least one gate per station without a second file listing them.
+    // `- [ ] G12: title`, with the station on its own `STATION: S4` line below.
+    //
+    // WHY THE STATION LEFT THE HEADING. It used to sit between the id and the colon —
+    // `- [ ] G12 [S4]: title` — which this parser read fine and the unlazy skill's parser did not:
+    // that one takes the first non-space run and requires it to end in a colon, so every stationed
+    // heading failed it. Two checkers read this file, and a format only one of them can parse is a
+    // defect in the FORMAT, not in either checker. Trying to satisfy both in one heading is
+    // impossible: the skill needs the colon immediately after the id, and the station needs to be
+    // somewhere. So it moved to where the rest of a gate's metadata already lives, beside CHECK and
+    // EXPECT, and both parsers now read the same headings.
+    //
+    // The old inline spelling is still ACCEPTED, because rewriting history is not a migration
+    // strategy and a stale branch may carry it. It is normalised on write and --lint names it.
     const head = /^- \[([ xX~])\] (G[\w-]+)(?:\s+\[(S\d+)\])?: (.*)$/.exec(line);
     if (head) {
       if (current) gates.push(current);
       current = {
         id: head[2], mark: head[1], station: head[3] ?? null, title: head[4],
         headLine: i, check: null, expect: null, evidenceLine: null, falsifiedLine: null,
+        stationLine: null,
       };
       continue;
     }
     if (!current) continue;
+    const station = /^\s{4}STATION:\s*(S\d+)\s*$/.exec(line);
+    if (station && current.stationLine === null) {
+      current.station = station[1];
+      current.stationLine = i;
+      continue;
+    }
     const check = /^\s{4}CHECK:\s*(.+)$/.exec(line);
     if (check && current.check === null) { current.check = check[1].trim(); continue; }
     const expect = /^\s{4}EXPECT:\s*(.+)$/.exec(line);
@@ -498,8 +516,16 @@ if (LINT) {
     //
     // Two rows drifted into that shape in the working tree this pass. This runs for EVERY gate,
     // ticked or not, because an unticked gate loses its station just as quietly.
+    // A station in the HEADING at all, in either spelling. `G1 [S7]: title` is the old form that
+    // only this parser could read; `G1: [S7] title` is what an attempt to fix that produced, and it
+    // parses as a title containing brackets — the gate silently belongs to no station. Both are now
+    // wrong for the same reason: the station belongs on its own STATION: line, where the unlazy
+    // skill's parser and this one agree on the heading.
     if (/^\[S\d+\]/.test(g.title)) {
-      problems.push(`${g.id}: its station tag is inside the title — the heading must read \`${g.id} [S…]: …\``);
+      problems.push(`${g.id}: its station tag is inside the title — move it to an indented \`STATION: S…\` line`);
+    }
+    if (g.stationLine === null && g.station !== null) {
+      problems.push(`${g.id}: its station is in the heading — move it to an indented \`STATION: ${g.station}\` line`);
     }
     if (g.mark === ' ') continue;
     if (g.mark === '~') { problems.push(`${g.id}: abandoned in a file that has no vocabulary for it`); continue; }
@@ -647,10 +673,10 @@ if (REVERIFY) {
       quarantined.push({ id: r.id, reasons });
       // Marked UNMET IN THE FILE, not merely reported: a report is something the next reader has
       // to find, and the checkbox is what they will actually trust.
-      lines[now.headLine] = `- [ ] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${now.title}`;
+      lines[now.headLine] = `- [ ] ${r.id}: ${now.title}`;
     } else {
       writeDeps(r.id, r.deps);
-      lines[now.headLine] = `- [x] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${now.title}`;
+      lines[now.headLine] = `- [x] ${r.id}: ${now.title}`;
       if (now.evidenceLine !== null) lines[now.evidenceLine] = evidenceLine(r);
       else lines.splice(insertAt(now), 0, evidenceLine(r));
     }
@@ -710,7 +736,7 @@ if (APPROVE) {
 
   // Bottom-up, so an insertion never shifts a line number still to be used.
   for (const r of applied.sort((a, b) => b.headLine - a.headLine)) {
-    lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}${r.station ? ` [${r.station}]` : ''}: ${r.title}`;
+    lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}: ${r.title}`;
     writeDeps(r.id, r.deps);
     const line = evidenceLine(r);
     if (r.evidenceLine !== null) lines[r.evidenceLine] = line;
