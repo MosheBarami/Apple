@@ -559,6 +559,16 @@ export type ServerMsg =
       tool?: string;
       effort?: 'low' | 'medium' | 'high';
       effortReason?: string;
+      /**
+       * What THIS run has cost so far, in the user-facing unit.
+       *
+       * Distinct from the `quota` message, which carries whole-account state: a user watching a
+       * build wants to know what the build is costing, not what their day looks like. Both were
+       * tracked on the server and only the account-wide figure was ever sent, so the number the
+       * user could actually act on — "this run has spent 6 Sparks and is on step 9 of 16" — was
+       * the one they could not see.
+       */
+      sparksSpent?: number;
     }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }

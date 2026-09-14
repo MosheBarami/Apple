@@ -963,7 +963,7 @@ export class SessionDO extends DurableObject<Env> {
     // otherwise carries whatever the previous tool left us in, until the next
     // tool call renames it. Never invent a stage the agent has not entered.
     agent.phase = agent.step === 1 ? (agent.mode === 'clay' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
-    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, totalSteps: agent.maxSteps });
+    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, totalSteps: agent.maxSteps, sparksSpent: agent.sparksSpent });
 
     const studioConnected = await this.pluginConnected();
     const allowed = toolsForMode(agent.mode, studioConnected, toolNames());
@@ -992,6 +992,7 @@ export class SessionDO extends DurableObject<Env> {
       totalSteps: agent.maxSteps,
       effort: choice.effort,
       effortReason: choice.reason,
+      sparksSpent: agent.sparksSpent,
     });
 
     // Whether the curated library exists here. Read once per isolate — it changes at most once per

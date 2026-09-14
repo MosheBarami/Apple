@@ -82,6 +82,13 @@ export interface AgentStatus {
   phase: AgentPhase;
   step?: number;
   totalSteps?: number;
+  /**
+   * What THIS run has cost so far, in Sparks. Reported by the worker; never estimated here.
+   *
+   * Distinct from the account-wide `quota` message. A user watching a build wants to know what
+   * the build is costing, and that was the one figure the server tracked and never sent.
+   */
+  sparksSpent?: number;
   /** The tool running right now, when the phase came from one. */
   tool?: string;
   /**
@@ -507,6 +514,10 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           tool: msg.tool,
           effort: msg.effort ?? prev?.effort,
           effortReason: msg.effortReason ?? prev?.effortReason,
+          // Carried forward like effort, and for the same reason: the cost is settled once per
+          // step while the phase changes several times within one. Falling back to `prev` keeps
+          // the figure from flickering back to nothing between settlements.
+          sparksSpent: msg.sparksSpent ?? prev?.sparksSpent,
         }));
         break;
       case 'run_state': {

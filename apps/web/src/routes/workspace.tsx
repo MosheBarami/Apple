@@ -25,6 +25,7 @@ import { StudioView } from '../components/ws/studio-view';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
+import { Spinner } from '../components/loading';
 
 async function fetchProject(id: string): Promise<ProjectRow | null> {
   if (MOCK_MODE) return mockProjects.find((p) => p.id === id) ?? mockProjects[0] ?? null;
@@ -168,6 +169,40 @@ export function WorkspacePage() {
         : conn === 'offline'
           ? 'Offline — check your connection'
           : 'Reconnecting…';
+
+  // LOADING AND FAILURE BOTH HAVE TO SAY SO.
+  //
+  // Only the "project is gone" case was handled. While the fetch was in flight, and — worse —
+  // after it FAILED, this fell straight through to the full workspace render: a header titled
+  // "Build", every panel empty, and nothing anywhere saying the data never arrived. A screen that
+  // looks like an empty project is indistinguishable from an empty project, which is the same
+  // defect as a green check over a failed build, wearing different clothes.
+  if (project.isPending) {
+    return (
+      <div className="gx-plain" aria-busy="true">
+        <Spinner label="Opening your project…" />
+      </div>
+    );
+  }
+
+  if (project.isError) {
+    return (
+      <div className="gx-plain">
+        <EmptyState
+          state="connectionFailed"
+          detail={project.error instanceof Error ? project.error.message : undefined}
+          action={
+            <button type="button" className="gx-btn" onClick={() => void project.refetch()}>
+              Try again
+            </button>
+          }
+        />
+        <Link to="/" className="gx-btn gx-btn--outline">
+          Back to your builds
+        </Link>
+      </div>
+    );
+  }
 
   if (project.isSuccess && project.data === null) {
     return (

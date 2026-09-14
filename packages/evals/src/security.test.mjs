@@ -806,10 +806,25 @@ test('A2 agent_status carries a policy classification, never prompt or transcrip
   // Every agent_status broadcast, and every field on it.
   const broadcasts = [...session.matchAll(/broadcast\(\{\s*\n?\s*type: 'agent_status'[\s\S]{0,400}?\}\);/g)].map((m) => m[0]);
   assert.ok(broadcasts.length >= 3, 'expected the phase, step and tool status broadcasts');
-  const allowed = new Set(['type', 'phase', 'step', 'totalSteps', 'tool', 'effort', 'effortReason']);
+  // REVIEWED, not merely observed. Every entry here is a field allowed onto a message the browser
+  // renders, so each has to be something that cannot carry prompt or transcript text:
+  //   type/phase/tool   fixed vocabulary from the worker
+  //   step/totalSteps   integers
+  //   effort            an enum of three values
+  //   effortReason      assembled from fixed policy strings, asserted below
+  //   sparksSpent       an integer the worker settled. Numeric by construction, so it cannot carry
+  //                     text; it is the per-run cost, distinct from the account-wide `quota`
+  //                     message, and it is what a user watching a build can actually act on.
+  const allowed = new Set(['type', 'phase', 'step', 'totalSteps', 'tool', 'effort', 'effortReason', 'sparksSpent']);
   for (const b of broadcasts) {
     for (const [, field] of b.matchAll(/(?:^|[{,]\s*|\n\s{4,})(\w+):/g)) {
       assert.equal(allowed.has(field), true, `agent_status grew an un-reviewed field: ${field}`);
+    }
+    // And the numeric fields must stay numeric: a field that is allowed BECAUSE it is a number
+    // stops being safe the moment something interpolates a string into it.
+    const numeric = /sparksSpent:\s*([^,\n}]+)/.exec(b);
+    if (numeric) {
+      assert.match(numeric[1].trim(), /^agent\.sparksSpent$/, 'sparksSpent must be the settled integer, nothing else');
     }
     for (const forbidden of ['agent.llm', 'agent.request', 'agent.finalText', 'res.text', 'out.resultForLlm', 'userId']) {
       assert.equal(b.includes(forbidden), false, `agent_status must not carry ${forbidden}`);

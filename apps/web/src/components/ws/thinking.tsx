@@ -166,10 +166,30 @@ export function Thinking({
           {/* The reasoning POLICY's own justification for the effort tier it
               picked. A classification of the request, not the model's private
               reasoning. */}
-          {status?.effort && (
+          {(status?.effort || status?.sparksSpent != null || status?.step != null) && (
             <p className="gx-think__foot">
-              Reasoning effort: <strong>{status.effort}</strong>
-              {status.effortReason ? ` — ${status.effortReason}` : ''}
+              {status?.step != null && status?.totalSteps != null && (
+                <>
+                  Step <strong>{status.step}</strong> of {status.totalSteps}
+                  {(status.effort || status.sparksSpent != null) ? ' · ' : ''}
+                </>
+              )}
+              {/* What THIS run has cost, settled by the worker and never estimated here. The
+                  account-wide figure lives in the credits panel; this is the one a user watching a
+                  build can actually act on. Rendered only once something has been spent, so an
+                  opening run does not display a confident "0". */}
+              {status?.sparksSpent != null && status.sparksSpent > 0 && (
+                <>
+                  <strong>{status.sparksSpent}</strong> {status.sparksSpent === 1 ? 'Spark' : 'Sparks'} this run
+                  {status.effort ? ' · ' : ''}
+                </>
+              )}
+              {status?.effort && (
+                <>
+                  Reasoning effort: <strong>{status.effort}</strong>
+                  {status.effortReason ? ` — ${status.effortReason}` : ''}
+                </>
+              )}
             </p>
           )}
         </div>
