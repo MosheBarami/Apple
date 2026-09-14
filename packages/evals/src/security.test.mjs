@@ -1500,7 +1500,18 @@ test('A7 STATIC CHECK — checkpoints are scoped to the DO and restore cannot cr
   assert.match(session, /select data from checkpoint_chunks where checkpoint_id = \?/);
   assert.equal(/checkpoint_chunks where[\s\S]{0,80}project/.test(session), false, 'checkpoint storage must remain per-DO, not keyed by a caller-supplied project id');
   assert.match(session, /if \(!chunks\.length\) return \{ ok: false, error: 'checkpoint not found' \}/, 'an unknown checkpoint id must be a clean refusal');
-  assert.match(session, /restoreCheckpoint\(id: string\)[\s\S]{0,200}pluginConnected/, 'restore must require a connected Studio');
+  // Asserted as ORDER, not as a character distance. The previous form required `pluginConnected`
+  // within 200 characters of the signature, which broke the moment the return type grew to carry
+  // the restore's fidelity report — a documentation change failing a security test for a reason
+  // that has nothing to do with security.
+  const restore = session.slice(session.indexOf('async restoreCheckpoint('), session.indexOf('private async quotaSpend('));
+  assert.ok(restore.length > 0, 'restoreCheckpoint must exist');
+  // Not named `read` — that is the module's file-reading helper, and shadowing it here puts the
+  // very first line of this test inside a temporal dead zone.
+  const guardAt = restore.indexOf('pluginConnected');
+  const readAt = restore.indexOf('select data from checkpoint_chunks');
+  assert.ok(guardAt !== -1, 'restore must require a connected Studio');
+  assert.ok(guardAt < readAt, 'the Studio check must precede reading the checkpoint out of storage');
 });
 
 // ===========================================================================
