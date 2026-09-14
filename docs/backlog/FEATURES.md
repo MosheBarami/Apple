@@ -683,7 +683,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Failure memory
 - [ ] Successful pattern memory
 
-### Code Intelligence — 49 items  (done 7, partial 0)
+### Code Intelligence — 49 items  (done 6, partial 0)
 
 - [x] Luau parser — luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs
 - [ ] Luau formatter — NOT BUILT: nothing invokes stylua; the mission doc lists installing it as G-TOOLCHAIN-1, i.e. work not done
