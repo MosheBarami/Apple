@@ -29,8 +29,32 @@ const MD_PATH = join(ROOT, 'docs', 'backlog', 'FEATURES.md');
 const GATES_PATH = join(ROOT, 'GATES.md');
 
 const SUMMARY = process.argv.includes('--summary');
-for (const a of process.argv.slice(2)) {
-  if (a !== '--summary') { console.error(`check-backlog: unrecognised flag ${a}`); process.exit(2); }
+
+// A FLOOR, BECAUSE `0 findings` IS A TOKEN AN EMPTY CHECKER PRINTS TOO.
+//
+// `BACKLOG HONEST` says only that nothing was found. Delete the loop that verifies citations and it
+// prints faster and just as green — which makes it the same shape as `node --test` reporting
+// `fail 0` over a file with no tests left in it. The gate that names this checker could not be
+// falsified by removing the path it names, and a gate that cannot go red is decoration.
+//
+// So the success token is gated on a number that only real verification can reach: how many closed
+// rows had a citation actually redeemed — a gate the ledger says is MET, or a tracked test file
+// that was RUN. Remove the path and this is 0, which is below any floor worth writing.
+let FLOOR_CITED = 0;
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--summary') continue;
+  if (a === '--floor-cited') {
+    FLOOR_CITED = Number(argv[i + 1]);
+    if (!Number.isInteger(FLOOR_CITED) || FLOOR_CITED < 1) {
+      console.error('check-backlog: --floor-cited needs a positive integer');
+      process.exit(2);
+    }
+    i += 1;
+    continue;
+  }
+  { console.error(`check-backlog: unrecognised flag ${a}`); process.exit(2); }
 }
 
 const findings = [];
@@ -312,8 +336,18 @@ console.log(
   `${closedRows.length} claim a status (${closedRows.filter((r) => r.duplicateOf).length} of them declared duplicates that inherit their proof), ${cited} cite something runnable`,
 );
 
+// The floor is checked BEFORE the success token can be printed, and it is reported as a finding
+// rather than as a separate exit path, so a run that is both under-floor and dishonest says both.
+if (FLOOR_CITED && cited < FLOOR_CITED) {
+  fail(
+    `only ${cited} closed row(s) redeemed a citation, below the floor of ${FLOOR_CITED}`,
+    'check-backlog',
+    'citations went missing rather than red — the verification path may have been removed',
+  );
+}
+
 if (!findings.length) {
-  console.log(`BACKLOG HONEST — ${rows.length} rows, 0 findings`);
+  console.log(`BACKLOG HONEST — ${rows.length} rows, 0 findings${FLOOR_CITED ? `, ${cited} citations redeemed (floor ${FLOOR_CITED})` : ''}`);
   process.exit(0);
 }
 

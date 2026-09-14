@@ -48,8 +48,8 @@ function scratch(sections, mdBody) {
   return dir;
 }
 
-function run(dir) {
-  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'check-backlog.mjs')], { cwd: dir, encoding: 'utf8', timeout: 60_000 });
+function run(dir, ...args) {
+  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'check-backlog.mjs'), ...args], { cwd: dir, encoding: 'utf8', timeout: 60_000 });
   return { exit: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
 }
 
@@ -335,6 +335,38 @@ test('a "done" row still owes a RUNNABLE citation — the rule was scoped, not r
   }), bucket('A', 1, 1))));
   assert.equal(r.exit, 1, r.out);
   assert.match(r.out, /prose/);
+});
+
+/* --------------------------------------- the floor under the success token --- */
+
+test('THE FLOOR. A backlog with nothing closed does not satisfy a floor of one', () => {
+  // `BACKLOG HONEST` says only that nothing was found, and an emptied checker prints it faster and
+  // just as green — the same shape as `node --test` reporting `fail 0` over a file with no tests
+  // left. Without this, the gate naming this checker could not be made red by removing the path it
+  // names, and a gate that cannot go red certifies nothing.
+  const r = run(keep(scratch(CLEAN, bucket('A', 1))), '--floor-cited', '1');
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /only 0 closed row\(s\) redeemed a citation, below the floor of 1/);
+  assert.match(r.out, /citations went missing rather than red/);
+  assert.doesNotMatch(r.out, /BACKLOG HONEST/);
+});
+
+test('...and a redeemed citation clears it, so the floor measures verification, not rows', () => {
+  // The control. A row that actually redeems its citation — against the MET gate in the fixture
+  // ledger — counts, which is what makes the failure above mean "nothing was verified" rather than
+  // "the flag always fails".
+  const r = run(keep(scratch(
+    [{ section: 'A', items: [{ id: 'f-1', name: 'one', status: 'done', evidence: 'G1 — the gate the ledger says is met' }] }],
+    bucket('A', 1, 1),
+  )), '--floor-cited', '1');
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.out, /1 citations redeemed \(floor 1\)/);
+});
+
+test('a floor that is not a positive integer is a usage error, not a floor of zero', () => {
+  const r = run(keep(scratch(CLEAN, bucket('A', 1))), '--floor-cited', 'lots');
+  assert.equal(r.exit, 2, r.out);
+  assert.match(r.out, /needs a positive integer/);
 });
 
 test('the scratch clones are removed', () => {

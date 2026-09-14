@@ -250,8 +250,12 @@ test it gated.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1076; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=61017c88de5b58016cab9ece; at=2026-09-14T22:07:51.464Z
 
 - [ ] G-BACKLOG-1: Every closed backlog row cites something a machine can run
-    CHECK: node scripts/check-backlog.mjs --summary
+    CHECK: node scripts/check-backlog.mjs --summary --floor-cited 127
     EXPECT: BACKLOG HONEST
+
+- [ ] G-ORACLE-6: Every rule in the backlog checker is proven to fire, and the floor has a control
+    CHECK: node scripts/assert-tests.mjs --floor 29 --label G-ORACLE-6 -- node --test tests/check-backlog.test.mjs
+    EXPECT: G-ORACLE-6 OK
 
 - [x] G-ORACLE-5: Every disposition rule is proven to fire, and every one carries a control
     CHECK: node scripts/assert-tests.mjs --floor 17 --label G-ORACLE-5 -- node --test tests/check-dispositions.test.mjs
