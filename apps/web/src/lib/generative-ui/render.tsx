@@ -116,8 +116,31 @@ function Bytes({ value }: { value: number }) {
   return <>{`${(value / (1024 * 1024)).toFixed(1)} MB`}</>;
 }
 
-/** Images are validated base64 data URLs; width/height are numbers, never CSS strings. */
+/**
+ * A validated image source — either an inline data URL or our own image route — with an honest
+ * failure. Width and height are numbers, never CSS strings.
+ *
+ * AN IMAGE THAT DOES NOT LOAD MUST SAY SO. Generated images are kept in KV for an hour, while the
+ * panel that displays one lives in the conversation for as long as the conversation does. So a
+ * user scrolling back to yesterday's work is the NORMAL case for this branch, not an edge case:
+ * without it they get the browser's broken-image glyph, which says nothing, looks like a bug in the
+ * product, and gives them no way to tell "this expired" from "this never worked".
+ *
+ * The alt text is shown rather than discarded — it describes what the picture was, which is the
+ * only thing still true about it.
+ */
 function SafeImage({ image, className }: { image: ImageRef; className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span className={`gu-img-gone${className ? ` ${className}` : ''}`} role="img" aria-label={`Unavailable: ${image.alt}`}>
+        <span className="gu-img-gone__alt">{image.alt}</span>
+        <span className="gu-img-gone__why">No longer available — generated images are kept for an hour.</span>
+      </span>
+    );
+  }
+
   return (
     <img
       className={className}
@@ -128,6 +151,7 @@ function SafeImage({ image, className }: { image: ImageRef; className?: string }
       loading="lazy"
       decoding="async"
       draggable={false}
+      onError={() => setFailed(true)}
     />
   );
 }
