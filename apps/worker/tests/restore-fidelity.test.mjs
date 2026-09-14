@@ -17,7 +17,13 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8');
 const SERIALIZER = readFileSync(join(HERE, '..', '..', 'plugin', 'src', 'Serializer.luau'), 'utf8');
-const body = SESSION.slice(SESSION.indexOf('async restoreCheckpoint('), SESSION.indexOf('private async quotaSpend('));
+// The body starts AFTER the return-type annotation, and that boundary is the whole point.
+// The annotation NAMES every fidelity field, so a slice that includes it lets a `instancesCreated:`
+// match land on the type that PROMISES the count rather than on the code that supplies it. Found by
+// falsification: replacing the entire `const fidelity = {...}` with `undefined as any` left the
+// "counts travel with the result" test green, because the signature above it still said they would.
+const SIG = SESSION.indexOf('async restoreCheckpoint(');
+const body = SESSION.slice(SESSION.indexOf('}> {', SIG), SESSION.indexOf('private async quotaSpend('));
 
 test('the plugin still computes a fidelity report worth surfacing', () => {
   // If the plugin stops reporting these, the worker's handling below is dead code and this test
