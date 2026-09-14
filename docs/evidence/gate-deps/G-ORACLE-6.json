@@ -1,0 +1,4 @@
+[
+  "scripts/assert-tests.mjs",
+  "tests/check-backlog.test.mjs"
+]
