@@ -23,3 +23,35 @@ against main's GATES.md, and all four of these say not to:
     does not contain would be false evidence, which is the one thing the gate system exists to stop.
 The numbers above are the honest record until the branch merges; the evidence belongs to whoever
 runs the gates on main afterwards.
+
+
+--- the product's own gate CHECKs, run against this branch ---
+
+Every CHECK line from the 25 open gates, executed read-only on a clean grow/main tree. Nothing was
+written to GATES.md: recording evidence there would attest, on main, to a suite main does not
+contain. These are the commands the gates run, and their result on this branch.
+
+  29 of 30 passed.
+
+  The one failure is `node scripts/check-offer.mjs`, and it fails IDENTICALLY on main:
+
+    free grants 60 Sparks/day and one quality-gated build costs 77 — a free user cannot
+      complete a single build in a day, so the trial demonstrates the product not working
+    team grants 1500 Sparks/day and enterprise 6000, while the WHOLE SERVICE can serve 833
+      — one user on either plan exhausts the day for everyone
+
+  That is a pricing decision for the owner, not a code defect, and G-OFFER-1 exists to hold it.
+  It is recorded here because it is the only thing standing between this branch and a clean sweep,
+  and because it is the kind of finding that gets lost when it is nobody's task.
+
+Three CHECKs failed on the first sweep and were fixed rather than explained away:
+
+  check-escape-hatches  a raw NUL byte in apps/web/tests/image-src.test.mjs. Written as an escape,
+                        not stripped — the fixture exists to prove a NUL in a path is REFUSED.
+  gate-check            "a scratch clone of the tracked tree is clean" — an artefact of running it
+                        against an uncommitted tree, not a defect. Passes committed, 48/48.
+  check-offer           pre-existing, above.
+
+And the sweep itself found what a browser check had missed: the plan ladder was advertising "up to
+0 builds a day" on the free tier, because buildsPerDay floors to zero against a 77-Spark build. I
+had looked at that ladder rendered and read its layout instead of its figures.
