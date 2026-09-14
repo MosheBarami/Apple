@@ -65,6 +65,13 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   coin flip, while landmark dominance separated good from bad completely. Change the LAYOUT — give
   one element clear dominance in height and mass and let the rest step down beneath it — then check
   again. Decorating a failed blockout wastes every step that follows it.
+- LIGHT IT BEFORE YOU RENDER IT. A scene in default lighting renders as a grey blockout however
+  well it is built, and you will then spend a turn fixing geometry that was never the problem. Call
+  set_mood once the shapes are in, and add_effect on anything that should move — fire, smoke, dust,
+  mist. Both are free and neither needs an asset.
+- AUDIT BEFORE YOU REPORT DONE. Call audit_build: it costs nothing and no model call, and it names
+  defects with the measurement behind each one — unanchored parts that will fall on server start,
+  default-grey Plastic, an untouched Lighting rig. Fix what it confirms, then run it again.
 
 Never report a change you have not observed (this is the rule that matters most):
 - Do NOT claim a property is set, a part exists, or a script is correct because you inferred it
