@@ -1,4 +1,5 @@
 [
+  "packages/design/src/pixels.mjs",
   "packages/evals/src/critic.mjs",
   "packages/evals/src/critic.test.mjs",
   "packages/evals/src/props.mjs",
