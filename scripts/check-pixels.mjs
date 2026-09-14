@@ -39,13 +39,19 @@ const DEPLOYED = 'https://golem.moshe-barami111.workers.dev';
 /* ------------------------------------------------------------------- flags --- */
 
 const argv = process.argv.slice(2);
-const flags = { base: null, pass: null, writeBaseline: false, deployed: false };
+const flags = { base: null, pass: null, writeBaseline: false, deployed: false, routes: null };
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
   if (a === '--deployed') { flags.deployed = true; continue; }
   if (a === '--write-baseline') { flags.writeBaseline = true; continue; }
   if (a === '--base') { flags.base = argv[i + 1]; i += 1; continue; }
   if (a === '--pass') { flags.pass = argv[i + 1]; i += 1; continue; }
+  // `--routes /a,/b` narrows the sweep. It exists so this checker's own tests can exercise a rule
+  // against four frames instead of seventy-two, and so an operator can re-check one page without
+  // paying for the whole site. It NARROWS and can never widen, so it cannot be used to make a run
+  // look clean by pointing it somewhere friendly — the DENOMINATOR line prints what was actually
+  // swept, and a narrowed run says so in the same breath as its verdict.
+  if (a === '--routes') { flags.routes = (argv[i + 1] ?? '').split(',').map((r) => r.trim()).filter(Boolean); i += 1; continue; }
   console.error(`check-pixels: unrecognised flag ${a}`);
   console.error('check-pixels: known flags — --deployed --base <url> --pass <n> --write-baseline');
   process.exit(2);
@@ -120,10 +126,16 @@ const slug = (route, vp, scheme) =>
 
 /* ------------------------------------------------------------------ capture --- */
 
-const ROUTES = routes();
+const ALL_ROUTES = routes();
+const ROUTES = flags.routes ? ALL_ROUTES.filter((r) => flags.routes.includes(r)) : ALL_ROUTES;
+if (flags.routes && !ROUTES.length) {
+  console.error(`check-pixels: --routes matched none of the ${ALL_ROUTES.length} routes that exist`);
+  process.exit(2);
+}
 console.log(
   `DENOMINATOR ${ROUTES.length} route(s) x ${VIEWPORTS.length} viewport(s) x ${SCHEMES.length} scheme(s) ` +
-  `= ${ROUTES.length * VIEWPORTS.length * SCHEMES.length} frame(s); base=${BASE}`,
+  `= ${ROUTES.length * VIEWPORTS.length * SCHEMES.length} frame(s); base=${BASE}` +
+  (flags.routes ? ` — NARROWED from ${ALL_ROUTES.length} routes by --routes` : ''),
 );
 
 mkdirSync(OUT, { recursive: true });
