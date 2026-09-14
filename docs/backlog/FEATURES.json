@@ -2580,7 +2580,7 @@
           "id": "f-8aec72e9",
           "name": "SFT",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. v1 was a REGRESSION and was not promoted, which is the honest half of this row and the half a status of done hides."
+          "evidence": "packages/training/src/runs.test.mjs — 9 tests, 5 falsifications. The logs are TRACKED now: runs/ was gitignored as collateral to a rule written for adapters/ (210 MB of safetensors), while the logs are 36 KB of text that six rows depended on. The headline verdict line of docs/audit/TRAINING-V1-REPORT.md is asserted to still read NOT PROMOTED with its reason. v1 was a regression and was not promoted, which is the fact a status of done hides."
         },
         {
           "id": "f-9dd7fe2d",
@@ -2730,7 +2730,7 @@
           "id": "f-eacc0229",
           "name": "Early stopping",
           "status": "done",
-          "evidence": "packages/training/src/configs.test.mjs — 14 tests, 5 falsifications. v2 iters must be under half of v1 (250 -> 120), AND validation must be sampled at least six times across the run (steps_per_eval 20). The second is the load-bearing half: v1 missed its own turn because it sampled validation three times, so a shorter run that still sampled rarely would not have been the fix."
+          "evidence": "packages/training/src/configs.test.mjs and runs.test.mjs together — the config asserts v2 runs under half v1 iterations and samples validation at least six times; the log asserts WHY, which is the load-bearing half: validation loss reaches its minimum at an early iteration and then RISES while training loss keeps falling. A minimum alone is a number; a minimum followed by a rise is overfitting, and it is the basis for stopping early."
         },
         {
           "id": "f-242c793e",
@@ -2778,13 +2778,13 @@
           "id": "f-b7614c66",
           "name": "Loss charts",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. There is no chart; the row means the loss series is in the log."
+          "evidence": "packages/training/src/runs.test.mjs — 9 tests, 5 falsifications. The logs are TRACKED now: runs/ was gitignored as collateral to a rule written for adapters/ (210 MB of safetensors), while the logs are 36 KB of text that six rows depended on. There is still no chart; the loss series is in the log and is now parsed and asserted rather than described."
         },
         {
           "id": "f-9abbb2b4",
           "name": "Validation loss",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. 2.812 -> 1.294 was measured once, on the v1 that did not ship."
+          "evidence": "packages/training/src/runs.test.mjs — 9 tests, 5 falsifications. The logs are TRACKED now: runs/ was gitignored as collateral to a rule written for adapters/ (210 MB of safetensors), while the logs are 36 KB of text that six rows depended on. The series is parsed from apple-v1.log: it starts at 2.812 and its minimum is 1.294, and the report is asserted to quote the SAME two figures, so neither file can drift alone."
         },
         {
           "id": "f-99867d05",
@@ -2838,7 +2838,7 @@
           "id": "f-ef90bae2",
           "name": "Holdout evaluation",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. n=8 is small enough that the result is directional, not a measurement."
+          "evidence": "packages/training/src/runs.test.mjs — 9 tests, 5 falsifications. The logs are TRACKED now: runs/ was gitignored as collateral to a rule written for adapters/ (210 MB of safetensors), while the logs are 36 KB of text that six rows depended on. Every run log is asserted traceable to the base it trained against VIA the config it names — log names config, config names model. n=8 is still small enough that the holdout result is directional, not a measurement."
         },
         {
           "id": "f-70fed06c",
@@ -2916,13 +2916,13 @@
           "id": "f-c6594b24",
           "name": "Model card generation",
           "status": "done",
-          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. dataset-card.json is emitted into data/, which is untracked."
+          "evidence": "packages/training/src/runs.test.mjs — 9 tests, 5 falsifications. The logs are TRACKED now: runs/ was gitignored as collateral to a rule written for adapters/ (210 MB of safetensors), while the logs are 36 KB of text that six rows depended on. data/dataset-card.json is tracked by name now (8 KB) while the derived train/val/test.jsonl stay ignored. The card is asserted to record the contamination guard it was built under, to name the shingle method so the figure is reproducible, and to account for all three splits."
         },
         {
           "id": "f-9482f2cd",
           "name": "Training report",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. docs/audit/TRAINING-V1-REPORT.md is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "packages/training/src/runs.test.mjs — 9 tests, 5 falsifications. The logs are TRACKED now: runs/ was gitignored as collateral to a rule written for adapters/ (210 MB of safetensors), while the logs are 36 KB of text that six rows depended on. The report must remain a report (over 100 lines), its bolded Verdict line must still carry NOT PROMOTED and the word regression, and the figures it quotes must match the log."
         },
         {
           "id": "f-d1c68fb4",
