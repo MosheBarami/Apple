@@ -193,7 +193,7 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-2; path=6765c31f4f12/53 entries; git-sha=d5ff368; tree-clean=yes; break-sha=d5ff368; EXPECT=unmatched; output-sha256=87668fcc923fa0dbf6e32cbf1e198e3f04abc400d8dcf084c0f4924f8bdc1f74; output-bytes=35162; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=840cb7b004c1332a28940755; at=2026-09-14T17:47:21.712Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d8ffa7d; tree-clean=yes; EXPECT=matched; output-sha256=4c194efe67925ac74d0fab7f3392b59e3ce328d8931e7d5e9c1dfd9c1e548dda; output-bytes=5584; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=840cb7b004c1332a28940755; at=2026-09-14T17:47:36.487Z
 
-- [x] G-ORACLE-4: Every module nothing reaches carries a disposition, and the checker sees past its own blind spots
+- [ ] G-ORACLE-4: Every module nothing reaches carries a disposition, and the checker sees past its own blind spots
     CHECK: node scripts/assert-tests.mjs --floor 13 --label G-ORACLE-4 -- node --test tests/check-deadends.test.mjs
     EXPECT: G-ORACLE-4 OK
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=72bd3bb; tree-clean=yes; EXPECT=matched; output-sha256=9545e5372c8c50d36e9283242440a30d5847e81caaeb338b0a0eeb5c7f7c0a1c; output-bytes=939; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=d86748b449fd670f46b0c0bd; at=2026-09-14T17:52:23.902Z

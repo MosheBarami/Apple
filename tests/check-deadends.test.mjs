@@ -42,12 +42,24 @@ test('an unrecognised flag exits 2', () => {
 
 /* ------------------------------------------------- what it must NOT report --- */
 
-test('a workspace import counts as an import', () => {
-  // THE FIRST BLIND SPOT. `import { X } from '@golem/shared'` resolved to nothing, so every file in
-  // packages/shared and packages/design was reported dead. The checker's gap, presented as the
-  // repository's defect.
+test('a workspace import counts as an import, and the count is what proves it', () => {
+  // THE FIRST BLIND SPOT, and a lesson about how to test one.
+  //
+  // The obvious assertion — "packages/shared/src/index.ts is not reported as dead" — passed WITH
+  // the bug in place and with it removed, because that file has relative importers too. It was
+  // green and measuring nothing: the exact shape of a test whose mechanism is inert.
+  //
+  // What actually moves is the EDGE COUNT. Restoring the blind spot takes the graph from 546
+  // resolved edges and 31 unresolved to 496 and 81 — fifty `@golem/*` specifiers that stop being
+  // followed. So the graph's own completeness is published, and asserted here.
   const r = run();
-  assert.doesNotMatch(r.out, /packages\/shared\/src\/index\.ts/, 'the most-imported file in the repo is not a dead end');
+  const resolved = Number(/GRAPH (\d+) import edge\(s\) resolved/.exec(r.out)[1]);
+  const unresolved = Number(/resolved, (\d+) in-repo specifier\(s\) unresolved/.exec(r.out)[1]);
+
+  assert.ok(resolved > 500, `only ${resolved} edges resolved — a resolver that drops a class of specifier reports fewer edges, not an error`);
+  // Some unresolved specifiers are legitimate: a bare package name, a type-only path. What must not
+  // happen is dozens of in-repo ones going unfollowed.
+  assert.ok(unresolved < 50, `${unresolved} in-repo specifiers unresolved — the graph has a hole`);
 });
 
 test('an Astro page counts as an importer', () => {

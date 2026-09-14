@@ -171,14 +171,29 @@ function resolveSpecifier(fromRel, spec) {
 const importers = new Map(tracked.map((f) => [f, new Set()]));
 const IMPORT_RE = /(?:^|\n)\s*(?:import|export)[\s\S]{0,400}?from\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 
+// Counted and REPORTED, because the graph's own completeness is not otherwise observable.
+//
+// A resolver that silently drops a whole class of specifier does not report an error — it reports
+// FEWER EDGES, and the findings that follow are confident and wrong. Restoring the workspace blind
+// spot takes `@golem/shared` from 47 resolved importers to 6, and NOTHING else in the output moves,
+// because the file has relative importers too. A test asserting "shared is not reported as dead"
+// therefore passed with the bug in place and with it removed: green, and measuring nothing.
+//
+// The edge count is what actually changes, so the edge count is what is published.
+let resolvedEdges = 0;
+let unresolvedSpecifiers = 0;
+
 for (const rel of importerSources) {
   const src = readText(rel);
   for (const m of src.matchAll(IMPORT_RE)) {
     const spec = m[1] ?? m[2] ?? m[3];
     const target = resolveSpecifier(rel, spec);
-    if (target) importers.get(target)?.add(rel);
+    if (target) { importers.get(target)?.add(rel); resolvedEdges += 1; }
+    else if (spec.startsWith('.') || spec.startsWith('@golem/')) unresolvedSpecifiers += 1;
   }
 }
+
+console.log(`  GRAPH ${resolvedEdges} import edge(s) resolved, ${unresolvedSpecifiers} in-repo specifier(s) unresolved`);
 
 /* --------------------------------------------------------------- the findings --- */
 
