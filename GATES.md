@@ -194,17 +194,27 @@ test it gated.
 
 ## Evidence — measured 2026-09-14, not asserted
 
-**26 gates, 26 met, 0 unmet, 0 abandoned** — executed by `node scripts/gate-check.mjs --approve`,
-which ran every `CHECK:` itself and wrote each `EVIDENCE:` line from what it observed. Earlier runs
-of the same commands by hand were not evidence; these are.
+**There is no tally here on purpose.** A number written in prose drifts from the checkboxes above
+it silently, and a reader trusts the sentence over counting thirty boxes. This one did: it said
+*26 gates, 26 met* over a file that held 30, all ticked. The count is now DERIVED, and
+`gate-check.mjs --lint` fails if any sentence in this file disagrees with the boxes:
 
-**The correction this section needed.** Until today that paragraph credited `gate-check.mjs` and
-`git log --all -- '*gate-check*'` was **empty**: the program had never existed, in any commit, ever.
-Every `EVIDENCE:` line above was a claim about a measurement nothing had taken — inside the one
-document whose purpose is to stop claims standing in for measurements. The checker now exists
-(`scripts/gate-check.mjs`), is itself gated (**G80**) by 22 tests, and re-ran every gate above. The
-outcome is worth stating plainly because it is not the usual one: **all 26 gates genuinely pass.**
-The ledger's claims were sound; only its attribution was false.
+```
+node scripts/gate-check.mjs --reverify GATES.md    # the only answer that counts
+```
+
+**What the first real `--reverify` found.** Until pass 1, `gate-check.mjs` parsed its flags with
+`args.includes()`, so `--reverify` — the first command of the verification block — fell through to
+an ordinary verify and printed a green summary. Every pass that believed it had re-verified
+fingerprints had done nothing of the kind. Unknown flags now exit 2, and `--reverify` re-executes
+every gate, recomputes each fingerprint, and clears the checkbox of any gate that does not
+reproduce, carries no `FALSIFIED:` record, was recorded against a dirty tree, or names a path git
+does not track.
+
+Run against this ledger for the first time, it cleared every box. That is not a regression in the
+product: it is the first time these gates have been measured by a checker that could say no. Thirty
+of them have never been observed FAILING, so nothing establishes that they can fail — which is what
+the red-first back-fill in §6.2 of `docs/MISSION-PROMPT.md` exists to repair, one gate at a time.
 
 Each evidence line now carries two fields the hand-written ones never did — `git=` and `tree=` —
 because evidence that does not name the commit it measured, or admit that the tree was dirty, is a
