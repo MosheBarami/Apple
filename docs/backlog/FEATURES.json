@@ -336,13 +336,13 @@
           "id": "f-6aa7a945",
           "name": "Token counter",
           "status": "partial",
-          "evidence": "usage tracked server-side; not surfaced per message"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — the ledger the counter would read is proven: day and month keys roll at UTC midnight and credits do not reset. Still partial: nothing surfaces it per message."
         },
         {
           "id": "f-418655bf",
           "name": "Cost counter",
           "status": "partial",
-          "evidence": "Sparks ledger exists; per-message display unverified"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — the Sparks ledger is proven to meter and roll correctly. Still partial: per-message display is unverified because nothing renders it."
         },
         {
           "id": "f-e1433236",
@@ -456,7 +456,7 @@
           "id": "f-387f8d69",
           "name": "Hebrew mode",
           "status": "partial",
-          "evidence": "conversational classifier handles Hebrew (3d36b3e); UI RTL not yet audited"
+          "evidence": "apps/web/tests/direction.test.mjs — Hebrew is recognised with and without a region, and a Hebrew speaker anywhere in the language list gets RTL. Still partial: the UI RTL audit covers the workspace, not every surface."
         },
         {
           "id": "f-e5c84274",
@@ -546,7 +546,7 @@
           "id": "f-7907f9c8",
           "name": "Evidence panel",
           "status": "partial",
-          "evidence": "generative-UI registry exists; no live data source reaches it"
+          "evidence": "apps/web/src/lib/generative-ui/adapters.test.mjs — a render_view summary does not throw AND DOES NOT FAKE A PANEL, views without pixels are rejected, and malformed bounds are rejected rather than dereferenced. Still partial: no live data source reaches the registry."
         },
         {
           "id": "f-dd243b72",
@@ -1062,7 +1062,7 @@
           "id": "f-8d2f716f",
           "name": "Mesh generation",
           "status": "partial",
-          "evidence": "same as Text-to-3D — session-scoped only"
+          "evidence": "RECORD, NOT GUARANTEE. Same session-scoped limitation as f-736b5ae0; listed here because it belongs in both taxonomies."
         },
         {
           "id": "f-770c2a82",
@@ -1908,7 +1908,7 @@
           "id": "f-9d1416dd",
           "name": "Model comparison",
           "status": "partial",
-          "evidence": "docs/evals/FINDINGS.md has 56-task results; no live UI"
+          "evidence": "RECORD, NOT GUARANTEE. docs/evals/FINDINGS.md holds 56-task results from a run that happened; nothing re-runs it and no live UI exposes a comparison."
         },
         {
           "id": "f-3836b13b",
@@ -3228,7 +3228,7 @@
           "id": "f-42c2afae",
           "name": "LLM-as-judge",
           "status": "done",
-          "evidence": "vision.ts critiqueViews — real images to a vision model"
+          "evidence": "packages/evals/src/critic.test.mjs — the judge is governed by an evidence gate that discards a FABRICATED value for a real metric, a region citing a view that was not rendered, and a metric the harness does not measure."
         },
         {
           "id": "f-1bbaf914",
@@ -3408,7 +3408,7 @@
           "id": "f-e64adbda",
           "name": "Roblox documentation ingestion",
           "status": "done",
-          "evidence": "Roblox/creator-docs CC-BY-4.0, pinned SHA"
+          "evidence": "packages/corpus/src/intake/licence.test.mjs and records.test.mjs — CC-BY-4.0 is proven to grant reuse with attribution but NOT training, and ingestion collapses identical forks stably. NOTE: neither asserts that these particular docs were ingested at the pinned SHA."
         },
         {
           "id": "f-77be488e",
@@ -3720,7 +3720,7 @@
           "id": "f-b8db08a7",
           "name": "Luau formatter",
           "status": "done",
-          "evidence": "stylua 2.5.2 available"
+          "evidence": "NO TEST REACHES THIS. stylua 2.5.2 is available in the toolchain; nothing asserts it runs or that its output is stable."
         },
         {
           "id": "f-b5a3b288",
@@ -3738,7 +3738,7 @@
           "id": "f-c6bad20f",
           "name": "luau-lsp integration",
           "status": "done",
-          "evidence": "packages/evals/src/luau.mjs resolveLuauChecker"
+          "evidence": "packages/evals/src/door-benchmark.test.mjs and scripting-curriculum.test.mjs resolve the checker through luau.mjs. NOTE: both grade every check EXCEPT luau_syntax when no local luau-lsp is present, and it is absent here, so this proves the integration exists rather than that it ran."
         },
         {
           "id": "f-8be838cc",
@@ -4014,7 +4014,7 @@
           "id": "f-736b5ae0",
           "name": "Text-to-3D",
           "status": "partial",
-          "evidence": "generate_model reaches GenerationService but result does not persist as a Roblox asset"
+          "evidence": "RECORD, NOT GUARANTEE. generate_model reaches GenerationService and the result is session-scoped only, so it does not survive the run. No test covers the path."
         },
         {
           "id": "f-58ce7e8d",
@@ -4044,7 +4044,7 @@
           "id": "f-959abb08",
           "name": "Mesh generation",
           "status": "partial",
-          "evidence": "same work as f-8d2f716f; listed here because it belongs in both taxonomies",
+          "evidence": "RECORD, NOT GUARANTEE. Same work as f-8d2f716f; listed here because it belongs in both taxonomies.",
           "duplicateOf": "f-8d2f716f"
         },
         {
@@ -4969,7 +4969,7 @@
           "id": "f-ab8f0545",
           "name": "Custom themes",
           "status": "done",
-          "evidence": "light/dark/system all carry the Apple palette in step (7fb753a)"
+          "evidence": "apps/web/tests/contrast.test.mjs — light and dark are each measured on every surface, and the ink ramp is asserted to descend in both, so a theme cannot pass by flattening its hierarchy."
         },
         {
           "id": "f-86b16943",
@@ -5095,7 +5095,7 @@
           "id": "f-d37d91c4",
           "name": "Screen-reader support",
           "status": "done",
-          "evidence": "lang set alongside dir so the voice matches the mirroring"
+          "evidence": "apps/web/tests/direction.test.mjs — lang resolution is proven for the languages the product serves, so the voice matches the mirroring. NOTE: that is the only screen-reader property under test; roles, labels and focus order are not."
         },
         {
           "id": "f-9e3dc3d8",
@@ -5125,7 +5125,7 @@
           "id": "f-3352ec8c",
           "name": "Translation system",
           "status": "partial",
-          "evidence": "not built — strings are still inline English"
+          "evidence": "NOT BUILT, and the status says so. Strings are still inline English. There is nothing to cite because there is nothing there — the honest terminal state for a partial row."
         },
         {
           "id": "f-c325990a",
@@ -5317,13 +5317,13 @@
           "id": "f-3437660e",
           "name": "Authentication",
           "status": "done",
-          "evidence": "Supabase ES256 JWKS verify, auth.ts"
+          "evidence": "NO TEST REACHES THIS. apps/worker/src/auth.ts verifies Supabase ES256 via JWKS, and no test imports it. A JWT verifier that accepts a forged token fails silently and looks identical to one that works."
         },
         {
           "id": "f-b795e053",
           "name": "Authorization",
           "status": "done",
-          "evidence": "Postgres RLS, infra/supabase/migrations"
+          "evidence": "NO TEST REACHES THIS. Row-level security is enforced in Postgres by infra/supabase/migrations. Nothing in this repository exercises it; proving it needs a live database with two tenants."
         },
         {
           "id": "f-06cd758a",
@@ -5467,7 +5467,7 @@
           "id": "f-e14942ac",
           "name": "Rate limiting",
           "status": "done",
-          "evidence": "index.ts ipLimited (per-isolate, defence in depth)"
+          "evidence": "NO TEST REACHES THIS. index.ts ipLimited is per-isolate and explicitly defence in depth, not a guarantee. No test asserts the limit, and per-isolate means the effective limit scales with isolate count."
         },
         {
           "id": "f-6a1ace6a",
@@ -5557,7 +5557,7 @@
           "id": "f-4237b0a2",
           "name": "Tenant isolation",
           "status": "done",
-          "evidence": "RLS enforced at DB level, not app level"
+          "evidence": "NO TEST REACHES THIS. Same RLS policies as f-b795e053. Tenant isolation is the claim most expensive to be wrong about and the least covered here."
         },
         {
           "id": "f-7c8d76bf",
@@ -5695,7 +5695,7 @@
           "id": "f-06798850",
           "name": "Idempotency keys",
           "status": "done",
-          "evidence": "stable op ids; single-flight.ts"
+          "evidence": "apps/worker/tests/single-flight.test.mjs — a second call started before the first finishes does not run, and the guard holds across an await. NOTE: this proves in-flight deduplication; the stability of the op ids themselves is not asserted anywhere."
         },
         {
           "id": "f-49481a5b",
@@ -5707,7 +5707,7 @@
           "id": "f-54c41958",
           "name": "Prompt caching",
           "status": "done",
-          "evidence": "same work as f-a3e75bb0; listed here because it belongs in both taxonomies",
+          "evidence": "packages/evals/src/providers.test.mjs — same work as f-a3e75bb0; listed here because it belongs in both taxonomies. Cache hit rate is still unmeasured.",
           "duplicateOf": "f-a3e75bb0"
         },
         {
@@ -5786,7 +5786,7 @@
           "id": "f-e2fdcce6",
           "name": "Model routing",
           "status": "done",
-          "evidence": "same work as f-c099cc62; listed here because it belongs in both taxonomies",
+          "evidence": "packages/evals/src/providers.test.mjs — same work as f-c099cc62; listed here because it belongs in both taxonomies.",
           "duplicateOf": "f-c099cc62"
         },
         {
@@ -5841,13 +5841,13 @@
           "id": "f-e564d073",
           "name": "Daily budgets",
           "status": "done",
-          "evidence": "pricing.ts BILLABLE_NEURONS_PER_DAY"
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — the runtime daily ceiling is the compiled default rather than a wider number, and the ceiling a compromised ADMIN_KEY could reach stays bounded."
         },
         {
           "id": "f-3388e6be",
           "name": "Monthly budgets",
           "status": "done",
-          "evidence": "pricing.ts BILLABLE_NEURONS_PER_MONTH"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — a day boundary does NOT reset the month, a month boundary resets the month too, and month ends and leap days roll like any other boundary."
         },
         {
           "id": "f-5a5b76b1",
@@ -6027,7 +6027,7 @@
           "id": "f-7c0cf0ed",
           "name": "Token billing",
           "status": "done",
-          "evidence": "neurons -> Sparks via NEURONS_PER_SPARK, settled per call"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs and spend-ratchet.test.mjs — settlement is metered against a bounded ceiling, and the day and month counters roll independently at UTC midnight."
         },
         {
           "id": "f-79a5680b",
@@ -6063,7 +6063,7 @@
           "id": "f-9471650e",
           "name": "Spending limits",
           "status": "done",
-          "evidence": "BudgetDO ratchets down only (3c53b08); per-user QuotaDO caps"
+          "evidence": "apps/worker/tests/spend-ratchet.test.mjs — lowering is allowed and zero is reachable, raising past the compiled default is not, and the old 22x headroom is gone."
         },
         {
           "id": "f-26beae43",
@@ -6081,7 +6081,7 @@
           "id": "f-d6a384a0",
           "name": "Invoices",
           "status": "partial",
-          "evidence": "not built — Stripe hosts them; nothing surfaced in-product"
+          "evidence": "NOT BUILT, and the status says so. Stripe hosts invoices; nothing is surfaced in-product. Nothing to cite."
         },
         {
           "id": "f-fdf7ea05",
@@ -6171,7 +6171,7 @@
           "id": "f-2759dcd8",
           "name": "Overage protection",
           "status": "partial",
-          "evidence": "credits gate spend past the allowance; no top-up prompt"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — purchased credits are a balance rather than a rate and do not reset, which is what gates spend past the allowance. Still partial: no top-up prompt."
         },
         {
           "id": "f-1951decd",
@@ -6694,7 +6694,7 @@
           "id": "f-a896b6b9",
           "name": "Training logs",
           "status": "done",
-          "evidence": "same work as f-d36fa39d; listed here because it belongs in both taxonomies",
+          "evidence": "RECORD, NOT GUARANTEE. Same work as f-d36fa39d; packages/training/runs/apple-v*.log is tracked and nothing re-runs it.",
           "duplicateOf": "f-d36fa39d"
         },
         {
@@ -6887,7 +6887,7 @@
           "id": "f-afe6b917",
           "name": "CI/CD",
           "status": "done",
-          "evidence": ".github/workflows/ci.yml — deterministic, no secrets, no paid calls"
+          "evidence": "tests/gate-check.test.mjs and tests/workspace-coverage.test.mjs — the CI gate machinery is itself tested, including that a package cannot silently fall out of the workspace. NOTE: the workflow YAML is not executed by any test; determinism and the no-paid-calls rule rest on review."
         },
         {
           "id": "f-2a0cf202",
