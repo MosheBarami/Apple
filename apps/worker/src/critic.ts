@@ -436,11 +436,40 @@ interface MetricRule {
   fix: string;
 }
 
-function applyMetricRules(lens: LensId, rules: MetricRule[], input: CriticInput): Criticism[] {
+/** A rule that could not run, and why. */
+export interface UncheckedRule {
+  lens: LensId;
+  subject: string;
+  /** The metric the harness did not supply. */
+  metric: string;
+}
+
+/**
+ * Apply a lens's metric rules, reporting BOTH what failed and what could not be checked.
+ *
+ * THE DEFECT THIS CLOSES. This function used to `continue` past a missing metric, silently. A
+ * caller handing the panel a partial metric set therefore got a SHORT defect list — and a short
+ * defect list is indistinguishable from a clean build. "No defects found" and "I could not look"
+ * rendered identically, and the second is the one that matters, because it is the one where
+ * shipping is a mistake.
+ *
+ * Skipping is still correct behaviour: partial metric sets are legitimate, and a caller that can
+ * only measure geometry should be able to run the geometry lenses. What was wrong was doing it
+ * WITHOUT SAYING SO. The rule is still skipped; now it is counted.
+ */
+function applyMetricRules(
+  lens: LensId,
+  rules: MetricRule[],
+  input: CriticInput,
+): { criticisms: Criticism[]; unchecked: UncheckedRule[] } {
   const out: Criticism[] = [];
+  const unchecked: UncheckedRule[] = [];
   for (const r of rules) {
     const v = input.metrics[r.metric];
-    if (v === undefined || !Number.isFinite(v)) continue;
+    if (v === undefined || !Number.isFinite(v)) {
+      unchecked.push({ lens, subject: r.subject, metric: r.metric });
+      continue;
+    }
     if (!compare(v, r.comparator, r.threshold)) continue;
     out.push({
       lens,
@@ -451,7 +480,7 @@ function applyMetricRules(lens: LensId, rules: MetricRule[], input: CriticInput)
       fix: r.fix,
     });
   }
-  return out;
+  return { criticisms: out, unchecked };
 }
 
 /**
@@ -774,8 +803,19 @@ export const UNEVIDENCED_TERMS = ['shadow', 'bounce light', 'specular', 'bloom',
 export const DETERMINISTIC_LENSES: LensId[] = ['composition', 'roblox_level_design', 'technical_art', 'lighting', 'gameplay_readability'];
 export const ALL_LENSES: LensId[] = [...DETERMINISTIC_LENSES, 'request_fidelity'];
 
-/** Run one deterministic lens. Returns [] for `request_fidelity`, which has no geometric form. */
-export function runDeterministicLens(lens: LensId, input: CriticInput): Criticism[] {
+export interface LensRun {
+  criticisms: Criticism[];
+  /** Rules this lens could not apply, because the harness supplied no value for their metric. */
+  unchecked: UncheckedRule[];
+}
+
+/**
+ * Run one deterministic lens.
+ *
+ * `request_fidelity` has no geometric form, so it contributes nothing here AND has nothing it
+ * could have checked — an empty `unchecked` is the honest answer for it, not a silence.
+ */
+export function runDeterministicLens(lens: LensId, input: CriticInput): LensRun {
   switch (lens) {
     case 'composition':
       return applyMetricRules(lens, COMPOSITION_RULES, input);
@@ -783,12 +823,16 @@ export function runDeterministicLens(lens: LensId, input: CriticInput): Criticis
       return applyMetricRules(lens, ROBLOX_RULES, input);
     case 'technical_art':
       return applyMetricRules(lens, TECHNICAL_ART_RULES, input);
-    case 'lighting':
-      return [...applyMetricRules(lens, LIGHTING_RULES, input), ...lightingConfigCriticisms(input)];
+    case 'lighting': {
+      // The config criticisms read `input.lighting`, not `input.metrics`, so they are never
+      // skipped for a missing metric and contribute nothing to `unchecked`.
+      const metric = applyMetricRules(lens, LIGHTING_RULES, input);
+      return { criticisms: [...metric.criticisms, ...lightingConfigCriticisms(input)], unchecked: metric.unchecked };
+    }
     case 'gameplay_readability':
       return applyMetricRules(lens, READABILITY_RULES, input);
     case 'request_fidelity':
-      return [];
+      return { criticisms: [], unchecked: [] };
   }
 }
 
@@ -842,6 +886,14 @@ export interface PanelResult {
   regression: RegressionRecord[];
   lensesRun: LensId[];
   modelCalls: number;
+  /**
+   * Rules that never ran because the harness did not supply their metric.
+   *
+   * Non-empty means this panel's silence is PARTIAL. A consumer rendering "no defects" over a
+   * non-empty `unchecked` is telling the user something the panel did not establish — which is
+   * the whole reason this field exists rather than the rules being skipped quietly.
+   */
+  unchecked: UncheckedRule[];
 }
 
 /**
@@ -854,11 +906,16 @@ export async function runCriticPanel(input: CriticInput, opts: CriticPanelOption
   const rule = opts.rule ?? DEFAULT_RULE;
   const alwaysDet = opts.alwaysRunDeterministic ?? true;
   const criticisms: Criticism[] = [];
+  const unchecked: UncheckedRule[] = [];
   let modelCalls = 0;
 
   for (const lens of lenses) {
     const deterministic = DETERMINISTIC_LENSES.includes(lens);
-    if (deterministic && (alwaysDet || !opts.judge)) criticisms.push(...runDeterministicLens(lens, input));
+    if (deterministic && (alwaysDet || !opts.judge)) {
+      const run = runDeterministicLens(lens, input);
+      criticisms.push(...run.criticisms);
+      unchecked.push(...run.unchecked);
+    }
     if (opts.judge && (!deterministic || alwaysDet)) {
       const { system, user } = buildLensPrompt(lens, input);
       modelCalls++;
@@ -878,15 +935,29 @@ export async function runCriticPanel(input: CriticInput, opts: CriticPanelOption
     regression: toRegressionRecords(adjudication, input, opts.now),
     lensesRun: lenses,
     modelCalls,
+    unchecked,
   };
 }
 
 export function formatPanelReport(r: PanelResult): string {
   const a = r.adjudication;
-  const lines = [
-    `panel: ${r.lensesRun.length} lens(es), ${r.modelCalls} model call(s)`,
+  const lines = [`panel: ${r.lensesRun.length} lens(es), ${r.modelCalls} model call(s)`];
+
+  // Printed BEFORE the tally, not after it. The tally IS the verdict — "0 CONFIRMED" is the
+  // sentence a reader forms an opinion from — so a caveat placed under it arrives too late to
+  // qualify anything. A clean count over unchecked rules is not a clean build.
+  if (r.unchecked.length) {
+    const metrics = [...new Set(r.unchecked.map((u) => u.metric))];
+    const subjects = [...new Set(r.unchecked.map((u) => u.subject))];
+    lines.push(
+      `INCOMPLETE: ${r.unchecked.length} rule(s) never ran — no value for ${metrics.join(', ')}. ` +
+      `Nothing below covers ${subjects.join(', ')}.`,
+    );
+  }
+
+  lines.push(
     `${a.stats.raised} criticisms raised -> ${a.stats.accepted} admissible -> ${a.stats.confirmed} CONFIRMED (${a.stats.discarded} discarded for want of evidence)`,
-  ];
+  );
   for (const d of a.confirmed) {
     lines.push(`  [${d.severity.toUpperCase()}] ${d.subject}  (${d.confirmedBy}; ${d.lenses.join(' + ')})`);
     for (const c of d.claims) lines.push(`      ${c}`);

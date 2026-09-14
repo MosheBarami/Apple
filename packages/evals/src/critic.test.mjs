@@ -506,3 +506,103 @@ describe('confirmed defects become regression data, automatically', () => {
     assert.ok(a.regression.every((r) => /^d_[0-9a-f]{8}$/.test(r.id)));
   });
 });
+
+// =============================================================================================
+// "NO DEFECTS" MUST NOT MEAN "I DID NOT LOOK"
+// =============================================================================================
+//
+// THE DEFECT. `applyMetricRules` skipped any rule whose metric the harness had not supplied, and
+// skipped it SILENTLY. A caller handing the panel a partial metric set got a short defect list —
+// and a short defect list is indistinguishable from a clean build. The two readings differ
+// entirely in what you should do next, and only one of them makes shipping a mistake.
+//
+// Skipping is still right: partial metric sets are legitimate, and a caller that can only measure
+// geometry should be able to run the geometry lenses. What was wrong was doing it without saying
+// so. These tests hold the panel to reporting the difference.
+
+describe('a partial metric set is distinguishable from a clean build', () => {
+  /** Every metric the fixture supplies, so "complete" is measured rather than assumed. */
+  const FULL = { profileCV: 0.42, boxFill: 0.59, factoryDefaultShare: 0.0, partCount: 36 };
+
+  test('a complete run over a clean build reports nothing unchecked', async () => {
+    // The positive control. Without it every assertion below passes on a panel that reports
+    // everything as unchecked always, which would be a different way of saying nothing.
+    const r = await C.runCriticPanel({ ...INPUT, metrics: FULL });
+    assert.deepEqual(
+      r.unchecked.filter((u) => Object.prototype.hasOwnProperty.call(FULL, u.metric)),
+      [],
+      'no rule whose metric WAS supplied may be reported as unchecked',
+    );
+  });
+
+  test('a metric the harness never measured is reported, not swallowed', async () => {
+    const r = await C.runCriticPanel({ ...INPUT, metrics: {} });
+    assert.ok(r.unchecked.length > 0, 'an empty metric set must leave rules visibly unrun');
+    for (const u of r.unchecked) {
+      assert.ok(u.lens, 'each unchecked rule names its lens');
+      assert.ok(u.subject, 'each unchecked rule names its subject');
+      assert.ok(u.metric, 'each unchecked rule names the metric that was missing');
+    }
+  });
+
+  test('dropping one metric moves exactly that metric into unchecked', async () => {
+    const full = await C.runCriticPanel({ ...INPUT, metrics: FULL });
+    const { partCount, ...without } = FULL;
+    const partial = await C.runCriticPanel({ ...INPUT, metrics: without });
+
+    const added = partial.unchecked.filter(
+      (u) => !full.unchecked.some((f) => f.lens === u.lens && f.subject === u.subject && f.metric === u.metric),
+    );
+    assert.ok(added.length > 0, 'removing a metric must make at least one rule unrunnable');
+    assert.deepEqual([...new Set(added.map((u) => u.metric))], ['partCount']);
+  });
+
+  test('a NaN is treated as absent, not as a value that passed the threshold', async () => {
+    // `Number.isFinite` was already the guard. What is new is that failing it is now REPORTED —
+    // a NaN metric used to look exactly like a metric within tolerance.
+    const r = await C.runCriticPanel({ ...INPUT, metrics: { ...FULL, boxFill: Number.NaN } });
+    assert.ok(r.unchecked.some((u) => u.metric === 'boxFill'), 'a NaN metric must be reported unchecked');
+  });
+
+  test('an unchecked rule raises no criticism — it is absent, not a finding', async () => {
+    // The other half of the honesty: reporting an unchecked rule must not fabricate a defect.
+    const r = await C.runCriticPanel({ ...INPUT, metrics: {} });
+    const bogus = r.criticisms.filter((c) => c.evidence?.kind === 'measure' && !Number.isFinite(c.evidence.value));
+    assert.deepEqual(bogus, [], 'no criticism may cite a value the harness never supplied');
+  });
+
+  test('the written report says the result is incomplete, before it says what it found', async () => {
+    // A caveat that arrives after the verdict is a caveat the reader meets with an opinion already
+    // formed. This is the line a human actually sees, so it is the line that is asserted.
+    const r = await C.runCriticPanel({ ...INPUT, metrics: {} });
+    const report = C.formatPanelReport(r);
+    assert.match(report, /INCOMPLETE: \d+ rule\(s\) never ran/);
+    assert.ok(
+      report.indexOf('INCOMPLETE') < report.indexOf('CONFIRMED'),
+      'the incompleteness must precede the verdict it qualifies',
+    );
+  });
+
+  test('a complete run says nothing about incompleteness', async () => {
+    const r = await C.runCriticPanel({ ...INPUT, metrics: FULL });
+    const report = C.formatPanelReport(r);
+    // Only assert silence when the run really was complete for the lenses that ran.
+    if (r.unchecked.length === 0) assert.doesNotMatch(report, /INCOMPLETE/);
+  });
+
+  test('runDeterministicLens reports its own unchecked rules, not only the panel', async () => {
+    // The panel is one caller. A tool calling a single lens directly — which is exactly what an
+    // audit tool would do — must get the same honesty.
+    const run = C.runDeterministicLens('composition', { ...INPUT, metrics: {} });
+    assert.ok(Array.isArray(run.criticisms), 'a lens run carries its criticisms');
+    assert.ok(run.unchecked.length > 0, 'and what it could not check');
+  });
+
+  test('a lens with no metric rules reports no false incompleteness', async () => {
+    // request_fidelity has no geometric form. Empty unchecked is the honest answer for it; a
+    // non-empty one would make every panel look partial forever.
+    const run = C.runDeterministicLens('request_fidelity', { ...INPUT, metrics: {} });
+    assert.deepEqual(run.unchecked, []);
+    assert.deepEqual(run.criticisms, []);
+  });
+});
