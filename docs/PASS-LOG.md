@@ -865,3 +865,89 @@ SELF-REFUTER: not dispatched this pass. The sentence I expect it to find is "GAT
 
 NEXT: the pixel baseline, because it is what stands between here and a deploy, and a deploy is
   what stands between here and the seven stations that have never been probed.
+
+PASS 11  2026-09-14T21:41:18Z  HEAD 271035c  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+THREE SESSIONS, ONE CHECKOUT, AND A GATE THAT MEASURED A FILE
+
+Moshe added two more sessions. Tommy (rbxai-a3) leads and owns FEATURES.json, apps/site and
+packages/design; Mark (rbxai-04) owns apps/worker/src coverage; I own scripts/check-*, GATES.md,
+apps/plugin, packages/evals, tests/ and deploys.
+
+G4 NOW MEASURES THE OBJECT INSTEAD OF THE FILE. It says "the admin spend route can only ratchet
+  down" and it ran a regex over budget.ts. BudgetDO is the only guard between this project and an
+  uncapped AI bill — Standard billing, no platform cap — and reserve/settle atomicity, a second
+  reservation racing the first, a settle that never arrives and rollover releasing stale holds
+  were all outside it. My own falsification was honest: it broke a file, and a file-reading test
+  noticed.
+
+  Repointed at Mark's 36 executing cases. The old FALSIFIED record was DROPPED rather than
+  carried: a falsification records a COMMAND, and this is a different one. Re-falsified by
+  removing the upper clamp so an admin call could RAISE the ceiling.
+
+  Floor 36, not the 30 Mark proposed. His reasoning was that a floor at the current count reddens
+  the next time someone adds a case — but a floor is `passed >= floor`, so only removal trips it.
+  36 catches a six-test deletion that 30 would miss.
+
+I OVERWROTE A COLLEAGUE'S FILE. I wrote apps/worker/tests/budget-do.test.mjs without checking
+  whether the path was taken. Mark had a file there; it was destroyed. Third shared-tree hazard
+  today — Tommy's `git switch -c` moved HEAD under two of my commits, his `git rm` was swept
+  into my `commit -a` — and mine is the one that destroyed work rather than misfiling it. His
+  rule is the right one: name a test file after the ANGLE, not the module, because two people
+  covering one module converge on one filename every time.
+
+  My draft is in my scratchpad, not deleted, and five of its cases are in his file.
+
+REVIEWED MARK'S SPEND FIX (bf64b0d) and found one real gap: an unreadable `reserved` is
+  deliberately not subtracted — correct, guessing would let one caller erase another's hold — but
+  the reservation then leaks until rollover and NOTHING said so. budget.ts had no console.warn
+  anywhere. Capacity shrinks silently and reads as demand. Fixed in 434969e.
+
+TWO OF MY TESTS WENT RED OVER AN IMPROVEMENT. A6 pinned `Math.max(0, Math.floor(neurons))`
+  exactly; B8 asserted the clamped response shape. Mark moved the guard upstream to refuse
+  negatives by name, which is better, and both failed. A static check that names an
+  implementation fails its own subject the first time someone improves it, and the cheapest
+  response to that is to delete the check. Both now assert the property — and B8 asserts the
+  LEDGER DID NOT MOVE, because a route that refused and mutated anyway would satisfy a
+  refusal-only assertion.
+
+ALSO THIS PASS:
+  rag.ts had no test. Both retrieval backends were wrapped in .catch(() => []), so a broken
+    corpus returned exactly what "no matches" returns. Total failure now throws; partial failure
+    still degrades to keyword search. The reasons are LOGGED, never thrown — my first draft
+    interpolated the provider error into a message that reaches the model.
+  chunk.mjs had zero exports and main() at module scope, so 525 lines of splitting were
+    unreachable. Falsified both fence guards: without them a shell comment becomes a section
+    heading and a Luau sample splits on its blank lines.
+  check-workspace-coverage now catches a test FILE falling out of its own package, which is how
+    the chunk tests were written, passing, and never run by the suite.
+
+VERIFICATION:
+  gate-suite.mjs            SUITE GREEN, 2824 passed, 0 failed
+  gate-typecheck.mjs        TYPECHECK CLEAN
+  check-escape-hatches.mjs  CLEAN, 482 files
+  check-deadends.mjs --gate ALL DISPOSITIONED, 1 entry
+  gate-check.mjs --status   39 gates, 1 needs work
+  check-backlog.mjs         UNPROVEN, 32 findings (was 158 this morning; Tommy's lane)
+  check-dispositions.mjs    SOUND, 0 examined
+  neurons spent 0
+
+DEPLOYED: not deployed. check-offer is green so §12.6's blocker is gone, but §12.6 also wants
+  check-pixels --deployed within 120 seconds and a baseline to compare against. The baseline is
+  held deliberately until Tommy's brand work settles — capturing now would bake in a design he is
+  replacing and make every later frame read as an undeclared regression.
+
+NOT DONE:
+  §16.4 FEATURES.json | 1,085 not-started | the product, and still the largest thing left
+  §16.6 stations | never probed against a deployed origin
+  §16.10 pixels | no baseline; PIXELS-APPROVED is the owner's line and never mine
+  §16.8 refuters | one per station, one per ledger, one per closed row
+
+SELF-REFUTER: not dispatched. The sentence I expect it to find is "G4 now measures the object
+  instead of the file". True — and I did not write the test, review it before it landed, or find
+  the defect it guards. I changed a CHECK line and ran a falsification. The record reads as
+  though I closed a money-critical hole; what I did was point an existing gate at someone else's
+  work, which is worth doing and is not the same thing.
+
+NEXT: the pixel baseline the moment Tommy says the brand is stable, because it is what stands
+  between here and a deploy, and a deploy is what stands between here and seven unprobed stations.
