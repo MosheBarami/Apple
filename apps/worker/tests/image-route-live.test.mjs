@@ -155,3 +155,23 @@ test('the bytes are not sniffable and carry no ambient authority', async () => {
   assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
   assert.match(res.headers.get('Cache-Control'), /^private,/);
 });
+
+test('health reports the build sha, so drift is observable without credentials', async () => {
+  // §10.2 requires comparing the deployed build to HEAD every pass. /api/version is behind auth
+  // and returns 401 to an unauthenticated probe, and health reported `VERSION` — the package
+  // version, "0.1.0", unchanged across every deploy this project has ever made. There was no way
+  // to tell a fresh deploy from a six-week-old one from outside, so the invariant that exists to
+  // catch exactly that could not be performed.
+  const res = await app.request('https://x/api/health', {}, { ...env, BUILD_SHA: 'abc1234' });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.buildSha, 'abc1234', 'the deployed sha must be readable without a token');
+
+  // UNAUTHENTICATED. Health is in AUTH_EXEMPT; if it ever left, the drift probe would 401 and the
+  // invariant would quietly stop being performable again.
+  assert.equal(body.ok, true);
+
+  // A deploy that forgot to supply it says so, rather than hiding behind a plausible version.
+  const bare = await (await app.request('https://x/api/health', {}, env)).json();
+  assert.equal(bare.buildSha, 'unknown');
+});

@@ -177,7 +177,22 @@ app.use('/api/admin/*', async (c, next) => {
 
 // ---------------------------------------------------------------- public
 app.get('/api/health', async (c) => {
-  return c.json({ ok: true, version: VERSION, time: new Date().toISOString() });
+  //[[ THE BUILD SHA IS HERE BECAUSE DRIFT HAS TO BE OBSERVABLE WITHOUT CREDENTIALS.
+  //
+  //   §10.2 requires comparing the deployed build to HEAD every pass. `/api/version` is behind
+  //   auth and returns 401 to an unauthenticated probe, and this route reported `VERSION` — the
+  //   package version, which is "0.1.0" and has never changed across any deploy. So there was no
+  //   way to tell a fresh deploy from a six-week-old one from outside, and the invariant that
+  //   exists to catch exactly that was unperformable.
+  //
+  //   Supplied at deploy time by the deploy script. `unknown` means someone deployed without it,
+  //   which is itself worth seeing rather than hiding behind a plausible-looking version string. ]]
+  return c.json({
+    ok: true,
+    version: VERSION,
+    buildSha: c.env.BUILD_SHA ?? 'unknown',
+    time: new Date().toISOString(),
+  });
 });
 
 // ---------------------------------------------------------------- project session routes

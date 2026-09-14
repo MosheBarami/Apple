@@ -2,6 +2,8 @@ export interface Env {
   AI: Ai;
   CORPUS: D1Database;
   KV: KVNamespace;
+  /** The git sha this worker was deployed from, injected by `deploy:api`. */
+  BUILD_SHA?: string;
   VEC: VectorizeIndex;
   SESSION_DO: DurableObjectNamespace;
   QUOTA_DO: DurableObjectNamespace;

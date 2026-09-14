@@ -6,7 +6,7 @@
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
-    "deploy:api": "wrangler deploy"
+    "deploy:api": "wrangler deploy --var BUILD_SHA:$(git rev-parse --short HEAD)"
   },
   "dependencies": {
     "@golem/design": "workspace:*",
