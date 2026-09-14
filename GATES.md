@@ -173,12 +173,13 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=670a974; tree-clean=yes; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3963; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=91864ab3af3decf691265962; at=2026-09-14T17:44:09.025Z
 
-- [ ] G-CRITIC-1: The visual critic runs on a product path and cannot report a clean build for checks it never ran
+- [x] G-CRITIC-1: The visual critic runs on a product path and cannot report a clean build for checks it never ran
     STATION: S7
     CHECK: node scripts/assert-tests.mjs --floor 13 --label G-CRITIC-1 -- node --test apps/worker/tests/critic-wiring.test.mjs
     EXPECT: G-CRITIC-1 OK
   EXPECT-CHANGE: old=critic-wiring.test.mjs-floor-12 new=critic-wiring.test.mjs-floor-13 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=ae01cac; tree-clean=yes; break-sha=ae01cac; EXPECT=unmatched; output-sha256=143ac253d82767fe4cbdcc36b3096dc224c8c4818b05a4f896e59fe9b2b6919d; output-bytes=1845; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=88bf45437e7bd708867b6d88; at=2026-09-14T17:47:16.380Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=47778cb; tree-clean=yes; EXPECT=matched; output-sha256=d9001e8a110704c2140cee8bd8d77069ff5c97f528bc068e99b4c54bcb7d6df2; output-bytes=1303; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=e2c4b5003f7943fcea7a1e3d; at=2026-09-14T18:31:37.549Z
 
 - [x] G-ORACLE-2: Every detector in the escape-hatch checker is proven to fail against a planted violation
     CHECK: node scripts/assert-tests.mjs --floor 33 --label G-ORACLE-2 -- node --test tests/check-escape-hatches.test.mjs
