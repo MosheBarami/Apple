@@ -3,7 +3,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
-import { PLAN_LIMITS } from '../pricing';
+import { PLAN_LIMITS, isPlanId, type PlanId } from '../pricing';
 
 export class QuotaDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -26,9 +26,19 @@ export class QuotaDO extends DurableObject<Env> {
     return new Date().toISOString().slice(0, 7);
   }
 
+  private async plan(): Promise<PlanId> {
+    const raw = await this.ctx.storage.get<string>('plan');
+    return isPlanId(raw) ? raw : 'free';
+  }
+
+  /** Purchased, non-expiring balance. Spent only once the renewable allowance is gone. */
+  private async credits(): Promise<number> {
+    return (await this.ctx.storage.get<number>('credits')) ?? 0;
+  }
+
   private async state(): Promise<QuotaState> {
-    const plan = (await this.ctx.storage.get<string>('plan')) ?? 'free';
-    const limits = plan === 'pro' ? PLAN_LIMITS.pro : PLAN_LIMITS.free;
+    const plan = await this.plan();
+    const limits = PLAN_LIMITS[plan];
     const day = this.today();
     const dayRow = this.sql.exec(`select coalesce(sum(sparks),0) as s from ledger where day = ?`, day).one() as { s: number };
     const monthRow = this.sql
@@ -39,14 +49,22 @@ export class QuotaDO extends DurableObject<Env> {
     // whichever limit bites first is the one the user actually has
     const dailyLeft = Math.max(0, limits.sparksPerDay - dayRow.s);
     const monthlyLeft = Math.max(0, limits.sparksPerMonth - monthRow.s);
+    const credits = await this.credits();
+    // The allowance is a RATE and credits are a BALANCE. `sparksRemaining` is what the user can
+    // actually spend right now, which is both — but they are reported separately as well, because
+    // "you have 0 left today" and "you have 0 left at all" are different sentences and the UI has
+    // to be able to tell them apart.
+    const allowanceLeft = Math.min(dailyLeft, monthlyLeft);
     return {
-      sparksRemaining: Math.min(dailyLeft, monthlyLeft),
+      sparksRemaining: allowanceLeft + credits,
       sparksDaily: limits.sparksPerDay,
       sparksMonthly: limits.sparksPerMonth,
       sparksUsedToday: dayRow.s,
       sparksUsedThisMonth: monthRow.s,
       resetsAtIso: tomorrow.toISOString(),
-      plan: plan === 'pro' ? 'pro' : 'free',
+      plan,
+      allowanceRemaining: allowanceLeft,
+      credits,
     };
   }
 
@@ -59,15 +77,32 @@ export class QuotaDO extends DurableObject<Env> {
       const { sparks, kind } = (await req.json()) as { sparks: number; kind: string };
       const st = await this.state();
       if (st.sparksRemaining < sparks) return Response.json({ ok: false, state: st });
-      this.sql.exec(`insert into ledger(day, kind, sparks, created_at) values(?,?,?,?)`, this.today(), kind.slice(0, 40), sparks, Date.now());
+      // Allowance first, credits only for the remainder. Spending a purchased balance while a free
+      // allowance is still available would quietly charge the user for something they already had.
+      const fromAllowance = Math.min(sparks, st.allowanceRemaining);
+      const fromCredits = sparks - fromAllowance;
+      if (fromCredits > 0) await this.ctx.storage.put('credits', Math.max(0, st.credits - fromCredits));
+      if (fromAllowance > 0) {
+        this.sql.exec(`insert into ledger(day, kind, sparks, created_at) values(?,?,?,?)`, this.today(), kind.slice(0, 40), fromAllowance, Date.now());
+      }
       this.sql.exec(`delete from ledger where day < ?`, new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10));
       const after = await this.state();
       return Response.json({ ok: true, state: after });
     }
     if (url.pathname === '/set-plan' && req.method === 'POST') {
       const { plan } = (await req.json()) as { plan: string };
-      await this.ctx.storage.put('plan', plan === 'pro' ? 'pro' : 'free');
+      // An unrecognised plan id becomes free rather than throwing: this is driven by a webhook, and
+      // a Stripe product renamed upstream must degrade to the safe tier, not wedge the route.
+      await this.ctx.storage.put('plan', isPlanId(plan) ? plan : 'free');
       return Response.json({ ok: true, state: await this.state() });
+    }
+    if (url.pathname === '/grant-credits' && req.method === 'POST') {
+      const { credits } = (await req.json()) as { credits: number };
+      // Additive only, and never negative. The same rule as /simulate-usage: a billing path that
+      // can subtract is a billing path that can erase evidence of spend.
+      const add = Math.max(0, Math.floor(Number(credits) || 0));
+      await this.ctx.storage.put('credits', (await this.credits()) + add);
+      return Response.json({ ok: true, granted: add, state: await this.state() });
     }
     // Clear a day's Spark usage for THIS user. Owner-key gated at the edge, and it only ever
     // touches the quota DO it is addressed to — no other user, no project data, and not the global

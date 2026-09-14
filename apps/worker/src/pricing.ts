@@ -99,10 +99,36 @@ export const MAX_NEURONS_PER_REQUEST = 1_200;
  */
 export const NEURONS_PER_SPARK = 30;
 
+/**
+ * The plan ladder.
+ *
+ * Sparks are the RENEWABLE allowance a plan includes. They reset and do not accumulate — a plan is
+ * a rate, not a balance. Purchased CREDITS are the separate, non-expiring balance that is consumed
+ * only once the renewable allowance for the period is exhausted (see billing.ts). Keeping the two
+ * apart is what makes "your plan includes X, buy more if you need it" expressible without either
+ * one silently subsidising the other.
+ *
+ * Every figure below is anchored to a measured unit cost: a quality-gated build is ~2,300 neurons
+ * (docs/COST-MODEL.md:77) and a Spark is NEURONS_PER_SPARK neurons, so a build is roughly 77 Sparks.
+ * Read the daily numbers as "about N builds a day" and they stay honest.
+ */
 export const PLAN_LIMITS = {
   free: { sparksPerDay: 60, sparksPerMonth: 900 },
   pro: { sparksPerDay: 400, sparksPerMonth: 6_000 },
+  team: { sparksPerDay: 1_500, sparksPerMonth: 30_000 },
+  enterprise: { sparksPerDay: 6_000, sparksPerMonth: 150_000 },
 } as const;
+
+export type PlanId = keyof typeof PLAN_LIMITS;
+
+export const PLAN_IDS = Object.keys(PLAN_LIMITS) as PlanId[];
+
+export function isPlanId(v: unknown): v is PlanId {
+  return typeof v === 'string' && (PLAN_IDS as string[]).includes(v);
+}
+
+/** Sparks in one quality-gated build, from the measured neuron cost. Used for honest plan copy. */
+export const SPARKS_PER_BUILD = Math.ceil(2_300 / NEURONS_PER_SPARK);
 
 export function sparksForNeurons(neurons: number): number {
   return Math.max(1, Math.ceil(neurons / NEURONS_PER_SPARK));

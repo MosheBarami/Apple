@@ -585,7 +585,14 @@ export interface QuotaState {
   sparksUsedToday: number;
   sparksUsedThisMonth: number;
   resetsAtIso: string;
-  plan: 'free' | 'pro';
+  plan: 'free' | 'pro' | 'team' | 'enterprise';
+  /**
+   * The renewable part of `sparksRemaining`, reported separately because "you have 0 left today"
+   * and "you have 0 left at all" are different sentences and the UI must be able to tell them apart.
+   */
+  allowanceRemaining: number;
+  /** Purchased, non-expiring balance. Spent only after the allowance for the period is gone. */
+  credits: number;
 }
 
 export interface CheckpointMeta {

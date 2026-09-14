@@ -209,6 +209,11 @@ export const mockQuota: QuotaState = {
   sparksUsedThisMonth: 214,
   resetsAtIso: new Date(Date.now() + 5.5 * 3600_000).toISOString(),
   plan: 'free',
+  // A free account with no purchased balance: the allowance IS the whole of sparksRemaining.
+  // Kept consistent on purpose — a fixture whose parts do not add up teaches the UI to render a
+  // state the server can never produce.
+  allowanceRemaining: 41,
+  credits: 0,
 };
 
 export const mockProfile: ProfileRow = {

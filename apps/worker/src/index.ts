@@ -1,5 +1,6 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { Hono } from 'hono';
+import { verifyStripeSignature, interpretStripeEvent, entitlementFor } from './billing';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile } from './supa';
@@ -68,7 +69,17 @@ app.use('/api/*', async (c, next) => {
   c.header('Referrer-Policy', 'no-referrer');
 });
 
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist'];
+/**
+ * Paths that carry their own authentication and therefore must not be asked for a user JWT.
+ *
+ * `/api/billing/webhook` is here because Stripe is not a user and has no JWT — it authenticates by
+ * signing the body with a shared secret. Exempt from THIS check is not the same as unauthenticated:
+ * the route refuses outright when no signing secret is configured, and verifies an HMAC over the
+ * raw body with a replay window before it changes anyone's plan. Removing that verification while
+ * leaving this line in place would turn the endpoint into an open subscription dispenser, which is
+ * why billing-route.test.mjs asserts both halves together.
+ */
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();
@@ -417,6 +428,62 @@ app.post('/api/studio/poll', async (c) => {
  * Read `ready` if you want to disable the composer when the service cannot
  * serve. Everything else you may have been rendering is now admin-only.
  */
+/**
+ * Stripe webhook. The SOURCE OF TRUTH for entitlement, not the checkout redirect.
+ *
+ * A user who pays and closes the tab before the redirect still bought the thing; a user who reaches
+ * the success URL by typing it has not. So plan changes are driven by verified events here.
+ *
+ * THREE REFUSALS, EACH DELIBERATE:
+ *   - no secret configured -> 503. Never "no secret, so trust the body": this endpoint's entire job
+ *     is to raise entitlements, and unverified that makes it an open subscription dispenser.
+ *   - bad/stale/forged signature -> 400, with the reason logged but not returned, so a prober
+ *     cannot use the response to learn which part of their forgery was wrong.
+ *   - no metadata.userId -> 200 and ignored. 200 because the event IS valid and Stripe must not
+ *     retry it forever; ignored because attaching a plan to a guessed account is worse than to none.
+ *
+ * The raw body is read with .text() and parsed afterwards. Re-serialising parsed JSON changes bytes
+ * and the signature would never match again.
+ */
+app.post('/api/billing/webhook', async (c) => {
+  const secret = c.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return c.json({ error: 'billing not configured' }, 503);
+
+  const raw = await c.req.text();
+  const verdict = await verifyStripeSignature(
+    raw,
+    c.req.header('stripe-signature') ?? null,
+    secret,
+    Math.floor(Date.now() / 1000),
+  );
+  if (!verdict.ok) {
+    console.warn('billing webhook rejected:', verdict.reason);
+    return c.json({ error: 'invalid signature' }, 400);
+  }
+
+  let event: unknown;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return c.json({ error: 'invalid json' }, 400);
+  }
+
+  const outcome = interpretStripeEvent(event);
+  if (!outcome.userId) return c.json({ ok: true, ignored: outcome.ignored ?? 'no user' });
+
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(outcome.userId));
+  if (outcome.subscription) {
+    // Entitlement is recomputed from status and period rather than trusting the plan field, so a
+    // cancelled or lapsed subscription cannot leave a paid tier behind.
+    const plan = entitlementFor(outcome.subscription, Math.floor(Date.now() / 1000));
+    await quota.fetch('https://do/set-plan', { method: 'POST', body: JSON.stringify({ plan }) });
+  }
+  if (outcome.creditsDelta) {
+    await quota.fetch('https://do/grant-credits', { method: 'POST', body: JSON.stringify({ credits: outcome.creditsDelta }) });
+  }
+  return c.json({ ok: true, applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 } });
+});
+
 app.get('/api/providers', async (c) => {
   // `selectProvider` is a pure function of `env` — no network, no cache. Its
   // `reasoning` string names providers and is therefore NOT returned; only

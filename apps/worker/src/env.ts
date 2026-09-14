@@ -15,6 +15,12 @@ export interface Env {
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
   /**
+   * Stripe webhook signing secret. Absent in every environment until billing is switched on,
+   * and the webhook route REFUSES rather than degrading to trusting an unsigned body — an
+   * unverified billing webhook is an open 'give me a subscription' endpoint.
+   */
+  STRIPE_WEBHOOK_SECRET?: string;
+  /**
    * Open Cloud key, scope `creator-store-product:read`, free from
    * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to
    * the unauthenticated toolbox-service/v1 endpoint — it is never required.
