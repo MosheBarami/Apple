@@ -1,0 +1,5 @@
+[
+  "apps/worker/src/pricing.ts",
+  "packages/shared/src/index.ts",
+  "scripts/check-offer.mjs"
+]

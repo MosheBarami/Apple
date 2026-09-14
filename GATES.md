@@ -247,11 +247,12 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-4; path=6765c31f4f12/53 entries; git-sha=9e60f65; tree-clean=yes; break-sha=9e60f65; EXPECT=unmatched; output-sha256=d7a766db8e441089bc63819e48bdd0ad52ac0d8482d049f451cfb0a54e3effc7; output-bytes=1968; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=849a707d7e2395fdffe292e6; at=2026-09-14T17:53:27.432Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=7693a2a; tree-clean=yes; EXPECT=matched; output-sha256=0183aaa116510782d3002133ed59fdb98eca47c77d54cf9cd0a434ad088a0893; output-bytes=1074; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=725a1855f9984f9403e8fed3; at=2026-09-14T18:40:38.638Z
 
-- [ ] G-OFFER-1: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
+- [x] G-OFFER-1: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
     STATION: S1
     CHECK: node scripts/check-offer.mjs
     EXPECT: OFFER COHERENT
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-OFFER; path=6765c31f4f12/53 entries; git-sha=b17b3a5; tree-clean=yes; break-sha=b17b3a5; EXPECT=unmatched; output-sha256=a771573b11c19b93f7cd1abb934ab83c1b7b967cc28221432201b490214745e2; output-bytes=1064; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=0; deps-sha=e3b0c44298fc1c149afbf4c8; at=2026-09-14T19:26:57.948Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=4b0d9d2; tree-clean=yes; EXPECT=matched; output-sha256=ba59013d1076f03c7cf5e2f86c0a5aa1b4f91d80c9c3241532bdb36a970a94ad; output-bytes=415; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=00f31b3f44af48f7e0151c8c; at=2026-09-14T19:27:27.927Z
 
 ---
 
