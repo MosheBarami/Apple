@@ -74,7 +74,7 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
   const verdict = readiness(res);
   const tone = PUBLISH_TONE[verdict.state];
   // Split for the same reason readiness() splits them: an asset whose licence was read
-  // and found incompatible is a finding; an asset whose licence Golem never saw is not.
+  // and found incompatible is a finding; an asset whose licence Apple never saw is not.
   const blockers = c.findings.filter((f) => f.severity === 'blocker' && f.code !== 'missing_provenance');
   const warnings = c.findings.filter((f) => f.severity === 'warning');
   const owes = a.required.length > 0 || a.sourceCredits.length > 0;
@@ -117,13 +117,13 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
 
       {a.unaccounted.length > 0 && (
         <section className="cr-group">
-          <h4 className="cr-group__head">Golem cannot account for these</h4>
+          <h4 className="cr-group__head">Apple cannot account for these</h4>
           {/* Named rather than hidden. An asset with no provenance row is the one
               state this report treats as worse than a known obligation. */}
           <p className="cr-note">
             These were placed by Roblox asset id and are not in the curated library, so their
             licence is unknown. Nothing here is a claim that they are unusable — only that
-            Golem cannot tell you either way.
+            Apple cannot tell you either way.
           </p>
           <ul className="cr-ids">
             {a.unaccounted.map((id) => (
@@ -201,10 +201,10 @@ export function CreditsPanel({ projectId }: { projectId: string }) {
       )}
 
       {/* The limits, all of them. Naming only the Studio-added case would tell a reader
-          that everything Golem placed is on this list, which is false for any project
+          that everything Apple placed is on this list, which is false for any project
           older than this ledger and for any placement whose record failed to write. */}
       <p className="cr-stamp">
-        Read from your project&rsquo;s asset ledger, which is not the same thing as your place. Golem
+        Read from your project&rsquo;s asset ledger, which is not the same thing as your place. Apple
         records an asset when it places one, so this list cannot see anything you added in Studio
         yourself, anything placed before this ledger existed, or a placement whose record failed to
         save. A clean result here is a clean result for what is listed.

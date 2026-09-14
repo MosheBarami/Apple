@@ -1,5 +1,5 @@
 /**
- * The activity state machine: what Golem is *doing*, ordered, timed, terminated.
+ * The activity state machine: what Apple is *doing*, ordered, timed, terminated.
  *
  * WHAT THIS IS NOT. It is not chain of thought. Nothing here reads a prompt, a
  * system message, a transcript or a reasoning token. Every state it can emit is

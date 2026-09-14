@@ -1,4 +1,4 @@
-// §33: what Golem would actually be asked to do, before it is asked.
+// §33: what Apple would actually be asked to do, before it is asked.
 //
 // The worker builds the brief from a fresh scan and returns the exact request
 // text. Showing that text is the whole point of this dialog: the roadmap's Plan
@@ -52,7 +52,7 @@ export function BriefDialog({ brief, intent, onClose, onOpenConversation }: Prop
   return (
     <Modal title={brief.title} onClose={onClose} wide>
       <p className="rm-brief__lead">
-        This is the request Golem would work from, in <strong>{PRODUCT_MODE_INFO[mode].name}</strong> mode.{' '}
+        This is the request Apple would work from, in <strong>{PRODUCT_MODE_INFO[mode].name}</strong> mode.{' '}
         {PRODUCT_MODE_INFO[mode].blurb}
       </p>
 
@@ -64,7 +64,7 @@ export function BriefDialog({ brief, intent, onClose, onOpenConversation }: Prop
 
       {brief.context.length > 0 && (
         <section className="rm-brief__section">
-          <h3 className="rm-brief__key">What Golem already knows about this project</h3>
+          <h3 className="rm-brief__key">What Apple already knows about this project</h3>
           <ul className="rm-brief__list">
             {brief.context.map((line) => (
               <li key={line}>{line}</li>

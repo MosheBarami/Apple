@@ -5,7 +5,7 @@
 // Which foundation model answers is an implementation detail of the routing
 // layer — it changes with availability, cost and task, and a user who pinned a
 // named backend would be choosing a thing we reserve the right to move. The
-// user sees "Golem". So the only choice offered here is how much autonomy and
+// user sees "Apple". So the only choice offered here is how much autonomy and
 // budget a request gets:
 //
 //   Plan        inspects, reasons and proposes — no project edits by default
@@ -108,7 +108,7 @@ export function Composer({
     <div className="gx-composer">
       <form className="gx-composer__inner" onSubmit={submit}>
         <label className="gx-sr" htmlFor="gx-composer-input">
-          Describe what you want Golem to build
+          Describe what you want Apple to build
         </label>
         <textarea
           id="gx-composer-input"
@@ -203,7 +203,7 @@ export function Composer({
         </div>
       </form>
 
-      <p className="gx-composer__note">Golem can make mistakes. Always review important information.</p>
+      <p className="gx-composer__note">Apple can make mistakes. Always review important information.</p>
     </div>
   );
 }

@@ -15,7 +15,7 @@ import {
 } from '../lib/api';
 import { MOCK_MODE } from '../lib/mock';
 
-const ADMIN_KEY_STORAGE = 'golem-admin-key';
+const ADMIN_KEY_STORAGE = 'apple-admin-key';
 
 function readAdminKey(): string {
   try {
@@ -357,7 +357,7 @@ export function AdminPage() {
       <div className="page">
         <div className="empty-state">
           <h2>Nothing here</h2>
-          <p className="muted">This area is for Golem operators.</p>
+          <p className="muted">This area is for Apple operators.</p>
         </div>
       </div>
     );

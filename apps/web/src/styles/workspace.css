@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOLEM — workspace design system.
+   APPLE — workspace design system.
 
    The product surface, in the same material as the landing: warm-neutral
    charcoal, ivory type, one amber accent that only ever means "something is
@@ -129,7 +129,7 @@
   flex-direction: column;
   min-height: 0;
   background: var(--gx-rail);
-  border-right: 1px solid var(--gx-line);
+  border-inline-end: 1px solid var(--gx-line);
 }
 
 .gx-rail__head {
@@ -156,13 +156,13 @@
 }
 
 .gx-rail__collapse {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 /* Only meaningful while the rail is an overlay. Two classes deep so it beats
    `.gx-icon-btn { display: grid }`, which is declared further down. */
 .gx-icon-btn.gx-rail__close {
-  margin-left: auto;
+  margin-inline-start: auto;
   display: none;
 }
 
@@ -317,7 +317,7 @@
   border: 1px solid var(--gx-line);
   background: var(--gx-raise-2);
   color: var(--gx-ink);
-  text-align: left;
+  text-align: start;
   cursor: pointer;
   transition:
     border-color var(--gx-t-hover) var(--gx-ease),
@@ -395,7 +395,7 @@
   background: transparent;
   color: var(--gx-ink);
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   transition: background-color var(--gx-t-hover) var(--gx-ease);
 }
 
@@ -473,12 +473,12 @@
 
 .gx-pop--up {
   bottom: calc(100% + 6px);
-  left: 0;
+  inset-inline-start: 0;
 }
 
 .gx-pop--down-right {
   top: calc(100% + 6px);
-  right: 0;
+  inset-inline-end: 0;
 }
 
 @keyframes gx-pop-in {
@@ -504,7 +504,7 @@
   background: transparent;
   color: var(--gx-ink-2);
   font-size: 0.87rem;
-  text-align: left;
+  text-align: start;
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -609,7 +609,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .gx-top__cp {
@@ -835,7 +835,7 @@
 }
 
 .gx-stamp--end {
-  text-align: right;
+  text-align: end;
 }
 
 .gx-prose {
@@ -865,7 +865,7 @@
 .gx-prose ul,
 .gx-prose ol {
   margin: 0 0 0.9em;
-  padding-left: 1.3em;
+  padding-inline-start: 1.3em;
 }
 
 .gx-prose li {
@@ -935,7 +935,7 @@
   color: var(--gx-ink);
   font-size: 0.87rem;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .gx-think__spark {
@@ -961,7 +961,7 @@
 
 .gx-think__chev {
   flex: none;
-  margin-left: auto;
+  margin-inline-start: auto;
   display: grid;
   place-items: center;
   color: var(--gx-ink-3);
@@ -1018,7 +1018,7 @@
 .gx-stage-row::before {
   content: '';
   position: absolute;
-  left: 5px;
+  inset-inline-start: 5px;
   top: 17px;
   bottom: 0;
   width: 1px;
@@ -1031,7 +1031,7 @@
 
 .gx-stage-row__bullet {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 5px;
   width: 11px;
   height: 11px;
@@ -1064,7 +1064,7 @@
 
 .gx-plan {
   margin: 0.25rem 0 0;
-  padding-left: 1.05rem;
+  padding-inline-start: 1.05rem;
   color: var(--gx-ink-2);
   font-size: 0.82rem;
   line-height: 1.6;
@@ -1083,7 +1083,7 @@
 
 .gx-open-qs ul {
   margin: 0.1rem 0 0;
-  padding-left: 1.05rem;
+  padding-inline-start: 1.05rem;
 }
 
 /* --- the Actions checklist ------------------------------------------------ */
@@ -1262,7 +1262,7 @@
 .gx-act__phase::before {
   content: '';
   position: absolute;
-  left: 3px;
+  inset-inline-start: 3px;
   top: 13px;
   bottom: 0;
   width: 1px;
@@ -1271,7 +1271,7 @@
 
 .gx-act__pip {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 6px;
   width: 7px;
   height: 7px;
@@ -1624,7 +1624,7 @@
 
 .gx-ev__cases {
   margin: 0.3rem 0 0;
-  padding-left: 1rem;
+  padding-inline-start: 1rem;
   color: var(--gx-ink-2);
   font-size: 0.75rem;
   line-height: 1.5;
@@ -1789,7 +1789,7 @@
   display: flex;
   align-items: center;
   gap: 0.2rem;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .gx-composer__note {
@@ -1862,7 +1862,7 @@
   flex: none;
   width: 36px;
   height: 36px;
-  margin-left: 0.25rem;
+  margin-inline-start: 0.25rem;
   border: 0;
   border-radius: 50%;
   background: var(--gx-cream);
@@ -1914,14 +1914,14 @@
 .gx-drawer {
   position: fixed;
   top: 0;
-  right: 0;
+  inset-inline-end: 0;
   bottom: 0;
   z-index: 51;
   width: min(420px, 92vw);
   display: flex;
   flex-direction: column;
   background: var(--gx-rail);
-  border-left: 1px solid var(--gx-line-2);
+  border-inline-start: 1px solid var(--gx-line-2);
   box-shadow: -24px 0 60px -20px rgba(0, 0, 0, 0.7);
   animation: gx-slide var(--gx-t-enter) var(--gx-ease) both;
 }
@@ -2025,7 +2025,7 @@
 .gx-connect__steps {
   counter-reset: gx-step;
   margin: 0;
-  padding-left: 0;
+  padding-inline-start: 0;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -2217,7 +2217,7 @@
   }
 
   .gx-rail.is-collapsed .gx-rail__collapse {
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   .gx-rail.is-collapsed .gx-new {
@@ -2262,7 +2262,7 @@
     position: fixed;
     top: 0;
     bottom: 0;
-    left: 0;
+    inset-inline-start: 0;
     z-index: 52;
     width: min(var(--gx-rail-w), 86vw);
     transform: translateX(-100%);
@@ -2334,7 +2334,7 @@
 
   .gx-top__actions {
     flex-basis: 100%;
-    margin-left: 0;
+    margin-inline-start: 0;
     justify-content: flex-end;
   }
 
@@ -2398,7 +2398,7 @@
 .gx-stage__working {
   position: absolute;
   top: 0.5rem;
-  left: 0.5rem;
+  inset-inline-start: 0.5rem;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: rgba(14, 13, 11, 0.8);
@@ -2429,7 +2429,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .gx-stage__count {
@@ -2557,7 +2557,7 @@
 }
 
 .gx-playtest__elapsed {
-  margin-left: auto;
+  margin-inline-start: auto;
   font-family: var(--gx-mono);
   font-size: 0.72rem;
   color: var(--gx-ink-2);
@@ -2613,7 +2613,7 @@
 
 .gx-playtest__veil {
   position: absolute;
-  right: 0.5rem;
+  inset-inline-end: 0.5rem;
   bottom: 0.5rem;
   font-family: var(--gx-mono);
   font-size: 0.68rem;
@@ -2665,7 +2665,7 @@
 
 .gx-playtest__action {
   color: var(--gx-ink-warm);
-  margin-right: auto;
+  margin-inline-end: auto;
 }
 
 .gx-playtest__count {
@@ -2687,7 +2687,7 @@
   line-height: 1.5;
   color: var(--gx-ink-warm);
   background: color-mix(in srgb, var(--gx-warn) 8%, transparent);
-  border-left: 2px solid var(--gx-warn);
+  border-inline-start: 2px solid var(--gx-warn);
   padding: 0.4rem 0.55rem;
   border-radius: 0 var(--gx-r-sm) var(--gx-r-sm) 0;
   margin: 0;
@@ -2712,7 +2712,7 @@
    treatment.
 
    TONE IS SEMANTIC, per the visual system's §16.2 colour grammar: amber is creation
-   and Golem's own identity, blue is Studio and transport, green is proven, violet is
+   and Apple's own identity, blue is Studio and transport, green is proven, violet is
    future or in-progress, red is failure. The tone comes from the state id in the
    component and is not a prop a caller can pass, because a state whose colour
    contradicts its meaning is exactly the drift §16.3 names.
@@ -2770,7 +2770,7 @@
 /* The seed prompts under the conversation zero-state. They are the state's ACTION,
    so they sit in `.es__action` and inherit its spacing rather than carrying their own
    inline styles, which is what they had. */
-.gx-seeds { display: grid; gap: 0.4rem; text-align: left; }
+.gx-seeds { display: grid; gap: 0.4rem; text-align: start; }
 .gx-seeds .gx-row { cursor: pointer; }
 
 /* The canonical-state specimen grid in /ui-lab. Two columns so a tone that fights its
@@ -2861,8 +2861,8 @@
 .cr-entry__links a { color: var(--ink-3); }
 .cr-entry__links a:hover { color: var(--acc-studio); }
 
-.cr-finding { display: flex; flex-direction: column; gap: 0.2rem; padding-left: 0.7rem; border-left: 2px solid var(--line); }
-.cr-finding.is-blocker { border-left-color: var(--bad); }
+.cr-finding { display: flex; flex-direction: column; gap: 0.2rem; padding-inline-start: 0.7rem; border-inline-start: 2px solid var(--line); }
+.cr-finding.is-blocker { border-inline-start-color: var(--bad); }
 .cr-finding__name { font-size: 0.84rem; font-weight: 600; color: var(--ink-1); }
 .cr-finding__why, .cr-finding__fix { font-size: 0.79rem; line-height: 1.5; color: var(--ink-2); }
 .cr-finding__fix { color: var(--ink-3); }

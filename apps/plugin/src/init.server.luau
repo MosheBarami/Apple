@@ -1,5 +1,5 @@
 --!strict
--- Golem for Studio — connects this place to a Golem project session.
+-- Apple for Studio — connects this place to a Apple project session.
 -- Local-plugin install: no permission prompts; HTTP + script edits work out of the box.
 local HttpService = game:GetService("HttpService")
 local LogService = game:GetService("LogService")
@@ -45,7 +45,7 @@ LogService.MessageOut:Connect(function(message: string, messageType: Enum.Messag
 	if messageType == Enum.MessageType.MessageWarning then level = "warn"
 	elseif messageType == Enum.MessageType.MessageError then level = "error"
 	elseif messageType == Enum.MessageType.MessageInfo then level = "info" end
-	if string.find(message, "Golem", 1, true) == 1 then return end
+	if string.find(message, "Apple", 1, true) == 1 then return end
 	table.insert(logBuffer, { kind = "log", message = string.sub(message, 1, 300), level = level, clock = os.clock() })
 end)
 
@@ -91,13 +91,13 @@ local function post(url: string, body: any, token: string?): (boolean, any, numb
 end
 
 -- ---------------------------------------------------------------- ui
-local toolbar = plugin:CreateToolbar("Golem")
-local button = toolbar:CreateButton("Golem", "Open Golem", "rbxassetid://0")
+local toolbar = plugin:CreateToolbar("Apple")
+local button = toolbar:CreateButton("Apple", "Open Apple", "rbxassetid://0")
 button.ClickableWhenViewportHidden = true
 
 local widgetInfo = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right, false, false, 300, 380, 260, 300)
-local widget = (plugin :: any):CreateDockWidgetPluginGuiAsync("GolemDock", widgetInfo) :: DockWidgetPluginGui
-widget.Title = "Golem"
+local widget = (plugin :: any):CreateDockWidgetPluginGuiAsync("AppleDock", widgetInfo) :: DockWidgetPluginGui
+widget.Title = "Apple"
 
 local COLORS = {
 	bg = Color3.fromHex("0B0E14"),
@@ -143,7 +143,7 @@ local function label(text: string, size: number, color: Color3, order: number): 
 	return l
 end
 
-local title = label("GOLEM", 18, COLORS.amber, 1)
+local title = label("APPLE", 18, COLORS.amber, 1)
 title.Font = Enum.Font.GothamBlack
 local statusLabel = label("Not connected", 14, COLORS.muted, 2)
 local projectLabel = label("", 13, COLORS.text, 3)
@@ -185,13 +185,13 @@ activityLabel.Size = UDim2.new(1, 0, 0, 120)
 activityLabel.TextYAlignment = Enum.TextYAlignment.Top
 activityLabel.Font = Enum.Font.Code
 
-local hint = label("Get a code from your project page at Golem → Connect Studio.", 12, COLORS.muted, 7)
+local hint = label("Get a code from your project page at Apple → Connect Studio.", 12, COLORS.muted, 7)
 hint.Font = Enum.Font.Gotham
 
--- Diagnostics. When a user reports "Golem is broken", the first question is always
+-- Diagnostics. When a user reports "Apple is broken", the first question is always
 -- which build they are on, and they have no other way to find out: Studio's plugin
 -- manager shows the asset, not the version string this code was compiled with.
-local versionLabel = label("Golem v" .. VERSION .. " · protocol " .. tostring(PROTOCOL), 11, COLORS.muted, 8)
+local versionLabel = label("Apple v" .. VERSION .. " · protocol " .. tostring(PROTOCOL), 11, COLORS.muted, 8)
 versionLabel.Font = Enum.Font.Code
 
 -- Populated only when the server has something to say about this build. Hidden the
@@ -227,7 +227,7 @@ local function applyClientNotice(client: any)
 	if type(client) ~= "table" then return end
 	local message = type(client.message) == "string" and client.message or nil
 	if client.compatible == false then
-		noticeLabel.Text = message or "This Golem build is too old for the server. Update it in Studio: Plugins → Manage Plugins → Update."
+		noticeLabel.Text = message or "This Apple build is too old for the server. Update it in Studio: Plugins → Manage Plugins → Update."
 		noticeLabel.TextColor3 = COLORS.red
 		noticeLabel.Visible = true
 		return
@@ -242,9 +242,9 @@ local function applyClientNotice(client: any)
 	-- The label is passive and can sit there indefinitely, but writing to the Output
 	-- window every few seconds would be genuine nagging. Do that once per distinct
 	-- message, per machine.
-	if plugin:GetSetting("golem_notice_seen") ~= message then
-		plugin:SetSetting("golem_notice_seen", message)
-		warn("[Golem] " .. message)
+	if plugin:GetSetting("apple_notice_seen") ~= message then
+		plugin:SetSetting("apple_notice_seen", message)
+		warn("[Apple] " .. message)
 	end
 end
 
@@ -343,7 +343,7 @@ local function claimCode(code: string)
 	setStatus("Connecting…", COLORS.amber)
 	local ok, data, status = post(DEFAULT_API .. "/api/studio/claim", { code = code })
 	if not ok or not data or not data.token then
-		setStatus(status == 404 and "Invalid or expired code" or "Could not reach Golem — check your internet", COLORS.red)
+		setStatus(status == 404 and "Invalid or expired code" or "Could not reach Apple — check your internet", COLORS.red)
 		return
 	end
 	session = {
@@ -364,7 +364,7 @@ connectBtn.MouseButton1Click:Connect(function()
 	end
 	local code = string.gsub(string.upper(codeBox.Text), "[^A-Z0-9]", "")
 	if #code < 4 then
-		setStatus("Enter the pairing code from the Golem web app", COLORS.red)
+		setStatus("Enter the pairing code from the Apple web app", COLORS.red)
 		return
 	end
 	claimCode(code)
@@ -396,16 +396,16 @@ end)
 -- A place-resident script could otherwise drop a StringValue and silently re-point this
 -- Studio at somebody else's project, which would hand them code execution here. So it is
 -- gated behind an explicit per-machine opt-in and never re-points an active session.
-if plugin:GetSetting("golem_allow_headless_pairing") == true then
+if plugin:GetSetting("apple_allow_headless_pairing") == true then
 	task.spawn(function()
 		local ServerStorage = game:GetService("ServerStorage")
 		while true do
 			if not connected then
-				local codeValue = ServerStorage:FindFirstChild("GolemPairingCode")
+				local codeValue = ServerStorage:FindFirstChild("ApplePairingCode")
 				if codeValue and codeValue:IsA("StringValue") and #codeValue.Value >= 4 then
 					local code = string.gsub(string.upper(codeValue.Value), "[^A-Z0-9]", "")
 					codeValue:Destroy()
-					warn("[Golem] headless pairing opt-in is enabled; claiming code from ServerStorage")
+					warn("[Apple] headless pairing opt-in is enabled; claiming code from ServerStorage")
 					claimCode(code)
 				end
 			end

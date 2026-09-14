@@ -2,12 +2,20 @@
 //
 // TWO THINGS ARE PROVEN HERE.
 //
-// 1. THE REFACTOR CHANGED NOTHING. The provider layer moved the transport out of gateway.ts and
-//    behind an adapter. To show that is behaviour-preserving rather than merely plausible, this
-//    file bundles the PRE-REFACTOR gateway straight out of git, runs both versions against the
-//    same fake Workers AI binding, and asserts the model id, the wire payload, the AI Gateway
-//    options, the reserved neurons, the settled neurons and the returned GatewayResponse are
+// 1. THE REFACTOR CHANGED NOTHING ABOUT THE TRANSPORT. The provider layer moved the transport out
+//    of gateway.ts and behind an adapter. To show that is behaviour-preserving rather than merely
+//    plausible, this file bundles the PRE-REFACTOR gateway straight out of git, runs both versions
+//    against the same fake Workers AI binding, and asserts the wire payload, the AI Gateway
+//    options, the call/reservation/settlement counts and the returned GatewayResponse shape are
 //    deep-equal. Not "looks the same" — deep-equal.
+//
+//    It deliberately does NOT compare the model id or the neuron amounts. The baseline is frozen at
+//    a pre-refactor revision, so its DEFAULT_MODELS is whatever shipped then; comparing those
+//    compares old CONFIGURATION to new, and which model serves a mode is allowed to change. It did:
+//    `@cf/zai-org/glm-5.3-flash` requires a paid Cloudflare plan and cannot run on Workers Free,
+//    so the modes moved to gpt-oss-120b/20b with llama-3.2-11b-vision for the critic. Neurons are a
+//    function of the model's price row, so pinning them here would make any model change fail the
+//    suite for the wrong reason. Cost arithmetic is asserted separately, against an explicit model.
 //
 // 2. THE LAYER IS HONEST. OpenAI, Google and DeepSeek have no credentials on this account, and the
 //    tests assert they report exactly that, that DeepSeek additionally reports it cannot serve the
@@ -227,12 +235,29 @@ test('REFACTOR PROOF: the GLM path is byte-identical to the pre-refactor gateway
     const after = await G.chat(a.env, structuredClone(req), { kind: 'probe', sessionId: 'sess-1' });
 
     assert.deepEqual(a.seen.runs.length, 1, `${name}: exactly one inference call`);
-    assert.deepEqual(a.seen.runs[0].id, b.seen.runs[0].id, `${name}: same model id`);
     assert.deepEqual(a.seen.runs[0].payload, b.seen.runs[0].payload, `${name}: same wire payload`);
     assert.deepEqual(a.seen.runs[0].opts, b.seen.runs[0].opts, `${name}: same AI Gateway options`);
-    assert.deepEqual(a.seen.reserved, b.seen.reserved, `${name}: same neurons reserved`);
-    assert.deepEqual(a.seen.settled, b.seen.settled, `${name}: same neurons settled`);
-    assert.deepEqual(stable(after), stable(before), `${name}: same GatewayResponse`);
+
+    // WHAT THIS PROOF DOES AND DOES NOT COVER.
+    //
+    // It exists to show the providers refactor did not change the TRANSPORT: same number of calls,
+    // same wire payload, same AI Gateway options, same response shape. It is NOT a claim that the
+    // model choice can never change. The baseline is reconstructed from a git revision that
+    // predates the refactor, so its DEFAULT_MODELS is frozen at whatever shipped then — comparing
+    // model ids compares old CONFIGURATION against new configuration, and configuration is exactly
+    // the thing that is allowed to move.
+    //
+    // Model id and neuron amounts are therefore excluded, and the exclusion is narrow and
+    // deliberate: neurons are a function of the model's price row, so pinning them here would
+    // forbid ever changing the model on pain of a red suite. Cost accounting is covered on its own
+    // terms by "Workers AI cost still goes through the existing neuron price table" below, which
+    // asserts the arithmetic against an explicit model rather than against whatever is configured.
+    assert.equal(typeof a.seen.runs[0].id, 'string', `${name}: a model id was sent`);
+    assert.equal(a.seen.reserved.length, b.seen.reserved.length, `${name}: same number of reservations`);
+    assert.equal(a.seen.settled.length, b.seen.settled.length, `${name}: same number of settlements`);
+
+    const ignoreModelDependent = (r) => ({ ...stable(r), model: undefined, neurons: undefined, sparks: undefined });
+    assert.deepEqual(ignoreModelDependent(after), ignoreModelDependent(before), `${name}: same GatewayResponse shape`);
   }
 });
 
@@ -247,13 +272,25 @@ test('the response still reports provider "workers-ai" and settles on reported n
   const { env, seen } = fakeEnv();
   const res = await G.chat(env, REQUESTS[0].req, { kind: 'probe' });
   assert.equal(res.provider, 'workers-ai');
-  assert.equal(res.model, '@cf/zai-org/glm-5.3-flash');
+  // The configured model for `stone`, not a literal: which model serves a mode is configuration
+  // and is allowed to change. What must hold is that the response reports the model that actually
+  // ran, so a usage record can be traced back to it.
+  assert.equal(res.model, G.DEFAULT_MODELS.stone.id);
   assert.equal(res.finishReason, 'tool_calls');
   assert.equal(res.text, 'Placing the counter now.');
   assert.ok(!res.text.includes('scratchpad'), 'reasoning_content must never surface');
-  // computed from the price table: 400 fresh + 4800 cached input + 180 output
-  const computed = 400 * (0.15 / 1e6 / 0.000011) + 4800 * (0.03 / 1e6 / 0.000011) + 180 * (0.5 / 1e6 / 0.000011);
-  assert.equal(seen.settled[0].actual, Math.ceil(Math.max(42, Math.ceil(computed))));
+  // The property under test is `max(providerReported, computedFromPriceTable)` — "never bill less
+  // than the provider says we spent" — NOT a particular number. Derive the expectation from the
+  // configured model's own price row so the rule stays asserted when the model changes.
+  //
+  // Worth knowing when reading this: GLM published a discounted cached-input rate ($0.03/M against
+  // $0.15/M fresh) and the gpt-oss models publish none, so cached tokens now settle at the full
+  // input rate. On an agent workload, where most input is a re-sent prefix, that is the single
+  // largest cost consequence of moving off GLM.
+  const row = P.allModels().find((m) => m.id === G.DEFAULT_MODELS.stone.id);
+  assert.ok(row, 'the configured stone model is catalogued');
+  const computed = P.neuronsForModelTokens(row, 5200, 180, 4800);
+  assert.equal(seen.settled[0].actual, Math.ceil(Math.max(42, computed)));
 });
 
 // ---------------------------------------------------------------------------
@@ -308,7 +345,10 @@ test('DeepSeek reports that it cannot serve the vision model key — with or wit
 test('the capability table carries every required field and computes availability per row', () => {
   const { env } = fakeEnv();
   const rows = P.capabilityTable(env);
-  assert.equal(rows.length, 4, 'one row per catalogued model');
+  // Derived, not hardcoded: a literal here means every model added to the catalogue fails this
+  // test for the wrong reason, which trains people to edit the number rather than read the row.
+  assert.equal(rows.length, P.allModels().length, 'one row per catalogued model');
+  assert.ok(rows.length > 0, 'the catalogue is not empty');
   for (const r of rows) {
     for (const field of [
       'id',
@@ -506,7 +546,11 @@ test('every adapter answers classifyError with a kind from the taxonomy', () => 
 // ---------------------------------------------------------------------------
 
 test('Workers AI cost still goes through the existing neuron price table', () => {
-  const glm = P.allModels().find((m) => m.provider === 'workers-ai');
+  // By id, not "the first workers-ai model". This test asserts GLM's specific published prices,
+  // so it must select GLM specifically — otherwise adding a model to the catalogue silently
+  // repoints it at a different price row and the arithmetic below becomes meaningless.
+  const glm = P.allModels().find((m) => m.id === '@cf/zai-org/glm-5.3-flash');
+  assert.ok(glm, 'the GLM price row is still catalogued');
   // 1M input + 1M output at $0.15/$0.50 = $0.65 = 59,091 neurons at $0.000011 each
   assert.equal(P.neuronsForModelTokens(glm, 1_000_000, 1_000_000), Math.ceil(0.65 / 0.000011));
   // and the cached-input discount the table publishes is applied
@@ -594,22 +638,34 @@ test('a failing provider records the error kind in health and never retries a bi
 // 7. auto selection
 // ---------------------------------------------------------------------------
 
-test('AUTO: with only GLM credentialed the choice is GLM, deterministically, and it says why', () => {
+test('AUTO: with only Workers AI credentialed the choice is deterministic and it says why', () => {
   const { env } = fakeEnv();
   const picks = [];
   for (let i = 0; i < 5; i++) picks.push(P.selectProvider(env, { modelKey: 'stone' }));
   for (const p of picks) {
     assert.equal(p.ok, true);
     assert.equal(p.provider, 'workers-ai');
-    assert.equal(p.model.id, '@cf/zai-org/glm-5.3-flash');
+    // The rule, not a frozen id: with one provider credentialed the pick is the cheapest model
+    // there that can serve the task. Naming a model here would re-break on every catalogue change.
+    assert.equal(p.model.provider, 'workers-ai');
+    assert.ok(p.model.supportsTools, 'stone needs tool calling');
   }
   assert.equal(new Set(picks.map((p) => p.reasoning)).size, 1, 'the same question must give the same answer');
   const r = picks[0].reasoning;
-  assert.match(r, /GLM-5\.3 Flash/);
-  assert.match(r, /only usable provider/);
-  assert.match(r, /openai \(no credentials configured\)/);
-  assert.match(r, /google \(no credentials configured\)/);
-  assert.match(r, /deepseek \(no credentials configured\)/);
+  assert.match(r, new RegExp(picks[0].model.displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  // Was /only usable provider/. Workers AI now catalogues several models, so the selector ranks
+  // WITHIN the one credentialed provider and says so. The invariant is that it explains the choice
+  // and names the alternatives it weighed, not the exact phrasing.
+  assert.match(r, /usable option/);
+  // Assert the STRUCTURED rejection list, not the prose. When Workers AI catalogued a single
+  // model the reasoning string ranked across providers and named each uncredentialed one; now that
+  // it catalogues several, the string ranks within the credentialed provider and the per-provider
+  // detail lives in `rejected`. The diagnostic did not disappear, it became structured — and a
+  // field is a sturdier thing to assert than a sentence.
+  const why = Object.fromEntries(picks[0].rejected.map((x) => [x.provider, x.why]));
+  assert.equal(why.openai, 'no credentials configured');
+  assert.equal(why.google, 'no credentials configured');
+  assert.equal(why.deepseek, 'no credentials configured');
   assert.match(r, /tool calling/, 'it should name the capability the task needed');
 });
 
@@ -620,9 +676,10 @@ test('AUTO: a vision task rules DeepSeek out on capability, not on credentials',
   assert.equal(pick.ok, true);
   const ds = pick.rejected.find((r) => r.provider === 'deepseek');
   assert.equal(ds.why, 'no vision support');
-  // and the cheapest capable model wins: GLM at $0.15/$0.50 beats Luna and Gemini
-  assert.equal(pick.model.id, '@cf/zai-org/glm-5.3-flash');
-  assert.match(pick.reasoning, /cheapest of the 3 usable options/);
+  // and whatever wins must actually be able to see an image — that is the whole point of the
+  // `vision` key, and a text-only winner would make the visual critic silently non-visual.
+  assert.equal(pick.model.supportsVision, true, 'the vision key must resolve to a vision model');
+  assert.match(pick.reasoning, /cheapest of the \d+ usable options/);
 });
 
 test('AUTO: ranking is by cost and is stable when GLM is out of the picture', () => {

@@ -1,0 +1,7640 @@
+{
+ "capturedAt": "2026-09-14",
+ "source": "owner feature list (chat)",
+ "sectionCount": 23,
+ "itemCount": 1249,
+ "sections": [
+  {
+   "section": "מוצר וחשבון",
+   "count": 24,
+   "items": [
+    {
+     "id": "f-70142947",
+     "name": "הרשמה והתחברות",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-24e4b643",
+     "name": "Clerk / OAuth / Passkeys",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-297f5ec1",
+     "name": "פרופילים",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d17941e0",
+     "name": "צוותים וארגונים",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-582551d0",
+     "name": "הרשאות משתמשים",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7087eeb9",
+     "name": "תפקידים: Owner / Admin / Developer / Viewer",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0d48fc99",
+     "name": "Workspaces",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e59e8a38",
+     "name": "Projects",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-05d78323",
+     "name": "תיקיות",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-11bc1e71",
+     "name": "Tags",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7ea938e3",
+     "name": "חיפוש גלובלי",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-10c5cf73",
+     "name": "Favorites",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bff4a6a4",
+     "name": "Recents",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-42a83355",
+     "name": "Activity log",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5e2b6881",
+     "name": "Notifications",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b9ae9cb5",
+     "name": "Onboarding",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0a8af0c6",
+     "name": "הגדרות משתמש",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1a377b54",
+     "name": "הגדרות ארגון",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f16a3ca1",
+     "name": "API keys",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d8aead20",
+     "name": "Webhooks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-47cfc121",
+     "name": "Audit logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ca7f39ab",
+     "name": "Export account data",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b0af6a9d",
+     "name": "מחיקת חשבון",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-171d4f2a",
+     "name": "מצב Offline",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "צ׳אט AI",
+   "count": 82,
+   "items": [
+    {
+     "id": "f-7c277f33",
+     "name": "Chat streaming",
+     "status": "done",
+     "evidence": "apps/worker/src/do/session.ts broadcast deltas; verified live"
+    },
+    {
+     "id": "f-19c976f0",
+     "name": "Markdown",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0d7b0e67",
+     "name": "Code blocks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5c6e1d67",
+     "name": "Syntax highlighting",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7e1f24ab",
+     "name": "Copy code",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-72deecfa",
+     "name": "Edit message",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5d83fbb6",
+     "name": "Regenerate response",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cb1adb28",
+     "name": "Stop generation",
+     "status": "done",
+     "evidence": "stop-signal.ts requestStop"
+    },
+    {
+     "id": "f-040f24f8",
+     "name": "Retry failed request",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a1629c83",
+     "name": "Branch conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6b152833",
+     "name": "Fork conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1b4b6038",
+     "name": "Message version history",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-041fa3b2",
+     "name": "Pin messages",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4a0c71b5",
+     "name": "Search conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1068d5ae",
+     "name": "Rename conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-647ae610",
+     "name": "Archive conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e5d010bc",
+     "name": "Delete conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6b8bacab",
+     "name": "Share conversation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-17d82ac0",
+     "name": "Public/private links",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d780ea97",
+     "name": "Conversation folders",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-439105c2",
+     "name": "Conversation tags",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2c9abae8",
+     "name": "Conversation export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cadffc24",
+     "name": "JSON export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-597f5ff6",
+     "name": "Markdown export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8cf5aa97",
+     "name": "PDF export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0e97b69c",
+     "name": "Prompt templates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0b02f0c8",
+     "name": "System prompt editor",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1951538a",
+     "name": "Developer prompt editor",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-79e21efb",
+     "name": "Context window indicator",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6aa7a945",
+     "name": "Token counter",
+     "status": "partial",
+     "evidence": "usage tracked server-side; not surfaced per message"
+    },
+    {
+     "id": "f-418655bf",
+     "name": "Cost counter",
+     "status": "partial",
+     "evidence": "Sparks ledger exists; per-message display unverified"
+    },
+    {
+     "id": "f-e1433236",
+     "name": "Latency indicator",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0fb89aff",
+     "name": "Model selector",
+     "status": "done",
+     "evidence": "gateway DEFAULT_MODELS + /api/admin/models (verified live)"
+    },
+    {
+     "id": "f-777f332b",
+     "name": "Fast / Balanced / Max modes",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-190720a6",
+     "name": "Automatic model routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8418f4d7",
+     "name": "Fallback model",
+     "status": "done",
+     "evidence": "registry.ts PROVIDER_ORDER + selectProvider"
+    },
+    {
+     "id": "f-a7be7b25",
+     "name": "Multi-model comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-40f901b2",
+     "name": "Side-by-side answers",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4a941c02",
+     "name": "Debate mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ea8bced2",
+     "name": "Critic mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b6010485",
+     "name": "Judge mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4a737bb5",
+     "name": "Ensemble mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-188c29d8",
+     "name": "Self-reflection mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bb1e6605",
+     "name": "Planning mode",
+     "status": "done",
+     "evidence": "clay / Plan mode, read-only by construction"
+    },
+    {
+     "id": "f-0c1d3e69",
+     "name": "Execution mode",
+     "status": "done",
+     "evidence": "stone / Agent mode"
+    },
+    {
+     "id": "f-e47c68bc",
+     "name": "Verification mode",
+     "status": "done",
+     "evidence": "inspect_visually + semantic/intent checks"
+    },
+    {
+     "id": "f-3502b987",
+     "name": "Research mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f00b4645",
+     "name": "Code mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fb65c91e",
+     "name": "Roblox mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-387f8d69",
+     "name": "Hebrew mode",
+     "status": "partial",
+     "evidence": "conversational classifier handles Hebrew (3d36b3e); UI RTL not yet audited"
+    },
+    {
+     "id": "f-e5c84274",
+     "name": "Voice mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e0680305",
+     "name": "Vision mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-34218e07",
+     "name": "Image upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3c278c5b",
+     "name": "PDF upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8c3f075d",
+     "name": "Video upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-88fee4a6",
+     "name": "Audio upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2566957d",
+     "name": "ZIP upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09f5eeaa",
+     "name": "Dataset upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f14f498e",
+     "name": "Drag and drop files",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ace84e38",
+     "name": "File preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dd8ee562",
+     "name": "File indexing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-07085b36",
+     "name": "Document citations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-736fc765",
+     "name": "Source links",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-223f3624",
+     "name": "Confidence score",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7907f9c8",
+     "name": "Evidence panel",
+     "status": "partial",
+     "evidence": "generative-UI registry exists; no live data source reaches it"
+    },
+    {
+     "id": "f-dd243b72",
+     "name": "Reasoning timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-925075d6",
+     "name": "Tool execution timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a86ace38",
+     "name": "Live progress",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3822434f",
+     "name": "Cancel execution",
+     "status": "done",
+     "evidence": "stop-signal.ts"
+    },
+    {
+     "id": "f-f431e30d",
+     "name": "Resume execution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-907dab19",
+     "name": "Pause execution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a9bc415e",
+     "name": "Background jobs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-30cc6a99",
+     "name": "Queue position",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3898735b",
+     "name": "Run history",
+     "status": "done",
+     "evidence": "messages table in SessionDO"
+    },
+    {
+     "id": "f-636987b2",
+     "name": "Error explanation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-90a04a93",
+     "name": "Automatic retry",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-aa2f51ce",
+     "name": "Partial result recovery",
+     "status": "done",
+     "evidence": "owesWork -> 'incomplete', never reported as success"
+    },
+    {
+     "id": "f-eceb2fe8",
+     "name": "Human approval checkpoints",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3cf2ebca",
+     "name": "Ask-before-destructive-action",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2c676b70",
+     "name": "Plan preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-809f1422",
+     "name": "Execution preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c4d679b3",
+     "name": "Final verification report",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Agent מערכת",
+   "count": 50,
+   "items": [
+    {
+     "id": "f-c8473da2",
+     "name": "Planner agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-857a4f84",
+     "name": "Researcher agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-aca8dccb",
+     "name": "Coder agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3484e459",
+     "name": "Roblox agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c4ca01c5",
+     "name": "Luau agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7d4b6618",
+     "name": "QA agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-418cc3ef",
+     "name": "Security agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b02f29b7",
+     "name": "Visual agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e958ed0b",
+     "name": "3D agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-02ab7b31",
+     "name": "Audio agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cae7f796",
+     "name": "Documentation agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4779db00",
+     "name": "Product agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2654ede2",
+     "name": "Reviewer agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e0802c89",
+     "name": "Judge agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e165b989",
+     "name": "Router agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f00daf28",
+     "name": "Memory agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8e347526",
+     "name": "Critic agent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-01b4226e",
+     "name": "Parallel agents",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6c8e5aff",
+     "name": "Agent delegation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3a7622ff",
+     "name": "Agent hierarchy",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9a20947d",
+     "name": "Agent handoffs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2179a240",
+     "name": "Agent collaboration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f35d80da",
+     "name": "Agent debate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-88484824",
+     "name": "Agent voting",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c7227387",
+     "name": "Agent consensus",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8f0cea88",
+     "name": "Agent fallback",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4ba5a55c",
+     "name": "Agent timeouts",
+     "status": "done",
+     "evidence": "STEP_STALE_MS + 30s op timeout"
+    },
+    {
+     "id": "f-6ffead13",
+     "name": "Agent budgets",
+     "status": "done",
+     "evidence": "MAX_NEURONS_PER_REQUEST + BudgetDO"
+    },
+    {
+     "id": "f-1007b8e4",
+     "name": "Agent priorities",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-669fb5a6",
+     "name": "Agent permissions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-18c920ee",
+     "name": "Agent tool restrictions",
+     "status": "done",
+     "evidence": "router.ts toolsForMode — Plan is read-only"
+    },
+    {
+     "id": "f-c8cb92af",
+     "name": "Agent sandbox",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7db72412",
+     "name": "Agent snapshots",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-54c8c523",
+     "name": "Agent checkpoints",
+     "status": "done",
+     "evidence": "pre-agent checkpoint per non-Plan run"
+    },
+    {
+     "id": "f-4eb26126",
+     "name": "Agent replay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b971f269",
+     "name": "Agent traces",
+     "status": "done",
+     "evidence": "ToolTraceEntry persisted per run"
+    },
+    {
+     "id": "f-59f3ef7b",
+     "name": "Agent evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-25353dd0",
+     "name": "Agent skill registry",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cc4dfb3e",
+     "name": "Agent marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e8a317f6",
+     "name": "Custom agents",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4e468b54",
+     "name": "Custom agent instructions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c291f374",
+     "name": "Custom tools",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bd840df2",
+     "name": "Custom workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-52ae07b3",
+     "name": "Workflow templates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f492633a",
+     "name": "Scheduled workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b4d06b11",
+     "name": "Recurring workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7f7e8ba6",
+     "name": "Event-triggered workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3ddc5d5c",
+     "name": "Long-running workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ec7af78b",
+     "name": "Durable workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-747fde50",
+     "name": "Human-in-the-loop workflows",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Roblox Integration",
+   "count": 101,
+   "items": [
+    {
+     "id": "f-33fb707b",
+     "name": "Roblox OAuth",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-51684121",
+     "name": "Roblox account linking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dbc680a8",
+     "name": "Roblox group linking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-968b4ca6",
+     "name": "Roblox Open Cloud",
+     "status": "blocked",
+     "evidence": "needs an Open Cloud asset-upload credential — does not exist"
+    },
+    {
+     "id": "f-6f88885e",
+     "name": "Roblox Creator Store",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-60e81584",
+     "name": "Asset search",
+     "status": "partial",
+     "evidence": "find_verified_asset (Creator Store) works; search_asset_library has no populated table"
+    },
+    {
+     "id": "f-b598766f",
+     "name": "Asset preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-78f35e52",
+     "name": "Asset metadata",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5d96325d",
+     "name": "Asset download",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6cb625cf",
+     "name": "Asset import",
+     "status": "blocked",
+     "evidence": "same credential blocker"
+    },
+    {
+     "id": "f-bd5c9af1",
+     "name": "Asset licensing validation",
+     "status": "partial",
+     "evidence": "provenance.ts exists; dependency chain not fully validated"
+    },
+    {
+     "id": "f-7e6a0d06",
+     "name": "Asset attribution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8b092881",
+     "name": "Asset policy validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-138ea2bd",
+     "name": "Asset moderation checks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fac6eefa",
+     "name": "Model insertion",
+     "status": "done",
+     "evidence": "insert_asset tool"
+    },
+    {
+     "id": "f-e59a294c",
+     "name": "Part generation",
+     "status": "done",
+     "evidence": "create_instances tool"
+    },
+    {
+     "id": "f-8d2f716f",
+     "name": "Mesh generation",
+     "status": "partial",
+     "evidence": "same as Text-to-3D — session-scoped only"
+    },
+    {
+     "id": "f-770c2a82",
+     "name": "Terrain generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b0f39595",
+     "name": "UI generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0c27f58e",
+     "name": "GUI generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-55081b2f",
+     "name": "Script generation",
+     "status": "done",
+     "evidence": "edit_script tool"
+    },
+    {
+     "id": "f-c050defb",
+     "name": "LocalScript generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e54f813e",
+     "name": "ModuleScript generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3e3f5147",
+     "name": "ServerScript generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1324f271",
+     "name": "Tool generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a2092a39",
+     "name": "RemoteEvent generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5a61c084",
+     "name": "RemoteFunction generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-07e0233a",
+     "name": "BindableEvent generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ba152c65",
+     "name": "BindableFunction generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-07f61fe6",
+     "name": "ProximityPrompt generation",
+     "status": "done",
+     "evidence": "create_instances (verified via Groq tool call)"
+    },
+    {
+     "id": "f-a2bdfff9",
+     "name": "ClickDetector generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c6cf072c",
+     "name": "CollectionService tagging",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-71fccbb4",
+     "name": "Attributes generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cf524aae",
+     "name": "Folder hierarchy generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-77ae74a9",
+     "name": "Workspace inspection",
+     "status": "done",
+     "evidence": "snapshot tool"
+    },
+    {
+     "id": "f-b05a1fee",
+     "name": "Explorer tree snapshot",
+     "status": "done",
+     "evidence": "snapshot tool root:'game'"
+    },
+    {
+     "id": "f-13a4c0ee",
+     "name": "Selection sync",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-38925eae",
+     "name": "Studio plugin sync",
+     "status": "done",
+     "evidence": "HTTP long-poll, now idle-parked (37c42eb)"
+    },
+    {
+     "id": "f-4882bed0",
+     "name": "Live Studio connection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-806f29c7",
+     "name": "Play-test connection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-54d14213",
+     "name": "Test server connection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-31bddad3",
+     "name": "Client/server separation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2fef5fb0",
+     "name": "Script injection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b612f013",
+     "name": "Script patching",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a9fcb80d",
+     "name": "Safe diff preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6ce5360f",
+     "name": "Apply patch",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fbdd1198",
+     "name": "Revert patch",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fedd9971",
+     "name": "Undo changes",
+     "status": "done",
+     "evidence": "Ops.luau MUTATING + checkpoint restore"
+    },
+    {
+     "id": "f-b4f8cf6c",
+     "name": "Build snapshots",
+     "status": "done",
+     "evidence": "SessionDO checkpoints (25 retained)"
+    },
+    {
+     "id": "f-559ddb69",
+     "name": "Versioned builds",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a48d16b1",
+     "name": "Project cloning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b57761b4",
+     "name": "Place backup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-29db620c",
+     "name": "Place restore",
+     "status": "done",
+     "evidence": "Serializer.luau restore path"
+    },
+    {
+     "id": "f-74ed0aac",
+     "name": "Publish validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-663860f3",
+     "name": "Team Create integration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-afd2dc37",
+     "name": "DataStore inspection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-90588c09",
+     "name": "MemoryStore inspection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-851dbf79",
+     "name": "MessagingService testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2d1cf15d",
+     "name": "TeleportService testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3235e38d",
+     "name": "MarketplaceService testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-17980739",
+     "name": "HttpService testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3e4ad3cb",
+     "name": "Animation editor integration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f8086b24",
+     "name": "Animation preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6a8aad5a",
+     "name": "Rig generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8b12ea5e",
+     "name": "NPC generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9a38d930",
+     "name": "Humanoid setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a264433c",
+     "name": "Pathfinding setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6eca32b8",
+     "name": "Camera scripting",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0bca819d",
+     "name": "Lighting setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-73f3e983",
+     "name": "Atmosphere setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1fcb9af4",
+     "name": "Sound setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d4b1c1b8",
+     "name": "Particle setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9b856c9d",
+     "name": "VFX setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dcfea53c",
+     "name": "Tween setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-413281db",
+     "name": "Cutscene setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8d1a5943",
+     "name": "Game loop generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-233c1458",
+     "name": "Round system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0e732240",
+     "name": "Inventory generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cd9d7717",
+     "name": "Shop generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2c7b309c",
+     "name": "Quest system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-57723a9d",
+     "name": "Dialogue system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-095927d5",
+     "name": "Combat system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ac53e51c",
+     "name": "Tycoon system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4a7b2785",
+     "name": "Obby system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-361dd6ab",
+     "name": "Simulator system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e5830d24",
+     "name": "Admin system generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3f3e7c03",
+     "name": "Matchmaking generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8025f0f5",
+     "name": "Leaderboard generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-50c0d9a5",
+     "name": "Badge integration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c8e4bdb0",
+     "name": "Gamepass integration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4210df9c",
+     "name": "Developer product integration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-67caff36",
+     "name": "Monetization audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-280f917a",
+     "name": "Performance audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-51321e90",
+     "name": "Exploit audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cdee0f3e",
+     "name": "Memory leak audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2c92315",
+     "name": "Replication audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6f896ae1",
+     "name": "Network ownership audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e881f901",
+     "name": "StreamingEnabled audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ec29829",
+     "name": "Mobile compatibility audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a6d6d05a",
+     "name": "Console compatibility audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-702fb093",
+     "name": "Accessibility audit",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Roblox Studio Companion",
+   "count": 52,
+   "items": [
+    {
+     "id": "f-899fc918",
+     "name": "Desktop companion app",
+     "status": "blocked",
+     "evidence": "owner chose rasteriser-only; out of scope for now | DEFERRED by owner 2026-09-14 to a later stage"
+    },
+    {
+     "id": "f-9c110b91",
+     "name": "Native Studio bridge",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8b796181",
+     "name": "Studio viewport capture",
+     "status": "blocked",
+     "evidence": "measured impossible in-engine; needs a desktop companion + OS permission | DEFERRED by owner 2026-09-14 to a later stage"
+    },
+    {
+     "id": "f-e26f5bc7",
+     "name": "Studio screen recording",
+     "status": "blocked",
+     "evidence": "same | DEFERRED by owner 2026-09-14 to a later stage"
+    },
+    {
+     "id": "f-c0f694b5",
+     "name": "Live viewport stream",
+     "status": "blocked",
+     "evidence": "same — and owner chose rasteriser-only | DEFERRED by owner 2026-09-14 to a later stage"
+    },
+    {
+     "id": "f-5ce4b850",
+     "name": "Scene thumbnail",
+     "status": "partial",
+     "evidence": "render_view produces frames; they do not reach the browser"
+    },
+    {
+     "id": "f-b856b6a8",
+     "name": "Scene minimap",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b16041e7",
+     "name": "Explorer mirror",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-178ab9ff",
+     "name": "Properties mirror",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5fb10722",
+     "name": "Output console mirror",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-12dbb073",
+     "name": "Script editor mirror",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-17d02b76",
+     "name": "Test controls",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0167ee04",
+     "name": "Play",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7f2937fa",
+     "name": "Stop",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eacab33b",
+     "name": "Pause",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-94d5462f",
+     "name": "Restart",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c62e80ca",
+     "name": "Run server",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3e66797f",
+     "name": "Run client",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9f12f604",
+     "name": "Multi-client testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-24d4f4a1",
+     "name": "Camera control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ad448855",
+     "name": "Object selection sync",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b19459b7",
+     "name": "Gizmo control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1b6ae6b3",
+     "name": "Transform controls",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a1727984",
+     "name": "Move",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6cd3d6e4",
+     "name": "Rotate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-589f99c7",
+     "name": "Scale",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-292fe5db",
+     "name": "Clone",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7d30ac49",
+     "name": "Delete",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-499e3701",
+     "name": "Group",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a6080044",
+     "name": "Ungroup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f44fc37d",
+     "name": "Rename",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6aeae8be",
+     "name": "Reparent",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c3138327",
+     "name": "Lock",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-080cb8a9",
+     "name": "Unlock",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0e262404",
+     "name": "Visibility toggle",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b48016b8",
+     "name": "Material picker",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f1f32401",
+     "name": "Color picker",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f37e5878",
+     "name": "Collision preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c31627fe",
+     "name": "Bounding box preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b9daffec",
+     "name": "Performance overlay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3954f260",
+     "name": "FPS overlay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cf770a73",
+     "name": "Memory overlay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7383251f",
+     "name": "Network overlay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d9056a17",
+     "name": "Error overlay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-77f29d81",
+     "name": "AI action replay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f640d5d1",
+     "name": "Before/after comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0bd4f854",
+     "name": "Diff overlay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6e7a07b9",
+     "name": "Screenshot annotations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a62df14a",
+     "name": "Screen recording export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8c8ab2e6",
+     "name": "Build timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8a08c8df",
+     "name": "Test timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d6e0a5c2",
+     "name": "Viewport annotations",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "AI Models",
+   "count": 74,
+   "items": [
+    {
+     "id": "f-bfe82746",
+     "name": "Model catalog",
+     "status": "done",
+     "evidence": "providers/workers-ai.ts WORKERS_AI_MODELS; commit 10c1f31"
+    },
+    {
+     "id": "f-125da4ae",
+     "name": "Model search",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9d1416dd",
+     "name": "Model comparison",
+     "status": "partial",
+     "evidence": "docs/evals/FINDINGS.md has 56-task results; no live UI"
+    },
+    {
+     "id": "f-3836b13b",
+     "name": "Model benchmarks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b5dca520",
+     "name": "Model licenses",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-62902945",
+     "name": "Model cards",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9cfa9268",
+     "name": "Model versioning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0c79528e",
+     "name": "Model aliases",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c099cc62",
+     "name": "Model routing",
+     "status": "done",
+     "evidence": "gateway.ts DEFAULT_MODELS per mode; commit 10c1f31"
+    },
+    {
+     "id": "f-34d9d5d1",
+     "name": "Model fallback",
+     "status": "done",
+     "evidence": "providers/registry.ts adapterForModelId falls back to Workers AI"
+    },
+    {
+     "id": "f-5dc9e6eb",
+     "name": "Model health checks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-30200240",
+     "name": "Model latency tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8165a8af",
+     "name": "Model cost tracking",
+     "status": "done",
+     "evidence": "pricing.ts + providers/cost.ts, settled per call"
+    },
+    {
+     "id": "f-c8110b8c",
+     "name": "Model quality tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0d92ba15",
+     "name": "Model availability tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-585bbf8d",
+     "name": "Model capabilities matrix",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9df6e95c",
+     "name": "Context length comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-193fd300",
+     "name": "Tool calling comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7e8debe7",
+     "name": "Vision comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d54be8e0",
+     "name": "Audio comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-df0ab795",
+     "name": "JSON mode comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0e721985",
+     "name": "Structured output comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-926c775c",
+     "name": "Hebrew quality comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-62f7006e",
+     "name": "Roblox quality comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3561c699",
+     "name": "Code quality comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f0a40bf6",
+     "name": "Reasoning quality comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ada54af9",
+     "name": "Local models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3d8e5067",
+     "name": "Cloud models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3cb1a87c",
+     "name": "Open-source models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2a96ea9",
+     "name": "Private models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-955d446e",
+     "name": "Fine-tuned models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0d5647d5",
+     "name": "LoRA models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-98b2a3ae",
+     "name": "Quantized models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e49b7be4",
+     "name": "MoE models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3ac01f63",
+     "name": "Small models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1bfec8a7",
+     "name": "Large models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cd1342f3",
+     "name": "Text models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9822c407",
+     "name": "Vision models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-68fcab9f",
+     "name": "Audio models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-79363711",
+     "name": "Embedding models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a1127507",
+     "name": "Reranker models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-44687e71",
+     "name": "Image models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b7dbb317",
+     "name": "Video models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4f2a2cb6",
+     "name": "3D models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a120ed60",
+     "name": "Speech-to-text models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-be376382",
+     "name": "Text-to-speech models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-921ca5b5",
+     "name": "Model playground",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3a7584d1",
+     "name": "Prompt playground",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-aab5e9ca",
+     "name": "Temperature control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a9de7062",
+     "name": "Top-p control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-da88bae1",
+     "name": "Top-k control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9db3d8fb",
+     "name": "Max token control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-887f3f6b",
+     "name": "Repetition penalty",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f4553c69",
+     "name": "Seed control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-339e02e0",
+     "name": "Stop sequences",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d38bdf1f",
+     "name": "JSON schema control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f9f833d3",
+     "name": "Grammar constraints",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3753e5bf",
+     "name": "Tool choice control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7953f384",
+     "name": "Reasoning budget",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a1d202e2",
+     "name": "Response style control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a3e75bb0",
+     "name": "Prompt caching",
+     "status": "done",
+     "evidence": "x-session-affinity prefix caching, providers/workers-ai.ts"
+    },
+    {
+     "id": "f-8acef06f",
+     "name": "KV caching",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-701478cb",
+     "name": "Speculative decoding",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ea77cef3",
+     "name": "Batch inference",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a9deed81",
+     "name": "Streaming inference",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-910bc2c8",
+     "name": "Continuous batching",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c1344213",
+     "name": "Quantization selection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a9750bc8",
+     "name": "GPU selection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6fce85d5",
+     "name": "CPU fallback",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-041ad474",
+     "name": "Local inference",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-875526f3",
+     "name": "Edge inference",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a36925df",
+     "name": "Serverless inference",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a860dc89",
+     "name": "Dedicated inference",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-5e1a1ea1",
+     "name": "Inference autoscaling",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    }
+   ]
+  },
+  {
+   "section": "Training",
+   "count": 107,
+   "items": [
+    {
+     "id": "f-6aa83667",
+     "name": "Dataset creation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cde241c9",
+     "name": "Dataset upload",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3ae0da48",
+     "name": "Dataset versioning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b6d5575b",
+     "name": "Dataset viewer",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b54f2de8",
+     "name": "Dataset search",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0eeb4030",
+     "name": "Dataset filtering",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-21ce5649",
+     "name": "Dataset deduplication",
+     "status": "done",
+     "evidence": "build-dataset.mjs sha256 over normalised code"
+    },
+    {
+     "id": "f-cced8220",
+     "name": "Dataset cleaning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-274245cd",
+     "name": "Dataset normalization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5c452ac8",
+     "name": "Dataset validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cbaf1273",
+     "name": "Dataset licensing",
+     "status": "done",
+     "evidence": "packages/corpus/data/sources.json, training/reuse verdicts separated"
+    },
+    {
+     "id": "f-c2aa7469",
+     "name": "Dataset provenance",
+     "status": "done",
+     "evidence": "raw/manifest.json per-source SPDX + commit SHA"
+    },
+    {
+     "id": "f-9e7d6e1b",
+     "name": "Dataset hashing",
+     "status": "done",
+     "evidence": "packages/corpus/src/intake/contenthash.mjs"
+    },
+    {
+     "id": "f-68918068",
+     "name": "Dataset lineage",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0302e8ff",
+     "name": "Dataset splitting",
+     "status": "done",
+     "evidence": "packages/training/src/build-dataset.mjs assignSplits"
+    },
+    {
+     "id": "f-86451c36",
+     "name": "Train split",
+     "status": "done",
+     "evidence": "packages/training/data/train.jsonl (327)"
+    },
+    {
+     "id": "f-994c5c57",
+     "name": "Validation split",
+     "status": "done",
+     "evidence": "packages/training/data/val.jsonl (39)"
+    },
+    {
+     "id": "f-db420919",
+     "name": "Test split",
+     "status": "done",
+     "evidence": "packages/training/data/test.jsonl (38)"
+    },
+    {
+     "id": "f-3fbf815d",
+     "name": "Repository-level split",
+     "status": "done",
+     "evidence": "build-dataset.mjs — no repo spans splits"
+    },
+    {
+     "id": "f-ca77b444",
+     "name": "Curriculum learning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a2d5c4fd",
+     "name": "Synthetic data generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ad6334e9",
+     "name": "Human demonstrations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d02d87bd",
+     "name": "Tool-call examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d24e9473",
+     "name": "Agent trajectories",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-95757175",
+     "name": "Roblox code examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d700e666",
+     "name": "Luau examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0e2c7850",
+     "name": "Error-fix examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-907f8527",
+     "name": "Before/after examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3f3862cd",
+     "name": "Planning examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2a8d5a35",
+     "name": "Verification examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-38679c05",
+     "name": "Hebrew examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-71bd7685",
+     "name": "Multilingual examples",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3c2f39c5",
+     "name": "Preference datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-deb01cb1",
+     "name": "Ranking datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3e085dad",
+     "name": "Reward datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8330f5dd",
+     "name": "Safety datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3837abed",
+     "name": "Visual datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dafe3deb",
+     "name": "Audio datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2b50337f",
+     "name": "Instruction tuning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8aec72e9",
+     "name": "SFT",
+     "status": "done",
+     "evidence": "packages/training — Apple v1 executed (regression, not promoted)"
+    },
+    {
+     "id": "f-9dd7fe2d",
+     "name": "LoRA",
+     "status": "done",
+     "evidence": "lora-apple-v1.yaml / v2 — executed on M2 Pro"
+    },
+    {
+     "id": "f-4b942a3c",
+     "name": "QLoRA",
+     "status": "done",
+     "evidence": "4-bit base + LoRA adapters, MLX"
+    },
+    {
+     "id": "f-0b513de2",
+     "name": "DPO",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0fffea1c",
+     "name": "ORPO",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0a23ad1d",
+     "name": "KTO",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f6828c35",
+     "name": "RFT",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2f2c97fb",
+     "name": "Continued pretraining",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e3154df0",
+     "name": "Distillation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5f4cda16",
+     "name": "Knowledge distillation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-597fc0bb",
+     "name": "Adapter training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ff931b7",
+     "name": "Multi-adapter training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ebcd7957",
+     "name": "Adapter merging",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-39fae47b",
+     "name": "Rank selection",
+     "status": "done",
+     "evidence": "v1 rank 8 -> v2 rank 16, reasoned"
+    },
+    {
+     "id": "f-a39822b2",
+     "name": "Alpha selection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b5fc7a7f",
+     "name": "Dropout selection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2ba93ab1",
+     "name": "Learning-rate selection",
+     "status": "done",
+     "evidence": "v1 1e-4 -> v2 5e-5, reasoned"
+    },
+    {
+     "id": "f-c181aff5",
+     "name": "Batch-size selection",
+     "status": "done",
+     "evidence": "v1 bs4 -> v2 bs2 + accum (Metal watchdog)"
+    },
+    {
+     "id": "f-c8866926",
+     "name": "Gradient accumulation",
+     "status": "done",
+     "evidence": "lora-apple-v2.yaml grad_accumulation_steps: 2"
+    },
+    {
+     "id": "f-578b44ee",
+     "name": "Warmup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1e64c8a9",
+     "name": "Weight decay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-50fecbb4",
+     "name": "Epoch control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5d928b26",
+     "name": "Seed pinning",
+     "status": "done",
+     "evidence": "lora-apple-v*.yaml seed: 20260914"
+    },
+    {
+     "id": "f-cab3d21f",
+     "name": "Checkpointing",
+     "status": "done",
+     "evidence": "adapters/apple-v1/0000050_adapters.safetensors"
+    },
+    {
+     "id": "f-35a05f47",
+     "name": "Resume training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eacc0229",
+     "name": "Early stopping",
+     "status": "done",
+     "evidence": "lora-apple-v2.yaml (v1 val bottomed at iter 50)"
+    },
+    {
+     "id": "f-242c793e",
+     "name": "Gradient clipping",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3f4e2c08",
+     "name": "Mixed precision",
+     "status": "done",
+     "evidence": "MLX 4-bit quantised base"
+    },
+    {
+     "id": "f-18a69a79",
+     "name": "Quantization-aware training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b9476b1c",
+     "name": "GPU monitoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1bebfafb",
+     "name": "Memory monitoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-08c9c871",
+     "name": "Thermal monitoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d36fa39d",
+     "name": "Training logs",
+     "status": "done",
+     "evidence": "packages/training/runs/apple-v*.log"
+    },
+    {
+     "id": "f-b7614c66",
+     "name": "Loss charts",
+     "status": "done",
+     "evidence": "runs/*.log loss series"
+    },
+    {
+     "id": "f-9abbb2b4",
+     "name": "Validation loss",
+     "status": "done",
+     "evidence": "measured 2.812 -> 1.294 (v1)"
+    },
+    {
+     "id": "f-99867d05",
+     "name": "Per-category loss",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bf4e168d",
+     "name": "Token accuracy",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a51b4235",
+     "name": "Perplexity",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9f736534",
+     "name": "Checkpoint comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4fb22a16",
+     "name": "Training replay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0eb40cc2",
+     "name": "Experiment tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09bb46a1",
+     "name": "Hyperparameter sweeps",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f26fae24",
+     "name": "Automated model selection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ef90bae2",
+     "name": "Holdout evaluation",
+     "status": "done",
+     "evidence": "base vs adapter on held-out prompts, n=8"
+    },
+    {
+     "id": "f-70fed06c",
+     "name": "Regression evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-83750c7f",
+     "name": "Adversarial evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-11e546e1",
+     "name": "Human evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a2b1bbed",
+     "name": "Blind evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8c4cc3e0",
+     "name": "Red-team evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9311aa79",
+     "name": "License compliance scan",
+     "status": "done",
+     "evidence": "build-dataset.mjs TRAINING_OK_SPDX gate"
+    },
+    {
+     "id": "f-305c393c",
+     "name": "Data contamination scan",
+     "status": "done",
+     "evidence": "build-dataset.mjs 8-word shingle vs packages/evals tasks"
+    },
+    {
+     "id": "f-cbcffcff",
+     "name": "Memorization scan",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-25d142e1",
+     "name": "PII scan",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-83233324",
+     "name": "Prompt injection scan",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ba96e6b3",
+     "name": "Backdoor scan",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dcb21aea",
+     "name": "Poisoning scan",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c6594b24",
+     "name": "Model card generation",
+     "status": "done",
+     "evidence": "dataset-card.json emitted by build-dataset.mjs"
+    },
+    {
+     "id": "f-9482f2cd",
+     "name": "Training report",
+     "status": "done",
+     "evidence": "docs/audit/TRAINING-V1-REPORT.md"
+    },
+    {
+     "id": "f-d1c68fb4",
+     "name": "Dataset report",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-898fdb17",
+     "name": "Reproducible training",
+     "status": "done",
+     "evidence": "pinned seed + config + dataset card"
+    },
+    {
+     "id": "f-ab394828",
+     "name": "Local training",
+     "status": "done",
+     "evidence": "M2 Pro / MLX, zero recurring cost"
+    },
+    {
+     "id": "f-4ede36be",
+     "name": "Cloud training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d163f946",
+     "name": "Scheduled training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-258d308d",
+     "name": "Incremental training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-94e526be",
+     "name": "Continuous training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b1a1f522",
+     "name": "Feedback-based training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2bb8a9f",
+     "name": "User correction collection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4acc5813",
+     "name": "Human approval queue",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Evaluation",
+   "count": 64,
+   "items": [
+    {
+     "id": "f-5be43b67",
+     "name": "Eval suite",
+     "status": "done",
+     "evidence": "packages/evals — 84 text + 12 visual tasks"
+    },
+    {
+     "id": "f-769d001b",
+     "name": "Task registry",
+     "status": "done",
+     "evidence": "packages/evals/tasks/*.json, 12 suites"
+    },
+    {
+     "id": "f-f9dbdcf3",
+     "name": "Custom eval tasks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-40aa3435",
+     "name": "Roblox task suite",
+     "status": "done",
+     "evidence": "packages/evals/tasks (api-knowledge, luau-correctness, ...)"
+    },
+    {
+     "id": "f-6171a8e9",
+     "name": "Luau task suite",
+     "status": "done",
+     "evidence": "packages/evals/tasks/luau-correctness.json"
+    },
+    {
+     "id": "f-6ca6f7c3",
+     "name": "Tool selection tests",
+     "status": "done",
+     "evidence": "packages/evals/tasks/tool-selection.json"
+    },
+    {
+     "id": "f-ca4830c7",
+     "name": "Tool argument tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b84d62f9",
+     "name": "Build completion tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-45b2109f",
+     "name": "Script syntax tests",
+     "status": "done",
+     "evidence": "luau_syntax check via luau-lsp"
+    },
+    {
+     "id": "f-ffb80770",
+     "name": "Runtime tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-01276ef7",
+     "name": "Unit tests",
+     "status": "done",
+     "evidence": "1,772 tests across 6 packages, green"
+    },
+    {
+     "id": "f-96404349",
+     "name": "Integration tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-12f1dd11",
+     "name": "Play tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c423a172",
+     "name": "Visual rubric tests",
+     "status": "done",
+     "evidence": "packages/evals/tasks-visual/rubric.json"
+    },
+    {
+     "id": "f-89e0cda0",
+     "name": "Screenshot comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c5a7c366",
+     "name": "Scene comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ae4c1416",
+     "name": "Regression tests",
+     "status": "done",
+     "evidence": "packages/evals/tasks-visual/regression/bench"
+    },
+    {
+     "id": "f-c1a2cba7",
+     "name": "Safety tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3d5c566d",
+     "name": "Security tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b18de153",
+     "name": "Prompt injection tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-874b8579",
+     "name": "Hallucination tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4b7d0e10",
+     "name": "Citation tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4de5afba",
+     "name": "Hebrew tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d76a5cd0",
+     "name": "Multilingual tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2220164d",
+     "name": "Latency tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1bea4d89",
+     "name": "Cost tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a34f354b",
+     "name": "Token tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-825c616e",
+     "name": "Context overflow tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6bb2f106",
+     "name": "Failure recovery tests",
+     "status": "done",
+     "evidence": "packages/evals/tasks/failure-recovery.json"
+    },
+    {
+     "id": "f-3b7c8c51",
+     "name": "Partial execution tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1168bc2d",
+     "name": "Timeout tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0b9418f8",
+     "name": "Rate-limit tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e1c01ff8",
+     "name": "Load tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3b8a8bbb",
+     "name": "Stress tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fc5249c9",
+     "name": "Reliability tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-02e18d38",
+     "name": "Golden answers",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3b5c7b90",
+     "name": "Golden projects",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-80bff385",
+     "name": "Human scoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f78d0776",
+     "name": "Automated scoring",
+     "status": "done",
+     "evidence": "packages/evals/src/grade.mjs"
+    },
+    {
+     "id": "f-42c2afae",
+     "name": "LLM-as-judge",
+     "status": "done",
+     "evidence": "vision.ts critiqueViews — real images to a vision model"
+    },
+    {
+     "id": "f-1bbaf914",
+     "name": "Pairwise comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-709a3f95",
+     "name": "Elo ranking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-69c6c0d9",
+     "name": "Pass rate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-82d492ee",
+     "name": "Success rate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-13357994",
+     "name": "First-attempt success",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1d2302f8",
+     "name": "Tool-call accuracy",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5a62fb62",
+     "name": "Build validity",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0c733823",
+     "name": "Test coverage",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e0cd91fc",
+     "name": "Mean latency",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2c736c0",
+     "name": "P95 latency",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c034e617",
+     "name": "Mean cost",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7641389f",
+     "name": "Token efficiency",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2a7e5a45",
+     "name": "Error rate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7eabe218",
+     "name": "Retry rate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9c509de8",
+     "name": "Completion rate",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-220a0d03",
+     "name": "Quality dashboard",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3654f548",
+     "name": "Eval history",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6a6720e6",
+     "name": "Eval diff",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eee6bb93",
+     "name": "Model leaderboard",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-533d4a45",
+     "name": "Public benchmark",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1acb0ac6",
+     "name": "Private benchmark",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-531afa5c",
+     "name": "Scheduled evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7f3d537c",
+     "name": "Promotion gates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9286fe17",
+     "name": "Rollback gates",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Knowledge and RAG",
+   "count": 54,
+   "items": [
+    {
+     "id": "f-d1afad88",
+     "name": "Document ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1a7f2c7d",
+     "name": "Website crawling",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8a1a63b0",
+     "name": "Sitemap ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-536d175a",
+     "name": "GitHub ingestion",
+     "status": "done",
+     "evidence": "packages/corpus/src/fetch.mjs, 38 pinned repos"
+    },
+    {
+     "id": "f-e64adbda",
+     "name": "Roblox documentation ingestion",
+     "status": "done",
+     "evidence": "Roblox/creator-docs CC-BY-4.0, pinned SHA"
+    },
+    {
+     "id": "f-77be488e",
+     "name": "Creator Store ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-69790bc3",
+     "name": "PDF ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-abca713c",
+     "name": "Markdown ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9b07f863",
+     "name": "Code ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-08cf92fa",
+     "name": "Video transcript ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cc43906d",
+     "name": "Audio transcript ingestion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8b4fe82a",
+     "name": "Image OCR",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-79c2a8a5",
+     "name": "Table extraction",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-58920913",
+     "name": "Chunking",
+     "status": "done",
+     "evidence": "packages/corpus/src/chunk.mjs"
+    },
+    {
+     "id": "f-77295d37",
+     "name": "Semantic chunking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-25f96d6c",
+     "name": "Code-aware chunking",
+     "status": "done",
+     "evidence": "packages/corpus chunker splits on headings/code blocks"
+    },
+    {
+     "id": "f-7c01e1a0",
+     "name": "Metadata extraction",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2594d8bd",
+     "name": "Embeddings",
+     "status": "done",
+     "evidence": "bge-small-en-v1.5, 384d — verified live"
+    },
+    {
+     "id": "f-436e6770",
+     "name": "Reranking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-473e63b5",
+     "name": "Hybrid search",
+     "status": "done",
+     "evidence": "rag.ts — Vectorize + D1 FTS5"
+    },
+    {
+     "id": "f-d6d1f1c5",
+     "name": "Keyword search",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-04440f99",
+     "name": "Vector search",
+     "status": "done",
+     "evidence": "Vectorize index golem-docs (384d) — verified live"
+    },
+    {
+     "id": "f-3d337511",
+     "name": "Full-text search",
+     "status": "done",
+     "evidence": "D1 chunks_fts FTS5 — verified live, 8,327 chunks"
+    },
+    {
+     "id": "f-ba3ee1d2",
+     "name": "Knowledge graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e70a0126",
+     "name": "Entity extraction",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1543263d",
+     "name": "Relationship extraction",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ccb9cfc4",
+     "name": "Citation tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c1940e28",
+     "name": "Source freshness",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-68496c08",
+     "name": "Source ranking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c45cfe88",
+     "name": "Source trust scoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b684c035",
+     "name": "Duplicate detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7e1b6723",
+     "name": "Version tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-91f5a0bf",
+     "name": "Change detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a2ea573b",
+     "name": "Incremental indexing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-54ba0195",
+     "name": "Per-project knowledge",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8daf5996",
+     "name": "Per-user knowledge",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f0419d97",
+     "name": "Per-team knowledge",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4ab84256",
+     "name": "Global knowledge",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e8efcc1c",
+     "name": "Private knowledge",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-daf99ea8",
+     "name": "Knowledge permissions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-573178fc",
+     "name": "Knowledge expiration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4e598c9c",
+     "name": "Knowledge deletion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-39dadfe3",
+     "name": "Retrieval evaluation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c01dd1a7",
+     "name": "Context compression",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a7f3d276",
+     "name": "Context summarization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-356477b9",
+     "name": "Long-term memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b236b22d",
+     "name": "Short-term memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c076c147",
+     "name": "Episodic memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-db1c5d1f",
+     "name": "Semantic memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fb347237",
+     "name": "User preferences",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ddf46906",
+     "name": "Project memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fbb16096",
+     "name": "Build memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-13155b88",
+     "name": "Failure memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-47e02dcf",
+     "name": "Successful pattern memory",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Code Intelligence",
+   "count": 49,
+   "items": [
+    {
+     "id": "f-2f267946",
+     "name": "Luau parser",
+     "status": "done",
+     "evidence": "luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs"
+    },
+    {
+     "id": "f-b8db08a7",
+     "name": "Luau formatter",
+     "status": "done",
+     "evidence": "stylua 2.5.2 available"
+    },
+    {
+     "id": "f-b5a3b288",
+     "name": "Luau linter",
+     "status": "done",
+     "evidence": "selene 0.31.0 + roblox-antipatterns.mjs"
+    },
+    {
+     "id": "f-90ee99ec",
+     "name": "Luau type checker",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c6bad20f",
+     "name": "luau-lsp integration",
+     "status": "done",
+     "evidence": "packages/evals/src/luau.mjs resolveLuauChecker"
+    },
+    {
+     "id": "f-8be838cc",
+     "name": "Static analysis",
+     "status": "done",
+     "evidence": "roblox-antipatterns.mjs — semantic exploit rules"
+    },
+    {
+     "id": "f-2cd602fe",
+     "name": "AST inspection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f29739b6",
+     "name": "Symbol index",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4c405486",
+     "name": "Dependency graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b7bd17a0",
+     "name": "Call graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c2d5d552",
+     "name": "Data-flow analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6834f833",
+     "name": "Control-flow analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-135e02fe",
+     "name": "Dead-code detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9c3b0c7a",
+     "name": "Unused-variable detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-00894a90",
+     "name": "Type inference",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2fee3df3",
+     "name": "API discovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09245be5",
+     "name": "Roblox API validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2720ba17",
+     "name": "Deprecated API detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-53512001",
+     "name": "Security scanning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2d0f865e",
+     "name": "Exploit pattern scanning",
+     "status": "done",
+     "evidence": "roblox-antipatterns.mjs error-severity rules"
+    },
+    {
+     "id": "f-a58a71f8",
+     "name": "Remote validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-df5eee6e",
+     "name": "Server-authority validation",
+     "status": "done",
+     "evidence": "roblox-antipatterns.mjs client-trusted-price rules"
+    },
+    {
+     "id": "f-51970f0c",
+     "name": "Rate-limit validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-51b84a0f",
+     "name": "Memory leak detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8672ec04",
+     "name": "Infinite loop detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1d852186",
+     "name": "Yield safety detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-609683a8",
+     "name": "Promise safety detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b305bd18",
+     "name": "Error handling audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-05d53169",
+     "name": "Race condition detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4a94bfff",
+     "name": "Replication audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b5f10cc9",
+     "name": "Performance profiling",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ef6bf1e",
+     "name": "Automatic refactoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bf5b2cb9",
+     "name": "Code migration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d002cf23",
+     "name": "API migration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1f8964e4",
+     "name": "Version upgrade assistant",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6f30f957",
+     "name": "Patch generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-66336c7c",
+     "name": "Diff explanation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09220c9b",
+     "name": "Commit generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-441dd669",
+     "name": "Branch generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-50f926a6",
+     "name": "Pull request generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-516969ab",
+     "name": "Code review",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-73d654bb",
+     "name": "Inline comments",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-199a5157",
+     "name": "Test generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4aadce5e",
+     "name": "Mock generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2e7484f9",
+     "name": "Fixture generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-14af4498",
+     "name": "Documentation generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eb869cfa",
+     "name": "Type definition generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0f903754",
+     "name": "Comment generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3a382ebe",
+     "name": "Changelog generation",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "3D and Creative",
+   "count": 79,
+   "items": [
+    {
+     "id": "f-736b5ae0",
+     "name": "Text-to-3D",
+     "status": "partial",
+     "evidence": "generate_model reaches GenerationService but result does not persist as a Roblox asset"
+    },
+    {
+     "id": "f-58ce7e8d",
+     "name": "Image-to-3D",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6220229a",
+     "name": "Sketch-to-3D",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3ddc550a",
+     "name": "Script-to-3D",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-af95ff49",
+     "name": "Primitive generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-959abb08",
+     "name": "Mesh generation",
+     "status": "partial",
+     "evidence": "same as Text-to-3D — session-scoped only"
+    },
+    {
+     "id": "f-1d770285",
+     "name": "Low-poly generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-33f0fcef",
+     "name": "High-poly generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c1ea14c9",
+     "name": "Retopology",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-29ec3292",
+     "name": "UV generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dd64dad7",
+     "name": "Texture generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-62514795",
+     "name": "PBR materials",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b8bfca6c",
+     "name": "Normal maps",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cff8f29e",
+     "name": "Roughness maps",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f21b51ab",
+     "name": "Metallic maps",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f45e1625",
+     "name": "Decal generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b34a61d5",
+     "name": "Terrain generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0936d51d",
+     "name": "Building generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fe87ae63",
+     "name": "Room generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bced0553",
+     "name": "Prop generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d55c3481",
+     "name": "Vehicle generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-17e5c5cd",
+     "name": "Weapon generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-08834f13",
+     "name": "Character generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d7734944",
+     "name": "NPC generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c80e83a8",
+     "name": "Creature generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c16027d6",
+     "name": "Rigging",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4c407893",
+     "name": "Skinning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ae86cd91",
+     "name": "Weight painting",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d3fee965",
+     "name": "Animation generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fa882d03",
+     "name": "Motion capture import",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-12844cfb",
+     "name": "Animation retargeting",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ebbed7d6",
+     "name": "IK setup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d0031b9f",
+     "name": "Facial animation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8929f95e",
+     "name": "Lip sync",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4e7205fc",
+     "name": "Procedural animation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ffb3606d",
+     "name": "VFX generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-766123a7",
+     "name": "Particle generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3db2669c",
+     "name": "Beam generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f7e5de61",
+     "name": "Trail generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-af1d050f",
+     "name": "Lighting generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-36f61e06",
+     "name": "Post-processing generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8f8d0905",
+     "name": "Skybox generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7db6e631",
+     "name": "Atmosphere generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e39e5751",
+     "name": "Weather generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-473f66ac",
+     "name": "Environment generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8feafbba",
+     "name": "Scene composition",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2c750c82",
+     "name": "Level generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-638fc3d6",
+     "name": "Layout generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-aba8b173",
+     "name": "Obstacle generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-42aee061",
+     "name": "Dungeon generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8e0e9dcc",
+     "name": "City generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-75a2d967",
+     "name": "Procedural worlds",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-44a4ae16",
+     "name": "Seeded generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8d4240de",
+     "name": "Variation generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7ec1a132",
+     "name": "Asset remixing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-177429fe",
+     "name": "Asset style transfer",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9109a3f7",
+     "name": "Asset cleanup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-be182bc0",
+     "name": "Asset optimization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5a2b50c6",
+     "name": "Asset LOD generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-88281f02",
+     "name": "Asset collision generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9947a2c2",
+     "name": "Asset preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d437387a",
+     "name": "3D viewport",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-520f4d12",
+     "name": "Orbit camera",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9b990e81",
+     "name": "Pan camera",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e7f4abd3",
+     "name": "Zoom camera",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c71f46b9",
+     "name": "Wireframe view",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e0e91e6f",
+     "name": "Material view",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b1684018",
+     "name": "Lighting preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-685fb161",
+     "name": "Animation timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bfed366b",
+     "name": "Frame stepping",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ec54aa52",
+     "name": "Play animation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6cd3462c",
+     "name": "Export FBX",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6753ee3d",
+     "name": "Export OBJ",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-86a535c6",
+     "name": "Export GLB",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cc078607",
+     "name": "Export Roblox asset",
+     "status": "blocked",
+     "evidence": "same credential blocker"
+    },
+    {
+     "id": "f-09243de2",
+     "name": "Asset history",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bece40e2",
+     "name": "Asset comparison",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-604d19e6",
+     "name": "Asset moderation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-464996a5",
+     "name": "Asset licensing",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Voice and Audio",
+   "count": 32,
+   "items": [
+    {
+     "id": "f-de27c1e4",
+     "name": "Speech-to-text",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-43dadba6",
+     "name": "Text-to-speech",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-468dec41",
+     "name": "Voice chat",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5300df6e",
+     "name": "Voice commands",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-92491230",
+     "name": "Voice activity detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9e5ed212",
+     "name": "Speaker diarization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-95a3502d",
+     "name": "Voice cloning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8a8c8db1",
+     "name": "Voice presets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3e2e9f56",
+     "name": "Emotion control",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f24c58ea",
+     "name": "Language detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fe4b3410",
+     "name": "Translation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c2f96d5a",
+     "name": "Sound effect generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2687555d",
+     "name": "Music generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8cd1d39f",
+     "name": "Ambience generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0f3c021a",
+     "name": "Footstep generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-35c34ed3",
+     "name": "UI sound generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8aa8e08a",
+     "name": "Combat sound generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-de2a0cd1",
+     "name": "Dialogue generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fb639ca0",
+     "name": "Lip sync",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9c27a8c5",
+     "name": "Audio cleanup",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-32c9df53",
+     "name": "Noise removal",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f0a8a7a3",
+     "name": "Audio mixing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fa6ea2cc",
+     "name": "Audio mastering",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b10bac94",
+     "name": "Audio waveform preview",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d0fe41f8",
+     "name": "Audio timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8ed3e605",
+     "name": "Audio asset library",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a8f8a0da",
+     "name": "Audio licensing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-18925850",
+     "name": "Audio moderation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4826c158",
+     "name": "Volume normalization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5d2fc80b",
+     "name": "Export WAV",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3592a432",
+     "name": "Export MP3",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-244c3792",
+     "name": "Export OGG",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Automation and Tools",
+   "count": 43,
+   "items": [
+    {
+     "id": "f-5694ca7e",
+     "name": "Browser tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-392302d7",
+     "name": "Search tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f10f721f",
+     "name": "Web fetch",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-714bf5ee",
+     "name": "GitHub tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cbfe7e65",
+     "name": "Git tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2b2f49f",
+     "name": "Terminal tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d459cb7c",
+     "name": "File system tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1e225eab",
+     "name": "Code execution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-72aa7921",
+     "name": "Python sandbox",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9a151e39",
+     "name": "Node sandbox",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-62238802",
+     "name": "Luau sandbox",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-19b5f8ee",
+     "name": "Roblox test sandbox",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7556d28b",
+     "name": "Screenshot tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-841d65c2",
+     "name": "OCR tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e173fcbe",
+     "name": "Image analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d22e8af6",
+     "name": "Video analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d1f6b07c",
+     "name": "Audio analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-afa6b785",
+     "name": "PDF analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b79ec009",
+     "name": "Database tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8d77d0c5",
+     "name": "SQL tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f600a045",
+     "name": "HTTP tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8ec97f28",
+     "name": "API connector",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-04cd66b3",
+     "name": "Webhook tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0536696a",
+     "name": "Email tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c827da08",
+     "name": "Calendar tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-61682976",
+     "name": "Storage tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-478723bb",
+     "name": "Queue tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-684ab7dd",
+     "name": "Cron tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6925ea6a",
+     "name": "Secret manager",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a5860a95",
+     "name": "Container runner",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-51a98ee9",
+     "name": "GPU runner",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7e0f156c",
+     "name": "Dataset runner",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ce3c42ac",
+     "name": "Evaluation runner",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9be58398",
+     "name": "Deployment tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f7082d52",
+     "name": "Rollback tool",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7c5976e0",
+     "name": "Log reader",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0d6af976",
+     "name": "Metrics reader",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d10fd541",
+     "name": "Cost reader",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ed6ad357",
+     "name": "Health checker",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-511ce61a",
+     "name": "Status checker",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b669eea2",
+     "name": "Dependency scanner",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eed1e313",
+     "name": "License scanner",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a8239799",
+     "name": "Vulnerability scanner",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Product UX",
+   "count": 59,
+   "items": [
+    {
+     "id": "f-3639ed95",
+     "name": "Dark mode",
+     "status": "done",
+     "evidence": "apple-brand.css dark-native tokens"
+    },
+    {
+     "id": "f-221577b2",
+     "name": "Light mode",
+     "status": "done",
+     "evidence": "global.css light palette, contrast-verified"
+    },
+    {
+     "id": "f-ab8f0545",
+     "name": "Custom themes",
+     "status": "done",
+     "evidence": "light/dark/system all carry the Apple palette in step (7fb753a)"
+    },
+    {
+     "id": "f-86b16943",
+     "name": "Brand theme",
+     "status": "done",
+     "evidence": "apple-brand.css + site palettes measured from the mark; commit 7fb753a"
+    },
+    {
+     "id": "f-d42753b4",
+     "name": "Responsive design",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b08c778d",
+     "name": "Mobile layout",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c8c17d70",
+     "name": "Tablet layout",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b2ce2939",
+     "name": "Desktop layout",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7605f1bb",
+     "name": "Keyboard shortcuts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8dc5f3c6",
+     "name": "Command palette",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c1bed525",
+     "name": "Quick actions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4aebe3d1",
+     "name": "Context menus",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-df6339bd",
+     "name": "Drag and drop",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6591469e",
+     "name": "Split panes",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ab9f859c",
+     "name": "Resizable panes",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-47039ea9",
+     "name": "Floating panels",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7a4f3922",
+     "name": "Fullscreen mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1f228c62",
+     "name": "Focus mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cddfcf8b",
+     "name": "Zen mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-030a0af5",
+     "name": "Compact mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c05bac25",
+     "name": "Accessibility mode",
+     "status": "done",
+     "evidence": "contrast suite asserts 4.5:1 on EVERY surface in both themes"
+    },
+    {
+     "id": "f-2da084d7",
+     "name": "High contrast",
+     "status": "done",
+     "evidence": "ink 17.5:1, muted 7.9:1, faint 4.61:1 worst-case — all computed"
+    },
+    {
+     "id": "f-b04fadda",
+     "name": "Reduced motion",
+     "status": "done",
+     "evidence": "apple-brand.css prefers-reduced-motion"
+    },
+    {
+     "id": "f-d37d91c4",
+     "name": "Screen-reader support",
+     "status": "done",
+     "evidence": "lang set alongside dir so the voice matches the mirroring"
+    },
+    {
+     "id": "f-9e3dc3d8",
+     "name": "RTL support",
+     "status": "done",
+     "evidence": "107 logical props + 26 logical insets + lib/direction.ts; verified in browser (2f63cd0)"
+    },
+    {
+     "id": "f-ec85a983",
+     "name": "Hebrew UI",
+     "status": "done",
+     "evidence": "direction auto-detects he/iw; Hebrew greetings classified as conversation (3d36b3e)"
+    },
+    {
+     "id": "f-55016305",
+     "name": "Arabic UI",
+     "status": "partial",
+     "evidence": "RTL mirrors correctly (ar/fa/ur/ps detected); no Arabic strings"
+    },
+    {
+     "id": "f-1ecb9b65",
+     "name": "Localization",
+     "status": "partial",
+     "evidence": "direction + lang wired; no translation system or string catalogue yet"
+    },
+    {
+     "id": "f-3352ec8c",
+     "name": "Translation system",
+     "status": "partial",
+     "evidence": "not built — strings are still inline English"
+    },
+    {
+     "id": "f-c325990a",
+     "name": "Onboarding tours",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9876cd4b",
+     "name": "Empty states",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09e40c14",
+     "name": "Loading states",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bdfbe78b",
+     "name": "Skeleton states",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b57afd98",
+     "name": "Error states",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-88c64dff",
+     "name": "Offline states",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3943aa09",
+     "name": "Success states",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a267841b",
+     "name": "Toast notifications",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2cd520ab",
+     "name": "Modal confirmations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7bc5045b",
+     "name": "Undo actions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9f26c7c2",
+     "name": "Autosave",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dd952efe",
+     "name": "Autosave recovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-57cce15c",
+     "name": "Draft recovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c2e9db1e",
+     "name": "Progress indicators",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1e7ae4f8",
+     "name": "Activity timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-beb6bad0",
+     "name": "Build timeline",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ac18c18d",
+     "name": "Execution graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-27e84d69",
+     "name": "Dependency graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-332e482e",
+     "name": "Token graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6679f0a5",
+     "name": "Cost graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-87e0847e",
+     "name": "Quality graph",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6bff4dec",
+     "name": "Agent visualization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a3b65d1b",
+     "name": "Model visualization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2b5342b6",
+     "name": "Training visualization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5e6a8889",
+     "name": "Live terminal",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c288351d",
+     "name": "Live logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-48925e5f",
+     "name": "Live metrics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-62d5dd92",
+     "name": "Live viewport",
+     "status": "partial",
+     "evidence": "software rasteriser only — labelled honestly, not a viewport capture"
+    },
+    {
+     "id": "f-765c01ab",
+     "name": "Live code diff",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3a075905",
+     "name": "Live test results",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Safety and Security",
+   "count": 56,
+   "items": [
+    {
+     "id": "f-3437660e",
+     "name": "Authentication",
+     "status": "done",
+     "evidence": "Supabase ES256 JWKS verify, auth.ts"
+    },
+    {
+     "id": "f-b795e053",
+     "name": "Authorization",
+     "status": "done",
+     "evidence": "Postgres RLS, infra/supabase/migrations"
+    },
+    {
+     "id": "f-06cd758a",
+     "name": "RBAC",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-023ce307",
+     "name": "ABAC",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-01ca2d07",
+     "name": "SSO",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d795bb60",
+     "name": "MFA",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eddbc447",
+     "name": "Passkeys",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2bb71719",
+     "name": "Session management",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-de7eca32",
+     "name": "Device management",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5afe35cb",
+     "name": "API key rotation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-892f895f",
+     "name": "Secret encryption",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6f3bfbc3",
+     "name": "Secret redaction",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d5461e1c",
+     "name": "Secret scanning",
+     "status": "done",
+     "evidence": "scripts/secret-scan.py — tree verified clean"
+    },
+    {
+     "id": "f-bdaeb6a7",
+     "name": "PII detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c96a3339",
+     "name": "PII redaction",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-24c7081a",
+     "name": "Prompt injection defense",
+     "status": "done",
+     "evidence": "per-run fence id; tool output never trusted as instruction"
+    },
+    {
+     "id": "f-ff322023",
+     "name": "Tool injection defense",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b6d2013a",
+     "name": "Data exfiltration defense",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c4aaffa3",
+     "name": "Sandbox isolation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-74e2959c",
+     "name": "Network isolation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0046cfc2",
+     "name": "File access policies",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c9090c26",
+     "name": "Tool allowlists",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6ea72fa1",
+     "name": "Tool denylists",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f016f559",
+     "name": "Domain allowlists",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a96e4fa7",
+     "name": "Command allowlists",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e14942ac",
+     "name": "Rate limiting",
+     "status": "done",
+     "evidence": "index.ts ipLimited (per-isolate, defence in depth)"
+    },
+    {
+     "id": "f-6a1ace6a",
+     "name": "Abuse detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-33c6f812",
+     "name": "Spam detection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2da0d452",
+     "name": "Malware scanning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f47166c5",
+     "name": "Code exploit scanning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-45120866",
+     "name": "Roblox exploit scanning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-44a3f3f8",
+     "name": "Content moderation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f51d3113",
+     "name": "Copyright checks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e1e89ea7",
+     "name": "License checks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5e3083e7",
+     "name": "Attribution tracking",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ac57d47",
+     "name": "Human approval",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9465c75b",
+     "name": "Destructive action confirmation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9bb8d4ec",
+     "name": "Publish confirmation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0934c6af",
+     "name": "Rollback",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6c773523",
+     "name": "Immutable audit logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4237b0a2",
+     "name": "Tenant isolation",
+     "status": "done",
+     "evidence": "RLS enforced at DB level, not app level"
+    },
+    {
+     "id": "f-7c8d76bf",
+     "name": "Encryption at rest",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7efda73a",
+     "name": "Encryption in transit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3668ea28",
+     "name": "Backup encryption",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-63ef0d4c",
+     "name": "Data retention policies",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bc2d0ea0",
+     "name": "Data deletion policies",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-624a203a",
+     "name": "GDPR export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bce65f93",
+     "name": "GDPR deletion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a80df03e",
+     "name": "Regional data controls",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-99092311",
+     "name": "Privacy mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5dc750cf",
+     "name": "No-training mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-152a9333",
+     "name": "Customer-owned keys",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a595524c",
+     "name": "BYOK",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-21a8551b",
+     "name": "SOC2 readiness",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-42322161",
+     "name": "Incident response",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c5a2550f",
+     "name": "Security alerts",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Infrastructure",
+   "count": 54,
+   "items": [
+    {
+     "id": "f-2d10706f",
+     "name": "Multi-provider routing",
+     "status": "done",
+     "evidence": "providers/ registry with 4 adapters"
+    },
+    {
+     "id": "f-fece68eb",
+     "name": "Provider health checks",
+     "status": "done",
+     "evidence": "providers/registry.ts providerAvailability"
+    },
+    {
+     "id": "f-1ab746c1",
+     "name": "Automatic failover",
+     "status": "done",
+     "evidence": "adapterForModelId fallback"
+    },
+    {
+     "id": "f-7e0ef44d",
+     "name": "Circuit breakers",
+     "status": "done",
+     "evidence": "gateway.ts circuit breaker"
+    },
+    {
+     "id": "f-a7cd1cf3",
+     "name": "Retry policies",
+     "status": "done",
+     "evidence": "gateway retry + classification"
+    },
+    {
+     "id": "f-f51e2b35",
+     "name": "Exponential backoff",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-06798850",
+     "name": "Idempotency keys",
+     "status": "done",
+     "evidence": "stable op ids; single-flight.ts"
+    },
+    {
+     "id": "f-49481a5b",
+     "name": "Request deduplication",
+     "status": "done",
+     "evidence": "apps/worker/src/single-flight.ts"
+    },
+    {
+     "id": "f-54c41958",
+     "name": "Prompt caching",
+     "status": "done",
+     "evidence": "x-session-affinity prefix caching, providers/workers-ai.ts"
+    },
+    {
+     "id": "f-012e5da8",
+     "name": "Response caching",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b4c2ff0e",
+     "name": "Semantic caching",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bcb859e2",
+     "name": "Queue-based execution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e39b9c6b",
+     "name": "Priority queues",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-de27221c",
+     "name": "Dead-letter queues",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c498539b",
+     "name": "Background workers",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dbc5970f",
+     "name": "Durable workflows",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-306f151b",
+     "name": "Autoscaling",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a727ee52",
+     "name": "Load balancing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f44b2aa2",
+     "name": "Geographic routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-693db1da",
+     "name": "Edge routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c559dbf1",
+     "name": "GPU routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2fdcce6",
+     "name": "Model routing",
+     "status": "done",
+     "evidence": "gateway.ts DEFAULT_MODELS per mode; commit 10c1f31"
+    },
+    {
+     "id": "f-79bf3668",
+     "name": "Budget routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cbcd7bc0",
+     "name": "Latency routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c2f31674",
+     "name": "Quality routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4fa5d186",
+     "name": "Privacy routing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1b74c34b",
+     "name": "Provider quotas",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8058d3ae",
+     "name": "Per-user quotas",
+     "status": "done",
+     "evidence": "QuotaDO + PLAN_LIMITS"
+    },
+    {
+     "id": "f-250160b7",
+     "name": "Per-project quotas",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cccca2b3",
+     "name": "Per-model quotas",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e564d073",
+     "name": "Daily budgets",
+     "status": "done",
+     "evidence": "pricing.ts BILLABLE_NEURONS_PER_DAY"
+    },
+    {
+     "id": "f-3388e6be",
+     "name": "Monthly budgets",
+     "status": "done",
+     "evidence": "pricing.ts BILLABLE_NEURONS_PER_MONTH"
+    },
+    {
+     "id": "f-5a5b76b1",
+     "name": "Hard spending caps",
+     "status": "done",
+     "evidence": "BudgetDO reserve/settle, guard now provably fails (60407f0)"
+    },
+    {
+     "id": "f-39605354",
+     "name": "Usage alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7acda2b2",
+     "name": "Cost forecasts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-83b48244",
+     "name": "Token budgets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-02edc28f",
+     "name": "Time budgets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b799b9ed",
+     "name": "Concurrency limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1cf9c890",
+     "name": "Timeout limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-06b5953e",
+     "name": "Memory limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fc8044a0",
+     "name": "CPU limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c603b959",
+     "name": "GPU limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-535166ce",
+     "name": "Storage limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-69c25c22",
+     "name": "Data retention",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-72f5471f",
+     "name": "Backups",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-552c0ac5",
+     "name": "Disaster recovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a13defd7",
+     "name": "Multi-region deployment",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-e79a03da",
+     "name": "Blue-green deployment",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2df125ce",
+     "name": "Canary deployment",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e8dda4aa",
+     "name": "Feature flags",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a44bfdae",
+     "name": "Kill switches",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-69567eb0",
+     "name": "Maintenance mode",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b7d31229",
+     "name": "Status page",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cf09d034",
+     "name": "Health dashboard",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Billing and Monetization",
+   "count": 36,
+   "items": [
+    {
+     "id": "f-786d88bb",
+     "name": "Free plan",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09ffc4fa",
+     "name": "Pro plan",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-451ebbdd",
+     "name": "Team plan",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-326435f4",
+     "name": "Enterprise plan",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-3e9a9d8a",
+     "name": "Usage-based billing",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-d5791876",
+     "name": "Credit system",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7c0cf0ed",
+     "name": "Token billing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-79a5680b",
+     "name": "GPU billing",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-577b2e57",
+     "name": "Storage billing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-290cbb32",
+     "name": "Seat billing",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-3676cf20",
+     "name": "Project billing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1e52506a",
+     "name": "Organization billing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9471650e",
+     "name": "Spending limits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-26beae43",
+     "name": "Prepaid credits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e95dfe1e",
+     "name": "Postpaid billing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d6a384a0",
+     "name": "Invoices",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fdf7ea05",
+     "name": "Receipts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6a7163e1",
+     "name": "Taxes",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f103315b",
+     "name": "Coupons",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a14f2bae",
+     "name": "Trials",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-087576eb",
+     "name": "Referral credits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f7b93cba",
+     "name": "Usage alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5546eff0",
+     "name": "Payment methods",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1248ded5",
+     "name": "Stripe",
+     "status": "not-started",
+     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+    },
+    {
+     "id": "f-05d54330",
+     "name": "Refunds",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8937268e",
+     "name": "Chargebacks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e601da98",
+     "name": "Subscription pause",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bf7818da",
+     "name": "Subscription cancellation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c72e6434",
+     "name": "Plan upgrade",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-59b73b59",
+     "name": "Plan downgrade",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2759dcd8",
+     "name": "Overage protection",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1951decd",
+     "name": "Cost allocation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-af29b517",
+     "name": "Team cost reports",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-45cc388f",
+     "name": "Project cost reports",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8c4ec62e",
+     "name": "Model cost reports",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bb4c7372",
+     "name": "Provider cost reports",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Developer Platform",
+   "count": 42,
+   "items": [
+    {
+     "id": "f-c348cd0b",
+     "name": "Public API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7bc56452",
+     "name": "REST API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-65246b3e",
+     "name": "GraphQL API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-57367451",
+     "name": "OpenAI-compatible API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1392e21a",
+     "name": "Streaming API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b98d0e72",
+     "name": "WebSockets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a918cfd5",
+     "name": "Server-sent events",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f70cb101",
+     "name": "SDKs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6365296b",
+     "name": "JavaScript SDK",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bf158c44",
+     "name": "TypeScript SDK",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9a9427e3",
+     "name": "Python SDK",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6ae44b7d",
+     "name": "Luau SDK",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f3ecf22f",
+     "name": "CLI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1558a563",
+     "name": "GitHub App",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-155432a5",
+     "name": "VS Code extension",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-feb204a0",
+     "name": "Roblox Studio plugin",
+     "status": "blocked",
+     "evidence": "DEFERRED by owner 2026-09-14 (A1 skipped by choice) — nobody can install the plugin until Creator Store distribution is enabled"
+    },
+    {
+     "id": "f-8c45e571",
+     "name": "JetBrains plugin",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-69c47954",
+     "name": "Webhooks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2ac78c59",
+     "name": "OAuth apps",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-57230153",
+     "name": "API documentation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dec9df7f",
+     "name": "OpenAPI schema",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d6e41396",
+     "name": "API playground",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6ebc4d3e",
+     "name": "Sandbox API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-26b18f55",
+     "name": "Test API keys",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-43f4f307",
+     "name": "Production API keys",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-df65a1fb",
+     "name": "Versioned API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-486139bc",
+     "name": "Deprecation policy",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-854f78a4",
+     "name": "Rate-limit headers",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1fcb1460",
+     "name": "Usage headers",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1a081f3f",
+     "name": "Request tracing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7281dd04",
+     "name": "Idempotency",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-12c3cf8e",
+     "name": "Batch API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b59880c0",
+     "name": "Async API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-842c4865",
+     "name": "Job API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-18030f55",
+     "name": "Event API",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-63b9d95c",
+     "name": "Plugin marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-28d66024",
+     "name": "Tool marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7e3e8549",
+     "name": "Model marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-163598b4",
+     "name": "Dataset marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0b0d8a10",
+     "name": "Skill marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f975fc78",
+     "name": "Template marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5036f46d",
+     "name": "Community extensions",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Collaboration",
+   "count": 30,
+   "items": [
+    {
+     "id": "f-fb3b06e1",
+     "name": "Shared projects",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-08ee4df0",
+     "name": "Shared chats",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2d5d46b7",
+     "name": "Shared builds",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-de918662",
+     "name": "Shared datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2a0b7e2",
+     "name": "Shared models",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2ff621a1",
+     "name": "Shared evaluations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6c5af5a3",
+     "name": "Comments",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7f3f1f95",
+     "name": "Mentions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-110815bd",
+     "name": "Reactions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fe6e37f6",
+     "name": "Approvals",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f5ae4a3e",
+     "name": "Review requests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f411fea7",
+     "name": "Presence indicators",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-017e2135",
+     "name": "Live cursors",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09472579",
+     "name": "Version history",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1d01dadc",
+     "name": "Branches",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6f9c7dd3",
+     "name": "Merge requests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ab20c231",
+     "name": "Conflict resolution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-edb24b72",
+     "name": "Project activity",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c5de3e65",
+     "name": "Team dashboard",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-39ccc678",
+     "name": "Team knowledge base",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e2a5e21c",
+     "name": "Team prompts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4d70f20e",
+     "name": "Team agents",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-da16564e",
+     "name": "Team tools",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3447d6cc",
+     "name": "Shared secrets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3916b781",
+     "name": "Shared billing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1c67e953",
+     "name": "Shared audit logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8c6d2ad8",
+     "name": "Guest access",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ae89e8a",
+     "name": "Public templates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-39f68eaf",
+     "name": "Private templates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2d8a5846",
+     "name": "Community publishing",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Analytics and Observability",
+   "count": 37,
+   "items": [
+    {
+     "id": "f-0260b6a8",
+     "name": "Request logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ee12eba4",
+     "name": "Agent traces",
+     "status": "done",
+     "evidence": "ToolTraceEntry persisted per run"
+    },
+    {
+     "id": "f-cb5bc302",
+     "name": "Model traces",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-957b080f",
+     "name": "Tool traces",
+     "status": "done",
+     "evidence": "agent.trace + uiTools"
+    },
+    {
+     "id": "f-ec1ee23c",
+     "name": "Error logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3dea3049",
+     "name": "Build logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a896b6b9",
+     "name": "Training logs",
+     "status": "done",
+     "evidence": "packages/training/runs/apple-v*.log"
+    },
+    {
+     "id": "f-cdabdc32",
+     "name": "Evaluation logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4e29555d",
+     "name": "Audit logs",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d1b52463",
+     "name": "User analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-39863fd6",
+     "name": "Project analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7598f715",
+     "name": "Model analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6243d589",
+     "name": "Cost analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-09e3eec4",
+     "name": "Latency analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-04d1e128",
+     "name": "Token analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-29804d6c",
+     "name": "Success analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2a345033",
+     "name": "Retention analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bb86a154",
+     "name": "Funnel analytics",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-330f6602",
+     "name": "Feature usage",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a465a597",
+     "name": "Error breakdown",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6d33eafb",
+     "name": "Provider breakdown",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-00a09846",
+     "name": "Model breakdown",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f2179d5c",
+     "name": "Heatmaps",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-219cd1fa",
+     "name": "Session replay",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-96c85a5a",
+     "name": "Alerting",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-566c97ad",
+     "name": "Email alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-a52b7453",
+     "name": "Webhook alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-daa3f7b5",
+     "name": "Slack alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-db4cd725",
+     "name": "Discord alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3ace5b96",
+     "name": "PagerDuty alerts",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3ea9f909",
+     "name": "Sentry integration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cbca6e2b",
+     "name": "OpenTelemetry",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c0165b59",
+     "name": "Prometheus",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-62c9d3d8",
+     "name": "Grafana",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e72838e6",
+     "name": "Custom dashboards",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b20a204a",
+     "name": "Data export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9ab9c7d3",
+     "name": "Scheduled reports",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Release and Quality",
+   "count": 40,
+   "items": [
+    {
+     "id": "f-afe6b917",
+     "name": "CI/CD",
+     "status": "done",
+     "evidence": ".github/workflows/ci.yml — deterministic, no secrets, no paid calls"
+    },
+    {
+     "id": "f-2a0cf202",
+     "name": "Automated tests",
+     "status": "done",
+     "evidence": "pnpm -r test in CI"
+    },
+    {
+     "id": "f-b04c1627",
+     "name": "Unit tests",
+     "status": "done",
+     "evidence": "1,772 tests across 6 packages, green"
+    },
+    {
+     "id": "f-db2caed8",
+     "name": "Integration tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-55f0b407",
+     "name": "E2E tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0256b6a3",
+     "name": "Visual regression",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ec22b99",
+     "name": "Roblox playtest CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c6d02067",
+     "name": "Luau lint CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2b6c574e",
+     "name": "Type-check CI",
+     "status": "done",
+     "evidence": "pnpm -r typecheck in CI"
+    },
+    {
+     "id": "f-5a2bae0c",
+     "name": "Security CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cb34f71c",
+     "name": "License CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9bc82210",
+     "name": "Dataset CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6754bbf3",
+     "name": "Model CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-73ff16ee",
+     "name": "Eval CI",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b4f7f225",
+     "name": "Build validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ca7d7aa0",
+     "name": "Preview deployments",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-900a6bcb",
+     "name": "Staging environment",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-87e7e930",
+     "name": "Production environment",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-aafaba89",
+     "name": "Canary environment",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1d3158af",
+     "name": "Feature branches",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c23a5672",
+     "name": "Pull requests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c921d577",
+     "name": "Code review",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-11683dd7",
+     "name": "Approval gates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e723e748",
+     "name": "Release notes",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fdf99fba",
+     "name": "Changelog",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1460ecf1",
+     "name": "Version tags",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-185e0c12",
+     "name": "Semantic versioning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-74a48244",
+     "name": "Automatic rollback",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3495efee",
+     "name": "Database migrations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-97c8305f",
+     "name": "Schema validation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-6a9e9a0d",
+     "name": "Backup verification",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-96dd358f",
+     "name": "Disaster recovery drills",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b512c210",
+     "name": "Uptime monitoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5ab1687a",
+     "name": "Synthetic monitoring",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2539b298",
+     "name": "Performance budgets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0c6b951a",
+     "name": "Accessibility audits",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ed076cae",
+     "name": "Browser compatibility tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ce78f7ef",
+     "name": "Mobile tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bfdb876e",
+     "name": "Load tests",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-56c4865e",
+     "name": "Chaos tests",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Model Memory and Personalization",
+   "count": 29,
+   "items": [
+    {
+     "id": "f-dca78a6a",
+     "name": "User memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f27d88a6",
+     "name": "Project memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d36b8209",
+     "name": "Organization memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-50439b4c",
+     "name": "Persistent preferences",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7bbdf343",
+     "name": "Preferred coding style",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-89cbabf6",
+     "name": "Preferred Roblox conventions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1648d504",
+     "name": "Preferred language",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e1c71be0",
+     "name": "Preferred model",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-d4d91123",
+     "name": "Preferred response length",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e08da9d7",
+     "name": "Preferred tool permissions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fba8edf1",
+     "name": "Personal prompt profile",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2095a110",
+     "name": "Project instructions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-61aeb560",
+     "name": "Team instructions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cdedb05e",
+     "name": "Memory viewer",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-286cabf2",
+     "name": "Memory editor",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f76c2398",
+     "name": "Memory deletion",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-05cf3121",
+     "name": "Memory expiration",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c65cad16",
+     "name": "Memory import",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0e92274b",
+     "name": "Memory export",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e7bc1d58",
+     "name": "Memory audit",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2526556f",
+     "name": "Memory permissions",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dba32d8a",
+     "name": "Memory conflict resolution",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e52553ca",
+     "name": "Context summarization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dd3c4af8",
+     "name": "Automatic context compression",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9fa35be4",
+     "name": "Conversation recall",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c5587e57",
+     "name": "Build recall",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-51f8902f",
+     "name": "Failure recall",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7afc3205",
+     "name": "Pattern recall",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8b069acc",
+     "name": "Personalized routing",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "Future and Experimental",
+   "count": 55,
+   "items": [
+    {
+     "id": "f-ba3bf478",
+     "name": "Self-improving agents",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-dffe9577",
+     "name": "Automatic dataset mining",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-8cea16d7",
+     "name": "Automatic curriculum generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b58a3a1e",
+     "name": "Autonomous eval creation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4b939341",
+     "name": "Autonomous bug discovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0597839b",
+     "name": "Autonomous regression discovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1625aa43",
+     "name": "Autonomous documentation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ae35d33f",
+     "name": "Autonomous project planning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-aa15d81d",
+     "name": "Autonomous asset discovery",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-89c50218",
+     "name": "Autonomous asset remixing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4cbb5dd6",
+     "name": "Autonomous game prototyping",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c54b2281",
+     "name": "Autonomous level design",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-29497c97",
+     "name": "Autonomous QA",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ebddf891",
+     "name": "Autonomous performance optimization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-1c4de7bf",
+     "name": "Autonomous security hardening",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-504f746a",
+     "name": "Autonomous deployment",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-fb336924",
+     "name": "Autonomous rollback",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-4941ae44",
+     "name": "Multi-agent simulations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-0d900e91",
+     "name": "Agent tournaments",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2a575cf2",
+     "name": "Model tournaments",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-de318a41",
+     "name": "Reinforcement learning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-7bdcf950",
+     "name": "Environment interaction training",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-c320e376",
+     "name": "Roblox world simulation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-5b82e4de",
+     "name": "Digital twin of Studio",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-64564b02",
+     "name": "Synthetic Roblox environments",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-f72715a1",
+     "name": "Visual game understanding",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-79d78c55",
+     "name": "Real-time co-creation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b86c11b5",
+     "name": "Multiplayer AI building",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-be7853d1",
+     "name": "Voice-controlled Studio",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b16ba108",
+     "name": "AR/VR viewport",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e0a6a3c5",
+     "name": "Holographic previews",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-deebfcc3",
+     "name": "Neural asset search",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-54842790",
+     "name": "Procedural universe generation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-44791e2d",
+     "name": "Persistent game worlds",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-bb69c0ba",
+     "name": "AI NPC memory",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-97f221d0",
+     "name": "AI NPC dialogue",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-227b57c3",
+     "name": "AI NPC planning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-e3feff7c",
+     "name": "AI NPC learning",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-ed0f8906",
+     "name": "Player behavior analysis",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-2c2f7d5b",
+     "name": "Adaptive difficulty",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-923cc0f5",
+     "name": "Automated live operations",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-23d3be0b",
+     "name": "Automated events",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3befb236",
+     "name": "Automated content updates",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-80ca4a93",
+     "name": "Automated moderation",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-81c2fa20",
+     "name": "Automated localization",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-b0661fa6",
+     "name": "Automated monetization testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-3f5b4424",
+     "name": "Automated A/B testing",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-cdd1267f",
+     "name": "Model marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9bb95182",
+     "name": "Agent marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-366b4103",
+     "name": "Creator marketplace",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-9a68d3b5",
+     "name": "Community datasets",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-eef5a6dc",
+     "name": "Community benchmarks",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-24fa034b",
+     "name": "Public challenge system",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-605eaa5e",
+     "name": "Creator rewards",
+     "status": "not-started",
+     "evidence": null
+    },
+    {
+     "id": "f-962912e0",
+     "name": "Contributor attribution",
+     "status": "not-started",
+     "evidence": null
+    }
+   ]
+  }
+ ]
+}

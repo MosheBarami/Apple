@@ -84,7 +84,7 @@ export interface NextResponse {
  * §33: a milestone turned into something a run can actually execute.
  *
  * `request` is the exact text that would be sent to the conversation. Showing
- * it before sending it is the point — the user sees what Golem was asked, not
+ * it before sending it is the point — the user sees what Apple was asked, not
  * just what it did.
  */
 export interface MilestoneBrief {

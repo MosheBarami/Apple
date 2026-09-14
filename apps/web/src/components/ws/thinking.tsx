@@ -77,7 +77,7 @@ function Stage({
 
         {stage.questions && (
           <div className="gx-open-qs">
-            <span className="gx-open-qs__label">The request didn&rsquo;t say — Golem hasn&rsquo;t assumed:</span>
+            <span className="gx-open-qs__label">The request didn&rsquo;t say — Apple hasn&rsquo;t assumed:</span>
             <ul>
               {stage.questions.map((q) => (
                 <li key={q}>{q}</li>

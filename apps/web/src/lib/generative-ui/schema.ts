@@ -1,5 +1,5 @@
 /**
- * Golem generative UI — schema (v1).
+ * Apple generative UI — schema (v1).
  *
  * The agent may present product interfaces, but ONLY by emitting a document that
  * matches this schema. It can never emit HTML, CSS, class names, style objects,

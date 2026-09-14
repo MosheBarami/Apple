@@ -3,7 +3,7 @@
  *
  * The app is behind Supabase auth, so design review of the signed-in surfaces
  * would otherwise be impossible without a real account. With
- * `VITE_GOLEM_MOCK=1` (or `?mock=1` in a dev server) every network read is
+ * `VITE_APPLE_MOCK=1` (or `?mock=1` in a dev server) every network read is
  * replaced by realistic fixtures and the WebSocket is replaced by a scripted
  * session. Nothing here runs in a normal production build: the flag folds to a
  * constant `false` and the fixtures are tree-shaken out.
@@ -25,7 +25,7 @@ import type { MeResponse, UsageDay } from './api';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';
 
-const FLAG = import.meta.env.VITE_GOLEM_MOCK === '1';
+const FLAG = import.meta.env.VITE_APPLE_MOCK === '1';
 
 function queryFlag(): boolean {
   if (typeof window === 'undefined') return false;
@@ -319,7 +319,7 @@ export const mockCheckpoints: CheckpointMeta[] = [
 ];
 
 export const mockLogs: StudioEventLog[] = [
-  { kind: 'log', level: 'info', message: 'Golem plugin attached — Ember Halls', clock: 1 },
+  { kind: 'log', level: 'info', message: 'Apple plugin attached — Ember Halls', clock: 1 },
   { kind: 'log', level: 'output', message: 'LobbyService loaded 3 checkpoint pads', clock: 2 },
   { kind: 'log', level: 'output', message: 'CoinService: 42 coins registered', clock: 3 },
   { kind: 'log', level: 'warn', message: 'Infinite yield possible on Workspace:WaitForChild("Shop")', clock: 4 },
@@ -753,7 +753,7 @@ export function mockPlaytest(): { run: PlaytestRun; frames: StudioFrame[] } {
 
 /**
  * A project mid-flight: one asset that cannot ship, one that owes a credit, one CC0,
- * and one Golem placed by Roblox id that the library cannot account for.
+ * and one Apple placed by Roblox id that the library cannot account for.
  *
  * Deliberately NOT the happy path. The empty and the clean cases are one line each and
  * are exercised by `tests/credits-model.test.mjs`; what a fixture is for is the state

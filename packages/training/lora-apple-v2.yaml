@@ -1,0 +1,41 @@
+# Apple v2 — the repair of v1 (docs/audit/TRAINING-V1-REPORT.md).
+#
+# v1 was a regression: stray <think> on 8/8 held-out prompts and 3x the degenerate repetition of
+# its own base. Three things change here, and none of them is a hyperparameter sweep, because the
+# problem was never hyperparameters.
+#
+# 1. PREFIX. Data is pre-rendered by src/render_chat.py so the trained assistant span is
+#    byte-identical to the inference prefix. v1 trained on a target that began with an empty
+#    <think></think> block the generation prompt never supplies, and mask_prompt put it in the loss.
+# 2. EARLY STOP. v1's validation loss bottomed at iter 50 and rose by 100 while train loss kept
+#    falling — memorising 327 examples. 250 iters was simply too many for this corpus.
+# 3. MEMORY. v1 died at ~iter 120 to the macOS Metal watchdog
+#    (kIOGPUCommandBufferCallbackErrorImpactingInteractivity) at 23.5GB of 32GB. Smaller batch plus
+#    gradient checkpointing keeps it well clear.
+#
+# Rank is now a free choice: it was 8 to preserve Cloudflare's custom-LoRA path, and that path does
+# not exist for a Qwen base (Cloudflare accepts adapters only on mistral/gemma/llama). 16 gives the
+# adapter more capacity to actually learn idiom rather than only perturb it.
+model: "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+train: true
+data: "mlxdata-text"
+fine_tune_type: lora
+optimizer: adamw
+num_layers: 16
+batch_size: 2
+grad_accumulation_steps: 2   # same effective batch as v1, half the peak memory
+grad_checkpoint: true
+iters: 120
+learning_rate: 5.0e-5        # half of v1: less room to overshoot on a small corpus
+max_seq_length: 1024
+val_batches: 20
+steps_per_report: 10
+steps_per_eval: 20           # v1 only sampled validation 3 times in 120 iters and missed the turn
+save_every: 20
+adapter_path: "adapters/apple-v2"
+seed: 20260914
+lora_parameters:
+  rank: 16
+  scale: 32.0
+  dropout: 0.05
+  keys: ["self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj"]

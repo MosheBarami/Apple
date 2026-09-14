@@ -6,7 +6,7 @@
    per-milestone effort colour — green, amber, ember for small, medium and
    large — and all three already exist in the palette. No new hues were
    invented, and the saturated grammar of ROBLOX-STYLE-SPEC belongs to what
-   Golem builds inside Roblox, never to this app.
+   Apple builds inside Roblox, never to this app.
 
    Status is never carried by colour alone. A landed card is quieter and its
    node is ticked; the running card is lifted, accented and labelled; a waiting
@@ -114,7 +114,7 @@
   border: 0;
   padding: 0;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .rm-summary__now-link:hover {
@@ -240,7 +240,7 @@
 .rm-card::before {
   content: '';
   position: absolute;
-  left: -1px;
+  inset-inline-start: -1px;
   top: 14px;
   bottom: 14px;
   width: 3px;
@@ -533,7 +533,7 @@
 
 .rm-detail__list {
   margin: 0;
-  padding-left: 1.05rem;
+  padding-inline-start: 1.05rem;
   display: grid;
   gap: 0.22rem;
   font-size: 0.85rem;
@@ -554,7 +554,7 @@
   border: 0;
   padding: 0.2rem 0 0.65rem;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
 }
 
 .rm-stage__label--toggle:hover {
@@ -563,7 +563,7 @@
 
 .rm-stage__chev {
   display: inline-flex;
-  margin-right: 0.4rem;
+  margin-inline-end: 0.4rem;
   transition: transform var(--dur) var(--ease-out);
   vertical-align: -1px;
 }
@@ -631,7 +631,7 @@
 }
 
 .rm-suggest__dismiss {
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .rm-suggest__pending-copy {
@@ -723,8 +723,8 @@
   font-size: 0.8rem;
   line-height: 1.5;
   color: var(--faint);
-  border-left: 2px solid var(--line);
-  padding-left: 0.6rem;
+  border-inline-start: 2px solid var(--line);
+  padding-inline-start: 0.6rem;
 }
 
 .rm-sg__facts {
@@ -825,7 +825,7 @@
 
 .rm-brief__list {
   margin: 0;
-  padding-left: 1.1rem;
+  padding-inline-start: 1.1rem;
   display: grid;
   gap: 0.25rem;
   font-size: 0.86rem;

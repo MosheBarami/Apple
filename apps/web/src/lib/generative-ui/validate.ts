@@ -1,5 +1,5 @@
 /**
- * Golem generative UI — runtime validator.
+ * Apple generative UI — runtime validator.
  *
  * Security model
  * --------------

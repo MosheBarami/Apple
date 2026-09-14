@@ -1,5 +1,5 @@
 /**
- * Roadmap fixtures for `VITE_GOLEM_MOCK=1` / `?mock=1`.
+ * Roadmap fixtures for `VITE_APPLE_MOCK=1` / `?mock=1`.
  *
  * Same contract as `lib/mock.ts`: illustrative data for design review only,
  * never shown to a real user, and tree-shaken out of a production build because

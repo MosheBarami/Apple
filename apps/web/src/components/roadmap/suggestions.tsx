@@ -48,7 +48,7 @@ export function SuggestionPanel({
       <header className="rm-suggest__head">
         <h2 className="rm-suggest__title">Suggested next</h2>
         <p className="rm-suggest__sub">
-          What Golem would pick up next, given what it can see in your place right now.
+          What Apple would pick up next, given what it can see in your place right now.
         </p>
         <button type="button" className="btn btn-sm btn-ghost rm-suggest__dismiss" onClick={onDismiss}>
           Dismiss
@@ -86,7 +86,7 @@ export function SuggestionPanel({
 
       {state === 'ready' && next.length === 0 && (
         <p className="rm-suggest__none">
-          Nothing new to propose — everything Golem can see is either built or waiting on something else
+          Nothing new to propose — everything Apple can see is either built or waiting on something else
           in the plan above.
         </p>
       )}

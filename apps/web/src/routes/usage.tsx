@@ -111,7 +111,7 @@ function UsageBars({ days }: { days: UsageDay[] }) {
   );
 }
 
-const WAITLIST_KEY = 'golem-waitlist-joined';
+const WAITLIST_KEY = 'apple-waitlist-joined';
 
 function PlanCard({ plan, dailyLimit, monthlyLimit }: { plan: string; dailyLimit: number; monthlyLimit: number }) {
   const { session } = useAuth();
@@ -161,7 +161,7 @@ function PlanCard({ plan, dailyLimit, monthlyLimit }: { plan: string; dailyLimit
       {plan !== 'pro' && (
         <div className="plan-upsell">
           <div>
-            <strong>Golem Pro</strong>
+            <strong>Apple Pro</strong>
             <p className="muted">A much larger daily quota, priority queue, more checkpoints. Launching soon.</p>
           </div>
           {joined ? (
@@ -189,7 +189,7 @@ export function UsagePage() {
         <div>
           <h1 className="page-title">Usage</h1>
           <p className="page-sub">
-            Sparks are Golem&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
+            Sparks are Apple&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
             measured typical costs, not fixed prices.
           </p>
         </div>

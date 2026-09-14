@@ -15,7 +15,7 @@
 export const ICON_PATH = {
   plus: 'M12 5v14M5 12h14',
   chevronRight: 'M9 6l6 6-6 6',
-  /** Leaves Golem for somewhere else — same glyph the landing uses. */
+  /** Leaves Apple for somewhere else — same glyph the landing uses. */
   arrowUpRight: 'M7 17 17 7m0 0H8.5M17 7v8.5',
   chevronDown: 'M6 9l6 6 6-6',
   /** Collapse / expand the rail. */

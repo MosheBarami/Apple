@@ -71,7 +71,7 @@ function useSpecimens(): Specimen[] {
         type: 'callout',
         tone: 'warn',
         title: 'Studio was in Run mode',
-        text: 'Changes made during a playtest are discarded when you stop. Golem paused until you returned to Edit.',
+        text: 'Changes made during a playtest are discarded when you stop. Apple paused until you returned to Edit.',
         link: { href: 'https://create.roblox.com/docs/studio/testing-modes', label: 'Roblox testing modes' },
       }),
       one('metric', 'A single number that matters.', {
@@ -233,7 +233,7 @@ function useSpecimens(): Specimen[] {
       one('asset_picker', 'Marketplace results, with only https links allowed.', {
         type: 'asset_picker',
         title: 'Candidate portal frames',
-        actionLabel: 'Say which one to insert and Golem will place it.',
+        actionLabel: 'Say which one to insert and Apple will place it.',
         assets: [
           {
             id: '1094710',

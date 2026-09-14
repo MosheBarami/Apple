@@ -1,7 +1,7 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 
-// The canonical Creator Store identity for "Golem for Studio". The asset id has exactly ONE
+// The canonical Creator Store identity for "Apple for Studio". The asset id has exactly ONE
 // definition in this repository — packages/shared/src/index.ts — and everything, including this
 // page, derives from it. Do not restate the number here; a second copy is a second thing to
 // forget to change. (Why create.roblox.com/store/asset: roblox.com/library/<id> 307-redirects
@@ -20,12 +20,12 @@ import {
 ---
 
 <DocsLayout
-  title="Install the plugin — Golem Docs"
-  description="How to install Golem for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs."
-  heading="Install Golem for Studio"
+  title="Install the plugin — Apple Docs"
+  description="How to install Apple for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs."
+  heading="Install Apple for Studio"
 >
   <p>
-    Golem builds inside Roblox Studio through a plugin. The plugin is the product's hands: it
+    Apple builds inside Roblox Studio through a plugin. The plugin is the product's hands: it
     reads and edits scripts, creates instances, sets properties, runs your game and reads the
     output — always inside the one place you connect it to, and always wrapped in a Studio undo
     waypoint.
@@ -39,14 +39,14 @@ import {
     storeLive ? (
       <p class="cta-row">
         <a href={STORE_URL} class="btn btn-primary" rel="noopener noreferrer" target="_blank">
-          Get Golem on the Creator Store
+          Get Apple on the Creator Store
         </a>
         <span>Free. Opens Roblox's site in a new tab.</span>
       </p>
     ) : (
       <div class="callout">
         <p>
-          <strong>Not available yet.</strong> The Golem plugin asset exists on Roblox
+          <strong>Not available yet.</strong> The Apple plugin asset exists on Roblox
           (<code>{ASSET_ID}</code>) but has not been distributed on the Creator Store yet. The
           store page at <code>{STORE_URL}</code> loads, but it will not offer the plugin for
           install, so the steps below will not work yet. We would rather say that plainly than
@@ -66,32 +66,32 @@ import {
 
   <ol>
     <li>
-      <strong>Acquire it on the web.</strong> Open the Creator Store page for Golem and click the
+      <strong>Acquire it on the web.</strong> Open the Creator Store page for Apple and click the
       blue button at the top right — for a free plugin it reads <strong>Get Plugin</strong>. Per
       Roblox's own documentation this only "add[s] it to your inventory". Nothing has reached
       Studio yet.
     </li>
     <li>
       <strong>Install it in Studio.</strong> Open Roblox Studio, open the <strong>Toolbox</strong>
-      (Studio's <strong>View</strong> menu, or the <strong>Home</strong> tab), and find Golem —
+      (Studio's <strong>View</strong> menu, or the <strong>Home</strong> tab), and find Apple —
       under <strong>Inventory</strong> after step 1, or by searching the
       <strong>Creator Store</strong> tab. Click it, then press <strong>Install</strong>. Roblox's
       documentation is explicit that this is the step that adds a plugin "to the mezzanine's
       <strong>Plugins</strong> tab".
     </li>
     <li>
-      <strong>Check it landed.</strong> A <strong>Golem</strong> button appears in Studio's
-      <strong>Plugins</strong> tab. Clicking it docks the Golem panel.
+      <strong>Check it landed.</strong> A <strong>Apple</strong> button appears in Studio's
+      <strong>Plugins</strong> tab. Clicking it docks the Apple panel.
     </li>
   </ol>
 
   <div class="callout">
     <p>
-      <strong>Studio will ask permission to reach the network.</strong> Golem talks to its server
+      <strong>Studio will ask permission to reach the network.</strong> Apple talks to its server
       over HTTPS. Roblox documents that "the first time a plugin attempts to use the service, the
       user might be prompted to give the plugin permission to communicate with the particular web
       address", and that these permissions can be accepted, denied and revoked at any time in the
-      <strong>Plugin Management</strong> window. Golem does nothing until you allow it. This is
+      <strong>Plugin Management</strong> window. Apple does nothing until you allow it. This is
       not the same setting as <em>Game Settings → Security → Allow HTTP Requests</em>, which
       governs your game's own code, not plugins.
     </p>
@@ -99,8 +99,8 @@ import {
 
   <h2>Next: connect it to a project</h2>
   <p>
-    Installing the plugin does not link it to anything. A freshly installed Golem panel says
-    <strong>Not connected</strong> and will not touch your place until you pair it with one Golem
+    Installing the plugin does not link it to anything. A freshly installed Apple panel says
+    <strong>Not connected</strong> and will not touch your place until you pair it with one Apple
     project — see <a href="/docs/connect">Connect a project</a>.
   </p>
 
@@ -120,18 +120,18 @@ import {
 
   <h2>Removing it</h2>
   <p>
-    Uninstall Golem from Studio's plugin management window, the same place you manage every other
-    plugin. You can also stop Golem acting on a place at any moment without uninstalling anything
+    Uninstall Apple from Studio's plugin management window, the same place you manage every other
+    plugin. You can also stop Apple acting on a place at any moment without uninstalling anything
     — press <strong>Disconnect</strong> in the panel, or disconnect from the web workspace. See
     <a href="/docs/troubleshooting">Troubleshooting</a>.
   </p>
 
   <div class="callout callout--violet">
     <p>
-      <strong>Developer note — not the normal path.</strong> If you are working on Golem itself,
+      <strong>Developer note — not the normal path.</strong> If you are working on Apple itself,
       you can build the plugin from source and load it as a local plugin. That path is documented
       separately in <a href="/docs/build-from-source">Build the plugin from source</a>. It is for
-      development and debugging only; do not follow it to use Golem.
+      development and debugging only; do not follow it to use Apple.
     </p>
   </div>
 </DocsLayout>

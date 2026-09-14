@@ -9,7 +9,7 @@
  * react-router 6.30.6 (what this project resolves to) sits inside the vulnerable
  * range of "open redirect via backslash in <Link> and useNavigate", fixed in
  * 7.18.0, where `/\evil.com` and `//evil.com` are treated as protocol-relative
- * and navigate off-origin. So a link to `https://app.golem/\evil.com` bounces a
+ * and navigate off-origin. So a link to `https://app.apple/\evil.com` bounces a
  * user who has JUST authenticated straight to an attacker's page — the worst
  * possible moment for it, because they have just been asked to trust the screen.
  *

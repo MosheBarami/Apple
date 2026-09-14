@@ -1,4 +1,4 @@
-// The activity timeline: the ordered, timed record of what Golem did.
+// The activity timeline: the ordered, timed record of what Apple did.
 //
 // READ `activity-model.ts` BEFORE CHANGING ANYTHING HERE. Every phase, every
 // step, every duration and the terminal row all come out of `reduceActivity`,

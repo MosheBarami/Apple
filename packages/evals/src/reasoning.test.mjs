@@ -89,8 +89,18 @@ test('classifyRequest recognises multi-system work', () => {
 test('classifyRequest treats vague and very short requests as ambiguous', () => {
   assert.equal(classifyRequest('make it better').ambiguousRequest, true);
   assert.equal(classifyRequest('surprise me').ambiguousRequest, true);
-  assert.equal(classifyRequest('hi').ambiguousRequest, true);
+  // A terse BUILD ask is still ambiguous — this is the case the signal exists for.
+  assert.equal(classifyRequest('a door').ambiguousRequest, true);
   assert.equal(classifyRequest('Explain why my RemoteEvent handler receives nil for the second argument').ambiguousRequest, false);
+});
+
+test("'hi' is conversation, not an under-specified build request", () => {
+  // It used to be ambiguous purely because it is under 25 characters, which escalated a greeting
+  // to high effort, snapshotted the user's place and ended in an apology for not building
+  // anything. Short is not the same as under-specified.
+  const t = classifyRequest('hi');
+  assert.equal(t.conversational, true);
+  assert.equal(t.ambiguousRequest, false);
 });
 
 test('token budgets: high gets modest headroom, low is unchanged', () => {

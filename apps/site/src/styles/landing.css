@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GOLEM — landing surface.
+   APPLE — landing surface.
 
    One viewport. No scroll. The whole proposition held in a single frame,
    CENTRED — the composition is symmetrical about the vertical axis, from the
@@ -27,31 +27,38 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  /* --- material --------------------------------------------------------- */
-  --ground: #0b0a09; /* page base */
-  --surface: #121110; /* raised card face */
-  --surface-2: #171614; /* second raise, chips */
+  /* --- material ---------------------------------------------------------
+     Sampled from the product mark (apps/site/public/brand/apple-mark-3d.png): the
+     chromatic, bright pixels of its glow sweep from 180deg cyan through a dominant
+     210-220deg azure to ~265deg violet, on a body that is ~70% near-black gloss. The
+     ground carries a blue cast for the same reason the mark does — pure #000 makes the
+     mark's own black read grey beside it.
 
-  --ink: #f5f2ec; /* primary type, headline line 1 */
-  --ink-warm: #c9c0b2; /* headline line 2, warm secondary */
-  --muted: #9a938a; /* body copy */
+     Every ratio below is computed against --ground (WCAG 2.1 relative luminance), not
+     estimated. The previous warm palette (#0b0a09 ground, #c98a3c amber) belonged to
+     Golem and is gone; do not reintroduce warm tones here. */
+  --ground: #07080f; /* page base */
+  --surface: #0e1018; /* raised card face */
+  --surface-2: #151826; /* second raise, chips */
 
-  /* The spec's --faint is #6E6862. Measured against --ground that is 3.58:1,
-     which is below the 4.5:1 this page has to clear for 12px type — and every
-     use of --faint here IS 12–13px type (the CTA micro-line, the strip
-     subtitles). Warmed until it passes with headroom: 5.8:1 on the ground, and
-     still 4.8:1 standing on the brightest part of the amber glow, which the
-     micro-line does. If the tone ever goes back down, the type has to get
-     bigger first. */
-  --faint: #918b82;
+  --ink: #eaf0ff; /* 17.5:1 — primary type, headline line 1 */
+  --ink-warm: #94a3c4; /* 7.9:1 — headline line 2, secondary. Cool now, not warm. */
+  --muted: #94a3c4; /* 7.9:1 — body copy */
 
-  --line: rgba(245, 242, 236, 0.08); /* hairline */
-  --line-2: rgba(245, 242, 236, 0.14); /* readable border */
+  /* The floor. Every use of --faint on this page is 12-13px type, which has to clear 4.5:1 —
+     so this is the dimmest tone allowed to carry text anywhere. Derived against the LIGHTEST
+     surface, not the ground: the first value cleared --ground at 4.73:1 and still failed a
+     raised card at 4.49:1. Worst case is now 4.61:1. If it ever goes lower, the type has to
+     get bigger first. */
+  --faint: #7582a4;
 
-  --cream: #e6decf; /* primary CTA fill */
-  --cream-ink: #14120f; /* type on cream */
+  --line: rgba(148, 163, 196, 0.16); /* hairline */
+  --line-2: rgba(148, 163, 196, 0.32); /* readable border */
 
-  --amber: #c98a3c; /* the single accent */
+  --cream: #eaf0ff; /* primary CTA fill */
+  --cream-ink: #07080f; /* type on the CTA */
+
+  --amber: #0080f0; /* the single accent — azure, the mark's peak hue (5.09:1) */
 
   /* --- type -------------------------------------------------------------
      A tight grotesque at 600, not a serif. The earlier Fraunces display
@@ -160,13 +167,13 @@ body {
    and collapse the nav's side padding to zero on every device without an inset —
    which is every desktop. */
 .nav {
-  padding-left: max(var(--gutter), env(safe-area-inset-left));
-  padding-right: max(var(--gutter), env(safe-area-inset-right));
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-left));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-right));
 }
 
 .strip__cell {
-  padding-left: max(var(--gutter), env(safe-area-inset-left));
-  padding-right: max(var(--gutter), env(safe-area-inset-right));
+  padding-inline-start: max(var(--gutter), env(safe-area-inset-left));
+  padding-inline-end: max(var(--gutter), env(safe-area-inset-right));
 }
 
 /* --------------------------------------------------------------------------
@@ -219,9 +226,9 @@ body {
   height: min(700px, 60vh);
   background: radial-gradient(
     50% 50% at 50% 50%,
-    rgba(201, 138, 60, 0.34) 0%,
-    rgba(201, 138, 60, 0.18) 34%,
-    rgba(201, 138, 60, 0.06) 60%,
+    rgba(0, 128, 240, 0.30) 0%,
+    rgba(43, 91, 240, 0.16) 34%,
+    rgba(123, 77, 240, 0.06) 60%,
     transparent 80%
   );
 }
@@ -242,7 +249,7 @@ body {
   /* Kept dark at its own summit: the glow is composited on top of this plane,
      so a lighter ridge here shows up directly as lost contrast on the type
      standing in front of it. */
-  background: linear-gradient(172deg, #121110 0%, #0e0d0b 100%);
+  background: linear-gradient(172deg, #0e1018 0%, #0a0c14 100%);
   /* Apex off-centre so the far ridge and the near peak read as two separate
      masses rather than one symmetrical arrow. */
   clip-path: polygon(38% 0, 100% 100%, 0 100%);
@@ -261,14 +268,14 @@ body {
 /* Both facets stay darker than the light behind them, so the summit reads as a
    silhouette. The left one still catches enough to separate the two planes. */
 .prism--left {
-  background: linear-gradient(198deg, #1e1b16 0%, #121110 100%);
+  background: linear-gradient(198deg, #151826 0%, #0e1018 100%);
   clip-path: polygon(50% 0, 50% 100%, 0 100%);
   /* Lights the clipped edge — i.e. the crest — without a second element. */
   filter: drop-shadow(1px 0 0 rgba(245, 242, 236, 0.11));
 }
 
 .prism--right {
-  background: linear-gradient(162deg, #0e0d0b 0%, #070706 100%);
+  background: linear-gradient(162deg, #0a0c14 0%, #06070d 100%);
   clip-path: polygon(50% 0, 100% 100%, 50% 100%);
 }
 
@@ -317,7 +324,7 @@ body {
   display: flex;
   align-items: center;
   gap: clamp(1rem, 2.2vw, 1.85rem);
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 
 .nav__links a {
@@ -511,7 +518,7 @@ body {
 }
 
 .strip__cell + .strip__cell {
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
 }
 
 .strip__icon {
@@ -556,7 +563,7 @@ body {
 }
 
 .skip-link:focus {
-  left: 0;
+  inset-inline-start: 0;
 }
 
 /* One visible focus treatment for every interactive element. Never removed. */
@@ -615,7 +622,7 @@ a:focus-visible {
   }
 
   .nav__cta {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 }
 
@@ -645,7 +652,7 @@ a:focus-visible {
   }
 
   .strip__cell + .strip__cell {
-    border-left: 0;
+    border-inline-start: 0;
     border-top: 1px solid var(--line);
   }
 

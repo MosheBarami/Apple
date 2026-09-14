@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Golem UI crashed:', error, info.componentStack);
+    console.error('Apple UI crashed:', error, info.componentStack);
   }
 
   override render() {
@@ -21,7 +21,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
       return (
         <div className="crash-screen" role="alert">
           <div className="crash-card">
-            <h1>The golem stumbled</h1>
+            <h1>The apple stumbled</h1>
             <p>Something broke in the interface — your projects and data are safe.</p>
             <pre className="crash-detail">{this.state.error.message}</pre>
             <div className="crash-actions">

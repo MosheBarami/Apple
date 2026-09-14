@@ -48,3 +48,13 @@ measure-tmp.mjs
 
 # Agent worktrees — isolated checkouts, never part of the committed tree
 .claude/worktrees/
+
+# Training: local venv, model weights, datasets and adapters. Re-buildable from
+# src/build-dataset.mjs + the pinned corpus manifest; none of it belongs in git.
+packages/training/.venv/
+packages/training/data/
+packages/training/adapters/
+packages/training/runs/
+packages/training/mlxdata/
+packages/training/mlxdata-text/
+packages/training/mlxdata/

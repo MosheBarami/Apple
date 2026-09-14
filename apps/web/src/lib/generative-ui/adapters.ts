@@ -1,5 +1,5 @@
 /**
- * Adapters: real Golem data → generative-UI documents.
+ * Adapters: real Apple data → generative-UI documents.
  *
  * These build *candidate* documents from first-party payloads (a Studio render,
  * a visual critique, checkpoint metadata, quota state). They are still passed
@@ -14,8 +14,8 @@ import type {
   SceneLighting,
 } from '@golem/shared';
 import { verticalDominance } from '@golem/shared';
-import type { UIDocument } from './schema';
-import { sanitizeDocument, type ValidationResult } from './validate';
+import type { UIDocument } from './schema.ts';
+import { sanitizeDocument, type ValidationResult } from './validate.ts';
 
 // ---------------------------------------------------------------------------
 // Pixels: the plugin returns packed RGB rows; the browser turns them into a PNG
@@ -268,8 +268,37 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+/**
+ * A guard must validate every field the renderer then dereferences. This one used to check
+ * only `subject` and `views`, which let a DIFFERENT payload through: the `render_view` tool
+ * returns a deliberately image-free summary for the model — `{subject, boundsSizeStuds,
+ * views:[{view, ...meta}]}` (apps/worker/src/tools.ts) — whose `subject`/`views` satisfied the
+ * old check. `renderResultToDocument` then ran `result.boundsSize.map(...)` on `undefined` and
+ * threw, taking the workspace to the ErrorBoundary mid-run.
+ *
+ * The contract documented on `documentFromToolDetail` is "anything unrecognised returns null".
+ * Honouring it means checking the shape we actually consume: a bounds triple, and views that
+ * carry real pixels. A summary without images cannot render a visual panel and must fall
+ * through to the plain tool row rather than be forced into one.
+ */
 function looksLikeRenderResult(v: unknown): v is RenderViewResult {
-  return isObject(v) && typeof v['subject'] === 'string' && Array.isArray(v['views']);
+  if (!isObject(v) || typeof v['subject'] !== 'string') return false;
+
+  const bounds = v['boundsSize'];
+  if (!Array.isArray(bounds) || bounds.length !== 3 || !bounds.every((n) => typeof n === 'number' && Number.isFinite(n))) {
+    return false;
+  }
+
+  const views = v['views'];
+  if (!Array.isArray(views) || views.length === 0) return false;
+  return views.every(
+    (view) =>
+      isObject(view) &&
+      typeof view['rgbBase64'] === 'string' &&
+      isObject(view['meta']) &&
+      typeof (view['meta'] as Record<string, unknown>)['width'] === 'number' &&
+      typeof (view['meta'] as Record<string, unknown>)['height'] === 'number',
+  );
 }
 
 function looksLikeCritique(v: unknown): v is CritiqueLike {

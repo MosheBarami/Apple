@@ -12,7 +12,7 @@ interface Props {
 }
 
 const { title, description, bare = false } = Astro.props;
-const site = Astro.site ?? new URL('https://golemworks.pages.dev');
+const site = Astro.site ?? new URL('https://appleworks.pages.dev');
 const canonical = new URL(Astro.url.pathname, site);
 const ogImage = new URL('/og.svg', site);
 ---
@@ -29,7 +29,7 @@ const ogImage = new URL('/og.svg', site);
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Golem" />
+    <meta property="og:site_name" content="Apple" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -55,7 +55,7 @@ const ogImage = new URL('/og.svg', site);
         var d = document.documentElement;
         d.classList.remove('no-js');
         try {
-          var t = localStorage.getItem('golem-theme');
+          var t = localStorage.getItem('apple-theme');
           if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
         } catch (e) {
           /* private mode — fall back to prefers-color-scheme */
@@ -140,13 +140,13 @@ const ogImage = new URL('/og.svg', site);
         const next = currentTheme() === 'dark' ? 'light' : 'dark';
         root.setAttribute('data-theme', next);
         try {
-          localStorage.setItem('golem-theme', next);
+          localStorage.setItem('apple-theme', next);
         } catch (err) {
           /* ignore */
         }
         paintToggles();
         window.dispatchEvent(
-          new CustomEvent('golem:theme', { detail: { theme: next } })
+          new CustomEvent('apple:theme', { detail: { theme: next } })
         );
       });
 
@@ -154,7 +154,7 @@ const ogImage = new URL('/og.svg', site);
         if (!root.hasAttribute('data-theme')) {
           paintToggles();
           window.dispatchEvent(
-            new CustomEvent('golem:theme', { detail: { theme: currentTheme() } })
+            new CustomEvent('apple:theme', { detail: { theme: currentTheme() } })
           );
         }
       });
@@ -198,7 +198,7 @@ const ogImage = new URL('/og.svg', site);
         osc.stop(t + dur + 0.02);
       }
 
-      (window as any).golemTick = tick;
+      (window as any).appleTick = tick;
 
       document.addEventListener('click', (e) => {
         const btn = (e.target as HTMLElement)?.closest('[data-sound-toggle]');

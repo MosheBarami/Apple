@@ -1,8 +1,8 @@
 /* ==========================================================================
-   GOLEM — design system.
+   APPLE — design system.
 
    Visual concept: "The Workshop".
-   Golem is a thing that MAKES things, so the site is built out of the same
+   Apple is a thing that MAKES things, so the site is built out of the same
    materials it works in: quarried stone, fired clay, a lit workbench and a
    technical drawing sheet. Everything reads as CARVED — hairline seams,
    engraved rules, letterpress edges, dimension ticks in the margins — rather
@@ -50,165 +50,172 @@
   --accent-ink: var(--acc-ember-ink);
 }
 
-/* ---- LIGHT: "quarry daylight" — bone paper, warm shadow, fired accents --- */
+/* ---- LIGHT: "daylight" — Apple's palette on a pale ground ---------------
+   The mark is dark-native (see apple-brand.css: ~70% of it is near-black gloss),
+   so light mode darkens the brand blues rather than reusing them. #0080F0 is only
+   3.0:1 on white and fails body text there; #0060C4 clears it. */
 :root,
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --paper: #f2efe8; /* page ground: unbleached limestone */
-  --paper-2: #e9e4da; /* recessed */
-  --surface: #fbf9f5; /* raised card face */
-  --surface-2: #f6f2ea;
-  --ink: #171512; /* body + headline */
-  --ink-2: #56504533; /* (unused alpha guard) */
-  --muted: #6b6357; /* secondary text */
-  --faint: #716a60; /* tertiary text. 4.65:1 on --paper, its worst surface; it was
-                       #8d8578 at 3.18:1 — the large-text floor, and this is 0.7rem
-                       and 0.78rem mono. Still lighter than --muted (5.15:1), so the
-                       ramp still descends. */
-  --line: rgba(23, 21, 18, 0.14);
-  --line-strong: rgba(23, 21, 18, 0.26);
-  --hairline: rgba(23, 21, 18, 0.08);
+  --paper: #f6f7fb;
+  --paper-2: #eef1f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f8;
+  --ink: #0b0d14;
+  --ink-2: #444c6333;
+  --muted: #444c63;
+  --faint: #5b6480; /* 4.62:1 on --paper — AA body, the floor */
+  --line: rgba(11, 13, 20, 0.12);
+  --line-strong: rgba(11, 13, 20, 0.24);
+  --hairline: rgba(11, 13, 20, 0.07);
 
-  /* material shading — light comes from upper left */
-  --lift-1: 0 1px 2px rgba(60, 46, 28, 0.06), 0 2px 8px rgba(60, 46, 28, 0.05);
-  --lift-2: 0 2px 4px rgba(60, 46, 28, 0.07), 0 10px 28px rgba(60, 46, 28, 0.09);
-  --lift-3: 0 4px 10px rgba(60, 46, 28, 0.09), 0 26px 60px rgba(60, 46, 28, 0.13);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(23, 21, 18, 0.06);
+  --lift-1: 0 1px 2px rgba(11, 13, 20, 0.05), 0 2px 8px rgba(11, 13, 20, 0.05);
+  --lift-2: 0 2px 4px rgba(11, 13, 20, 0.06), 0 10px 28px rgba(11, 13, 20, 0.08);
+  --lift-3: 0 4px 10px rgba(11, 13, 20, 0.08), 0 26px 60px rgba(11, 13, 20, 0.12);
+  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(11, 13, 20, 0.05);
 
-  --acc-ember: #ad4a18; /* molten iron, readable on paper */
-  --acc-ember-soft: rgba(173, 74, 24, 0.1);
-  --acc-ember-ink: #fdf6ef; /* text on top of ember */
+  /* The accent ramp is the mark's own hue sweep: cyan 180deg -> azure 210deg -> violet 265deg. */
+  --acc-ember: #0060c4;
+  --acc-ember-soft: rgba(0, 96, 196, 0.1);
+  --acc-ember-ink: #f4f9ff;
 
-  --acc-clay: #a95331;
-  --acc-clay-soft: rgba(169, 83, 49, 0.1);
-  --acc-clay-ink: #fdf6ef;
+  --acc-clay: #0b7fa8;
+  --acc-clay-soft: rgba(11, 127, 168, 0.1);
+  --acc-clay-ink: #f2fbff;
 
-  --acc-stone: #2f5c72;
-  --acc-stone-soft: rgba(47, 92, 114, 0.1);
-  --acc-stone-ink: #f2f8fb;
+  --acc-stone: #0060c4;
+  --acc-stone-soft: rgba(0, 96, 196, 0.1);
+  --acc-stone-ink: #f4f9ff;
 
-  --acc-rune: #5b3fb8;
-  --acc-rune-soft: rgba(91, 63, 184, 0.1);
+  --acc-rune: #5b2bd4;
+  --acc-rune-soft: rgba(91, 43, 212, 0.1);
   --acc-rune-ink: #f7f4ff;
 
-  --good: #2f6f4f;
-  --warn: #96631a;
-  --bad: #a33326;
+  --good: #14714c;
+  --warn: #8a5a00;
+  --bad: #b02a3a;
 
-  --grain-opacity: 0.045;
+  --grain-opacity: 0.03;
   --grain-blend: multiply;
-  --vignette: rgba(78, 60, 38, 0.06);
+  --vignette: rgba(11, 13, 20, 0.05);
 
-  /* WebGL scene reads these */
-  --gl-key: #fff3e2;
-  --gl-fill: #cdd6de;
-  --gl-body: #b9ae9c;
-  --gl-ground: #ddd6c9;
-  --gl-plinth: #ded7ca;
+  --gl-key: #eaf2ff;
+  --gl-fill: #c9d6ea;
+  --gl-body: #aab6cc;
+  --gl-ground: #dde3ef;
+  --gl-plinth: #d6dded;
 }
 
-/* ---- DARK: "night quarry" — basalt, ember lamp, cold moon fill ---------- */
+/* ---- DARK: the mark's native ground ------------------------------------
+   Values from apps/site/src/styles/apple-brand.css, which derives them by sampling the
+   chromatic, bright pixels of the product mark. Contrast against --paper is computed,
+   not estimated: ink 17.5:1, muted 7.9:1, faint 4.7:1, azure 5.1:1. Violet reaches only
+   3.96:1 and is therefore a UI colour, never body copy. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #100e0c;
-  --paper-2: #17150f;
-  --surface: #1c1915;
-  --surface-2: #232019;
-  --ink: #f3efe6;
-  --muted: #a89f90;
-  --faint: #8e8676; /* 4.51:1 on --surface-2, its worst surface; was #7f7869 at 3.71:1 */
-  --line: rgba(243, 239, 230, 0.13);
-  --line-strong: rgba(243, 239, 230, 0.26);
-  --hairline: rgba(243, 239, 230, 0.07);
+  --paper: #07080f;
+  --paper-2: #0b0d16;
+  --surface: #0e1018;
+  --surface-2: #151826;
+  --ink: #eaf0ff;
+  --ink-2: #94a3c433;
+  --muted: #94a3c4;
+  --faint: #7582a4;
+  --line: rgba(148, 163, 196, 0.16);
+  --line-strong: rgba(148, 163, 196, 0.32);
+  --hairline: rgba(148, 163, 196, 0.09);
 
-  --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
-  --lift-2: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.42);
-  --lift-3: 0 6px 14px rgba(0, 0, 0, 0.5), 0 32px 72px rgba(0, 0, 0, 0.55);
-  --inset: inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --lift-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 10px 28px rgba(0, 0, 0, 0.45);
+  --lift-3: 0 4px 10px rgba(0, 0, 0, 0.6), 0 26px 60px rgba(0, 0, 0, 0.55);
+  --inset: inset 0 1px 0 rgba(148, 163, 196, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
 
-  --acc-ember: #ff9a4d;
-  --acc-ember-soft: rgba(255, 154, 77, 0.14);
-  --acc-ember-ink: #211203;
+  /* The mark's hue sweep, in the order the eye travels it. */
+  --acc-ember: #0080f0; /* azure — the core, peak hue of the mark */
+  --acc-ember-soft: rgba(0, 128, 240, 0.14);
+  --acc-ember-ink: #04121f;
 
-  --acc-clay: #e08a5a;
-  --acc-clay-soft: rgba(224, 138, 90, 0.14);
-  --acc-clay-ink: #201007;
+  --acc-clay: #00e5ff; /* cyan — the spark */
+  --acc-clay-soft: rgba(0, 229, 255, 0.14);
+  --acc-clay-ink: #001a1f;
 
-  --acc-stone: #74b8dd;
-  --acc-stone-soft: rgba(116, 184, 221, 0.14);
-  --acc-stone-ink: #08151d;
+  --acc-stone: #2b5bf0;
+  --acc-stone-soft: rgba(43, 91, 240, 0.14);
+  --acc-stone-ink: #eaf0ff;
 
-  --acc-rune: #a98bff;
-  --acc-rune-soft: rgba(169, 139, 255, 0.14);
-  --acc-rune-ink: #150c2b;
+  --acc-rune: #7b4df0; /* violet — UI and large text only */
+  --acc-rune-soft: rgba(123, 77, 240, 0.14);
+  --acc-rune-ink: #f3efff;
 
-  --good: #6ed3a4;
-  --warn: #e2b45c;
-  --bad: #f08a7c;
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #fb7185;
 
   --grain-opacity: 0.05;
   --grain-blend: overlay;
   --vignette: rgba(0, 0, 0, 0.5);
 
-  --gl-key: #ffdcae;
-  --gl-fill: #34506b;
-  --gl-body: #5a564f;
-  --gl-ground: #100e0c;
-  --gl-plinth: #2c2721;
+  --gl-key: #dff0ff;
+  --gl-fill: #2b5bf0;
+  --gl-body: #151826;
+  --gl-ground: #0b0d16;
+  --gl-plinth: #0e1018;
 }
 
 /* system preference when the visitor has not chosen */
 @media (prefers-color-scheme: dark) {
+  /* THE SYSTEM-DARK MIRROR. Kept token-for-token in step with the [data-theme='dark'] block
+     above, because most viewers never set a theme explicitly and land here instead. When this
+     drifted, explicit-dark users saw Apple's palette and system-dark users saw Golem's — the
+     classic "colour defined only inside one block" bug, and the contrast suite catches it by
+     asserting the two dark declarations of --faint are identical. */
   :root:not([data-theme='light']) {
     color-scheme: dark;
 
-    --paper: #100e0c;
-    --paper-2: #17150f;
-    --surface: #1c1915;
-    --surface-2: #232019;
-    --ink: #f3efe6;
-    --muted: #a89f90;
-    --faint: #8e8676; /* kept in step with the [data-theme] block above */
-    --line: rgba(243, 239, 230, 0.13);
-    --line-strong: rgba(243, 239, 230, 0.26);
-    --hairline: rgba(243, 239, 230, 0.07);
+    --paper: #07080f;
+    --paper-2: #0b0d16;
+    --surface: #0e1018;
+    --surface-2: #151826;
+    --ink: #eaf0ff;
+    --muted: #94a3c4;
+    --faint: #7582a4; /* kept in step with the [data-theme] block above */
+    --line: rgba(148, 163, 196, 0.16);
+    --line-strong: rgba(148, 163, 196, 0.32);
+    --hairline: rgba(148, 163, 196, 0.09);
 
-    --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
-    --lift-2: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.42);
-    --lift-3: 0 6px 14px rgba(0, 0, 0, 0.5), 0 32px 72px rgba(0, 0, 0, 0.55);
-    --inset: inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    --lift-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --lift-2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 10px 28px rgba(0, 0, 0, 0.45);
+    --lift-3: 0 4px 10px rgba(0, 0, 0, 0.6), 0 26px 60px rgba(0, 0, 0, 0.55);
+    --inset: inset 0 1px 0 rgba(148, 163, 196, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
 
-    --acc-ember: #ff9a4d;
-    --acc-ember-soft: rgba(255, 154, 77, 0.14);
-    --acc-ember-ink: #211203;
-    --acc-clay: #e08a5a;
-    --acc-clay-soft: rgba(224, 138, 90, 0.14);
-    --acc-clay-ink: #201007;
-    --acc-stone: #74b8dd;
-    --acc-stone-soft: rgba(116, 184, 221, 0.14);
-    --acc-stone-ink: #08151d;
-    --acc-rune: #a98bff;
-    --acc-rune-soft: rgba(169, 139, 255, 0.14);
-    --acc-rune-ink: #150c2b;
+    --acc-ember: #0080f0;
+    --acc-ember-soft: rgba(0, 128, 240, 0.14);
+    --acc-ember-ink: #04121f;
+    --acc-clay: #00e5ff;
+    --acc-clay-soft: rgba(0, 229, 255, 0.14);
+    --acc-clay-ink: #001a1f;
+    --acc-stone: #2b5bf0;
+    --acc-stone-soft: rgba(43, 91, 240, 0.14);
+    --acc-stone-ink: #eaf0ff;
+    --acc-rune: #7b4df0;
+    --acc-rune-soft: rgba(123, 77, 240, 0.14);
+    --acc-rune-ink: #f3efff;
 
-    --good: #6ed3a4;
-    --warn: #e2b45c;
-    --bad: #f08a7c;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #fb7185;
 
     --grain-opacity: 0.05;
     --grain-blend: overlay;
     --vignette: rgba(0, 0, 0, 0.5);
 
-    --gl-key: #ffdcae;
-    --gl-fill: #34506b;
-    --gl-body: #5a564f;
-    --gl-ground: #100e0c;
-    --gl-plinth: #2c2721;
+    --gl-key: #dff0ff;
+    --gl-fill: #2b5bf0;
+    --gl-body: #151826;
+    --gl-ground: #0b0d16;
+    --gl-plinth: #0e1018;
   }
 }
 
@@ -818,7 +825,7 @@ table {
 
 th,
 td {
-  text-align: left;
+  text-align: start;
   padding: 0.82rem 1.1rem;
   border-bottom: 1px solid var(--hairline);
 }
@@ -935,7 +942,7 @@ html.no-js .kinetic > span > span {
 
 .skip-link {
   position: fixed;
-  left: 1rem;
+  inset-inline-start: 1rem;
   top: -5rem;
   z-index: 10001;
   background: var(--accent);
@@ -984,7 +991,7 @@ html.no-js .kinetic > span > span {
 .cursor {
   position: fixed;
   top: 0;
-  left: 0;
+  inset-inline-start: 0;
   z-index: 10000;
   pointer-events: none;
   display: none;
@@ -1023,7 +1030,7 @@ html.no-js .kinetic > span > span {
 
 .cursor__label {
   position: absolute;
-  left: 22px;
+  inset-inline-start: 22px;
   top: 12px;
   font-family: var(--font-mono);
   font-size: 0.63rem;

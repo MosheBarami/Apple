@@ -220,7 +220,7 @@ export function DashboardPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Projects</h1>
-          <p className="page-sub">Each project is one Roblox experience Golem builds with you.</p>
+          <p className="page-sub">Each project is one Roblox experience Apple builds with you.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
           <span aria-hidden="true">+</span> New project
@@ -255,7 +255,7 @@ export function DashboardPage() {
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
-          detail={<p className="es__body">Describe the game you want — an obby, a tycoon, a story world — and Golem starts carving.</p>}
+          detail={<p className="es__body">Describe the game you want — an obby, a tycoon, a story world — and Apple starts carving.</p>}
           action={
             <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
               Summon a project
@@ -294,9 +294,9 @@ export function DashboardPage() {
 
       {projects.isSuccess && projects.data.length > 0 && (
         <footer className="page-foot">
-          <span className="eyebrow">Getting Golem into Studio</span>
+          <span className="eyebrow">Getting Apple into Studio</span>
           <p>
-            Golem builds through a Studio plugin. Install it once, open a project, and use{' '}
+            Apple builds through a Studio plugin. Install it once, open a project, and use{' '}
             <strong>Connect</strong> to pair the two.
           </p>
           <div className="page-foot-links">
@@ -309,7 +309,7 @@ export function DashboardPage() {
               target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
             >
-              Install Golem for Studio{' '}
+              Install Apple for Studio{' '}
               {STUDIO_PLUGIN_STORE_LIVE && <span aria-hidden="true">↗</span>}
             </a>
             <a href="/docs" target="_blank" rel="noopener noreferrer">

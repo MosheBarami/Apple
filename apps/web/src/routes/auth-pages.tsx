@@ -5,7 +5,7 @@ import { safeInternalPath } from '../lib/safe-redirect';
 import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
-import { GolemGlyph } from '../components/glyphs';
+import { AppleGlyph } from '../components/glyphs';
 
 const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 
@@ -31,16 +31,16 @@ function AuthHero() {
     <div className="auth-hero">
       <div className="auth-hero-inner">
         <div className="auth-hero-brand">
-          <GolemGlyph size={38} />
-          <span className="wordmark wordmark-lg">Golem</span>
+          <AppleGlyph size={38} />
+          <span className="wordmark wordmark-lg">Apple</span>
         </div>
         <h1 className="auth-hero-title carved">
           Describe it.
           <br />
-          Golem builds it.
+          Apple builds it.
         </h1>
         <p className="auth-hero-sub">
-          Tell Golem what your Roblox game should do. It writes the scripts, places the parts and wires it all up —
+          Tell Apple what your Roblox game should do. It writes the scripts, places the parts and wires it all up —
           live in Studio, while you watch.
         </p>
         <ul className="auth-hero-points">
@@ -99,8 +99,8 @@ export function LoginPage() {
         {/* The hero is hidden below 900px; without this the signed-out mobile
             page would carry no brand at all. */}
         <div className="auth-mobile-brand" aria-hidden="true">
-          <GolemGlyph size={26} />
-          <span className="wordmark">Golem</span>
+          <AppleGlyph size={26} />
+          <span className="wordmark">Apple</span>
         </div>
         <form className="auth-card" onSubmit={onSubmit} noValidate>
           <h2 className="auth-card-title">Welcome back</h2>
@@ -185,8 +185,8 @@ export function SignupPage() {
         {/* The hero is hidden below 900px; without this the signed-out mobile
             page would carry no brand at all. */}
         <div className="auth-mobile-brand" aria-hidden="true">
-          <GolemGlyph size={26} />
-          <span className="wordmark">Golem</span>
+          <AppleGlyph size={26} />
+          <span className="wordmark">Apple</span>
         </div>
         {sentTo ? (
           <div className="auth-card" role="status">
@@ -196,7 +196,7 @@ export function SignupPage() {
             <h2 className="auth-card-title">Check your email</h2>
             <p className="auth-card-sub">
               We sent a confirmation link to <strong>{sentTo}</strong>. Click it, then come back and sign in — your
-              golem will be waiting.
+              apple will be waiting.
             </p>
             <Link to="/login" className="btn btn-primary btn-block">
               Go to sign in
@@ -204,7 +204,7 @@ export function SignupPage() {
           </div>
         ) : (
           <form className="auth-card" onSubmit={onSubmit} noValidate>
-            <h2 className="auth-card-title">Summon your golem</h2>
+            <h2 className="auth-card-title">Summon your apple</h2>
             <p className="auth-card-sub">Free to start. No card, no Studio setup beyond one plugin.</p>
             {error && (
               <p className="form-error" role="alert">

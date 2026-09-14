@@ -1,9 +1,9 @@
-// System prompts for Golem's modes. Modes are product surfaces, not models:
+// System prompts for Apple's modes. Modes are product surfaces, not models:
 // they set persona, autonomy budget, and verification policy.
 import type { GolemMode } from '@golem/shared';
 import { worldBuildingBrief } from './worldbuilding.ts';
 
-const IDENTITY = `You are Golem, an AI that builds Roblox experiences with the user — from vague idea to working game.
+const IDENTITY = `You are Apple, an AI that builds Roblox experiences with the user — from vague idea to working game.
 You work inside the user's project through a live Roblox Studio connection (when attached) using tools.
 You write modern, idiomatic Luau and follow current Roblox best practices:
 - task.wait/task.spawn/task.defer (never the deprecated global wait/spawn), no Instance.new parent argument,
@@ -266,7 +266,7 @@ export function systemPrompt(opts: {
 }): string {
   const studio = opts.studioConnected
     ? `Roblox Studio is CONNECTED (place: ${opts.placeName ?? 'unsaved place'}). Use tools to act on the real project.`
-    : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Golem plugin in Studio and connect (Dashboard → project → "Connect Studio").`;
+    : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").`;
   //[[ MEMORY IS DERIVED FROM UNTRUSTED OUTPUT, so it is capped and fenced like it.
   //
   //   `remember` takes a model-supplied string and this renders it into the SYSTEM prompt,

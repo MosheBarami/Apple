@@ -100,7 +100,7 @@ export function SettingsPage() {
               maxLength={60}
               name="displayName"
               id="display-name"
-              placeholder="How Golem should address you"
+              placeholder="How Apple should address you"
               disabled={profile.isPending}
             />
           </label>
@@ -132,13 +132,13 @@ export function SettingsPage() {
             Quarry daylight
           </button>
         </div>
-        <p className="muted">Dark is the golem&rsquo;s natural habitat, but daylight works too.</p>
+        <p className="muted">Dark is the apple&rsquo;s natural habitat, but daylight works too.</p>
       </section>
 
       <section className="card settings-card">
         <h2>Privacy</h2>
         <p>
-          <strong>Your projects are private. Golem never trains on your work.</strong>
+          <strong>Your projects are private. Apple never trains on your work.</strong>
         </p>
         <label className="switch-row">
           <input
@@ -150,7 +150,7 @@ export function SettingsPage() {
             disabled={profile.isPending || setOptIn.isPending}
           />
           <span>
-            Contribute anonymised snippets to improve Golem
+            Contribute anonymised snippets to improve Apple
             <span className="field-hint"> — optional, off by default, revocable any time.</span>
           </span>
         </label>

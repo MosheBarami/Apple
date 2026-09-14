@@ -2,116 +2,187 @@
   {
     "id": "ak-01-task-wait",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "In modern Roblox Luau the global wait() is deprecated. What is the exact replacement for yielding the current thread for N seconds? Answer with the exact function name.",
     "weight": 2,
     "checks": [
-      { "type": "contains", "value": "task.wait", "target": "text" }
+      {
+        "type": "contains",
+        "value": "task.wait",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-02-task-spawn",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "The global spawn() is deprecated in Roblox. What is the modern task-library function that immediately runs a function on a new thread? Answer with the exact function name.",
     "checks": [
-      { "type": "contains", "value": "task.spawn", "target": "text" }
+      {
+        "type": "contains",
+        "value": "task.spawn",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-03-linear-velocity",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "BodyVelocity is deprecated. Which constraint-based mover instance should be used today to drive a part at a target linear velocity? Answer with the exact class name.",
     "weight": 2,
     "checks": [
-      { "type": "contains", "value": "LinearVelocity", "target": "text" },
-      { "type": "not_contains", "value": "BodyForce", "target": "text" }
+      {
+        "type": "contains",
+        "value": "LinearVelocity",
+        "target": "text"
+      },
+      {
+        "type": "not_contains",
+        "value": "BodyForce",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-04-align-orientation",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "BodyGyro is deprecated. Which constraint-based instance is the modern replacement for keeping a part rotated toward a target orientation? Answer with the exact class name.",
     "checks": [
-      { "type": "contains", "value": "AlignOrientation", "target": "text" }
+      {
+        "type": "contains",
+        "value": "AlignOrientation",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-05-animator",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "Humanoid:LoadAnimation() is deprecated. On which instance (a child of the Humanoid) should LoadAnimation be called in current Roblox code? Answer with the exact class name.",
     "checks": [
-      { "type": "contains", "value": "Animator", "target": "text" }
+      {
+        "type": "contains",
+        "value": "Animator",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-06-increment-async",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "Which GlobalDataStore method atomically increments a stored integer by a delta in one call? Answer with the exact method name.",
     "checks": [
-      { "type": "contains", "value": "IncrementAsync", "target": "text" }
+      {
+        "type": "contains",
+        "value": "IncrementAsync",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-07-update-async",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "For a safe read-modify-write on a Roblox data store (passing a transform callback that receives the old value and returns the new one), which GlobalDataStore method should you use? Answer with the exact method name.",
     "checks": [
-      { "type": "contains", "value": "UpdateAsync", "target": "text" }
+      {
+        "type": "contains",
+        "value": "UpdateAsync",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-08-player-added",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "Which service and event notify server code that a player has joined the experience? Answer in the form Service.Event.",
     "checks": [
-      { "type": "regex", "pattern": "Players\\s*\\.\\s*PlayerAdded", "target": "text" }
+      {
+        "type": "regex",
+        "pattern": "Players\\s*\\.\\s*PlayerAdded",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-09-gamepass-prompt",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "Which MarketplaceService method opens the purchase prompt for a game pass? Answer with the exact method name.",
     "checks": [
-      { "type": "contains", "value": "PromptGamePassPurchase", "target": "text" },
-      { "type": "not_contains", "value": "PromptProductPurchase", "target": "text" }
+      {
+        "type": "contains",
+        "value": "PromptGamePassPurchase",
+        "target": "text"
+      },
+      {
+        "type": "not_contains",
+        "value": "PromptProductPurchase",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-10-property-changed-signal",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "What Instance method returns a signal that fires only when one specific named property changes (instead of listening to the generic Changed event)? Answer with the exact method name.",
     "checks": [
-      { "type": "contains", "value": "GetPropertyChangedSignal", "target": "text" }
+      {
+        "type": "contains",
+        "value": "GetPropertyChangedSignal",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-11-findfirstchild-signature",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "Give the signature of Instance:FindFirstChild, naming both parameters with their types and the return type.",
     "checks": [
-      { "type": "contains", "value": "FindFirstChild", "target": "text" },
-      { "type": "regex", "pattern": "recursive", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "bool", "flags": "i", "target": "text" },
-      { "type": "regex", "pattern": "string", "flags": "i", "target": "text" }
+      {
+        "type": "contains",
+        "value": "FindFirstChild",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "recursive",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "bool",
+        "flags": "i",
+        "target": "text"
+      },
+      {
+        "type": "regex",
+        "pattern": "string",
+        "flags": "i",
+        "target": "text"
+      }
     ]
   },
   {
     "id": "ak-12-user-input-service",
     "category": "api-knowledge",
-    "system": "You are Golem, an expert Roblox and Luau engineer. Answer concisely and precisely.",
+    "system": "You are Apple, an expert Roblox and Luau engineer. Answer concisely and precisely.",
     "prompt": "Which client-side service fires the InputBegan event for raw keyboard and mouse input? Answer with the exact service name.",
     "checks": [
-      { "type": "contains", "value": "UserInputService", "target": "text" }
+      {
+        "type": "contains",
+        "value": "UserInputService",
+        "target": "text"
+      }
     ]
   }
 ]

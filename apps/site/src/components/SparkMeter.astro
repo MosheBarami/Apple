@@ -642,7 +642,7 @@ const { showCost = true } = Astro.props;
         root!.classList.add('is-clay');
         (fillEl as HTMLElement).style.background = 'var(--warn)';
         verdictEl.innerHTML =
-          'Beyond even the designed Pro allowance. Golem would queue rather than fail — and we would want to talk to you before you built like this.';
+          'Beyond even the designed Pro allowance. Apple would queue rather than fail — and we would want to talk to you before you built like this.';
       }
 
       if (costEl) {
@@ -657,7 +657,7 @@ const { showCost = true } = Astro.props;
     [clay, stone, rune, steps].forEach((el) =>
       el.addEventListener('input', () => {
         update();
-        (window as any).golemTick?.(760);
+        (window as any).appleTick?.(760);
       })
     );
 

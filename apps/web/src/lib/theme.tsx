@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Theme = 'dark' | 'light';
-const STORAGE_KEY = 'golem-theme';
+const STORAGE_KEY = 'apple-theme';
 
 function readStoredTheme(): Theme {
   try {

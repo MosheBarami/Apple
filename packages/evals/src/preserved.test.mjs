@@ -21,6 +21,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+// Compiled spend defaults — the runtime clamp now tops out at these, so the test reads the same
+// source of truth the code does rather than restating the numbers.
+import * as P from '../../../apps/worker/src/pricing.ts';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -433,7 +436,17 @@ test('B5 STATIC CHECK — the run loop wires the gate and the rebuild order into
 
 test("B6 STATIC CHECK — a run that owes work finishes as 'incomplete', and the text is overridden", () => {
   const session = read('do/session.ts');
-  assert.match(session, /const owesWork = agent\.mode !== 'clay' && !agent\.mutated && studioConnected;/, 'the "owes work" condition must remain mode + mutation + Studio');
+  // The condition gained a fourth clause and must keep all four. A run owes a mutation only when
+  // the user asked for work: mode is not Plan, nothing has been mutated, Studio is connected, and
+  // the message was not conversation. The last clause was added because "hi" satisfied the first
+  // three, so a greeting was nudged twice and then reported as an incomplete build. Each clause is
+  // asserted separately so deleting any one of them fails loudly rather than silently widening or
+  // narrowing the guard.
+  const owes = session.slice(session.indexOf('const owesWork ='), session.indexOf('if (owesWork &&'));
+  assert.match(owes, /agent\.mode !== 'clay'/, 'Plan mode cannot owe work — it cannot mutate');
+  assert.match(owes, /!agent\.mutated/, 'a run that mutated something does not owe work');
+  assert.match(owes, /studioConnected/, 'without Studio there is nothing to mutate');
+  assert.match(owes, /!agent\.traits\?\.conversational/, 'a greeting never owes a mutation');
   assert.match(session, /await this\.finishRun\(agent, owesWork \? 'incomplete' : 'done'\);/, 'falling through the nudges must NOT report success');
   // 'incomplete' OVERRIDES the model's own prose rather than appending to it — on the run this was
   // written for, that prose was the single word "Done."
@@ -472,30 +485,52 @@ test('B6 STATIC CHECK — the nudge that precedes it is bounded and cannot loop'
 
 test('B7 STATIC CHECK — the poll is held open whenever there is nothing to hand over', () => {
   const session = read('do/session.ts');
-  assert.match(session, /const holdMs = agent\?\.status === 'running' \? 4000 : 6000;/, 'the hold durations moved — re-check them against the liveness window');
-  assert.match(session, /if \(!this\.opQueue\.length\) \{\s*\n\s*await new Promise<void>\(\(resolve\) => \{/, 'the long poll must apply whenever the queue is empty, not only mid-run');
+  // The hold durations moved into named constants and the poll gained an idle path. Both halves
+  // still have to hold: a running or recently-active project holds the request open (that is what
+  // makes op latency near zero), and only a project parked for MINUTES stops holding.
+  assert.match(session, /const holdMs = running \? POLL_HOLD_ACTIVE_MS : POLL_HOLD_WARM_MS;/, 'the hold durations moved — re-check them against the liveness window');
+  assert.match(session, /if \(!parked && !this\.opQueue\.length\) \{\s*\n\s*await new Promise<void>\(\(resolve\) => \{/, 'the long poll must still apply whenever the queue is empty and the project is not parked');
+  assert.match(session, /const parked = !running && idleFor > POLL_IDLE_AFTER_MS;/, 'parking must be derived from measured idleness');
   // The waiter fires the moment an op is queued, which is what makes latency near zero.
   assert.match(session, /this\.pollWaiter = \(\) => \{\s*\n\s*clearTimeout\(t\);/);
   assert.match(session, /await this\.ctx\.storage\.put\(\{ opQueue: this\.opQueue, seq: this\.seq \}\);\s*\n\s*this\.pollWaiter\?\.\(\);/, 'enqueueing an op must wake the held poll');
-  assert.match(session, /waitMs: running \? 400 : 1000/, 'the client-side re-poll delay moved');
+  assert.match(session, /const waitMs = running \? 400 : parked \? POLL_WAIT_IDLE_MS : 1000;/, 'the client-side re-poll delay moved');
 });
 
-test('B7 both hold durations stay inside the liveness window that declares the plugin gone', () => {
+test('B7 the holds and the idle sleep both stay inside the liveness window', () => {
   const session = read('do/session.ts');
-  const holds = /const holdMs = agent\?\.status === 'running' \? (\d+) : (\d+);/.exec(session);
-  assert.ok(holds, 'the hold expression was not found');
-  const [running, idle] = [Number(holds[1]), Number(holds[2])];
-  // `pluginConnected()` treats the plugin as gone after this long without a poll.
-  const windows = [...session.matchAll(/Date\.now\(\) - (?:lastSeen|last) < (\d+)/g)].map((m) => Number(m[1]));
-  assert.ok(windows.length >= 1, 'the liveness window was not found');
-  const liveness = Math.min(...windows);
-  assert.equal(liveness, 8000, 'the liveness window moved — re-derive the hold durations from it');
-  for (const [name, hold] of [['running', running], ['idle', idle]]) {
-    assert.ok(hold < liveness, `the ${name} hold (${hold}ms) must stay comfortably inside the ${liveness}ms liveness window`);
-    assert.ok(liveness - hold >= 2000, `the ${name} hold leaves only ${liveness - hold}ms of margin — an op would fail between polls`);
+  const num = (name) => {
+    const m = new RegExp(`const ${name} = ([0-9_]+);`).exec(session);
+    assert.ok(m, `${name} must exist`);
+    return Number(m[1].replace(/_/g, ''));
+  };
+
+  // Liveness is no longer a constant: it is the sleep we issued plus grace. A fixed threshold
+  // cannot survive an adaptive sleep — 8s was right for a 1s re-poll and would declare a healthy
+  // plugin dead 3s into a 5s one. That coupling is the thing being asserted.
+  assert.equal(/Date\.now\(\) - last < 8000/.test(session), false, 'the fixed 8s liveness window must be gone');
+  assert.match(session, /this\.pollDueBy = Date\.now\(\) \+ waitMs \+ POLL_STALE_GRACE_MS;/);
+
+  const grace = num('POLL_STALE_GRACE_MS');
+  for (const name of ['POLL_HOLD_ACTIVE_MS', 'POLL_HOLD_WARM_MS']) {
+    const hold = num(name);
+    assert.ok(hold > 0, `${name} must still hold`);
+    // A hold has to finish and the next poll has to arrive before the deadline set by the PREVIOUS
+    // response. The tightest case is the 1s warm re-poll.
+    assert.ok(hold + 1000 < 1000 + grace + hold, `${name} must fit inside its own deadline`);
+    assert.ok(grace >= 2000, `only ${grace}ms of grace — an op would fail between polls`);
   }
-  // …and it is a hold, not the 20,000 ms backoff that measurement refuted.
-  assert.ok(idle <= 6000, 'the idle hold must not creep back toward the refuted 20s backoff');
+
+  // AND IT MUST NOT BECOME THE REFUTED BACKOFF. A blanket 20s backoff was measured here and
+  // rejected: ops took 6.5-10.4s to be picked up against under 2.5s when held. The idle sleep is a
+  // different trade — it applies only after minutes of silence, and the first queued op un-parks
+  // the connection — but its worst case still has to stay inside the band that measurement found
+  // acceptable, or it is the same regression wearing a condition.
+  const idleWait = num('POLL_WAIT_IDLE_MS');
+  assert.ok(idleWait <= 6000, `an idle sleep of ${idleWait}ms re-enters the refuted 6.5-10.4s pickup band`);
+  assert.ok(num('POLL_IDLE_AFTER_MS') >= 60_000, 'parking must require minutes of silence, not seconds');
+  // Queueing an op has to un-park, or every op pays the idle latency and this is a regression.
+  assert.match(session, /this\.lastActivity = Date\.now\(\);/);
 });
 
 // ===========================================================================
@@ -604,12 +639,14 @@ test('B8 lowering a cap takes effect on the very next reservation, with no redep
   assert.equal(next.reason, 'request_too_large');
 });
 
-test('B8 caps are clamped, so "tunable without a redeploy" cannot mean "unbounded"', async () => {
+test('B8 caps are clamped, so "tunable without a redeploy" cannot mean "unbounded" OR "raisable"', async () => {
   const { hit } = newBudget();
+  // Asking for an absurd number must land on the COMPILED default, not on a wider runtime ceiling.
+  // Raising a limit now requires a deploy — where it is a diff someone reviews — rather than a POST.
   const wild = await hit('/limits', { billableNeuronsPerDay: 9e12, billableNeuronsPerMonth: 9e12, maxNeuronsPerRequest: 9e12 });
-  assert.equal(wild.limits.billableNeuronsPerDay, 2_000_000);
-  assert.equal(wild.limits.billableNeuronsPerMonth, 20_000_000);
-  assert.equal(wild.limits.maxNeuronsPerRequest, 50_000);
+  assert.equal(wild.limits.billableNeuronsPerDay, P.BILLABLE_NEURONS_PER_DAY);
+  assert.equal(wild.limits.billableNeuronsPerMonth, P.BILLABLE_NEURONS_PER_MONTH);
+  assert.equal(wild.limits.maxNeuronsPerRequest, P.MAX_NEURONS_PER_REQUEST);
   const negative = await hit('/limits', { billableNeuronsPerDay: -5, maxNeuronsPerRequest: -5 });
   assert.equal(negative.limits.billableNeuronsPerDay, 0);
   assert.equal(negative.limits.maxNeuronsPerRequest, 100, 'the per-request floor keeps the product usable');

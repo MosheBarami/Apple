@@ -75,7 +75,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
             <StatusIcon status="success" size={22} />
           </span>
           <h3>Studio connected</h3>
-          <p className="muted">Golem can now build directly in your place.</p>
+          <p className="muted">Apple can now build directly in your place.</p>
           <button type="button" className="btn btn-primary" onClick={onClose}>
             Start building
           </button>
@@ -119,7 +119,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
           )}
 
           <p className="pairing-how">
-            In Roblox Studio, open the <strong>Golem</strong> plugin and enter this code.
+            In Roblox Studio, open the <strong>Apple</strong> plugin and enter this code.
           </p>
 
           <p className="pairing-waiting muted" aria-live="polite">
@@ -136,7 +136,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
               className="pairing-link"
             >
-              Don&rsquo;t have the plugin? Install Golem for Studio
+              Don&rsquo;t have the plugin? Install Apple for Studio
               {STUDIO_PLUGIN_STORE_LIVE ? ' ↗' : ''}
             </a>
           </p>

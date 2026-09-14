@@ -10,9 +10,9 @@ import { RunePulse } from './glyphs';
 import { StatusIcon } from './status-icon';
 
 const HEADLINE: Record<OperationKind, string> = {
-  building: 'Golem is building',
-  verifying: 'Golem is verifying',
-  rendering: 'Golem is looking at your scene',
+  building: 'Apple is building',
+  verifying: 'Apple is verifying',
+  rendering: 'Apple is looking at your scene',
   restoring: 'Rewinding your place',
   connecting: 'Waiting for Studio',
   recalling: 'Opening the session',

@@ -105,7 +105,7 @@ export function copyableCredits(res: AttributionResponse): string | null {
 /**
  * The four things this panel can honestly say.
  *
- * `nothing_recorded` is deliberately NOT `clear`. Golem records an asset when it places
+ * `nothing_recorded` is deliberately NOT `clear`. Apple records an asset when it places
  * one, so an empty ledger means either "no third-party asset has been used" or "the
  * recording did not happen" — and from the browser those are the same bytes. Saying
  * "clear to publish" would be a claim about the second case that nothing supports.
@@ -135,7 +135,7 @@ export function readiness(res: AttributionResponse): PublishVerdict {
       state: 'nothing_recorded',
       title: 'Nothing recorded yet',
       body:
-        'Golem notes an asset here when it places one in your project. Nothing has been '
+        'Apple notes an asset here when it places one in your project. Nothing has been '
         + 'noted, which means either that no third-party asset has been used or that none '
         + 'reached this list — so this is not a clearance to publish.',
     };
@@ -150,9 +150,9 @@ export function readiness(res: AttributionResponse): PublishVerdict {
   // gate it was written for: you cannot certify what you cannot account for. But the
   // first version of this panel rendered that as red, "N assets cannot ship
   // commercially", with "each of these has to be replaced or cleared first" — and while
-  // the curated library does not exist (BLOCKERS §4b) EVERY asset Golem inserts lands
+  // the curated library does not exist (BLOCKERS §4b) EVERY asset Apple inserts lands
   // unaccounted, so every user with a placed asset was told their game was not
-  // shippable. Golem never determined that. It checked the asset was free, publicly
+  // shippable. Apple never determined that. It checked the asset was free, publicly
   // visible, script-free and from a trusted creator, and then did not know its licence.
   //
   // Saying so is the honest verdict, and it is a different verdict.
@@ -172,9 +172,9 @@ export function readiness(res: AttributionResponse): PublishVerdict {
   if (unknown.length > 0) {
     return {
       state: 'unaccounted',
-      title: unknown.length === 1 ? "1 asset Golem cannot account for" : `${unknown.length} assets Golem cannot account for`,
+      title: unknown.length === 1 ? "1 asset Apple cannot account for" : `${unknown.length} assets Apple cannot account for`,
       body:
-        'Golem placed these by Roblox asset id and has no licence record for them. That is '
+        'Apple placed these by Roblox asset id and has no licence record for them. That is '
         + 'not a finding that they cannot be used — it is the absence of one, so nothing here '
         + 'clears them either. Check them yourself before you publish.',
     };

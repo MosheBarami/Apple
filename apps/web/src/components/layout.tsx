@@ -22,7 +22,7 @@ import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
-import { GolemGlyph } from './glyphs';
+import { AppleGlyph } from './glyphs';
 import { Icon, PATH, Popover } from './ws/primitives';
 
 /** How many conversations the rail lists before deferring to "View all chats". */
@@ -149,9 +149,9 @@ function Rail({ name, email, isAdmin }: { name: string | null; email: string; is
       aria-label="Conversations"
     >
       <div className="gx-rail__head">
-        <Link to="/" className="gx-wordmark" aria-label="Golem — home">
-          <GolemGlyph size={28} />
-          <span className="gx-wordmark__text">Golem</span>
+        <Link to="/" className="gx-wordmark" aria-label="Apple — home">
+          <AppleGlyph size={28} />
+          <span className="gx-wordmark__text">Apple</span>
         </Link>
 
         <button

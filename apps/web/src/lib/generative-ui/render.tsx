@@ -1,5 +1,5 @@
 /**
- * Golem generative UI — renderer.
+ * Apple generative UI — renderer.
  *
  * Maps a *validated* document to real React components. Three rules hold
  * everywhere in this file, and the test suite enforces them:
@@ -1056,7 +1056,7 @@ export function GenerativeUIFallback({ errors }: { errors: string[] }) {
     <div className="gu-doc gu-fallback" role="note">
       <p className="gu-fallback-title">This panel could not be displayed</p>
       <p className="gu-fallback-sub">
-        Golem sent an interface that does not match the approved component set, so nothing was rendered. The
+        Apple sent an interface that does not match the approved component set, so nothing was rendered. The
         conversation above is unaffected.
       </p>
       {errors.length > 0 && (

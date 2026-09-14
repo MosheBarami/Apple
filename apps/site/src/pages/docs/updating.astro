@@ -3,14 +3,14 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 ---
 
 <DocsLayout
-  title="Updating the plugin — Golem Docs"
-  description="Roblox never updates Studio plugins for you. How Golem tells you an update exists, how to apply it, and why running an old build is normal rather than broken."
+  title="Updating the plugin — Apple Docs"
+  description="Roblox never updates Studio plugins for you. How Apple tells you an update exists, how to apply it, and why running an old build is normal rather than broken."
   heading="Updating the plugin"
 >
   <p>
     Roblox does not update Studio plugins automatically. There is no silent background update and
     nothing happens on restart — a person has to press a button. That is platform behaviour, not a
-    Golem choice, and it is why this page exists at all.
+    Apple choice, and it is why this page exists at all.
   </p>
 
   <h2>How to update</h2>
@@ -20,7 +20,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
       <strong>Plugin Management</strong>; the <strong>Plugins</strong> tab opens it via
       <strong>Manage Plugins</strong>.
     </li>
-    <li>Find <strong>Golem</strong> and press its <strong>Update</strong> button.</li>
+    <li>Find <strong>Apple</strong> and press its <strong>Update</strong> button.</li>
   </ol>
   <p>
     There is also an <strong>Update all Plugins</strong> button. Roblox staff confirmed in April
@@ -37,7 +37,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <ul>
     <li>
       <strong>An amber line in the panel</strong> when a newer build is published — for example
-      <em>“Golem 0.2.0 is available. Update it in Studio → Plugins → Manage Plugins → Update.”</em>
+      <em>“Apple 0.2.0 is available. Update it in Studio → Plugins → Manage Plugins → Update.”</em>
       It is also written to Studio's Output window <em>once</em> per message, not on every poll.
     </li>
     <li>
@@ -51,7 +51,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>Which build am I on?</h2>
   <p>
-    The Golem panel prints it at the bottom, as <code>Golem v0.2.0 · protocol 1</code>. The web
+    The Apple panel prints it at the bottom, as <code>Apple v0.2.0 · protocol 1</code>. The web
     workspace shows the same version under <strong>Studio</strong> in the project rail once the
     plugin has reported in. What changed between builds is on the
     <a href="/changelog">changelog</a>.
@@ -64,7 +64,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>Running an old build is fine</h2>
   <p>
-    Golem's server decides whether to talk to a plugin by <em>protocol</em>, never by version. A
+    Apple's server decides whether to talk to a plugin by <em>protocol</em>, never by version. A
     plugin several releases behind is served normally as long as it still speaks a contract the
     server supports — and today the server supports every protocol that has ever shipped, so nothing
     in the wild is refused.
