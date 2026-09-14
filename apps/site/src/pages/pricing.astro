@@ -1,11 +1,20 @@
 ---
+import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, buildsPerMonth, SPARKS_PER_BUILD } from '@golem/shared';
+
+// THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
+// cards, so the marketing site and the thing enforcing the quota could drift apart — and they had:
+// this page still advertised a waitlist tier at a daily figure no plan grants, under a name that
+// under that name or that number. scripts/check-offer.mjs is what caught it, and reading from
+// PLAN_LIMITS is what stops it recurring.
+const free = PLAN_LIMITS.free;
+const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import Base from '../layouts/Base.astro';
 import SparkMeter from '../components/SparkMeter.astro';
 import FAQ from '../components/FAQ.astro';
 
 // Figures come from docs/COST-MODEL.md through the SAME arithmetic the worker uses,
 // `sparksForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
-// Free 60 sparks/day (900/month) · Pro (designed, waitlist) 400/day (6,000/month)
+// Allowances themselves are read from PLAN_LIMITS above, never restated here.
 //
 //   Plan         37-43 neurons -> ceil(43/30)  =  2 sparks
 //   Agent        111 neurons   -> ceil(111/30) =  4 sparks  (targeted edit + read-back verify)
@@ -16,10 +25,10 @@ import FAQ from '../components/FAQ.astro';
 // specialist identities, not user-facing brands: nothing in normal product UI should
 // name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
 //
-// Plan was published as 1 spark, and 60 requests a free day. It is 2 and 30. Agent and
+// Plan was published as 1 spark and a request count computed from it. It is 2. Agent and
 // Super Agent were both right, which is what makes the Plan figure an arithmetic slip
 // rather than a different model of pricing: whoever wrote them divided correctly.
-// "≈ requests / free day" is simply 60 ÷ cost.
+// "≈ requests / free day" is simply the free daily allowance divided by cost.
 const modeRows = [
   {
     mode: 'Plan',
@@ -54,7 +63,7 @@ const limitFaq = [
   },
   {
     q: 'Why is there a limit at all?',
-    a: `<p>Apple runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest 60 Sparks every day than an unlimited plan with an asterisk.</p>`,
+    a: `<p>Apple runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest daily allowance than an unlimited plan with an asterisk.</p>`,
   },
   {
     q: 'Do unused Sparks roll over?',
@@ -77,7 +86,7 @@ const limitFaq = [
 
 <Base
   title="Pricing — Apple"
-  description="Apple is free: 60 Sparks a day, all three modes, unlimited projects, checkpoints included. Pro is designed — 400 Sparks/day and a priority queue — and is on the waitlist. No card is needed to start."
+  description={`Apple is free: ${free.sparksPerDay} Sparks a day, all three modes, unlimited projects, checkpoints included. Builder and Studio add more. No card is needed to start.`}
 >
   <!-- ==================================================== head -->
   <section class="section phead is-ember" aria-labelledby="pricing-title">
@@ -98,7 +107,8 @@ const limitFaq = [
             <p class="plan__price"><span>$0</span> forever</p>
           </header>
           <ul class="plan__list">
-            <li><strong>60 Sparks</strong> per day · 900 a month</li>
+            <li><strong>{free.sparksPerDay.toLocaleString()} Sparks</strong> per day · {free.sparksPerMonth.toLocaleString()} a month</li>
+            <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
             <li>All three modes — Plan, Agent, Super Agent</li>
             <li>Unlimited projects</li>
             <li>Checkpoints &amp; rollback</li>
@@ -110,31 +120,40 @@ const limitFaq = [
           </p>
         </article>
 
-        <article
-          class="plan slab slab--seam is-rune"
-          aria-labelledby="plan-pro"
-          data-reveal
-          data-reveal-delay="110"
-        >
-          <span class="plan__flag mono">Not launched</span>
-          <header class="plan__head">
-            <h2 id="plan-pro">Pro</h2>
-            <p class="plan__price plan__price--soft">
-              <span>Waitlist</span> price not final
-            </p>
-          </header>
-          <ul class="plan__list">
-            <li><strong>400 Sparks</strong> per day · 6,000 a month</li>
-            <li>Priority queue — your apple goes first</li>
-            <li>Extended checkpoint history</li>
-            <li>Everything in Free</li>
-          </ul>
-          <a href="/app/usage" class="btn btn-ghost plan__cta">Join the waitlist</a>
-          <p class="plan__note">
-            Nothing is charged today, and no card is stored. When Pro opens, its price will be
-            on this page before anyone is asked for one.
-          </p>
-        </article>
+        {
+          paid.map((id, i) => (
+            <article
+              class={`plan slab slab--seam${i === 0 ? ' is-rune' : ''}`}
+              aria-labelledby={`plan-${id}`}
+              data-reveal
+              data-reveal-delay={110 + i * 60}
+            >
+              <header class="plan__head">
+                <h2 id={`plan-${id}`}>{PLAN_COPY[id].name}</h2>
+                <p class="plan__price">
+                  <span>${PLAN_COPY[id].priceUsdMonthly}</span> a month
+                </p>
+              </header>
+              <ul class="plan__list">
+                <li>
+                  <strong>{PLAN_LIMITS[id].sparksPerDay.toLocaleString()} Sparks</strong> per day ·{' '}
+                  {PLAN_LIMITS[id].sparksPerMonth.toLocaleString()} a month
+                </li>
+                <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
+                {PLAN_COPY[id].highlights.map((h) => (
+                  <li>{h}</li>
+                ))}
+              </ul>
+              <a href="/app/usage" class="btn btn-ghost plan__cta">Choose {PLAN_COPY[id].name}</a>
+            </article>
+          ))
+        }
+
+        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+          One build costs about {SPARKS_PER_BUILD} Sparks, so every figure above is also a number of
+          builds — which is the only form of it anyone can act on. These are the same limits the
+          service enforces; this page reads them rather than restating them.
+        </p>
       </div>
     </div>
   </section>
@@ -148,7 +167,7 @@ const limitFaq = [
           Work out your own day
         </h2>
         <p class="lede lede-wide" data-reveal>
-          Rather than guessing whether "60 Sparks" is a lot, set the sliders to
+          Rather than guessing whether a day’s allowance is a lot, set the sliders to
           how you actually build. Whichever limit binds first is the one that
           applies.
         </p>

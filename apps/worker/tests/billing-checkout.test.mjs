@@ -33,12 +33,12 @@ rmSync(out, { force: true });
 const LIVE = {
   STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_SECRET_KEY: 'sk_test_x',
-  STRIPE_PRICE_PRO: 'price_pro_1',
-  STRIPE_PRICE_TEAM: 'price_team_1',
+  STRIPE_PRICE_BUILDER: 'price_builder_1',
+  STRIPE_PRICE_STUDIO: 'price_studio_1',
 };
 const RETURN_TO = 'https://golem.example/app/usage';
 const build = (env, over = {}) =>
-  B.buildCheckoutRequest(env, { userId: 'u_1', email: 'a@b.c', plan: 'pro', returnTo: RETURN_TO, ...over });
+  B.buildCheckoutRequest(env, { userId: 'u_1', email: 'a@b.c', plan: 'builder', returnTo: RETURN_TO, ...over });
 const params = (r) => new URLSearchParams(r.body);
 
 // --- what it refuses -----------------------------------------------------------------------
@@ -74,9 +74,9 @@ test('enterprise cannot be bought, by design rather than by omission', () => {
 });
 
 test('a tier whose price is not configured is refused, not sent with an empty price', () => {
-  const partial = { ...LIVE, STRIPE_PRICE_TEAM: '   ' };
-  assert.equal(B.priceIdFor(partial, 'team'), null, 'whitespace is not a price id');
-  const r = B.buildCheckoutRequest(partial, { userId: 'u_1', plan: 'team', returnTo: RETURN_TO });
+  const partial = { ...LIVE, STRIPE_PRICE_STUDIO: '   ' };
+  assert.equal(B.priceIdFor(partial, 'studio'), null, 'whitespace is not a price id');
+  const r = B.buildCheckoutRequest(partial, { userId: 'u_1', plan: 'studio', returnTo: RETURN_TO });
   assert.equal(r.ok, false);
   assert.equal(r.status, 400);
 });
@@ -90,12 +90,12 @@ test('a session with no user is refused', () => {
 
 test('the request names the configured price for the plan asked for', () => {
   const pro = params(build(LIVE));
-  assert.equal(pro.get('line_items[0][price]'), 'price_pro_1');
+  assert.equal(pro.get('line_items[0][price]'), 'price_builder_1');
   assert.equal(pro.get('mode'), 'subscription');
   assert.equal(pro.get('line_items[0][quantity]'), '1');
 
-  const team = params(build(LIVE, { plan: 'team' }));
-  assert.equal(team.get('line_items[0][price]'), 'price_team_1', 'each tier gets its own price');
+  const studio = params(build(LIVE, { plan: 'studio' }));
+  assert.equal(studio.get('line_items[0][price]'), 'price_studio_1', 'each tier gets its own price');
 });
 
 test('THE RETURN URLS ARE OURS, and say which outcome they represent', () => {
@@ -124,7 +124,7 @@ test('THE METADATA THE WEBHOOK READS IS THE METADATA THE CHECKOUT SETS', () => {
       status: 'active',
       current_period_end: 4102444800,
       cancel_at_period_end: false,
-      items: { data: [{ price: { id: 'price_pro_1' } }] },
+      items: { data: [{ price: { id: 'price_builder_1' } }] },
     } },
   };
   const outcome = B.interpretStripeEvent(event);

@@ -347,3 +347,85 @@ step" now reads as two things.
 **Recorded late, on purpose.** The decision predates this entry by some margin. Writing it down
 now rather than leaving ADR-001 standing is the point: a decision log that contradicts the shipped
 product is worse than one with a gap, because it is read as current.
+
+---
+
+## ADR-00X — Plans, prices and allowances: Free / Builder / Studio
+
+**Date.** 2026-09-14
+
+**Owner statement.** Moshe, in session, with a design attached:
+
+> "merge everything and choose whatever on that pricing and add this design i want:
+> https://claude.ai/artifact/NP6vVjzimxVYzKQ4AmUcfs"
+
+That artifact's own pricing section states, verbatim:
+
+> Pricing — Credits, not seats.
+> Free — $0 — 2,000 credits to start. Apple model only.
+> Builder — Popular — $12 /mo — 40,000 credits a month. Both models, including MAX.
+> Studio — $40 /mo — 160,000 credits, shared across your team's places.
+
+**Decision.** The plan set becomes **free / builder / studio / enterprise**, at the owner's prices
+of **$0 / $12 / $40 / negotiated**. `pro` and `team` are gone as ids and as names.
+
+Allowances are NOT the artifact's credit figures, and this is the part that needed deciding rather
+than transcribing:
+
+| plan | per day | per month | builds/month | costs to serve | price |
+|---|---|---|---|---|---|
+| free | 231 | 2,310 | 30 | $0.76 | $0 |
+| builder | 416 | 12,600 | 163 | $4.16 | $12 |
+| studio | 700 | 21,000 | 272 | $6.93 | $40 |
+| enterprise | 833 | 25,000 | 324 | $8.25 | negotiated |
+
+**Why not the artifact's numbers.** The binding constraint is `DAILY_NEURON_CEILING` — 25,000
+neurons a day, which is 833 Sparks, which is **about 11 quality-gated builds a day for every user
+combined**. At 1 credit = 1 Spark, the artifact's Builder tier alone wants 40,000 a month, or 519
+builds; the whole service makes 329. One customer would need more than everything there is.
+
+So three of the four old rows were promises the service could not keep, and had been for as long as
+they existed: team granted 1,500/day and enterprise 6,000/day against a service ceiling of 833, and
+free granted 60/day against a build that costs 77 — a trial that could not finish one job. Those
+were never pricing mistakes. They were arithmetic nobody had done.
+
+**What this does not decide, and why.** Raising the ceiling is the owner's bill, so it is not made
+here. §12.5 puts price points in the owner's hands, and BudgetDO is not one safety net among
+several — AI Gateway runs on Standard billing with uncapped overage, so it is the only one. Raising
+it is the single change in this repository that can cost real money while every test stays green.
+See OWNER-HANDOFF for what each tier would cost to actually fill.
+
+**Consequence.** `scripts/check-offer.mjs` reports OFFER COHERENT for the first time. The marketing
+site, the docs and the app now READ `PLAN_LIMITS` instead of restating it — pricing.astro,
+sparks-and-limits.astro and SparkMeter.astro all had typed-in figures, and the site was still
+advertising a Pro waitlist at 400 Sparks a day for a tier that no longer exists under that name or
+that number.
+
+---
+
+## ADR-00Y — Visual direction: deep blue, Archivo over Figtree
+
+**Date.** 2026-09-14
+
+**Owner statement.** The same message, with the same artifact:
+
+> "add this design i want: https://claude.ai/artifact/NP6vVjzimxVYzKQ4AmUcfs ... and use claude
+> design for everything needed and custom brand assets"
+
+**Decision.** The public face moves to the artifact's direction:
+
+- ground `#080a0f`, a blue radial hero `#1f5fd0 → #123a8a → #0b1733 → #080a0f`
+- accents `#2f7dff` and `#6fa8ff`, with `#38b6ff` and `#8b5cf6` as secondary
+- text `#f3f5f9`, muted `#8d95a8`, hairlines `rgba(255,255,255,0.055)`
+- display type **Archivo**, 800 weight, `font-stretch: 118%`, uppercase, `letter-spacing: -0.022em`
+- body **Figtree**, mono **Geist Mono**
+
+**THIS REVERSES A RECORDED DECISION.** The direction previously on file is minimal cinematic
+charcoal stone — warm near-black `#0b0a09` with an ember accent. Deep blue with condensed uppercase
+display type is a different product's face, and that is the owner's call to make. It is written
+down because the failure mode otherwise is specific and has already happened twice in miniature
+this week: the next agent reads the old entry, finds the site contradicting it, and "fixes" the
+site back.
+
+**Scope.** `apps/site` — the public marketing surface. The signed-in app keeps its own palette for
+now; a half-migrated app is worse than either whole direction.

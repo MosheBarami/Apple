@@ -218,8 +218,8 @@ export function billingConfigured(env: Env): boolean {
 /** Per-environment Stripe configuration. Absent everywhere until billing is switched on. */
 interface CheckoutEnv {
   STRIPE_SECRET_KEY?: string;
-  STRIPE_PRICE_PRO?: string;
-  STRIPE_PRICE_TEAM?: string;
+  STRIPE_PRICE_BUILDER?: string;
+  STRIPE_PRICE_STUDIO?: string;
 }
 
 /**
@@ -230,8 +230,8 @@ interface CheckoutEnv {
  */
 export function priceIdFor(env: Env, plan: PlanId): string | null {
   const e = env as unknown as CheckoutEnv;
-  if (plan === 'pro') return e.STRIPE_PRICE_PRO?.trim() || null;
-  if (plan === 'team') return e.STRIPE_PRICE_TEAM?.trim() || null;
+  if (plan === 'builder') return e.STRIPE_PRICE_BUILDER?.trim() || null;
+  if (plan === 'studio') return e.STRIPE_PRICE_STUDIO?.trim() || null;
   return null;
 }
 

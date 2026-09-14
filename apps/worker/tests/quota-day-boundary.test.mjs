@@ -138,11 +138,18 @@ test('month ends and leap days roll like any other boundary', () => {
 });
 
 test('the monthly cap can bite before the daily one, and says so', () => {
-  // Free is 60/day and 900/month, so a heavy month runs out of month before it runs out of day.
+  // Derived from the table, not typed: this spent "60 a day for 15 days = 900" against figures the
+  // repricing moved. The PROPERTY is that a month can run out before a day does, which holds at any
+  // numbers where the monthly allowance is less than a full month of daily ones.
+  const perDay = PLAN_LIMITS.free.sparksPerDay;
+  const perMonth = PLAN_LIMITS.free.sparksPerMonth;
+  const days = Math.floor(perMonth / perDay);
+  assert.ok(days >= 2 && days < 28, `free is ${perDay}/day and ${perMonth}/month — this test needs a month shorter than a month of days`);
+
   const l = ledger();
-  for (let d = 1; d <= 15; d++) l.spend(at(`2026-09-${String(d).padStart(2, '0')}T12:00:00.000Z`), 60);
-  const s = stateAt(l, at('2026-09-16T00:00:01.000Z'));
-  assert.equal(s.sparksUsedThisMonth, 900);
+  for (let d = 1; d <= days; d++) l.spend(at(`2026-09-${String(d).padStart(2, '0')}T12:00:00.000Z`), perDay);
+  const s = stateAt(l, at(`2026-09-${String(days + 1).padStart(2, '0')}T00:00:01.000Z`));
+  assert.equal(s.sparksUsedThisMonth, days * perDay);
   assert.equal(s.allowanceRemaining, 0, 'the month is spent even though the day is fresh');
   assert.equal(s.sparksUsedToday, 0, 'and the day genuinely is fresh — the two are reported separately');
 });

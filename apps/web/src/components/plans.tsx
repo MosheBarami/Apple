@@ -6,7 +6,7 @@
 // Everything here reads from PLAN_LIMITS and PLAN_COPY in @golem/shared, which is the same table
 // QuotaDO applies, so the two cannot drift apart again.
 //
-// The allowance is stated in BUILDS as well as Sparks. "6,000 Sparks a month" means nothing on
+// The allowance is stated in BUILDS as well as Sparks. A five-figure Spark count means nothing on
 // first read; "about 78 builds" is the sentence someone can act on. The conversion is measured,
 // not marketing: a quality-gated build is ~2,300 neurons, and it is floored, because a rounded-up
 // figure is a promise the allowance cannot keep.
@@ -84,7 +84,8 @@ export function PlanLadder({
 
             {/*
               "UP TO 0 BUILDS A DAY" IS WHAT THIS RENDERED FOR FREE.
-              60 Sparks a day and a quality-gated build costs 77, so buildsPerDay floors to zero and
+              The free tier's daily allowance once sat below the cost of one quality-gated build, so
+              buildsPerDay floored to zero and
               the pricing page advertised the tier as affording none. usage-meter-model.ts already
               made this call for the meter — it withholds the builds hint below one whole build,
               because "0 builds" reads as a fault in the account rather than as a remainder smaller

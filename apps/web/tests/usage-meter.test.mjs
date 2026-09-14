@@ -142,15 +142,22 @@ test('a missing or malformed quota is unknown, never good and never bad', () => 
 // --- the rest ---------------------------------------------------------------------------
 
 test('the bar fills against the plan total and is clamped', () => {
-  assert.equal(meterView(quota({ allowanceRemaining: 30, plan: 'free' }), NOW).allowanceFraction, 0.5);
+  // The RELATIONSHIP is asserted, not a round number. This said 0.5 against a fixture of 30-of-60,
+  // so the literal was a second copy of an allowance — the one thing rule 1 of this component
+  // forbids, in the test written to enforce it. And free is 231 a day, which is three whole builds
+  // and therefore odd, so "half" does not land on a tidy fraction anyway.
+  const total = PLAN_LIMITS.free.sparksPerDay;
+  const some = Math.floor(total / 2);
+  assert.equal(meterView(quota({ allowanceRemaining: some, plan: 'free' }), NOW).allowanceFraction, some / total);
   assert.equal(meterView(quota({ allowanceRemaining: 999, plan: 'free' }), NOW).allowanceFraction, 1,
     'more than the allowance must not overflow the bar');
   assert.equal(meterView(quota({ allowanceRemaining: 0, credits: 0 }), NOW).allowanceFraction, 0);
 });
 
 test('running low is warned before it is spent', () => {
-  assert.equal(meterView(quota({ allowanceRemaining: 40 }), NOW).tone, 'good');
-  assert.equal(meterView(quota({ allowanceRemaining: 5 }), NOW).tone, 'warn', '5 of 60 is low');
+  assert.equal(meterView(quota({ allowanceRemaining: Math.floor(PLAN_LIMITS.free.sparksPerDay * 0.7) }), NOW).tone, 'good');
+  assert.equal(meterView(quota({ allowanceRemaining: Math.floor(PLAN_LIMITS.free.sparksPerDay * 0.08) }), NOW).tone,
+    'warn', 'under a tenth of the allowance is low');
   assert.equal(meterView(quota({ allowanceRemaining: 1 }), NOW).tone, 'warn');
 });
 

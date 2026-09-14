@@ -11,14 +11,13 @@ Regenerated every pass. Last regenerated: **pass 2**.
 
 ---
 
-## OH-1 · The free plan cannot complete a single build
+## OH-1 · ~~The free plan cannot complete a single build~~ — CLOSED 2026-09-14
 
-**The action.** Decide the free tier's daily Spark allowance, and either raise it to at least one
-whole build or accept that free users cannot finish one.
+**Closed by.** The owner's "choose whatever on that pricing" in session on 2026-09-14, recorded
+with his exact words in `docs/DECISIONS.md`. Free is now 231 Sparks a day — three whole builds —
+and 2,310 a month.
 
-**Approve-by test.** `node scripts/check-offer.mjs` — takes under five seconds.
-
-**Output that means done.** The line beginning `BROKEN: the free plan grants` no longer appears.
+**Verified.** `node scripts/check-offer.mjs` prints `ok  free: 231 Sparks/day affords 3 build(s)`.
 
 **Measured this pass (2026-09-14, UTC):**
 
@@ -45,14 +44,50 @@ allowance is still your call, because the two have different bills.
 
 ---
 
-## OH-2 · Two plans promise more per day than the service can serve
+## OH-2 · ~~Two plans promise more per day than the service can serve~~ — CLOSED 2026-09-14
 
-**The action.** Either raise `BILLABLE_NEURONS_PER_DAY` in `apps/worker/src/pricing.ts` — which
-raises your maximum monthly bill — or lower the Team and Enterprise daily allowances.
+**Closed by.** Lowering the allowances, not raising the bill. Team and Enterprise are gone; the
+plan set is free / builder / studio / enterprise and every row is under the 833 Sparks/day the
+service can actually serve. See `docs/DECISIONS.md`.
 
-**Approve-by test.** `node scripts/check-offer.mjs`
+---
 
-**Output that means done.** No line beginning `BROKEN: team grants` or `BROKEN: enterprise grants`.
+## OH-9 · The budget supports a hobby; the plans describe a business
+
+**This is the one decision only you can make, and it is the successor to OH-2.**
+
+`BILLABLE_NEURONS_PER_DAY` is 15,000, sized in its own comment to cap your AI bill at about
+**$5.02 a month**. With the free 10,000/day Cloudflare allocation that is 25,000 neurons a day:
+
+  833 Sparks a day · 25,323 a month · **about 329 quality-gated builds a month, for every user
+  combined.**
+
+The plans now fit inside that, so nothing is broken. But it means the service can carry roughly
+**one** paying Builder customer before free users start being turned away, because that customer's
+12,600 Sparks is half of everything there is.
+
+What each tier would cost you to actually FILL, at $0.00033 a Spark:
+
+| tier | Sparks/month | cost to serve one customer | price | margin |
+|---|---|---|---|---|
+| free | 2,310 | $0.76 | $0 | — (acquisition) |
+| builder | 12,600 | $4.16 | $12 | 2.9× |
+| studio | 21,000 | $6.93 | $40 | 5.8× |
+
+Ten Builder customers is $41.60/month of AI against $120 of revenue — profitable, but it needs
+`BILLABLE_NEURONS_PER_DAY` at roughly **126,000**, which is 8.4× today's ceiling.
+
+**Why I did not do it.** It is your money, and BudgetDO is not one safety net among several: AI
+Gateway is on Standard billing with uncapped overage, so this ceiling is the only thing between a
+runaway loop and a real bill. It is the single change in this repository that can cost money while
+every test stays green.
+
+**The action.** Decide the maximum monthly AI spend you will accept, and set
+`BILLABLE_NEURONS_PER_DAY = (that number in dollars) / 0.011 × 1000 / 30.4`.
+
+**Approve-by test.** `node scripts/check-offer.mjs` stays coherent at any ceiling — this is not a
+correctness question, it is a capacity one. The number to watch is how many customers you can
+serve, which is `DAILY_NEURON_CEILING / 30 / (a plan's sparksPerDay)`.
 
 **Measured this pass (2026-09-14, UTC):**
 

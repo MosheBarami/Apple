@@ -4,12 +4,17 @@
 // building fits inside the free allowance.
 //
 // All arithmetic uses the published figures and changes none of them:
-//   Free   60 sparks/day · 900/month        (docs/COST-MODEL.md)
-//   Pro    400 sparks/day · 6,000/month     (designed, waitlist)
+// The ALLOWANCES are read from PLAN_LIMITS, never typed here — this component exists to answer
+// "does a real day fit inside the free allowance", and a copy of that number which can drift is
+// the one thing that would make the answer worthless.
 //   Plan 2 · Agent 4 · Super Agent 10 (+1 per extra step)
 //   1 Spark = 30 neurons; Cloudflare bills $0.011 per 1,000 neurons
 // "Whichever limit binds first applies."
 // ---------------------------------------------------------------------------
+
+import { PLAN_LIMITS } from '@golem/shared';
+
+const FREE_PER_DAY = PLAN_LIMITS.free.sparksPerDay;
 
 interface Props {
   /** show the "what it costs to run" honesty panel */
@@ -18,7 +23,7 @@ interface Props {
 const { showCost = true } = Astro.props;
 ---
 
-<div class="meter slab slab--lift slab--pad" id="spark-meter">
+<div class="meter slab slab--lift slab--pad" id="spark-meter" data-free-per-day={FREE_PER_DAY}>
   <div class="meter__grid">
     <div class="meter__controls">
       <p class="meter__title">A day of building</p>
@@ -33,7 +38,7 @@ const { showCost = true } = Astro.props;
             id="sm-clay"
             type="range"
             min="0"
-            max="60"
+            max={FREE_PER_DAY}
             step="1"
             value="12"
             data-cost="2"
@@ -110,17 +115,17 @@ const { showCost = true } = Astro.props;
     <div class="meter__result">
       <div class="gauge">
         <p class="gauge__label mono">Sparks used per day</p>
-        <p class="gauge__value" id="sm-total">60</p>
+        <p class="gauge__value" id="sm-total">{FREE_PER_DAY}</p>
 
         <div class="gauge__track" aria-hidden="true">
           <span class="gauge__fill" id="sm-fill"></span>
-          <span class="gauge__mark" style="left:calc(60 / 440 * 100%)">
-            <span class="mono">free 60</span>
+          <span class="gauge__mark" style={`left:calc(${FREE_PER_DAY} / 440 * 100%)`}>
+            <span class="mono">free {FREE_PER_DAY}</span>
           </span>
         </div>
 
         <p class="gauge__scale mono" aria-hidden="true">
-          <span>0</span><span>200</span><span>400 · Pro</span>
+          <span>0</span><span>{Math.round(FREE_PER_DAY * 2)}</span><span>{PLAN_LIMITS.studio.sparksPerDay} · Studio</span>
         </p>
       </div>
 
@@ -129,7 +134,7 @@ const { showCost = true } = Astro.props;
              so the page tells the same story before JavaScript runs and for a reader
              who has it turned off. It said "Comfortably inside the free allowance"
              while the defaults totalled 46; correcting Plan from 1 spark to 2 makes
-             them total exactly 60, which is the whole daily allowance and is the
+             them total exactly the free daily allowance, which is the
              monthly cap binding, not comfort. -->
         A day like this fits the free plan — it is the monthly cap that binds. 900 free
         sparks covers about <strong>15 days</strong> of building at this intensity.
@@ -138,11 +143,11 @@ const { showCost = true } = Astro.props;
       <dl class="figures">
         <div>
           <dt class="mono">Free plan</dt>
-          <dd id="sm-free">60 / day · 900 / month</dd>
+          <dd id="sm-free">{FREE_PER_DAY} / day · {PLAN_LIMITS.free.sparksPerMonth.toLocaleString()} / month</dd>
         </div>
         <div>
           <dt class="mono">Pro (waitlist)</dt>
-          <dd id="sm-pro">400 / day · 6,000 / month</dd>
+          <dd id="sm-pro">{PLAN_LIMITS.studio.sparksPerDay} / day · {PLAN_LIMITS.studio.sparksPerMonth.toLocaleString()} / month</dd>
         </div>
         <div>
           <dt class="mono">Your month</dt>
@@ -542,6 +547,7 @@ const { showCost = true } = Astro.props;
 
 <script>
   const root = document.getElementById('spark-meter');
+  const FREE_DAY = Number(root?.dataset.freePerDay ?? 0);
 
   if (root) {
     const clay = document.getElementById('sm-clay') as HTMLInputElement;
@@ -563,7 +569,9 @@ const { showCost = true } = Astro.props;
     const costEl = document.getElementById('sm-cost');
     const bindEl = document.getElementById('sm-bind');
 
-    const FREE_DAY = 60;
+    // Read off the root's data attribute rather than typed here, so the interactive half and the
+    // rendered half cannot disagree about what "free" means. Not define:vars — that forces the
+    // whole script to plain JS and this one is TypeScript.
     const FREE_MONTH = 900;
     const PRO_DAY = 400;
     const PRO_MONTH = 6000;

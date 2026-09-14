@@ -80,7 +80,7 @@ export interface BillingConfig {
 
 export const fetchBillingConfig = (): Promise<BillingConfig> =>
   MOCK_MODE
-    ? Promise.resolve({ checkout: true, purchasable: ['pro', 'team'] as PlanId[] })
+    ? Promise.resolve({ checkout: true, purchasable: ['builder', 'studio'] as PlanId[] })
     : request<BillingConfig>('/api/billing/config');
 
 export const startCheckout = (plan: PlanId): Promise<{ url: string }> =>

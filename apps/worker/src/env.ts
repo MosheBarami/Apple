@@ -32,8 +32,8 @@ export interface Env {
    * and a live one are different objects. Free has no price and Enterprise is a conversation, so
    * neither has an entry — a checkout for either is a bug rather than a missing variable.
    */
-  STRIPE_PRICE_PRO?: string;
-  STRIPE_PRICE_TEAM?: string;
+  STRIPE_PRICE_BUILDER?: string;
+  STRIPE_PRICE_STUDIO?: string;
   /**
    * Open Cloud key, scope `creator-store-product:read`, free from
    * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to

@@ -174,16 +174,28 @@ test('NO TIER IS ADVERTISED AS AFFORDING ZERO BUILDS A DAY', () => {
     'a tier that cannot afford a daily build should state the two numbers instead');
 });
 
-test('the figures the ladder prints are the enforced ones, for every tier', async () => {
-  // Reading them through the same table the server applies, so a tier whose numbers change is
-  // caught here rather than on the pricing page.
-  const zeroBuildTiers = PLAN_IDS.filter((p) => Math.floor(PLAN_LIMITS[p].sparksPerDay / SPARKS_PER_BUILD) < 1);
-  // Free is currently such a tier. The test does not assert WHICH tiers are — that is a pricing
-  // decision — only that the ladder has a branch for them, which the previous test pins.
-  assert.ok(zeroBuildTiers.length >= 1,
-    'if no tier floors to zero any more, the conditional branch above is dead and should go');
+test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
+  // This test used to say the opposite. It asserted that SOME tier floors to zero builds, as a
+  // tripwire: "if no tier floors to zero any more, the conditional branch above is dead and should
+  // go". The repricing on 2026-09-14 tripped it, which is the tripwire working — free went from 60
+  // Sparks a day against a 77-Spark build to 231, exactly three builds.
+  //
+  // The branch STAYS, and the assertion is inverted rather than deleted. A pricing page printing
+  // "up to 0 builds a day" is a specific, public embarrassment, the branch costs four lines, and
+  // check-offer's rule 3 only guarantees the FREE tier clears one build — nothing stops a future
+  // paid tier being set below it. What changes is that the healthy state is now asserted as the
+  // expectation instead of the exception.
   for (const p of PLAN_IDS) {
     assert.ok(Number.isFinite(PLAN_LIMITS[p].sparksPerDay), `${p} has no daily allowance`);
     assert.ok(Number.isFinite(PLAN_LIMITS[p].sparksPerMonth), `${p} has no monthly allowance`);
+    assert.ok(
+      PLAN_LIMITS[p].sparksPerMonth <= PLAN_LIMITS[p].sparksPerDay * 31,
+      `${p} grants a month nobody can reach at its daily rate`,
+    );
+    assert.ok(
+      Math.floor(PLAN_LIMITS[p].sparksPerDay / SPARKS_PER_BUILD) >= 1,
+      `${p} grants ${PLAN_LIMITS[p].sparksPerDay} Sparks a day and a build costs ${SPARKS_PER_BUILD} — ` +
+        'it would advertise itself as affording no builds',
+    );
   }
 });

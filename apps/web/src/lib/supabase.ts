@@ -17,7 +17,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 export interface ProfileRow {
   id: string;
   display_name: string | null;
-  plan: 'free' | 'pro';
+  plan: 'free' | 'builder';
   is_admin: boolean;
   training_opt_in: boolean;
 }

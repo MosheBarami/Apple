@@ -74,9 +74,9 @@ test('a missing or malformed header is refused, never treated as absent-therefor
 // -------------------------------------------------------------- entitlement ---
 
 test('only entitling statuses grant a plan', () => {
-  const base = { ...B.FREE_SUBSCRIPTION, plan: 'pro', currentPeriodEnd: null };
+  const base = { ...B.FREE_SUBSCRIPTION, plan: 'builder', currentPeriodEnd: null };
   for (const status of ['active', 'trialing', 'past_due']) {
-    assert.equal(B.entitlementFor({ ...base, status }), 'pro', status);
+    assert.equal(B.entitlementFor({ ...base, status }), 'builder', status);
   }
   for (const status of ['canceled', 'unpaid', 'incomplete', 'incomplete_expired', 'paused']) {
     assert.equal(B.entitlementFor({ ...base, status }), 'free', status);
@@ -86,12 +86,12 @@ test('only entitling statuses grant a plan', () => {
 test('past_due still entitles — a failed renewal is usually an expired card', () => {
   // Cutting a paying customer off at the first retry is hostile and hurts recovery. Stripe moves
   // to canceled/unpaid when it actually gives up, and those do not entitle (asserted above).
-  assert.equal(B.entitlementFor({ ...B.FREE_SUBSCRIPTION, plan: 'team', status: 'past_due' }), 'team');
+  assert.equal(B.entitlementFor({ ...B.FREE_SUBSCRIPTION, plan: 'studio', status: 'past_due' }), 'studio');
 });
 
 test('a lapsed period never entitles, whatever the status says', () => {
-  const sub = { ...B.FREE_SUBSCRIPTION, plan: 'pro', status: 'active', currentPeriodEnd: 1_000 };
-  assert.equal(B.entitlementFor(sub, 999), 'pro', 'inside the period');
+  const sub = { ...B.FREE_SUBSCRIPTION, plan: 'builder', status: 'active', currentPeriodEnd: 1_000 };
+  assert.equal(B.entitlementFor(sub, 999), 'builder', 'inside the period');
   assert.equal(B.entitlementFor(sub, 1_001), 'free', 'past the period');
 });
 
@@ -101,10 +101,10 @@ test('a subscription event maps to a plan, keyed on metadata.userId', () => {
   const r = B.interpretStripeEvent({
     type: 'customer.subscription.updated',
     data: { object: { id: 'sub_1', customer: 'cus_1', status: 'active', current_period_end: 123,
-                      cancel_at_period_end: false, metadata: { userId: 'u1', plan: 'pro' } } },
+                      cancel_at_period_end: false, metadata: { userId: 'u1', plan: 'builder' } } },
   });
   assert.equal(r.userId, 'u1');
-  assert.equal(r.subscription.plan, 'pro');
+  assert.equal(r.subscription.plan, 'builder');
   assert.equal(r.subscription.subscriptionId, 'sub_1');
 });
 
@@ -112,7 +112,7 @@ test('a subscription with no userId is ignored loudly, never guessed', () => {
   // Attaching a plan to the wrong account is worse than attaching it to none.
   const r = B.interpretStripeEvent({
     type: 'customer.subscription.created',
-    data: { object: { id: 'sub_1', status: 'active', metadata: { plan: 'pro' } } },
+    data: { object: { id: 'sub_1', status: 'active', metadata: { plan: 'builder' } } },
   });
   assert.equal(r.userId, null);
   assert.match(r.ignored, /metadata\.userId/);
@@ -130,7 +130,7 @@ test('an unknown plan id falls back to free rather than granting something inven
 test('deletion lapses to free even when metadata still names a paid plan', () => {
   const r = B.interpretStripeEvent({
     type: 'customer.subscription.deleted',
-    data: { object: { id: 's', status: 'active', metadata: { userId: 'u1', plan: 'team' } } },
+    data: { object: { id: 's', status: 'active', metadata: { userId: 'u1', plan: 'studio' } } },
   });
   assert.equal(r.subscription.plan, 'free');
   assert.equal(r.subscription.status, 'canceled');

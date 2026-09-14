@@ -634,7 +634,7 @@ export interface QuotaState {
   sparksUsedToday: number;
   sparksUsedThisMonth: number;
   resetsAtIso: string;
-  plan: 'free' | 'pro' | 'team' | 'enterprise';
+  plan: 'free' | 'builder' | 'studio' | 'enterprise';
   /**
    * The renewable part of `sparksRemaining`, reported separately because "you have 0 left today"
    * and "you have 0 left at all" are different sentences and the UI must be able to tell them apart.
@@ -957,10 +957,24 @@ export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
 // more if you need it" expressible without either one quietly subsidising the other.
 
 export const PLAN_LIMITS = {
-  free: { sparksPerDay: 60, sparksPerMonth: 900 },
-  pro: { sparksPerDay: 400, sparksPerMonth: 6_000 },
-  team: { sparksPerDay: 1_500, sparksPerMonth: 30_000 },
-  enterprise: { sparksPerDay: 6_000, sparksPerMonth: 150_000 },
+  // SET AGAINST WHAT THE SERVICE CAN ACTUALLY SERVE, not against what the prices could afford.
+  //
+  // The binding number is DAILY_NEURON_CEILING: 25,000 neurons a day is 833 Sparks a day, which is
+  // about 11 quality-gated builds a day for EVERY user combined. Three of the four old rows were
+  // promises against that: team granted 1,500/day and enterprise 6,000/day, so a single customer
+  // on either could exhaust the day for everyone, and free granted 60/day against a 77-Spark
+  // build, so the trial could not finish one job. Those are not pricing mistakes, they are
+  // arithmetic that was never done.
+  //
+  // Every row below is now under the ceiling, and free clears one build with room. The monthly
+  // figure never exceeds what the daily figure can reach in a month, or it is an allowance nobody
+  // can spend. What these numbers are NOT is what the $12 and $40 price points could support —
+  // $12 at a 1.4x margin would buy 25,974 Sparks a month, and the whole service only makes 25,323.
+  // Closing that gap is a spending decision, not a code change: see docs/DECISIONS.md.
+  free: { sparksPerDay: 231, sparksPerMonth: 2_310 },
+  builder: { sparksPerDay: 416, sparksPerMonth: 12_600 },
+  studio: { sparksPerDay: 700, sparksPerMonth: 21_000 },
+  enterprise: { sparksPerDay: 833, sparksPerMonth: 25_000 },
 } as const;
 
 export type PlanId = keyof typeof PLAN_LIMITS;
@@ -997,19 +1011,19 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
     priceUsdMonthly: 0,
     highlights: ['Every build mode', 'Studio plugin', 'Checkpoints and restore'],
   },
-  pro: {
-    id: 'pro',
-    name: 'Pro',
+  builder: {
+    id: 'builder',
+    name: 'Builder',
     blurb: 'For building most days.',
     priceUsdMonthly: 12,
-    highlights: ['About 6× the Free allowance', 'Buy credits when you need more', 'Priority during busy periods'],
+    highlights: ['About 5× the Free allowance', 'Buy credits when you need more', 'Priority during busy periods'],
   },
-  team: {
-    id: 'team',
-    name: 'Team',
+  studio: {
+    id: 'studio',
+    name: 'Studio',
     blurb: 'For a few people building together on the same places.',
-    priceUsdMonthly: 49,
-    highlights: ['About 5× the Pro allowance', 'Shared projects', 'Everything in Pro'],
+    priceUsdMonthly: 40,
+    highlights: ['About 9× the Free allowance', 'Shared projects', 'Everything in Builder'],
   },
   enterprise: {
     id: 'enterprise',

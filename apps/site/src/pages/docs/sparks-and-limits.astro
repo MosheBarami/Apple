@@ -1,10 +1,16 @@
 ---
+import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS } from '@golem/shared';
+
+// Read, never restated: this page explains the quota, so a stale copy of it here would be the
+// documentation contradicting the thing it documents.
+const free = PLAN_LIMITS.free;
+const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import DocsLayout from '../../layouts/DocsLayout.astro';
 ---
 
 <DocsLayout
   title="Sparks & limits — Apple Docs"
-  description="How Apple's Sparks quota works: 60 per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out."
+  description={`How Apple's Sparks quota works: ${free.sparksPerDay} per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out.`}
   heading="Sparks &amp; limits"
 >
   <p>
@@ -16,14 +22,16 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h2>The numbers</h2>
   <ul>
-    <li><strong>Free plan:</strong> 60 Sparks per day.</li>
-    <li><strong>Pro plan (waitlist):</strong> 400 Sparks per day, plus a priority queue.</li>
+    <li><strong>Free plan:</strong> {free.sparksPerDay} Sparks per day · {free.sparksPerMonth.toLocaleString()} a month.</li>
+    {paid.map((id) => (
+      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].sparksPerDay} Sparks per day · {PLAN_LIMITS[id].sparksPerMonth.toLocaleString()} a month.</li>
+    ))}
     <li><strong>Plan:</strong> 2 sparks per request.</li>
     <li><strong>Agent:</strong> 4 sparks per request.</li>
     <li><strong>Super Agent:</strong> 10 sparks per request, <strong>+1 per extra step</strong> beyond the included ones.</li>
   </ul>
   <p>
-    In practice, 60 Sparks is a solid daily session: around thirty Plan questions, a bunch of Agent
+    In practice the free allowance is a solid daily session: a good number of Plan questions, a bunch of Agent
     features, or a few serious Super Agent runs — usually a mix.
   </p>
 

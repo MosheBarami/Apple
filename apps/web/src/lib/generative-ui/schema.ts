@@ -67,7 +67,7 @@ export type AssetKind = (typeof ASSET_KINDS)[number];
 export const CHANGE_KINDS = ['added', 'removed', 'changed'] as const;
 export type ChangeKind = (typeof CHANGE_KINDS)[number];
 
-export const PLANS = ['free', 'pro'] as const;
+export const PLANS = ['free', 'builder'] as const;
 export type Plan = (typeof PLANS)[number];
 
 // ---------------------------------------------------------------------------

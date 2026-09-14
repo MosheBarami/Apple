@@ -1039,7 +1039,7 @@ app.post('/api/admin/quota-reset', async (c) => {
 });
 
 app.post('/api/admin/set-plan', async (c) => {
-  const { userId, plan } = await c.req.json<{ userId: string; plan: 'free' | 'pro' }>();
+  const { userId, plan } = await c.req.json<{ userId: string; plan: 'free' | 'builder' }>();
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId)).fetch('https://do/set-plan', {
     method: 'POST',
     body: JSON.stringify({ plan }),

@@ -52,13 +52,30 @@ const EXCEPTIONS = [
   { glob: 'apps/worker/src/pricing.ts', why: 'it DEFINES the constants; comparing it to itself proves nothing' },
   { glob: 'packages/shared/src/index.ts', why: 'same — this is where PLAN_LIMITS lives' },
   { glob: '**/*.test.*', why: 'a test asserting a wrong number is a failing test, which is a different signal' },
+  {
+    glob: 'apps/site/src/pages/changelog.astro',
+    why: 'a changelog records what WAS true on a date; comparing it to what is true now is a category error, and "correcting" it would be rewriting history to match the present',
+  },
 ];
 
+/** Does one EXCEPTIONS glob cover this path? Supports the two shapes the list actually uses. */
+function excepted(file) {
+  return EXCEPTIONS.some(({ glob }) =>
+    glob.startsWith('**/')
+      ? new RegExp(glob.slice(3).replace(/\./g, '\\.').replace(/\*/g, '.*')).test(file)
+      : file === glob);
+}
+
+// THE EXCEPTIONS LIST IS NOW APPLIED, not just printed. It announced four exceptions and honoured
+// one: the two source-of-truth files are outside these globs anyway, so they were excluded by
+// accident rather than by the rule, and anything added to the list that DID fall inside would have
+// been silently ignored. A denominator that states its exceptions and then does not take them is
+// a denominator that is wrong in the direction nobody checks.
 const copySurface = git(['ls-files', 'apps/site/**', 'apps/web/src/**'])
   .split('\n')
   .filter(Boolean)
   .filter((f) => /\.(astro|tsx?|md|html)$/.test(f))
-  .filter((f) => !/\.test\./.test(f));
+  .filter((f) => !excepted(f));
 
 console.log(`DENOMINATOR ${copySurface.length} files; EXCEPTIONS ${EXCEPTIONS.length}: ${EXCEPTIONS.map((e) => e.glob).join(', ')}`);
 
