@@ -171,7 +171,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-CRITIC-1 -- node --test apps/worker/tests/critic-wiring.test.mjs
     EXPECT: G-CRITIC-1 OK
   EXPECT-CHANGE: old=critic.test.mjs-floor-50 new=critic-wiring.test.mjs-floor-12 reason=subject-renamed
-  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=a50e9d2; tree-clean=yes; break-sha=a50e9d2; EXPECT=unmatched; output-sha256=3745eb009d97881431b99e95b72fa8cb52fbef90ce95cf085d30eb6f1458ad02; output-bytes=35158; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:06.941Z
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=ae01cac; tree-clean=yes; break-sha=ae01cac; EXPECT=unmatched; output-sha256=143ac253d82767fe4cbdcc36b3096dc224c8c4818b05a4f896e59fe9b2b6919d; output-bytes=1845; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=88bf45437e7bd708867b6d88; at=2026-09-14T17:47:16.380Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e0ba958; tree-clean=yes; EXPECT=matched; output-sha256=5d9b92dadbc0f4e93ff52ea87c6b5e135761abdf0344d5f5450b2081810feaa8; output-bytes=5576; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:13.006Z
 
 - [x] G-ORACLE-2: Every detector in the escape-hatch checker is proven to fail against a planted violation
@@ -190,6 +190,7 @@ test it gated.
 - [ ] G-CRITIC-2: The critic's rules, evidence gate and adjudication behave as specified
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-2 -- node --test packages/evals/src/critic.test.mjs
     EXPECT: G-CRITIC-2 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-2; path=6765c31f4f12/53 entries; git-sha=d5ff368; tree-clean=yes; break-sha=d5ff368; EXPECT=unmatched; output-sha256=87668fcc923fa0dbf6e32cbf1e198e3f04abc400d8dcf084c0f4924f8bdc1f74; output-bytes=35162; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=840cb7b004c1332a28940755; at=2026-09-14T17:47:21.712Z
 
 - [ ] G-OFFER-1 [S1]: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
     CHECK: node scripts/check-offer.mjs
