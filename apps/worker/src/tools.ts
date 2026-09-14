@@ -920,6 +920,53 @@ export const TOOLS: Record<string, ToolImpl> = {
       return op(ctx, { op: 'camera_focus', path });
     },
   },
+  /**
+   * Put what was just built into the user's own selection.
+   *
+   * The last of the read-mostly orphaned ops. `focus_camera` points the viewport at a thing;
+   * this makes it the thing Studio's own tools are aimed at, so "I widened the doorway" arrives
+   * with the doorway already selected and the user's next drag or property edit lands on it.
+   * Non-destructive: it changes the selection, never the place.
+   *
+   * `move_instances` and `undo_waypoint` are deliberately still unregistered — one mutates the
+   * place and the other drives ChangeHistoryService, which is the restore path.
+   */
+  select_instances: {
+    def: {
+      name: 'select_instances',
+      description:
+        "Select instances in the user's Studio, so their next action lands on what you just built or changed. Pair it with focus_camera when you want them to both see it and be able to act on it. Replaces the current selection.",
+      parameters: S(
+        { paths: { type: 'array', items: { type: 'string' }, description: 'Full instance paths.' } },
+        ['paths'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const paths = (Array.isArray(a.paths) ? a.paths : [])
+        .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+        .slice(0, 100);
+      if (!paths.length) return { error: 'paths must be a non-empty array of instance paths' };
+      return op(ctx, { op: 'select', paths });
+    },
+  },
+  /**
+   * Where the user's camera is, and roughly what is in front of it.
+   *
+   * Without this the agent builds into a place it cannot see the shape of: it knows the tree, not
+   * the arrangement, so "put the bench next to the fountain" is a guess about coordinates. The op
+   * returns the camera plus a bounded spatial summary of the top-level children.
+   */
+  viewport_info: {
+    def: {
+      name: 'viewport_info',
+      description:
+        "Where the user's camera is pointing and a spatial summary of what is in the Workspace — each top-level model or part with its centre and size in studs. Call it before placing something relative to what already exists, so the position is measured rather than guessed.",
+      parameters: S({}),
+    },
+    studio: true,
+    run: async (ctx) => op(ctx, { op: 'viewport_info' }),
+  },
   run_luau: {
     def: {
       name: 'run_luau',

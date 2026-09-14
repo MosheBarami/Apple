@@ -125,6 +125,8 @@ export const TOOL = {
   add_effect: { kind: 'building', label: 'Added an ambient effect' },
   audit_build: { kind: 'critiquing', label: 'Audited the build' },
   run_spec: { kind: 'verifying', label: 'Ran a spec against the project' },
+  select_instances: { kind: 'editing', label: 'Selected it in Studio' },
+  viewport_info: { kind: 'inspecting', label: 'Looked at the workspace layout' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },
