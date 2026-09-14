@@ -7,7 +7,10 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "node scripts/check-workspace-coverage.mjs && pnpm -r test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "check:dispositions": "node scripts/check-dispositions.mjs",
+    "check:backlog": "node scripts/check-backlog.mjs",
+    "check:pixels": "node scripts/check-pixels.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

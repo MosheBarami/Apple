@@ -147,6 +147,14 @@ jobs:
         # identical in a screenshot and gives a screen reader one stop for the page.
         run: node scripts/check-site-semantics.mjs
 
+      - name: Backlog dispositions are earned, not pasted
+        # FEATURES.json has 1,249 rows. The moment "every row dispositioned" becomes the goal, the
+        # cheapest path stops being the work and becomes writing one justification and pasting it.
+        # This refuses a STRUCTURALLY-BLOCKED that cites something we own, a FACET-BOUND whose
+        # parent is itself unproven, and — the one that matters — any disposition applied to more
+        # than twenty rows in a pass where the citations repeat.
+        run: node scripts/check-dispositions.mjs
+
       - name: Web app bundle budget
         # The landing had a budget and the app had none, so it drifted the way bundles
         # always do — by accumulating pages nobody visits. /ui-lab is a specimen book and
