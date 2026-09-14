@@ -3,7 +3,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
-import { PLAN_LIMITS, isPlanId, type PlanId } from '../pricing';
+import { isPlanId, type PlanId } from '../pricing';
+import { dayKey, monthKey, quotaState, splitSpend } from '../quota-math';
 
 export class QuotaDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -18,12 +19,14 @@ export class QuotaDO extends DurableObject<Env> {
     });
   }
 
+  // Both defer to quota-math so the key this DO writes and queries is the same key the tests
+  // reason about. Two definitions of "today" is the bug that makes a rollover untestable.
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    return dayKey(Date.now());
   }
 
   private thisMonth(): string {
-    return new Date().toISOString().slice(0, 7);
+    return monthKey(Date.now());
   }
 
   private async plan(): Promise<PlanId> {
@@ -37,35 +40,20 @@ export class QuotaDO extends DurableObject<Env> {
   }
 
   private async state(): Promise<QuotaState> {
-    const plan = await this.plan();
-    const limits = PLAN_LIMITS[plan];
-    const day = this.today();
-    const dayRow = this.sql.exec(`select coalesce(sum(sparks),0) as s from ledger where day = ?`, day).one() as { s: number };
+    // This method now does exactly two things a test cannot do for itself: read storage, and read
+    // the clock. Everything decided from those values lives in quota-math, where a day boundary is
+    // an argument rather than a thing to wait for.
+    const dayRow = this.sql.exec(`select coalesce(sum(sparks),0) as s from ledger where day = ?`, this.today()).one() as { s: number };
     const monthRow = this.sql
       .exec(`select coalesce(sum(sparks),0) as s from ledger where day like ?`, `${this.thisMonth()}%`)
       .one() as { s: number };
-    const tomorrow = new Date();
-    tomorrow.setUTCHours(24, 0, 0, 0);
-    // whichever limit bites first is the one the user actually has
-    const dailyLeft = Math.max(0, limits.sparksPerDay - dayRow.s);
-    const monthlyLeft = Math.max(0, limits.sparksPerMonth - monthRow.s);
-    const credits = await this.credits();
-    // The allowance is a RATE and credits are a BALANCE. `sparksRemaining` is what the user can
-    // actually spend right now, which is both — but they are reported separately as well, because
-    // "you have 0 left today" and "you have 0 left at all" are different sentences and the UI has
-    // to be able to tell them apart.
-    const allowanceLeft = Math.min(dailyLeft, monthlyLeft);
-    return {
-      sparksRemaining: allowanceLeft + credits,
-      sparksDaily: limits.sparksPerDay,
-      sparksMonthly: limits.sparksPerMonth,
-      sparksUsedToday: dayRow.s,
-      sparksUsedThisMonth: monthRow.s,
-      resetsAtIso: tomorrow.toISOString(),
-      plan,
-      allowanceRemaining: allowanceLeft,
-      credits,
-    };
+    return quotaState({
+      plan: await this.plan(),
+      spentToday: dayRow.s,
+      spentThisMonth: monthRow.s,
+      credits: await this.credits(),
+      now: Date.now(),
+    });
   }
 
   async fetch(req: Request): Promise<Response> {
@@ -76,16 +64,16 @@ export class QuotaDO extends DurableObject<Env> {
     if (url.pathname === '/spend' && req.method === 'POST') {
       const { sparks, kind } = (await req.json()) as { sparks: number; kind: string };
       const st = await this.state();
-      if (st.sparksRemaining < sparks) return Response.json({ ok: false, state: st });
       // Allowance first, credits only for the remainder. Spending a purchased balance while a free
       // allowance is still available would quietly charge the user for something they already had.
-      const fromAllowance = Math.min(sparks, st.allowanceRemaining);
-      const fromCredits = sparks - fromAllowance;
+      const split = splitSpend(sparks, st.allowanceRemaining, st.credits);
+      if (!split.affordable) return Response.json({ ok: false, state: st });
+      const { fromAllowance, fromCredits } = split;
       if (fromCredits > 0) await this.ctx.storage.put('credits', Math.max(0, st.credits - fromCredits));
       if (fromAllowance > 0) {
         this.sql.exec(`insert into ledger(day, kind, sparks, created_at) values(?,?,?,?)`, this.today(), kind.slice(0, 40), fromAllowance, Date.now());
       }
-      this.sql.exec(`delete from ledger where day < ?`, new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10));
+      this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - 35 * 864e5));
       const after = await this.state();
       return Response.json({ ok: true, state: after });
     }
