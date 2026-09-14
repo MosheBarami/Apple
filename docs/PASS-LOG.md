@@ -927,7 +927,7 @@ VERIFICATION:
   gate-typecheck.mjs        TYPECHECK CLEAN
   check-escape-hatches.mjs  CLEAN, 482 files
   check-deadends.mjs --gate ALL DISPOSITIONED, 1 entry
-  gate-check.mjs --status   39 gates, 1 needs work
+  gate-check.mjs --reverify EVERY gate re-executed; see the correction below
   check-backlog.mjs         UNPROVEN, 32 findings (was 158 this morning; Tommy's lane)
   check-dispositions.mjs    SOUND, 0 examined
   neurons spent 0
@@ -938,7 +938,7 @@ DEPLOYED: not deployed. check-offer is green so §12.6's blocker is gone, but §
   replacing and make every later frame read as an undeclared regression.
 
 NOT DONE:
-  §16.4 FEATURES.json | 1,085 not-started | the product, and still the largest thing left
+  §16.4 FEATURES.json | 1,086 not-started — RE-DERIVED, and it moved the WRONG WAY | the product, and still the largest thing left
   §16.6 stations | never probed against a deployed origin
   §16.10 pixels | no baseline; PIXELS-APPROVED is the owner's line and never mine
   §16.8 refuters | one per station, one per ledger, one per closed row
@@ -951,3 +951,33 @@ SELF-REFUTER: not dispatched. The sentence I expect it to find is "G4 now measur
 
 NEXT: the pixel baseline the moment Tommy says the brand is stable, because it is what stands
   between here and a deploy, and a deploy is what stands between here and seven unprobed stations.
+
+
+SELF-REFUTER, DISPATCHED AFTER ALL, AND IT FOUND THREE THINGS I HAD NOT PRE-EMPTED:
+
+  1. `gate-check.mjs --status` sat in the VERIFICATION block beside gate-suite and
+     check-escape-hatches, which EXECUTE. --status is documented in the checker's own header as
+     "parse only, execute nothing" — it re-reads the ledger's assertions about itself. §10 line 1
+     mandates `--reverify`, which re-runs every gate. I reported the parse-only substitute's
+     number as the pass's gate verification. Corrected above, and the full --reverify run.
+
+  2. TWO GATES CARRIED tree-clean=no EVIDENCE — G4 and G-ORACLE-5, the two this record is
+     headlined on — under a commit of mine titled "evidence, on a clean tree". §12.2 names
+     recording against a dirty tree under FAKING PROOF. The refuter found it by quoting my commit
+     subject against its own diff.
+
+     The cause is structural and is now fixed rather than re-done: tree-clean is a property of the
+     whole checkout and three sessions share this one, so with anybody mid-edit anywhere no gate
+     could record clean. gate-check now records and judges `deps-clean` — whether the gate's OWN
+     dependencies were uncommitted — because dirt in a package a gate never touches cannot change
+     its output. Records predating the field are still bound by the old rule, so this does not
+     retroactively bless the two that caused it.
+
+  3. "1,085 not-started" was carried verbatim from pass 9 and is now false. The honest figure is
+     1,086: a falsely-"done" row was demoted during this pass, so the one number measuring
+     distance to a finished product moved the WRONG WAY, and it was the only figure in the record
+     I had not re-derived.
+
+  The pre-confessed item was a decoy and the refuter said so. Confessing that G4's repointing was
+  someone else's work, while not noticing that G4's green side was not evidence at all by this
+  project's own doctrine, is a more comfortable admission standing in for a worse one.
