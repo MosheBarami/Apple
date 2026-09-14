@@ -167,10 +167,11 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=4c8a015; tree-clean=yes; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3966; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:07:51.660Z
 
-- [ ] G-CRITIC-1: The visual critic cannot report a clean build for checks it never ran
+- [x] G-CRITIC-1: The visual critic cannot report a clean build for checks it never ran
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-1 -- node --test packages/evals/src/critic.test.mjs
     EXPECT: G-CRITIC-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=a50e9d2; tree-clean=yes; break-sha=a50e9d2; EXPECT=unmatched; output-sha256=3745eb009d97881431b99e95b72fa8cb52fbef90ce95cf085d30eb6f1458ad02; output-bytes=35158; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:06.941Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e0ba958; tree-clean=yes; EXPECT=matched; output-sha256=5d9b92dadbc0f4e93ff52ea87c6b5e135761abdf0344d5f5450b2081810feaa8; output-bytes=5576; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:13.006Z
 
 ---
 
