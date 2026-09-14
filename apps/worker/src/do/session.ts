@@ -38,6 +38,7 @@ import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
+import { assetLibraryAvailable } from '../asset-library';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
 import { trimTranscript } from '../transcript';
@@ -752,6 +753,7 @@ export class SessionDO extends DurableObject<Env> {
     const sys = systemPrompt({
       mode,
       studioConnected,
+      assetLibraryAvailable: await assetLibraryAvailable(this.env),
       placeName: pluginState?.placeName ?? null,
       projectName: bind.projectName,
       memorySummary: memory.summary,
@@ -992,12 +994,16 @@ export class SessionDO extends DurableObject<Env> {
       effortReason: choice.reason,
     });
 
+    // Whether the curated library exists here. Read once per isolate — it changes at most once per
+    // deployment, and the whole point is to stop paying for a tool call that cannot succeed.
+    const hasAssetLibrary = await assetLibraryAvailable(this.env);
+
     const res = await llmChat(
       this.env,
       {
         model: agent.mode,
         messages: agent.llm,
-        tools: toolDefs(studioConnected, allowed),
+        tools: toolDefs(studioConnected, allowed, { assetLibrary: hasAssetLibrary }),
         reasoningEffort: choice.effort,
         maxTokens: tokensForEffort(MODE_BASE_TOKENS[agent.mode], choice.effort),
       },

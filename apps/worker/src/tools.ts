@@ -1428,9 +1428,27 @@ export function toolNames(): string[] {
   return Object.keys(TOOLS);
 }
 
-export function toolDefs(studioConnected: boolean, allowed?: Set<string>): GatewayToolDef[] {
+/**
+ * Tools the model may call, given what this deployment can actually do.
+ *
+ * `assetLibrary: false` removes `search_asset_library` rather than leaving it to fail. The system
+ * prompt tells the model to try it FIRST, and on a deployment where the tables were never created
+ * every one of those calls returned `no such table` — a wasted inference step on every build that
+ * reaches for an asset, and a raw SQL string the model could do nothing with.
+ *
+ * Removing it is not the same as pretending the library is empty. `search_asset_library` keeps its
+ * loud missing-table branch for any path that still reaches it; this only stops OFFERING a tool
+ * that cannot work here.
+ */
+export function toolDefs(
+  studioConnected: boolean,
+  allowed?: Set<string>,
+  opts: { assetLibrary?: boolean } = {},
+): GatewayToolDef[] {
+  const assetLibrary = opts.assetLibrary ?? true;
   return Object.entries(TOOLS)
     .filter(([name, t]) => (studioConnected || !t.studio) && (!allowed || allowed.has(name)))
+    .filter(([name]) => assetLibrary || name !== 'search_asset_library')
     .map(([, t]) => t.def);
 }
 

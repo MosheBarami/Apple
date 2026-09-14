@@ -724,6 +724,43 @@ const SELECT_COLS = `id, name, kind, roblox_asset_id, triangles, bounds_studs, t
  * standing next to a photoreal rock looks worse than two grey boxes, so tag agreement with the
  * project's declared style outweighs a slightly better semantic match.
  */
+/**
+ * Does the curated library exist in THIS deployment?
+ *
+ * Nothing in the repository calls `ensureAssetTables` or `upsertAssets`, so on every deployment so
+ * far the tables have never been created and `search_asset_library` has raised
+ * `no such table: asset_library_fts` on every call — while the system prompt told the model to try
+ * it FIRST. That is a wasted inference step on every build that reaches for an asset, and a raw SQL
+ * string the model could do nothing with.
+ *
+ * The answer must NOT be produced by creating the tables. An empty library answering "no matches"
+ * is a claim about a table nobody has ever filled, and turning a loud failure into a quiet lie is
+ * the defect this codebase keeps finding in other systems. So this only READS.
+ *
+ * Cached per isolate: the answer changes at most once per deployment, and the whole point is to
+ * avoid paying for a query on a path that already knows the answer.
+ */
+let libraryAvailable: boolean | null = null;
+
+export async function assetLibraryAvailable(env: Pick<Env, 'CORPUS'>): Promise<boolean> {
+  if (libraryAvailable !== null) return libraryAvailable;
+  try {
+    const row = await env.CORPUS.prepare(
+      `select name from sqlite_master where type='table' and name='asset_library' limit 1`,
+    ).first<{ name: string }>();
+    libraryAvailable = !!row;
+  } catch {
+    // A CORPUS binding that cannot be queried is not evidence the library exists.
+    libraryAvailable = false;
+  }
+  return libraryAvailable;
+}
+
+/** Test seam: the cache is per-isolate and otherwise unreachable. */
+export function resetAssetLibraryAvailability(): void {
+  libraryAvailable = null;
+}
+
 export async function searchAssetLibrary(env: LibraryEnv, query: string, opts: AssetSearchOptions = {}): Promise<AssetHit[]> {
   const k = opts.k ?? 8;
   const [vecHits, ftsHits] = await Promise.all([

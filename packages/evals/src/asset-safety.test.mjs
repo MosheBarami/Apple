@@ -1661,12 +1661,30 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src
 const P = await import(promptsOut);
 
 test('THE SYSTEM PROMPT NO LONGER CONTRADICTS THE TOOLS it is describing', () => {
-  const sys = P.systemPrompt({ mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [] });
-  assert.equal(/There is no asset search/.test(sys), false, 'stale: search_asset_library and find_verified_asset both exist');
-  assert.match(sys, /search_asset_library/);
-  assert.match(sys, /find_verified_asset/);
-  assert.match(sys, /run_luau refuses/, 'the prompt must state the run_luau rule the tool enforces');
-  // And it must not re-introduce the old rule that only a user-given id may be inserted, which
-  // would send the model looking for permission it does not need for a searched id.
-  assert.equal(/Only call insert_asset with an id the USER gave you/.test(sys), false);
+  // The invariant is agreement between the prompt and the tool list, in BOTH deployment states —
+  // not that a particular tool is always named. `search_asset_library` is now withheld where the
+  // curated library's tables were never created, and naming a tool the model cannot see would be
+  // the same contradiction this test was written to catch, pointing the other way.
+  const base = { mode: 'stone', studioConnected: true, placeName: 'Test', projectName: 'Test', memorySummary: null, memoryFacts: [] };
+
+  for (const assetLibraryAvailable of [true, false]) {
+    const sys = P.systemPrompt({ ...base, assetLibraryAvailable });
+    const offered = T.toolDefs(true, undefined, { assetLibrary: assetLibraryAvailable }).map((d) => d.name);
+
+    assert.equal(
+      sys.includes('search_asset_library'),
+      offered.includes('search_asset_library'),
+      `library=${assetLibraryAvailable}: the prompt and the tool list must agree`,
+    );
+    // The Creator Store route exists in both states and must be named in both.
+    assert.match(sys, /find_verified_asset/);
+    assert.ok(offered.includes('find_verified_asset'));
+    assert.match(sys, /run_luau refuses/, 'the prompt must state the run_luau rule the tool enforces');
+    assert.equal(/There is no asset search/.test(sys), false, 'stale: an asset search does exist');
+    // And it must not re-introduce the old rule that only a user-given id may be inserted, which
+    // would send the model looking for permission it does not need for a searched id.
+    assert.equal(/Only call insert_asset with an id the USER gave you/.test(sys), false);
+    // The template token must never survive into a real prompt.
+    assert.equal(sys.includes('{{ASSET_SOURCES}}'), false, 'unsubstituted template token in the system prompt');
+  }
 });

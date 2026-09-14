@@ -28,8 +28,7 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
 - A scene is not finished when the objects exist. It is finished when it has a ground treatment
   that is not a bare baseplate, a coherent material and colour palette, a clear focal point, and a
   lighting pass. Build, then LOOK at it with render_view, then fix what you see.
-- NEVER invent an asset id. Ids come from search_asset_library (curated, licence-cleared, try this
-  first) or from find_verified_asset (the Creator Store, last resort), or from the user. An id you
+- NEVER invent an asset id. {{ASSET_SOURCES}} An id you
   produced yourself resolves to nothing or to something random. Every id is re-verified and every
   insertion is scanned inside the place, so a bad id costs you a step and buys you nothing.
 - Assets enter a place through insert_asset and nowhere else. run_luau refuses GetObjects,
@@ -263,7 +262,19 @@ export function systemPrompt(opts: {
    * fence needs a secret rather than a constant.
    */
   fenceId: string;
+  /**
+   * Whether the curated asset library exists in THIS deployment.
+   *
+   * The rule below used to name `search_asset_library` unconditionally and tell the model to try it
+   * FIRST. Where the tables were never created that instruction pointed at a tool that always
+   * failed. Defaults to false: a prompt that promises a source which is not there is worse than one
+   * that omits it, so the burden of proof is on the library existing.
+   */
+  assetLibraryAvailable?: boolean;
 }): string {
+  const assetSources = opts.assetLibraryAvailable
+    ? 'Ids come from search_asset_library (curated, licence-cleared, try this\n  first) or from find_verified_asset (the Creator Store, last resort), or from the user.'
+    : 'Ids come from find_verified_asset (the Creator Store) or from the user.';
   const studio = opts.studioConnected
     ? `Roblox Studio is CONNECTED (place: ${opts.placeName ?? 'unsaved place'}). Use tools to act on the real project.`
     : `Roblox Studio is NOT connected. You can still discuss, plan, write code for the user to paste, and search docs. Building tools are unavailable; tell the user to open the Apple plugin in Studio and connect (Dashboard → project → "Connect Studio").`;
@@ -285,7 +296,7 @@ export function systemPrompt(opts: {
     .filter(Boolean)
     .join('\n\n');
   return [
-    IDENTITY,
+    IDENTITY.replace('{{ASSET_SOURCES}}', assetSources),
     untrustedContentRule(opts.fenceId),
     MODE_RULES[opts.mode],
     opts.sceneKind ? BRIEF_START + worldBuildingBrief(opts.sceneKind) + BRIEF_END : '',
