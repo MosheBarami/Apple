@@ -171,7 +171,7 @@ and are tracked as handoffs, not gates.
     CHECK: node scripts/assert-tests.mjs --floor 60 --label G80 -- node --test tests/gate-check.test.mjs
     EXPECT: G80 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G80; path=6765c31f4f12/53 entries; git-sha=0f63a44; tree-clean=yes; break-sha=0f63a44; EXPECT=unmatched; output-sha256=eb28cdad4ca98e832f0749e688ce658be421f8680fdb19d3a32b4c6bce732208; output-bytes=10953; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=2744b3ba51d2f9dcd5722de2; at=2026-09-14T18:48:40.482Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8462c0a; tree-clean=yes; EXPECT=matched; output-sha256=0602062226529790ab634dd441722656f0bd8a68e7c30f5278c585aeb9f7eded; output-bytes=5081; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=34a92da96dc325438a2cc579; at=2026-09-14T18:51:50.037Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=55cf7b5; tree-clean=yes; EXPECT=matched; output-sha256=f40f94a13d4f917ea3ce19473e4b11696e0683b0cad82494fef33b71071dc21b; output-bytes=5249; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=5d53d883523787e1c579da01; at=2026-09-14T20:38:22.771Z
   EXPECT-CHANGE: old=fail 0 new=G80 OK reason=derived-floor-60-measured-60-passing
 
 - [x] G22: Editing a prompt refuses before it destroys, and says what it does not undo
@@ -213,7 +213,7 @@ test it gated.
     CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
     EXPECT: G-ORACLE-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-ORACLE-1; path=6765c31f4f12/53 entries; git-sha=30cda94; tree-clean=yes; break-sha=30cda94; EXPECT=unmatched; output-sha256=bea460253666d1ea3731f8cf65159556b5645376ba32c20e99fa758e575157f3; output-bytes=14772; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T16:47:32.181Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=5bf808a; tree-clean=yes; EXPECT=matched; output-sha256=b2d289d5e6472a4a75c4e22bebb1e938ac9881ce6c3e77185fe81703603ff271; output-bytes=5092; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=34a92da96dc325438a2cc579; at=2026-09-14T18:53:34.588Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=55cf7b5; tree-clean=yes; EXPECT=matched; output-sha256=804f2ab10575d3bd679554aef92ca3645ca302ac9f2425ec1839ec0e1d3ebd1d; output-bytes=5243; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=5d53d883523787e1c579da01; at=2026-09-14T20:38:22.769Z
 
 - [x] G-CRITIC-1: The visual critic runs on a product path and cannot report a clean build for checks it never ran
     STATION: S7
