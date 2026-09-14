@@ -137,6 +137,7 @@ and are tracked as handoffs, not gates.
 - [ ] G20: The search panel names every state and drops responses for a query the user has moved past
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 17 --label G20 -- node --test tests/search-panel.test.mjs
     EXPECT: G20 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G20; path=6765c31f4f12/53 entries; git-sha=811ac75; tree-clean=yes; break-sha=811ac75; EXPECT=unmatched; output-sha256=d6d26c576dcf95a47df9e0490aad33d8d89b93b4c65991aec3e60b28f3c3dfe1; output-bytes=22068; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=c3f763068680902f8daf853f; at=2026-09-14T19:05:50.520Z
   EXPECT-CHANGE: old=fail 0 new=G20 OK reason=derived-floor-17-measured-17-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=c30700df765c4a778bcd9419e9d2f840fd4f23e727e710545d6b45793d7bffe4; output-bytes=1343
 
@@ -168,6 +169,7 @@ and are tracked as handoffs, not gates.
 - [ ] G22: Editing a prompt refuses before it destroys, and says what it does not undo
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 18 --label G22 -- node --test tests/edit-resend.test.mjs
     EXPECT: G22 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G22; path=6765c31f4f12/53 entries; git-sha=b59682e; tree-clean=yes; break-sha=b59682e; EXPECT=unmatched; output-sha256=d49a075ee98b4cdf8797d3d530b6b7194a565651a07164355fafb8735519a037; output-bytes=9378; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=a8781dee10cb11c747a6c947; at=2026-09-14T19:05:54.606Z
   EXPECT-CHANGE: old=fail 0 new=G22 OK reason=derived-floor-18-measured-18-passing
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=4bc6a0e42828c223f347428ec10019794e70fc9dde24881167df4c0a4e8a1236; output-bytes=1333
 
