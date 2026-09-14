@@ -275,7 +275,7 @@ test it gated.
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d28304d; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=4512bec537901655de9a6a6791af5e441a9a3f559eb2153650a6ac3dcc6b7d17; output-bytes=45; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=239; deps-sha=37909e6efefb40f1b229bf30; at=2026-09-14T22:46:07.096Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d89d820; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=3e47920ff13573182e120a00ffaea6214da3456de81de6c79b0c3840e13ca3a2; output-bytes=45; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=239; deps-sha=71d78eed050364f9691f631a; at=2026-09-14T23:07:06.196Z
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
