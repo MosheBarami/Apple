@@ -1,0 +1,4 @@
+[
+  "apps/web/tests/run-meters.test.mjs",
+  "scripts/assert-tests.mjs"
+]

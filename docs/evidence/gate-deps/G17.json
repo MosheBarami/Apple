@@ -1,0 +1,5 @@
+[
+  "apps/web/src/lib/command-match.ts",
+  "apps/web/tests/command-match.test.mjs",
+  "scripts/assert-tests.mjs"
+]

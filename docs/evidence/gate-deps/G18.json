@@ -1,0 +1,5 @@
+[
+  "apps/web/src/lib/shortcuts.ts",
+  "apps/web/tests/shortcuts.test.mjs",
+  "scripts/assert-tests.mjs"
+]
