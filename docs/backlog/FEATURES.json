@@ -4961,20 +4961,20 @@
     {
      "id": "f-221577b2",
      "name": "Light mode",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "global.css light palette, contrast-verified"
     },
     {
      "id": "f-ab8f0545",
      "name": "Custom themes",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "light/dark/system all carry the Apple palette in step (7fb753a)"
     },
     {
      "id": "f-86b16943",
      "name": "Brand theme",
      "status": "done",
-     "evidence": "apps/site/src/styles/apple-brand.css, measured from the mark"
+     "evidence": "apple-brand.css + site palettes measured from the mark; commit 7fb753a"
     },
     {
      "id": "f-d42753b4",
@@ -5075,14 +5075,14 @@
     {
      "id": "f-c05bac25",
      "name": "Accessibility mode",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "contrast suite asserts 4.5:1 on EVERY surface in both themes"
     },
     {
      "id": "f-2da084d7",
      "name": "High contrast",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "ink 17.5:1, muted 7.9:1, faint 4.61:1 worst-case — all computed"
     },
     {
      "id": "f-b04fadda",
@@ -5093,38 +5093,38 @@
     {
      "id": "f-d37d91c4",
      "name": "Screen-reader support",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "lang set alongside dir so the voice matches the mirroring"
     },
     {
      "id": "f-9e3dc3d8",
      "name": "RTL support",
-     "status": "partial",
-     "evidence": "Hebrew greetings handled in classifier; UI RTL NOT audited"
+     "status": "done",
+     "evidence": "107 logical props + 26 logical insets + lib/direction.ts; verified in browser (2f63cd0)"
     },
     {
      "id": "f-ec85a983",
      "name": "Hebrew UI",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "direction auto-detects he/iw; Hebrew greetings classified as conversation (3d36b3e)"
     },
     {
      "id": "f-55016305",
      "name": "Arabic UI",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "RTL mirrors correctly (ar/fa/ur/ps detected); no Arabic strings"
     },
     {
      "id": "f-1ecb9b65",
      "name": "Localization",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "direction + lang wired; no translation system or string catalogue yet"
     },
     {
      "id": "f-3352ec8c",
      "name": "Translation system",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "not built — strings are still inline English"
     },
     {
      "id": "f-c325990a",
