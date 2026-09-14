@@ -380,6 +380,128 @@ end
 return Receipts
 `;
 
+const CURRENCY_SOURCE = `--!strict
+-- Currency — the number the loop runs on, with one copy that is true.
+--
+-- leaderstats is REPLICATED DISPLAY STATE. Roblox built it to put a number above a player's name,
+-- and it is writable from anywhere on the server, so the moment two systems both write it they
+-- disagree and neither is obviously wrong. The balance that matters is the one in the save.
+--
+-- So: the profile holds the truth, leaderstats mirrors it, and nothing reads the mirror back. If
+-- the mirror is wrong, the mirror is wrong; the player's money is not.
+--
+-- Everything that moves the number goes through award and spend, which is what makes the rule
+-- enforceable rather than a convention. spend REFUSES rather than going negative — a balance that
+-- can go below zero is a duplication bug waiting for someone to notice the order of two remotes.
+--
+-- SETUP (once, in a server Script, after Profile has loaded the player):
+--   local Currency = require(game.ServerScriptService.Currency)
+--   local Profile = require(game.ServerScriptService.Profile)
+--   Currency.configure({ get = Profile.get, name = "Coins", field = "coins" })
+--   -- then, once Profile.load(player) has returned non-nil:
+--   Currency.attach(player)
+local Currency = {}
+
+local getData = nil
+local displayName = "Coins"
+local fieldName = "coins"
+
+function Currency.configure(opts)
+	getData = opts.get
+	displayName = opts.name or displayName
+	fieldName = opts.field or fieldName
+end
+
+local function mirror(player, amount)
+	local stats = player:FindFirstChild("leaderstats")
+	if stats == nil then
+		return
+	end
+	local value = stats:FindFirstChild(displayName)
+	if value ~= nil then
+		value.Value = amount
+	end
+end
+
+--- Build the display mirror. Call only AFTER the player's data has loaded; without data there is
+--- no balance to show and a leaderstats of 0 would be a lie about an account we could not read.
+function Currency.attach(player)
+	if getData == nil then
+		warn("[Currency] not configured — call Currency.configure first")
+		return false
+	end
+	local data = getData(player)
+	if data == nil then
+		return false
+	end
+
+	local stats = player:FindFirstChild("leaderstats")
+	if stats == nil then
+		stats = Instance.new("Folder")
+		stats.Name = "leaderstats"
+		stats.Parent = player
+	end
+
+	local value = stats:FindFirstChild(displayName)
+	if value == nil then
+		value = Instance.new("IntValue")
+		value.Name = displayName
+		value.Parent = stats
+	end
+	value.Value = data[fieldName] or 0
+	return true
+end
+
+--- The authoritative balance, read from the save and never from leaderstats.
+function Currency.balance(player)
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return nil
+	end
+	return data[fieldName] or 0
+end
+
+local function whole(amount)
+	return type(amount) == "number" and amount == amount and amount % 1 == 0 and amount >= 0
+end
+
+--- Add to the balance. Returns the new balance, or nil when it could not be applied.
+function Currency.award(player, amount)
+	if not whole(amount) then
+		warn("[Currency] award needs a whole, non-negative amount, got " .. tostring(amount))
+		return nil
+	end
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return nil
+	end
+	data[fieldName] = (data[fieldName] or 0) + amount
+	mirror(player, data[fieldName])
+	return data[fieldName]
+end
+
+--- Take from the balance. Returns false and changes NOTHING when the player cannot afford it.
+function Currency.spend(player, amount)
+	if not whole(amount) then
+		warn("[Currency] spend needs a whole, non-negative amount, got " .. tostring(amount))
+		return false
+	end
+	local data = getData and getData(player) or nil
+	if data == nil then
+		return false
+	end
+	local held = data[fieldName] or 0
+	if held < amount then
+		return false
+	end
+	data[fieldName] = held - amount
+	mirror(player, data[fieldName])
+	return true
+end
+
+return Currency
+`;
+
 export const PREFABS: Record<string, Prefab> = {
   profile_store: {
     id: 'profile_store',
@@ -400,6 +522,27 @@ export const PREFABS: Record<string, Prefab> = {
       'Profile.commit(player, data) -> boolean  -- persist one table now; for atomic purchase writes',
     ],
     source: PROFILE_SOURCE,
+  },
+  currency: {
+    id: 'currency',
+    moduleName: 'Currency',
+    summary: 'A currency whose true balance lives in the save, with leaderstats as a display mirror.',
+    prevents: [
+      'leaderstats being treated as the balance, when it is replicated display state anything on the server can write',
+      'two systems writing the number and disagreeing, with neither obviously wrong',
+      'a balance going negative, which is a duplication bug waiting on the order of two remotes',
+      'showing a balance of 0 for a player whose data could not be read',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'Currency.configure({ get = Profile.get, name = "Coins", field = "coins" })',
+      'Currency.attach(player) -> boolean   -- after Profile.load returns non-nil',
+      'Currency.balance(player) -> number | nil',
+      'Currency.award(player, amount) -> number | nil',
+      'Currency.spend(player, amount) -> boolean   -- false when they cannot afford it',
+    ],
+    source: CURRENCY_SOURCE,
   },
   remote_guard: {
     id: 'remote_guard',
