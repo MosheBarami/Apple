@@ -685,8 +685,13 @@ test('a relative --file resolves against the CALLER, not against the checker', (
   assert.notEqual(sub.status, 0);
 
   // POSITIVE CONTROL: the same invocation from the root does find the real ledger.
+  //
+  // It asserts that the ledger was FOUND, not that it is currently healthy. Asserting
+  // WELL-FORMED would couple this test to the live ledger's state, so an unrelated gate with
+  // dirty-tree evidence would redden a test about path resolution — and the obvious way to
+  // silence that is to weaken the test rather than fix the gate.
   const atRoot = spawnSync(process.execPath, [CHECKER, '--lint', '--file', 'GATES.md'], { cwd: ROOT, encoding: 'utf8' });
-  assert.match(`${atRoot.stdout}${atRoot.stderr}`, /LEDGER WELL-FORMED/);
+  assert.match(`${atRoot.stdout}${atRoot.stderr}`, /LEDGER (WELL-FORMED|MALFORMED) — \d+ gates/);
 });
 
 test('a cwd that is not a git repository at all is refused, not guessed at', () => {
