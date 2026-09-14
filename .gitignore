@@ -56,3 +56,5 @@ packages/training/data/
 packages/training/adapters/
 packages/training/runs/
 packages/training/mlxdata/
+packages/training/mlxdata-text/
+packages/training/mlxdata/
