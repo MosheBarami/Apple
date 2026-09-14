@@ -31,6 +31,7 @@ import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
+import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau } from './effects';
 
 export interface AgentCtx {
   env: Env;
@@ -1165,6 +1166,45 @@ export const TOOLS: Record<string, ToolImpl> = {
         palettes: palettes.length ? palettes : undefined,
         next: 'render_view to see it. If the scene reads flat or muddy, the mood is usually right and the MATERIALS are wrong — use one of the palettes above.',
       };
+    },
+  },
+  /**
+   * AMBIENT EFFECTS — see effects.ts for why none of these reference an asset.
+   *
+   * The catalogue is rendered into the tool description rather than fetched by a separate
+   * `list_effects` call: it is ~10 short lines, it is static, and a round trip to learn the names of
+   * ten things is a round trip the user pays for.
+   */
+  add_effect: {
+    def: {
+      name: 'add_effect',
+      description:
+        'Attach an ambient effect to an instance: fire, smoke, embers, mist and so on. These use no assets and no asset ids — they are pure engine particle and light configuration, already art-directed, so they cost nothing and cannot fail a licence or safety gate. Use them to make a built scene feel alive; a correct scene with nothing moving in it reads as a model, not a place. Re-applying the same effect to the same instance retunes it rather than stacking a second copy.\n\nCatalogue:\n' +
+        effectCatalogue().map((e) => `  ${e.name} — ${e.summary} ${e.use}`).join('\n'),
+      parameters: S(
+        {
+          effect: { type: 'string', enum: EFFECT_NAMES, description: 'Which preset to attach.' },
+          path: { type: 'string', description: 'Full path of the instance to attach it to, e.g. game.Workspace.Forge.Coals' },
+        },
+        ['effect', 'path'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const effect = String(a.effect ?? '');
+      const path = String(a.path ?? '');
+      if (!Object.prototype.hasOwnProperty.call(EFFECTS, effect)) {
+        return { error: `unknown effect "${effect}". Choose one of: ${EFFECT_NAMES.join(', ')}.` };
+      }
+      if (!path) return { error: 'path is required' };
+      // The path is embedded in generated source as a quoted literal. A quote, a backslash or a
+      // newline in it could not break out of the string (it is JSON-escaped), but a path containing
+      // them is not a real instance path and refusing is cheaper than reasoning about it.
+      if (/["'\\\n\r]/.test(path)) return { error: 'path contains characters that are not valid in an instance path' };
+
+      const res = await op(ctx, { op: 'run_code', code: effectLuau(effect, path), timeoutMs: 10_000 }, 25_000);
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+      return { attached: effect, to: path, parts: EFFECTS[effect]!.parts.map((x) => x.className) };
     },
   },
   check_composition: {
