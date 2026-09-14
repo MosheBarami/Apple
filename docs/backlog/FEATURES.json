@@ -2994,13 +2994,13 @@
           "id": "f-5be43b67",
           "name": "Eval suite",
           "status": "done",
-          "evidence": "packages/evals — 84 text + 12 visual tasks"
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — all task files still load clean, every scripting topic is exercised by at least one task, and every task declares what it exercises. (The load assertion is independent of the local Luau checker.)"
         },
         {
           "id": "f-769d001b",
           "name": "Task registry",
           "status": "done",
-          "evidence": "packages/evals/tasks/*.json, 12 suites"
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — the registry is validated by loading every task file and asserting the categories are present AND populated, so an empty suite cannot pass as a registered one."
         },
         {
           "id": "f-f9dbdcf3",
@@ -3012,13 +3012,13 @@
           "id": "f-40aa3435",
           "name": "Roblox task suite",
           "status": "done",
-          "evidence": "packages/evals/tasks (api-knowledge, luau-correctness, ...)"
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — the category blocks are asserted by weight, not merely by presence: scripting carries the majority of total task weight, as §U requires."
         },
         {
           "id": "f-6171a8e9",
           "name": "Luau task suite",
           "status": "done",
-          "evidence": "packages/evals/tasks/luau-correctness.json"
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — the Luau suite loads and is populated. NOTE: reference answers are graded on every check EXCEPT luau_syntax when no local luau-lsp is present, and it is absent here."
         },
         {
           "id": "f-6ca6f7c3",
@@ -3072,7 +3072,7 @@
           "id": "f-c423a172",
           "name": "Visual rubric tests",
           "status": "done",
-          "evidence": "packages/evals/tasks-visual/rubric.json"
+          "evidence": "packages/evals/src/critic.test.mjs — the evidence gate discards a criticism with no evidence, no subject, a region citing a view that was not rendered, a region covering the whole frame, a metric the harness does not measure, and a FABRICATED value for a real metric."
         },
         {
           "id": "f-89e0cda0",
@@ -3090,7 +3090,7 @@
           "id": "f-ae4c1416",
           "name": "Regression tests",
           "status": "done",
-          "evidence": "packages/evals/tasks-visual/regression/bench"
+          "evidence": "packages/evals/src/composition-generalization.test.mjs — fifteen independent families with good and bad variants, every fixture SceneLayout-shaped and matching what composition.ts parses, synthetic fixtures labelled as such, and fixture generation deterministic."
         },
         {
           "id": "f-c1a2cba7",
@@ -3162,7 +3162,7 @@
           "id": "f-6bb2f106",
           "name": "Failure recovery tests",
           "status": "done",
-          "evidence": "packages/evals/tasks/failure-recovery.json"
+          "evidence": "packages/evals/src/scripting-curriculum.test.mjs — every task file loads clean and declares what it exercises, the failure-recovery suite included."
         },
         {
           "id": "f-3b7c8c51",
