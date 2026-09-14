@@ -1677,11 +1677,25 @@ export const TOOLS: Record<string, ToolImpl> = {
       // report a removal it did not make.
       // `result.removed` arrives as {t:"number",v:0}. Reading it raw gives NaN, which silently
       // disabled the branch below — the tool could never report that nothing was there.
-      const removed = Number(decodeTagged((res as { result?: { removed?: unknown } })?.result?.removed) ?? NaN);
+      const result = (res as { result?: Record<string, unknown> })?.result;
+      const removed = Number(decodeTagged(result?.removed) ?? NaN);
       if (Number.isFinite(removed) && removed === 0) {
         return { removed: 0, note: effect ? `there was no ${effect} on ${path}` : `there were no effects on ${path}` };
       }
-      return res;
+      if (Number.isFinite(removed)) {
+        // The success path used to return the plugin's payload verbatim, so a real removal came
+        // back as {"result":{"removed":{"t":"number","v":2},...}} while the nothing-there path
+        // returned a clean sentence. The tool stated its failure clearly and left its success for
+        // the model to decode — which is the wrong way round, and made the count easy to misread.
+        const names = String(decodeTagged(result?.effects) ?? '');
+        return {
+          removed,
+          from: path,
+          effects: names ? names.split(',').map((n) => n.trim()).filter(Boolean) : undefined,
+        };
+      }
+      // The count was unreadable. Say so rather than claim a removal that cannot be substantiated.
+      return { removed: null, from: path, note: 'the removal ran but Studio did not report how many effects it took off' };
     },
   },
   check_composition: {
