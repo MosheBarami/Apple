@@ -789,6 +789,174 @@ end
 return Leaderboard
 `;
 
+const ROUNDS_SOURCE = `--!strict
+-- Rounds — the match loop, with the four ways a hand-written one wedges.
+--
+--   1. TWO LOOPS. Something calls start() again — a second script, a respawn handler, a retry —
+--      and now two loops advance the same round, halving every timer and firing every event twice.
+--      Nothing errors. It presents as "the game got faster" and is almost impossible to read back
+--      from logs.
+--   2. THE ROUND THAT NEVER ENDS. The loop waits for a win condition that stops being reachable
+--      when the last player leaves, and the server sits in an intermission that never completes
+--      until it is shut down.
+--   3. STATE THAT SURVIVES A ROUND. Scores, flags and connections from round N are still live in
+--      round N+1 because cleanup is a list somebody has to remember to add to.
+--   4. JOINING MID-ROUND. A player who arrives at second 40 of a 60-second round is either dropped
+--      into a match they cannot win or silently excluded with no explanation.
+--
+-- The loop here is a state machine with ONE owner, an explicit participant set captured at the
+-- start of each round, and a cleanup that runs on every exit path including the failure ones.
+--
+-- SETUP (once, in a server Script):
+--   local Rounds = require(game.ServerScriptService.Rounds)
+--   Rounds.configure({ roundSeconds = 120, intermissionSeconds = 15, minimumPlayers = 2 })
+--   Rounds.onStart(function(players) --[[ teleport them in, reset scores ]] end)
+--   Rounds.onEnd(function(players, reason) --[[ award, announce ]] end)
+--   Rounds.start()
+local Players = game:GetService("Players")
+
+local Rounds = {}
+
+local roundSeconds = 120
+local intermissionSeconds = 15
+local minimumPlayers = 2
+
+local running = false
+local phase = "idle"
+local participants = {}
+local elapsed = 0
+local onStart, onEnd = nil, nil
+local roundNumber = 0
+
+function Rounds.configure(opts)
+	opts = opts or {}
+	roundSeconds = opts.roundSeconds or roundSeconds
+	intermissionSeconds = opts.intermissionSeconds or intermissionSeconds
+	minimumPlayers = opts.minimumPlayers or minimumPlayers
+end
+
+function Rounds.onStart(fn) onStart = fn end
+function Rounds.onEnd(fn) onEnd = fn end
+
+--- idle | intermission | playing
+function Rounds.phase() return phase end
+function Rounds.number() return roundNumber end
+
+--- The players captured when the current round began. A player who joins mid-round is NOT in it —
+--- they wait for the next one, which is the only answer that is fair and legible.
+function Rounds.participants()
+	local out = {}
+	for _, p in ipairs(participants) do table.insert(out, p) end
+	return out
+end
+
+local function finish(reason)
+	if phase ~= "playing" then
+		return false
+	end
+	local who = Rounds.participants()
+	-- Cleanup FIRST, so a handler that errors cannot leave the machine in "playing" forever. This
+	-- is rule 3: state is cleared on every exit path, not at the top of the next round.
+	phase = "intermission"
+	participants = {}
+	elapsed = 0
+	if onEnd ~= nil then
+		local ok, err = pcall(onEnd, who, reason)
+		if not ok then
+			warn("[Rounds] onEnd errored: " .. tostring(err))
+		end
+	end
+	return true
+end
+
+--- End the current round early. Returns false when there was no round to end.
+function Rounds.finish(reason)
+	return finish(reason or "called")
+end
+
+--- Drive the machine forward by dt seconds. The loop calls this; a test can call it directly,
+--- which is the only reason a round is testable without waiting two minutes for one.
+function Rounds.tick(dt)
+	if not running then
+		return phase
+	end
+	elapsed = elapsed + dt
+
+	if phase == "playing" then
+		-- Rule 2: a round with nobody in it ends, rather than waiting for a win that cannot happen.
+		local present = 0
+		for _, p in ipairs(participants) do
+			if p.Parent ~= nil then present = present + 1 end
+		end
+		if present == 0 then
+			finish("abandoned")
+		elseif elapsed >= roundSeconds then
+			finish("time")
+		end
+		return phase
+	end
+
+	-- intermission, or the very first tick
+	if elapsed < intermissionSeconds then
+		return phase
+	end
+	local waiting = Players:GetPlayers()
+	if #waiting < minimumPlayers then
+		-- Not enough players. Stay in intermission rather than starting a match of one, and do not
+		-- let elapsed run away, or the next eligible moment starts instantly.
+		elapsed = intermissionSeconds
+		return phase
+	end
+
+	participants = waiting
+	elapsed = 0
+	phase = "playing"
+	roundNumber = roundNumber + 1
+	if onStart ~= nil then
+		local ok, err = pcall(onStart, Rounds.participants())
+		if not ok then
+			warn("[Rounds] onStart errored: " .. tostring(err))
+			finish("failed to start")
+		end
+	end
+	return phase
+end
+
+--- Start the loop. Idempotent: rule 1 is that a second call must not begin a second loop.
+function Rounds.start()
+	if running then
+		return false
+	end
+	running = true
+	phase = "intermission"
+	elapsed = 0
+	task.spawn(function()
+		while running do
+			Rounds.tick(1)
+			task.wait(1)
+		end
+	end)
+	return true
+end
+
+--- Stop cleanly, ending any round in progress so onEnd still runs.
+function Rounds.stop()
+	if not running then
+		return false
+	end
+	if phase == "playing" then
+		finish("stopped")
+	end
+	running = false
+	phase = "idle"
+	participants = {}
+	elapsed = 0
+	return true
+end
+
+return Rounds
+`;
+
 export const PREFABS: Record<string, Prefab> = {
   profile_store: {
     id: 'profile_store',
@@ -833,6 +1001,33 @@ export const PREFABS: Record<string, Prefab> = {
       'Leaderboard.stop()',
     ],
     source: LEADERBOARD_SOURCE,
+  },
+  rounds: {
+    id: 'rounds',
+    moduleName: 'Rounds',
+    summary: 'A match loop with one owner, an explicit participant set, and cleanup on every exit path.',
+    prevents: [
+      'two loops advancing the same round because something called start() twice, which halves every timer and fires every event twice while nothing errors',
+      'a round that never ends because its win condition stopped being reachable when the last player left',
+      'scores, flags and connections from one round still being live in the next',
+      'a player who joined at second 40 being dropped into a match they cannot win, or excluded with no explanation',
+      'a handler that errors leaving the machine stuck in playing forever',
+    ],
+    defaultParent: 'game.ServerScriptService',
+    className: 'ModuleScript',
+    api: [
+      'Rounds.configure({ roundSeconds = 120, intermissionSeconds = 15, minimumPlayers = 2 })',
+      'Rounds.onStart(function(players) end)',
+      'Rounds.onEnd(function(players, reason) end)',
+      'Rounds.start() -> boolean   -- idempotent',
+      'Rounds.tick(dt) -> phase    -- the loop calls this; call it directly to test a round',
+      'Rounds.finish(reason) -> boolean',
+      'Rounds.phase() -> "idle" | "intermission" | "playing"',
+      'Rounds.participants() -> players captured when this round began',
+      'Rounds.number() -> number',
+      'Rounds.stop() -> boolean',
+    ],
+    source: ROUNDS_SOURCE,
   },
   checkpoints: {
     id: 'checkpoints',

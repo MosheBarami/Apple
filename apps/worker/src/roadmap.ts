@@ -1178,8 +1178,19 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     impact: 'Players stay for one more round.',
     complexity: 'medium', mode: 'stone', runs: 1, priority: 30,
     dependsOn: ['combat_weapons'], genres: ['combat'], satisfiedBy: ['round_system'],
-    build: ['Run an intermission, a match timer and a result announcement on the server.'],
-    acceptance: ['A round starts, ends and reports a winner without manual intervention.'],
+    build: [
+      'Install the reviewed module first: install_module("rounds"). It already does everything below, and the rules below are then what to check rather than what to write.',
+      'Run an intermission, a match timer and a result announcement on the server.',
+      'Keep ONE owner of the loop. A second start() — from a retry, a respawn handler, another script — advances the same round twice, halving every timer and firing every event twice, and nothing errors: it presents as the game getting faster.',
+      'Capture the participants when the round BEGINS. A player who joins at second 40 waits for the next one rather than being dropped into a match they cannot win.',
+      'End a round nobody is left in. A win condition stops being reachable when the last player leaves, and the server then sits in that round until it is shut down.',
+      'Clear scores, flags and connections on the way OUT of a round, not on the way in, so a handler that errors cannot carry state into the next one.',
+    ],
+    acceptance: [
+      'A round starts, ends and reports a winner without manual intervention.',
+      'Calling the start twice does not run two rounds at once.',
+      'A round with no players left in it ends by itself.',
+    ],
   },
   {
     id: 'combat_teams',

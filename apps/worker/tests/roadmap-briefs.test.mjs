@@ -166,6 +166,7 @@ const WIRED = {
   economy: 'currency',
   global_leaderboard: 'leaderboard',
   obby_stages: 'checkpoints',
+  combat_rounds: 'rounds',
 };
 
 /** Every install_module("...") named anywhere in the catalogue. */

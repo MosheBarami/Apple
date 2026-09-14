@@ -1103,3 +1103,225 @@ test('an unconfigured board refuses rather than erroring', () => {
   ].join('\n'), 'lb-unconfigured');
   assert.ok(r.ok, r.output);
 });
+
+/**
+ * Rounds' harness.
+ *
+ * `tick(dt)` exists so a round can be driven rather than waited for — a two-minute round is not
+ * something a suite can sit through, and "advance time by 130 seconds" is the only way the
+ * time-expiry path gets exercised at all. `task.spawn` captures the loop instead of running it,
+ * because the loop is `while running do` and a synchronous spawn would hang forever.
+ *
+ * A "player" here is a table with a Parent, which is how the module tests presence: a player who
+ * has left has a nil Parent. That is the real check, not a stub of one.
+ */
+function runRounds(body, tag) {
+  const prelude = [
+    'local warnings = {}',
+    'warn = function(...)',
+    '\tlocal parts = {}',
+    '\tfor i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end',
+    '\ttable.insert(warnings, table.concat(parts, " "))',
+    'end',
+    '',
+    'local spawned = nil',
+    'task = { spawn = function(f) spawned = f end, wait = function() end }',
+    '',
+    'local lobby = {}',
+    'game = { GetService = function() return { GetPlayers = function() return lobby end } end }',
+    '',
+    '-- a present player has a Parent; one who has left does not',
+    'local function player(name) return { Name = name, Parent = "Players" } end',
+    'local function leave(p) p.Parent = nil end',
+  ].join('\n');
+
+  const source = [
+    prelude,
+    `local M = (function()\n${P.PREFABS.rounds.source}\nend)()`,
+    body,
+    'print("PREFAB-OK")',
+  ].join('\n\n');
+
+  const file = join(TMP, `${tag}.luau`);
+  writeFileSync(file, source);
+  try {
+    const stdout = execFileSync('luau', [file], { encoding: 'utf8', stdio: 'pipe' });
+    return { ok: stdout.includes('PREFAB-OK'), output: stdout };
+  } catch (e) {
+    return { ok: false, output: `${e.stdout ?? ''}${e.stderr ?? ''}` };
+  }
+}
+
+/** Two players in the lobby, short timers, started. */
+const RD = [
+  'local started, ended = {}, {}',
+  'M.configure({ roundSeconds = 60, intermissionSeconds = 10, minimumPlayers = 2 })',
+  'M.onStart(function(ps) table.insert(started, #ps) end)',
+  'M.onEnd(function(ps, reason) table.insert(ended, reason) end)',
+  'local a, b = player("a"), player("b")',
+  'lobby = { a, b }',
+  'assert(M.start() == true)',
+].join('\n');
+
+test('the rounds harness runs, and a false assertion in it still fails', () => {
+  const good = runRounds('assert(type(M.tick) == "function")', 'rd-sanity');
+  assert.ok(good.ok, good.output);
+  const bad = runRounds('assert(false, "intentional-rounds")', 'rd-sanity-neg');
+  assert.equal(bad.ok, false);
+  assert.match(bad.output, /intentional-rounds/);
+});
+
+test('START IS IDEMPOTENT — a second call must not begin a second loop', () => {
+  // Two loops advance the same round, halving every timer and firing every event twice, and
+  // nothing errors. It presents as "the game got faster".
+  const r = runRounds([
+    RD,
+    'assert(M.start() == false, "a second start must be refused")',
+    'assert(M.start() == false, "and a third")',
+    'M.stop()',
+    'assert(M.start() == true, "but it can be restarted after stopping")',
+  ].join('\n'), 'rd-idempotent');
+  assert.ok(r.ok, r.output);
+});
+
+test('a round begins after the intermission, once there are enough players', () => {
+  const r = runRounds([
+    RD,
+    'assert(M.phase() == "intermission")',
+    'M.tick(9)',
+    'assert(M.phase() == "intermission", "not yet")',
+    'M.tick(2)',
+    'assert(M.phase() == "playing", "the round should have begun")',
+    'assert(M.number() == 1)',
+    'assert(#started == 1 and started[1] == 2, "onStart gets the participants")',
+  ].join('\n'), 'rd-begin');
+  assert.ok(r.ok, r.output);
+});
+
+test('A ROUND WITH NOBODY LEFT IN IT ENDS, rather than waiting for a win that cannot happen', () => {
+  const r = runRounds([
+    RD,
+    'M.tick(11)',
+    'assert(M.phase() == "playing")',
+    'leave(a) leave(b)',
+    'M.tick(1)',
+    'assert(M.phase() == "intermission", "an empty round must end")',
+    'assert(ended[1] == "abandoned", "and say why, got " .. tostring(ended[1]))',
+  ].join('\n'), 'rd-abandoned');
+  assert.ok(r.ok, r.output);
+});
+
+test('a round ends on time, and reports that as the reason', () => {
+  const r = runRounds([
+    RD,
+    'M.tick(11)',
+    'assert(M.phase() == "playing")',
+    'M.tick(59)',
+    'assert(M.phase() == "playing", "not yet")',
+    'M.tick(2)',
+    'assert(M.phase() == "intermission")',
+    'assert(ended[1] == "time")',
+  ].join('\n'), 'rd-time');
+  assert.ok(r.ok, r.output);
+});
+
+test('A PLAYER WHO JOINS MID-ROUND IS NOT IN IT, and is in the next one', () => {
+  const r = runRounds([
+    RD,
+    'M.tick(11)',
+    'assert(#M.participants() == 2)',
+    'local c = player("c")',
+    'lobby = { a, b, c }',
+    'M.tick(5)',
+    'assert(#M.participants() == 2, "the joiner must not be added to a running round")',
+    'M.finish("called")',
+    'M.tick(11)',
+    'assert(#M.participants() == 3, "and must be in the next one, got " .. tostring(#M.participants()))',
+    'assert(M.number() == 2)',
+  ].join('\n'), 'rd-midjoin');
+  assert.ok(r.ok, r.output);
+});
+
+test('STATE DOES NOT SURVIVE A ROUND', () => {
+  const r = runRounds([
+    RD,
+    'M.tick(11)',
+    'assert(#M.participants() == 2)',
+    'M.finish("called")',
+    'assert(#M.participants() == 0, "participants must be cleared on the way out, not on the way in")',
+    'assert(M.phase() == "intermission")',
+  ].join('\n'), 'rd-cleanup');
+  assert.ok(r.ok, r.output);
+});
+
+test('a handler that ERRORS does not leave the machine stuck in playing', () => {
+  // Rule 3 stated as a failure path: cleanup runs before the callback, so a throwing handler
+  // cannot strand the state machine.
+  const r = runRounds([
+    'M.configure({ roundSeconds = 60, intermissionSeconds = 10, minimumPlayers = 2 })',
+    'M.onEnd(function() error("handler exploded") end)',
+    'local a, b = player("a"), player("b")',
+    'lobby = { a, b }',
+    'M.start()',
+    'M.tick(11)',
+    'assert(M.phase() == "playing")',
+    'M.finish("called")',
+    'assert(M.phase() == "intermission", "a throwing onEnd must not strand the round")',
+    'assert(#warnings >= 1, "and the error must be reported")',
+  ].join('\n'), 'rd-throwing-end');
+  assert.ok(r.ok, r.output);
+});
+
+test('an onStart that errors ends the round instead of running it broken', () => {
+  const r = runRounds([
+    'M.configure({ roundSeconds = 60, intermissionSeconds = 10, minimumPlayers = 2 })',
+    'M.onStart(function() error("could not set up") end)',
+    'local a, b = player("a"), player("b")',
+    'lobby = { a, b }',
+    'M.start()',
+    'M.tick(11)',
+    'assert(M.phase() == "intermission", "a round that could not start must not be left playing")',
+    'assert(#warnings >= 1)',
+  ].join('\n'), 'rd-throwing-start');
+  assert.ok(r.ok, r.output);
+});
+
+test('too few players holds the intermission without the timer running away', () => {
+  // If elapsed kept climbing, the moment a second player joined a round would start instantly,
+  // with no intermission at all for the person who was already waiting.
+  const r = runRounds([
+    'M.configure({ roundSeconds = 60, intermissionSeconds = 10, minimumPlayers = 2 })',
+    'local a = player("a")',
+    'lobby = { a }',
+    'M.start()',
+    'M.tick(60)',
+    'assert(M.phase() == "intermission", "one player is not a match")',
+    'lobby = { a, player("b") }',
+    'M.tick(1)',
+    'assert(M.phase() == "playing", "and it starts on the next tick once there are two")',
+  ].join('\n'), 'rd-tooFew');
+  assert.ok(r.ok, r.output);
+});
+
+test('stop ends a round in progress so onEnd still runs', () => {
+  const r = runRounds([
+    RD,
+    'M.tick(11)',
+    'assert(M.phase() == "playing")',
+    'assert(M.stop() == true)',
+    'assert(M.phase() == "idle")',
+    'assert(ended[1] == "stopped", "a shutdown mid-round must still settle it")',
+    'assert(M.tick(100) == "idle", "and ticking a stopped machine does nothing")',
+  ].join('\n'), 'rd-stop');
+  assert.ok(r.ok, r.output);
+});
+
+test('finish on a round that is not running is refused rather than faked', () => {
+  const r = runRounds([
+    RD,
+    'assert(M.phase() == "intermission")',
+    'assert(M.finish("called") == false, "there is no round to finish")',
+    'assert(#ended == 0, "and onEnd must not have been called")',
+  ].join('\n'), 'rd-finish-idle');
+  assert.ok(r.ok, r.output);
+});
