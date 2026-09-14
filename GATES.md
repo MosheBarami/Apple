@@ -273,7 +273,7 @@ test it gated.
 
 - [x] G92: The landing and site E2E pass in every viewport
     CHECK: npx playwright test tests/e2e/landing.spec.ts --reporter=line
-    EXPECT: 54 passed
+    EXPECT: 60 passed
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G92; path=6765c31f4f12/53 entries; git-sha=9c63d25; tree-clean=yes; break-sha=9c63d25; EXPECT=unmatched; output-sha256=2208a9002be36564e282dde6a713316beab0e7061df4a2aa00fd77f6d3258603; output-bytes=150; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=00c12e3b2de12dca174bde28; at=2026-09-14T19:30:50.582Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9026dce; tree-clean=yes; EXPECT=matched; output-sha256=ab84f74a3c5da31ce8d84d0a43af334b75bfaad84d611e40dbe12700f859ee6a; output-bytes=5650; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=51d014af73b8ddab12ee5d2e; at=2026-09-14T19:31:47.544Z
 
@@ -313,7 +313,7 @@ Whole-product gates as executed by the checker:
 |---|---|
 | G90 suite | `SUITE GREEN` — 2,063 passed, 0 failed |
 | G91 typecheck | `TYPECHECK CLEAN` — 0 TS errors |
-| G92 landing E2E | `54 passed` across desktop, laptop and mobile viewports |
+| G92 landing E2E | `60 passed` across desktop, laptop and mobile viewports |
 
 The suite oracle is success-only by construction: grepping for `fail 0` would match a run where five
 packages pass and one fails, so `scripts/gate-suite.mjs` sums every `fail N` and requires the total
