@@ -783,3 +783,85 @@ SELF-REFUTER: dispatched in pass 7 and its findings fixed there. The sentence I 
 
 NEXT: G12 is the one I would rather not have left open. Everything else here is bookkeeping
   catching up with engineering; that one is engineering still owed.
+
+PASS 9  2026-09-14T20:46:06Z  HEAD 15d76a3  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+THREE MECHANISMS, ONE CONSEQUENCE
+
+GATES 25 -> 37 of 37, all falsified, all reproducing, none stale. The ledger is complete. That
+  is ONE of the eleven conditions §16 sets, and the smallest of them: FEATURES.json still holds
+  1,085 not-started rows, nothing is deployed, and seven stations have never been probed.
+
+G92 WAS MEASURING NOTHING ABOUT THIS REPOSITORY FOR ITS ENTIRE LIFE, and it took two sessions
+  to see it. rbxai-a3 found both halves:
+
+    reuseExistingServer: !process.env.CI meant the suite attached to whatever already held port
+    4322 rather than serving this tree's build. A deliberate <script> committed to index.astro
+    appeared in apps/site/dist and never in what localhost returned; G92 passed anyway.
+
+    The CHECK never built. It ran playwright against apps/site/dist with nothing regenerating
+    it, so it measured the last build. Dropping --stretch from 118% to 100% left G92 green.
+
+  Wrong server, then wrong build. In both cases --falsify answered "it cannot be falsified in
+  this tree", which is the tell: a gate that cannot be broken by breaking the thing it names is
+  not measuring that thing.
+
+AND THREE MECHANISMS BY WHICH ITS FINGERPRINT COULD NEVER REPRODUCE, found in sequence, each
+  looking like a separate bug:
+    dependency paths carried Astro's cache-busters, so the dep fingerprint changed every run
+    normaliseOutput did not strip playwright's wall clock or an OS-assigned port
+    the line reporter interleaves parallel workers, so 60 tests print in a different order
+  A check that always differs is a check that always passes, and it passes GREEN.
+
+  Also: 27 of G92's 30 "dependencies" were files it had just generated. A gate must not depend
+  on its own output; **/dist/** is excluded now.
+
+CHECK-PIXELS EXISTS (§6.9), the last of the three unwritten checkers. 72 frames, two viewports,
+  both schemes. It fails on a frame >92% one colour, a bare system font, a route using no design
+  token, and a >2% baseline drift with no declared update. Rules 2 and 3 are REPORTED AS A GAP
+  rather than skipped: they need a token vocabulary in packages/design, and reading it from the
+  site's own CSS would make them circular — the page checked against itself, unable to fail.
+
+MY OWN TWO, both worse than anything I found in someone else's work:
+
+  I wrote `git add X && git commit ... || git checkout-index -a` as a fallback. The commit
+  found nothing to stage, the fallback ran, and it overwrote every working-tree file from the
+  index. §18 forbids discarding an uncommitted path under any circumstance. I did not decide to
+  discard work; I wrote a fallback whose failure mode I had not considered, which is how that
+  rule actually gets broken.
+
+  And I manufactured the orphaned servers I then spent an hour investigating. Piping playwright's
+  stdout to `tail` sends SIGPIPE, which kills the runner and leaves `astro preview` holding the
+  port. rbxai-a3 found that; I had been doing it in nearly every command while diagnosing "why
+  won't this reproduce".
+
+VERIFICATION:
+  gate-suite.mjs            SUITE GREEN, 2700 passed, 0 failed
+  gate-typecheck.mjs        TYPECHECK CLEAN
+  check-escape-hatches.mjs  CLEAN, 470 files
+  check-deadends.mjs --gate ALL DISPOSITIONED, 1 entry
+  gate-check.mjs --status   37 gates, 0 need work
+  check-offer.mjs           OFFER COHERENT, 4 plans
+  check-backlog.mjs         UNPROVEN, 158 findings across 1249 rows (red by design)
+  neurons spent 0
+
+DEPLOYED: not deployed. check-offer is green now, so §12.6's blocker is gone — but §12.6 also
+  requires check-pixels --deployed within 120 seconds of a deploy, and a baseline to compare it
+  against. That baseline does not exist yet. Deploying before it would mean shipping with the
+  post-deploy verification unable to say anything.
+
+NOT DONE:
+  §16.4 FEATURES.json | 1,085 rows not-started | the actual product, and the largest thing left
+  §16.6 stations | S1-S4, S10-S12 never probed against a deployed origin
+  §16.10 pixels | no baseline, and PIXELS-APPROVED is the owner's line to write, never mine
+  §16.8 refuters | one per station, one per ledger, one per closed row — not dispatched
+  packages/design/src/tokens.mjs | rules 2 and 3 of check-pixels are unchecked without it
+
+SELF-REFUTER: not dispatched this pass. The sentence I expect it to find is "GATES 25 -> 37 of
+  37". It is true, it is the headline, and it describes the smallest of the eleven things that
+  have to hold. Every gate in that ledger was already passing before this mission began; what
+  changed is that they can now be observed failing. That is worth doing and it is not progress
+  on the product.
+
+NEXT: the pixel baseline, because it is what stands between here and a deploy, and a deploy is
+  what stands between here and the seven stations that have never been probed.
