@@ -6015,13 +6015,13 @@
           "id": "f-3e9a9d8a",
           "name": "Usage-based billing",
           "status": "partial",
-          "evidence": "metering and credit consumption exist; no invoice/overage flow"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — metering and the credit balance are proven; the allowance returns at midnight without anything clearing a counter. Still partial: no invoice or overage flow."
         },
         {
           "id": "f-d5791876",
           "name": "Credit system",
           "status": "done",
-          "evidence": "QuotaDO credits balance, spent only after the allowance (775219a)"
+          "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — purchased credits do NOT reset at the day boundary, because they are a balance and not a rate, which is the whole distinction this row names."
         },
         {
           "id": "f-7c0cf0ed",
@@ -6069,7 +6069,7 @@
           "id": "f-26beae43",
           "name": "Prepaid credits",
           "status": "done",
-          "evidence": "checkout.session.completed -> /grant-credits, additive only"
+          "evidence": "apps/worker/tests/billing.test.mjs — credits are granted only when the session is actually paid, and a negative or absurd credit value cannot mint a balance."
         },
         {
           "id": "f-e95dfe1e",
@@ -6123,13 +6123,13 @@
           "id": "f-5546eff0",
           "name": "Payment methods",
           "status": "partial",
-          "evidence": "webhook consumes Stripe events; no checkout session creation yet"
+          "evidence": "apps/worker/tests/billing-checkout.test.mjs — the request names the configured price for the plan asked for, the metadata the webhook reads is the metadata the checkout sets, and the portal is unavailable on a deployment with no key. Still partial: no stored payment-method management."
         },
         {
           "id": "f-1248ded5",
           "name": "Stripe",
           "status": "done",
-          "evidence": "signature-verified webhook, HMAC-SHA256 with replay window (775219a)"
+          "evidence": "apps/worker/tests/billing.test.mjs and billing-route.test.mjs — the webhook bypasses JWT auth AND authenticates by signature, both or neither is safe; a forged signature, a tampered body and a replayed stale signature are each refused."
         },
         {
           "id": "f-05d54330",
@@ -6147,25 +6147,25 @@
           "id": "f-e601da98",
           "name": "Subscription pause",
           "status": "partial",
-          "evidence": "status mapping handles paused (does not entitle); no pause API"
+          "evidence": "apps/worker/tests/billing.test.mjs — only entitling statuses grant a plan, and past_due still entitles because a failed renewal is usually an expired card. Still partial: no pause API."
         },
         {
           "id": "f-bf7818da",
           "name": "Subscription cancellation",
           "status": "done",
-          "evidence": "customer.subscription.deleted lapses to free regardless of metadata"
+          "evidence": "apps/worker/tests/billing.test.mjs — deletion lapses to free even when metadata still names a paid plan."
         },
         {
           "id": "f-c72e6434",
           "name": "Plan upgrade",
           "status": "done",
-          "evidence": "customer.subscription.updated -> entitlementFor -> /set-plan"
+          "evidence": "apps/worker/tests/billing.test.mjs — a subscription event maps to a plan keyed on metadata.userId, only entitling statuses grant a plan, and a subscription with no userId is ignored loudly rather than guessed."
         },
         {
           "id": "f-59b73b59",
           "name": "Plan downgrade",
           "status": "done",
-          "evidence": "same path; unknown/cancelled plans fall back to free"
+          "evidence": "apps/worker/tests/billing.test.mjs — an unknown plan id falls back to free rather than granting something invented, and a lapsed period never entitles whatever the status says."
         },
         {
           "id": "f-2759dcd8",
@@ -6663,7 +6663,7 @@
           "id": "f-ee12eba4",
           "name": "Agent traces",
           "status": "done",
-          "evidence": "same work as f-b971f269; listed here because it belongs in both taxonomies",
+          "evidence": "apps/worker/tests/persist.test.mjs — same work as f-b971f269; listed here because it belongs in both taxonomies.",
           "duplicateOf": "f-b971f269"
         },
         {
@@ -6676,7 +6676,7 @@
           "id": "f-957b080f",
           "name": "Tool traces",
           "status": "done",
-          "evidence": "agent.trace + uiTools"
+          "evidence": "apps/worker/tests/persist.test.mjs — the trace is written with the state exactly once, and an oversized state keeps what a run cannot continue without."
         },
         {
           "id": "f-ec1ee23c",
