@@ -50,6 +50,35 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SHELL = '/bin/sh';
 
+/**
+ * Refuse to verify a tree the caller is not standing in.
+ *
+ * ROOT is derived from THIS FILE's location, so `node /abs/path/to/main/scripts/gate-check.mjs`
+ * run from inside a worktree executes every CHECK against main while the caller believes it is
+ * testing the worktree. In the falsification direction that fails safe — the break is not present,
+ * the gate is green, and the record is refused. In the `--reverify` direction it does not: it
+ * would stamp EVIDENCE describing main's state onto a run the caller performed elsewhere, and the
+ * git sha in that record would be main's too, so nothing in the record would reveal the mix-up.
+ *
+ * This cost a real G5 record before it existed. The fix is to compare git toplevels and say so.
+ */
+function assertSameTree() {
+  const top = (cwd) => {
+    try {
+      return execSync('git rev-parse --show-toplevel', { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return null;
+    }
+  };
+  const rootTop = top(ROOT);
+  const hereTop = top(process.cwd());
+  if (!rootTop || !hereTop || rootTop === hereTop) return;
+  console.error(`gate-check: this checker verifies ${rootTop}, but you are standing in ${hereTop}.`);
+  console.error('gate-check: every CHECK would run against the OTHER tree. Invoke that tree\'s own copy:');
+  console.error(`gate-check:   cd ${hereTop} && node scripts/gate-check.mjs ...`);
+  process.exit(2);
+}
+
 /* ------------------------------------------------------------------ flags --- */
 
 const KNOWN_BOOL = new Set(['--approve', '--lint', '--status', '--reverify', '--falsify']);
@@ -97,6 +126,7 @@ function parseArgs(argv) {
   return { ...flags, bools };
 }
 
+assertSameTree();
 const ARGS = parseArgs(process.argv.slice(2));
 const APPROVE = ARGS.bools.has('--approve');
 const LINT = ARGS.bools.has('--lint');

@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -566,4 +566,30 @@ test('no tracked source file contains a raw control byte', () => {
     }
   }
   assert.deepEqual(offenders, [], `these are binary to every grep-based check: ${offenders.join(', ')}`);
+});
+
+test('the checker refuses to verify a tree the caller is not standing in', () => {
+  // ROOT is derived from gate-check.mjs's OWN path, so invoking it by absolute path from another
+  // tree runs every CHECK against the checker's tree while the caller believes it is testing theirs.
+  // Falsification fails safe that way (the break is absent, the gate is green, the record refused),
+  // but --reverify does not: it would stamp EVIDENCE describing the wrong tree, carrying the wrong
+  // tree's git sha, with nothing in the record to show the mix-up. This happened while recording G5.
+  const scratch = mkdtempSync(join(tmpdir(), 'gate-check-othertree-'));
+  try {
+    spawnSync('git', ['init', '-q'], { cwd: scratch });
+    const elsewhere = spawnSync(process.execPath, [join(ROOT, 'scripts', 'gate-check.mjs'), '--status', join(ROOT, 'GATES.md')], {
+      cwd: scratch, encoding: 'utf8',
+    });
+    assert.equal(elsewhere.status, 2, 'a run from another tree must refuse, not verify the wrong one');
+    assert.match(elsewhere.stderr, /you are standing in/);
+
+    // POSITIVE CONTROL. Without this the assertion above would also pass if the checker were broken
+    // outright and exited 2 on everything.
+    const athome = spawnSync(process.execPath, [join(ROOT, 'scripts', 'gate-check.mjs'), '--status', join(ROOT, 'GATES.md')], {
+      cwd: ROOT, encoding: 'utf8',
+    });
+    assert.notEqual(athome.status, 2, 'the same command from the checker\'s own tree must still run');
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 });
