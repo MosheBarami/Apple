@@ -987,7 +987,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'run_and_check',
       description:
-        'Playtest verification: starts Run mode (server simulation), waits, collects console output/errors, stops. Returns the logs. Use AFTER building, to verify nothing errors. Run mode is NOT a sandbox — it executes your server scripts against the real place and Studio does not undo what they destroy — so this takes a protective checkpoint first, and restores automatically if the playtest destroys anything.',
+        'Playtest verification: starts Run mode (server simulation), waits, collects console output/errors, stops. Returns the logs. Use AFTER building, to verify nothing errors. It proves NOTHING ERRORED, which is not the same as anything being correct — a shop that debits the wrong amount errors nowhere. Use run_spec for assertions about behaviour. Run mode is NOT a sandbox — it executes your server scripts against the real place and Studio does not undo what they destroy — so this takes a protective checkpoint first, and restores automatically if the playtest destroys anything.',
       parameters: S({ seconds: { type: 'number', description: '2-15, default 5' } }),
     },
     studio: true,
@@ -1671,7 +1671,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'inspect_visually',
       description:
-        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes.',
+        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Sparks — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Use this for what only an image can show: whether the thing reads.',
       parameters: S(
         {
           target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },
