@@ -98,3 +98,46 @@ test('the current-plan rail follows the writing direction', () => {
   assert.match(block, /inset-inline-start/, 'the rail must use a logical inset');
   assert.doesNotMatch(block, /box-shadow:[^;]*inset\s+-?\d/, 'a physical inset offset ignores direction');
 });
+
+// --- w14: the upgrade and downgrade path --------------------------------------------------
+
+/**
+ * THE RETURN FROM STRIPE IS NOT AN ENTITLEMENT.
+ *
+ * The plan moves when the webhook applies the subscription event, which may not have landed by the
+ * time the browser comes back. A page that says "You're on Pro!" on the success URL is lying in
+ * exactly the way the waitlist was — confidently, and about the one thing the user just paid for.
+ */
+test('the success return reports what the SERVER says, and never claims the new plan', () => {
+  assert.match(usageCode, /checkout=done|'done'/, 'the return flag is handled');
+  assert.match(usage, /changes when Stripe confirms it/, 'and the wait is stated plainly');
+  assert.match(usageCode, /me\.refetch\(\)/, 'with a refetch rather than an assumption');
+  // The words that would make it a lie.
+  assert.doesNotMatch(usage, /You(?:'|’)re now on|Welcome to Pro|Upgrade complete/i);
+});
+
+test('the checkout flag is taken back out of the URL', () => {
+  // A reload or a shared link would otherwise replay a payment confirmation that never happened.
+  assert.match(usageCode, /searchParams\.delete\('checkout'\)/);
+  assert.match(usageCode, /replaceState/);
+});
+
+test('A CHECKOUT ONLY EVER STARTS A FIRST SUBSCRIPTION', () => {
+  // Stripe checkout ADDS a subscription; it does not replace one. A paid user sent to checkout for
+  // a different tier is billed for both, so every move from a paid plan goes to the portal.
+  assert.match(usageCode, /currentPlan === 'free' && canBuy\) checkout\.mutate/,
+    'checkout is gated on having no subscription yet');
+  assert.match(usageCode, /else portal\.mutate\(\)/, 'everything else is a portal visit');
+});
+
+test('a deployment with no Stripe key offers no button at all', () => {
+  // PlanLadder renders "Not available yet" when onChoose is absent, which is honest; a button that
+  // 503s is not.
+  assert.match(usageCode, /billing\.data\?\.checkout\s*\n?\s*\?/, 'onChoose is conditional on config');
+  assert.match(usageCode, /: undefined/, 'and absent when checkout is not configured');
+  assert.match(plans, /Not available yet/, 'which the ladder renders as a stated absence');
+});
+
+test('cancelling says nothing was charged', () => {
+  assert.match(usage, /nothing was charged/i);
+});

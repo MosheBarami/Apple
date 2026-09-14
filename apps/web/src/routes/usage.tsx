@@ -3,11 +3,20 @@
 // Every number on this page comes from the live quota or from @golem/shared.
 // Sparks are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { meterView } from '../components/usage-meter-model';
-import { PRODUCT_MODE_INFO, isPlanId, type ProductMode } from '@golem/shared';
-import { fetchMe, fetchUsage, type UsageDay } from '../lib/api';
+import { PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import {
+  fetchBillingConfig,
+  fetchMe,
+  fetchUsage,
+  openBillingPortal,
+  startCheckout,
+  type UsageDay,
+} from '../lib/api';
+import { useToast } from '../components/toast';
 
 const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 
@@ -141,6 +150,53 @@ export function UsagePage() {
   // binding, keeps allowance and credits apart, and is tested on its own.
   const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending });
 
+  // w14 — the upgrade and downgrade path.
+  const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
+  const { toast } = useToast();
+  const [busyPlan, setBusyPlan] = useState<PlanId | null>(null);
+
+  /**
+   * COMING BACK FROM STRIPE IS NOT AN ENTITLEMENT.
+   *
+   * The plan moves when the webhook applies the subscription event, which may not have landed by
+   * the time the browser returns. So this refetches and reports what the server SAYS, rather than
+   * congratulating the user on a tier nobody has granted yet — the one sentence that would make
+   * this page lie again, in the same way the waitlist did.
+   */
+  const [returned, setReturned] = useState<'done' | 'cancelled' | null>(null);
+  useEffect(() => {
+    const flag = new URLSearchParams(window.location.search).get('checkout');
+    if (flag !== 'done' && flag !== 'cancelled') return;
+    setReturned(flag);
+    // Take the flag back out of the URL, so a reload or a shared link does not replay it.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    window.history.replaceState({}, '', url.toString());
+    if (flag === 'done') void me.refetch();
+  }, []);
+
+  const checkout = useMutation({
+    mutationFn: (plan: PlanId) => startCheckout(plan),
+    onMutate: (plan: PlanId) => setBusyPlan(plan),
+    onSuccess: ({ url }) => {
+      // Leaving the app for Stripe's own page is the point: the card details are theirs to collect,
+      // never ours to see.
+      window.location.assign(url);
+    },
+    onError: (e: Error) => {
+      setBusyPlan(null);
+      toast(`Couldn't open checkout: ${e.message}`, 'error');
+    },
+  });
+
+  const portal = useMutation({
+    mutationFn: () => openBillingPortal(),
+    onSuccess: ({ url }) => window.location.assign(url),
+    onError: (e: Error) => toast(`Couldn't open billing: ${e.message}`, 'error'),
+  });
+
+  const currentPlan: PlanId = isPlanId(me.data?.quota?.plan) ? me.data.quota.plan : 'free';
+
   return (
     <div className="page">
       <div className="page-head">
@@ -237,7 +293,52 @@ export function UsagePage() {
               </p>
             </div>
           </div>
-          <PlanLadder current={isPlanId(me.data.quota.plan) ? me.data.quota.plan : 'free'} />
+          {returned === 'done' && (
+            <p className="plans-note" role="status">
+              Thanks — your payment went through. The plan changes when Stripe confirms it, usually
+              within a few seconds; this page shows{' '}
+              <strong>{me.data.quota.plan}</strong> right now.{' '}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void me.refetch()}>
+                Check again
+              </button>
+            </p>
+          )}
+          {returned === 'cancelled' && (
+            <p className="plans-note" role="status">
+              No change made — nothing was charged.
+            </p>
+          )}
+
+          <PlanLadder
+            current={currentPlan}
+            busyPlan={busyPlan}
+            // Absent when this deployment has no Stripe key, which makes the ladder render "Not
+            // available yet" on each tier rather than a button that cannot work.
+            onChoose={
+              billing.data?.checkout
+                ? (plan) => {
+                    // A CHECKOUT ONLY EVER STARTS A FIRST SUBSCRIPTION.
+                    //
+                    // Anyone already on a paid tier goes to the portal, whichever direction they
+                    // are moving. A checkout for a second price does not REPLACE the running
+                    // subscription, it adds one — so a Team customer moving to Pro would be billed
+                    // for both. Swapping, proration and when a downgrade takes effect are Stripe's
+                    // to decide, and the portal is where it does that.
+                    const canBuy = billing.data.purchasable.includes(plan);
+                    if (currentPlan === 'free' && canBuy) checkout.mutate(plan);
+                    else portal.mutate();
+                  }
+                : undefined
+            }
+          />
+
+          {currentPlan !== 'free' && (
+            <p className="plans-manage">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => portal.mutate()}>
+                Manage billing, invoices and cancellation
+              </button>
+            </p>
+          )}
         </section>
       )}
     </div>

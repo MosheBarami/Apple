@@ -21,6 +21,20 @@ export interface Env {
    */
   STRIPE_WEBHOOK_SECRET?: string;
   /**
+   * Stripe secret API key, used ONLY to open a hosted Checkout or Billing Portal session on the
+   * user's behalf. It never grants a plan: entitlement is recomputed from the subscription events
+   * that arrive at the webhook, so a redirect back from Stripe cannot be forged into an upgrade.
+   * Absent everywhere until billing is switched on, and the routes refuse rather than degrade.
+   */
+  STRIPE_SECRET_KEY?: string;
+  /**
+   * The Stripe Price each purchasable tier is sold at. Per-environment, because a test-mode price
+   * and a live one are different objects. Free has no price and Enterprise is a conversation, so
+   * neither has an entry — a checkout for either is a bug rather than a missing variable.
+   */
+  STRIPE_PRICE_PRO?: string;
+  STRIPE_PRICE_TEAM?: string;
+  /**
    * Open Cloud key, scope `creator-store-product:read`, free from
    * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to
    * the unauthenticated toolbox-service/v1 endpoint — it is never required.

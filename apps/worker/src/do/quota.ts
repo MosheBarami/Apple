@@ -78,11 +78,21 @@ export class QuotaDO extends DurableObject<Env> {
       return Response.json({ ok: true, state: after });
     }
     if (url.pathname === '/set-plan' && req.method === 'POST') {
-      const { plan } = (await req.json()) as { plan: string };
+      const { plan, customerId } = (await req.json()) as { plan: string; customerId?: string | null };
       // An unrecognised plan id becomes free rather than throwing: this is driven by a webhook, and
       // a Stripe product renamed upstream must degrade to the safe tier, not wedge the route.
       await this.ctx.storage.put('plan', isPlanId(plan) ? plan : 'free');
+      // The Stripe customer, kept so the billing portal has something to open. It is written only
+      // when the webhook actually carries one, and never cleared by a plan change: a cancelled
+      // subscription still belongs to a customer whose invoices and card the user can manage, and
+      // dropping the id here would strand them on Free with no way back into their own billing.
+      if (typeof customerId === 'string' && customerId.length > 0) {
+        await this.ctx.storage.put('stripeCustomerId', customerId);
+      }
       return Response.json({ ok: true, state: await this.state() });
+    }
+    if (url.pathname === '/billing-customer' && req.method === 'GET') {
+      return Response.json({ customerId: (await this.ctx.storage.get<string>('stripeCustomerId')) ?? null });
     }
     if (url.pathname === '/grant-credits' && req.method === 'POST') {
       const { credits } = (await req.json()) as { credits: number };

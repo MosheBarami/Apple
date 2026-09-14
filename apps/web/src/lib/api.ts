@@ -1,6 +1,6 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
-import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
@@ -64,6 +64,30 @@ export const fetchMe = (): Promise<MeResponse> =>
 
 export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
   MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<{ days: UsageDay[] }>('/api/me/usage');
+
+// ---------------------------------------------------------------- billing (w14)
+//
+// Both of these return a URL to Stripe's own hosted page and nothing else. Neither changes a plan:
+// entitlement is recomputed by the webhook from the subscription events that follow, so coming back
+// from Stripe means "refetch and see", not "you are on Pro now".
+
+export interface BillingConfig {
+  /** False on a deployment with no Stripe key — the ladder then says so instead of offering a button. */
+  checkout: boolean;
+  /** The tiers this deployment has a configured price for. */
+  purchasable: PlanId[];
+}
+
+export const fetchBillingConfig = (): Promise<BillingConfig> =>
+  MOCK_MODE
+    ? Promise.resolve({ checkout: true, purchasable: ['pro', 'team'] as PlanId[] })
+    : request<BillingConfig>('/api/billing/config');
+
+export const startCheckout = (plan: PlanId): Promise<{ url: string }> =>
+  request<{ url: string }>('/api/billing/checkout', { method: 'POST', body: JSON.stringify({ plan }) });
+
+export const openBillingPortal = (): Promise<{ url: string }> =>
+  request<{ url: string }>('/api/billing/portal', { method: 'POST' });
 
 // ---------------------------------------------------------------- project session
 

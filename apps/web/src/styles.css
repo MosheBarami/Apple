@@ -4564,6 +4564,23 @@ textarea {
   padding: 0.45rem 0;
 }
 
+/* What came back from Stripe. Deliberately a note and not a success banner: the plan has not
+   changed until the webhook says so, and this sits above the ladder that shows what it is now. */
+.plans-note {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+
+.plans-manage {
+  margin: 1rem 0 0;
+  text-align: center;
+}
+
 /* Purchased credits, beside the allowance ring and never inside it. */
 .sparks-credits {
   margin: 0;

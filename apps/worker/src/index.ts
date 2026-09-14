@@ -1,6 +1,14 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { Hono } from 'hono';
-import { verifyStripeSignature, interpretStripeEvent, entitlementFor } from './billing';
+import {
+  verifyStripeSignature,
+  interpretStripeEvent,
+  entitlementFor,
+  buildCheckoutRequest,
+  buildPortalRequest,
+  checkoutConfigured,
+  priceIdFor,
+} from './billing';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
@@ -14,6 +22,7 @@ import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type Stu
 import { refuseLuauIngress } from './tools';
 import { ensureProvenanceTables, exportProjectAttribution } from './provenance';
 import type { RenderViewResult, OpResult, StudioOp } from '@golem/shared';
+import { isPlanId, PLAN_IDS, type PlanId } from '@golem/shared';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -570,12 +579,98 @@ app.post('/api/billing/webhook', async (c) => {
     // Entitlement is recomputed from status and period rather than trusting the plan field, so a
     // cancelled or lapsed subscription cannot leave a paid tier behind.
     const plan = entitlementFor(outcome.subscription, Math.floor(Date.now() / 1000));
-    await quota.fetch('https://do/set-plan', { method: 'POST', body: JSON.stringify({ plan }) });
+    await quota.fetch('https://do/set-plan', {
+      method: 'POST',
+      // The customer id rides along so the billing portal has an account to open later. It is the
+      // only way back to a subscription the user started, and it arrives on these events alone.
+      body: JSON.stringify({ plan, customerId: outcome.subscription.customerId }),
+    });
   }
   if (outcome.creditsDelta) {
     await quota.fetch('https://do/grant-credits', { method: 'POST', body: JSON.stringify({ credits: outcome.creditsDelta }) });
   }
   return c.json({ ok: true, applied: { plan: !!outcome.subscription, credits: outcome.creditsDelta ?? 0 } });
+});
+
+/**
+ * w14 — THE UPGRADE AND DOWNGRADE PATH.
+ *
+ * Both routes do one thing: ask Stripe for a hosted page and hand back its URL. Neither touches
+ * entitlement. The user confirms on Stripe's own page, Stripe sends subscription events, and
+ * `/api/billing/webhook` recomputes the plan through `entitlementFor` exactly as it always has.
+ * That separation is what makes the redirect harmless — the success URL is somewhere to come back
+ * to, not a claim about what happened, and a user who edits it gets nothing.
+ *
+ * Downgrades and cancellations go to the Billing Portal rather than to a route here. Proration,
+ * tax, dunning and when a downgrade takes effect are hard, Stripe implements them, and a
+ * hand-rolled cancel button that only told our own DO the plan had changed would leave the
+ * subscription running and charging.
+ */
+app.post('/api/billing/checkout', async (c) => {
+  const user = c.get('user');
+  const body = (await c.req.json().catch(() => ({}))) as { plan?: unknown; returnTo?: unknown };
+  const plan: string = String(body.plan ?? '');
+  if (!isPlanId(plan)) return c.json({ error: `unknown plan "${plan}"` }, 400);
+
+  // The return URL is OURS, never the caller's. An attacker-supplied returnTo would turn this into
+  // an open redirect signed by Stripe's domain.
+  const returnTo = new URL('/app/usage', new URL(c.req.url).origin).toString();
+
+  const built = buildCheckoutRequest(c.env, { userId: user.userId, email: user.email, plan, returnTo });
+  if (!built.ok) return c.json({ error: built.error }, built.status);
+
+  const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: built.body,
+  });
+  if (!res.ok) {
+    // Stripe's own message can name a price or an account; it is not for the user.
+    console.warn('stripe checkout failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ error: 'could not open checkout' }, 502);
+  }
+  const session = (await res.json()) as { url?: string };
+  if (!session.url) return c.json({ error: 'checkout returned no url' }, 502);
+  return c.json({ url: session.url });
+});
+
+app.post('/api/billing/portal', async (c) => {
+  const user = c.get('user');
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId));
+  const { customerId } = (await (await quota.fetch('https://do/billing-customer')).json()) as {
+    customerId: string | null;
+  };
+
+  const returnTo = new URL('/app/usage', new URL(c.req.url).origin).toString();
+  const built = buildPortalRequest(c.env, { customerId: customerId ?? '', returnTo });
+  if (!built.ok) return c.json({ error: built.error }, built.status);
+
+  const res = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: built.body,
+  });
+  if (!res.ok) {
+    console.warn('stripe portal failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ error: 'could not open the billing portal' }, 502);
+  }
+  const session = (await res.json()) as { url?: string };
+  if (!session.url) return c.json({ error: 'the portal returned no url' }, 502);
+  return c.json({ url: session.url });
+});
+
+/** What the plan controls should offer, so the UI never shows a button that cannot work. */
+app.get('/api/billing/config', async (c) => {
+  return c.json({
+    checkout: checkoutConfigured(c.env),
+    purchasable: PLAN_IDS.filter((p: PlanId) => priceIdFor(c.env, p) !== null),
+  });
 });
 
 app.get('/api/providers', async (c) => {

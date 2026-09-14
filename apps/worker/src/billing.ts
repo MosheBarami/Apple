@@ -201,3 +201,114 @@ export function billingConfigured(env: Env): boolean {
   return typeof (env as unknown as { STRIPE_WEBHOOK_SECRET?: string }).STRIPE_WEBHOOK_SECRET === 'string'
     && ((env as unknown as { STRIPE_WEBHOOK_SECRET?: string }).STRIPE_WEBHOOK_SECRET ?? '').length > 0;
 }
+
+// --- the upgrade and downgrade path (w14) --------------------------------------------------------
+//
+// ENTITLEMENT STILL COMES ONLY FROM THE WEBHOOK. Nothing below grants a plan. A checkout session is
+// an invitation to Stripe's own hosted page, where the user confirms; the subscription events that
+// follow are what move anybody between tiers, through `interpretStripeEvent` and `entitlementFor`
+// exactly as before. That separation is the whole reason a redirect cannot be forged into a free
+// upgrade: the success URL is a place to come back to, not a claim about what happened.
+//
+// Downgrades and cancellations go to Stripe's Billing Portal rather than to anything written here.
+// Proration, tax, dunning and the rules about when a downgrade takes effect are genuinely difficult
+// and Stripe already implements them; a hand-rolled "cancel" button that only tells our own DO the
+// plan changed would leave the subscription running and charging.
+
+/** Per-environment Stripe configuration. Absent everywhere until billing is switched on. */
+interface CheckoutEnv {
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PRICE_PRO?: string;
+  STRIPE_PRICE_TEAM?: string;
+}
+
+/**
+ * The price a plan is bought at, or null when it cannot be bought here.
+ *
+ * `free` has no price and `enterprise` is a conversation, so both are null BY DESIGN rather than by
+ * omission — a checkout for either is a bug, not a missing environment variable.
+ */
+export function priceIdFor(env: Env, plan: PlanId): string | null {
+  const e = env as unknown as CheckoutEnv;
+  if (plan === 'pro') return e.STRIPE_PRICE_PRO?.trim() || null;
+  if (plan === 'team') return e.STRIPE_PRICE_TEAM?.trim() || null;
+  return null;
+}
+
+/** Can this deployment start a checkout at all? The webhook secret alone is not enough. */
+export function checkoutConfigured(env: Env): boolean {
+  const key = (env as unknown as CheckoutEnv).STRIPE_SECRET_KEY ?? '';
+  return billingConfigured(env) && key.length > 0;
+}
+
+export type CheckoutRefusal =
+  | { ok: false; status: 503; error: string }
+  | { ok: false; status: 400; error: string };
+
+export interface CheckoutRequest {
+  ok: true;
+  /** Stripe's form-encoded body. Built here so it can be asserted without a network call. */
+  body: string;
+}
+
+/**
+ * Build the Checkout Session request for one user moving to one plan.
+ *
+ * `metadata.userId` is the only thread back to us, and it is the same field `interpretStripeEvent`
+ * reads — so a session that somehow carried no metadata is ignored by the webhook rather than
+ * applied to the wrong account.
+ */
+export function buildCheckoutRequest(
+  env: Env,
+  opts: { userId: string; email?: string | null; plan: PlanId; returnTo: string },
+): CheckoutRequest | CheckoutRefusal {
+  if (!checkoutConfigured(env)) {
+    return { ok: false, status: 503, error: 'checkout is not configured for this deployment' };
+  }
+  if (!opts.userId) return { ok: false, status: 400, error: 'no user' };
+  if (opts.plan === 'free') {
+    // Moving DOWN to free is a cancellation, which belongs to the portal — a checkout for a zero
+    // price would create a second subscription beside the paid one that is still running.
+    return { ok: false, status: 400, error: 'use the billing portal to move down to Free' };
+  }
+  const price = priceIdFor(env, opts.plan);
+  if (!price) {
+    return { ok: false, status: 400, error: `${opts.plan} cannot be bought here` };
+  }
+
+  const p = new URLSearchParams();
+  p.set('mode', 'subscription');
+  p.set('line_items[0][price]', price);
+  p.set('line_items[0][quantity]', '1');
+  p.set('success_url', `${opts.returnTo}?checkout=done`);
+  p.set('cancel_url', `${opts.returnTo}?checkout=cancelled`);
+  p.set('client_reference_id', opts.userId);
+  // Read by interpretStripeEvent. Set on the SUBSCRIPTION too, because the events that actually
+  // move a plan are subscription events, and a session's metadata does not reach them on its own.
+  p.set('metadata[userId]', opts.userId);
+  p.set('subscription_data[metadata][userId]', opts.userId);
+  if (opts.email) p.set('customer_email', opts.email);
+  // One subscription per account: without this a second checkout adds a second subscription and the
+  // user is charged twice for tiers that were meant to replace one another.
+  p.set('allow_promotion_codes', 'true');
+  return { ok: true, body: p.toString() };
+}
+
+/** Build the Billing Portal request — where a downgrade or a cancellation actually happens. */
+export function buildPortalRequest(
+  env: Env,
+  opts: { customerId: string; returnTo: string },
+): CheckoutRequest | CheckoutRefusal {
+  if (!checkoutConfigured(env)) {
+    return { ok: false, status: 503, error: 'the billing portal is not configured for this deployment' };
+  }
+  if (!opts.customerId) {
+    // A user who has never bought anything has no Stripe customer, and saying so is better than
+    // sending them to a portal that will not open.
+    return { ok: false, status: 400, error: 'no billing account yet — there is nothing to manage' };
+  }
+  const p = new URLSearchParams();
+  p.set('customer', opts.customerId);
+  p.set('return_url', opts.returnTo);
+  return { ok: true, body: p.toString() };
+}
