@@ -94,7 +94,6 @@ and are tracked as handoffs, not gates.
     EXPECT: G13 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G13; path=6765c31f4f12/53 entries; git-sha=c39a17f; tree-clean=yes; break-sha=c39a17f; EXPECT=unmatched; output-sha256=3b6fa398262474e05f87876a47de6b8ae789c9a61cde4029e28c862f94f09a6e; output-bytes=9618; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=efff751d43ea004adb87f7c3; at=2026-09-14T19:06:08.527Z
   EXPECT-CHANGE: old=fail 0 new=G13 OK reason=derived-floor-6-measured-6-passing
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=f61d6198e9a1b52479a487e9ba1cda5c31eec5d8caee08f9f3fb248c1956bba5; output-bytes=592
 
 - [x] G14: A conversation export is the whole conversation, and cannot forge its own filename
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 18 --label G14 -- node --test tests/export.test.mjs
@@ -115,21 +114,18 @@ and are tracked as handoffs, not gates.
     EXPECT: G16 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G16; path=6765c31f4f12/53 entries; git-sha=56b553d; tree-clean=yes; break-sha=56b553d; EXPECT=unmatched; output-sha256=d5591cfbdbc0cad78fb2b5f8b5c4dab7fad521a00d52ec053a7baa15f826fdd4; output-bytes=5146; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=ddb21e8a8c27ab6f6b910ab2; at=2026-09-14T19:06:33.059Z
   EXPECT-CHANGE: old=fail 0 new=G16 OK reason=derived-floor-59-measured-59-passing
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=9eef9172bd22f3daf2edebe1656fe09161c5881ace6e207ada05bbcbcce8b429; output-bytes=4219
 
 - [ ] G17: The palette puts the command you meant first, and lists each one once
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 26 --label G17 -- node --test tests/command-match.test.mjs
     EXPECT: G17 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G17; path=6765c31f4f12/53 entries; git-sha=a8f668a; tree-clean=yes; break-sha=a8f668a; EXPECT=unmatched; output-sha256=9ca82f29faa7dce01d935b6c720301f0918bedbf347e505072c1a8b3a4f850ce; output-bytes=968; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=76e5123a3f930d4f96e1ad98; at=2026-09-14T19:06:16.516Z
   EXPECT-CHANGE: old=fail 0 new=G17 OK reason=derived-floor-26-measured-26-passing
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=8945c1bb1c57a46547481182ca58bac084cebbbd6b092e56209c9907fb6a2666; output-bytes=1891
 
 - [ ] G18: One keyboard map, with no chord claimed twice and none stolen from the browser
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 18 --label G18 -- node --test tests/shortcuts.test.mjs
     EXPECT: G18 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G18; path=6765c31f4f12/53 entries; git-sha=93b721a; tree-clean=yes; break-sha=93b721a; EXPECT=unmatched; output-sha256=a8b2d8a325916c7b0083f3b84d85e1adc60f03540fe8c298a9f7ee375d1aca40; output-bytes=22189; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=7c1068911d5f6bd741ca6405; at=2026-09-14T19:06:14.850Z
   EXPECT-CHANGE: old=fail 0 new=G18 OK reason=derived-floor-18-measured-18-passing
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=2ba8bd4; tree=dirty; EXPECT=matched; output-sha256=311ea7a211e4ba24a7f9488a74bf0a80cf11bd174f3b444d38c2ae7cd43b12a6; output-bytes=1329
 
 - [x] G19: Search reads every message, and its results cannot be stale or mis-highlighted
     CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 25 --label G19 -- node --test tests/search.test.mjs
