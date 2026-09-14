@@ -1,0 +1,5 @@
+[
+  "packages/shared/src/index.ts",
+  "playwright.config.ts",
+  "tests/e2e/landing.spec.ts"
+]
