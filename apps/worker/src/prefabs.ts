@@ -325,7 +325,12 @@ const REMOTE_GUARD_SOURCE = `--!strict
 -- player has no right to send. Type, range and authority are three separate questions.
 local RemoteGuard = {}
 
-local buckets = {}
+-- ONE BUCKET PER REMOTE PER PLAYER. A single bucket per player would make every guarded remote
+-- share one budget: guard a chat remote at 2/s and a movement remote at 30/s and the player gets
+-- whichever limit happened to create the bucket, spent across both — chat spam would throttle
+-- movement, and the refill rate applied would depend on which remote fired last. Each call to
+-- RemoteGuard.on gets its own table; the registry exists so PlayerRemoving can clear them all.
+local bucketTables = {}
 
 --- Wrap a handler so it is rate-limited and validated before it ever runs.
 ---   remote     the RemoteEvent to listen on
@@ -337,6 +342,9 @@ function RemoteGuard.on(remote, opts, handler)
 	local perSecond = opts.perSecond or 5
 	local validate = opts.validate
 	local capacity = math.max(1, perSecond)
+
+	local buckets = {}
+	table.insert(bucketTables, buckets)
 
 	remote.OnServerEvent:Connect(function(player, ...)
 		local now = os.clock()
@@ -369,9 +377,11 @@ function RemoteGuard.on(remote, opts, handler)
 	end)
 end
 
---- Forget a player's bucket. Call on PlayerRemoving so the table does not grow forever.
+--- Forget a player's buckets. Call on PlayerRemoving so the tables do not grow forever.
 function RemoteGuard.forget(player)
-	buckets[player] = nil
+	for _, buckets in ipairs(bucketTables) do
+		buckets[player] = nil
+	end
 end
 
 game:GetService("Players").PlayerRemoving:Connect(RemoteGuard.forget)
@@ -1002,6 +1012,11 @@ local intermissionSeconds = 15
 local minimumPlayers = 2
 
 local running = false
+-- Bumped by every start. A loop that wakes to find its generation superseded exits, which a plain
+-- running flag cannot manage: stop() then start() inside the same second leaves the old loop asleep
+-- in task.wait, and it wakes to a running flag that is true again and keeps ticking beside the new
+-- one. Two loops, rounds advancing at double speed, and nothing to point at.
+local generation = 0
 local phase = "idle"
 local participants = {}
 local elapsed = 0
@@ -1108,10 +1123,12 @@ function Rounds.start()
 		return false
 	end
 	running = true
+	generation = generation + 1
+	local mine = generation
 	phase = "intermission"
 	elapsed = 0
 	task.spawn(function()
-		while running do
+		while running and generation == mine do
 			Rounds.tick(1)
 			task.wait(1)
 		end
@@ -1169,12 +1186,25 @@ local COLLECT_DEBOUNCE = 0.1
 
 local droppers = {}
 local awardFn = nil
-local lastCollect = {}
+
+-- WEAK KEYS, and this one is the module's own headline bug turned on itself. The keys are the drop
+-- parts, one per collection, forever — a strong table here grows for the life of the server exactly
+-- as the uncapped droppers above would, and holds every destroyed part alive to do it. Weak keys
+-- let an entry go the moment nothing else references the part.
+local lastCollect = setmetatable({}, { __mode = "k" })
 
 function Income.configure(opts)
+	opts = opts or {}
 	awardFn = opts.award
 	if opts.maxLive ~= nil then
-		MAX_LIVE_PER_DROPPER = opts.maxLive
+		-- A cap below one is not "no drops", it is a hang: the trim loop below removes the oldest
+		-- while the count is at or above the cap, and at zero there is never anything to remove.
+		local requested = tonumber(opts.maxLive) or MAX_LIVE_PER_DROPPER
+		if requested < 1 then
+			warn("[Income] maxLive of " .. tostring(opts.maxLive) .. " is not usable; using 1")
+			requested = 1
+		end
+		MAX_LIVE_PER_DROPPER = math.floor(requested)
 	end
 end
 
@@ -1214,7 +1244,13 @@ function Income.drop(d)
 	-- collector is merely slow, and a player watching their dropper stop has no idea why.
 	while #d.live >= MAX_LIVE_PER_DROPPER do
 		local oldest = table.remove(d.live, 1)
-		if oldest ~= nil and oldest.Parent ~= nil then
+		if oldest == nil then
+			-- Nothing left to trim but the condition still holds. Unreachable while the cap is at
+			-- least one, and an infinite loop inside the module about not killing the server is not
+			-- a thing to leave depending on a check somewhere else.
+			break
+		end
+		if oldest.Parent ~= nil then
 			oldest:Destroy()
 		end
 	end

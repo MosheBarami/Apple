@@ -280,6 +280,73 @@ test('tokens refill with elapsed time, and never bank past capacity', () => {
   assert.ok(r.ok, r.output);
 });
 
+/**
+ * ONE BUDGET PER REMOTE, not one per player.
+ *
+ * The buckets were keyed by player alone, so every guarded remote in the game shared a single
+ * allowance. Guard a chat remote at 2/s and a movement remote at 30/s and the player gets one
+ * bucket between them — whose capacity is whichever remote happened to create it, and whose refill
+ * rate changes depending on which remote fired last. The visible symptom is a player being silently
+ * ignored on one remote because they were busy on an unrelated one, which is indistinguishable from
+ * lag and impossible to report usefully.
+ */
+test('TWO GUARDED REMOTES DO NOT SHARE ONE PLAYER BUDGET', () => {
+  const r = runGuard([
+    'local chat, move = fakeRemote("Chat"), fakeRemote("Move")',
+    'local chats, moves = 0, 0',
+    'M.on(chat, { perSecond = 2 }, function() chats = chats + 1 end)',
+    'M.on(move, { perSecond = 30 }, function() moves = moves + 1 end)',
+    '',
+    // spend the chat allowance completely
+    'for i = 1, 10 do chat.fire(player) end',
+    'assert(chats == 2, "chat is limited to its own 2, got " .. tostring(chats))',
+    '',
+    // the movement remote must be completely unaffected
+    'for i = 1, 30 do move.fire(player) end',
+    'assert(moves == 30, "movement must have its own 30, got " .. tostring(moves))',
+  ].join('\n'), 'rg-separate-budgets');
+  assert.ok(r.ok, r.output);
+});
+
+test('each remote refills at ITS OWN rate, not whichever fired last', () => {
+  const r = runGuard([
+    'local slow, fast = fakeRemote("Slow"), fakeRemote("Fast")',
+    'local slows, fasts = 0, 0',
+    'M.on(slow, { perSecond = 1 }, function() slows = slows + 1 end)',
+    'M.on(fast, { perSecond = 20 }, function() fasts = fasts + 1 end)',
+    '',
+    'for i = 1, 5 do slow.fire(player) end',
+    'for i = 1, 25 do fast.fire(player) end',
+    'assert(slows == 1 and fasts == 20, "got " .. tostring(slows) .. " and " .. tostring(fasts))',
+    '',
+    // a second of quiet returns one token to the slow remote and twenty to the fast one
+    'advance(1)',
+    'for i = 1, 5 do slow.fire(player) end',
+    'for i = 1, 25 do fast.fire(player) end',
+    'assert(slows == 2, "the slow remote must refill by 1, got " .. tostring(slows))',
+    'assert(fasts == 40, "the fast one by 20, got " .. tostring(fasts - 20))',
+  ].join('\n'), 'rg-own-rate');
+  assert.ok(r.ok, r.output);
+});
+
+test('forgetting a player clears their bucket on EVERY remote', () => {
+  const r = runGuard([
+    'local a, b = fakeRemote("A"), fakeRemote("B")',
+    'local as, bs = 0, 0',
+    'M.on(a, { perSecond = 1 }, function() as = as + 1 end)',
+    'M.on(b, { perSecond = 1 }, function() bs = bs + 1 end)',
+    'a.fire(player); a.fire(player); b.fire(player); b.fire(player)',
+    'assert(as == 1 and bs == 1, "both spent")',
+    '',
+    'assert(type(removingHandler) == "function", "the module must connect PlayerRemoving")',
+    'removingHandler(player)',
+    // a rejoin is a fresh bucket everywhere, and no table is left holding the departed player
+    'a.fire(player); b.fire(player)',
+    'assert(as == 2 and bs == 2, "a rejoining player starts fresh on every remote")',
+  ].join('\n'), 'rg-forget-all');
+  assert.ok(r.ok, r.output);
+});
+
 test('a validate that returns false blocks the handler entirely', () => {
   const r = runGuard([
     'local calls = 0',
@@ -1393,7 +1460,17 @@ function runRounds(body, tag) {
     'end',
     '',
     'local spawned = nil',
-    'task = { spawn = function(f) spawned = f end, wait = function() end }',
+    'local spawnedLoops = {}',
+    '-- task.wait is a no-op here, so a loop that fails to terminate would hang the whole suite',
+    '-- rather than fail it. Counting the waits turns that into an ordinary assertion failure.',
+    'local waits = 0',
+    'task = {',
+    '\tspawn = function(f) spawned = f; table.insert(spawnedLoops, f) end,',
+    '\twait = function()',
+    '\t\twaits = waits + 1',
+    '\t\tif waits > 200 then error("task.wait called 200 times — a loop is not terminating") end',
+    '\tend,',
+    '}',
     '',
     'local lobby = {}',
     'game = { GetService = function() return { GetPlayers = function() return lobby end } end }',
@@ -1437,6 +1514,51 @@ test('the rounds harness runs, and a false assertion in it still fails', () => {
   const bad = runRounds('assert(false, "intentional-rounds")', 'rd-sanity-neg');
   assert.equal(bad.ok, false);
   assert.match(bad.output, /intentional-rounds/);
+});
+
+/**
+ * STOP THEN START LEFT TWO LOOPS RUNNING.
+ *
+ * start() refuses while running, which handles a doubled start. It does not handle the other
+ * ordering: stop() sets running false, but the loop it started is asleep inside task.wait and has
+ * not noticed. A start() before that second elapses sets running true again, and the old loop wakes
+ * to a flag that is true and carries on beside the new one. Two loops each calling tick(1) every
+ * second means rounds advance at double speed, intermissions end early, and nothing in the module
+ * looks wrong.
+ *
+ * A generation counter fixes it: a loop that wakes superseded exits. The harness counts task.wait
+ * calls so a loop that never terminates fails this test instead of hanging the suite.
+ */
+test('STOP THEN START DOES NOT LEAVE THE OLD LOOP TICKING', () => {
+  const r = runRounds([
+    'M.configure({ roundSeconds = 60, intermissionSeconds = 10, minimumPlayers = 2 })',
+    'lobby = { player("a"), player("b") }',
+    '',
+    'assert(M.start() == true)',
+    'local firstLoop = spawnedLoops[1]',
+    'assert(type(firstLoop) == "function", "start must spawn a loop")',
+    '',
+    'assert(M.stop() == true)',
+    'assert(M.start() == true, "restarting is allowed")',
+    'assert(#spawnedLoops == 2, "the restart spawns its own loop")',
+    '',
+    // the stale loop is what a real scheduler would resume a fraction of a second later
+    'firstLoop()',
+    'assert(M.phase() == "intermission", "the superseded loop must not have advanced anything")',
+    'assert(M.number() == 0, "and must not have started a round, number is " .. tostring(M.number()))',
+  ].join('\n'), 'rd-no-double-loop');
+  assert.ok(r.ok, r.output);
+});
+
+test('a second start while running is still refused, and the loop count proves it', () => {
+  const r = runRounds([
+    'M.configure({ roundSeconds = 60, intermissionSeconds = 10, minimumPlayers = 2 })',
+    'lobby = { player("a"), player("b") }',
+    'assert(M.start() == true)',
+    'assert(M.start() == false, "a second start must be refused")',
+    'assert(#spawnedLoops == 1, "and must not spawn a second loop, spawned " .. tostring(#spawnedLoops))',
+  ].join('\n'), 'rd-idempotent-start');
+  assert.ok(r.ok, r.output);
 });
 
 test('START IS IDEMPOTENT — a second call must not begin a second loop', () => {
@@ -1622,6 +1744,15 @@ function runIncome(body, tag) {
     '',
     '-- every part made by the module, so the test can count what a server would be holding',
     'local created = {}',
+    '-- and a WEAK mirror of the same parts. Clearing `created` and collecting leaves entries here',
+    '-- only for parts something else still references — which is what a leak is.',
+    'local createdWeak = setmetatable({}, { __mode = "v" })',
+    'local function stillReferenced()',
+    '\tcollectgarbage("collect")',
+    '\tlocal n = 0',
+    '\tfor _ in pairs(createdWeak) do n = n + 1 end',
+    '\treturn n',
+    'end',
     'local function makeInstance()',
     '\tlocal attrs = {}',
     '\tlocal inst',
@@ -1638,6 +1769,7 @@ function runIncome(body, tag) {
     '\tlocal i = makeInstance()',
     '\ti.ClassName = class',
     '\ttable.insert(created, i)',
+    '\ttable.insert(createdWeak, i)',
     '\treturn i',
     'end }',
     '',
@@ -1729,6 +1861,78 @@ test('it drops on schedule rather than all at once', () => {
     'M.step(3)',
     'assert(M.liveCount(d) == 4, "three more seconds, three more drops, got " .. tostring(M.liveCount(d)))',
   ].join('\n'), 'in-schedule');
+  assert.ok(r.ok, r.output);
+});
+
+/**
+ * THE DEBOUNCE TABLE WAS THE MODULE'S OWN HEADLINE BUG, POINTED AT ITSELF.
+ *
+ * Income opens by explaining that a dropper which spawns parts nothing removes will degrade a
+ * server until it dies. The collector then recorded every collected drop in a table keyed by the
+ * part, with no removal — one entry per collection for the life of the server, each one holding a
+ * destroyed part alive so it could never be freed. The parts were capped; the record of them was
+ * not.
+ *
+ * Weak keys fix it, and this asserts the consequence rather than the spelling: after a drop is
+ * collected and every reference the test holds is dropped, a garbage collection must actually
+ * reclaim it.
+ */
+test('A COLLECTED DROP IS ACTUALLY FREED, not held forever by the debounce record', () => {
+  const r = runIncome([
+    INC,
+    'local collector = makeCollector()',
+    'M.collector(plot, collector)',
+    '',
+    'local part = M.drop(d)',
+    'assert(part ~= nil, "a drop was spawned")',
+    'collector.touch(part)',
+    'assert(paid["owner"] == 10, "and it paid out")',
+    'assert(part.Parent == nil, "and was consumed")',
+    'part = nil',
+    '',
+    'M.step(0)      -- the module forgets destroyed parts from its own live list',
+    'created = {}   -- and the HARNESS drops its strong list, so only real leaks remain',
+    'assert(stillReferenced() == 0, "a collected drop is still referenced after collection")',
+  ].join('\n'), 'in-no-leak');
+  assert.ok(r.ok, r.output);
+});
+
+test('a hundred collections leave nothing behind', () => {
+  // One entry is easy to miss; the shape of the bug is that it grows without bound.
+  const r = runIncome([
+    INC,
+    'local collector = makeCollector()',
+    'M.collector(plot, collector)',
+    'for i = 1, 100 do',
+    '\tlocal part = M.drop(d)',
+    '\tadvance(1)              -- past the touch debounce window',
+    '\tcollector.touch(part)',
+    '\tM.step(0)',
+    'end',
+    'assert(paid["owner"] == 1000, "all hundred paid, got " .. tostring(paid["owner"]))',
+    'created = {}',
+    'assert(stillReferenced() == 0, "the server is holding drops it collected")',
+  ].join('\n'), 'in-no-leak-many');
+  assert.ok(r.ok, r.output);
+});
+
+test('A CAP BELOW ONE IS REFUSED RATHER THAN HANGING THE SERVER', () => {
+  // The trim loop removes the oldest while the count is at or above the cap. At zero there is never
+  // anything to remove and the condition never stops holding: Income.drop never returns, the script
+  // never yields, and the server is gone. "No drops" is a plausible thing to mean by maxLive = 0.
+  const r = runIncome([
+    'local paid = {}',
+    'M.configure({ award = function(p, n) paid[p.Name] = (paid[p.Name] or 0) + n end, maxLive = 0 })',
+    'local plot = makePlot(7)',
+    'local d = M.addDropper({ plot = plot, spawner = spawner, value = 10, everySeconds = 1 })',
+    '',
+    'assert(#warnings == 1, "an unusable cap must be reported, not silently accepted")',
+    'assert(string.find(warnings[1], "maxLive") ~= nil, "and the warning must name it")',
+    '',
+    'assert(M.drop(d) ~= nil, "a drop must still be produced")',
+    'assert(M.drop(d) ~= nil, "and the next one must return at all")',
+    'assert(M.liveCount(d) == 1, "with the cap clamped to one, got " .. tostring(M.liveCount(d)))',
+  ].join('\n'), 'in-zero-cap');
   assert.ok(r.ok, r.output);
 });
 
