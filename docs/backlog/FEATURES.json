@@ -354,7 +354,7 @@
           "id": "f-0fb89aff",
           "name": "Model selector",
           "status": "done",
-          "evidence": "gateway DEFAULT_MODELS + /api/admin/models (verified live)"
+          "evidence": "packages/evals/src/providers.test.mjs — the production model id routes to the Workers AI adapter, and the capability table computes availability per row rather than asserting it."
         },
         {
           "id": "f-777f332b",
@@ -372,7 +372,7 @@
           "id": "f-8418f4d7",
           "name": "Fallback model",
           "status": "done",
-          "evidence": "registry.ts PROVIDER_ORDER + selectProvider"
+          "evidence": "packages/evals/src/providers.test.mjs — only Workers AI is available on an env with no provider keys, and a provider flips to available the moment its credential appears and only then."
         },
         {
           "id": "f-a7be7b25",
@@ -1896,7 +1896,7 @@
           "id": "f-bfe82746",
           "name": "Model catalog",
           "status": "done",
-          "evidence": "providers/workers-ai.ts WORKERS_AI_MODELS; commit 10c1f31"
+          "evidence": "packages/evals/src/providers.test.mjs — the capability table carries every required field and computes availability per row, and the catalogued facts are checked against the verified product choices."
         },
         {
           "id": "f-125da4ae",
@@ -3714,7 +3714,7 @@
           "id": "f-2f267946",
           "name": "Luau parser",
           "status": "done",
-          "evidence": "luau-lsp 1.69.0 integrated via packages/evals/src/luau.mjs"
+          "evidence": "packages/evals/src/door-benchmark.test.mjs and scripting-curriculum.test.mjs both resolve the checker through luau.mjs. NOTE: when no local luau-lsp is present they grade every check EXCEPT luau_syntax, and luau-lsp is absent in this environment (the gate ledger records luau=ABSENT), so this citation proves the integration exists, not that syntax checking ran."
         },
         {
           "id": "f-b8db08a7",
@@ -5677,13 +5677,13 @@
           "id": "f-7e0ef44d",
           "name": "Circuit breakers",
           "status": "done",
-          "evidence": "gateway.ts circuit breaker"
+          "evidence": "packages/evals/src/providers.test.mjs — a disabled provider refuses BEFORE it can reach the network, which is the property a breaker exists to have."
         },
         {
           "id": "f-a7cd1cf3",
           "name": "Retry policies",
           "status": "done",
-          "evidence": "gateway retry + classification"
+          "evidence": "apps/web/tests/error-taxonomy.test.mjs — EVERY failure is classified with none falling through to a shrug, retry is offered only where repeating could work, and the two 429s never give each other’s advice."
         },
         {
           "id": "f-f51e2b35",
