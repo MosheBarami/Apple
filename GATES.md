@@ -170,6 +170,7 @@ test it gated.
 - [ ] G-CRITIC-1: The visual critic cannot report a clean build for checks it never ran
     CHECK: node scripts/assert-tests.mjs --floor 50 --label G-CRITIC-1 -- node --test packages/evals/src/critic.test.mjs
     EXPECT: G-CRITIC-1 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=a50e9d2; tree-clean=yes; break-sha=a50e9d2; EXPECT=unmatched; output-sha256=3745eb009d97881431b99e95b72fa8cb52fbef90ce95cf085d30eb6f1458ad02; output-bytes=35158; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; at=2026-09-14T17:08:06.941Z
 
 ---
 
