@@ -2580,7 +2580,7 @@
           "id": "f-8aec72e9",
           "name": "SFT",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. packages/training/ and its run logs is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. v1 was a REGRESSION and was not promoted, which is the honest half of this row and the half a status of done hides."
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. v1 was a REGRESSION and was not promoted, which is the honest half of this row and the half a status of done hides."
         },
         {
           "id": "f-9dd7fe2d",
@@ -2772,19 +2772,19 @@
           "id": "f-d36fa39d",
           "name": "Training logs",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. packages/training/runs/apple-v*.log is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. The logs are apple-v1.log, apple-v2.log and apple-v3.log."
         },
         {
           "id": "f-b7614c66",
           "name": "Loss charts",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. packages/training/runs/apple-v*.log is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. There is no chart: the row means the loss series is in the log."
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. There is no chart; the row means the loss series is in the log."
         },
         {
           "id": "f-9abbb2b4",
           "name": "Validation loss",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. packages/training/runs/apple-v*.log is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. 2.812 -> 1.294 was measured once, on v1, which did not ship."
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. 2.812 -> 1.294 was measured once, on the v1 that did not ship."
         },
         {
           "id": "f-99867d05",
@@ -2838,7 +2838,7 @@
           "id": "f-ef90bae2",
           "name": "Holdout evaluation",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. the holdout comparison is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. n=8 is small enough that the result is directional, not a measurement."
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. n=8 is small enough that the result is directional, not a measurement."
         },
         {
           "id": "f-70fed06c",
@@ -2880,7 +2880,7 @@
           "id": "f-305c393c",
           "name": "Data contamination scan",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. build-dataset.mjs shingle scan is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. The scan runs when the dataset is rebuilt; no test asserts it catches a planted overlap."
+          "evidence": "packages/training/src/contamination.test.mjs — 8 tests, 4 falsifications. shingles and contaminated were unexported until now, so the guard that keeps training data out of the eval set had never been run by a test. An 8-word overlap IS caught wherever it sits; an unrelated example is NOT (the control — a guard returning true for everything would pass the first case and be useless); a 7-word overlap is below the window and is not caught. DOCUMENTED FAIL-OPEN: an EMPTY eval set makes every example clean, so a task directory that moved or failed to parse would disable contamination checking. It is tolerable only because main() prints its denominator, and a test asserts that line still exists — the announcement lives in the caller, not in the guard."
         },
         {
           "id": "f-cbcffcff",
@@ -2916,7 +2916,7 @@
           "id": "f-c6594b24",
           "name": "Model card generation",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. dataset-card.json is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. "
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. dataset-card.json is emitted into data/, which is untracked."
         },
         {
           "id": "f-9482f2cd",
@@ -2940,7 +2940,7 @@
           "id": "f-ab394828",
           "name": "Local training",
           "status": "done",
-          "evidence": "RECORD, NOT GUARANTEE. the M2 Pro / MLX toolchain is tracked in this repository and was produced by a run that happened; nothing re-runs it, so this row records a past event rather than a property the build maintains. Re-proving it means re-training on an M2 Pro, which no CI here can do. Zero recurring cost is a property of where it runs, not something a check can assert."
+          "evidence": "NOT IN THIS REPOSITORY. I previously wrote that this artefact \"is tracked\" — it is not. packages/training/runs/ and packages/training/adapters/ are GITIGNORED (.gitignore:56-57), and data/dataset-card.json and data/train.jsonl are untracked. They exist on the machine that ran the training and nowhere else, so a fresh clone cannot verify this row at all. That is weaker than a record: it is a record one person holds. Zero recurring cost is a property of WHERE it runs, not something any check can assert."
         },
         {
           "id": "f-4ede36be",

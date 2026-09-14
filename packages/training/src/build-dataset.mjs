@@ -332,12 +332,20 @@ function evalShingles() {
   return set;
 }
 
-function* shingles(text, n) {
+// EXPORTED so the contamination guard is reachable from a test. It is the only thing standing
+// between training data and the eval tasks it is scored against, and an overlap inflates every
+// eval number afterwards with no symptom — the scores simply look better.
+export function* shingles(text, n) {
   const w = text.split(' ');
   for (let i = 0; i + n <= w.length; i++) yield w.slice(i, i + n).join(' ');
 }
 
-function contaminated(example, evalSet) {
+// EXPORTED with the same reasoning. NOTE THE FIRST LINE: an empty eval set makes every example
+// clean. That is fail-open, and it is deliberate only in the sense that main() prints
+// `eval contamination guard: N shingles` so an operator sees a zero denominator — the announcement
+// is in the caller, not in this function. A caller that skipped the log would guard nothing and
+// say nothing.
+export function contaminated(example, evalSet) {
   if (!evalSet.size) return false;
   for (const sh of shingles(normalise(example.doc), 8)) if (evalSet.has(sh)) return true;
   return false;
