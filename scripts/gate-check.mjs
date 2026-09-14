@@ -44,7 +44,7 @@ import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -322,7 +322,12 @@ function checkPaths(check) {
   const files = [...check.matchAll(/(?:^|\s)((?:[\w.@-]+\/)+[\w.@-]+\.(?:mjs|js|ts|tsx|py|luau|astro))/g)].map((m) => m[1]);
   const cd = /cd\s+([\w./-]+)\s*&&/.exec(check);
   const prefix = cd ? `${cd[1].replace(/^\.\//, '')}/` : '';
-  return files.map((f) => `${prefix}${f}`);
+  // NORMALISED before it is compared against the tracked set. A CHECK that cds into a package and
+  // then reaches back up — `cd apps/worker && node ../../scripts/assert-tests.mjs …`, which is how
+  // every floor-bearing gate is written — produced the literal string
+  // `apps/worker/../../scripts/assert-tests.mjs`, which matches nothing in `git ls-files` and was
+  // reported as an untracked path. The file is tracked; the comparison was not comparing paths.
+  return files.map((f) => normalize(`${prefix}${f}`));
 }
 
 /* ---------------------------------------------------------------- execute --- */

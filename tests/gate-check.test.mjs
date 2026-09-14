@@ -767,3 +767,27 @@ test('a rewrite preserves the STATION line instead of folding it into the headin
   assert.match(out, /^- \[x\] G1: a stationed gate$/m, 'the heading must carry no station tag');
   assert.match(out, /^    STATION: S7$/m, 'the STATION line must survive the rewrite');
 });
+
+test('a CHECK that cds into a package and reaches back up names a TRACKED path', () => {
+  // Every floor-bearing gate is written `cd apps/worker && node ../../scripts/assert-tests.mjs …`,
+  // which produced the literal string `apps/worker/../../scripts/assert-tests.mjs`. That matches
+  // nothing in `git ls-files`, so the checker reported a tracked file as untracked and quarantined
+  // five gates at once. The comparison was not comparing paths.
+  const r = check(
+    '- [x] G1: a gate whose CHECK reaches back up\n'
+    + '    CHECK: cd apps/worker && node ../../scripts/assert-tests.mjs --floor 1 --label G1 -- echo hi\n'
+    + '    EXPECT: G1 OK\n' + falsified,
+    ['--reverify'],
+  );
+  assert.doesNotMatch(r.out, /untracked path/, r.out);
+
+  // POSITIVE CONTROL: a genuinely untracked path must still be caught, or the fix would be a way
+  // of never noticing one again.
+  const bogus = check(
+    '- [x] G1: a gate naming a file that does not exist\n'
+    + '    CHECK: cd apps/worker && node ../../scripts/not-a-real-checker.mjs\n'
+    + '    EXPECT: G1 OK\n' + falsified,
+    ['--reverify'],
+  );
+  assert.match(bogus.out, /untracked path/);
+});
