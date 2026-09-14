@@ -143,6 +143,29 @@ function Profile.get(player)
 	return entry and entry.value or nil
 end
 
+--- Persist a SPECIFIC table for this player now, and adopt it as the session's data on success.
+--- Returns true only when the write actually landed.
+---
+--- This exists for purchases. A receipt must be recorded in the same write that awards the item, so
+--- the caller builds one table containing both and hands it here; a false return means nothing was
+--- written and the caller must not treat the purchase as done.
+function Profile.commit(player, data)
+	local entry = cache[player.UserId]
+	if entry == nil or not entry.canSave then
+		return false
+	end
+	local ok = attempt(function()
+		return STORE:UpdateAsync(keyFor(player.UserId), function(stored)
+			local lock = stored and stored.lock or nil
+			return { value = data, lock = lock }
+		end)
+	end)
+	if ok then
+		entry.value = data
+	end
+	return ok
+end
+
 Players.PlayerRemoving:Connect(function(player)
 	Profile.release(player)
 end)
@@ -225,32 +248,83 @@ return RemoteGuard
 `;
 
 const RECEIPTS_SOURCE = `--!strict
--- Receipts — developer product purchases, handled so nobody pays for nothing.
+-- Receipts — developer product purchases, granted exactly once or not at all.
 --
--- Two rules, and both of them are about money moving in only one direction:
---   1. Return PurchaseGranted ONLY after the grant is written and the write confirmed. Returning
---      it first tells Roblox to stop retrying, and the player has paid and received nothing.
---   2. Be idempotent on receipt.PurchaseId. Roblox may call this more than once for a single
---      purchase, and a handler that simply adds the reward grants it twice.
+-- THE RULE, from Roblox's own guidance: purchase handling must be ATOMIC. The award and the record
+-- that this PurchaseId was handled have to land in the SAME write. Anything else has a window.
+--
+-- The obvious implementation — mark the receipt, run the handler, mark it delivered — looks careful
+-- and is not: if the server dies between the award and the second mark, the retry sees an unfinished
+-- record and awards again. The player is charged once and receives twice, and nothing errors.
+--
+-- So the handler here mutates a COPY of the player's data. The copy carries both the award and the
+-- receipt id, and is persisted in one write. Only if that write succeeds does the copy become the
+-- live session data and the receipt get consumed. If it fails, the live data is untouched and
+-- NotProcessedYet asks Roblox to retry — the player keeps their Robux until it works.
+--
+-- SETUP (once, in a server Script):
+--   local Receipts = require(game.ServerScriptService.Receipts)
+--   local Profile = require(game.ServerScriptService.Profile)
+--   Receipts.configure({ get = Profile.get, commit = Profile.commit })
+--   Receipts.product(123456, function(player, data, receiptInfo)
+--     data.coins = (data.coins or 0) + 100
+--     return true
+--   end)
 local MarketplaceService = game:GetService("MarketplaceService")
-local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
 
 local Receipts = {}
 
-local granted = DataStoreService:GetDataStore("PurchaseReceipts_v1")
 local handlers = {}
+local getData = nil
+local commitData = nil
 
---- Register what a product gives. grant(player, receiptInfo) must return true only when the
---- reward is durably recorded — if it returns false, Roblox retries later and the player keeps
---- their Robux until it succeeds.
+--- Wire this to your data module. \`get(player)\` returns the live table or nil when the player's
+--- data has not loaded; \`commit(player, data)\` persists THAT table and returns true on success.
+function Receipts.configure(opts)
+	getData = opts.get
+	commitData = opts.commit
+end
+
 function Receipts.product(productId, grant)
 	handlers[productId] = grant
 end
 
+local function deepCopy(value)
+	if type(value) ~= "table" then
+		return value
+	end
+	local out = {}
+	for k, v in pairs(value) do
+		out[k] = deepCopy(v)
+	end
+	return out
+end
+
+local function replaceContents(target, source)
+	for k in pairs(target) do
+		target[k] = nil
+	end
+	for k, v in pairs(source) do
+		target[k] = v
+	end
+end
+
 MarketplaceService.ProcessReceipt = function(receiptInfo)
-	local player = game:GetService("Players"):GetPlayerByUserId(receiptInfo.PlayerId)
+	if getData == nil or commitData == nil then
+		warn("[Receipts] not configured — call Receipts.configure first")
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
 	if player == nil then
 		-- Not an error: the player left. Do not consume the receipt; Roblox retries on rejoin.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local live = getData(player)
+	if live == nil then
+		-- Their data has not loaded, or loaded badly. Awarding into nothing loses the purchase.
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
@@ -260,51 +334,32 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	local receiptKey = "r_" .. tostring(receiptInfo.PurchaseId)
-
-	-- One UpdateAsync does the idempotency check AND the claim, so two concurrent calls for the
-	-- same receipt cannot both decide they are first.
-	local claimedOk, alreadyGranted = pcall(function()
-		return granted:UpdateAsync(receiptKey, function(stored)
-			if stored ~= nil then
-				return stored
-			end
-			return { at = os.time(), userId = receiptInfo.PlayerId }
-		end)
-	end)
-
-	if not claimedOk then
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-
-	-- If it was already ours, the reward went out on a previous call. Consume the receipt.
-	if alreadyGranted ~= nil and alreadyGranted.delivered == true then
+	local purchaseId = tostring(receiptInfo.PurchaseId)
+	if live.receipts ~= nil and live.receipts[purchaseId] ~= nil then
+		-- Already awarded AND already saved. Consume the receipt so Roblox stops retrying.
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 
-	local ok, delivered = pcall(handler, player, receiptInfo)
-	if not ok or delivered ~= true then
-		-- The grant failed. Release the claim so a retry can try again, and do NOT tell Roblox the
-		-- purchase is done.
-		pcall(function()
-			granted:RemoveAsync(receiptKey)
-		end)
+	-- Everything below happens on a copy, so a failure leaves the session exactly as it was.
+	local working = deepCopy(live)
+	working.receipts = working.receipts or {}
+
+	local ok, awarded = pcall(handler, player, working, receiptInfo)
+	if not ok or awarded ~= true then
+		warn("[Receipts] handler declined or errored: " .. tostring(awarded))
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	local markedOk = pcall(function()
-		granted:UpdateAsync(receiptKey, function(stored)
-			stored = stored or { at = os.time(), userId = receiptInfo.PlayerId }
-			stored.delivered = true
-			return stored
-		end)
-	end)
-	if not markedOk then
-		-- The reward is out but the mark failed. Granting is still correct: the alternative is
-		-- charging again on the retry.
-		warn("[Receipts] delivered but could not mark " .. receiptKey)
+	-- The award and the receipt id go into ONE write. This is the whole design.
+	working.receipts[purchaseId] = os.time()
+
+	local saved = commitData(player, working)
+	if saved ~= true then
+		-- Nothing was persisted and nothing was changed in memory. The retry starts clean.
+		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
+	replaceContents(live, working)
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
@@ -328,6 +383,7 @@ export const PREFABS: Record<string, Prefab> = {
       'Profile.load(player) -> data | nil   -- nil means DO NOT SAVE this session',
       'Profile.get(player) -> data | nil',
       'Profile.release(player) -> boolean   -- saves and releases the lock',
+      'Profile.commit(player, data) -> boolean  -- persist one table now; for atomic purchase writes',
     ],
     source: PROFILE_SOURCE,
   },
@@ -352,16 +408,18 @@ export const PREFABS: Record<string, Prefab> = {
   receipts: {
     id: 'receipts',
     moduleName: 'Receipts',
-    summary: 'Developer product purchases handled so nobody pays for nothing, and nobody is granted twice.',
+    summary: 'Developer product purchases granted exactly once or not at all — the award and the receipt id in one write.',
     prevents: [
       'returning PurchaseGranted before the grant is written, so the player pays and receives nothing',
-      'a retried receipt granting the reward a second time',
+      'a retried receipt granting the reward a second time, which the obvious mark-then-grant-then-mark implementation still allows',
+      'awarding into player data that never loaded',
       'a purchase being consumed while the player is not in the server',
     ],
     defaultParent: 'game.ServerScriptService',
     className: 'ModuleScript',
     api: [
-      'Receipts.product(productId, function(player, receiptInfo) ... return true end)',
+      'Receipts.configure({ get = Profile.get, commit = Profile.commit })',
+      'Receipts.product(productId, function(player, data, receiptInfo) ... return true end)',
     ],
     source: RECEIPTS_SOURCE,
   },

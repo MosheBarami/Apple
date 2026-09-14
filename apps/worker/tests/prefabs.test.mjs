@@ -116,15 +116,65 @@ test('remote_guard rate-limits on the server and never trusts a client debounce'
   assert.match(s, /validate/, 'arguments must be checkable');
 });
 
-test('receipts grants after the write, and is idempotent on PurchaseId', () => {
+test('receipts is idempotent on PurchaseId and refuses to consume a receipt it did not grant', () => {
   const s = P.PREFABS.receipts.source;
   assert.match(s, /ProcessReceipt/);
   assert.match(s, /PurchaseId/, 'idempotency is keyed on the receipt id');
   assert.match(s, /NotProcessedYet/, 'a failed grant must NOT consume the receipt');
-  // PurchaseGranted must never be the first thing returned after calling the handler
-  const granted = s.indexOf('Enum.ProductPurchaseDecision.PurchaseGranted');
-  assert.ok(granted > 0);
-  assert.match(s, /if not ok or delivered ~= true then/, 'a failed grant must be detected');
+  assert.match(s, /GetPlayerByUserId/, 'a player who left must not have their receipt consumed');
+  assert.match(s, /if live == nil then/, 'awarding into data that never loaded loses the purchase');
+});
+
+test('THE AWARD AND THE RECEIPT ID GO INTO ONE WRITE — the atomicity rule', () => {
+  // Roblox's own guidance: "Purchase handling must be performed atomically." The obvious
+  // implementation — mark the receipt, run the handler, mark it delivered — looks careful and is
+  // not: a server that dies between the award and the second mark leaves an unfinished record, and
+  // the retry awards again. Charged once, received twice, nothing errors.
+  //
+  // So the handler mutates a COPY, the copy carries both the award and the receipt id, and it is
+  // persisted in ONE call. These assertions pin that ordering, because the ordering IS the fix.
+  const s = P.PREFABS.receipts.source;
+
+  const copied = s.indexOf('local working = deepCopy(live)');
+  const handled = s.indexOf('pcall(handler, player, working, receiptInfo)');
+  const marked = s.indexOf('working.receipts[purchaseId]');
+  const committed = s.indexOf('commitData(player, working)');
+  const adopted = s.indexOf('replaceContents(live, working)');
+
+  for (const [name, i] of Object.entries({ copied, handled, marked, committed, adopted })) {
+    assert.ok(i > 0, `${name} step is missing entirely`);
+  }
+  assert.ok(copied < handled, 'the handler must receive a copy, not the live table');
+  assert.ok(handled < marked, 'the receipt is marked after the award is applied to the same copy');
+  assert.ok(marked < committed, 'the receipt id must be IN the table being written');
+  assert.ok(committed < adopted, 'the session adopts the copy only after the write succeeded');
+
+  // and the two-write shape this replaced must not come back
+  assert.doesNotMatch(s, /delivered\s*=\s*true/, 'a second mark is the bug this design removes');
+});
+
+test('a failed commit changes nothing and does not consume the receipt', () => {
+  const s = P.PREFABS.receipts.source;
+  const failBranch = s.slice(s.indexOf('local saved = commitData'), s.indexOf('replaceContents(live, working)'));
+  assert.match(failBranch, /if saved ~= true then/, 'the write result must be checked');
+  assert.match(failBranch, /NotProcessedYet/, 'a failed write must leave the receipt retryable');
+  assert.doesNotMatch(failBranch, /PurchaseGranted/, 'a failed write must never report the purchase done');
+});
+
+test('receipts refuses to run at all until it is wired to a data module', () => {
+  const s = P.PREFABS.receipts.source;
+  assert.match(s, /function Receipts\.configure/);
+  assert.match(s, /if getData == nil or commitData == nil then/, 'unconfigured must be a refusal');
+});
+
+test('profile_store offers the single-table write receipts needs', () => {
+  // The two modules stay independent, but they have to be able to compose, and the composition is
+  // exactly the atomic purchase write.
+  const s = P.PREFABS.profile_store.source;
+  assert.match(s, /function Profile\.commit\(player, data\)/);
+  assert.match(s, /if ok then\n\t\tentry\.value = data/, 'the session adopts the table only when the write landed');
+  const commit = s.slice(s.indexOf('function Profile.commit'));
+  assert.match(commit.slice(0, commit.indexOf('end')), /canSave/, 'commit must honour the failed-load rule too');
 });
 
 test('no module reaches for an asset, so none of them can fail the asset gate', () => {
