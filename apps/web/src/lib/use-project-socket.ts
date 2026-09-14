@@ -75,6 +75,15 @@ export interface ChatItem {
    * reloaded conversation is correctly silent about it.
    */
   intent?: RunIntent;
+  /**
+   * What this run cost, settled, from `msg_end`.
+   *
+   * It lives on the MESSAGE rather than on `AgentStatus` because `msg_end` clears the status in
+   * the same breath — a cost kept there would be correct for one frame and then gone. Undefined
+   * for a conversation loaded from history and for a worker too old to send it, which renders as
+   * no cost line rather than a zero.
+   */
+  sparksSpent?: number;
 }
 
 export interface AgentStatus {
@@ -475,6 +484,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             streaming: false,
             stopReason: msg.stopReason,
             error: msg.error,
+            // Only when the worker sent one: `?? item.sparksSpent` rather than `?? 0`, so an older
+            // worker leaves the field absent instead of asserting that the run was free.
+            sparksSpent: msg.sparksSpent ?? item.sparksSpent,
             tools: item.tools.map((t) => (t.done ? t : { ...t, done: true, ok: false, durationMs: Date.now() - t.startedAt })),
           };
           return next;

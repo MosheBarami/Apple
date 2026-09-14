@@ -586,7 +586,30 @@ export type ServerMsg =
   // 'incomplete' means the run ended having changed nothing. It is deliberately distinct from
   // 'error': nothing failed loudly, the agent simply never did the work and would otherwise have
   // reported success. See finishRun in do/session.ts.
-  | { type: 'msg_end'; msgId: string; stopReason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete'; error?: string }
+  | {
+      type: 'msg_end';
+      msgId: string;
+      stopReason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
+      error?: string;
+      /**
+       * WHAT THE RUN ACTUALLY COST, AND THE ONLY MESSAGE THAT CAN CARRY IT.
+       *
+       * `agent_status.sparksSpent` is a running total broadcast at the TOP of each step, and each
+       * step settles its real neuron cost AFTER that broadcast
+       * (`sparksForNeurons(agent.neuronsUsed) - agent.sparksSpent`). So the last figure the user
+       * ever saw was always one settlement behind, and the final step's settlement — frequently
+       * the largest, since it is the one that finishes the build — was never broadcast at all.
+       *
+       * The client also clears `agentStatus` on this very message, so the in-flight display
+       * vanished at exactly the moment the number became correct. Between those two facts a user
+       * could not see what a run cost them: not during, because it was stale, and not after,
+       * because it was gone.
+       *
+       * This is the settled figure, read after the last settlement. It rides on `msg_end` because
+       * that is the one message guaranteed to be sent once the charging is finished.
+       */
+      sparksSpent?: number;
+    }
   // `effortReason` is the reasoning POLICY's own summary (e.g. "stone baseline;
   // visual design task"). It is a classification of the request, not the
   // model's hidden reasoning, and never contains prompt or transcript content.

@@ -1618,7 +1618,10 @@ export class SessionDO extends DurableObject<Env> {
       Date.now(),
     );
     await this.persistAgent(agent);
-    this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error });
+    // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
+    // earlier broadcast of this number was taken before that step's settlement and was therefore
+    // an under-count of what the user had actually been charged.
+    this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error, sparksSpent: agent.sparksSpent });
     // background memory distillation (only after substantive runs)
     if (agent.trace.length > 2 && reason === 'done') {
       // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget

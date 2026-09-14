@@ -984,6 +984,26 @@
   text-align: end;
 }
 
+/* The finished turn's footer: when the turn happened, and what it cost. Baseline-aligned so the
+   two read as one line, and wrapping rather than overflowing on a narrow workspace pane. */
+.gx-turn__foot {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0;
+}
+
+.gx-turn__foot .gx-stamp {
+  margin-top: 0;
+}
+
+.gx-turn__cost {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .gx-prose {
   font-size: 0.95rem;
   line-height: 1.72;

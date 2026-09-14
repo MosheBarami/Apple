@@ -216,7 +216,21 @@ export function Turn({
           </div>
         )}
 
-        <Stamp at={item.createdAt} align="start" />
+        {/* THE FOOTER ROW, AND WHY THE COST IS HERE RATHER THAN IN THE THINKING CARD.
+            The Thinking card shows a running cost WHILE a run is in flight, and `msg_end` clears
+            the status that feeds it — so the figure disappeared at the moment it finally became
+            correct, and the settled total was never shown at all. This is the one the user was
+            charged, sitting next to the time the turn happened. Rendered only when the worker
+            sent one and something was actually spent: an absent field means a conversation from
+            history or an older worker, and neither should be drawn as a confident zero. */}
+        <p className="gx-turn__foot">
+          <Stamp at={item.createdAt} align="start" />
+          {item.sparksSpent != null && item.sparksSpent > 0 && (
+            <span className="gx-turn__cost">
+              <strong>{item.sparksSpent}</strong> {item.sparksSpent === 1 ? 'Spark' : 'Sparks'}
+            </span>
+          )}
+        </p>
       </div>
     </div>
   );
