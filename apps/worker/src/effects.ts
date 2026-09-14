@@ -355,6 +355,42 @@ export function effectLuau(effect: string, path: string): string {
 }
 
 /**
+ * Luau that takes an effect back off.
+ *
+ * `add_effect` without this is half a feature: a user who says "take the fire off" has no path, and
+ * the agent's only alternative is to write deletion Luau by hand against a place it is guessing at.
+ *
+ * IT REMOVES ONLY WHAT WE MARKED. Every instance this module creates carries an `AppleEffect`
+ * attribute, and the removal is scoped to children carrying it. That is the difference between
+ * "undo the thing you added" and "delete the children of this part" — the second is a request
+ * nobody made, and the user's own ParticleEmitter is exactly the kind of thing that would be
+ * sitting next to ours.
+ *
+ * `effect` of null removes every effect we placed there; naming one removes just that preset.
+ */
+export function removeEffectLuau(effect: string | null, path: string): string {
+  const target = JSON.stringify(path);
+  const wanted = effect === null ? 'nil' : JSON.stringify(effect);
+  return [
+    `local target = ${luauResolve(target)}`,
+    'if not target then error("no instance at " .. ' + target + ') end',
+    `local wanted = ${wanted}`,
+    'local removed, kinds = 0, {}',
+    'for _, child in ipairs(target:GetChildren()) do',
+    // The attribute is the whole authority for touching anything. No name matching, no class
+    // matching — either we put it there and said so, or we leave it alone.
+    '	local mark = child:GetAttribute("AppleEffect")',
+    '	if mark ~= nil and (wanted == nil or mark == wanted) then',
+    '		if not table.find(kinds, mark) then table.insert(kinds, mark) end',
+    '		child:Destroy()',
+    '		removed += 1',
+    '	end',
+    'end',
+    'return { removed = removed, effects = table.concat(kinds, ","), from = target:GetFullName() }',
+  ].join('\n');
+}
+
+/**
  * Resolve a dotted path without `loadstring` and without indexing by a model-supplied expression.
  *
  * The path arrives as data and stays data: it is split on '.' at runtime and walked with

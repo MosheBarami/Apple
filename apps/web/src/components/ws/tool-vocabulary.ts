@@ -128,6 +128,7 @@ export const TOOL = {
   select_instances: { kind: 'editing', label: 'Selected it in Studio' },
   viewport_info: { kind: 'inspecting', label: 'Looked at the workspace layout' },
   install_module: { kind: 'writing_luau', label: 'Installed a vetted module' },
+  remove_effect: { kind: 'editing', label: 'Removed an ambient effect' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },

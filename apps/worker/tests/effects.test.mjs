@@ -166,3 +166,84 @@ test('the tool description carries the whole catalogue, so no extra round trip i
   const def = T.toolDefs(true, undefined).find((d) => d.name === 'add_effect');
   for (const n of FX.EFFECT_NAMES) assert.ok(def.description.includes(n), `${n} missing from the description`);
 });
+
+// --- the other half: taking an effect back off ------------------------------------------------
+
+test('both removal forms generate Luau that COMPILES', { skip: haveLuau() ? false : 'luau-analyze not on PATH' }, () => {
+  assert.deepEqual(syntaxErrors(FX.removeEffectLuau(null, 'game.Workspace.Torch'), 'rm-all'), []);
+  assert.deepEqual(syntaxErrors(FX.removeEffectLuau('fire', 'game.Workspace.Torch'), 'rm-one'), []);
+});
+
+test('THE MARKER IS THE ONLY AUTHORITY — it cannot remove what it did not place', () => {
+  // The difference between "undo the thing you added" and "delete the children of this part". The
+  // second is a request nobody made, and a user's own ParticleEmitter is exactly the sort of thing
+  // sitting next to ours.
+  const src = FX.removeEffectLuau(null, 'game.Workspace.Torch');
+  assert.match(src, /GetAttribute\("AppleEffect"\)/, 'the attribute must be what it checks');
+  assert.match(src, /mark ~= nil/, 'and an unmarked child must be skipped');
+  assert.doesNotMatch(src, /:IsA\(/, 'it must not match on class');
+  assert.doesNotMatch(src, /child\.Name ==/, 'nor on name');
+});
+
+test('CONTRACT: remove looks for exactly the marker add writes', () => {
+  // These two functions have no shared constant between them. If they drifted, add would keep
+  // working and remove would silently find nothing — a feature that appears to run and does not.
+  const added = FX.effectLuau('fire', 'game.Workspace.Torch');
+  const removed = FX.removeEffectLuau('fire', 'game.Workspace.Torch');
+  const written = added.match(/SetAttribute\("([^"]+)",\s*"([^"]+)"\)/);
+  assert.ok(written, 'add must mark what it creates');
+  const [, attr, value] = written;
+  assert.match(removed, new RegExp(`GetAttribute\\("${attr}"\\)`), `remove must read ${attr}`);
+  assert.match(removed, new RegExp(`wanted = "${value}"`), `remove must scope to ${value}`);
+});
+
+test('naming an effect scopes the removal; omitting it removes them all', () => {
+  assert.match(FX.removeEffectLuau('smoke', 'game.Workspace.X'), /wanted = "smoke"/);
+  assert.match(FX.removeEffectLuau(null, 'game.Workspace.X'), /wanted = nil/);
+  // and the scoped form must still be a comparison, not a hard-coded single branch
+  assert.match(FX.removeEffectLuau('smoke', 'game.Workspace.X'), /wanted == nil or mark == wanted/);
+});
+
+test('the removal survives the ingress filter and the non-yielding-loop rule', () => {
+  for (const src of [FX.removeEffectLuau(null, 'game.Workspace.X'), FX.removeEffectLuau('fire', 'game.Workspace.X')]) {
+    assert.equal(T.refuseLuauIngress(src), null);
+    assert.doesNotMatch(src, /while\s*\(?\s*(true|1)\s*\)?\s*do/);
+    assert.doesNotMatch(src, /\brepeat\b/);
+  }
+});
+
+test('an unknown effect and a hostile path are refused with nothing sent', async () => {
+  for (const args of [
+    { path: 'game.Workspace.X', effect: 'lens_flare' },
+    { path: 'game.Workspace."]..x' },
+    { path: '' },
+    {},
+  ]) {
+    const { ctx, ops } = stubCtx();
+    const res = await T.TOOLS.remove_effect.run(ctx, args);
+    assert.ok(res.error, `not refused: ${JSON.stringify(args)}`);
+    assert.equal(ops.length, 0, `reached Studio: ${JSON.stringify(args)}`);
+  }
+});
+
+test('a real removal sends one run_code op', async () => {
+  const { ctx, ops } = stubCtx({ ok: true, data: { result: { removed: 2, effects: 'fire', from: 'game.Workspace.Torch' } } });
+  await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
+  assert.equal(ops.length, 1);
+  assert.equal(ops[0].op, 'run_code');
+  assert.match(ops[0].code, /AppleEffect/);
+});
+
+test('NOTHING THERE is reported as nothing there, not as a removal', async () => {
+  // "I removed it" for an instance that never had one is a claim about the world that is false,
+  // and the model would report it to the user as a completed action.
+  const { ctx } = stubCtx({ ok: true, data: { result: { removed: 0, effects: '', from: 'game.Workspace.Torch' } } });
+  const res = await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
+  assert.equal(res.removed, 0);
+  assert.match(res.note, /no fire on/);
+});
+
+test('remove_effect is offered with Studio and withheld without it', () => {
+  assert.ok(T.toolDefs(true, undefined).map((d) => d.name).includes('remove_effect'));
+  assert.equal(T.toolDefs(false, undefined).map((d) => d.name).includes('remove_effect'), false);
+});

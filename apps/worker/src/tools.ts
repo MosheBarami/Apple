@@ -31,7 +31,7 @@ import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, imagePanel, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, moodLuau } from './worldbuilding';
-import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau } from './effects';
+import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectLuau, removeEffectLuau } from './effects';
 import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } from './build-audit';
 import { runCriticPanel, formatPanelReport } from './critic';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
@@ -1566,6 +1566,50 @@ export const TOOLS: Record<string, ToolImpl> = {
         api: prefab.api,
         next: `require(${path}) from a Script in ServerScriptService. Read it before changing it — the comments say which lines are load-bearing.`,
       };
+    },
+  },
+  /**
+   * The other half of add_effect.
+   *
+   * Shipping the add without the remove leaves "take the fire off" with no path, and the agent's
+   * only alternative is hand-written deletion Luau against a place it is guessing at. It removes
+   * only instances carrying the `AppleEffect` attribute this module writes, so it can never take
+   * away a ParticleEmitter the user placed themselves.
+   */
+  remove_effect: {
+    def: {
+      name: 'remove_effect',
+      description:
+        "Take an ambient effect back off an instance. Removes only effects that add_effect placed there — anything the user built themselves is untouched. Omit `effect` to remove every effect on that instance, or name one to remove just that preset. Use this when the user asks for less, rather than rebuilding the object.",
+      parameters: S(
+        {
+          path: { type: 'string', description: 'Full path of the instance to clear.' },
+          effect: { type: 'string', enum: EFFECT_NAMES, description: 'Which preset to remove. Omit for all of them.' },
+        },
+        ['path'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      if (!path) return { error: 'path is required' };
+      if (/["'\\\n\r]/.test(path)) return { error: 'path contains characters that are not valid in an instance path' };
+
+      const effect = a.effect === undefined || a.effect === null ? null : String(a.effect);
+      if (effect !== null && !Object.prototype.hasOwnProperty.call(EFFECTS, effect)) {
+        return { error: `unknown effect "${effect}". Choose one of: ${EFFECT_NAMES.join(', ')}, or omit it to remove all.` };
+      }
+
+      const res = await op(ctx, { op: 'run_code', code: removeEffectLuau(effect, path), timeoutMs: 10_000 }, 25_000);
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      // "Nothing was there" is a different answer from "I removed it", and the model should not
+      // report a removal it did not make.
+      const removed = Number((res as { result?: { removed?: unknown } })?.result?.removed ?? NaN);
+      if (Number.isFinite(removed) && removed === 0) {
+        return { removed: 0, note: effect ? `there was no ${effect} on ${path}` : `there were no effects on ${path}` };
+      }
+      return res;
     },
   },
   check_composition: {
