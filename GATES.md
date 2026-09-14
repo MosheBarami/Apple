@@ -73,7 +73,7 @@ and are tracked as handoffs, not gates.
     CHECK: cd packages/training && node ../../scripts/assert-tests.mjs --floor 20 --label G10 -- node --test src/mlx-to-peft.test.mjs src/build-dataset.test.mjs
     EXPECT: G10 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G10; path=6765c31f4f12/53 entries; git-sha=eb69314; tree-clean=yes; break-sha=eb69314; EXPECT=unmatched; output-sha256=3cef487ca8e3fe34a880828372ae37778823326f41ea922d09b494eb43bd83f8; output-bytes=1758; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=72a42f4c08ace0f10d6072a5; at=2026-09-14T19:06:59.758Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=44990c8; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=64c68d77de2e49d0d73be6fb73647ecf36a9ae755efdb5eeadb25908d1ffd730; output-bytes=1489; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=72a42f4c08ace0f10d6072a5; at=2026-09-14T22:07:51.770Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=eaf6d35; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=64c68d77de2e49d0d73be6fb73647ecf36a9ae755efdb5eeadb25908d1ffd730; output-bytes=1486; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=2aaf116c9b4c0832a1e558ae; at=2026-09-14T22:19:51.356Z
   EXPECT-CHANGE: old=fail 0 new=G10 OK reason=derived-floor-20-measured-20-passing
 
 ---
@@ -265,7 +265,7 @@ test it gated.
     CHECK: node scripts/check-offer.mjs
     EXPECT: OFFER COHERENT
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=29018b9; tree-clean=yes; break-sha=29018b9; EXPECT=unmatched; output-sha256=fcebe58a239c5b68fa57a47aec6dd3b5bc655e8207d73817bca996d5a3e1e599; output-bytes=596; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=648cbe8fc366b1efbb1cc5a6; at=2026-09-14T20:20:09.342Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=45c755f; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=f4ccde365c988568dae783b3336e792eaaec026e6cb6f04e0f95cc52f119b47e; output-bytes=451; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=4259f133dc12715205575c8b; at=2026-09-14T22:19:39.583Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=eaf6d35; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=f4ccde365c988568dae783b3336e792eaaec026e6cb6f04e0f95cc52f119b47e; output-bytes=451; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=4259f133dc12715205575c8b; at=2026-09-14T22:19:51.342Z
 
 ---
 
