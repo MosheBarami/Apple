@@ -47,6 +47,11 @@ const ogImage = new URL('/og.png', site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {/* The icon set is generated from favicon.svg by scripts/make-brand-assets.mjs, so
+        every size is the same drawing. The 1.2 MB of PNGs that used to sit in
+        public/brand/ showed a different mark entirely and were linked from nothing. */}
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     <meta property="og:type" content="website" />

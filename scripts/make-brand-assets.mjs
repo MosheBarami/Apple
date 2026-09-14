@@ -28,6 +28,29 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/**
+ * The icon set, rendered from apps/site/public/favicon.svg so there is ONE drawing of the mark.
+ *
+ * What was here before: seven PNGs of an entirely different mark — the glossy 3D "A" with an
+ * orbital ring — totalling 1.2 MB, referenced by nothing. No manifest, no apple-touch-icon link,
+ * no import. Someone generated a correct set of sizes for a direction that was then cancelled, and
+ * they sat in `public/` being served to nobody for two rebrands.
+ *
+ * Generating them from the SVG rather than committing them as artwork is the same argument as the
+ * OG card: the moment the mark changes, one command regenerates every size, and `--check` fails
+ * the build if someone changes the SVG without doing so. A hand-made icon set drifts silently,
+ * which is exactly how the last one came to show a mark that exists nowhere in the product.
+ *
+ * `square: true` drops the rounded corner for the Apple touch icon. iOS applies its own mask to
+ * that image, so baking a radius in produces a rounded shape inside a rounded mask with a sliver
+ * of ground between them.
+ */
+const ICONS = [
+  { name: 'icon-192.png', size: 192 },
+  { name: 'icon-512.png', size: 512 },
+  { name: 'apple-touch-icon.png', size: 180, square: true },
+];
+
 const ASSETS = [
   {
     name: 'og.png',
@@ -43,6 +66,29 @@ const ASSETS = [
     fonts: ['Archivo', 'Figtree', 'Geist Mono'],
   },
 ];
+
+const FAVICON = join(ROOT, 'apps/site/public/favicon.svg');
+if (existsSync(FAVICON)) {
+  const svg = readFileSync(FAVICON, 'utf8');
+  for (const icon of ICONS) {
+    // `contain` and a centred flex box: the artwork keeps its aspect ratio whatever the viewBox
+    // says, so a future mark that is not square cannot be silently stretched.
+    const inner = icon.square ? svg.replace(/ rx="11"/, '') : svg;
+    ASSETS.push({
+      name: icon.name,
+      inlineHtml:
+        `<meta charset="utf-8"><style>html,body{margin:0;width:${icon.size}px;height:${icon.size}px;` +
+        `overflow:hidden;background:#080A0F}svg{display:block;width:100%;height:100%}</style>` + inner,
+      out: `apps/site/public/${icon.name}`,
+      origin: 'apps/site/public/favicon.svg',
+      width: icon.size,
+      height: icon.size,
+      scale: 1,
+      fonts: [],
+      minColours: 8,
+    });
+  }
+}
 
 const argv = process.argv.slice(2);
 const CHECK = argv.includes('--check');
@@ -71,8 +117,9 @@ const report = [];
 // The general shape is the one worth guarding: a value that is not there becoming a plausible
 // answer instead of an error.
 for (const [i, asset] of ASSETS.entries()) {
-  const missingFields = ['name', 'source', 'out', 'width', 'height', 'scale', 'fonts']
+  const missingFields = ['name', 'out', 'width', 'height', 'scale', 'fonts']
     .filter((k) => asset[k] === undefined || asset[k] === null || asset[k] === '');
+  if (asset.source === undefined && asset.inlineHtml === undefined) missingFields.push('source or inlineHtml');
   if (missingFields.length) {
     console.error(
       `make-brand-assets: ASSETS[${i}] (${asset.name ?? 'unnamed'}) is missing ${missingFields.join(', ')}. ` +
@@ -83,8 +130,8 @@ for (const [i, asset] of ASSETS.entries()) {
 }
 
 for (const asset of ASSETS) {
-  const src = join(ROOT, asset.source);
-  if (!existsSync(src)) {
+  const src = asset.source ? join(ROOT, asset.source) : null;
+  if (src && !existsSync(src)) {
     problems.push(`${asset.source} is missing — nothing to render ${asset.name} from`);
     continue;
   }
@@ -96,7 +143,8 @@ for (const asset of ASSETS) {
 
   // `file://` rather than a dev server: the source is a standalone document by design, and a
   // generator that needs the site running is one more thing that can be stale.
-  await page.goto(`file://${src}`, { waitUntil: 'networkidle' });
+  if (src) await page.goto(`file://${src}`, { waitUntil: 'networkidle' });
+  else await page.setContent(asset.inlineHtml, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
 
   // 1. THE FONTS ACTUALLY ARRIVED. Without this the card renders in a system sans, which looks
@@ -107,7 +155,8 @@ for (const asset of ASSETS) {
       [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family),
     ),
   );
-  const missing = asset.fonts.filter((f) => !loaded.has(f));
+  // An icon carries no type; asserting a face loaded on it would fail every icon forever.
+  const missing = asset.fonts.length ? asset.fonts.filter((f) => !loaded.has(f)) : [];
   if (missing.length) {
     problems.push(
       `${asset.name}: ${missing.join(', ')} did not load — the card would ship in a substitute face. ` +
@@ -117,8 +166,11 @@ for (const asset of ASSETS) {
 
   // 2. THE WIDTH AXIS IS APPLIED. Archivo can load and still render at the default 100% if the
   //    declaration is lost, which is the whole design gone with nothing visibly broken.
-  const stretch = await page.evaluate(() => getComputedStyle(document.querySelector('h1')).fontStretch);
-  if (stretch !== '118%') {
+  const stretch = await page.evaluate(() => {
+    const h1 = document.querySelector('h1');
+    return h1 ? getComputedStyle(h1).fontStretch : null;
+  });
+  if (stretch !== null && stretch !== '118%') {
     problems.push(`${asset.name}: h1 font-stretch is ${stretch}, expected 118%`);
   }
 
@@ -138,9 +190,9 @@ for (const asset of ASSETS) {
   //    a valid PNG of a single flat colour. Sampled from the decoded pixels, not guessed from the
   //    byte length — a 630px field of #080a0f compresses small but is not suspiciously small.
   const uniq = await sampleColours(browser, buf, asset);
-  if (uniq.distinct < 200) {
+  if (uniq.distinct < (asset.minColours ?? 200)) {
     problems.push(
-      `${asset.name}: only ${uniq.distinct} distinct colours across ${uniq.sampled} sampled pixels ` +
+        `${asset.name}: only ${uniq.distinct} distinct colours across ${uniq.sampled} sampled pixels ` +
       `(dominant ${uniq.dominantShare}% ${uniq.dominant}) — the card did not render`,
     );
   }
@@ -156,7 +208,9 @@ for (const asset of ASSETS) {
 
   if (CHECK) {
     if (!existing) problems.push(`${asset.out} does not exist; run without --check to write it`);
-    else if (!same) problems.push(`${asset.out} is out of date with ${asset.source}`);
+    // Name the real origin. Inline assets have no `source`, and "out of date with undefined"
+    // sends whoever reads it looking for a file that was never meant to exist.
+    else if (!same) problems.push(`${asset.out} is out of date with ${asset.source ?? asset.origin ?? 'its generator'} — run \`pnpm brand\``);
   } else if (!same) {
     writeFileSync(outPath, buf);
   }

@@ -1,0 +1,24 @@
+{
+  "name": "Apple — AI builder for Roblox",
+  "short_name": "Apple",
+  "description": "Describe a Roblox game. Apple builds it — the parts, the scripts, the systems — straight into the place you have open in Studio.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080a0f",
+  "theme_color": "#080a0f",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
