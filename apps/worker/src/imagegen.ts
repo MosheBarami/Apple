@@ -706,12 +706,18 @@ export async function storeImage(
   pngBase64: string,
 ): Promise<{ imageId: string }> {
   const imageId = crypto.randomUUID();
-  await env.KV.put(imageKeyFor(projectId, imageId), pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
+  await env.KV.put(imageKvKey(projectId, imageId), pngBase64, { expirationTtl: IMAGE_TTL_SECONDS });
   return { imageId };
 }
 
-/** The one place the storage key is spelled, so the writer and the reader cannot drift apart. */
-export function imageKeyFor(projectId: string, imageId: string): string {
+/**
+ * The one place the storage key is spelled, so the writer and the reader cannot drift apart.
+ *
+ * Named to match the serving route that landed on main. It was `imageKeyFor` here while the reader
+ * did not exist; now that one does, the writer takes the reader's name rather than leaving two
+ * spellings of the same key to be reconciled by whoever merges.
+ */
+export function imageKvKey(projectId: string, imageId: string): string {
   return `image:${projectId}:${imageId}`;
 }
 
@@ -757,7 +763,15 @@ export function imagePanel(
   };
 }
 
-/** The same-origin path the browser fetches. Shared so the tool and the route agree on one shape. */
+/**
+ * The same-origin path the browser fetches. Shared so the tool and the route agree on one shape.
+ *
+ * PLURAL, because the route that now exists is GET /api/projects/:id/images/:imageId. This emitted
+ * the singular while there was no reader to disagree with, so every panel it built would have
+ * pointed one character away from the only thing that serves it — a 404 rendered as the honest
+ * "no longer available" state, which is the worst kind of wrong: a correct-looking answer to a
+ * question nobody asked.
+ */
 export function imagePathFor(projectId: string, imageId: string): string {
-  return `/api/projects/${encodeURIComponent(projectId)}/image/${encodeURIComponent(imageId)}`;
+  return `/api/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}`;
 }

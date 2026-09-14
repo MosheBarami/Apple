@@ -142,7 +142,20 @@ export function isSafeHref(href: unknown): boolean {
  * Then the path must still be EXACTLY our image route. Same-origin is not sufficient: any other
  * in-app path rendered into an <img> is a request the panel author chose and the user did not.
  */
-const IMAGE_ROUTE = /^\/api\/projects\/[A-Za-z0-9_-]{1,64}\/image\/[A-Za-z0-9_-]{1,64}$/;
+/**
+ * The one image path the renderer will load, matched against the route that actually serves it:
+ * GET /api/projects/:id/images/:imageId. Plural, and the image id must be a UUID — the route
+ * rejects anything else with a 404 before it touches KV, so admitting a looser shape here would
+ * only produce panels that render as "no longer available" for a reason that has nothing to do
+ * with expiry.
+ *
+ * NOT /i. Case-insensitivity is spelled into the hex class rather than applied to the whole
+ * pattern, because the flag would also fold `/api/projects/` — and a path matcher that accepts
+ * `/API/PROJECTS/` is one normalisation difference away from admitting something the route never
+ * serves. A test caught this the moment the flag went on.
+ */
+const IMAGE_ROUTE =
+  /^\/api\/projects\/[A-Za-z0-9_-]{1,64}\/images\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function isSafeImageSrc(src: unknown): boolean {
   if (typeof src !== 'string') return false;

@@ -42,7 +42,7 @@ test('the stored key carries the project, so the reader can re-derive authority'
   const { imageId } = await IG.storeImage(env, 'proj_abc', 'BASE64PNG');
   const key = [...store.keys()][0];
   assert.equal(key, `image:proj_abc:${imageId}`);
-  assert.equal(key, IG.imageKeyFor('proj_abc', imageId), 'writer and reader must spell the key once');
+  assert.equal(key, IG.imageKvKey('proj_abc', imageId), 'writer and reader must spell the key once');
 });
 
 test('only the id is returned — the namespace-qualified key never leaves the worker', async () => {
@@ -69,19 +69,19 @@ test('two images under one project do not collide', async () => {
 });
 
 test('the panel points at a path, never at the bytes', () => {
-  const panel = IG.imagePanel('proj_abc', 'img_1', 'a brass lantern icon', { width: 1024, height: 1024 });
+  const panel = IG.imagePanel('proj_abc', '3f2504e0-4f89-11d3-9a0c-0305e82c3301', 'a brass lantern icon', { width: 1024, height: 1024 });
   const asset = panel.blocks[0].assets[0];
   assert.equal(panel.v, 1);
   assert.equal(panel.blocks[0].type, 'asset_picker');
   assert.equal(asset.kind, 'image');
-  assert.equal(asset.thumbnail.src, '/api/projects/proj_abc/image/img_1');
+  assert.equal(asset.thumbnail.src, '/api/projects/proj_abc/images/3f2504e0-4f89-11d3-9a0c-0305e82c3301');
   assert.doesNotMatch(asset.thumbnail.src, /^data:/, 'a 1024px PNG as a data URL blows the detail cap');
   assert.equal(asset.thumbnail.width, 1024);
   assert.ok(asset.thumbnail.alt.length > 0, 'an image with no alt text is an image a screen reader drops');
 });
 
 test('the path is built with the same helper the route will use, and is URL-encoded', () => {
-  assert.equal(IG.imagePathFor('a/b', 'c d'), '/api/projects/a%2Fb/image/c%20d');
+  assert.equal(IG.imagePathFor('a/b', 'c d'), '/api/projects/a%2Fb/images/c%20d');
 });
 
 test('an empty subject still yields a name and alt text rather than a blank card', () => {

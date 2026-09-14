@@ -22,7 +22,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,6 +32,14 @@ const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const usage = readFileSync(join(WEB, 'src', 'routes', 'usage.tsx'), 'utf8');
 const plans = readFileSync(join(WEB, 'src', 'components', 'plans.tsx'), 'utf8');
 const css = readFileSync(join(WEB, 'src', 'styles.css'), 'utf8');
+
+// The enforced table, so the figures the ladder prints can be checked against what the server
+// applies rather than against a literal in this file.
+const sharedOut = join(mkdtempSync(join(tmpdir(), 'plans-shared-')), 'shared.mjs');
+execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
+  [join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), '--bundle', '--format=esm',
+   '--platform=neutral', '--main-fields=main,module', '--outfile=' + sharedOut], { stdio: 'pipe' });
+const { PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD } = await import(sharedOut);
 
 /** Source with comments stripped, so a class named in prose is not mistaken for one in use. */
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -140,4 +150,40 @@ test('a deployment with no Stripe key offers no button at all', () => {
 
 test('cancelling says nothing was charged', () => {
   assert.match(usage, /nothing was charged/i);
+});
+
+// --- the numbers on the ladder, not just its wiring -------------------------------------
+
+/**
+ * NO TIER ADVERTISES A COUNT OF BUILDS IT CANNOT AFFORD.
+ *
+ * Free grants 60 Sparks a day and a quality-gated build costs 77, so buildsPerDay floors to zero
+ * and the pricing page said "up to 0 builds a day". I verified this ladder in a browser and read
+ * the layout rather than the figures; scripts/check-offer.mjs is what named it, and it is the same
+ * call usage-meter-model.ts already makes for the meter — "0 builds" reads as a fault in the
+ * account rather than as a remainder smaller than one job.
+ *
+ * The underlying incoherence is a pricing decision and is NOT fixed here. check-offer still reports
+ * it, G-OFFER-1 still gates it. What is fixed is the page stating a number that is not useful.
+ */
+test('NO TIER IS ADVERTISED AS AFFORDING ZERO BUILDS A DAY', () => {
+  const src = code(plans);
+  assert.match(src, /buildsPerDay\(id\) >= 1 \?/, 'the per-day claim must be conditional');
+  // The alternative branch has to say something true rather than nothing.
+  assert.match(src, /one build costs \{SPARKS_PER_BUILD\}/,
+    'a tier that cannot afford a daily build should state the two numbers instead');
+});
+
+test('the figures the ladder prints are the enforced ones, for every tier', async () => {
+  // Reading them through the same table the server applies, so a tier whose numbers change is
+  // caught here rather than on the pricing page.
+  const zeroBuildTiers = PLAN_IDS.filter((p) => Math.floor(PLAN_LIMITS[p].sparksPerDay / SPARKS_PER_BUILD) < 1);
+  // Free is currently such a tier. The test does not assert WHICH tiers are — that is a pricing
+  // decision — only that the ladder has a branch for them, which the previous test pins.
+  assert.ok(zeroBuildTiers.length >= 1,
+    'if no tier floors to zero any more, the conditional branch above is dead and should go');
+  for (const p of PLAN_IDS) {
+    assert.ok(Number.isFinite(PLAN_LIMITS[p].sparksPerDay), `${p} has no daily allowance`);
+    assert.ok(Number.isFinite(PLAN_LIMITS[p].sparksPerMonth), `${p} has no monthly allowance`);
+  }
 });

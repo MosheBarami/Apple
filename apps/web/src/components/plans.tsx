@@ -16,6 +16,7 @@ import {
   PLAN_LIMITS,
   buildsPerDay,
   buildsPerMonth,
+  SPARKS_PER_BUILD,
   type PlanId,
 } from '@golem/shared';
 
@@ -81,12 +82,31 @@ export function PlanLadder({
 
             <p className="plan__blurb">{copy.blurb}</p>
 
+            {/*
+              "UP TO 0 BUILDS A DAY" IS WHAT THIS RENDERED FOR FREE.
+              60 Sparks a day and a quality-gated build costs 77, so buildsPerDay floors to zero and
+              the pricing page advertised the tier as affording none. usage-meter-model.ts already
+              made this call for the meter — it withholds the builds hint below one whole build,
+              because "0 builds" reads as a fault in the account rather than as a remainder smaller
+              than one job — and I did not carry the rule one file across.
+              Stating the Sparks and the price of a build is the honest version: it says the same
+              thing without pretending a countable number of builds exists.
+            */}
             <p className="plan__allowance">
               <strong>
                 About {buildsPerMonth(id).toLocaleString()} builds a month
               </strong>
               <span className="plan__allowance-sub">
-                {limits.sparksPerMonth.toLocaleString()} Sparks · up to {buildsPerDay(id)} builds a day
+                {buildsPerDay(id) >= 1 ? (
+                  <>
+                    {limits.sparksPerMonth.toLocaleString()} Sparks · up to {buildsPerDay(id)} builds a day
+                  </>
+                ) : (
+                  <>
+                    {limits.sparksPerMonth.toLocaleString()} Sparks · {limits.sparksPerDay.toLocaleString()} a
+                    day, and one build costs {SPARKS_PER_BUILD}
+                  </>
+                )}
               </span>
             </p>
 
