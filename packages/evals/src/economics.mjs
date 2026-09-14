@@ -23,27 +23,52 @@
 // 1. Billing primitives
 // -----------------------------------------------------------------------------
 
-/** MEASURED — Cloudflare bills Workers AI at $0.011 per 1,000 neurons. */
-export const USD_PER_NEURON = 0.011 / 1000; // $0.000011
+/**
+ * THESE ARE RE-EXPORTS, NOT COPIES. Read this before adding a constant below.
+ *
+ * Every value here used to be a hand-typed literal carrying a `MEASURED — pricing.ts X` comment,
+ * and `economics.test.mjs` then asserted those literals equalled... the same literals. Neither file
+ * imported `pricing.ts`, so the test could not fail: raising a spend cap in the worker shipped green
+ * while this model — and the public pricing page derived from it — kept describing the old ceiling.
+ * A regression test that cannot observe the thing it guards is worse than no test, because it is
+ * read as coverage.
+ *
+ * `apps/worker/src/pricing.ts` is the single source of truth. It has no imports of its own, and
+ * Node strips its types on load, so importing it here costs nothing and makes the guard real.
+ */
+export {
+  USD_PER_NEURON,
+  NEURONS_PER_SPARK,
+  BILLABLE_NEURONS_PER_DAY,
+  BILLABLE_NEURONS_PER_MONTH,
+  MAX_NEURONS_PER_REQUEST,
+  DAILY_NEURON_CEILING,
+} from '../../../apps/worker/src/pricing.ts';
 
-/** MEASURED — pricing.ts NEURONS_PER_SPARK. The user-facing conversion. */
-export const NEURONS_PER_SPARK = 30;
+import {
+  FREE_NEURONS_PER_DAY,
+  USD_PER_NEURON as _USD_PER_NEURON,
+  NEURONS_PER_SPARK as _NEURONS_PER_SPARK,
+  BILLABLE_NEURONS_PER_DAY as _BILLABLE_NEURONS_PER_DAY,
+  BILLABLE_NEURONS_PER_MONTH as _BILLABLE_NEURONS_PER_MONTH,
+  MAX_NEURONS_PER_REQUEST as _MAX_NEURONS_PER_REQUEST,
+  DAILY_NEURON_CEILING as _DAILY_NEURON_CEILING,
+} from '../../../apps/worker/src/pricing.ts';
 
-/** MEASURED — Cloudflare includes 10,000 neurons/day free, shared across ALL
- *  users of the ACCOUNT (not per Golem user). At scale it rounds to nothing. */
-export const FREE_NEURONS_PER_DAY_ACCOUNT_WIDE = 10_000;
+/**
+ * Cloudflare's included allowance is per ACCOUNT, not per Apple user — at any real scale it rounds
+ * to nothing. The name is kept explicit here because the simulator repeatedly needs to reason about
+ * that distinction, which `FREE_NEURONS_PER_DAY` alone does not convey.
+ */
+export const FREE_NEURONS_PER_DAY_ACCOUNT_WIDE = FREE_NEURONS_PER_DAY;
 
-/** MEASURED — pricing.ts BILLABLE_NEURONS_PER_DAY. Service-wide, beyond free. */
-export const BILLABLE_NEURONS_PER_DAY = 15_000;
-
-/** MEASURED — pricing.ts BILLABLE_NEURONS_PER_MONTH. Independent backstop. */
-export const BILLABLE_NEURONS_PER_MONTH = 460_000;
-
-/** MEASURED — free + billable: everything the service may burn in one day. */
-export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY_ACCOUNT_WIDE + BILLABLE_NEURONS_PER_DAY;
-
-/** MEASURED — pricing.ts MAX_NEURONS_PER_REQUEST. One request can never exceed it. */
-export const MAX_NEURONS_PER_REQUEST = 1_200;
+// Local aliases so the rest of this module reads unchanged.
+const USD_PER_NEURON = _USD_PER_NEURON;
+const NEURONS_PER_SPARK = _NEURONS_PER_SPARK;
+const BILLABLE_NEURONS_PER_DAY = _BILLABLE_NEURONS_PER_DAY;
+const BILLABLE_NEURONS_PER_MONTH = _BILLABLE_NEURONS_PER_MONTH;
+const MAX_NEURONS_PER_REQUEST = _MAX_NEURONS_PER_REQUEST;
+const DAILY_NEURON_CEILING = _DAILY_NEURON_CEILING;
 
 /** MEASURED — Workers Paid flat fee. Fixed cost, excluded from gross margin. */
 export const WORKERS_PAID_USD_PER_MONTH = 5.0;
