@@ -208,7 +208,69 @@ function testPasses(rel) {
   return ok;
 }
 
-const closedRows = rows.filter((r) => r.status !== 'not-started');
+// A RUNNABLE CITATION IS DEMANDED OF `done`, NOT OF EVERY NON-not-started ROW.
+//
+// This asked a `blocked` row to cite a passing test for work that by definition is not built, and
+// a `partial` row to cite one for the half that is missing. That is not a high standard, it is an
+// impossible one, and an impossible rule gets satisfied by writing prose that looks like a
+// citation — which is the failure this checker exists to catch, induced by the checker.
+//
+// What `partial` and `blocked` owe instead is evidence that NAMES WHAT IS MISSING. That is what
+// makes them different from `done`, and it is checkable.
+const closedRows = rows.filter((r) => r.status === 'done');
+// A declared duplicate inherits its primary's proof — the whole point of the pointer — so it is
+// no more required to explain itself than to cite something.
+const qualifiedRows = rows.filter((r) => (r.status === 'partial' || r.status === 'blocked') && !r.duplicateOf);
+
+for (const r of qualifiedRows) {
+  const ev = String(r.evidence ?? '').trim();
+  if (!ev) {
+    fail(`${r.id} is "${r.status}" with no evidence at all`, `FEATURES.json · ${r.section}`, 'a qualified status with nothing behind it is a guess');
+    continue;
+  }
+  // EITHER a runnable citation OR a sentence naming what is missing. Both are real evidence for a
+  // qualified status, and demanding the prose form punished the better one: rows citing a passing
+  // test were flagged for "not naming what is missing" while rows containing only prose passed.
+  // Third shape of this rule in ten minutes, and each wrong version was wrong by being narrower
+  // than the thing it was trying to describe.
+  const citesSomething = /\b[\w./-]+\.test\.(?:mjs|js|ts|tsx)\b/.test(ev)
+    || [...ev.matchAll(/\b(G[A-Z]*-?[A-Z]*-?\d+|G\d+)\b/g)].some((m) => metGates.has(m[1]));
+  const namesAGap = /\b(not built|not attempted|missing|blocked|unverified|no caller|does not|is not|pending|deferred|awaiting|superseded|only|limitation)\b/i.test(ev);
+  if (!citesSomething && !namesAGap) {
+    fail(
+      `${r.id} is "${r.status}" with evidence that neither cites nor explains`,
+      `FEATURES.json · ${r.section}`,
+      `"${ev.slice(0, 70)}" — a qualified status needs a runnable citation or a stated gap`,
+    );
+  }
+}
+
+//[[ AND A `done` ROW WHOSE OWN EVIDENCE SAYS IT WAS NOT DONE.
+//
+//   Two security rows — Authorization and Tenant isolation — were marked done with evidence
+//   beginning "NOT ATTEMPTED". Nothing caught that, because the rule below only asked whether a
+//   citation was runnable, never whether the prose contradicted the status it was attached to.
+//   A row is at its most dangerous when it is honest in the evidence field and wrong in the
+//   status field: a reader scanning statuses sees done, and the truth is one column over. ]]
+for (const r of rows.filter((x) => x.status === 'done')) {
+  const ev = String(r.evidence ?? '');
+  // ANCHORED TO THE LEADING CLAUSE, because an unanchored match is a match on the word "not".
+  // The first draft flagged `...not the 60 this row claimed` and `ok reflects the plugin verdict
+  // rather than...` — two rows whose evidence is a correct citation containing ordinary prose.
+  // Fifth over-broad negative match today and the third of mine; the rule is always the same, and
+  // it is that a word is not a property.
+  //
+  // These rows lead with the caveat in capitals by convention, which is exactly what makes the
+  // contradiction findable: the status says done and the first four words say it is not.
+  if (/^\s*(NOT ATTEMPTED|NOT BUILT|NOT IMPLEMENTED|NOT DONE|BLOCKED ON|UNVERIFIED|AWAITING)\b/.test(ev)) {
+    fail(
+      `${r.id} is "done" and its own evidence says otherwise`,
+      `FEATURES.json · ${r.section}`,
+      `"${ev.slice(0, 80)}" — change the status, not the sentence`,
+    );
+  }
+}
+
 let cited = 0;
 for (const r of closedRows) {
   // A declared duplicate inherits its primary's proof rather than restating it. Requiring its own

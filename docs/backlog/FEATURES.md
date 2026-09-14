@@ -449,7 +449,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [×] Dedicated inference — recurring cost
 - [×] Inference autoscaling — recurring cost
 
-### Training — 107 items  (done 30, partial 0)
+### Training — 107 items  (done 29, partial 1)
 
 - [ ] Dataset creation
 - [ ] Dataset upload
@@ -960,7 +960,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Live code diff
 - [ ] Live test results
 
-### Safety and Security — 56 items  (done 6, partial 0)
+### Safety and Security — 56 items  (done 4, partial 0)
 
 - [x] Authentication — Supabase ES256 JWKS verify, auth.ts
 - [x] Authorization — Postgres RLS, infra/supabase/migrations

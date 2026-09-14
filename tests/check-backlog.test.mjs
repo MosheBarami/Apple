@@ -271,6 +271,72 @@ test('a row citing a MET gate is proven; citing an unmet one is not', () => {
   assert.match(bad.out, /citing prose, not a runnable thing/);
 });
 
+/* ------------------------------ a status its own evidence contradicts --- */
+
+const one = (item) => [{ section: 'A', items: [item] }];
+
+test('THE STRONGEST NEW RULE — a "done" row whose evidence opens NOT ATTEMPTED', () => {
+  // Two SECURITY rows — Authorization and Tenant isolation — were marked done with evidence
+  // beginning "NOT ATTEMPTED". Nothing caught it, because the old rule only asked whether a
+  // citation was runnable and never whether the prose contradicted the status it hung on.
+  //
+  // A row is at its most dangerous when it is honest in the evidence field and wrong in the status
+  // field: a reader scanning statuses sees done, and the truth is one column over.
+  const r = run(keep(scratch(one({
+    id: 'f-1', name: 'authorization', status: 'done',
+    evidence: 'NOT ATTEMPTED — the docker daemon is not running, so RLS is unproven',
+  }), bucket('A', 1, 1))));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /is "done" and its own evidence says otherwise/);
+  assert.match(r.out, /change the status, not the sentence/);
+});
+
+test('...anchored, because an unanchored version matched the word "not" in ordinary prose', () => {
+  // The first draft flagged `231 Sparks/day, not the 60 this row claimed` — a row whose evidence is
+  // a correct citation containing ordinary English. Fifth over-broad negative match this session.
+  // The positive control above is what makes this absence check mean anything.
+  const r = run(keep(scratch(one({
+    id: 'f-1', name: 'quota', status: 'done',
+    // Cites the met gate rather than a path: an UNTRACKED path is not a citation, which the
+    // fixture repo makes true of every path. The subject here is the prose, not the citation.
+    evidence: 'G1 — the ladder grants 231 Sparks/day, not the 60 this row claimed',
+  }), bucket('A', 1, 1))));
+  assert.equal(r.exit, 0, r.out);
+  assert.doesNotMatch(r.out, /its own evidence says otherwise/);
+});
+
+/* ------------------------------- what a qualified status owes --- */
+
+test('a blocked row owes a stated gap, and owes it INSTEAD of a citation it cannot have', () => {
+  // The citation rule used to apply to every non-not-started row, which asked a BLOCKED row to cite
+  // a passing test for work that by definition is not built. That is not a high standard, it is an
+  // impossible one — and an impossible rule gets satisfied by writing prose SHAPED like a citation,
+  // which is the exact failure this checker exists to catch, induced by the checker.
+  const r = run(keep(scratch(one({
+    id: 'f-1', name: 'open cloud upload', status: 'blocked',
+    evidence: 'blocked on an Open Cloud credential that does not exist yet',
+  }), bucket('A', 1))));
+  assert.equal(r.exit, 0, r.out);
+});
+
+test('...but a qualified row that neither cites nor explains is still a finding', () => {
+  const r = run(keep(scratch(one({
+    id: 'f-1', name: 'half a thing', status: 'partial', evidence: 'we did some of this',
+  }), `${bucket('A', 1, 0, 1)}`)));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /neither cites nor explains/);
+});
+
+test('a "done" row still owes a RUNNABLE citation — the rule was scoped, not relaxed', () => {
+  // The guard against reading that scoping as a loosening. `done` is the status that claims the
+  // work is finished, and it is the one the original rule was written for.
+  const r = run(keep(scratch(one({
+    id: 'f-1', name: 'billing', status: 'done', evidence: 'the billing webhook verifies signatures',
+  }), bucket('A', 1, 1))));
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /prose/);
+});
+
 test('the scratch clones are removed', () => {
   for (const d of DIRS) rmSync(d, { recursive: true, force: true });
   DIRS = [];
