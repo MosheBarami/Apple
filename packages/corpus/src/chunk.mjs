@@ -302,6 +302,7 @@ function toBlocks(text) {
       inFence = !inFence;
       continue;
     }
+
     if (inFence) {
       cur.push(line);
       continue;
@@ -519,7 +520,22 @@ async function main() {
   console.log(`[chunk] wrote ${outPath} (${(bytes / 1024 / 1024).toFixed(1)} MB)`);
 }
 
-main().catch((err) => {
-  console.error('[chunk] fatal:', err);
-  process.exit(1);
-});
+//[[ RUN ONLY WHEN RUN, so this file can be imported.
+//
+//   `main()` used to be called at module scope, which meant importing anything from here executed
+//   the whole corpus build — walking creator-docs, packing thousands of chunks and writing a
+//   multi-megabyte artefact. That is why 525 lines of heading and code-block splitting had no
+//   test: not because the logic was hard to test, but because the file could not be loaded. ]]
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error('[chunk] fatal:', err);
+    process.exit(1);
+  });
+}
+
+//[[ The pure functions, exported so they can be measured.
+//
+//   Everything below takes text and returns text or structure: no filesystem, no network, no
+//   configuration. They are the part of this file that decides what a documentation chunk IS, and
+//   they were unreachable from a test purely by where they sat. ]]
+export { slugify, cleanRefs, oneLine, stripFrontmatter, stripMdx, toBlocks, splitByH2, packGuideChunks, guidePriority, memberLine, typeStr, paramSig, returnSig };

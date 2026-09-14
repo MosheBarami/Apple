@@ -5317,7 +5317,7 @@
           "id": "f-3437660e",
           "name": "Authentication",
           "status": "done",
-          "evidence": "NO TEST REACHES THIS. apps/worker/src/auth.ts verifies Supabase ES256 via JWKS, and no test imports it. A JWT verifier that accepts a forged token fails silently and looks identical to one that works."
+          "evidence": "apps/worker/tests/auth.test.mjs — written for this row, because nothing imported auth.ts. Real P-256 keys and real signatures: a token signed by a SECOND key with the same kid and identical claims is refused, as are a wrong issuer, a wrong audience, an expired token, and one with no sub (which must be null, not a user with an undefined id). Falsified three ways — decoding instead of verifying fails 5 cases, dropping the audience check fails exactly 1, dropping the sub guard fails exactly 1."
         },
         {
           "id": "f-b795e053",
