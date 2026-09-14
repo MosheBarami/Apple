@@ -1278,7 +1278,7 @@
           "id": "f-29db620c",
           "name": "Place restore",
           "status": "done",
-          "evidence": "Serializer.luau restore path"
+          "evidence": "apps/worker/tests/restore-fidelity.test.mjs — a restore reports what it actually put back"
         },
         {
           "id": "f-74ed0aac",
@@ -2418,7 +2418,7 @@
           "id": "f-9e7d6e1b",
           "name": "Dataset hashing",
           "status": "done",
-          "evidence": "packages/corpus/src/intake/contenthash.mjs"
+          "evidence": "packages/corpus/src/intake/contenthash.test.mjs — a CRLF and an LF checkout hash identically"
         },
         {
           "id": "f-68918068",
