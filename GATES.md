@@ -275,7 +275,7 @@ test it gated.
     CHECK: pnpm --filter @golem/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=line
     EXPECT: 60 passed
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9c8631d; tree-clean=yes; break-sha=9c8631d; EXPECT=unmatched; output-sha256=206de3ec0a919383b37a45a1204b589187175cd884b3b09258aa6bd09e71cb25; output-bytes=11481; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=30; deps-sha=cc530d454254947b8adcb7da; at=2026-09-14T20:22:29.947Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=9026dce; tree-clean=yes; EXPECT=matched; output-sha256=ab84f74a3c5da31ce8d84d0a43af334b75bfaad84d611e40dbe12700f859ee6a; output-bytes=5650; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=51d014af73b8ddab12ee5d2e; at=2026-09-14T19:31:47.544Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=b8b5bac; tree-clean=yes; EXPECT=matched; output-sha256=d5112dc15fdda3e6f0c64074a7a53b7ca4d36d44ee75230ab37fdcb560e73d0b; output-bytes=6257; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=30; deps-sha=77556f25de055f81db30eba5; at=2026-09-14T20:22:49.844Z
 
 ---
 
