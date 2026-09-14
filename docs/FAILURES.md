@@ -62,6 +62,42 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-63 · A safety flag that was never parsed, in a command §10 tells us to run every pass
+**Believed:** `node infra/smoke.mjs --no-model` runs the deployed smoke checks without spending
+neurons. It is written that way in FINISH-THE-PRODUCT.md:164, MISSION-PROMPT.md:164,
+CHECKPOINT.md:83 and OWNER-HANDOFF.md:195.
+**True:** `--no-model` appears ZERO times in `infra/smoke.mjs`. Its argument helper is
+`process.argv.indexOf(flag)` returning the next element, and it reads only `--mode` and `--text`,
+so an unrecognised flag is not an error — it is nothing. Line 168 is an unconditional
+`await runOnce()`. Every run of the documented command has sent a real chat turn and spent.
+
+Two clauses of §12.5 were being broken by the command the owner's own §10 block prescribes:
+
+- **Spend.** Default mode is clay at ~29 neurons, survivable against the 500-neuron pass ceiling.
+  `--mode stone` is ~1,266 — **a single documented invocation can exceed the pass ceiling by 2.5x**,
+  and nothing in the script knows the ceiling exists.
+- **`never against /api/admin/*`.** Line 103 POSTs `/api/admin/studio-op/<id>` with `X-Admin-Key`,
+  guarded by `if (ADMIN)` — and lines 16-18 load `.env` into `process.env`, where
+  `GOLEM_ADMIN_KEY` lives because `deploy-static.mjs` requires it. The guard is always true. It
+  never guarded anything.
+
+**Cost of the error:** nothing, by luck. No gate runs smoke — GATES.md names it zero times — so it
+has not been spending on re-verify. The exposure was the §10 block and OH-3's approve-by test,
+which named a command that did not do what the handoff said. OH-3's "NOT PROBED" turns out to have
+been right for a reason nobody had stated: probing it as documented would have violated two clauses
+and could have breached the spend ceiling in one run.
+
+**Caught by:** rbxai-1d reading the script to answer a question about §12.5 compliance. The third
+finding tonight produced by reading a file in order to answer a question about something else —
+after F-62 (reading the deploy script to assess its rollback) and the luau probe (reading
+gate-check to explain an ABSENT field). **None of the three would have been found by running
+anything**, because all three report success.
+
+**The rule, and it is the cheap one:** reject unknown flags loudly. `--no-model` survived because a
+silently-ignored flag is indistinguishable from an honoured one. A parser that accepts anything
+teaches every reader that the documentation is true. This is F-58's family — a break that turns
+nothing red — arriving through the command line instead of a test.
+
 ### F-62 · The documented rollback command uploaded nothing and printed `done`
 **Believed:** `infra/deploy-static.mjs` header, line 2 — the rollback for a bad static deploy is
 `node infra/deploy-static.mjs --only file <local> <remote>`.
