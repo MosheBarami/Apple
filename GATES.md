@@ -86,10 +86,11 @@ and are tracked as handoffs, not gates.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e8f89f6; tree-clean=yes; EXPECT=matched; output-sha256=8c14021c05fa90eca8ee096ee75bdc27b6b2c494da902c009173eab7db8976f4; output-bytes=489; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=74411d82e7e57151303819cd; at=2026-09-14T18:54:20.928Z
   EXPECT-CHANGE: old=fail 0 new=G11 OK reason=derived-floor-4-measured-4-passing
 
-- [ ] G12: Every user-facing surface has an explicit empty, loading and error state
+- [x] G12: Every user-facing surface has an explicit empty, loading and error state
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 5 --label G12 -- node --test tests/ui-states.test.mjs
     EXPECT: G12 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G12; path=6765c31f4f12/53 entries; git-sha=12fb96d; tree-clean=yes; break-sha=12fb96d; EXPECT=unmatched; output-sha256=2cd9baccee7fce26fb3403c93d574fa61804152e38171d7b9e023610ddbc27a5; output-bytes=1278; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=8f591d9cadb89e13ff15c64a; at=2026-09-14T19:29:07.187Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=8714f66; tree-clean=yes; EXPECT=matched; output-sha256=5e2e35f4e87cfcb2075f3c833ea8b3fdd29345762a79705fe0e23848ea98056b; output-bytes=511; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=44093a469170583c27215375; at=2026-09-14T19:29:21.101Z
   EXPECT-CHANGE: old=fail 0 new=G12 OK reason=derived-floor-5-measured-5-passing
 
 - [x] G13: A run's cost and context use are visible to the user while it happens
