@@ -479,3 +479,56 @@ them, and replaces the `never an anchor` ban with the rule it was standing in fo
 destination must resolve, which for an anchor means naming an element that is on the page. That is
 strictly more than the ban checked. The three departures above are asserted as prohibitions, so
 re-introducing the artifact's wording fails the build rather than shipping.
+
+## ADR-020 — A guard written as `>` fails open on a value nobody could read
+
+**Date.** 2026-09-15
+
+**Context.** `BudgetDO` is the only ceiling on AI Gateway spend. The gateway is on Standard
+billing, which bills overage with no platform ceiling, and its alerts neither pause spending nor
+fire promptly. Every admission check in the path was a comparison of the form
+`if (tooBig > limit) refuse`.
+
+**The defect.** `NaN > n` is `false`, so a cost that could not be computed passed every guard.
+Each step is individually reasonable and the composition bills the owner for nothing:
+
+    providers/cost.ts     Math.max(0, inputTokens)       NaN for a non-numeric token count
+    gateway.ts:299        estimate > MAX_NEURONS_PER_REQUEST    false — admitted
+    do/budget.ts:274      the DO's own copy of that check       false — admitted again
+    the DO boundary       JSON.stringify(NaN) is null           nothing wrong ever arrives
+    /reserve              Math.max(1, Math.ceil(null))          reserves ONE neuron, any size
+    /settle               Math.max(0, Math.ceil(null))          records the call as costing NOTHING
+
+The provider bills, the ledger does not move, neither cap sees the call, and nothing logs. A
+string is worse: `Math.max(1, Math.ceil('abc'))` is NaN, which lands NaN in stored state.
+
+"The DO checks it too" was not a mitigation. Both layers failed by the same mechanism, which is
+what defence in depth stops being when both layers are the same defence.
+
+**Decision.** Refuse rather than coerce, at the boundary. `readableNeurons` (do/budget.ts:82)
+returns `null` and each caller fails closed on its own terms. A clamp does not validate — it
+converts "I could not read this" into a confident small number, which is the defect with better
+manners.
+
+**The exception, and it is directional.** `/settle` runs AFTER the provider has been paid, so
+refusing there records the spend as zero — the defect itself. It charges the conservative
+reservation and marks the response `estimated`. The rule is therefore: **refuse where the caller
+can still be told; coerce only where refusing would itself falsify the ledger, and say so in the
+response when you do.**
+
+**Observability is part of the fix, not a nicety.** An unreadable `reserved` is deliberately not
+subtracted, because guessing would let one caller erase another's hold — so it leaks until the UTC
+rollover. That is fail-closed and it was also *silent*: capacity shrank and read as demand. Both
+leak points now warn with the model and kind. A state that is honest and unobservable is most of
+the way back to the defect.
+
+**Do not "simplify" this back.** `??` defends `undefined` and `null` only — never NaN, a string, or
+Infinity. Any `Record<Union, T>` lookup and any `>` against a client-supplied number has the same
+shape. The same defect removed the agent's step ceiling (`3a367d1`) and handed an unrecognised mode
+every write tool (`c79f7e3`).
+
+**Found by.** rbxai-04, executing `BudgetDO` for the first time. Its only previous test read
+`budget.ts` as a string and regexed it, so it proved the source contained a clamp and never
+constructed the object. G4 — "the admin spend route can only ratchet down" — rested on that, was
+marked met with red-first evidence, and was honest about what it measured: a file. G4 now runs
+against the object.
