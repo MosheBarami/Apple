@@ -62,6 +62,45 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-62 · The documented rollback command uploaded nothing and printed `done`
+**Believed:** `infra/deploy-static.mjs` header, line 2 — the rollback for a bad static deploy is
+`node infra/deploy-static.mjs --only file <local> <remote>`.
+**True:** that form restores nothing and reports success. Line 58 branches on
+`args[0] === '--file'`; line 62 does `const only = args[0] === '--only' ? args[1] : null`. Typing
+the documented command makes `args[0]` be `'--only'`, so the single-file branch never fires;
+`only` becomes `'file'`, which matches neither `'site'` (line 63) nor `'web'` (line 64); both
+`uploadDir` calls are skipped; the script falls through and prints `done`. The working form is
+`--file <local> <remote>`.
+**Cost of the error:** this is the sharpest instance of the house pattern found so far, for three
+reasons that compound. It is in the UNDO — the thing you reach for when something has already gone
+wrong. It reports SUCCESS, so the operator stops looking. And it is used only under pressure, which
+is exactly the condition in which nobody re-reads the source. A rollback that silently no-ops is
+worse than no rollback, because no rollback makes you build one.
+**Caught by:** rbxai-1d reading the script in order to answer a question about whether its rollback
+story was adequate. The question was "is the undo sufficient"; the answer was that the undo did not
+run. Nothing executes this path in any test, and nothing would have.
+
+**Three more found in the same reading, recorded together because they share a cause — a deploy
+path nothing exercises:**
+
+- **The pre-upload capture demonstrated its own failure mode.** 4 of 28 paths returned 404
+  (`og.png`, `site.webmanifest`, `icon-192.png`, `icon-512.png`), and the loop noticed only
+  because non-200s happened to be printed. Zero-byte "backups" would otherwise have sat there
+  looking like backups. *A capture that cannot state its own count is not a capture.*
+- **Additions cannot be rolled back.** A restore covers overwrites. The four paths above are
+  introduced by the new build and 404 today, so a rollback leaves them published. Inert here
+  because nothing references them — but it should be written down rather than discovered.
+- **The upload is not transactional.** `uploadDir` POSTs one file at a time, chunked at 700 KB with
+  `append` for anything larger, so a mid-run failure leaves the site half old and half new AND can
+  leave a single large file half-written. Mitigation: upload hashed immutable assets FIRST and the
+  `.html` pages LAST, so a partial failure leaves old pages pointing at assets that all exist,
+  rather than new pages pointing at assets that do not.
+
+**The rule:** rehearse the undo before you need it, on the same standard as watching a gate go red.
+An undo you have not watched work is not an undo. And where the rehearsal is itself an
+outward-facing write, it is step one OF the approved action — not something done beforehand to
+prove the tooling.
+
 ### F-61 · A green that described a tree which no longer existed
 **Believed:** `gate-suite` printed `SUITE GREEN — 2867 passed, 0 failed`, so the tree was green.
 **True:** it was a CORRECT answer about a tree that had already been edited. The suite had passed
