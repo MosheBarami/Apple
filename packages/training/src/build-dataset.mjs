@@ -139,7 +139,7 @@ function luauFiles(dir) {
  *   end                      -> close
  * Strings and comments are blanked first so `end` inside them cannot move the counter.
  */
-function findBlockEnd(src, startIdx) {
+export function findBlockEnd(src, startIdx) {
   const masked = maskLiterals(src);
   const re = /\b(function|if|for|while|do|repeat|until|end|then)\b/g;
   re.lastIndex = startIdx;
@@ -179,7 +179,7 @@ function findBlockEnd(src, startIdx) {
 }
 
 /** Replace string and comment CONTENT with spaces, preserving offsets. */
-function maskLiterals(src) {
+export function maskLiterals(src) {
   let out = '';
   let i = 0;
   while (i < src.length) {
@@ -228,7 +228,7 @@ function maskLiterals(src) {
 }
 
 /** Doc comment immediately preceding `idx`, or null. */
-function docBefore(src, idx) {
+export function docBefore(src, idx) {
   const head = src.slice(0, idx);
   const block = /((?:^|\n)[ \t]*--\[\[[\s\S]*?\]\][ \t]*)\s*$/.exec(head);
   if (block) return cleanComment(block[1]);
@@ -252,7 +252,7 @@ function docBefore(src, idx) {
  * recoverable later by SYNTHESISING an instruction from the code, which is a separate decision
  * that should be made explicitly rather than by accident.
  */
-function looksLikeDescription(doc) {
+export function looksLikeDescription(doc) {
   const words = doc.split(/\s+/).filter(Boolean);
   if (words.length < 6 || words.length > 160) return false;
 
@@ -295,7 +295,7 @@ function extractFromFile(file, src) {
   return out;
 }
 
-function cleanComment(raw) {
+export function cleanComment(raw) {
   return raw
     .replace(/--\[\[|\]\]/g, '')
     .split('\n')
@@ -359,7 +359,7 @@ function contaminated(example, evalSet) {
  * into whichever split is furthest below its target share. Repo-level integrity is preserved —
  * no repo is ever split across sets — while val and test end up large enough to mean something.
  */
-function assignSplits(countsByRepo) {
+export function assignSplits(countsByRepo) {
   const TARGET = { train: 0.8, val: 0.1, test: 0.1 };
   const total = Object.values(countsByRepo).reduce((a, b) => a + b, 0);
   const have = { train: 0, val: 0, test: 0 };
@@ -503,4 +503,4 @@ function main() {
   console.log(`done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) main();

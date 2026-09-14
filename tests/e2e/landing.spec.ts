@@ -18,7 +18,7 @@ test('renders the proposition', async ({ page }) => {
   const h1 = page.getByRole('heading', { level: 1 });
   await expect(h1).toBeVisible();
   await expect(h1).toContainText('Describe it.');
-  await expect(h1).toContainText('Golem builds it.');
+  await expect(h1).toContainText('Apple builds it.');
   // Exactly one h1: the page has one thing to say.
   await expect(page.locator('h1')).toHaveCount(1);
 });

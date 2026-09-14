@@ -1,0 +1,11 @@
+{
+  "name": "@golem/training",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Licence-gated, machine-verified SFT dataset construction and local LoRA training for Apple.",
+  "scripts": {
+    "test": "node --test src/*.test.mjs",
+    "build-dataset": "node src/build-dataset.mjs"
+  }
+}

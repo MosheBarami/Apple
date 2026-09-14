@@ -121,6 +121,8 @@ importers:
 
   packages/shared: {}
 
+  packages/training: {}
+
 packages:
 
   '@astrojs/check@0.9.10':
