@@ -102,15 +102,22 @@ authenticated route — `GET /api/projects/:id/images/:imageId`, added this pass
 was no image route in the worker at all: `generate_image` parked PNGs in KV and handed back a key
 that nothing could redeem, so every generated image was unreachable.
 
-**CORRECTION.** This row previously also claimed the client shows alt text and says images are
-kept for an hour when the fetch fails, "with that sentence checked against the constant so moving
-the TTL without moving the copy fails a test". None of that exists on main. Nothing in `apps/web`
-consumes `imageKey`; the only `<img>` in the workspace renders render-view screenshots. The claim
-was written about work that lives on a branch. A handoff row that describes unbuilt work as built
-is the precise failure §13.3 exists to prevent, and it survived several regenerations of this file
-because nobody re-probed the sentence — it read like a measurement and was a memory.
+**On the client half, and a correction I got wrong in both directions.** This row also claims the
+client shows alt text and says images are kept for an hour when the fetch fails, "with that
+sentence checked against the constant so moving the TTL without moving the copy fails a test".
 
-The client half is genuinely outstanding and is tracked as such, not here.
+I could not find any of it on main and struck it as an overstatement. That was wrong. It is real,
+tested code on `grow/main` — `SafeImage` in `apps/web/src/lib/generative-ui/render.tsx` renders the
+alt text on the failed branch, and `apps/web/tests/image-expiry.test.mjs` imports
+`IMAGE_TTL_SECONDS` from the worker and asserts the copy against it. So the sentence was a
+measurement of a branch, not a memory dressed as one.
+
+It is restored, SCOPED: true on `grow/main`, not yet on main. Both of my readings were wrong in
+the same way — I checked one tree and reported a conclusion about the repository. A claim about
+"the client" in a multi-branch repo has to name the branch, or it is unfalsifiable by whoever
+reads it next.
+
+Nothing in OH-5 waits on the number; the retention value is the only missing input.
 
 **The trade, costed.** KV storage against images up to ~1 MB each. At one image per build and the
 free tier's current allowance, a 30-day retention is under 1 GB per active free user per month.
