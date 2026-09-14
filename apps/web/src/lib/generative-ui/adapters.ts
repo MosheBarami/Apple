@@ -86,7 +86,10 @@ function lightingRows(lighting: SceneLighting | undefined) {
     { key: 'ClockTime', value: String(lighting.clockTime) },
     {
       key: 'Ambient',
-      value: lighting.ambient.map((n) => Math.round(n * 255)).join(', '),
+      // ALREADY 0-255. apps/plugin/src/Render.luau does `math.round(L.Ambient.R * 255)` before it
+      // sends, so scaling again here rendered rgb(42, 44, 52) as "10710, 11220, 13260" — in the
+      // very panel that exists to show the user what the critic looked at.
+      value: lighting.ambient.map((n) => Math.round(n)).join(', '),
     },
     { key: 'Light instances', value: String(lighting.lightInstances) },
   ];

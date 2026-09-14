@@ -21,31 +21,12 @@
 // check. A short defect list and a clean build stopped being the same sentence.
 import type { RenderViewResult } from '@golem/shared';
 import type { CriticInput } from './critic';
+import { lightingIsDefault, lightingTouchedProperties } from './roblox-defaults';
 
-/** Roblox's out-of-the-box Lighting, against which "nobody has made a lighting decision" is judged. */
-const ROBLOX_DEFAULT_LIGHTING = {
-  brightness: 2,
-  clockTime: 14,
-  ambient: [0, 0, 0] as [number, number, number],
-};
-
-/**
- * Has anyone touched Lighting at all?
- *
- * Compared against the real defaults rather than "is anything non-zero", because Ambient rgb(0,0,0)
- * IS the default and a scene that set it deliberately is indistinguishable from one nobody touched.
- * The light instances and post-effects are the tiebreak: adding either is a decision.
- */
-export function lightingIsDefault(l: NonNullable<RenderViewResult['lighting']>): boolean {
-  const ambientTouched = l.ambient.some((c, i) => c !== ROBLOX_DEFAULT_LIGHTING.ambient[i]);
-  return (
-    l.brightness === ROBLOX_DEFAULT_LIGHTING.brightness &&
-    l.clockTime === ROBLOX_DEFAULT_LIGHTING.clockTime &&
-    !ambientTouched &&
-    l.lightInstances === 0 &&
-    l.effects.length === 0
-  );
-}
+// The defaults live in ONE place now. Two disagreeing tables in one worker — vision.ts said 3 and
+// 14.5, this file said 2 and 14 — meant the two halves of the product could give opposite answers
+// about whether the same scene had been lit. The pair here was the invented one.
+export { lightingIsDefault, lightingTouchedProperties } from './roblox-defaults';
 
 /**
  * Every metric a render can supply WITHOUT inference.
@@ -82,17 +63,10 @@ export function metricsFromRender(result: RenderViewResult): Record<string, numb
   if (result.boundsSize) metrics.heightStuds = result.boundsSize[1];
 
   if (result.lighting) {
-    // The count of Lighting properties that differ from the Roblox default. `lightingConfigCriticisms`
-    // cites this, and it is not a MetricRule — which is why a lens can be partial and still say the
-    // single most actionable thing about art direction.
-    const l = result.lighting;
-    let touched = 0;
-    if (l.brightness !== ROBLOX_DEFAULT_LIGHTING.brightness) touched += 1;
-    if (l.clockTime !== ROBLOX_DEFAULT_LIGHTING.clockTime) touched += 1;
-    if (l.ambient.some((c, i) => c !== ROBLOX_DEFAULT_LIGHTING.ambient[i])) touched += 1;
-    if (l.lightInstances > 0) touched += 1;
-    if (l.effects.length > 0) touched += 1;
-    metrics.lightingTouchedProperties = touched;
+    // The count of Lighting properties that differ from the Roblox default.
+    // `lightingConfigCriticisms` cites this, and it is not a MetricRule — which is why a lens can be
+    // partial and still say the single most actionable thing about art direction.
+    metrics.lightingTouchedProperties = lightingTouchedProperties(result.lighting);
   }
 
   return metrics;

@@ -168,9 +168,9 @@ test it gated.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=670a974; tree-clean=yes; EXPECT=matched; output-sha256=cd32a979804433a7630498ab875c6aae088358b8add724d9b873bf54e739312b; output-bytes=3963; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=91864ab3af3decf691265962; at=2026-09-14T17:44:09.025Z
 
 - [x] G-CRITIC-1 [S7]: The visual critic runs on a product path and cannot report a clean build for checks it never ran
-    CHECK: node scripts/assert-tests.mjs --floor 12 --label G-CRITIC-1 -- node --test apps/worker/tests/critic-wiring.test.mjs
+    CHECK: node scripts/assert-tests.mjs --floor 13 --label G-CRITIC-1 -- node --test apps/worker/tests/critic-wiring.test.mjs
     EXPECT: G-CRITIC-1 OK
-  EXPECT-CHANGE: old=critic.test.mjs-floor-50 new=critic-wiring.test.mjs-floor-12 reason=subject-renamed
+  EXPECT-CHANGE: old=critic-wiring.test.mjs-floor-12 new=critic-wiring.test.mjs-floor-13 reason=derived-floor
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-1; path=6765c31f4f12/53 entries; git-sha=ae01cac; tree-clean=yes; break-sha=ae01cac; EXPECT=unmatched; output-sha256=143ac253d82767fe4cbdcc36b3096dc224c8c4818b05a4f896e59fe9b2b6919d; output-bytes=1845; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=88bf45437e7bd708867b6d88; at=2026-09-14T17:47:16.380Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d8ffa7d; tree-clean=yes; EXPECT=matched; output-sha256=aa90728a89e98e1689b8a5dfb89ce85b573dc2d3ac40fe9b4bd151f9377c20f6; output-bytes=1137; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=2; deps-sha=88bf45437e7bd708867b6d88; at=2026-09-14T17:47:36.487Z
 
@@ -192,6 +192,10 @@ test it gated.
     EXPECT: G-CRITIC-2 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/redfirst-G-CRITIC-2; path=6765c31f4f12/53 entries; git-sha=d5ff368; tree-clean=yes; break-sha=d5ff368; EXPECT=unmatched; output-sha256=87668fcc923fa0dbf6e32cbf1e198e3f04abc400d8dcf084c0f4924f8bdc1f74; output-bytes=35162; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=840cb7b004c1332a28940755; at=2026-09-14T17:47:21.712Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d8ffa7d; tree-clean=yes; EXPECT=matched; output-sha256=4c194efe67925ac74d0fab7f3392b59e3ce328d8931e7d5e9c1dfd9c1e548dda; output-bytes=5584; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=6; deps-sha=840cb7b004c1332a28940755; at=2026-09-14T17:47:36.487Z
+
+- [ ] G-ORACLE-4: Every module nothing reaches carries a disposition, and the checker sees past its own blind spots
+    CHECK: node scripts/assert-tests.mjs --floor 13 --label G-ORACLE-4 -- node --test tests/check-deadends.test.mjs
+    EXPECT: G-ORACLE-4 OK
 
 - [ ] G-OFFER-1 [S1]: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
     CHECK: node scripts/check-offer.mjs

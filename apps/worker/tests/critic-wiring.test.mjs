@@ -97,6 +97,15 @@ test('parts are taken as the MAXIMUM across views, not one camera\'s count', () 
   assert.equal(m.partCount, 31);
 });
 
+test('the plugin already sends Ambient as 0-255, so nothing scales it twice', () => {
+  // apps/plugin/src/Render.luau does `math.round(L.Ambient.R * 255)` before sending. The web
+  // adapter multiplied by 255 again, so rgb(42, 44, 52) rendered as "10710, 11220, 13260" — in the
+  // very panel that exists to show the user what the critic looked at.
+  const adapters = readFileSync(join(WORKER, '..', 'web', 'src', 'lib', 'generative-ui', 'adapters.ts'), 'utf8');
+  const block = adapters.slice(adapters.indexOf("key: 'Ambient'"), adapters.indexOf("key: 'Ambient'") + 400);
+  assert.doesNotMatch(block, /n \* 255/, 'the plugin has already scaled it');
+});
+
 test('the five pixel-derived metrics are ABSENT, not guessed', () => {
   // Their semantics are defined by the eval harness — faceValueSpread is implemented there, and
   // distantContrast comes from a downsample whose resolution and masking would have to be inferred.
@@ -117,29 +126,42 @@ test('a render with no lighting report supplies no lighting metric', () => {
 // ------------------------------------------------------------- default lighting ---
 
 test('untouched Roblox lighting is recognised as untouched', () => {
+  // 3 and 14.5, from apps/worker/src/roblox-defaults.ts. An earlier version of this file asserted
+  // 2 and 14 — values invented alongside the code, with this test pinning the invention while a
+  // SECOND table in vision.ts said something else. The numbers are still not independently
+  // verified; what is fixed is that there is now one place to correct them.
   assert.equal(
-    lightingIsDefault({ brightness: 2, clockTime: 14, ambient: [0, 0, 0], lightInstances: 0, effects: [] }),
+    lightingIsDefault({ brightness: 3, clockTime: 14.5, ambient: [0, 0, 0], lightInstances: 0, effects: [] }),
     true,
   );
+});
+
+test('there is exactly ONE default-lighting table in the worker', () => {
+  // The defect this replaced: vision.ts and critic-input.ts each carried their own, disagreeing,
+  // and both decided the same question — has anyone lit this scene? Two answers for one scene.
+  const files = execFileSync('git', ['grep', '-l', 'clockTime: 14', '--', 'apps/worker/src'], {
+    cwd: join(WORKER, '..', '..'), encoding: 'utf8',
+  }).split('\n').filter(Boolean);
+  assert.deepEqual(files, ['apps/worker/src/roblox-defaults.ts'], `defaults are defined in ${files.length} places`);
 });
 
 test('Ambient rgb(0,0,0) alone does not mean somebody chose it', () => {
   // (0,0,0) IS the default, so a scene that set it deliberately is indistinguishable from one
   // nobody touched. The light instances and effects are the tiebreak: adding either is a decision.
   assert.equal(
-    lightingIsDefault({ brightness: 2, clockTime: 14, ambient: [0, 0, 0], lightInstances: 1, effects: [] }),
+    lightingIsDefault({ brightness: 3, clockTime: 14.5, ambient: [0, 0, 0], lightInstances: 1, effects: [] }),
     false,
   );
   assert.equal(
-    lightingIsDefault({ brightness: 2, clockTime: 14, ambient: [0, 0, 0], lightInstances: 0, effects: ['Atmosphere'] }),
+    lightingIsDefault({ brightness: 3, clockTime: 14.5, ambient: [0, 0, 0], lightInstances: 0, effects: ['Atmosphere'] }),
     false,
   );
 });
 
 test('any touched property means lighting was decided', () => {
-  for (const over of [{ brightness: 3 }, { clockTime: 6 }, { ambient: [10, 10, 10] }]) {
+  for (const over of [{ brightness: 1 }, { clockTime: 6 }, { ambient: [10, 10, 10] }]) {
     assert.equal(
-      lightingIsDefault({ brightness: 2, clockTime: 14, ambient: [0, 0, 0], lightInstances: 0, effects: [], ...over }),
+      lightingIsDefault({ brightness: 3, clockTime: 14.5, ambient: [0, 0, 0], lightInstances: 0, effects: [], ...over }),
       false,
       JSON.stringify(over),
     );
@@ -152,7 +174,7 @@ test('the touched-property COUNT is what the lighting lens cites', () => {
   assert.equal(m.lightingTouchedProperties, 5);
   const untouched = metricsFromRender({
     ...RENDER,
-    lighting: { brightness: 2, clockTime: 14, ambient: [0, 0, 0], lightInstances: 0, effects: [] },
+    lighting: { brightness: 3, clockTime: 14.5, ambient: [0, 0, 0], lightInstances: 0, effects: [] },
   });
   assert.equal(untouched.lightingTouchedProperties, 0);
 });
