@@ -23,6 +23,7 @@ import { ShellProvider, useShell } from '../lib/shell';
 import { useCommands } from '../lib/commands';
 import { PROJECT_COLUMNS } from '../lib/archive';
 import { CommandPalette } from './command-palette';
+import { UsageMeter } from './usage-meter';
 import { ShortcutsDialog, useGlobalShortcut } from './shortcuts-dialog';
 import { SHORTCUTS, matchesShortcut, shortcutLabel } from '../lib/shortcuts';
 import { supabase, type ProjectRow } from '../lib/supabase';
@@ -145,7 +146,8 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
 /* ----------------------------------------------------------------- rail --- */
 
-function Rail({ name, email, isAdmin }: { name: string | null; email: string; isAdmin: boolean }) {
+function Rail({ name, email, isAdmin, quota }:
+  { name: string | null; email: string; isAdmin: boolean; quota: unknown }) {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
 
   const projects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
@@ -253,6 +255,7 @@ function Rail({ name, email, isAdmin }: { name: string | null; email: string; is
           </span>
         </button>
 
+        <UsageMeter quota={quota} />
         <AccountMenu name={name} email={email} isAdmin={isAdmin} />
       </div>
     </aside>
@@ -325,7 +328,7 @@ function Shell() {
         Skip to content
       </a>
 
-      <Rail name={name} email={email} isAdmin={isAdmin} />
+      <Rail name={name} email={email} isAdmin={isAdmin} quota={me.data?.quota} />
 
       {railOpen && (
         <button type="button" className="gx-scrim" onClick={closeRail} aria-label="Close navigation" />

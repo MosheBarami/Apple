@@ -304,6 +304,88 @@
   border-top: 1px solid var(--gx-line);
 }
 
+/* The usage meter. Two bands: the renewable allowance empties over the day, the
+   purchased-credits mark beside it does not. Drawn as one bar they would hide which
+   kind of zero the user is looking at, and the two zeroes have different next steps. */
+.gx-usage {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.55rem 0.6rem 0.6rem;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--gx-r-sm);
+  background: var(--gx-raise);
+}
+.gx-usage__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.gx-usage__head {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--gx-ink);
+  line-height: 1.25;
+}
+.gx-usage__plan {
+  font-family: var(--gx-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gx-ink-3);
+  white-space: nowrap;
+}
+.gx-usage__bar {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gx-line);
+  overflow: hidden;
+}
+.gx-usage__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: var(--gx-good);
+  transition: width var(--gx-t-move, 180ms) var(--gx-ease, ease);
+}
+.gx-usage.is-warn .gx-usage__fill { background: var(--gx-warn); }
+.gx-usage.is-bad .gx-usage__fill { background: var(--gx-bad); }
+/* Unknown is hatched rather than empty or full: an empty bar reads as "you have
+   nothing" and a full one as "you have plenty", and neither is a claim we can make. */
+.gx-usage__fill.is-unknown {
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg, var(--gx-line-2) 0 4px, transparent 4px 8px
+  );
+}
+/* The purchased band. Sits at the far end, does not move with the allowance. */
+.gx-usage__credits {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 14%;
+  background: var(--gx-amber);
+  opacity: 0.85;
+  border-inline-start: 1px solid var(--gx-ground);
+}
+.gx-usage__detail,
+.gx-usage__next {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--gx-ink-3);
+}
+.gx-usage__next { color: var(--gx-ink-2); }
+.gx-usage__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: var(--gx-mono);
+  font-size: 0.62rem;
+  color: var(--gx-ink-3);
+}
+.gx-usage__foot:empty { display: none; }
+
 /* The Checkpoints card. A card, not a nav row — it is a thing you open, and
    it is inert (and says so) when no conversation is on screen to own it. */
 .gx-card-btn {
@@ -2247,6 +2329,10 @@
   .gx-rail.is-collapsed .gx-new__label,
   .gx-rail.is-collapsed .gx-kbd,
   .gx-rail.is-collapsed .gx-rail__scroll > *,
+  .gx-rail.is-collapsed .gx-usage__top,
+  .gx-rail.is-collapsed .gx-usage__detail,
+  .gx-rail.is-collapsed .gx-usage__foot,
+  .gx-rail.is-collapsed .gx-usage__next,
   .gx-rail.is-collapsed .gx-card-btn__text,
   .gx-rail.is-collapsed .gx-card-btn__chev,
   .gx-rail.is-collapsed .gx-user-card__names,

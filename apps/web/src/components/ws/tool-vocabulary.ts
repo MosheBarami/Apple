@@ -118,6 +118,12 @@ export const TOOL = {
 
   // C13
   render_view: { kind: 'rendering', label: 'Rendered the scene' },
+  get_instance: { kind: 'inspecting', label: 'Read an instance back' },
+  get_selection: { kind: 'inspecting', label: 'Checked what you have selected' },
+  focus_camera: { kind: 'inspecting', label: 'Moved the Studio camera' },
+  set_mood: { kind: 'building', label: 'Set the lighting mood' },
+  add_effect: { kind: 'building', label: 'Added an ambient effect' },
+  audit_build: { kind: 'critiquing', label: 'Audited the build' },
 
   // beyond the C-series
   check_composition: { kind: 'critiquing', label: 'Checked composition and intent' },
