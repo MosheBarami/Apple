@@ -193,6 +193,54 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
  * A plain <a href> cannot be used at all: the route needs a Bearer token, and an anchor sends no
  * headers. So the bytes are fetched and handed to the browser as a blob.
  */
+/**
+ * Fetch a generated image and hand back an object URL the browser can render.
+ *
+ * WHY THIS EXISTS AT ALL: a plain <img src="/api/..."> cannot authenticate. /api/* requires a
+ * Bearer token, bearerToken() reads only the Authorization header and the WebSocket subprotocol,
+ * and an <img> tag sends neither. So the tag would get a 401, fire onError, and render the
+ * "no longer available" message — for an image that exists and is a second old. The honest fallback
+ * is what would have made it invisible.
+ *
+ * WHY A BLOB AND NOT A SIGNED URL. A signed URL would let the tag work directly, and it would be a
+ * second way to authorise a read: a bearer credential living in a URL, and URLs leak — into logs,
+ * referrers, history, and into the transcripts this product renders. One auth mechanism is worth
+ * more than a simpler tag, and downloadExport below already established this exact shape for the
+ * same reason. The cost is real and accepted: the image does not stream, and the caller must revoke.
+ *
+ * The caller OWNS the returned URL and must URL.revokeObjectURL it, or the blob is held for the
+ * life of the document.
+ */
+export async function fetchImageObjectUrl(projectId: string, imageId: string): Promise<string> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res: Response;
+  try {
+    res = await fetch(
+      `/api/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}`,
+      { headers },
+    );
+  } catch {
+    throw new ApiError('Network error — check your connection.', 0);
+  }
+  if (!res.ok) {
+    // The status is what separates "this expired" from "your session did" from "not yours", and
+    // the taxonomy in error-taxonomy.ts is what turns it into something worth reading. Collapsing
+    // them here would put the caller back to guessing.
+    throw new ApiError(res.status === 404 ? 'image expired or not found' : `image fetch failed (${res.status})`, res.status);
+  }
+  return URL.createObjectURL(await res.blob());
+}
+
+/** Pull the project and image ids back out of a path this app generated, or null. */
+export function parseImagePath(src: string): { projectId: string; imageId: string } | null {
+  const m = /^\/api\/projects\/([A-Za-z0-9_-]{1,64})\/images\/([0-9a-fA-F-]{36})$/.exec(src);
+  if (!m || m[1] === undefined || m[2] === undefined) return null;
+  return { projectId: m[1], imageId: m[2] };
+}
+
 export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
   const token = await getAccessToken();
   const headers = new Headers();

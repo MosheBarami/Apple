@@ -4564,6 +4564,19 @@ textarea {
   padding: 0.45rem 0;
 }
 
+/* An image being fetched. Distinct from the gone state below on purpose: for as long as those two
+   looked the same, every image was briefly reported as gone while it was still loading. */
+.gu-img-loading {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-lg);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 /* A failure, shown the one way. Ordered as the questions arrive: what happened, whether anything
    was lost, what to do. The tone is a left rail rather than a red block — a full red card for a
    history panel that did not load treats a minor gap as an emergency, and a user who meets that

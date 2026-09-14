@@ -11,7 +11,9 @@
  *   3. Colour, size and status are chosen from closed enums and resolved to a
  *      CSS class here. A raw colour or CSS value never reaches the DOM.
  */
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { fetchImageObjectUrl, parseImagePath } from '../api';
+import { explainFailure } from '../error-taxonomy';
 import type {
   AssetPickerBlock,
   Block,
@@ -130,13 +132,63 @@ function Bytes({ value }: { value: number }) {
  * only thing still true about it.
  */
 function SafeImage({ image, className }: { image: ImageRef; className?: string }) {
-  const [failed, setFailed] = useState(false);
+  const internal = parseImagePath(image.src);
+  // Anything not one of our own image paths renders directly — there is nothing to authenticate to.
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>(internal ? 'loading' : 'ready');
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failure, setFailure] = useState<unknown>(null);
 
-  if (failed) {
+  useEffect(() => {
+    if (!internal) return;
+    let cancelled = false;
+    let created: string | null = null;
+    setState('loading');
+    fetchImageObjectUrl(internal.projectId, internal.imageId)
+      .then((url) => {
+        created = url;
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setObjectUrl(url);
+        setState('ready');
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setFailure(err);
+        setState('failed');
+      });
+    return () => {
+      cancelled = true;
+      // The blob is held for the life of the document otherwise, and a conversation scrolls through
+      // a lot of these.
+      if (created) URL.revokeObjectURL(created);
+    };
+  }, [image.src]);
+
+  if (state === 'loading') {
+    // NOT the expiry message. This is the third state the first version of this did not have: it
+    // had "shown" and "gone", so every image was briefly reported as gone while it was loading.
+    return (
+      <span className={`gu-img-loading${className ? ` ${className}` : ''}`} role="img" aria-label={`Loading: ${image.alt}`} aria-busy="true">
+        <span className="gu-img-loading__alt">{image.alt}</span>
+      </span>
+    );
+  }
+
+  if (state === 'failed') {
+    // WHY IT FAILED DECIDES WHAT TO SAY. A 404 really is expiry. A 401 is a session that timed out,
+    // and telling that user their image expired sends them looking for the wrong problem — the
+    // image is fine and they need to sign in. explainFailure already draws that line.
+    const e = explainFailure(failure);
     return (
       <span className={`gu-img-gone${className ? ` ${className}` : ''}`} role="img" aria-label={`Unavailable: ${image.alt}`}>
         <span className="gu-img-gone__alt">{image.alt}</span>
-        <span className="gu-img-gone__why">No longer available — generated images are kept for an hour.</span>
+        <span className="gu-img-gone__why">
+          {e.kind === 'missing'
+            ? 'No longer available — generated images are kept for an hour.'
+            : `${e.title}. ${e.safety}`}
+        </span>
       </span>
     );
   }
@@ -144,14 +196,14 @@ function SafeImage({ image, className }: { image: ImageRef; className?: string }
   return (
     <img
       className={className}
-      src={image.src}
+      src={objectUrl ?? image.src}
       alt={image.alt}
       width={image.width}
       height={image.height}
       loading="lazy"
       decoding="async"
       draggable={false}
-      onError={() => setFailed(true)}
+      onError={() => setState('failed')}
     />
   );
 }
