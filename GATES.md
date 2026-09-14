@@ -274,7 +274,7 @@ test it gated.
 - [ ] G92: The landing and site E2E pass in every viewport
     CHECK: npx playwright test tests/e2e/landing.spec.ts --reporter=line
     EXPECT: 54 passed
-  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G92; path=6765c31f4f12/53 entries; git-sha=3f1b893; tree-clean=yes; break-sha=3f1b893; EXPECT=unmatched; output-sha256=2208a9002be36564e282dde6a713316beab0e7061df4a2aa00fd77f6d3258603; output-bytes=150; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=00c12e3b2de12dca174bde28; at=2026-09-14T19:30:27.746Z
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G92; path=6765c31f4f12/53 entries; git-sha=9c63d25; tree-clean=yes; break-sha=9c63d25; EXPECT=unmatched; output-sha256=2208a9002be36564e282dde6a713316beab0e7061df4a2aa00fd77f6d3258603; output-bytes=150; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=1; deps-sha=00c12e3b2de12dca174bde28; at=2026-09-14T19:30:50.582Z
 
 ---
 
