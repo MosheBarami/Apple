@@ -30,6 +30,7 @@ import { compositionHardFails, structureFromLayout, structureLine, LAYOUT_LUAU, 
 import { semanticCheck, semanticLine } from './semantic';
 import { generateImage, storeImage, type ImageRequest, type PaletteRole } from './imagegen';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
+import { MOODS, PALETTES, moodLuau } from './worldbuilding';
 
 export interface AgentCtx {
   env: Env;
@@ -821,6 +822,100 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
   },
+  /**
+   * READ-BACK — the tool the system prompt has always told the model to call.
+   *
+   * prompts.ts:73 instructs it to "verify with a read-back (get_instance, or run_luau returning the
+   * value) and quote what you actually saw". `get_instance` was never a tool. The op has existed in
+   * the wire union and had a plugin handler the whole time (Ops.luau `handlers.get_instance`), but
+   * it was reachable only behind ADMIN_STUDIO_OPS, so a model obeying its own instructions asked for
+   * a tool that did not exist and fell back to spending a whole run_luau on a property read.
+   *
+   * studio-op-parity.test.mjs records the opposite decision — that `get_instance`, `get_selection`
+   * and `move_instances` "are not tools; they are plugin OPS" — and it was right about the bug it
+   * was fixing: `lib/tool-meta.ts` had LABELLED them as tools without any of them being registered,
+   * so the UI named tools the agent could not call. That is drift. Registering them properly is the
+   * other way to close the same gap, and it is the one the system prompt already assumes.
+   *
+   * The panel is free. `documentFromToolDetail` passes a `{v:1,blocks:[…]}` document straight
+   * through to the validated renderer (adapters.ts:331), and `property_inspector` has had a
+   * renderer and a ui-lab entry with no producer in the product since it was written.
+   */
+  get_instance: {
+    def: {
+      name: 'get_instance',
+      description:
+        'Read one instance back: its class, child count, common properties and attributes. Use it to VERIFY a change you just made, and quote what you actually saw rather than what you intended. Cheaper and more reliable than a run_luau that returns the same value.',
+      parameters: S({ path: { type: 'string', description: 'Full path, e.g. game.Workspace.Lobby.Floor' } }, ['path']),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      if (!path) return { error: 'path is required' };
+      const res = await op(ctx, { op: 'get_instance', path });
+      if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
+
+      const d = res as { path?: string; class?: string; childCount?: number; props?: Record<string, unknown>; attributes?: Record<string, unknown> };
+      const props = d.props ?? {};
+      // Grouped the way a person reads an instance, not the way the plugin happened to probe it.
+      // A group with no rows is dropped rather than rendered empty.
+      const GROUPS: { name: string; keys: string[] }[] = [
+        { name: 'Transform', keys: ['Position', 'Size', 'CFrame', 'Anchored'] },
+        { name: 'Appearance', keys: ['Color', 'Material', 'Transparency'] },
+        { name: 'Content', keys: ['Text', 'Value', 'Image', 'SoundId'] },
+      ];
+      const groups = GROUPS.map((g) => ({
+        name: g.name,
+        rows: g.keys.filter((k) => props[k] !== undefined).map((k) => ({ name: k, value: String(props[k]) })),
+      })).filter((g) => g.rows.length > 0);
+      const attrs = Object.entries(d.attributes ?? {});
+      if (attrs.length) groups.push({ name: 'Attributes', rows: attrs.map(([k, v]) => ({ name: k, value: String(v) })) });
+
+      if (groups.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [{ type: 'property_inspector', path: d.path ?? path, className: d.class, groups }],
+        };
+      }
+      return res;
+    },
+  },
+  /**
+   * What the USER has selected in Studio — the missing half of "make this taller".
+   *
+   * Without it the model has no way to resolve "this", so a request about the thing the person is
+   * looking at becomes a guess about a path. The op and its handler already existed.
+   */
+  get_selection: {
+    def: {
+      name: 'get_selection',
+      description:
+        "What the user currently has selected in Studio. Call this FIRST whenever the request says 'this', 'these', 'the selected one' or points at something without naming a path.",
+      parameters: S({}),
+    },
+    studio: true,
+    run: async (ctx) => op(ctx, { op: 'get_selection' }),
+  },
+  /**
+   * Point the user's Studio camera at what was just built or changed.
+   *
+   * The agent could already change a place the user was not looking at, which is how work gets done
+   * and then reported as "I added a fountain" to someone staring at an empty corner.
+   */
+  focus_camera: {
+    def: {
+      name: 'focus_camera',
+      description:
+        "Move the user's Studio camera to frame an instance. Call it after building or changing something the user should look at, so the change is visible in their viewport rather than only in the place file.",
+      parameters: S({ path: { type: 'string', description: 'Full path of the instance to frame.' } }, ['path']),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      if (!path) return { error: 'path is required' };
+      return op(ctx, { op: 'camera_focus', path });
+    },
+  },
   run_luau: {
     def: {
       name: 'run_luau',
@@ -1008,6 +1103,68 @@ export const TOOLS: Record<string, ToolImpl> = {
       // are re-sent on every later step. inspect_visually is what actually shows them to a model.
       ctx.lastRender = res;
       return { subject: res.subject, boundsSizeStuds: res.boundsSize, views: res.views.map((v) => ({ view: v.name, ...v.meta })) };
+    },
+  },
+  /**
+   * ART DIRECTION — the lighting half of "does this read as a place, or as a grey blockout".
+   *
+   * worldbuilding.ts has carried eight named lighting moods and a `moodLuau` that materialises one
+   * since it was written, and `worldBuildingBrief` has been describing them to the model in the
+   * system prompt on EVERY build request (prompts.ts:302). Nothing ever let the model apply one:
+   * `moodLuau` had no caller anywhere in the repository, so the table was described to the model
+   * and withheld from it, and every scene rendered in Studio's default lighting no matter what the
+   * plan said. That is precisely the "nothing errors, the scene is simply ugly" failure the
+   * module's own header says the moods exist to prevent.
+   *
+   * This rides `run_code` rather than a new Studio op, deliberately. `moodLuau` emits only Lighting
+   * writes, `Instance.new` and `Color3.fromRGB` — no asset ingress — and its two `for` loops are
+   * generic and therefore terminating, so the plugin's non-yielding-loop refusal (which only fires
+   * on `while true` / `while 1` / `repeat ... until false`) does not reject it. No plugin change is
+   * required and none is made.
+   *
+   * The model's argument never reaches Luau as text. It selects a ROW of MOODS; the source that
+   * runs is always generated from our own table. An unknown mood is refused by name rather than
+   * silently resolved to `day`, because a mood that quietly did not apply is the same invisible
+   * failure as no mood at all.
+   */
+  set_mood: {
+    def: {
+      name: 'set_mood',
+      description:
+        'Apply a named lighting mood to the place: atmosphere, bloom, colour correction, sun rays and depth of field, plus the Lighting properties that carry it. This is how a scene stops looking like a grey blockout. Call it once the geometry is roughly in place and BEFORE render_view, then render to see it. Pick the mood the scene is meant to feel like, not the time of day it literally is.',
+      parameters: S(
+        {
+          mood: {
+            type: 'string',
+            enum: Object.keys(MOODS),
+            description: 'One of the named moods. Each is a complete, art-directed lighting setup.',
+          },
+        },
+        ['mood'],
+      ),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const mood = String(a.mood ?? '');
+      if (!Object.prototype.hasOwnProperty.call(MOODS, mood)) {
+        return {
+          error: `unknown mood "${mood}". Choose one of: ${Object.keys(MOODS).join(', ')}.`,
+        };
+      }
+      const res = await op(ctx, { op: 'run_code', code: moodLuau(mood), timeoutMs: 10_000 }, 25_000);
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      // Hand back the palettes this mood was art-directed alongside. The lighting is half of a
+      // look; the materials and colours are the other half, and the model has no other way to
+      // learn which of them were designed to sit under this light.
+      const palettes = Object.entries(PALETTES)
+        .filter(([, p]) => p.moods.includes(mood))
+        .map(([name, p]) => ({ name, materials: p.materials }));
+      return {
+        applied: mood,
+        palettes: palettes.length ? palettes : undefined,
+        next: 'render_view to see it. If the scene reads flat or muddy, the mood is usually right and the MATERIALS are wrong — use one of the palettes above.',
+      };
     },
   },
   check_composition: {
