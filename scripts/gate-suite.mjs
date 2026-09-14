@@ -11,10 +11,23 @@
 // passes. This is the same shape as the defect check-workspace-coverage.mjs exists for, one level
 // out: not a package pnpm could not see, but a directory pnpm was never asked about. Both are run
 // here now, and both are summed.
+//
+// DO NOT MAKE THIS DISCOVER TESTS BY WALKING DIRECTORIES. It invokes each package's own `test`
+// script on purpose. `packages/corpus` holds the SCRAPED UPSTREAM REPOSITORIES the corpus ingests
+// under `raw/`, and its script globs `src/**/*.test.mjs` to stay out of them. A bare `node --test`
+// from that package finds 376 tests and fails 125 — every failure a third-party TypeScript test
+// from a vendored repo that node cannot run without a loader, and that no change to this codebase
+// can fix. Measured by rbxai-04, who ran exactly that command while verifying something else and
+// got a convincing false regression in a neighbouring lane.
+//
+// That is the mirror of the staleness problem below: a red describing something other than the
+// tree under test. Both have the same root — a result that does not say WHAT it measured — and a
+// walker added here for convenience would make the false red permanent.
 import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { treeFingerprint } from './lib/tree-fingerprint.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -22,6 +35,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rootTests = readdirSync(join(ROOT, 'tests'))
   .filter((f) => f.endsWith('.test.mjs'))
   .map((f) => join('tests', f));
+
+const fingerprintBefore = treeFingerprint(ROOT);
 
 const run = (cmd, args) => {
   try {
@@ -63,6 +78,21 @@ console.log(s);
 const failures = [...out.matchAll(/fail (\d+)/g)].map((m) => Number(m[1])).filter((n) => n > 0);
 if (failures.length || /SELFTEST FAIL/.test(out)) {
   console.log('SUITE RED');
+  process.exit(1);
+}
+// The staleness check is LAST, after every other way of being red, so a run that is both stale and
+// failing reports the failure — a red test is a fact about the code either way, while staleness
+// only invalidates a green.
+//
+// THE SUCCESS OUTPUT IS DELIBERATELY UNCHANGED, and the fingerprint is NOT printed on it. Gate
+// evidence records an output-sha256 and re-verification requires it to reproduce; a tree hash in
+// the success line would differ on every commit, so the gate over this script would quarantine
+// permanently and read as "cannot reproduce" when nothing was wrong. The hash is diagnostic, so it
+// belongs only on the path that already fails.
+const fingerprintAfter = treeFingerprint(ROOT);
+if (fingerprintAfter !== fingerprintBefore) {
+  console.log(`  tree ${fingerprintBefore} at start, ${fingerprintAfter} at end`);
+  console.log('SUITE STALE — the working tree changed while the suite ran, so this result describes a tree that no longer exists. Re-run without editing.');
   process.exit(1);
 }
 console.log('SUITE GREEN');
