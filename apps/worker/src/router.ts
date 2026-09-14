@@ -52,27 +52,40 @@ import type { GolemMode } from '@golem/shared';
  * (Tool definitions are also re-sent on every single call, so a mode's toolset is a per-step token
  * tax as well. Send only the tools a mode can actually use.)
  */
+/** Inspection only. Nothing in this list can change the user's project — see the note above. */
+const PLAN_TOOLS = [
+  'get_project_tree',
+  'list_scripts',
+  'read_script',
+  'search_scripts',
+  'search_docs',
+  'remember',
+];
+
 export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames: string[]): Set<string> {
   if (!studioConnected) {
     return new Set(allNames.filter((n) => n === 'search_docs' || n === 'remember'));
   }
-  if (mode === 'clay') {
-    // Inspection only. Nothing in this list can change the user's project — see the note above.
-    return new Set(
-      allNames.filter((n) =>
-        [
-          'get_project_tree',
-          'list_scripts',
-          'read_script',
-          'search_scripts',
-          'search_docs',
-          'remember',
-        ].includes(n),
-      ),
-    );
+  switch (mode) {
+    case 'clay':
+      return new Set(allNames.filter((n) => PLAN_TOOLS.includes(n)));
+    // Stone is the default builder, so it gets everything including the visual inspection tools:
+    // this is the mode that produces scenes, and therefore the mode that must look at them. Rune
+    // is long-horizon autonomy and gets the same.
+    case 'stone':
+    case 'rune':
+      return new Set(allNames);
+    default:
+      // A MODE NOBODY DEFINED GETS PLAN'S SET, NOT EVERYTHING.
+      //
+      // This used to fall through to `new Set(allNames)`, so an unrecognised mode was handed
+      // edit_script, delete_instances and run_luau — the most permissive answer available, for the
+      // one input the function did not understand. Same shape as the step ceiling in session.ts:
+      // `Record<GolemMode, T>` is a compile-time promise and the runtime kept none of it.
+      //
+      // session.ts now validates `mode` at all three ingresses, so nothing unrecognised should
+      // arrive here in the assembled product. This is the second line, and a second line that
+      // fails open is not one. The toolset is the guarantee, not a performance tweak.
+      return new Set(allNames.filter((n) => PLAN_TOOLS.includes(n)));
   }
-  // Stone is the default builder, so it gets everything including the visual inspection tools:
-  // this is the mode that produces scenes, and therefore the mode that must look at them.
-  if (mode === 'stone') return new Set(allNames);
-  return new Set(allNames);
 }

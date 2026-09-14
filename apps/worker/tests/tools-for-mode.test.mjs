@@ -129,3 +129,56 @@ test('an empty tool table yields empty sets rather than throwing', () => {
     assert.equal(toolsForMode(mode, false, []).size, 0);
   }
 });
+
+/* --------------------------------------------- a mode nobody defined --------- */
+
+/**
+ * AN UNRECOGNISED MODE MUST NOT RECEIVE MORE THAN PLAN DOES.
+ *
+ * `toolsForMode` branched `if (mode === 'clay')` and fell through to `new Set(allNames)` for
+ * everything else — so a mode nobody defined got the FULL write toolset, including edit_script,
+ * delete_instances and run_luau. The same shape as the step-ceiling defect in session.ts: a
+ * `Record<GolemMode, T>` world where the union is a compile-time promise and the runtime hands an
+ * unknown key the most permissive answer it has.
+ *
+ * session.ts now validates `mode` at all three ingresses, so in the assembled product nothing
+ * unrecognised should reach here. This is the second line, and a second line that fails open is
+ * not one. The file's own comment is the standard being held to: "the toolset is the guarantee,
+ * not a performance tweak."
+ */
+const UNDEFINED_MODES = ['memory', 'vision', 'nonsense', '__proto__', 'constructor', '', null, undefined, 7];
+
+for (const mode of UNDEFINED_MODES) {
+  test(`mode ${JSON.stringify(mode)} gets no tool that can change a project`, () => {
+    const got = toolsForMode(mode, true, ALL);
+    for (const m of MUTATING) {
+      assert.equal(got.has(m), false,
+        `an unrecognised mode was handed "${m}", which can change the user's project`);
+    }
+  });
+}
+
+test('an unrecognised mode gets no more than Plan does', () => {
+  const plan = toolsForMode('clay', true, ALL);
+  for (const mode of UNDEFINED_MODES) {
+    const got = toolsForMode(mode, true, ALL);
+    for (const name of got) {
+      assert.equal(plan.has(name), true,
+        `mode ${JSON.stringify(mode)} was handed "${name}", which Plan itself does not get`);
+    }
+  }
+});
+
+test('CONTROL: the real modes are unaffected by the unknown-mode rule', () => {
+  // A function that returned the read-only set for EVERYTHING would pass every case above while
+  // breaking the product. Stone and Rune must still get the full toolset, and Plan must still get
+  // the inspection tools it needs to be useful.
+  for (const mode of ['stone', 'rune']) {
+    const got = toolsForMode(mode, true, ALL);
+    assert.equal(got.size, ALL.length, `${mode} must still get every tool`);
+    for (const m of MUTATING) assert.equal(got.has(m), true, `${mode} must still get "${m}"`);
+  }
+  const plan = toolsForMode('clay', true, ALL);
+  assert.equal(plan.has('read_script'), true, 'Plan must still be able to read');
+  assert.equal(plan.has('get_project_tree'), true, 'Plan must still be able to look');
+});
