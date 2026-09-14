@@ -125,8 +125,8 @@
     {
      "id": "f-d8aead20",
      "name": "Webhooks",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "POST /api/billing/webhook, exempt from JWT and authenticated by signature"
     },
     {
      "id": "f-47cfc121",
@@ -5820,7 +5820,7 @@
      "id": "f-8058d3ae",
      "name": "Per-user quotas",
      "status": "done",
-     "evidence": "QuotaDO + PLAN_LIMITS"
+     "evidence": "QuotaDO daily+monthly, plan-aware"
     },
     {
      "id": "f-250160b7",
@@ -5987,44 +5987,44 @@
     {
      "id": "f-786d88bb",
      "name": "Free plan",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "PLAN_LIMITS.free 60/day"
     },
     {
      "id": "f-09ffc4fa",
      "name": "Pro plan",
-     "status": "not-started",
-     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+     "status": "done",
+     "evidence": "PLAN_LIMITS.pro 400/day"
     },
     {
      "id": "f-451ebbdd",
      "name": "Team plan",
-     "status": "not-started",
-     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+     "status": "done",
+     "evidence": "PLAN_LIMITS.team 1500/day"
     },
     {
      "id": "f-326435f4",
      "name": "Enterprise plan",
-     "status": "not-started",
-     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+     "status": "done",
+     "evidence": "PLAN_LIMITS.enterprise 6000/day"
     },
     {
      "id": "f-3e9a9d8a",
      "name": "Usage-based billing",
-     "status": "not-started",
-     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+     "status": "partial",
+     "evidence": "metering and credit consumption exist; no invoice/overage flow"
     },
     {
      "id": "f-d5791876",
      "name": "Credit system",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "QuotaDO credits balance, spent only after the allowance (775219a)"
     },
     {
      "id": "f-7c0cf0ed",
      "name": "Token billing",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "neurons -> Sparks via NEURONS_PER_SPARK, settled per call"
     },
     {
      "id": "f-79a5680b",
@@ -6059,14 +6059,14 @@
     {
      "id": "f-9471650e",
      "name": "Spending limits",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "BudgetDO ratchets down only (3c53b08); per-user QuotaDO caps"
     },
     {
      "id": "f-26beae43",
      "name": "Prepaid credits",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "checkout.session.completed -> /grant-credits, additive only"
     },
     {
      "id": "f-e95dfe1e",
@@ -6077,8 +6077,8 @@
     {
      "id": "f-d6a384a0",
      "name": "Invoices",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "not built — Stripe hosts them; nothing surfaced in-product"
     },
     {
      "id": "f-fdf7ea05",
@@ -6119,14 +6119,14 @@
     {
      "id": "f-5546eff0",
      "name": "Payment methods",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "webhook consumes Stripe events; no checkout session creation yet"
     },
     {
      "id": "f-1248ded5",
      "name": "Stripe",
-     "status": "not-started",
-     "evidence": "IN SCOPE — owner confirmed 2026-09-14 this is a full SaaS with subscriptions and credits"
+     "status": "done",
+     "evidence": "signature-verified webhook, HMAC-SHA256 with replay window (775219a)"
     },
     {
      "id": "f-05d54330",
@@ -6143,32 +6143,32 @@
     {
      "id": "f-e601da98",
      "name": "Subscription pause",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "status mapping handles paused (does not entitle); no pause API"
     },
     {
      "id": "f-bf7818da",
      "name": "Subscription cancellation",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "customer.subscription.deleted lapses to free regardless of metadata"
     },
     {
      "id": "f-c72e6434",
      "name": "Plan upgrade",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "customer.subscription.updated -> entitlementFor -> /set-plan"
     },
     {
      "id": "f-59b73b59",
      "name": "Plan downgrade",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "same path; unknown/cancelled plans fall back to free"
     },
     {
      "id": "f-2759dcd8",
      "name": "Overage protection",
-     "status": "not-started",
-     "evidence": null
+     "status": "partial",
+     "evidence": "credits gate spend past the allowance; no top-up prompt"
     },
     {
      "id": "f-1951decd",
@@ -6311,8 +6311,8 @@
     {
      "id": "f-69c47954",
      "name": "Webhooks",
-     "status": "not-started",
-     "evidence": null
+     "status": "done",
+     "evidence": "POST /api/billing/webhook, exempt from JWT and authenticated by signature"
     },
     {
      "id": "f-2ac78c59",
