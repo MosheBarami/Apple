@@ -149,6 +149,47 @@ interface ToolImpl {
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
 }
 
+/**
+ * EVERY VALUE THE PLUGIN RETURNS IS WRAPPED. Unwrap one.
+ *
+ * `Paths.encode` in the plugin wraps every scalar as `{ t, v }` — `{t:"number",v:0}`,
+ * `{t:"Vector3",v:[0,5,0]}`, `{t:"nil"}` — and recurses into tables, encoding each FIELD. So a
+ * handler that returns `{ removed = 0 }` arrives as `{ removed = { t = "number", v = 0 } }`, and a
+ * property table arrives with every value wrapped.
+ *
+ * Reading one of those as a bare value does not throw. `Number({t,v})` is NaN and `String({t,v})`
+ * is "[object Object]" — both of which travel onward as plausible-looking nonsense. That is how
+ * this was shipped: the tools read the unwrapped shape, and the tests STUBBED the unwrapped shape,
+ * so the tests encoded the same misunderstanding as the code and could never contradict it.
+ *
+ * The three parsers that already handle it — parseLayout, parseAudit, parseSpecRun — do so because
+ * their payload is a JSON string, and a string is wrapped too; peeling `{t,v}` was unavoidable
+ * there. The structured-table readers had no such forcing function.
+ */
+function decodeTagged(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const o = value as Record<string, unknown>;
+  if (typeof o.t === 'string' && ('v' in o || o.t === 'nil')) {
+    return o.t === 'nil' ? null : o.v;
+  }
+  return value;
+}
+
+/** A tagged value rendered for a person: "0, 5, 0" rather than "[object Object]" or a JSON blob. */
+function displayTagged(value: unknown): string {
+  const decoded = decodeTagged(value);
+  if (decoded === null || decoded === undefined) return '—';
+  if (Array.isArray(decoded)) return decoded.map((n) => (typeof n === 'number' ? round2(n) : String(n))).join(', ');
+  if (typeof decoded === 'number') return round2(decoded);
+  if (typeof decoded === 'boolean') return decoded ? 'true' : 'false';
+  return String(decoded);
+}
+
+/** Two decimals, without the trailing zeros that make a property panel read like a spreadsheet. */
+function round2(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+
 const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
 
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
@@ -871,10 +912,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       ];
       const groups = GROUPS.map((g) => ({
         name: g.name,
-        rows: g.keys.filter((k) => props[k] !== undefined).map((k) => ({ name: k, value: String(props[k]) })),
+        rows: g.keys
+          .filter((k) => props[k] !== undefined)
+          .map((k) => ({ name: k, value: displayTagged(props[k]) })),
       })).filter((g) => g.rows.length > 0);
       const attrs = Object.entries(d.attributes ?? {});
-      if (attrs.length) groups.push({ name: 'Attributes', rows: attrs.map(([k, v]) => ({ name: k, value: String(v) })) });
+      if (attrs.length) {
+        groups.push({ name: 'Attributes', rows: attrs.map(([k, v]) => ({ name: k, value: displayTagged(v) })) });
+      }
 
       if (groups.length) {
         ctx.uiDetail = {
@@ -1613,7 +1658,9 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       // "Nothing was there" is a different answer from "I removed it", and the model should not
       // report a removal it did not make.
-      const removed = Number((res as { result?: { removed?: unknown } })?.result?.removed ?? NaN);
+      // `result.removed` arrives as {t:"number",v:0}. Reading it raw gives NaN, which silently
+      // disabled the branch below — the tool could never report that nothing was there.
+      const removed = Number(decodeTagged((res as { result?: { removed?: unknown } })?.result?.removed) ?? NaN);
       if (Number.isFinite(removed) && removed === 0) {
         return { removed: 0, note: effect ? `there was no ${effect} on ${path}` : `there were no effects on ${path}` };
       }

@@ -133,14 +133,33 @@ test('set_mood hands back the palettes designed for that light', async () => {
 
 // --- get_instance ---------------------------------------------------------------------
 
+/**
+ * THE SHAPE THE PLUGIN ACTUALLY RETURNS.
+ *
+ * `Paths.encode` wraps every scalar as `{ t, v }` and recurses into tables, encoding each FIELD —
+ * so `get_instance`'s props and attributes arrive wrapped, not bare. This fixture was originally
+ * written with plain strings, which is the shape I assumed rather than the shape the plugin sends.
+ * The tool read it the same wrong way, so code and test agreed with each other and disagreed with
+ * production: every property would have rendered as "[object Object]" in the panel.
+ *
+ * A stub that encodes the author's misunderstanding is worse than no stub, because it converts an
+ * untested assumption into a verified one. This fixture is now copied from what Paths.encode
+ * produces — see apps/plugin/src/Paths.luau.
+ */
 const INSTANCE = {
   ok: true,
   data: {
     path: 'game.Workspace.Lobby.Floor',
     class: 'Part',
     childCount: 2,
-    props: { Position: '0, 0.5, 0', Size: '86, 1, 74', Anchored: 'true', Material: 'Concrete', Transparency: '0' },
-    attributes: { Zone: 'lobby' },
+    props: {
+      Position: { t: 'Vector3', v: [0, 0.5, 0] },
+      Size: { t: 'Vector3', v: [86, 1, 74] },
+      Anchored: { t: 'bool', v: true },
+      Material: { t: 'EnumItem', v: 'Enum.Material.Concrete' },
+      Transparency: { t: 'number', v: 0 },
+    },
+    attributes: { Zone: { t: 'string', v: 'lobby' } },
   },
 };
 
@@ -159,6 +178,22 @@ test('get_instance reads back, and renders a property panel the UI already suppo
   assert.deepEqual(groups.Appearance, ['Material', 'Transparency']);
   assert.deepEqual(groups.Attributes, ['Zone']);
   assert.equal('Content' in groups, false, 'an empty group must be dropped, not rendered blank');
+
+  // AND THE VALUES ARE UNWRAPPED. This is the assertion whose absence let the bug ship: the rows
+  // rendered before, they just rendered "[object Object]".
+  const value = (group, name) =>
+    d.blocks[0].groups.find((g) => g.name === group).rows.find((r) => r.name === name).value;
+  assert.equal(value('Transform', 'Position'), '0, 0.5, 0', 'a Vector3 must read as its components');
+  assert.equal(value('Transform', 'Size'), '86, 1, 74');
+  assert.equal(value('Transform', 'Anchored'), 'true', 'a bool must read as true/false');
+  assert.equal(value('Appearance', 'Material'), 'Enum.Material.Concrete');
+  assert.equal(value('Appearance', 'Transparency'), '0');
+  assert.equal(value('Attributes', 'Zone'), 'lobby');
+  for (const g of d.blocks[0].groups) {
+    for (const r of g.rows) {
+      assert.doesNotMatch(r.value, /\[object Object\]/, `${g.name}.${r.name} rendered as an object`);
+    }
+  }
 });
 
 test('a failed read-back sets no panel, so the UI cannot show a stale instance', async () => {

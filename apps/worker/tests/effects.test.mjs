@@ -227,7 +227,10 @@ test('an unknown effect and a hostile path are refused with nothing sent', async
 });
 
 test('a real removal sends one run_code op', async () => {
-  const { ctx, ops } = stubCtx({ ok: true, data: { result: { removed: 2, effects: 'fire', from: 'game.Workspace.Torch' } } });
+  // Paths.encode wraps every field, so this is what the plugin actually sends back.
+  const { ctx, ops } = stubCtx({ ok: true, data: { result: {
+    removed: { t: 'number', v: 2 }, effects: { t: 'string', v: 'fire' }, from: { t: 'string', v: 'game.Workspace.Torch' },
+  } } });
   await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
   assert.equal(ops.length, 1);
   assert.equal(ops[0].op, 'run_code');
@@ -237,7 +240,14 @@ test('a real removal sends one run_code op', async () => {
 test('NOTHING THERE is reported as nothing there, not as a removal', async () => {
   // "I removed it" for an instance that never had one is a claim about the world that is false,
   // and the model would report it to the user as a completed action.
-  const { ctx } = stubCtx({ ok: true, data: { result: { removed: 0, effects: '', from: 'game.Workspace.Torch' } } });
+  //
+  // THIS TEST PASSED WHILE THE BRANCH WAS BROKEN. The fixture said `removed: 0`; the plugin sends
+  // `removed: {t:"number",v:0}`, and `Number({t,v})` is NaN, so `Number.isFinite(removed)` was
+  // false and this branch never ran in production. The stub agreed with the code and both
+  // disagreed with the plugin.
+  const { ctx } = stubCtx({ ok: true, data: { result: {
+    removed: { t: 'number', v: 0 }, effects: { t: 'string', v: '' }, from: { t: 'string', v: 'game.Workspace.Torch' },
+  } } });
   const res = await T.TOOLS.remove_effect.run(ctx, { path: 'game.Workspace.Torch', effect: 'fire' });
   assert.equal(res.removed, 0);
   assert.match(res.note, /no fire on/);
