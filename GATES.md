@@ -154,6 +154,17 @@ and are tracked as handoffs, not gates.
     EXPECT: fail 0
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git=e53747d; tree=dirty; EXPECT=matched; output-sha256=4f198c34edd334b3db55fdda0571a8be67485acfc0c43ea90b0c4d1426d0b807; output-bytes=2148
 
+## §6 oracle repair — the checks on the checkers
+
+These gate the machinery every other gate depends on. Until they are green and red-first, no
+ledger row means anything: `--reverify` was a silent no-op, so the first clause of the terminal
+condition was vacuously satisfiable, and every EXPECT of `fail 0` was satisfiable by deleting the
+test it gated.
+
+- [ ] G-ORACLE-1: The gate checker rejects an unknown flag, re-verifies fingerprints, and refuses evidence with no falsification
+    CHECK: node scripts/assert-tests.mjs --floor 40 --label G-ORACLE-1 -- node --test tests/gate-check.test.mjs
+    EXPECT: G-ORACLE-1 OK
+
 ---
 
 ## Whole-product gates

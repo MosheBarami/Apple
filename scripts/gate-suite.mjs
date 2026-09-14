@@ -31,7 +31,12 @@ const run = (cmd, args) => {
   }
 };
 
-const parts = [run('pnpm', ['-r', 'test'])];
+// A SUPERSET of root `pnpm test`, which is
+// `node scripts/check-workspace-coverage.mjs && pnpm -r test`. Running only the second half here
+// meant a gate could report SUITE GREEN while a workspace package had quietly dropped out of the
+// recursion — which is the exact defect check-workspace-coverage.mjs exists to catch, skipped by
+// the oracle that claims the suite passed.
+const parts = [run('node', ['scripts/check-workspace-coverage.mjs']), run('pnpm', ['-r', 'test'])];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make
 // `node --test` exit non-zero and turn "no root tests" into "the suite is red".
 if (rootTests.length) parts.push(run('node', ['--test', ...rootTests]));

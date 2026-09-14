@@ -19,14 +19,31 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const dir = mkdtempSync(join(tmpdir(), 'golem-assets-'));
-const src = (name) => new URL(`../../../apps/worker/src/${name}`, import.meta.url).pathname;
+const WORKER = new URL('../../../apps/worker/', import.meta.url).pathname;
+const src = (name) => join(WORKER, 'src', name);
+
+// esbuild is resolved from the workspace that DECLARES it, not through `npx`.
+//
+// `npx esbuild` was resolving nothing here: esbuild is a devDependency of apps/worker and this
+// test runs with packages/evals as its cwd, so npx fell through to fetching it from the registry —
+// which worked on a warm machine and failed everywhere else, including CI. A test whose pass
+// depends on a package it does not declare being downloadable is a test that reports the network.
+const esbuild = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 // assets.ts has no runtime imports, so a plain transpile is enough.
 const assetsOut = join(dir, 'assets.mjs');
-execFileSync('npx', ['esbuild', src('assets.ts'), '--format=esm', '--outfile=' + assetsOut], { stdio: 'pipe' });
+execFileSync(esbuild, [src('assets.ts'), '--format=esm', '--outfile=' + assetsOut], { stdio: 'pipe', cwd: WORKER });
 // asset-library.ts imports embed() from the gateway, so it is bundled with its local deps.
 const libraryOut = join(dir, 'asset-library.mjs');
-execFileSync('npx', ['esbuild', src('asset-library.ts'), '--bundle', '--format=esm', '--platform=neutral', '--outfile=' + libraryOut], { stdio: 'pipe' });
+// `--main-fields` is explicit because `--platform=neutral` defaults it to EMPTY, so a workspace
+// package whose entry comes from `main` cannot be resolved at all. That was invisible until
+// asset-library gained a transitive @golem/shared import through the gateway; the bundle had
+// simply never had a package to resolve before.
+execFileSync(
+  esbuild,
+  [src('asset-library.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + libraryOut],
+  { stdio: 'pipe', cwd: WORKER },
+);
 
 const {
   ASSET_NEEDS,

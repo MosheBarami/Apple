@@ -12,9 +12,18 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+// esbuild is resolved from the workspace that DECLARES it, and `--main-fields` is explicit.
+//
+// Both were latent: `npx esbuild` fell through to fetching esbuild from the registry when the
+// cwd was a package that does not declare it, and `--platform=neutral` defaults `mainFields` to
+// EMPTY, so a workspace package whose entry comes from `main` cannot be resolved at all. Neither
+// showed until this bundle gained its first cross-package import. A test whose pass depends on a
+// package it does not declare being downloadable is a test that reports the network.
+const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
+
 const SRC = new URL('../../../apps/worker/src/reasoning.ts', import.meta.url).pathname;
 const out = join(mkdtempSync(join(tmpdir(), 'golem-reasoning-')), 'reasoning.mjs');
-execFileSync('npx', ['esbuild', SRC, '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
+execFileSync(ESBUILD, [SRC, '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
 const { chooseEffort, classifyRequest, tokensForEffort, higher, MAX_HIGH_EFFORT_STEPS } = await import(out);
 
 /** A step with no escalation signals set. */

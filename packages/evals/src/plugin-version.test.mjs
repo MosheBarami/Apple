@@ -35,7 +35,7 @@ const WORKER = join(REPO, 'apps', 'worker');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 const out = join(mkdtempSync(join(tmpdir(), 'golem-plugin-version-')), 'plugin-version.mjs');
-execFileSync(ESBUILD, [join(WORKER, 'src', 'plugin-version.ts'), '--format=esm', '--platform=neutral', `--outfile=${out}`], {
+execFileSync(ESBUILD, [join(WORKER, 'src', 'plugin-version.ts'), '--format=esm', '--platform=neutral', '--main-fields=main,module', `--outfile=${out}`], {
   stdio: 'pipe',
 });
 const V = await import(`file://${out}`);

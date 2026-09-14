@@ -16,6 +16,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { once } from 'node:events';
 import { appendFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -148,11 +149,16 @@ test('--approve records what was measured, including things a claim cannot fake'
   assert.equal(fields.EXPECT, 'matched');
   assert.match(fields['output-sha256'], /^[0-9a-f]{64}$/);
   assert.equal(fields['output-bytes'], String(Buffer.byteLength('measured\n')));
-  // The two fields the hand-written evidence in this repo never carried, and the two that say
-  // whether the measurement is worth anything: WHICH code was measured, and whether it was
-  // committed code at all.
-  assert.ok('git' in fields, 'evidence must name the commit it was measured at');
-  assert.match(fields.tree, /^(clean|dirty)$/, 'evidence must say whether the tree was dirty');
+  // The fields the hand-written evidence in this repo never carried, and the ones that say whether
+  // the measurement is worth anything: WHICH code was measured, whether it was committed code at
+  // all, and WHICH TOOLCHAINS were present — a Luau gate recorded with luau=ABSENT proved nothing,
+  // because the runner skipped and exited 0, which `node --test` reports as `fail 0`.
+  assert.ok('git-sha' in fields, 'evidence must name the commit it was measured at');
+  assert.match(fields['tree-clean'], /^(yes|no)$/, 'evidence must say whether the tree was dirty');
+  assert.match(fields.node, /^v\d+/, 'evidence must name the node that ran it');
+  assert.ok('luau' in fields, 'evidence must say whether a Luau toolchain was present');
+  assert.ok('playwright' in fields, 'evidence must say whether Playwright was present');
+  assert.match(fields.at, /^\d{4}-\d{2}-\d{2}T/, 'evidence must be dated, so a stale record reads as stale');
 });
 
 test('the fingerprint tracks the output, so a changed test set cannot reuse old evidence', () => {
@@ -222,7 +228,8 @@ test('--status flags a CHECK that names a file which does not exist', () => {
 test('--status reports a clean ledger as needing no work', () => {
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: echo hi\n    EXPECT: hi\n' +
-    '  EVIDENCE: exit=0; git=abc1234; tree=clean; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n';
+    '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
   const r = check(ledger, ['--status']);
   assert.equal(r.exit, 0, r.out);
   assert.match(r.out, /0 need\(s\) work/);
@@ -258,49 +265,56 @@ test('--lint fails a gate whose own evidence contradicts its tick', () => {
   // A ticked box above `EXPECT=MISSED` is worse than an untested gate, because it reads as proof.
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
-    '  EVIDENCE: exit=0; git=abc1234; tree=clean; EXPECT=MISSED; output-sha256=deadbeef; output-bytes=2\n';
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=unmatched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 1);
-  assert.match(r.out, /records EXPECT=MISSED/);
+  assert.match(r.out, /records an unmatched EXPECT/);
 });
 
 test('--lint fails a gate ticked over a non-zero exit', () => {
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
-    '  EVIDENCE: exit=2; git=abc1234; tree=clean; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n';
+    '  EVIDENCE: exit=2; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 1);
   assert.match(r.out, /non-zero exit/);
 });
 
 test('--lint rejects evidence that was written by hand rather than measured', () => {
-  // `git=` and `tree=` are the two fields nobody can write from memory: which commit was measured,
-  // and whether the code was committed at all. Requiring them is what makes a hand-written
-  // evidence line FAIL — not hypothetical, it happened three times in this repository's ledger,
-  // twice after the checker existed to prevent it.
+  // `git-sha=`, `tree-clean=` and `at=` are the fields nobody can write from memory: which commit
+  // was measured, whether the code was committed at all, and when. Requiring them is what makes a
+  // hand-written evidence line FAIL — not hypothetical, it happened three times in this
+  // repository's ledger, twice after the checker existed to prevent it.
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
     '  EVIDENCE: exit=0; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 1);
-  assert.match(r.out, /missing git=/);
-  assert.match(r.out, /missing tree=/);
+  assert.match(r.out, /missing git-sha=/);
+  assert.match(r.out, /missing tree-clean=/);
+  assert.match(r.out, /missing at=/);
 });
 
 test('--lint passes a well-formed ledger, so it is not just a failure machine', () => {
   const ledger =
     '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
-    '  EVIDENCE: exit=0; git=abc1234; tree=clean; EXPECT=matched; output-sha256=deadbeef; output-bytes=2\n' +
+    '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
     '\n- [ ] G2: an honest open gate\n    CHECK: false\n    EXPECT: y\n';
   const r = check(ledger, ['--lint']);
   assert.equal(r.exit, 0);
   assert.match(r.out, /LEDGER WELL-FORMED/);
 });
 
-test('--lint passes this repository\'s own ledger', () => {
+test('--lint reports this repository\'s own ledger without crashing', () => {
+  // Deliberately NOT asserting the repo ledger is well-formed. It is red by design while the
+  // red-first back-fill is in progress, and a test that demanded otherwise would be a test of the
+  // backlog rather than of the checker — and the cheapest way to pass it would be to weaken the
+  // lint. What is asserted is that lint REACHES a verdict on the real file: exit 0 or 1, never the
+  // exit-2 that means the parser fell over.
   const proc = spawnSync('node', [CHECKER, '--lint'], { cwd: ROOT, encoding: 'utf8', timeout: 30_000 });
-  assert.equal(proc.status, 0, `${proc.stdout}${proc.stderr}`);
-  assert.match(proc.stdout, /LEDGER WELL-FORMED/);
+  assert.notEqual(proc.status, 2, `GATES.md failed to parse:\n${proc.stdout}${proc.stderr}`);
+  assert.match(proc.stdout, /LEDGER (WELL-FORMED|MALFORMED) — \d+ gates/);
 });
 
 /* ------------------------------------------------- it reads the real ledger --- */
@@ -311,4 +325,166 @@ test('it parses this repository\'s own GATES.md without error', () => {
   const proc = spawnSync('node', [CHECKER, '--gate', 'G91'], { cwd: ROOT, encoding: 'utf8', timeout: 300_000 });
   assert.notEqual(proc.status, 2, `GATES.md failed to parse:\n${proc.stderr}`);
   assert.match(`${proc.stdout}${proc.stderr}`, /G91/);
+});
+
+/* ------------------------------------------------------- --reverify (§6.1) --- */
+//
+// WHY THESE FOUR EXIST. `node scripts/gate-check.mjs --reverify GATES.md` is the first command of
+// the verification block, and for the life of this repository it was a silent no-op: flags were
+// parsed with `args.includes()`, so an unrecognised `--reverify` fell through to an ordinary
+// verify and printed a green summary. Every pass that "re-verified fingerprints" had done nothing
+// of the kind, and the terminal condition's first clause was vacuously satisfiable.
+//
+// Each case below is one way the ledger could read GREEN over something that is not true.
+
+/** A fixture whose EVIDENCE fingerprint does not match what the CHECK actually produces. */
+const staleLedger = (sha) =>
+  '- [x] G1: fixture gate\n    CHECK: echo hi\n    EXPECT: hi\n' +
+  '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+  `  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=${sha}; output-bytes=3; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n`;
+
+test('--reverify marks a gate UNMET when its stored fingerprint does not reproduce', () => {
+  // The gate still PASSES — `echo hi` exits 0 and matches. What changed is the world the evidence
+  // described. Evidence that no longer reproduces is not evidence, and the checkbox is what a
+  // reader trusts, so the checkbox is what must change.
+  const r = check(staleLedger('0'.repeat(64)), ['--reverify']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /QUARANTINED G1/);
+  assert.match(r.out, /output-sha256 does not reproduce/);
+  assert.match(r.ledger(), /^- \[ \] G1:/m, 'the checkbox must be cleared IN THE FILE, not merely reported');
+});
+
+test('--reverify leaves a gate met when its fingerprint does reproduce', () => {
+  // The positive control. Without it the test above passes on a --reverify that quarantines
+  // everything unconditionally, which would be a different way of telling the reader nothing.
+  const sha = createHash('sha256').update('hi\n').digest('hex');
+  const r = check(staleLedger(sha), ['--reverify']);
+  assert.equal(r.exit, 0, r.out);
+  assert.doesNotMatch(r.out, /QUARANTINED/);
+  assert.match(r.ledger(), /^- \[x\] G1:/m);
+});
+
+test('--reverify marks a gate UNMET when it carries EVIDENCE but no FALSIFIED record', () => {
+  // A gate nobody has watched fail is a gate that may be incapable of failing. `node --test`
+  // prints `fail 0` and exits 0 for a file with zero tests, so "green" is not evidence that the
+  // assertion ran — only a recorded red is.
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: echo hi\n    EXPECT: hi\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=3; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
+  const r = check(ledger, ['--reverify']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /no FALSIFIED record/);
+  assert.match(r.ledger(), /^- \[ \] G1:/m);
+});
+
+test('--reverify marks a gate UNMET when its CHECK names a path git does not track', () => {
+  // A gate over an untracked file is green on this laptop and absent everywhere else. It is the
+  // exact shape of a proof that does not survive leaving the machine that wrote it.
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: node --test tests/not-in-git.test.mjs\n    EXPECT: fail 0\n' +
+    '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
+  const r = check(ledger, ['--reverify']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /untracked path/);
+  assert.match(r.ledger(), /^- \[ \] G1:/m);
+});
+
+test('an unrecognised flag exits 2 rather than running something else', () => {
+  // THE DEFECT THIS FILE WAS WRITTEN FOR. `--reverify` used to land here, silently, and the caller
+  // believed fingerprints had been checked.
+  const proc = spawnSync('node', [CHECKER, '--nonsense-flag'], { cwd: ROOT, encoding: 'utf8', timeout: 30_000 });
+  assert.equal(proc.status, 2, `${proc.stdout}${proc.stderr}`);
+  assert.match(`${proc.stdout}${proc.stderr}`, /unrecognised flag --nonsense-flag/);
+  assert.doesNotMatch(`${proc.stdout}${proc.stderr}`, /GATES (GREEN|RED)/, 'it must not run the gates anyway');
+});
+
+test('a flag that wants a value and is given none exits 2', () => {
+  for (const flag of ['--gate', '--file', '--timeout', '--break-sha']) {
+    const proc = spawnSync('node', [CHECKER, flag], { cwd: ROOT, encoding: 'utf8', timeout: 30_000 });
+    assert.equal(proc.status, 2, `${flag}: ${proc.stdout}${proc.stderr}`);
+  }
+});
+
+test('--lint fails when the typed summary disagrees with the checkbox count', () => {
+  // A prose tally is a number a human wrote, and a reader trusts the sentence over counting thirty
+  // boxes. So it is compared, never used: the authority is always the checkboxes.
+  const ledger =
+    '**9 gates, 9 met, 0 unmet** — measured, allegedly\n\n' +
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /typed summary says 9 gates; the file has 1/);
+  assert.match(r.out, /typed summary says 9 met; 1 boxes are ticked/);
+});
+
+test('--falsify refuses to record a green gate as falsified', () => {
+  // The red-first discipline in one assertion: if the gate passes with the shipping call site
+  // removed, it was never measuring the shipping call site.
+  const r = check(gate('G1', 'echo hi', 'hi'), ['--falsify', '--gate', 'G1']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /is GREEN — it cannot be falsified/);
+  assert.doesNotMatch(r.ledger(), /FALSIFIED:/, 'nothing may be recorded for a gate that did not fail');
+});
+
+test('--falsify records a red gate, carrying the sha of the break', () => {
+  const r = check(gate('G1', 'echo nope; exit 1', 'hi'), ['--falsify', '--gate', 'G1', '--break-sha', 'cafe123']);
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.ledger(), /^ {2}FALSIFIED: .*break-sha=cafe123/m);
+  assert.match(r.ledger(), /EXPECT=unmatched/);
+});
+
+test('--falsify takes exactly one gate, because a batch is not a falsification', () => {
+  const proc = spawnSync('node', [CHECKER, '--falsify'], { cwd: ROOT, encoding: 'utf8', timeout: 30_000 });
+  assert.equal(proc.status, 2, `${proc.stdout}${proc.stderr}`);
+  assert.match(`${proc.stdout}${proc.stderr}`, /exactly one --gate/);
+});
+
+test('--lint rejects a FALSIFIED and an EVIDENCE that share one sha', () => {
+  // If the "break" commit and the fixed commit are the same commit, nothing was broken and the red
+  // run measured the same tree as the green one.
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  FALSIFIED: exit=1; git-sha=abc1234; break-sha=abc1234; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /share one sha — the break changed nothing/);
+});
+
+test('--lint rejects a Luau gate recorded with no Luau toolchain', () => {
+  // The runner prints SKIPPED and exits 0 when `luau` is absent, which `node --test` reports as
+  // `fail 0`. A gate over the plugin recorded that way proved nothing at all.
+  const ledger =
+    '- [x] G1: a plugin gate\n    CHECK: node apps/plugin/tests/run.mjs src/door.luau\n    EXPECT: fail 0\n' +
+    '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=0.6; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=yes; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /gates Luau but was recorded with luau=ABSENT/);
+});
+
+test('--lint rejects evidence recorded against a dirty tree', () => {
+  const ledger =
+    '- [x] G1: fixture gate\n    CHECK: true\n    EXPECT: x\n' +
+    '  FALSIFIED: exit=1; git-sha=bad0000; break-sha=bad0000; tree-clean=yes; EXPECT=unmatched; output-sha256=f00d; output-bytes=1; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n' +
+    '  EVIDENCE: exit=0; git-sha=abc1234; tree-clean=no; EXPECT=matched; output-sha256=deadbeef; output-bytes=2; node=v26; luau=ABSENT; playwright=ABSENT; at=2026-09-14T00:00:00.000Z\n';
+  const r = check(ledger, ['--lint']);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /recorded against a dirty tree/);
+});
+
+test('the parser can see a gate whose id is not a number', () => {
+  // G-ORACLE-1 and G-TOOLCHAIN-1 are the gates on the checker itself. A parser keyed to `G\\d+`
+  // could not see them, which would put the checks on the checker outside the ledger — exactly the
+  // blind spot they exist to close.
+  const r = check('- [ ] G-ORACLE-1: the checker checks itself\n    CHECK: echo ok\n    EXPECT: ok\n', ['--status']);
+  assert.match(r.out, /G-ORACLE-1/);
+});
+
+test('the parser reads a station tag without losing the title', () => {
+  const r = check('- [ ] G7 [S4]: a station-tagged gate\n    CHECK: echo ok\n    EXPECT: ok\n', ['--status']);
+  assert.match(r.out, /a station-tagged gate/);
+  assert.doesNotMatch(r.out, /\[S4\]: a station/, 'the tag must be parsed, not left in the title');
 });

@@ -19,11 +19,20 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderScene } from './render-scene.mjs';
 
+// esbuild is resolved from the workspace that DECLARES it, and `--main-fields` is explicit.
+//
+// Both were latent: `npx esbuild` fell through to fetching esbuild from the registry when the
+// cwd was a package that does not declare it, and `--platform=neutral` defaults `mainFields` to
+// EMPTY, so a workspace package whose entry comes from `main` cannot be resolved at all. Neither
+// showed until this bundle gained its first cross-package import. A test whose pass depends on a
+// package it does not declare being downloadable is a test that reports the network.
+const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
 
 const out = join(mkdtempSync(join(tmpdir(), 'golem-pixel-')), 'pixel-stats.mjs');
-execFileSync('npx', ['esbuild', join(REPO, 'apps/worker/src/pixel-stats.ts'), '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
+execFileSync(ESBUILD, [join(REPO, 'apps/worker/src/pixel-stats.ts'), '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
 const { pixelStats, pixelHardFails, PIXEL_THRESHOLDS, statsLine } = await import(out);
 
 const FIX = join(REPO, 'packages/evals/tasks-visual/regression');

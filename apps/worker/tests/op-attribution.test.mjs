@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const out = join(mkdtempSync(join(tmpdir(), 'opattr-')), 'op-attribution.mjs');
 execFileSync(join(HERE, '..', 'node_modules', '.bin', 'esbuild'),
-  [join(HERE, '..', 'src', 'op-attribution.ts'), '--bundle', '--format=esm', '--platform=neutral', '--outfile=' + out],
+  [join(HERE, '..', 'src', 'op-attribution.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + out],
   { stdio: 'pipe' });
 const { partitionOpsByRun } = await import(out);
 

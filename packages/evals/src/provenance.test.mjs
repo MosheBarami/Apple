@@ -19,13 +19,22 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+// esbuild is resolved from the workspace that DECLARES it, and `--main-fields` is explicit.
+//
+// Both were latent: `npx esbuild` fell through to fetching esbuild from the registry when the
+// cwd was a package that does not declare it, and `--platform=neutral` defaults `mainFields` to
+// EMPTY, so a workspace package whose entry comes from `main` cannot be resolved at all. Neither
+// showed until this bundle gained its first cross-package import. A test whose pass depends on a
+// package it does not declare being downloadable is a test that reports the network.
+const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
+
 const dir = mkdtempSync(join(tmpdir(), 'golem-provenance-'));
 const src = (name) => new URL(`../../../apps/worker/src/${name}`, import.meta.url).pathname;
 
 const out = join(dir, 'provenance.mjs');
-execFileSync('npx', ['esbuild', src('provenance.ts'), '--bundle', '--format=esm', '--platform=neutral', '--outfile=' + out], { stdio: 'pipe' });
+execFileSync(ESBUILD, [src('provenance.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
 const libOut = join(dir, 'asset-library.mjs');
-execFileSync('npx', ['esbuild', src('asset-library.ts'), '--bundle', '--format=esm', '--platform=neutral', '--outfile=' + libOut], { stdio: 'pipe' });
+execFileSync(ESBUILD, [src('asset-library.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + libOut], { stdio: 'pipe' });
 
 const {
   SOURCE_CREDITS,

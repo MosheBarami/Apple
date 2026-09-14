@@ -21,7 +21,7 @@ const SRC = join(WEB, 'src');
 const out = join(mkdtempSync(join(tmpdir(), 'status-')), 'status.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(SRC, 'components', 'status-icon-model.ts'), '--bundle', '--format=esm',
-   '--platform=neutral', '--outfile=' + out], { stdio: 'pipe' });
+   '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
 const { STATUS, STATUS_PATH } = await import(out);
 
 test('every status carries a canonical id from the reference board', () => {

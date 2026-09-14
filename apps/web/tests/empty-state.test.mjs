@@ -18,7 +18,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'empty-')), 'empty-state.mjs');
 // The MODEL, which imports no React — the same split every other model here uses.
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'components', 'empty-state-model.ts'), '--bundle', '--format=esm',
-   '--platform=neutral', '--outfile=' + out], { stdio: 'pipe' });
+   '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
 const { EMPTY_STATES, M06_NOT_MODELLED } = await import(out);
 
 test('every state carries a canonical id from the reference board', () => {
