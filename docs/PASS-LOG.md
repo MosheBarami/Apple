@@ -451,3 +451,89 @@ SELF-REFUTER: still not dispatched. The sentence I expect it to find is "the dea
 
 NEXT: node scripts/check-deadends.mjs — find every remaining critic.ts-shaped module
   systematically rather than one refutation at a time.
+
+--------------------------------------------------------------------------------
+PASS 6  2026-09-14T17:54:43Z  HEAD 5988ca9  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: none claimed. §6.6 oracle work, plus three product fixes a refuter forced.
+
+DERIVED OPEN: gates 6 met / 31 open of 37 | handoffs 6 | dead ends 3, all dispositioned
+
+CLOSED:
+  G-ORACLE-4 — dead code is found by command, and the checker sees past its own blind
+    spots — 9e60f65 / recorded
+
+THE REFUTER UPHELD G-CRITIC-1 AND FOUND THREE DEFECTS ANYWAY:
+  - The floor was 12 against 13 tests, so deleting exactly one kept the gate green — and
+    the deletable one was "the critic SHIPS", the single reachability assertion the whole
+    gate rests on. Demonstrated with --test-skip-pattern. Floor is 13.
+  - The web adapter scaled Ambient by 255 when the plugin had already done it, so
+    rgb(42,44,52) rendered as "10710, 11220, 13260" in the very panel that exists to show
+    the user what the critic looked at.
+  - TWO DISAGREEING TABLES of Roblox's default lighting in one worker. vision.ts said 3 and
+    14.5; critic-input.ts, written by me this session, said 2 and 14, with a test asserting
+    the invention. Both decided the same question, so the product could give two answers
+    about one scene. I checked the Roblox creator docs: they describe Lighting at length
+    and do not state numeric defaults, so the surviving values come from the older constant
+    rather than a citation, and roblox-defaults.ts says exactly that. What is fixed is that
+    there is one place to correct them.
+
+A TEST OF MINE WAS INERT, and the falsification is what found it.
+  G-ORACLE-4's --falsify REFUSED: the gate stayed GREEN with the workspace-import blind
+  spot restored. The assertion was "packages/shared/src/index.ts is not reported as dead",
+  and it passed with the bug in place AND removed, because that file has relative importers
+  too. Green, and measuring nothing.
+
+  What actually moves is the edge count: 546 resolved / 31 unresolved becomes 496 / 81 —
+  fifty @golem/* specifiers stop being followed while every finding stays identical. A
+  resolver that drops a class of specifier does not report an error; it reports FEWER
+  EDGES. So the graph now publishes its own completeness and the test asserts that.
+
+  rbxai-a3 hit this exact shape in its own code and predicted the §6.2 back-fill would hit
+  it. It did, on the first attempt. A gate that cannot be broken by removing the thing it
+  names is a gate whose subject has drifted from its sentence — and that is the more
+  interesting outcome, not the boring one.
+
+CHECK-DEADENDS found three real dead ends, one of them mine:
+  apps/web/src/components/plans.tsx — WIRE — written mid-flight this session for w12 and
+    never given an importer. The exact shape the checker exists to find, produced by the
+    agent that wrote the checker.
+  packages/design/src/index.mjs — WIRE — nothing imports @golem/design at all.
+  packages/corpus/src/discover.mjs — STRUCTURALLY-BLOCKED — enumerates repositories from
+    the GitHub API; no product path should call it at request time.
+
+  Its own two blind spots were found by using it: workspace imports and Astro frontmatter.
+  Both were the checker's gap presented as the repository's defect.
+
+DISPOSITIONS: CLOSED 1 | WIRE 2 | STRUCTURALLY-BLOCKED 1 | OWNER 6
+
+REFUTERS: 1 dispatched, 1 UPHELD — with three defects found inside the upheld claim, all
+  fixed this pass. §9.5's self-refuter still carried, sixth pass.
+
+VERIFICATION:
+  gate-suite.mjs            exit 0   SUITE GREEN, 2245 passed, 0 failed
+  gate-typecheck.mjs        exit 0   TYPECHECK CLEAN
+  check-deadends.mjs --gate exit 0   ALL DISPOSITIONED, 3 entries
+  check-escape-hatches.mjs  exit 0   CLEAN, 426 files
+  gate-check.mjs --lint     exit 0   WELL-FORMED, 37 gates
+  neurons spent 0
+
+DEPLOYED: not deployed. §12.6 blocks it while check-offer is red — OH-1 and OH-2.
+
+NOT DONE:
+  §6.2 back-fill | 31 gates without a falsification record | SCHEDULED pass 7
+  §6.5 check-backlog, §6.7 check-dispositions, §6.9 check-pixels | SCHEDULED pass 7
+  §9.5 self-refuter | carried six passes | SCHEDULED pass 7
+  OH-6 | the duplicated pixel metric | SCHEDULED pass 7
+  the panel is display-only | the critic's confirmed defects reach the screen and influence
+    nothing the agent does; session.ts's retry loop reads lastCritique, never the panel | SCHEDULED pass 7
+
+NUMBERS CORRECTED: gates 36 -> 37. Suite 2230 -> 2245. Roblox default lighting 2/14 -> 3/14.5.
+
+SELF-REFUTER: still not dispatched. The sentence I expect it to find is "dead code is found
+  by command": true, and misleading, because the checker's exception list now has ten entries
+  and every one of them is a place it does not look. The denominator is 153 of 426 tracked
+  source files.
+
+NEXT: §6.2 back-fill, starting with the gates most likely to survive their falsification —
+  those are the ones whose subject has drifted.
