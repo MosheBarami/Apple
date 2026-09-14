@@ -302,7 +302,10 @@ if (passLog) {
   const records = passLog.split(/^PASS \d+/m).slice(1);
   const lastThree = records.slice(-3);
   if (lastThree.length === 3) {
-    const idsIn = (rec) => new Set([...rec.matchAll(/\b(w\d+|G[\w-]+|OH-\d+)\b/g)].map((m) => m[1]));
+    // A REAL gate id, not anything starting with G. `G[\w-]+` matched the word GREEN in
+    // "SUITE GREEN" and reported the suite passing three passes running as a stall — a detector
+    // that fires on its own success message is worse than one that does not fire at all.
+    const idsIn = (rec) => new Set([...rec.matchAll(/\b(w\d+|G\d+|G-[A-Z]+-\d+|OH-\d+)\b/g)].map((m) => m[1]));
     const [a, b, c] = lastThree.map(idsIn);
     for (const id of a) {
       if (b.has(id) && c.has(id)) {
