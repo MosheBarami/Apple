@@ -840,3 +840,41 @@ test('a browser gate\'s output reproduces across runs', () => {
   const c = normalise('53 passed (12.8s)\nserved on http://localhost:60706/', '/x');
   assert.notEqual(a, c, 'a different test count is a real difference and must not be normalised away');
 });
+
+test('a record is rejected when the GATE\'S OWN dependencies were uncommitted', () => {
+  // `tree-clean` is a property of the whole checkout, and three sessions share this one. With
+  // anybody mid-edit anywhere, no gate could record clean evidence — which is how two gates came
+  // to be recorded dirty under a commit that said "on a clean tree", a thing §12.2 names under
+  // FAKING PROOF.
+  //
+  // The question the guard actually asks is narrower: was the code this gate MEASURED in the state
+  // the record claims? Dirt in a package the gate never touches cannot change its output.
+  const dirty = check(
+    gate('G1', 'echo hi', 'hi', 'x')
+    + falsified
+    + `  EVIDENCE: exit=0; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=dead; tree-clean=no; deps-clean=no; EXPECT=matched; output-sha256=${'0'.repeat(64)}; output-bytes=1; node=v1; luau=ABSENT; playwright=ABSENT; deps=1; deps-sha=abc; at=2020-01-01T00:00:00.000Z\n`,
+    ['--reverify'],
+  );
+  assert.match(dirty.out, /own dependencies were uncommitted/);
+  assert.match(dirty.ledger(), /- \[ \] G1:/, 'and the gate must be marked unmet in the file');
+
+  // THE POINT OF THE CHANGE: a dirty tree with CLEAN dependencies is no longer grounds to reject.
+  const wider = check(
+    gate('G1', 'echo hi', 'hi', 'x')
+    + falsified
+    + `  EVIDENCE: exit=0; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=dead; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=${'0'.repeat(64)}; output-bytes=1; node=v1; luau=ABSENT; playwright=ABSENT; deps=1; deps-sha=abc; at=2020-01-01T00:00:00.000Z\n`,
+    ['--reverify'],
+  );
+  assert.doesNotMatch(wider.out, /dirty tree/, wider.out);
+  assert.doesNotMatch(wider.out, /own dependencies were uncommitted/, wider.out);
+
+  // AND THE OLD RULE STILL BINDS RECORDS THAT PREDATE THE FIELD. Softening it retroactively would
+  // silently bless the two records this rule was added because of.
+  const legacy = check(
+    gate('G1', 'echo hi', 'hi', 'x')
+    + falsified
+    + `  EVIDENCE: exit=0; shell=/bin/sh; cwd=/x; path=x/0 entries; git-sha=dead; tree-clean=no; EXPECT=matched; output-sha256=${'0'.repeat(64)}; output-bytes=1; node=v1; luau=ABSENT; playwright=ABSENT; deps=1; deps-sha=abc; at=2020-01-01T00:00:00.000Z\n`,
+    ['--reverify'],
+  );
+  assert.match(legacy.out, /recorded against a dirty tree/);
+});

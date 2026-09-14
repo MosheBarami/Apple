@@ -302,6 +302,26 @@ const git = (cmd, fallback) => {
 
 const HEAD = git('rev-parse --short HEAD', 'unknown');
 const DIRTY = git('status --porcelain', '') !== '';
+
+/**
+ * Whether any file THIS GATE DEPENDS ON is uncommitted.
+ *
+ * `tree-clean` is a property of the whole checkout, and three sessions share this one. With
+ * anybody mid-edit anywhere, no gate could record clean evidence — so two gates were recorded
+ * dirty under a commit that said otherwise, and §12.2 names that under FAKING PROOF.
+ *
+ * The question the guard is actually asking is narrower: was the code this gate MEASURED in the
+ * state the record claims? Dirt in a package the gate never touches cannot change its output. Dirt
+ * in its own dependency set can, and that is the only dirt that invalidates the measurement.
+ *
+ * Recorded ALONGSIDE tree-clean rather than instead of it, because the wider fact is still worth
+ * a reader's attention — it is just not grounds to reject the evidence.
+ */
+function depsDirty(deps) {
+  if (!deps?.length) return null;
+  const out = git(`status --porcelain -- ${deps.map((d) => `'${d}'`).join(' ')}`, '');
+  return out !== '';
+}
 const PATH_PARTS = (process.env.PATH ?? '').split(':').filter(Boolean);
 const PATH_FP = `${sha256(PATH_PARTS.join(':')).slice(0, 12)}/${PATH_PARTS.length} entries`;
 
@@ -458,7 +478,7 @@ function writeDeps(id, deps) {
 
 const recordLine = (kind, r, extra = '') =>
   `  ${kind}: exit=${r.exit}; shell=${SHELL}; cwd=${ROOT}; path=${PATH_FP}; ` +
-  `git-sha=${HEAD}; tree-clean=${DIRTY ? 'no' : 'yes'}; ${extra}` +
+  `git-sha=${HEAD}; tree-clean=${DIRTY ? 'no' : 'yes'}; ${(() => { const d = depsDirty(r.deps); return d === null ? '' : `deps-clean=${d ? 'no' : 'yes'}; `; })()}${extra}` +
   `EXPECT=${r.matched ? 'matched' : 'unmatched'}; ` +
   `output-sha256=${sha256(normaliseOutput(r.output))}; output-bytes=${Buffer.byteLength(r.output)}; ` +
   `node=${TOOLS.node}; luau=${TOOLS.luau}; playwright=${TOOLS.playwright}; ` +
@@ -690,7 +710,15 @@ if (REVERIFY) {
     // record cannot be rewritten, so a gate whose evidence was once taken on a dirty tree can never
     // be refreshed by any number of clean runs. Deleting the line is the escape, and a quarantine
     // that does not name its own remedy is a dead end wearing the costume of a check.
-    if (evLine && evLine.includes('tree-clean=no')) {
+    // A record is rejected when the gate's OWN dependencies were uncommitted, not when anything
+    // anywhere was. Three sessions share this checkout; the wider fact is recorded for a reader and
+    // is not grounds to reject a measurement it cannot have affected.
+    //
+    // A record predating deps-clean is judged on tree-clean, as it always was — softening that
+    // retroactively would silently bless the two records this rule was added because of.
+    if (evLine && /deps-clean=no/.test(evLine)) {
+      reasons.push('the gate\'s own dependencies were uncommitted when this was recorded; delete the stale EVIDENCE line to re-baseline deliberately');
+    } else if (evLine && !/deps-clean=/.test(evLine) && evLine.includes('tree-clean=no')) {
       reasons.push('recorded against a dirty tree; delete the stale EVIDENCE line to re-baseline deliberately');
     }
 
