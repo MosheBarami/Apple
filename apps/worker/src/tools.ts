@@ -1571,10 +1571,27 @@ export const TOOLS: Record<string, ToolImpl> = {
 
       // READ BEFORE WRITING. `edit_script` with a `source` REPLACES the script, so installing over
       // an existing one is destructive — and this tool is the kind a model calls again when it is
-      // unsure, which is exactly when the user has already edited what is there. `read_script`
-      // errors when the path resolves to nothing, so its failure is the "safe to create" signal.
+      // unsure, which is exactly when the user has already edited what is there.
+      //
+      // NOT EVERY FAILED READ MEANS THERE IS NOTHING THERE. Treating any error as "safe to create"
+      // turned this guard into the overwrite it exists to prevent: a plugin that timed out, a
+      // Studio that disconnected mid-call, or a path that resolves to a Folder all produce an
+      // error, and all of them would have been read as absence and then written over. Only the
+      // resolver's own not-found is absence; anything else is a failure to observe, and a failure
+      // to observe must not be rendered as an observation.
       const existing = await op(ctx, { op: 'read_script', path });
-      const found = existing && typeof existing === 'object' && !('error' in (existing as Record<string, unknown>));
+      const readError = existing && typeof existing === 'object' && 'error' in (existing as Record<string, unknown>)
+        ? String((existing as { error: unknown }).error)
+        : null;
+      const absent = readError !== null && /\bnot found\b/i.test(readError);
+      if (readError !== null && !absent) {
+        return {
+          error:
+            `could not check ${path} before installing: ${readError}. Nothing was written. ` +
+            `If a script is already there, installing would replace it, so this stops rather than guessing.`,
+        };
+      }
+      const found = readError === null;
       if (found) {
         const current = String((existing as { source?: unknown }).source ?? '');
         // Identical is a no-op, not a refusal: re-asking for a module already installed should be

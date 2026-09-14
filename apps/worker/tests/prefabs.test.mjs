@@ -52,8 +52,17 @@ function syntaxErrors(source, tag) {
  * A Studio stub whose `read_script` answers separately, because install_module reads before it
  * writes. `existing` of null means "no script at that path", which the plugin signals by erroring —
  * Paths.resolve throws rather than returning nil.
+ *
+ * THE ABSENCE MESSAGE IS COPIED FROM THE PLUGIN, not invented. It used to read
+ * "<path> is not a script", which is a real error the plugin can produce but is NOT the one it
+ * produces for a missing script — that comes from Paths.resolve and says "not found: <path>
+ * (missing "Name" at depth N)". The difference matters now that the tool distinguishes "there is
+ * nothing there" from "I could not tell", because a stub that spells absence as some other failure
+ * proves the wrong branch. `readError` overrides it so the other failures can be tested too.
  */
-function stubCtx({ existing = null, data = { ok: true } } = {}) {
+const NOT_FOUND = (path) => `not found: ${path} (missing "Receipts" at depth 2)`;
+
+function stubCtx({ existing = null, data = { ok: true }, readError = null } = {}) {
   const ops = [];
   return {
     ops,
@@ -64,8 +73,9 @@ function stubCtx({ existing = null, data = { ok: true } } = {}) {
       execStudioOp: async (o) => {
         ops.push(o);
         if (o.op === 'read_script') {
+          if (readError !== null) return { ok: false, error: readError };
           return existing === null
-            ? { ok: false, error: `${o.path} is not a script` }
+            ? { ok: false, error: NOT_FOUND(o.path) }
             : { ok: true, data: { path: o.path, source: existing } };
         }
         return { ok: true, data };
@@ -403,4 +413,50 @@ test('an already-installed module still reports its wiring', async () => {
   const res = await T.TOOLS.install_module.run(ctx, { module: 'currency' });
   assert.equal(res.alreadyInstalled, 'Currency');
   assert.deepEqual(res.needs, ['profile_store']);
+});
+
+/**
+ * A FAILED READ IS NOT AN EMPTY PATH.
+ *
+ * install_module reads before it writes because edit_script with a source REPLACES, and this is a
+ * tool a model calls again whenever it is unsure — which is exactly when the user has already
+ * edited what is there. The guard treated ANY error from that read as "nothing there, safe to
+ * create", so a plugin that timed out, a Studio that disconnected mid-call, or a path that resolves
+ * to a Folder all read as absence and were then written over. The protection became the overwrite.
+ *
+ * Only the resolver's own not-found is absence. Everything else is a failure to observe, and the
+ * tool stops rather than guessing.
+ */
+test('A READ THAT TIMED OUT MUST NOT BE TREATED AS AN EMPTY PATH', async () => {
+  const { ctx, ops } = stubCtx({ readError: 'studio did not respond within 30000ms' });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'receipts' });
+  assert.ok(res.error, 'it must refuse');
+  assert.match(res.error, /could not check/i);
+  assert.match(res.error, /did not respond/, 'and pass the real reason through');
+  assert.deepEqual(writes(ops), [], 'AND MUST NOT HAVE WRITTEN ANYTHING');
+});
+
+test('a path that resolves to something that is not a script is refused, not overwritten', async () => {
+  const { ctx, ops } = stubCtx({ readError: 'game.ServerScriptService.Receipts is not a script' });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'receipts' });
+  assert.ok(res.error, 'it must refuse');
+  assert.deepEqual(writes(ops), [], 'nothing written over a Folder of the same name');
+});
+
+test('a disconnected Studio is refused even with replace: true', async () => {
+  // replace: true is permission to overwrite a script the user has seen — not permission to write
+  // blind into a Studio that is not answering.
+  const { ctx, ops } = stubCtx({ readError: 'not connected' });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'receipts', replace: true });
+  assert.ok(res.error, 'it must still refuse');
+  assert.deepEqual(writes(ops), [], 'nothing written');
+});
+
+test('a genuine not-found still installs, which is the whole point of telling them apart', async () => {
+  const { ctx, ops } = stubCtx({ existing: null });
+  const res = await T.TOOLS.install_module.run(ctx, { module: 'receipts' });
+  assert.equal(res.error, undefined, JSON.stringify(res));
+  assert.equal(res.installed, 'Receipts');
+  assert.equal(writes(ops).length, 1, 'exactly one write');
+  assert.equal(writes(ops)[0].op, 'edit_script');
 });
