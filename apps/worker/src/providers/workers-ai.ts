@@ -26,20 +26,76 @@ import {
   errorMessage,
 } from './types';
 
-/** The production model. Every DEFAULT_MODELS key points at this id. */
+/**
+ * RETAINED FOR PRICING AND HISTORY, NOT IN USE. GLM-5.3-flash was the single production model and
+ * was the best one available: 1M context, tools and vision together, cheapest per token. It is on
+ * Cloudflare's paid-billing-required list and returns HTTP 403 / error 5035 on the Workers Free
+ * plan, so it cannot serve a product that must cost nothing recurring. Kept in the catalogue
+ * because its price row still needs to resolve for any historical usage record.
+ */
 export const GLM_MODEL_ID = '@cf/zai-org/glm-5.3-flash';
 
+/**
+ * The catalogue must list every id DEFAULT_MODELS can point at. `modelById()` returns undefined for
+ * anything missing here; the gateway then falls back to `neuronsFor()` so billing still settles
+ * correctly, but the capability table and the public readiness contract would describe a model the
+ * product no longer runs. Catalogue and gateway.ts DEFAULT_MODELS move together.
+ *
+ * Context windows and capability flags below are from Cloudflare's model catalogue, checked
+ * 2026-09-14. Costs mirror MODEL_PRICES in pricing.ts — if one moves, move both.
+ */
 export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
   {
+    // Authoring flagship for Agent and Super Agent. 97.6 overall on the repo's own 56-task Roblox
+    // eval, 100.0 on api-knowledge and ui-implementation (docs/evals/FINDINGS.md).
+    id: '@cf/openai/gpt-oss-120b',
+    displayName: 'GPT-OSS 120B',
+    provider: 'workers-ai',
+    supportsTools: true,
+    supportsVision: false,
+    contextWindow: 128_000,
+    maxOutput: 6_500,
+    inputCostPer1M: 0.35,
+    outputCostPer1M: 0.75,
+    unverifiedFields: [],
+  },
+  {
+    // Plan mode and housekeeping: cheap, tool-capable, and structurally unable to mutate anything
+    // in Plan mode (see router.ts).
+    id: '@cf/openai/gpt-oss-20b',
+    displayName: 'GPT-OSS 20B',
+    provider: 'workers-ai',
+    supportsTools: true,
+    supportsVision: false,
+    contextWindow: 128_000,
+    maxOutput: 2_000,
+    inputCostPer1M: 0.2,
+    outputCostPer1M: 0.3,
+    unverifiedFields: [],
+  },
+  {
+    // The ONLY free-eligible model here that accepts image input. vision.ts sends real pixels and
+    // instructs the model to judge only what it can see, so this entry existing and being
+    // vision-capable is what keeps the visual critic visual.
+    id: '@cf/meta/llama-3.2-11b-vision-instruct',
+    displayName: 'Llama 3.2 11B Vision',
+    provider: 'workers-ai',
+    supportsTools: false,
+    supportsVision: true,
+    contextWindow: 128_000,
+    maxOutput: 4_000,
+    inputCostPer1M: 0.049,
+    outputCostPer1M: 0.68,
+    unverifiedFields: [],
+  },
+  {
     id: GLM_MODEL_ID,
-    displayName: 'GLM-5.3 Flash',
+    displayName: 'GLM-5.3 Flash (paid plan only)',
     provider: 'workers-ai',
     supportsTools: true,
     supportsVision: true,
-    // 1M context and the per-call output ceiling Golem actually configures (rune = 6500).
     contextWindow: 1_048_576,
     maxOutput: 6_500,
-    // Matches MODEL_PRICES['@cf/zai-org/glm-5.3-flash'] in pricing.ts. If one moves, move both.
     inputCostPer1M: 0.15,
     outputCostPer1M: 0.5,
     unverifiedFields: [],

@@ -81,17 +81,55 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // ceiling is what makes the quality bar expressible. The bill is bounded by the daily/monthly
   // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
   // costs a short step.
-  clay: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 2000, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
-  stone: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 5600, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
-  rune: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1048576, temperature: 0.25, reasoningEffort: 'low' },
-  // Housekeeping and vision run on the same model: it is multimodal, so a separate vision
-  // model is no longer needed, and one model means one behaviour to reason about.
-  memory: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 800, ctx: 1048576, temperature: 0.2, reasoningEffort: 'low' },
-  // Vision runs the critique loops, which return structured JSON and need room for it. The eval
-  // harness asks for 20 scored dimensions each with a justification, which is the largest response
-  // in the product; at 2,000 tokens it arrived truncated. 4,000 output tokens is ~182 neurons,
-  // still far inside the 1,200-neuron per-request ceiling.
-  vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1048576, temperature: 0.3, reasoningEffort: 'low' },
+  // -------------------------------------------------------------------------
+  // WHY THIS IS NO LONGER ONE MODEL.
+  //
+  // Every mode used to resolve to `@cf/zai-org/glm-5.3-flash`, which was the right call while it
+  // was available: 1M context, native tools AND vision in one model, and the cheapest per token.
+  // It is on Cloudflare's paid-billing-required list, and on the Workers Free plan every call to
+  // it returns HTTP 403 / error 5035. A product that must cost nothing recurring cannot be built
+  // on a model that cannot run without a paid plan, so it had to go.
+  //
+  // Nothing free-eligible replaces it one-for-one, because NO free-eligible model does tools AND
+  // vision. The single model necessarily becomes three, and the context window drops 1,048,576 ->
+  // 128,000. That 8x cut is the real cost of this move and it lands on scene context, not on
+  // conversation: targeted retrieval was already required at 1M, it is simply no longer optional.
+  //
+  // Model choice is the repo's own measurement (docs/evals/FINDINGS.md, 56 Roblox tasks), not
+  // vendor copy:
+  //   gpt-oss-120b   97.6 overall, 100.0 on api-knowledge and ui-implementation
+  //   qwen3-30b-a3b  88.2 overall, and 67.9 api-knowledge / 66.7 ui-implementation
+  // qwen3-30b is three times cheaper per input token and would buy more builds per free day, and
+  // it is still NOT used for authoring — the same findings record that routing a post-inspection
+  // step to it made it "read the project tree and declare the task finished instead of building
+  // it". A model with a measured tendency to report work it did not do is disqualified here
+  // specifically, because false completion is the single failure this product exists to prevent.
+  // Its 32.8K context rules it out for build steps regardless.
+  // -------------------------------------------------------------------------
+
+  // Plan mode: read-only inspection and explanation. gpt-oss-20b is the cheap tier, and clay
+  // cannot mutate anything (see router.ts), so the ceiling on a wrong answer here is a bad
+  // suggestion rather than a bad edit.
+  clay: { id: '@cf/openai/gpt-oss-20b', nativeTools: true, maxTokens: 2000, ctx: 128000, temperature: 0.3, reasoningEffort: 'low' },
+
+  // Agent and Super Agent author Luau and build UI — exactly the two dimensions where the
+  // measured gap between the models is real (100.0 vs 67.9 / 66.7). They stay on the flagship.
+  stone: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 5600, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
+  rune: { id: '@cf/openai/gpt-oss-120b', nativeTools: true, maxTokens: 6500, ctx: 128000, temperature: 0.25, reasoningEffort: 'low' },
+
+  // Housekeeping: summarisation and memory maintenance, no tools, short outputs.
+  memory: { id: '@cf/openai/gpt-oss-20b', nativeTools: false, maxTokens: 800, ctx: 128000, temperature: 0.2, reasoningEffort: 'low' },
+
+  // VISION IS NOW A DIFFERENT MODEL, AND THAT IS NOT COSMETIC. The critic in vision.ts sends real
+  // pixels as image_url data URLs and is instructed to judge only what it can see; if this entry
+  // points at a text-only model the critique silently stops being visual while still returning a
+  // confident score — which is precisely the "green check over a failed build" failure mode.
+  // llama-3.2-11b-vision-instruct is the only free-eligible model here that accepts image input.
+  // It does NOT support native tool calling, which is fine: this entry already ran with
+  // nativeTools: false, because the critique returns structured JSON rather than calling tools.
+  // 4,000 output tokens is sized for the 20-dimension scored critique, which arrived truncated
+  // at 2,000.
+  vision: { id: '@cf/meta/llama-3.2-11b-vision-instruct', nativeTools: false, maxTokens: 4000, ctx: 128000, temperature: 0.3, reasoningEffort: 'low' },
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
