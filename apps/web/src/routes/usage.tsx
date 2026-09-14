@@ -3,29 +3,36 @@
 // Every number on this page comes from the live quota or from @golem/shared.
 // Sparks are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
+import { useQuery } from '@tanstack/react-query';
+import { PlanLadder } from '../components/plans';
+import { meterView } from '../components/usage-meter-model';
+import { PRODUCT_MODE_INFO, isPlanId, type ProductMode } from '@golem/shared';
 import { fetchMe, fetchUsage, type UsageDay } from '../lib/api';
-import { MOCK_MODE } from '../lib/mock';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
-import { useToast } from '../components/toast';
-import { countdownTo } from '../lib/format';
 
 const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 
-function SparksRing({ remaining, daily }: { remaining: number; daily: number }) {
+/**
+ * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
+ *
+ * It used to be handed `sparksRemaining`, which is allowance plus purchased credits, and divide it
+ * by the daily allowance. A user with 1,440 credits on the free plan saw a full ring captioned
+ * "1500 of 60", and an aria-label telling them that was what remained TODAY. Both numbers were
+ * real and the sentence they formed was not: credits are not today's, they do not reset, and
+ * spending them is a different decision from spending an allowance. This is the same rule
+ * usage-meter-model.ts is built around, applied to the surface that states it in the largest type.
+ */
+function SparksRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const frac = daily > 0 ? Math.max(0, Math.min(1, remaining / daily)) : 0;
+  const window = period === 'month' ? 'this month' : 'today';
   return (
     <svg
       width="140"
       height="140"
       viewBox="0 0 140 140"
       role="img"
-      aria-label={`${remaining} of ${daily} Sparks remaining today`}
+      aria-label={`${remaining} of ${daily} Sparks of allowance remaining ${window}`}
     >
       <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="9" />
       <circle
@@ -111,77 +118,28 @@ function UsageBars({ days }: { days: UsageDay[] }) {
   );
 }
 
-const WAITLIST_KEY = 'apple-waitlist-joined';
-
-function PlanCard({ plan, dailyLimit, monthlyLimit }: { plan: string; dailyLimit: number; monthlyLimit: number }) {
-  const { session } = useAuth();
-  const { toast } = useToast();
-  const [joined, setJoined] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(WAITLIST_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
-
-  const join = useMutation({
-    mutationFn: async () => {
-      if (MOCK_MODE) return;
-      const email = session?.user.email;
-      if (!email) throw new Error('No email on file');
-      const { error } = await supabase.from('waitlist').insert({ email, owner_id: session.user.id });
-      // unique violation → already on the list; treat as success
-      if (error && error.code !== '23505') throw new Error(error.message);
-    },
-    onSuccess: () => {
-      setJoined(true);
-      try {
-        localStorage.setItem(WAITLIST_KEY, '1');
-      } catch {
-        /* private mode */
-      }
-      toast("You're on the Pro waitlist — we'll email you.", 'success');
-    },
-    onError: (e: Error) => toast(`Couldn't join the waitlist: ${e.message}`, 'error'),
-  });
-
-  return (
-    <div className="card plan-card">
-      <div className="plan-row">
-        <div>
-          <h2 className="plan-name">
-            {plan === 'pro' ? 'Pro' : 'Free'} plan
-            {plan === 'pro' && <span className="pill pill-live plan-pill">active</span>}
-          </h2>
-          <p className="muted">
-            {dailyLimit} Sparks a day, {monthlyLimit.toLocaleString()} a month. Whichever limit binds first applies.
-          </p>
-        </div>
-      </div>
-      {plan !== 'pro' && (
-        <div className="plan-upsell">
-          <div>
-            <strong>Apple Pro</strong>
-            <p className="muted">A much larger daily quota, priority queue, more checkpoints. Launching soon.</p>
-          </div>
-          {joined ? (
-            <span className="pill pill-live">
-              <span className="pill-dot" aria-hidden="true" /> On the waitlist
-            </span>
-          ) : (
-            <button type="button" className="btn btn-primary" onClick={() => join.mutate()} disabled={join.isPending}>
-              {join.isPending ? 'Joining…' : 'Join the waitlist'}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+/*
+ * THE PRO WAITLIST LIVED HERE.
+ *
+ * It offered a signed-in user the chance to join a list for a plan the server was already
+ * enforcing — PLAN_LIMITS has had four tiers for some time, and QuotaDO applies them. A page that
+ * contradicts the thing enforcing it is not merely incomplete; plans.tsx was written to replace
+ * this and then never imported anywhere, so the contradiction stayed on screen.
+ *
+ * PlanLadder reads PLAN_LIMITS and PLAN_COPY directly, so it cannot drift from the enforcement
+ * again. The waitlist ROUTE is left alone — the marketing site still uses it for people who have
+ * not signed up at all, which is the audience it was actually for.
+ */
 
 export function UsagePage() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const usage = useQuery({ queryKey: ['usage'], queryFn: fetchUsage });
+
+  // ONE MODEL FOR BOTH SURFACES. The rail's meter and this page describe the same two balances, and
+  // two independent readings of one payload is how they come to disagree — which is the bug this
+  // page already had against the server it is reporting on. meterView decides which limit is
+  // binding, keeps allowance and credits apart, and is tested on its own.
+  const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending });
 
   return (
     <div className="page">
@@ -213,9 +171,23 @@ export function UsagePage() {
       {me.isSuccess && (
         <div className="usage-grid">
           <div className="card sparks-card">
-            <h2>Today&rsquo;s Sparks</h2>
-            <SparksRing remaining={me.data.quota.sparksRemaining} daily={me.data.quota.sparksDaily} />
-            <p className="muted">Resets in {countdownTo(me.data.quota.resetsAtIso) ?? 'a moment'}</p>
+            <h2>{view.period === 'month' ? 'This month\u2019s Sparks' : 'Today\u2019s Sparks'}</h2>
+            <SparksRing
+              remaining={view.allowanceRemaining}
+              daily={view.allowanceTotal}
+              period={view.period}
+            />
+            {/* The purchased balance, beside the allowance and never inside it. Stated even at zero
+                on a plan that has bought some before would be noise, so it appears only when there
+                is one — but when there is one it must be here, or the ring understates what the
+                user can actually spend. */}
+            {view.credits > 0 && (
+              <p className="sparks-credits">
+                <strong>{view.credits.toLocaleString()}</strong> purchased credits, which do not expire
+                <span className="muted"> — spent only once the allowance is gone</span>
+              </p>
+            )}
+            <p className="muted">{view.resetsIn ?? 'Resets in a moment'}</p>
             <ul className="mode-cost-list">
               {MODES.map((m) => (
                 <li key={m} className="mode-cost">
@@ -251,12 +223,22 @@ export function UsagePage() {
               ))}
           </div>
 
-          <PlanCard
-            plan={me.data.quota.plan}
-            dailyLimit={me.data.quota.sparksDaily}
-            monthlyLimit={me.data.quota.sparksMonthly}
-          />
         </div>
+      )}
+
+      {me.isSuccess && (
+        <section className="plans-section" aria-labelledby="plans-heading">
+          <div className="page-head">
+            <div>
+              <h2 className="page-title" id="plans-heading">Plans</h2>
+              <p className="page-sub">
+                Every tier below is one the service already enforces. What you see here is the same
+                table that decides whether a run is allowed.
+              </p>
+            </div>
+          </div>
+          <PlanLadder current={isPlanId(me.data.quota.plan) ? me.data.quota.plan : 'free'} />
+        </section>
       )}
     </div>
   );

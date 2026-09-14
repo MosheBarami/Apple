@@ -4395,43 +4395,180 @@ textarea {
   transition: stroke-dasharray var(--dur-slow) var(--ease-out);
 }
 
-.plan-card {
-  grid-column: 1 / -1;
+/* The plan ladder.
+ *
+ * Four tiers read straight from PLAN_LIMITS, so this has to stay legible when a tier is added and
+ * when one is the user's own. The current plan is marked by a warmer surface and a brighter hairline
+ * rather than by scale — a tier that grows when selected reflows the row every time the plan
+ * changes, and the ladder is something people compare across, not a card that wants attention.
+ */
+.plans-section {
+  margin-top: 2rem;
 }
 
-.plan-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+.plans {
+  display: grid;
+  /* 12rem, not 15: at 15 the four tiers fit three to a row on a normal window and leave the fourth
+     sitting alone underneath, which reads as an afterthought rather than a tier. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
   gap: 1rem;
-  flex-wrap: wrap;
+  align-items: stretch;
 }
 
-.plan-name {
+.plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  background: linear-gradient(172deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-1), var(--inset);
+  padding: 1.15rem 1.25rem;
+}
+
+/* The one they are on. A rail on the card's leading edge rather than a full border, so the row
+ * still reads as a row.
+ *
+ * Drawn as a positioned element rather than an inset box-shadow: box-shadow offsets are physical,
+ * so `inset 3px 0 0` puts the rail on the left in every language, and this app renders RTL. A
+ * pseudo-element takes inset-inline-start and follows the writing direction. It also costs no
+ * layout — a border-inline-start would change this card's inner width against its neighbours'. */
+.plan.is-current {
+  border-color: var(--accent);
+}
+
+.plan.is-current::before {
+  content: "";
+  position: absolute;
+  inset-block: -1px;
+  inset-inline-start: -1px;
+  width: 3px;
+  border-start-start-radius: var(--r-lg);
+  border-end-start-radius: var(--r-lg);
+  background: var(--accent);
+}
+
+.plan__head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
-  margin: 0 0 0.2rem;
+  min-height: 1.6rem;
 }
 
-.plan-pill {
-  font-size: 0.7rem;
+.plan__name {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
 }
 
-.plan-upsell {
+.plan__price {
+  margin: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--hairline);
+  align-items: baseline;
+  gap: 0.3rem;
 }
 
-.plan-upsell p {
-  margin: 0.15rem 0 0;
+.plan__amount {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Let's talk" is a sentence, not a figure, and setting it at the price size makes the row of
+   numbers stop scanning as numbers. */
+.plan__amount--talk {
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.plan__per {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.plan__blurb {
+  margin: 0;
   font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Builds first, Sparks underneath: "6,000 Sparks a month" means nothing on first read. */
+.plan__allowance {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0;
+  border-block: 1px solid var(--hairline);
+}
+
+.plan__allowance strong {
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan__allowance-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.plan__list li {
+  padding-inline-start: 1rem;
+  position: relative;
+}
+
+.plan__list li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.52em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+/* Pushed to the bottom so every tier's control sits on one line however long its list is. */
+.plan__action {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.plan__action .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.plan__on,
+.plan__soon {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.45rem 0;
+}
+
+/* Purchased credits, beside the allowance ring and never inside it. */
+.sparks-credits {
+  margin: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .mode-cost-list {
