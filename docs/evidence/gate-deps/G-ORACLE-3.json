@@ -3,5 +3,6 @@
   "packages/shared/src/index.ts",
   "scripts/assert-tests.mjs",
   "scripts/check-offer.mjs",
+  "scripts/lib/offer-rules.mjs",
   "tests/check-offer.test.mjs"
 ]
