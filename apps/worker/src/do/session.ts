@@ -155,6 +155,47 @@ const MUTATING_TOOLS = new Set([
 const MAX_NUDGES = 2;
 /** Output token budget per step before the effort multiplier — matches the gateway model config. */
 const MODE_BASE_TOKENS: Record<GolemMode, number> = { clay: 1600, stone: 4400, rune: 5200 };
+
+/**
+ * The runtime mode allowlist. `GolemMode` is a COMPILE-TIME type and `JSON.parse(raw) as ClientMsg`
+ * is an assertion, not a check — so before this, whatever the client put in `mode` was used as a
+ * key directly.
+ *
+ * WHAT THAT COST, measured by driving webSocketMessage:
+ *
+ *   mode=stone      maxSteps=16         the ceiling stops the loop
+ *   mode=memory     maxSteps=undefined  `9999 > undefined` is false — NO CEILING, EVER
+ *   mode=vision     maxSteps=undefined  same
+ *   mode=nonsense   maxSteps=undefined  same
+ *   mode=__proto__  maxSteps={}         Object.prototype, and `9999 > {}` is false too
+ *
+ * An agent run was created every time. `memory` and `vision` are the sharp cases because they are
+ * real DEFAULT_MODELS keys, so gateway.ts's `if (!cfg) throw` — the only thing that rejected a bad
+ * mode — does not fire for them either, and the token arithmetic goes NaN through a chain of `>`
+ * comparisons that all fail open. But the step ceiling is set HERE, before the gateway is ever
+ * consulted, so ANY unrecognised mode removes it. An unbounded agent loop is a larger exposure
+ * than any single under-reserved call.
+ *
+ * MEMBERSHIP IS CHECKED AGAINST BOTH TABLES, deliberately. The bug was two `Record<GolemMode, T>`
+ * tables with different key sets — a compile-time promise that nothing keeps at runtime. Requiring
+ * a mode to appear in both means that if they ever drift again the mode is REFUSED rather than
+ * half-configured, so the next drift is a visible error instead of a missing ceiling.
+ *
+ * hasOwnProperty, not `in` and not truthiness: `'__proto__' in STEP_LIMITS` is true.
+ *
+ * THE TWO-TABLE CHECK CANNOT BE FALSIFIED TODAY and should not be mistaken for a tested clause.
+ * The tables currently hold the same three keys, so dropping the MODE_BASE_TOKENS half turns
+ * nothing red. It is kept because it is the drift itself that is being guarded against: the day
+ * someone adds a fourth mode to one table and not the other, this refuses it instead of handing it
+ * an undefined ceiling. Falsifiable only by a future that has not happened yet.
+ */
+function asGolemMode(x: unknown): GolemMode | null {
+  if (typeof x !== 'string') return null;
+  const inBoth =
+    Object.prototype.hasOwnProperty.call(STEP_LIMITS, x) &&
+    Object.prototype.hasOwnProperty.call(MODE_BASE_TOKENS, x);
+  return inBoth ? (x as GolemMode) : null;
+}
 const STEP_STALE_MS = 180_000;
 
 // ---------------------------------------------------------------------------------------------
@@ -684,8 +725,12 @@ export class SessionDO extends DurableObject<Env> {
       // `effort` pins the reasoning tier for the whole run, overriding the adaptive policy. It
       // exists so the policy itself can be A/B tested against real builds rather than against
       // text-only probes — the measurement that missed the tool-calling regression.
-      await this.startRun(bind, text.slice(0, 8000), mode ?? 'stone', effort);
-      return json({ ok: true, started: true, mode: mode ?? 'stone', effort: effort ?? 'adaptive' });
+      // `mode ?? 'stone'` defended undefined and null only — never a hostile string, and this path
+      // sets the same step ceiling the socket path does.
+      const runMode = mode === undefined || mode === null ? 'stone' : asGolemMode(mode);
+      if (!runMode) return json({ ok: false, error: `unknown mode` }, 400);
+      await this.startRun(bind, text.slice(0, 8000), runMode, effort);
+      return json({ ok: true, started: true, mode: runMode, effort: effort ?? 'adaptive' });
     }
 
     // Run one Studio op directly, with no agent loop and no inference. The visual eval harness
@@ -776,7 +821,16 @@ export class SessionDO extends DurableObject<Env> {
         ws.send(JSON.stringify({ type: 'run_state', run: await this.runSnapshot() } satisfies ServerMsg));
         return;
       case 'chat':
-        await this.startRun(bind, msg.text.slice(0, 8000), msg.mode);
+        {
+          const mode = asGolemMode(msg.mode);
+          if (!mode) {
+            // Refused by name. A `?? 'clay'` default here would accept a hostile value and run it
+            // quietly as something else, which is the same failure wearing a helpful face.
+            this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+            return;
+          }
+          await this.startRun(bind, msg.text.slice(0, 8000), mode);
+        }
         return;
       case 'edit_resend': {
         //[[ CORRECT AN EARLIER PROMPT AND RUN AGAIN FROM THERE.
@@ -831,7 +885,14 @@ export class SessionDO extends DurableObject<Env> {
         // server has deleted, and nothing distinguishes that stale view from a live one.
         this.broadcast({ type: 'history_truncated', fromMessageId: row.id, removed });
 
-        await this.startRun(bind, text, msg.mode);
+        {
+          const mode = asGolemMode(msg.mode);
+          if (!mode) {
+            this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
+            return;
+          }
+          await this.startRun(bind, text, mode);
+        }
         return;
       }
       case 'stop': {
