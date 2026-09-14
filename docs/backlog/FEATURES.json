@@ -4957,13 +4957,13 @@
           "id": "f-3639ed95",
           "name": "Dark mode",
           "status": "done",
-          "evidence": "apple-brand.css dark-native tokens"
+          "evidence": "apps/web/tests/contrast.test.mjs — asserts the docs site clears 4.5:1 in BOTH themes on every surface. (Was \"apple-brand.css dark-native tokens\"; that file was 101 lines nothing imported and is deleted.)"
         },
         {
           "id": "f-221577b2",
           "name": "Light mode",
           "status": "done",
-          "evidence": "global.css light palette, contrast-verified"
+          "evidence": "apps/web/tests/contrast.test.mjs — the light palette is measured on every surface, not asserted in prose."
         },
         {
           "id": "f-ab8f0545",
@@ -4975,7 +4975,7 @@
           "id": "f-86b16943",
           "name": "Brand theme",
           "status": "done",
-          "evidence": "apple-brand.css + site palettes measured from the mark; commit 7fb753a"
+          "evidence": "apps/web/tests/contrast.test.mjs — the palette is asserted, not described. (Was \"apple-brand.css + site palettes measured from the mark\"; apple-brand.css is deleted and the mark it sampled is the cancelled 3D render.)"
         },
         {
           "id": "f-d42753b4",
@@ -5077,19 +5077,19 @@
           "id": "f-c05bac25",
           "name": "Accessibility mode",
           "status": "done",
-          "evidence": "contrast suite asserts 4.5:1 on EVERY surface in both themes"
+          "evidence": "apps/web/tests/contrast.test.mjs — 4.5:1 on every surface in both themes, plus the landing ramp."
         },
         {
           "id": "f-2da084d7",
           "name": "High contrast",
           "status": "done",
-          "evidence": "ink 17.5:1, muted 7.9:1, faint 4.61:1 worst-case — all computed"
+          "evidence": "apps/web/tests/contrast.test.mjs — ratios are computed from the declared tokens rather than restated here, so they cannot go stale."
         },
         {
           "id": "f-b04fadda",
           "name": "Reduced motion",
           "status": "done",
-          "evidence": "apple-brand.css prefers-reduced-motion"
+          "evidence": "apps/web/tests/activity-motion.test.mjs — enforces the contract against workspace.css from both sides: travel removed, feedback kept. (Was \"apple-brand.css prefers-reduced-motion\", a file that no longer exists.)"
         },
         {
           "id": "f-d37d91c4",
@@ -5991,25 +5991,25 @@
           "id": "f-786d88bb",
           "name": "Free plan",
           "status": "done",
-          "evidence": "PLAN_LIMITS.free 60/day"
+          "evidence": "G-OFFER-1. 231 Sparks/day, not the 60 this row claimed — ADR-019 repriced it, and 60/day could not afford one 77-Spark build, so the trial demonstrated the product failing."
         },
         {
           "id": "f-09ffc4fa",
           "name": "Pro plan",
           "status": "done",
-          "evidence": "PLAN_LIMITS.pro 400/day"
+          "evidence": "G-OFFER-1. The paid mid tier is `builder` ($12, 416/day) since ADR-019; there is no `pro` plan and no 400/day figure anywhere in PLAN_LIMITS."
         },
         {
           "id": "f-451ebbdd",
           "name": "Team plan",
           "status": "done",
-          "evidence": "PLAN_LIMITS.team 1500/day"
+          "evidence": "G-OFFER-1. The multi-seat tier is `studio` ($40, 700/day) since ADR-019. The `team` row this cited granted 1,500/day against a service ceiling of 833."
         },
         {
           "id": "f-326435f4",
           "name": "Enterprise plan",
           "status": "done",
-          "evidence": "PLAN_LIMITS.enterprise 6000/day"
+          "evidence": "G-OFFER-1. 833 Sparks/day, not 6,000 — the old figure was seven times what the whole service can serve in a day."
         },
         {
           "id": "f-3e9a9d8a",
@@ -6893,13 +6893,13 @@
           "id": "f-2a0cf202",
           "name": "Automated tests",
           "status": "done",
-          "evidence": "pnpm -r test in CI"
+          "evidence": "G90 — the full suite passes, with a red-first falsification record."
         },
         {
           "id": "f-b04c1627",
           "name": "Unit tests",
           "status": "done",
-          "evidence": "same work as f-01276ef7; listed here because it belongs in both taxonomies",
+          "evidence": "G90 — same work as f-01276ef7; listed here because it belongs in both taxonomies.",
           "duplicateOf": "f-01276ef7"
         },
         {
@@ -6936,7 +6936,7 @@
           "id": "f-2b6c574e",
           "name": "Type-check CI",
           "status": "done",
-          "evidence": "pnpm -r typecheck in CI"
+          "evidence": "G91 — every package typechecks."
         },
         {
           "id": "f-5a2bae0c",
