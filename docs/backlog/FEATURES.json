@@ -1908,7 +1908,7 @@
           "id": "f-9d1416dd",
           "name": "Model comparison",
           "status": "partial",
-          "evidence": "RECORD, NOT GUARANTEE. docs/evals/FINDINGS.md holds 56-task results from a run that happened; nothing re-runs it and no live UI exposes a comparison."
+          "evidence": "RECORD, NOT GUARANTEE — and the record was WRONG about the product until 2026-09-15. docs/evals/FINDINGS.md holds a real, dated 56-task comparison and its blockquote correctly warns the suite has since grown to 84 tasks. But its heading declared \"Production model: @cf/zai-org/glm-5.3-flash\" — a model that is NOT in production and cannot be: it is on Cloudflare’s paid-billing-required list and returns HTTP 403 / error 5035 on the Workers Free plan. gateway.ts:85-92 says every mode \"used to\" resolve to it. What ships is gpt-oss-20b, gpt-oss-120b and llama-3.2-11b-vision. Heading corrected; the comparison kept because it is how the choice was made and deleting it would lose the reasoning. Still partial and still uncitable: no live UI exposes a comparison, and nothing re-runs it."
         },
         {
           "id": "f-3836b13b",

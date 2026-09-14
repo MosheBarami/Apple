@@ -1,4 +1,4 @@
-# Golem model evaluation findings
+# Model evaluation findings
 
 > **The suite these numbers came from no longer exists in this form.** Every score below was
 > measured against the 56-task suite. It has since grown to 84 tasks — the 28-task scripting
@@ -6,7 +6,23 @@
 > type the old runs never faced (see [SCRIPTING-CURRICULUM.md](../SCRIPTING-CURRICULUM.md)). A
 > future overall score is **not** comparable to the 98.9% below; re-baseline before comparing.
 
-## Production model: `@cf/zai-org/glm-5.3-flash` (migrated 2026-08-30)
+## Historical: `@cf/zai-org/glm-5.3-flash` was production from 2026-08-30
+
+**THIS IS NO LONGER THE PRODUCTION MODEL, AND THIS HEADING SAID IT WAS.** Corrected 2026-09-15.
+
+GLM is on Cloudflare's paid-billing-required list: on the Workers Free plan every call returns
+HTTP 403 / error 5035, so a product that must cost nothing recurring cannot be built on it. The
+gateway records the reasoning at `apps/worker/src/gateway.ts:85-92` — "every mode USED TO resolve
+to `@cf/zai-org/glm-5.3-flash`". What ships today is `@cf/openai/gpt-oss-20b` and
+`@cf/openai/gpt-oss-120b`, with `@cf/meta/llama-3.2-11b-vision-instruct` for vision.
+
+GLM remains in the price table at `apps/worker/src/pricing.ts:28`, which is why a grep finds it and
+why "is it referenced" was the wrong question to ask of it.
+
+The comparison below is kept because it is real and dated — it is how the choice was made at the
+time, and deleting it would lose the reasoning. It is not a statement about what runs now. The
+blockquote above already warns that the SUITE has changed; this warns that the MODEL has too, which
+is the larger of the two and was the one not written down.
 
 Measured on the 56-task Roblox suite, **same corrected grader for both models**:
 
