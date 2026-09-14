@@ -320,7 +320,16 @@ test('it catches an EXPECT changed with no adjacent EXPECT-CHANGE line, where it
   const dir = scratch();
   try {
     const gates = join(dir, 'GATES.md');
-    writeFileSync(gates, readFileSync(gates, 'utf8').replace(/^ {4}EXPECT: .+$/m, '    EXPECT: loosened'));
+    // Planted on a gate that has NO adjacent EXPECT-CHANGE line, chosen rather than assumed. This
+    // used to take the FIRST EXPECT in the file, which silently stopped testing anything the day
+    // that gate gained a legitimate EXPECT-CHANGE — the plant became an excused change and the
+    // detector was right not to fire, so a green test meant the fixture had rotted, not that the
+    // detector worked.
+    const before = readFileSync(gates, 'utf8').split('\n');
+    const target = before.findIndex((l, i) => /^ {4}EXPECT: /.test(l) && !/^ {2}EXPECT-CHANGE:/.test(before[i + 1] ?? ''));
+    assert.ok(target !== -1, 'every gate carries an EXPECT-CHANGE line; this plant can no longer isolate the rule');
+    before[target] = '    EXPECT: loosened';
+    writeFileSync(gates, before.join('\n'));
     execFileSync('git', ['add', '-A'], { cwd: dir });
     execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'loosen'], { cwd: dir });
     const r = run(dir);
