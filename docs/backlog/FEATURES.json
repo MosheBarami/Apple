@@ -984,7 +984,7 @@
           "id": "f-968b4ca6",
           "name": "Roblox Open Cloud",
           "status": "blocked",
-          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. An Open Cloud asset-upload credential. Not a code gap: there is no key to hold. This also blocks f-6cb625cf and f-cc078607, and is the same wall as OWNER-HANDOFF OH-4 (Creator Store distribution)."
+          "evidence": "BLOCKED ON TWO THINGS, AND MY EARLIER WORDING OVERSTATED IT. I wrote \"blocked on something that does not exist\", which reads as impossible. Checked against the code rather than the note: apps/worker/src/env.ts:42 DOES declare ROBLOX_API_KEY, scope `creator-store-product:read`, documented as free from create.roblox.com/dashboard/credentials and used by assets.ts for Creator Store SEARCH. When unset, search degrades to the unauthenticated endpoint — it is never required. So Open Cloud is not absent; a READ scope is wired and optional. What is missing is (1) an upload-scoped key, which is a different Open Cloud permission, and (2) any code path that calls an upload endpoint — grep finds no apis.roblox.com asset call anywhere in apps/worker/src. Whether an upload scope is obtainable on this account is a Roblox platform question I cannot answer from here, and I am not going to assert it either way twice. This is the primary row for the dependency; f-6cb625cf and f-cc078607 share it."
         },
         {
           "id": "f-6f88885e",
@@ -1020,7 +1020,7 @@
           "id": "f-6cb625cf",
           "name": "Asset import",
           "status": "blocked",
-          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. Same Open Cloud credential as f-968b4ca6. Nothing to cite until a key exists."
+          "evidence": "BLOCKED ON TWO THINGS, AND MY EARLIER WORDING OVERSTATED IT. I wrote \"blocked on something that does not exist\", which reads as impossible. Checked against the code rather than the note: apps/worker/src/env.ts:42 DOES declare ROBLOX_API_KEY, scope `creator-store-product:read`, documented as free from create.roblox.com/dashboard/credentials and used by assets.ts for Creator Store SEARCH. When unset, search degrades to the unauthenticated endpoint — it is never required. So Open Cloud is not absent; a READ scope is wired and optional. What is missing is (1) an upload-scoped key, which is a different Open Cloud permission, and (2) any code path that calls an upload endpoint — grep finds no apis.roblox.com asset call anywhere in apps/worker/src. Whether an upload scope is obtainable on this account is a Roblox platform question I cannot answer from here, and I am not going to assert it either way twice. Same dependency as f-968b4ca6. Asset import needs the upload scope and an importer, neither of which exists."
         },
         {
           "id": "f-bd5c9af1",
@@ -4459,7 +4459,7 @@
           "id": "f-cc078607",
           "name": "Export Roblox asset",
           "status": "blocked",
-          "evidence": "BLOCKED ON SOMETHING THAT DOES NOT EXIST. Same Open Cloud credential as f-968b4ca6."
+          "evidence": "BLOCKED ON TWO THINGS, AND MY EARLIER WORDING OVERSTATED IT. I wrote \"blocked on something that does not exist\", which reads as impossible. Checked against the code rather than the note: apps/worker/src/env.ts:42 DOES declare ROBLOX_API_KEY, scope `creator-store-product:read`, documented as free from create.roblox.com/dashboard/credentials and used by assets.ts for Creator Store SEARCH. When unset, search degrades to the unauthenticated endpoint — it is never required. So Open Cloud is not absent; a READ scope is wired and optional. What is missing is (1) an upload-scoped key, which is a different Open Cloud permission, and (2) any code path that calls an upload endpoint — grep finds no apis.roblox.com asset call anywhere in apps/worker/src. Whether an upload scope is obtainable on this account is a Roblox platform question I cannot answer from here, and I am not going to assert it either way twice. Same dependency as f-968b4ca6. Export needs the upload scope and an exporter, neither of which exists."
         },
         {
           "id": "f-09243de2",
