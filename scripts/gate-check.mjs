@@ -272,6 +272,15 @@ const falsifiedLine = (r, breakSha) => recordLine('FALSIFIED', r, `break-sha=${b
 /** The stored fingerprint on a record line, or null. */
 const storedSha = (line) => /output-sha256=([0-9a-f]{64})/.exec(line ?? '')?.[1] ?? null;
 
+/**
+ * Where a newly written record belongs.
+ *
+ * §5.1's shape is CHECK, EXPECT, FALSIFIED, EVIDENCE — the red before the green, because that is
+ * the order in which they have to have happened. Inserting blindly at headLine+3 put a fresh
+ * EVIDENCE line ABOVE an existing FALSIFIED one and inverted the story the block tells.
+ */
+const insertAt = (gate) => (gate.falsifiedLine !== null ? gate.falsifiedLine + 1 : gate.headLine + 3);
+
 /* ------------------------------------------------------------------- main --- */
 
 const text = readFileSync(FILE, 'utf8');
@@ -421,7 +430,7 @@ if (REVERIFY) {
     } else {
       lines[now.headLine] = `- [x] ${r.id}${now.station ? ` [${now.station}]` : ''}: ${r.title}`;
       if (now.evidenceLine !== null) lines[now.evidenceLine] = evidenceLine(r);
-      else lines.splice(now.headLine + 3, 0, evidenceLine(r));
+      else lines.splice(insertAt(now), 0, evidenceLine(r));
     }
   }
 
@@ -474,7 +483,7 @@ if (APPROVE) {
     lines[r.headLine] = `- [${r.met ? 'x' : ' '}] ${r.id}${r.station ? ` [${r.station}]` : ''}: ${r.title}`;
     const line = evidenceLine(r);
     if (r.evidenceLine !== null) lines[r.evidenceLine] = line;
-    else if (r.met) lines.splice(r.headLine + 3, 0, line);
+    else if (r.met) lines.splice(insertAt(r), 0, line);
     // An unmet gate with no prior evidence gets no evidence line: there is nothing to record.
   }
   writeFileSync(FILE, lines.join('\n'));
