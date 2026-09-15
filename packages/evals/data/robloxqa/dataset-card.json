@@ -1,0 +1,169 @@
+{
+  "generatedAt": "2026-09-15T15:29:12.171Z",
+  "harvester": "scripts/harvest-hf.mjs",
+  "dataset": "TorpedoSoftware/RobloxQA-v2.0",
+  "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
+  "licence": "MIT",
+  "lastModified": "2026-07-01T22:57:23.000Z",
+  "role": "held-out knowledge regression gate for the model behind the generator",
+  "notTrainingData": "the card offers this as training data too. It is not: see `codeContent` — the questions and answers contain no fenced code and no newlines, so there is no Luau in here to learn. It measures whether a model still KNOWS the engine; it cannot teach one to write for it.",
+  "splits": {
+    "gate": {
+      "path": "packages/evals/data/robloxqa/gate.jsonl",
+      "rows": 3000,
+      "remoteSplit": "test",
+      "sha256": "9bdc37b33966003c1107cc8796c2a562ed0c3f152901aa33cb277e7a8b81c4bb"
+    },
+    "headroom": {
+      "path": "packages/evals/data/robloxqa/headroom.jsonl",
+      "rows": 4614,
+      "remoteSplit": "train",
+      "sha256": "9f7f5013e3c60c5d71a01d4383c974db6498c0adf62be0f9ac7471d5ed290247"
+    }
+  },
+  "excludedGateRows": {
+    "count": 60,
+    "path": "packages/evals/data/robloxqa/excluded-gate-rows.json",
+    "why": "gate rows that restate a headroom question; the scorer drops them from the headline number"
+  },
+  "groundingBuckets": {
+    "gate": {
+      "referenceEngine": 1477,
+      "luau": 43,
+      "education": 384,
+      "cloudLegacy": 49,
+      "otherDocs": 1047,
+      "uniqueGroundingDocs": 1486
+    },
+    "headroom": {
+      "referenceEngine": 2273,
+      "luau": 61,
+      "education": 586,
+      "cloudLegacy": 70,
+      "otherDocs": 1624,
+      "uniqueGroundingDocs": 1735
+    }
+  },
+  "codeContent": {
+    "rows": 7614,
+    "withFencedCode": 0,
+    "withNewlineInsideAField": 0,
+    "withInlineBacktick": 1478
+  },
+  "overlap": {
+    "gateVsHeadroom": {
+      "exactShared": 0,
+      "gateRows": 3000,
+      "gateUniqueQuestions": 3000,
+      "headroomRows": 4614,
+      "headroomUniqueQuestions": 4614,
+      "shingle": {
+        "n": 8,
+        "flaggedRows": 209,
+        "flaggedBeforeStemFilter": 237,
+        "stockStemsIgnored": 20,
+        "verdict": "NOT USED for exclusion — these are question stems, not duplicate questions",
+        "examples": [
+          {
+            "shingle": "in roblox development what is the primary purpose",
+            "gateQuestion": "In Roblox development, what is the primary purpose of publishing a place to test it before final release?"
+          },
+          {
+            "shingle": "in luau what is the effect of calling",
+            "gateQuestion": "In Luau, what is the effect of calling `table.freeze` on a table that already contains nested tables?"
+          },
+          {
+            "shingle": "in roblox what data type must be assigned",
+            "gateQuestion": "In Roblox, what data type must be assigned to the Adornee property on any instance derived from PartAdornment?"
+          }
+        ]
+      },
+      "nearDuplicate": {
+        "method": "idf-weighted Jaccard over the whole question, both splits supplying the weights",
+        "threshold": 0.6,
+        "flaggedRows": 60,
+        "countsByThreshold": {
+          "0.6": 60,
+          "0.7": 31,
+          "0.8": 10,
+          "0.9": 4
+        },
+        "examples": [
+          {
+            "score": 0.933,
+            "gateQuestion": "What is the primary purpose of calling GetPropertyChangedSignal(property) on a Roblox Instance?",
+            "headroomQuestion": "What is the primary purpose of calling GetPropertyChangedSignal on a Roblox Instance?"
+          },
+          {
+            "score": 0.9198,
+            "gateQuestion": "In Roblox, what does the Instance method `IsA(className)` return when called on an object?",
+            "headroomQuestion": "In Roblox, what does the `IsA(className)` method return when called on an Instance?"
+          },
+          {
+            "score": 0.9138,
+            "gateQuestion": "What does the IsA(className) method return when called on a Roblox Instance?",
+            "headroomQuestion": "In Roblox, what does the `IsA(className)` method return when called on an Instance?"
+          }
+        ]
+      }
+    },
+    "gateVsRepoTrainingRows": {
+      "splits": {
+        "train": 327,
+        "val": 39,
+        "test": 38
+      },
+      "gateRows": 3000,
+      "trainingRows": 404,
+      "exactShared": 0,
+      "shingle": {
+        "n": 8,
+        "flaggedRows": 0,
+        "flaggedBeforeStemFilter": 0,
+        "stemsIgnored": 0
+      },
+      "nearDuplicate": {
+        "method": "idf-weighted Jaccard over the whole text, both sides supplying the weights",
+        "threshold": 0.6,
+        "flaggedRows": 0,
+        "countsByThreshold": {
+          "0.6": 0,
+          "0.7": 0,
+          "0.8": 0,
+          "0.9": 0
+        },
+        "maxScore": 0.1985,
+        "margin": 0.4015,
+        "closest": [
+          {
+            "score": 0.1985,
+            "gateQuestion": "Which property on a GuiObject must typically be enabled for UITextSizeConstraint to dynamically adjust text size based on container dimensions?",
+            "trainingInstruction": "Returns the text bounds size based on given text, label (from which properties will be pulled), and optional Vector2 container size."
+          },
+          {
+            "score": 0.1902,
+            "gateQuestion": "What is the primary operational difference between a regular queue and a priority queue when storing and retrieving data?",
+            "trainingInstruction": "Handles both priority and regular particles"
+          },
+          {
+            "score": 0.1877,
+            "gateQuestion": "In Roblox's cloud localization table, what is the strict requirement for every entry's Source column?",
+            "trainingInstruction": "Reads the localization table back into a Key -> entry lookup for assertions."
+          },
+          {
+            "score": 0.1847,
+            "gateQuestion": "What is the purpose of the Label property on a PathfindingModifier instance?",
+            "trainingInstruction": "Sets the place name label on the interface"
+          },
+          {
+            "score": 0.1799,
+            "gateQuestion": "In Luau, what does an Offset value of (1, 0) do to a UIGradient applied to a GuiObject?",
+            "trainingInstruction": "Find the base 10 offset needed to make 0.1 <= abs(number) < 1"
+          }
+        ]
+      },
+      "clean": true
+    }
+  },
+  "scoring": "packages/evals/src/robloxqa-gate.mjs — release-gated, never run in CI"
+}
