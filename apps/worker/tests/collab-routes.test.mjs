@@ -85,6 +85,9 @@ let doCalls = [];
 /** What the DO answers for a `/collab` delegation, so a route's plumbing can be observed. */
 let doCollabReply = { status: 200, body: { ok: true } };
 const kv = new Map();
+/** Every KV key the worker ASKED FOR. A Map's `get` records nothing, so without this an
+ *  assertion about "nothing was read under a forged key" cannot fail — see the redeem test. */
+let kvReads = [];
 
 function parseQuery(url) {
   const u = new URL(url);
@@ -162,7 +165,7 @@ const env = () => ({
   SUPABASE_ANON_KEY: 'anon-test',
   ENVIRONMENT: 'test',
   KV: {
-    get: async (k) => kv.get(k) ?? null,
+    get: async (k) => { kvReads.push(k); return kv.get(k) ?? null; },
     put: async (k, v) => void kv.set(k, v),
     delete: async (k) => void kv.delete(k),
     list: async () => ({ keys: [] }),
@@ -441,12 +444,33 @@ test('a link cannot be minted with a role a link may not carry', async () => {
 });
 
 test('a token that is not a token never becomes part of a KV key', async () => {
+  // `kv` IS A Map, AND Map.get RECORDS NOTHING. `assert.equal(kv.size, 0)` therefore cannot fail
+  // because of a READ — only a write moves it — so the whole "never becomes part of a KV key" claim
+  // rested on an assertion that could not observe the thing it named. And the 404s came from an
+  // EMPTY STORE rather than from the shape guard, so they proved nothing either: measured, loosening
+  // isShareToken to `typeof value === 'string' && value.length > 0` left this green, and removing
+  // the isShareToken call from readShareLink entirely left it green too.
+  //
+  // Record the reads. Now a forged token that reaches the store is visible even though the store has
+  // nothing to give it.
   reset();
+  kvReads = [];
   for (const token of ['../../etc', 'share:link:x', '', 'a'.repeat(200), null, 7, { t: 1 }]) {
     const res = await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token } });
     assert.equal(res.status, 404, `token ${JSON.stringify(token)} must be refused by shape`);
   }
-  assert.equal(kv.size, 0, 'and nothing was written or read under a forged key');
+  assert.deepEqual(kvReads, [], `a forged token was used to build a KV key: ${JSON.stringify(kvReads)}`);
+  assert.equal(kv.size, 0, 'and nothing was written under a forged key');
+
+  // THE CONTROL. Without it, a redeem route that refused EVERY token and never touched KV would
+  // satisfy everything above. A well-formed token must actually reach the store.
+  reset();
+  kvReads = [];
+  await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: 'a'.repeat(32) } });
+  assert.ok(
+    kvReads.some((k) => k.startsWith('share:link:')),
+    'a well-formed token must be looked up — otherwise the refusals above prove nothing',
+  );
 });
 
 test('a link belonging to another project cannot be revoked from this one', async () => {
