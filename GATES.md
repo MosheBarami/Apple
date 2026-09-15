@@ -270,6 +270,16 @@ sha alone, because the break changes the probe while the thing probed lives else
 rbxai-04, who ran the probe independently and declined to write the evidence line on the grounds
 that the run which records a gate should be the one that proves it.
 
+- [ ] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
+    CHECK: node infra/supabase/tests/rls-isolation.mjs
+    EXPECT: RLS ISOLATION HOLDS
+
+NEEDS DOCKER, and says so rather than skipping. The test applies infra/supabase/migrations/*.sql
+in order to a real Postgres, so it proves the MIGRATIONS' policies — not the deployed database,
+which may have drifted from them. It exits 2 when no daemon is reachable instead of reporting a
+pass over nothing, which is why this row can be red for an environment reason and that is the
+correct behaviour. Written by rbxai-04; wired here because GATES.md is mine.
+
 - [x] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-ORACLE-7 -- node --test tests/check-pixels.test.mjs
     EXPECT: G-ORACLE-7 OK
