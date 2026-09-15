@@ -1138,4 +1138,3 @@ function MemberHistory({ projectId, member }: { projectId: string; member: Membe
     </div>
   );
 }
-
