@@ -18,6 +18,42 @@ secrets/
 # what makes the exception reachable.
 packages/corpus/data/*
 packages/corpus/raw/*
+# ...except the two HARVEST artefacts. These are not re-fetchable cache: a provenance row
+# records what a source page said on a date, and the upstream API will not say it again.
+!packages/corpus/data/asset-seeds.json
+!packages/corpus/data/template-seeds.json
+# The harvest artefacts, and the split between them is about REPRODUCIBILITY, not size.
+#
+# Tracked: the sources that are scraped or that publish no versioned index. cgbookcase reads a
+# per-asset meta tag off a page with no licence page at all; kenney is HTML with content-hashed
+# zip URLs that change on every republish; game-icons reads its CC0 contributor list out of a
+# license.txt. Re-running those harvests next year will not reproduce today's rows, so the rows
+# are the record.
+#
+# Not tracked: iconify (286 MB) and creator_store (79 MB). Iconify IS a git repository with a
+# commit history — its provenance is better preserved upstream than by a copy here — and the
+# Creator Store is Roblox's own live catalogue, which we do not own and cannot pin. Both are
+# regenerable by scripts/harvest-library.mjs, and the authoritative copy of every row is in D1.
+# NOTE the order: un-ignoring the DIRECTORY is what makes anything inside it reachable at all,
+# and a LATER pattern wins — so the two exclusions have to come after it, not before.
+!packages/corpus/data/library/
+# AND THE EXCLUSION IS A DEFAULT, NOT A LIST OF TWO FILENAMES.
+#
+# It named iconify.json and creator_store.json. Then the same harvester produced
+# kenney-expanded.json at 41 MB and opengameart-expanded.json at 6 MB, and both sailed straight
+# past a rule written as a list of the files that happened to be big on the day it was written.
+# Same shape as the copy checker that read two of six stylesheets: an allow-list pretending to be
+# a policy.
+#
+# So everything in here is ignored and a file earns its place by being named. The four small ones
+# below predate this rule and stay tracked; index.json is the manifest and is the reason the
+# directory is reachable at all.
+packages/corpus/data/library/*
+!packages/corpus/data/library/index.json
+!packages/corpus/data/library/cgbookcase.json
+!packages/corpus/data/library/game_icons.json
+!packages/corpus/data/library/kenney.json
+!packages/corpus/data/library/opengameart.json
 # ...except the CHECKOUT LOCK. The comment above has always said the corpus is
 # "re-fetchable from raw/manifest.json" — but `packages/corpus/raw/` (with the
 # trailing slash this file's own note warns against, four lines up) ignored the
@@ -26,6 +62,12 @@ packages/corpus/raw/*
 # repositories, not their content, so tracking it redistributes nothing. It is what
 # `pnpm --filter @golem/corpus bootstrap` reads.
 !packages/corpus/raw/manifest.json
+# ...and the HUGGING FACE lock, for the same reason and on the same terms. It pins each
+# harvested dataset by url + commit SHA, and records the sources that were fetched, read and
+# REFUSED with the grounds for refusing. The chunks it produces stay ignored (they are a build
+# artefact, like chunks.jsonl); this is the metadata that makes the harvest reproducible and
+# the refusals reviewable, so a source cannot quietly change under the product.
+!packages/corpus/raw/manifest.hf.json
 # ...except the source LEDGER. sources.json is 0.4MB of derived provenance and
 # licence verdicts, and §H requires that metadata be preserved rather than
 # regenerated on demand — a classification nobody can diff is one nobody reviews.
@@ -121,3 +163,9 @@ docs/evidence/pixels/*
 graphify-out/*
 !graphify-out/GRAPH_REPORT.md
 handoff/
+
+# The fix queue: 844 work items with file paths, written by the auditing agents from the code as
+# it stood at one moment. It is scaffolding for a run, not a record — the record is the checklist
+# in docs/backlog and the commits that close its lines. Tracking it would put a stale copy of the
+# codebase's own state under version control, and the next audit rewrites all of it.
+.superpowers/fixq/

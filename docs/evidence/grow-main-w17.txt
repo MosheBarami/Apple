@@ -35,9 +35,9 @@ contain. These are the commands the gates run, and their result on this branch.
 
   The one failure is `node scripts/check-offer.mjs`, and it fails IDENTICALLY on main:
 
-    free grants 60 Sparks/day and one quality-gated build costs 77 — a free user cannot
+    free grants 60 Credits/day and one quality-gated build costs 77 — a free user cannot
       complete a single build in a day, so the trial demonstrates the product not working
-    team grants 1500 Sparks/day and enterprise 6000, while the WHOLE SERVICE can serve 833
+    team grants 1500 Credits/day and enterprise 6000, while the WHOLE SERVICE can serve 833
       — one user on either plan exhausts the day for everyone
 
   That is a pricing decision for the owner, not a code defect, and G-OFFER-1 exists to hold it.
@@ -53,5 +53,5 @@ Three CHECKs failed on the first sweep and were fixed rather than explained away
   check-offer           pre-existing, above.
 
 And the sweep itself found what a browser check had missed: the plan ladder was advertising "up to
-0 builds a day" on the free tier, because buildsPerDay floors to zero against a 77-Spark build. I
+0 builds a day" on the free tier, because buildsPerDay floors to zero against a 77-Credit build. I
 had looked at that ladder rendered and read its layout instead of its figures.

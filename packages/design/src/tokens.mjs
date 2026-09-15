@@ -31,7 +31,7 @@
  * from a condensed-caps landing. A single approved list is what makes that state expressible as a
  * failure instead of a thing nobody had a name for.
  *
- * Geist Mono is deliberately NOT here. It sets timestamps, Spark counts and file names — never
+ * Geist Mono is deliberately NOT here. It sets timestamps, Credit counts and file names — never
  * `body` — so a route that renders no mono text at all is correct, and listing it would fail pages
  * for not containing metadata they have no reason to contain.
  */

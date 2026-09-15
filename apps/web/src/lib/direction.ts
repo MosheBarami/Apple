@@ -23,14 +23,40 @@
 /** Scripts written right-to-left, by ISO 639 primary subtag. */
 const RTL_LANGS = new Set(['he', 'iw', 'ar', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ku', 'ckb']);
 
+/**
+ * The languages the interface is actually WRITTEN IN. Today: English, and only English.
+ *
+ * THIS LIST IS THE WHOLE FIX. Direction used to be inferred from `navigator.languages` alone — what
+ * the READER prefers — with no reference to what the interface can actually say. The owner of this
+ * product reads Hebrew, so his browser asks for `he`, so his own sign-in page mirrored itself,
+ * right-aligned its English sentences, moved every full stop to the left-hand end, and set
+ * `lang="he"` on a document containing no Hebrew at all: a screen reader was being told to read
+ * English words in a Hebrew voice.
+ *
+ * Mirroring is correct for a Hebrew interface and wrong for an English one, and the browser's
+ * language list cannot tell those apart because it is not a fact about this interface. So the
+ * question is asked of both: mirror when the reader wants an RTL language AND the interface has
+ * that language to give them.
+ *
+ * NOTHING ELSE IN THIS FILE CHANGES, and none of the logical-property work in the stylesheets is
+ * wasted: add `'he'` here on the day the strings are translated and every mirror turns on at once.
+ * An explicit choice still wins over this — somebody who deliberately picks RTL is telling us
+ * something about themselves, not asking us to guess.
+ */
+export const UI_LANGUAGES: readonly string[] = ['en'];
+
 const STORAGE_KEY = 'apple.dir';
 
 export type Direction = 'ltr' | 'rtl';
 
+/** `he-IL`, `he_IL` and `HE` all name the same language. */
+function primarySubtag(tag: string): string {
+  return tag.toLowerCase().split(/[-_]/)[0] ?? '';
+}
+
 /** Is this BCP-47 tag written right-to-left? `he-IL` and `he` must both count. */
 export function isRtlLanguage(tag: string): boolean {
-  const primary = tag.toLowerCase().split(/[-_]/)[0] ?? '';
-  return RTL_LANGS.has(primary);
+  return RTL_LANGS.has(primarySubtag(tag));
 }
 
 function storedDirection(): Direction | null {
@@ -42,10 +68,37 @@ function storedDirection(): Direction | null {
   }
 }
 
-/** The direction this browser should start in, before any user choice. */
-export function detectDirection(languages: readonly string[] = navigator.languages ?? []): Direction {
+/**
+ * The direction this browser should start in, before any user choice.
+ *
+ * `ui` is a parameter rather than a constant read inside so the RULE stays testable: the day the
+ * interface is translated, the behaviour is proved by passing the new list, not by editing the
+ * function and hoping.
+ */
+export function detectDirection(
+  languages: readonly string[] = navigator.languages ?? [],
+  ui: readonly string[] = UI_LANGUAGES,
+): Direction {
   const list = languages.length ? languages : [navigator.language ?? 'en'];
-  return list.some(isRtlLanguage) ? 'rtl' : 'ltr';
+  const uiRtl = new Set(ui.filter(isRtlLanguage).map(primarySubtag));
+  if (uiRtl.size === 0) return 'ltr';
+  return list.some((tag) => uiRtl.has(primarySubtag(tag))) ? 'rtl' : 'ltr';
+}
+
+/** The language this interface should declare itself to be in for a reader with these preferences. */
+export function detectLanguage(
+  languages: readonly string[] = navigator.languages ?? [],
+  ui: readonly string[] = UI_LANGUAGES,
+): string {
+  const list = languages.length ? languages : [navigator.language ?? 'en'];
+  const offered = new Map(ui.map((t) => [primarySubtag(t), t]));
+  for (const tag of list) {
+    const hit = offered.get(primarySubtag(tag));
+    if (hit) return hit;
+  }
+  // Not a language we speak. Declare the one we DO speak rather than the one they asked for:
+  // `lang` is a claim about the bytes on the page, not a preference.
+  return ui[0] ?? 'en';
 }
 
 export function resolveDirection(): Direction {
@@ -63,7 +116,9 @@ export function resolveDirection(): Direction {
 export function applyDirection(dir: Direction, lang?: string): void {
   const el = document.documentElement;
   el.setAttribute('dir', dir);
-  el.setAttribute('lang', lang ?? (dir === 'rtl' ? 'he' : 'en'));
+  // `lang` used to be derived from `dir` — rtl meant "he". That made it a restatement of the
+  // layout rather than a claim about the words, and it labelled an all-English document Hebrew.
+  el.setAttribute('lang', lang ?? detectLanguage());
 }
 
 export function setDirection(dir: Direction, lang?: string): void {

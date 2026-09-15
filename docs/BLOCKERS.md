@@ -94,7 +94,7 @@ class this project keeps correcting in itself. Three are open as of 2026-09-01:
 | §11 gate | state |
 |---|---|
 | historical exposed live credentials invalidated | **HUMAN-ONLY** — this entry |
-| at least two fresh creation exercises demonstrate generality | **one done**, second quota-blocked until the daily Spark reset. The gate asks for two *because one cannot demonstrate generality* — so this is not "nearly met", it is half-evidenced |
+| at least two fresh creation exercises demonstrate generality | **one done**, second quota-blocked until the daily Credit reset. The gate asks for two *because one cannot demonstrate generality* — so this is not "nearly met", it is half-evidenced |
 | no unresolved release-blocking critic finding | **the final independent pass has not run** |
 
 The difference matters for what happens next: the second and third clear themselves
@@ -335,15 +335,15 @@ It should be re-run before this branch merges.
 published commercial claim that the product contradicts.**
 
 The §9.1 second creation exercise — *"add an ore-mining tycoon loop"* — consumed **60
-Sparks, the entire free daily allowance, in one request**, and stopped at the step limit
+Credits, the entire free daily allowance, in one request**, and stopped at the step limit
 without finishing. Full account in `evidence/2026-09-02-second-creation-exercise.md`.
 
-The usage ledger corroborates it: 2026-09-02 **60 sparks / 17 events**, 2026-09-01 60/23,
+The usage ledger corroborates it: 2026-09-02 **60 credits / 17 events**, 2026-09-01 60/23,
 2026-08-30 62/38. A free day is about one substantial Agent run.
 
 ### What the site says
 
-> **Agent · 4 sparks** — Builds features across your project · ≈15 requests a free day
+> **Agent · 4 credits** — Builds features across your project · ≈15 requests a free day
 
 The measured cost of an Agent request doing exactly that is **60**. The published number
 is 15× out for the use the mode is advertised for.
@@ -354,8 +354,8 @@ thing described beside the number.
 
 ### What this session did about it, and got wrong
 
-Earlier today I corrected the Plan figure from 1 spark to 2 and wired
-`scripts/check-spark-figures.mjs` into CI to enforce the table against COST-MODEL. That
+Earlier today I corrected the Plan figure from 1 credit to 2 and wired
+`scripts/check-credit-figures.mjs` into CI to enforce the table against COST-MODEL. That
 guard now reports agreement — and in doing so **locks in the Agent figure**. The guard is
 faithful to its source; the source under-represents a real feature build by more than an
 order of magnitude. A check that says "these agree" is not a check that says "this is
@@ -393,10 +393,10 @@ deployed. Everything corrected on `feature/golem-product-experience` is still wr
 production right now:
 
 ```
-GET /pricing  ->  "Clay · 1 spark"   "Stone · 4 sparks"   "Rune · 10 sparks"
+GET /pricing  ->  "Clay · 1 credit"   "Stone · 4 credits"   "Rune · 10 credits"
 ```
 
-That is the wrong Plan figure (it is 2 sparks, so 30 requests a free day, not 60) and the
+That is the wrong Plan figure (it is 2 credits, so 30 requests a free day, not 60) and the
 internal specialist names that `packages/shared` says must never appear in product UI. The
 rolling-quota claim, the 3.18:1 tertiary text and the phone topbar defects are all live
 too.
@@ -404,7 +404,7 @@ too.
 **This session did not deploy it.** The changes are low-risk on their own, but the batch
 also carries the Clay/Stone/Rune → Plan/Agent/Super Agent rename, which is a visible
 vocabulary change to the public site and is listed above as the owner's call. Shipping it
-as a side effect of fixing a spark figure would be deciding that question quietly.
+as a side effect of fixing a credit figure would be deciding that question quietly.
 
 The pricing figure is the part with a clock on it: a reader planning around "60 questions
 a day" hits the limit at 30. If that should go out before the rename is settled, it can be
@@ -477,19 +477,19 @@ described, and "there is no fine-print exception" has to go. If 2: hide the cont
 **Not a blocker, and not a price change, but §33 says public pricing is the owner's, so
 this is surfaced rather than left in a commit message.**
 
-The pricing page stated **Clay · 1 spark** and **60 requests a free day**. The worker
-charges `sparksForNeurons(n) = max(1, ceil(n / 30))`, and `docs/COST-MODEL.md` measures a
-Clay question at 37–43 neurons — so it is **2 sparks and 30 requests a day**. Stone
+The pricing page stated **Clay · 1 credit** and **60 requests a free day**. The worker
+charges `creditsForNeurons(n) = max(1, ceil(n / 30))`, and `docs/COST-MODEL.md` measures a
+Clay question at 37–43 neurons — so it is **2 credits and 30 requests a day**. Stone
 (111 → 4) and Rune (297 → 10) were both correct.
 
-Corrected on 2026-09-01, with `scripts/check-spark-figures.mjs` now checking the whole
-chain in CI. Nothing about what anyone is charged changed: the free tier is 60 sparks a
+Corrected on 2026-09-01, with `scripts/check-credit-figures.mjs` now checking the whole
+chain in CI. Nothing about what anyone is charged changed: the free tier is 60 credits a
 day at $0 and Pro remains an unpriced waitlist. What changed is a claim about consumption
 that the code contradicted, and the reason not to leave it is that a reader planning
 around "60 questions a day" hits the limit at 30.
 
-**If the intent was that a Plan question should cost 1 spark**, that is a change to the
-worker — `NEURONS_PER_SPARK`, or a per-mode floor — and not to the page. This correction
+**If the intent was that a Plan question should cost 1 credit**, that is a change to the
+worker — `NEURONS_PER_CREDIT`, or a per-mode floor — and not to the page. This correction
 assumed the code is right and the page was wrong, because the code is what actually
 charges people. Say if that assumption is backwards.
 

@@ -41,7 +41,7 @@ different set of systems from the Crystal Canyon family.
 
 ## What Golem did
 
-18 tool calls, 212.3 s wall clock, 1 tool error, 49 Sparks.
+18 tool calls, 212.3 s wall clock, 1 tool error, 49 Credits.
 
 | phase | tools |
 |---|---|
@@ -146,6 +146,6 @@ verified by running it, with no manual authoring or rescue.
 
 §9.1 asks for **two** exercises across different game shapes. This is one, and it is
 the non-simulator half. The second is **quota-blocked today, not capability-blocked**:
-this run cost 49 of the free plan's 60 daily Sparks, leaving 11. The daily allowance
+this run cost 49 of the free plan's 60 daily Credits, leaving 11. The daily allowance
 resets 2026-09-02T00:00:00Z. Raising the cap is forbidden by §25, so the second
 exercise waits for the reset rather than for a purchase.

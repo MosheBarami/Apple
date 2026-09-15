@@ -18,12 +18,14 @@ import type {
   QuotaState,
   RunIntent,
   StudioEventLog,
+  StudioEventSelection,
   StudioEventState,
   StudioFrame,
 } from '@golem/shared';
-import type { MeResponse, UsageDay } from './api';
+import type { MeResponse, StudioDiagnosticsResponse, UsageDay } from './api';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';
+import { NOTIFICATION_KINDS, type InboxResponse, type NotificationRow } from './notification-inbox.ts';
 
 const FLAG = import.meta.env.VITE_APPLE_MOCK === '1';
 
@@ -72,7 +74,7 @@ export function mockSpend() {
     days,
     // The `model` field carries a placeholder, not a real model id. §1 of the
     // access manifest keeps provider and model identity out of normal product
-    // UX; /usage renders modes and sparks and never reads this field. Seeding a
+    // UX; /usage renders modes and credits and never reads this field. Seeding a
     // real id here would mean the day someone does render the breakdown, the
     // product starts naming its engine by accident. Admin diagnostics is where
     // real model ids belong.
@@ -202,14 +204,14 @@ export function mockRender(view: string, variant: 'before' | 'after' = 'after', 
 // ---------------------------------------------------------------------------
 
 export const mockQuota: QuotaState = {
-  sparksRemaining: 41,
-  sparksDaily: 60,
-  sparksMonthly: 900,
-  sparksUsedToday: 19,
-  sparksUsedThisMonth: 214,
+  creditsRemaining: 41,
+  creditsDaily: 60,
+  creditsMonthly: 900,
+  creditsUsedToday: 19,
+  creditsUsedThisMonth: 214,
   resetsAtIso: new Date(Date.now() + 5.5 * 3600_000).toISOString(),
   plan: 'free',
-  // A free account with no purchased balance: the allowance IS the whole of sparksRemaining.
+  // A free account with no purchased balance: the allowance IS the whole of creditsRemaining.
   // Kept consistent on purpose — a fixture whose parts do not add up teaches the UI to render a
   // state the server can never produce.
   allowanceRemaining: 41,
@@ -229,14 +231,21 @@ export const mockMe: MeResponse = {
   email: 'builder@example.com',
   profile: { id: 'mock-user', plan: 'free', is_admin: true, display_name: 'Quarry' },
   quota: mockQuota,
+  // No subscription: the mock user is on the free tier and has never bought anything, so the
+  // billing notice renders nothing at all. Inventing a renewal date here would put a sentence on
+  // the demo page that the demo cannot back up.
+  billing: {
+    plan: 'free', state: 'none', status: null, renewsAt: null, endsAt: null,
+    hasBillingAccount: false, needsAttention: false,
+  },
 };
 
 export function mockUsageDays(): UsageDay[] {
   const days: UsageDay[] = [];
   for (let i = 0; i < 30; i++) {
     const day = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-    const sparks = i % 7 === 0 ? 0 : Math.round(4 + 22 * Math.abs(Math.sin(i * 1.7)));
-    days.push({ day, sparks, events: Math.ceil(sparks / 3) });
+    const credits = i % 7 === 0 ? 0 : Math.round(4 + 22 * Math.abs(Math.sin(i * 1.7)));
+    days.push({ day, credits, events: Math.ceil(credits / 3) });
   }
   return days;
 }
@@ -283,6 +292,80 @@ export const mockProjects: ProjectRow[] = [
   },
 ];
 
+/**
+ * An inbox with something in it.
+ *
+ * Mock mode exists so the signed-in surfaces can be reviewed without a real account, and a bell
+ * that is always empty is a bell nobody can review. The shapes match the worker exactly, including
+ * the two that matter for layout: a row with `occurrences > 1`, and a group whose `unread` is
+ * lower than its `total`.
+ */
+export function mockNotifications(): InboxResponse {
+  const rows: NotificationRow[] = [
+    {
+      id: 'n-failed',
+      kind: 'run_failed',
+      severity: 'warn',
+      title: 'Ember Halls — build failed',
+      body: 'The checkpoint pads script referenced a leaderstats value that does not exist yet.',
+      projectId: 'p-lobby',
+      projectName: 'Ember Halls',
+      subject: 'run:8814',
+      href: '/app/projects/p-lobby',
+      groupKey: 'mock-user run_failed p-lobby',
+      createdAt: now - 26 * 60_000,
+      updatedAt: now - 11 * 60_000,
+      deliverAt: now - 26 * 60_000,
+      readAt: null,
+      occurrences: 2,
+    },
+    {
+      id: 'n-mention',
+      kind: 'mention',
+      severity: 'info',
+      title: 'Dana mentioned you',
+      body: '“can you look at the smelter costs before we publish?”',
+      projectId: 'p-tycoon',
+      projectName: 'Foundry Tycoon',
+      subject: 'thread:4',
+      href: '/app/projects/p-tycoon',
+      groupKey: 'mock-user mention p-tycoon',
+      createdAt: now - 3 * 3600_000,
+      updatedAt: now - 3 * 3600_000,
+      deliverAt: now - 3 * 3600_000,
+      readAt: null,
+      occurrences: 1,
+    },
+    {
+      id: 'n-usage',
+      kind: 'usage_threshold',
+      severity: 'warn',
+      title: 'Running low on Credits',
+      body: 'About a tenth of today’s allowance is left.',
+      projectId: null,
+      projectName: null,
+      subject: 'usage:2026-09-15:low',
+      href: '/app/usage',
+      groupKey: 'mock-user usage_threshold ',
+      createdAt: now - 20 * 3600_000,
+      updatedAt: now - 20 * 3600_000,
+      deliverAt: now - 20 * 3600_000,
+      readAt: now - 19 * 3600_000,
+      occurrences: 1,
+    },
+  ];
+  return {
+    items: rows,
+    unread: 2,
+    groups: [
+      { groupKey: 'mock-user run_failed p-lobby', kind: 'run_failed', projectId: 'p-lobby', projectName: 'Ember Halls', total: 2, unread: 1, latestAt: now - 11 * 60_000 },
+      { groupKey: 'mock-user mention p-tycoon', kind: 'mention', projectId: 'p-tycoon', projectName: 'Foundry Tycoon', total: 1, unread: 1, latestAt: now - 3 * 3600_000 },
+      { groupKey: 'mock-user usage_threshold ', kind: 'usage_threshold', projectId: null, projectName: null, total: 1, unread: 0, latestAt: now - 20 * 3600_000 },
+    ],
+    kinds: [...NOTIFICATION_KINDS],
+  };
+}
+
 export const mockStudioState: StudioEventState = {
   kind: 'state',
   placeName: 'Ember Halls',
@@ -291,6 +374,53 @@ export const mockStudioState: StudioEventState = {
   isRunMode: false,
   selectionCount: 2,
   pluginVersion: '0.4.1',
+};
+
+/**
+ * The connection record, in mock mode: paired, connected, with a real clock on it.
+ *
+ * Coherent with mockStudioState above on purpose — the same place name and ids — because a fixture
+ * where the bound place and the open place disagree would render the mismatch warning on every
+ * design review and teach whoever is looking that the warning is decoration.
+ */
+export function mockDiagnostics(): StudioDiagnosticsResponse {
+  const paired = now - 6 * 864e5;
+  return {
+    link: {
+      paired: true,
+      connected: true,
+      lastSeenAt: now - 4_000,
+      queuedOps: 0,
+      pluginVersion: '0.4.1',
+      pluginProtocol: 1,
+      place: { placeId: 1849204711, gameId: 5512240193, placeName: 'Ember Halls', boundAt: paired },
+    },
+    agentStatus: 'idle',
+    pairedAt: paired,
+    pairingExpiresAt: paired + 30 * 864e5,
+    openPlace: { placeName: 'Ember Halls', placeId: 1849204711, gameId: 5512240193, isRunMode: false },
+    placeMismatch: null,
+    recentOps: [
+      { op_id: 'op-91', kind: 'run_code', ok: 1, summary: 'Added 6 checkpoint pads to Stage 1', created_at: now - 26 * 60_000 },
+      { op_id: 'op-90', kind: 'set_property', ok: 1, summary: 'Lobby.Door.Anchored = true', created_at: now - 31 * 60_000 },
+    ],
+  };
+}
+
+/**
+ * The Studio selection, in mock mode. Two items against a `selectionCount: 2` on mockStudioState —
+ * the fixture would be incoherent otherwise, and a fixture that cannot happen teaches the UI to
+ * render a state the product never produces.
+ */
+export const mockSelection: StudioEventSelection = {
+  kind: 'selection',
+  items: [
+    { path: 'game.Workspace.Lobby.Door', class: 'Part' },
+    { path: 'game.Workspace.Lobby.DoorFrame', class: 'Model' },
+  ],
+  count: 2,
+  truncated: false,
+  clock: now - 4_000,
 };
 
 export const mockCheckpoints: CheckpointMeta[] = [
@@ -384,14 +514,20 @@ export interface MockToolDetail {
 
 /**
  * What a `run_intent` message carries: a deterministic restatement of the
- * user's own words, the things the request named by hand, and the places it
- * genuinely did not say. This is the ONLY source the Thinking card's Intent and
- * Plan rows read from — without it those rows do not render at all.
+ * user's own words, the things the request named by hand, the places it
+ * genuinely did not say, and the places it did not say where Apple decided
+ * anyway. This is the ONLY source the Thinking card's Intent and Plan rows read
+ * from — without it those rows do not render at all.
+ *
+ * `questions` and `assumptions` are both populated here because the card draws
+ * them as a contrasting pair and a mock carrying only one would never show that
+ * the pair reads correctly side by side.
  */
 export const mockIntent: RunIntent = {
   summary: 'Check the lobby floor visually and fix whatever the critique finds.',
   checklist: ['lobby floor', 'visual critique pass', 'material variation'],
   questions: ['Which tile size to use for the floor', 'Whether the seating cluster is wanted now or later'],
+  assumptions: ['mood: warm (from "cosy")', 'likely focal point: "lobby floor" (inferred, not stated)'],
 };
 
 /**

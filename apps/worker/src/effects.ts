@@ -240,14 +240,14 @@ export const EFFECTS: Record<string, EffectPreset> = {
     ],
   },
 
-  sparkle: {
+  creditle: {
     summary: 'Tight, bright, fast glints.',
     use: 'Pickups, treasure, enchanted objects, quest markers. Short lifetime is what makes it read as a glint instead of a cloud.',
     parts: [
       {
         className: 'ParticleEmitter',
         props: {
-          Name: '"Sparkle"',
+          Name: '"Creditle"',
           Rate: '22',
           Lifetime: range(0.45, 0.95),
           Speed: range(0.9, 2.1),

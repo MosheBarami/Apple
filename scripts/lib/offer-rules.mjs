@@ -10,7 +10,7 @@
  * Four of those twelve tests are written as "if the repository violates this rule, assert the
  * checker reports it; otherwise assert the checker is silent":
  *
- *     const over = PLAN_IDS.filter((id) => limits[id].sparksPerDay > ceiling);
+ *     const over = PLAN_IDS.filter((id) => limits[id].creditsPerDay > ceiling);
  *     for (const id of over) assert.match(r.out, ...);
  *     if (over.length) assert.equal(r.exit, 1);
  *
@@ -28,8 +28,8 @@
  * Nothing here reads a file, runs git, or prints. That is the property that makes it testable.
  */
 
-/** Spark claims a page can make to a reader: "231 Sparks a day", "12,600 Sparks per month". */
-export const SPARK_CLAIM = /(\d[\d,]{1,8})\s*(?:Sparks?|sparks?)\s*(?:a|per|\/)\s*(day|month)/g;
+/** Credit claims a page can make to a reader: "231 Credits a day", "12,600 Credits per month". */
+export const CREDIT_CLAIM = /(\d[\d,]{1,8})\s*(?:Credits?|credits?)\s*(?:a|per|\/)\s*(day|month)/g;
 
 /**
  * Terms, not descriptions. §12.5 puts contractual promises in the owner's hands, and this product
@@ -41,10 +41,10 @@ export const FOREVER = [/\$0\s*forever/i, /no card required,?\s*ever/i, /never b
  * COMMENTARY IS NOT COPY. A guard that reads source text must read the source, not the prose
  * explaining it.
  *
- * check-offer reported `pricing.astro states 60 Sparks a day, which no plan grants` against a file
+ * check-offer reported `pricing.astro states 60 Credits a day, which no plan grants` against a file
  * whose every rendered figure is interpolated from PLAN_LIMITS. The "claim" was a comment recording
  * why three literals had been replaced. It is the third guard in this repository caught doing this;
- * check-spark-figures.mjs carries the same note.
+ * check-credit-figures.mjs carries the same note.
  *
  * The failure is not symmetric, which is what makes it worth fixing rather than rewording around:
  * a comment can only ever produce a FALSE ALARM here, and the cost of that false alarm is that
@@ -65,11 +65,11 @@ export const stripComments = (src) =>
  *
  * @param {object} o
  * @param {string[]} o.planIds
- * @param {Record<string, {sparksPerDay: number, sparksPerMonth: number}>} o.limits
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits
  * @param {Record<string, {priceUsdMonthly: number|null}>} o.copy
- * @param {number} o.ceilingSparks  what the WHOLE SERVICE can serve in a day
- * @param {number} o.sparksPerBuild
- * @param {number} o.usdPerSpark
+ * @param {number} o.ceilingCredits  what the WHOLE SERVICE can serve in a day
+ * @param {number} o.creditsPerBuild
+ * @param {number} o.usdPerCredit
  * @param {number} o.margin
  * @param {string} [o.ceilingDetail] a human sentence naming where the ceiling comes from
  * @returns {{problems: string[], notes: string[]}}
@@ -78,9 +78,9 @@ export function planProblems({
   planIds,
   limits,
   copy,
-  ceilingSparks,
-  sparksPerBuild,
-  usdPerSpark,
+  ceilingCredits,
+  creditsPerBuild,
+  usdPerCredit,
   margin,
   ceilingDetail = '',
 }) {
@@ -98,11 +98,11 @@ export function planProblems({
     // plan would make any free tier arithmetically impossible, which is a rule about nothing. It
     // is still held to rule 3.
     if (price === 0) continue;
-    const serveCost = limits[id].sparksPerMonth * usdPerSpark;
+    const serveCost = limits[id].creditsPerMonth * usdPerCredit;
     const floor = serveCost * margin;
     if (price <= floor) {
       problems.push(
-        `${id} charges $${price}/month for ${limits[id].sparksPerMonth.toLocaleString()} Sparks, ` +
+        `${id} charges $${price}/month for ${limits[id].creditsPerMonth.toLocaleString()} Credits, ` +
         `which cost $${serveCost.toFixed(2)} to serve — below the $${floor.toFixed(2)} floor at ${margin}x`,
       );
     } else {
@@ -114,25 +114,25 @@ export function planProblems({
   // The one that matters most: not a pricing mistake but a promise that fails the moment one
   // subscriber uses what they bought.
   for (const id of planIds) {
-    const day = limits[id].sparksPerDay;
-    if (day > ceilingSparks) {
+    const day = limits[id].creditsPerDay;
+    if (day > ceilingCredits) {
       problems.push(
-        `${id} grants ${day} Sparks/day but the WHOLE SERVICE can serve ${ceilingSparks}` +
+        `${id} grants ${day} Credits/day but the WHOLE SERVICE can serve ${ceilingCredits}` +
         `${ceilingDetail} One user on this plan exhausts the day for everyone.`,
       );
     }
   }
 
   /* --- 3. a free tier that can finish one complete job --- */
-  const freeDay = limits.free?.sparksPerDay;
+  const freeDay = limits.free?.creditsPerDay;
   if (freeDay !== undefined) {
-    if (freeDay < sparksPerBuild) {
+    if (freeDay < creditsPerBuild) {
       problems.push(
-        `the free plan grants ${freeDay} Sparks/day and one quality-gated build costs ${sparksPerBuild} — ` +
+        `the free plan grants ${freeDay} Credits/day and one quality-gated build costs ${creditsPerBuild} — ` +
         `a free user cannot complete a single build in a day, so the trial demonstrates the product not working`,
       );
     } else {
-      notes.push(`free: ${freeDay} Sparks/day affords ${Math.floor(freeDay / sparksPerBuild)} build(s)`);
+      notes.push(`free: ${freeDay} Credits/day affords ${Math.floor(freeDay / creditsPerBuild)} build(s)`);
     }
   }
 
@@ -143,7 +143,7 @@ export function planProblems({
  * Rule 4: every quota a user reads equals the enforced one.
  *
  * A page promising a number the ledger does not grant is a page that lies, and the user finds out
- * at the moment they hit the wall. Numbers are matched only in a Sparks context, so an unrelated
+ * at the moment they hit the wall. Numbers are matched only in a Credits context, so an unrelated
  * 400 in a CSS rule is not a false positive.
  *
  * @param {{rel: string, src: string}[]} files
@@ -152,10 +152,10 @@ export function planProblems({
 export function copyProblems(files, enforced) {
   const problems = [];
   for (const { rel, src } of files) {
-    for (const m of stripComments(src).matchAll(SPARK_CLAIM)) {
+    for (const m of stripComments(src).matchAll(CREDIT_CLAIM)) {
       const claimed = Number(m[1].replace(/,/g, ''));
       if (!enforced.has(claimed)) {
-        problems.push(`${rel} states ${claimed} Sparks a ${m[2]}, which no plan grants`);
+        problems.push(`${rel} states ${claimed} Credits a ${m[2]}, which no plan grants`);
       }
     }
   }

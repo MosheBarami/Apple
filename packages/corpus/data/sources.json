@@ -940,7 +940,7 @@
     },
     "df-4830864": {
       "id": "df-4830864",
-      "url": "https://devforum.roblox.com/t/plugin-spark2d-make-particleemitter-style-effects-work-inside-a-screengui/4830864",
+      "url": "https://devforum.roblox.com/t/plugin-credit2d-make-particleemitter-style-effects-work-inside-a-screengui/4830864",
       "category": "motion",
       "kind": "devforum",
       "origin": "seed-manifest",
@@ -54950,9 +54950,9 @@
         "licenceFilePresent": true
       }
     },
-    "reg-sparkiyy-compo": {
-      "id": "reg-sparkiyy-compo",
-      "url": "https://github.com/sparkiyy/Compo",
+    "reg-creditiyy-compo": {
+      "id": "reg-creditiyy-compo",
+      "url": "https://github.com/creditiyy/Compo",
       "category": "registry-package",
       "kind": "repo",
       "origin": "seed-manifest",
@@ -54977,13 +54977,13 @@
         "reason": "Not yet scanned; the security gate runs before anything reads the source."
       },
       "provenance": {
-        "id": "github.com/sparkiyy/Compo@b2cc911071b9d2d37f4ce424e016eb0fb2e96014",
+        "id": "github.com/creditiyy/Compo@b2cc911071b9d2d37f4ce424e016eb0fb2e96014",
         "host": "github.com",
-        "owner": "sparkiyy",
+        "owner": "creditiyy",
         "repo": "Compo",
         "ref": "main",
         "sha": "b2cc911071b9d2d37f4ce424e016eb0fb2e96014",
-        "url": "https://github.com/sparkiyy/Compo",
+        "url": "https://github.com/creditiyy/Compo",
         "discoveredAt": "2026-09-01",
         "isFork": false,
         "upstream": null,
@@ -55018,7 +55018,7 @@
       "notes": [
         "LICENSE file + SPDX + commit SHA are all reachable."
       ],
-      "repo": "sparkiyy/Compo",
+      "repo": "creditiyy/Compo",
       "signals": {
         "stars": 7,
         "forks": 0,
@@ -94693,9 +94693,9 @@
         "detail": "gh: Not Found (HTTP 404)"
       }
     },
-    "reg-teakzc-sparkle": {
-      "id": "reg-teakzc-sparkle",
-      "url": "https://github.com/teakzc/sparkle",
+    "reg-teakzc-creditle": {
+      "id": "reg-teakzc-creditle",
+      "url": "https://github.com/teakzc/creditle",
       "category": "registry-package",
       "kind": "repo",
       "origin": "seed-manifest",

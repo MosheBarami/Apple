@@ -166,7 +166,7 @@ From `msg_end.stopReason`:
 | `error` | `failed` | Stopped by an error (+ the worker's own error text) |
 | `stopped` | `stopped` | Stopped by you |
 | `incomplete` | `incomplete` | Finished without changing anything |
-| `quota` | `quota` | Out of Sparks for today |
+| `quota` | `quota` | Out of Credits for today |
 
 `recovered` is the one terminal state that is *derived* rather than reported: it
 is `done` plus at least one step that genuinely failed earlier in the same run.

@@ -90,9 +90,9 @@ daily ceiling = FREE_NEURONS_PER_DAY 10,000 + BILLABLE_NEURONS_PER_DAY 15,000 = 
 | 1 neuron (docs-search embedding, the floor) | 25,000 | 50,000 |
 
 Even the pathological case is bounded. And the pathological case is not reachable by one actor:
-every path into `BudgetDO` is preceded by a per-user Spark debit in that user's own `QuotaDO`
-(`SessionDO.quotaSpend` for agent runs, `/api/docs/search` for embeddings). At 1 Spark per search
-and 60 Sparks/day on Free, driving 25,000 embeddings in a day needs **417 distinct users** — about
+every path into `BudgetDO` is preceded by a per-user Credit debit in that user's own `QuotaDO`
+(`SessionDO.quotaSpend` for agent runs, `/api/docs/search` for embeddings). At 1 Credit per search
+and 60 Credits/day on Free, driving 25,000 embeddings in a day needs **417 distinct users** — about
 14× the largest concurrency actually tested (30 users, zero inference errors).
 
 The realistic burst is the interesting figure. If an entire day's allowance were consumed inside a

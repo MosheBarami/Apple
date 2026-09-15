@@ -5,13 +5,14 @@
   "type": "module",
   "description": "Golem Roblox-specific eval harness: measures candidate models + RAG on Luau/Roblox tasks via the worker admin gateway.",
   "scripts": {
-    "check": "node --check src/run.mjs && node --check src/compare.mjs && node --check src/report.mjs && node --check src/selftest.mjs && node --check src/grade.mjs && node --check src/luau.mjs && node --check src/tasks.mjs && node --check src/transport.mjs && node --check src/roblox-antipatterns.mjs && node --check src/qa-overlap.mjs && node --check src/qa-buckets.mjs && node --check src/train-gate-overlap.mjs && node --check src/robloxqa-gate.mjs",
+    "check": "node --check src/run.mjs && node --check src/compare.mjs && node --check src/report.mjs && node --check src/selftest.mjs && node --check src/grade.mjs && node --check src/luau.mjs && node --check src/tasks.mjs && node --check src/transport.mjs && node --check src/roblox-antipatterns.mjs && node --check src/metrics.mjs && node --check src/tool-grader.mjs && node --check src/leaderboard.mjs && node --check src/regression.mjs && node --check src/history.mjs && node --check src/score.mjs && node --check src/luau-ast.mjs && node --check src/luau-symbols.mjs && node --check src/luau-flow.mjs && node --check src/luau-graph.mjs && node --check src/luau-dataflow.mjs && node --check src/luau-format.mjs && node --check src/luau-intel.mjs && node --check src/qa-overlap.mjs && node --check src/qa-buckets.mjs && node --check src/train-gate-overlap.mjs && node --check src/robloxqa-gate.mjs",
     "overlap": "node src/train-gate-overlap.mjs",
     "selftest": "node src/selftest.mjs",
     "test": "node src/selftest.mjs && node --test src/*.test.mjs tasks-visual/*.test.mjs",
     "run": "node src/run.mjs",
     "compare": "node src/compare.mjs",
-    "report": "node src/report.mjs"
+    "report": "node src/report.mjs",
+    "score": "node src/score.mjs"
   },
   "dependencies": {
     "@golem/design": "workspace:*"

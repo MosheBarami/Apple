@@ -1,12 +1,12 @@
 /**
  * Billing — subscription state, purchased credits, and the Stripe webhook that drives both.
  *
- * WHAT THIS IS FOR. `PLAN_LIMITS` grants 60 Sparks/day to every signup, with no cap on signups and
+ * WHAT THIS IS FOR. `PLAN_LIMITS` grants 60 Credits/day to every signup, with no cap on signups and
  * no way to charge anyone. At a measured ~$0.025 per quality-gated build, that makes each new user
  * a pure cost. This is the piece that turns a plan into something a user can actually buy.
  *
  * TWO BALANCES, DELIBERATELY SEPARATE.
- *   - A PLAN grants a renewable Spark allowance. It is a rate: it resets, it does not accumulate.
+ *   - A PLAN grants a renewable Credit allowance. It is a rate: it resets, it does not accumulate.
  *   - CREDITS are a purchased balance. They do not expire and are spent ONLY after the renewable
  *     allowance for the period is gone.
  * Collapsing the two would make "your plan includes X, top up if you need more" inexpressible, and
@@ -34,6 +34,15 @@ export interface Subscription {
   /** Stripe's ids, so a support question can be answered without guessing. */
   customerId: string | null;
   subscriptionId: string | null;
+  /**
+   * The id of the ONE subscription item, which is the thing a tier change replaces.
+   *
+   * Stored because a price change has to name the item it swaps: quoting or applying a new price
+   * without it ADDS a second item beside the running one, and the customer is then priced for both
+   * tiers at once. Null on a record written before this was kept, which every reader must treat as
+   * "cannot be priced" rather than as "no change needed".
+   */
+  itemId: string | null;
   /** `active` and `trialing` entitle; everything else falls back to free. */
   status: string | null;
   /** Unix seconds. After this, entitlement lapses unless renewed. */
@@ -45,6 +54,7 @@ export const FREE_SUBSCRIPTION: Subscription = {
   plan: 'free',
   customerId: null,
   subscriptionId: null,
+  itemId: null,
   status: null,
   currentPeriodEnd: null,
   cancelAtPeriodEnd: false,
@@ -65,6 +75,127 @@ export function entitlementFor(sub: Subscription, now = 0): PlanId {
   // from the clock so this stays a pure function and can be tested at a chosen instant.
   if (sub.currentPeriodEnd !== null && now > 0 && now > sub.currentPeriodEnd) return 'free';
   return sub.plan;
+}
+
+// ---------------------------------------------------------------------------
+// What the product may SAY about a subscription
+// ---------------------------------------------------------------------------
+
+/**
+ * The states a subscription can be in, as the product must describe them.
+ *
+ * `entitlementFor` answers one question — may this user spend at a paid rate — and collapses
+ * everything else into 'free'. That is correct for enforcement and useless for a page: a renewing
+ * subscription, one that cancels at the end of the period, a failed renewal still being retried,
+ * and a payment waiting on a 3-D Secure challenge all had to be told apart before any of them could
+ * be shown, and every one of them arrived on the same event and was thrown away.
+ */
+export type BillingState =
+  /** Never subscribed. */
+  | 'none'
+  /** Renewing normally. */
+  | 'active'
+  /** Inside a trial. */
+  | 'trialing'
+  /** Still served, but it ends at the period end rather than renewing. */
+  | 'cancelling'
+  /** A renewal failed. Still served while Stripe retries, deliberately. */
+  | 'past_due'
+  /** The payment needs the cardholder to authenticate. Entitles nothing. */
+  | 'needs_action'
+  /** Over: cancelled, unpaid, or a period that simply ran out. */
+  | 'lapsed';
+
+export interface SubscriptionView {
+  /** What the user is entitled to RIGHT NOW. Recomputed, never read from metadata. */
+  plan: PlanId;
+  state: BillingState;
+  /** Stripe's own word for it, kept for support questions. */
+  status: string | null;
+  /** Unix seconds this renews. Null whenever it will not renew. */
+  renewsAt: number | null;
+  /** Unix seconds access ends. Non-null ONLY when something is actually ending. */
+  endsAt: number | null;
+  /** A Stripe customer exists, so the portal has something to open — even on the free tier. */
+  hasBillingAccount: boolean;
+  /** There is something the user must do. Drives the one notice this product can afford to show. */
+  needsAttention: boolean;
+}
+
+export const NO_SUBSCRIPTION_VIEW: SubscriptionView = {
+  plan: 'free',
+  state: 'none',
+  status: null,
+  renewsAt: null,
+  endsAt: null,
+  hasBillingAccount: false,
+  needsAttention: false,
+};
+
+/**
+ * One reading of a stored subscription, which every surface derives from.
+ *
+ * RENEWS AND ENDS ARE NEVER BOTH SET, and never the same field under two names. `currentPeriodEnd`
+ * means opposite things depending on `cancelAtPeriodEnd` — the day you are charged again, or the
+ * day you lose access — and a UI handed the raw number has to make that call itself, in each place
+ * it prints it. It is made here, once.
+ */
+export function subscriptionView(sub: Subscription | null | undefined, nowSeconds: number): SubscriptionView {
+  if (!sub || !sub.status) {
+    return { ...NO_SUBSCRIPTION_VIEW, hasBillingAccount: !!sub?.customerId };
+  }
+  const hasBillingAccount = !!sub.customerId;
+  const plan = entitlementFor(sub, nowSeconds);
+  const base = { status: sub.status, hasBillingAccount, renewsAt: null, endsAt: null, needsAttention: false };
+
+  // A payment awaiting authentication is its own thing: the user believes they have paid, and
+  // nothing has been granted. Checked before the lapse test, which would otherwise swallow it.
+  if (sub.status === 'incomplete') {
+    return { ...base, plan: 'free', state: 'needs_action', needsAttention: true };
+  }
+  // Over, whatever the reason — a terminal status, or a period that ran out under a live one.
+  if (plan === 'free') {
+    return { ...base, plan: 'free', state: 'lapsed', endsAt: sub.currentPeriodEnd, needsAttention: hasBillingAccount };
+  }
+  if (sub.status === 'past_due') {
+    return { ...base, plan, state: 'past_due', endsAt: sub.currentPeriodEnd, needsAttention: true };
+  }
+  if (sub.cancelAtPeriodEnd) {
+    // Still served until the period ends, and it does NOT renew. Saying "renews on" here is the
+    // single most expensive sentence this page could get wrong.
+    return { ...base, plan, state: 'cancelling', endsAt: sub.currentPeriodEnd };
+  }
+  return {
+    ...base,
+    plan,
+    state: sub.status === 'trialing' ? 'trialing' : 'active',
+    renewsAt: sub.currentPeriodEnd,
+  };
+}
+
+/** States in which Stripe still has a subscription it could charge for. */
+const LIVE_STATES = new Set<BillingState>(['active', 'trialing', 'cancelling', 'past_due']);
+
+export type CheckoutGuardVerdict = { ok: true } | { ok: false; status: 409; error: string };
+
+/**
+ * May this account start a checkout at all?
+ *
+ * A Stripe Checkout ADDS a subscription; it never replaces one. The page already sent paid users to
+ * the portal, but the ROUTE did not look — so a direct POST to /api/billing/checkout minted a
+ * second subscription beside the running one and the customer was charged for both. The page's
+ * rule and this one are the same rule; only this one is enforced.
+ *
+ * A LAPSED CUSTOMER IS NOT REFUSED. Coming back after a cancellation is a first subscription again,
+ * and refusing it would strand a returning customer on a portal with nothing to resume.
+ */
+export function checkoutGuard(view: SubscriptionView): CheckoutGuardVerdict {
+  if (!LIVE_STATES.has(view.state)) return { ok: true };
+  return {
+    ok: false,
+    status: 409,
+    error: 'you already have a subscription — change or cancel it in the billing portal',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -133,6 +264,15 @@ export async function verifyStripeSignature(
 export interface BillingOutcome {
   /** Which user this event is about, from subscription metadata. */
   userId: string | null;
+  /**
+   * Stripe's own id for this event, or null when it carried none.
+   *
+   * STRIPE RETRIES. A delivery that times out on our side is sent again, and `/grant-credits` is
+   * additive — so without an id to deduplicate on, one purchase inside the signature window credits
+   * the account twice. Carried here rather than read at the call site so the reader and the
+   * deduplicator cannot disagree about which field it is.
+   */
+  eventId: string | null;
   subscription?: Subscription;
   /** Credits to add, for one-off purchases. */
   creditsDelta?: number;
@@ -149,31 +289,54 @@ export interface BillingOutcome {
  * is editable by the customer and is not an identity. A subscription with no `metadata.userId` is
  * ignored loudly rather than guessed at — attaching a plan to the wrong account is worse than
  * attaching it to none.
+ *
+ * `env` is what makes the TIER readable from the price. It is optional only because an event from a
+ * deployment with no prices configured still has to be interpretable; when it is absent the reader
+ * falls back to the metadata exactly as it always did.
  */
-export function interpretStripeEvent(event: unknown): BillingOutcome {
-  if (typeof event !== 'object' || event === null) return { userId: null, ignored: 'not an object' };
-  const e = event as { type?: string; data?: { object?: Record<string, unknown> } };
+export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome {
+  if (typeof event !== 'object' || event === null) return { userId: null, eventId: null, ignored: 'not an object' };
+  const e = event as { id?: unknown; type?: string; data?: { object?: Record<string, unknown> } };
   const obj = e.data?.object ?? {};
   const type = e.type ?? '';
   const metadata = (obj['metadata'] as Record<string, string> | undefined) ?? {};
   const userId = metadata['userId'] ?? null;
+  // Null rather than undefined: this value is serialised to the DO, and `undefined` disappears
+  // through JSON.stringify, which would turn "no id" into "field absent" and then into a fresh
+  // event every time (F-65).
+  const eventId = typeof e.id === 'string' && e.id.length > 0 ? e.id : null;
 
   switch (type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
-      if (!userId) return { userId: null, ignored: 'subscription carries no metadata.userId' };
+      if (!userId) return { userId: null, eventId, ignored: 'subscription carries no metadata.userId' };
       const planRaw = metadata['plan'];
       const status = typeof obj['status'] === 'string' ? obj['status'] : null;
       // A deletion is a lapse to free regardless of what the plan metadata still says.
       const deleted = type === 'customer.subscription.deleted';
-      const plan: PlanId = deleted ? 'free' : isPlanId(planRaw) ? planRaw : 'free';
+      /*
+       * THE PRICE OUTRANKS THE METADATA, because the price is what Stripe bills.
+       *
+       * `metadata.plan` is written exactly once — by buildCheckoutRequest, at the FIRST purchase.
+       * Every later tier change happens in the Billing Portal, which swaps `items[].price` and
+       * leaves `metadata` untouched. So an upgrade bought there charged the new tier and entitled
+       * the old one, and a downgrade kept serving the tier nobody was paying for; the event carried
+       * the right answer all along and nothing read it.
+       *
+       * The metadata stays as the FALLBACK rather than being dropped: a price this deployment does
+       * not recognise (a legacy one, a test-mode id) must not silently demote a paying customer.
+       */
+      const fromPrice = env ? planForPriceId(env, priceIdOfSubscription(obj)) : null;
+      const plan: PlanId = deleted ? 'free' : (fromPrice ?? (isPlanId(planRaw) ? planRaw : 'free'));
       return {
         userId,
+        eventId,
         subscription: {
           plan,
           customerId: typeof obj['customer'] === 'string' ? obj['customer'] : null,
           subscriptionId: typeof obj['id'] === 'string' ? obj['id'] : null,
+          itemId: itemIdOfSubscription(obj),
           status: deleted ? 'canceled' : status,
           currentPeriodEnd: typeof obj['current_period_end'] === 'number' ? obj['current_period_end'] : null,
           cancelAtPeriodEnd: obj['cancel_at_period_end'] === true,
@@ -182,17 +345,17 @@ export function interpretStripeEvent(event: unknown): BillingOutcome {
     }
 
     case 'checkout.session.completed': {
-      if (!userId) return { userId: null, ignored: 'checkout session carries no metadata.userId' };
+      if (!userId) return { userId: null, eventId, ignored: 'checkout session carries no metadata.userId' };
       // One-off credit purchase. Subscription checkouts are handled by the subscription events
       // above, so this only applies when credits were actually bought.
       const credits = Number(metadata['credits'] ?? 0);
-      if (obj['payment_status'] !== 'paid') return { userId, ignored: `payment_status ${String(obj['payment_status'])}` };
-      if (!Number.isFinite(credits) || credits <= 0) return { userId, ignored: 'no credits in metadata' };
-      return { userId, creditsDelta: Math.floor(credits) };
+      if (obj['payment_status'] !== 'paid') return { userId, eventId, ignored: `payment_status ${String(obj['payment_status'])}` };
+      if (!Number.isFinite(credits) || credits <= 0) return { userId, eventId, ignored: 'no credits in metadata' };
+      return { userId, eventId, creditsDelta: Math.floor(credits) };
     }
 
     default:
-      return { userId, ignored: `unhandled event type ${type}` };
+      return { userId, eventId, ignored: `unhandled event type ${type}` };
   }
 }
 
@@ -233,6 +396,170 @@ export function priceIdFor(env: Env, plan: PlanId): string | null {
   if (plan === 'builder') return e.STRIPE_PRICE_BUILDER?.trim() || null;
   if (plan === 'studio') return e.STRIPE_PRICE_STUDIO?.trim() || null;
   return null;
+}
+
+/**
+ * The inverse: which tier a Stripe price sells, or null when this deployment does not sell it.
+ *
+ * This is the half that was missing, and its absence is why a tier change made in the Billing
+ * Portal entitled the wrong plan — see the comment in `interpretStripeEvent`. An unknown price is
+ * null rather than 'free': not recognising an id is not the same as the customer having no plan.
+ */
+export function planForPriceId(env: Env, priceId: string | null | undefined): PlanId | null {
+  if (typeof priceId !== 'string' || priceId.length === 0) return null;
+  const e = env as unknown as CheckoutEnv;
+  // Compared against the trimmed value, so a price id with a stray newline in a secret still maps.
+  if (e.STRIPE_PRICE_BUILDER?.trim() === priceId) return 'builder';
+  if (e.STRIPE_PRICE_STUDIO?.trim() === priceId) return 'studio';
+  return null;
+}
+
+/**
+ * The price id of a subscription's first item, however Stripe expanded it.
+ *
+ * `price` arrives as an object on a webhook and as a bare id when the object was fetched without
+ * expansion; reading only one shape would make the tier unreadable half the time. One item per
+ * subscription is this product's invariant (`line_items[0][quantity]=1`), so the first is the one.
+ */
+export function priceIdOfSubscription(obj: Record<string, unknown>): string | null {
+  const items = obj['items'] as { data?: unknown[] } | undefined;
+  const first = Array.isArray(items?.data) ? items.data[0] : null;
+  if (!first || typeof first !== 'object') return null;
+  const price = (first as Record<string, unknown>)['price'];
+  if (typeof price === 'string') return price;
+  if (price && typeof price === 'object') {
+    const id = (price as Record<string, unknown>)['id'];
+    return typeof id === 'string' ? id : null;
+  }
+  return null;
+}
+
+/**
+ * The id of a subscription's single ITEM — not the price on it, and not the subscription itself.
+ *
+ * Three different ids are in play on one object (`sub_`, `si_`, `price_`) and only this one names
+ * the row a tier change edits. One item per subscription is this product's invariant
+ * (`line_items[0][quantity]=1`), so the first is the one.
+ */
+export function itemIdOfSubscription(obj: Record<string, unknown>): string | null {
+  const items = obj['items'] as { data?: unknown[] } | undefined;
+  const first = Array.isArray(items?.data) ? items.data[0] : null;
+  if (!first || typeof first !== 'object') return null;
+  const id = (first as Record<string, unknown>)['id'];
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+// --- what a tier change costs, before the user commits to it -------------------------------------
+//
+// The ladder printed every tier's monthly price and then sent anyone already paying to the Billing
+// Portal, so the amount for THIS change — the prorated charge today, the credit for the part of the
+// period already paid for — was first seen on Stripe's own page, after the user had left the
+// product. This asks Stripe the question in advance. It is READ-ONLY: nothing below moves a
+// subscription or grants an entitlement, and the portal is still where the change is made.
+
+export interface InvoicePreview {
+  /** In MAJOR units, ready for `formatMoney`. Negative when the change leaves a credit. */
+  amountDue: number;
+  /** ISO 4217, upper case. Stripe answers in lower case and the formatter wants the code. */
+  currency: string;
+  /** Unix seconds the proration is computed from, or null when nothing was prorated. */
+  prorationDate: number | null;
+  lines: { description: string; amount: number }[];
+}
+
+/**
+ * Currencies with no minor unit. Dividing these by 100 quotes a hundredth of the real charge.
+ *
+ * It lives here rather than in a caller because the amount and the currency arrive together and are
+ * only correct together.
+ */
+const ZERO_DECIMAL = new Set([
+  'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+]);
+
+function toMajor(minor: number, currency: string): number {
+  if (ZERO_DECIMAL.has(currency)) return minor;
+  // Rounded first: a summed set of lines in binary floating point is not exact, and a price cell
+  // reading "$12.340000000000001" is a bug the reader can see.
+  return Math.round(minor) / 100;
+}
+
+/**
+ * Ask Stripe what moving this subscription to `plan` would cost right now.
+ *
+ * THE ITEM ID IS NOT OPTIONAL. `create_preview` given a price and no item prices a subscription
+ * carrying BOTH tiers and quotes their sum — a plausible-looking number that is simply wrong. A
+ * record with no item id is refused here rather than previewed badly; the caller then says it could
+ * not get a figure, which is true, instead of showing one that is not.
+ *
+ * `/v1/invoices/create_preview` is the current endpoint. `/v1/invoices/upcoming` is its retired
+ * predecessor and is not what a current API version answers.
+ */
+export function buildInvoicePreviewRequest(
+  env: Env,
+  opts: { customerId: string | null; subscriptionId: string | null; itemId: string | null; plan: PlanId },
+): CheckoutRequest | CheckoutRefusal {
+  if (!checkoutConfigured(env)) {
+    return { ok: false, status: 503, error: 'billing is not configured for this deployment' };
+  }
+  const price = priceIdFor(env, opts.plan);
+  if (!price) {
+    // Free is a cancellation and enterprise is a conversation. Neither is a priced swap.
+    return { ok: false, status: 400, error: `${opts.plan} has no price to quote here` };
+  }
+  if (!opts.customerId || !opts.subscriptionId || !opts.itemId) {
+    return { ok: false, status: 400, error: 'there is no running subscription to price this change against' };
+  }
+
+  const p = new URLSearchParams();
+  p.set('customer', opts.customerId);
+  p.set('subscription', opts.subscriptionId);
+  p.set('subscription_details[items][0][id]', opts.itemId);
+  p.set('subscription_details[items][0][price]', price);
+  // Without this the preview is of the NEXT renewal at the new price, not of the change itself —
+  // and the charge today is exactly the part the ladder cannot show.
+  p.set('subscription_details[proration_behavior]', 'create_prorations');
+  return { ok: true, body: p.toString() };
+}
+
+/**
+ * Read Stripe's preview invoice, or null when it cannot be read.
+ *
+ * NULL IS NOT ZERO. A reply this cannot parse means the amount is unknown, and returning 0 would
+ * turn a failure to observe into the sentence "this change costs nothing today" — the exact shape
+ * of defect this codebase keeps finding. The caller refuses instead.
+ */
+export function readInvoicePreview(payload: unknown): InvoicePreview | null {
+  if (typeof payload !== 'object' || payload === null) return null;
+  const inv = payload as Record<string, unknown>;
+  const minor = inv['amount_due'];
+  if (typeof minor !== 'number' || !Number.isFinite(minor)) return null;
+  const currency = typeof inv['currency'] === 'string' && inv['currency'].length > 0
+    ? inv['currency'].toUpperCase()
+    : null;
+  if (!currency) return null;
+
+  const raw = (inv['lines'] as { data?: unknown[] } | undefined)?.data;
+  const rows = Array.isArray(raw) ? raw : [];
+  const lines: { description: string; amount: number }[] = [];
+  let prorationDate: number | null = null;
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const r = row as Record<string, unknown>;
+    const amount = r['amount'];
+    if (typeof amount !== 'number' || !Number.isFinite(amount)) continue;
+    lines.push({
+      description: typeof r['description'] === 'string' ? r['description'] : '',
+      amount: toMajor(amount, currency),
+    });
+    // Only a PRORATION line dates the proration. A plain renewal line would date it to the start of
+    // the next period and make the sentence about today wrong.
+    if (r['proration'] === true && prorationDate === null) {
+      const start = (r['period'] as Record<string, unknown> | undefined)?.['start'];
+      if (typeof start === 'number' && Number.isFinite(start)) prorationDate = start;
+    }
+  }
+  return { amountDue: toMajor(minor, currency), currency, prorationDate, lines };
 }
 
 /** Can this deployment start a checkout at all? The webhook secret alone is not enough. */
@@ -287,6 +614,13 @@ export function buildCheckoutRequest(
   // move a plan are subscription events, and a session's metadata does not reach them on its own.
   p.set('metadata[userId]', opts.userId);
   p.set('subscription_data[metadata][userId]', opts.userId);
+  // AND THE PLAN. This line was missing, and its absence was the whole upgrade path failing
+  // silently: interpretStripeEvent reads metadata.plan and falls back to 'free', so every real
+  // paid subscription was interpreted as free and the customer stayed on the tier they had left.
+  // Nothing caught it because the webhook tests hand-built their events with a plan field that no
+  // checkout ever set. It is NOT an instruction about entitlement — entitlementFor still recomputes
+  // from status and period, so a cancelled subscription naming 'studio' here still grants nothing.
+  p.set('subscription_data[metadata][plan]', opts.plan);
   if (opts.email) p.set('customer_email', opts.email);
   // One subscription per account: without this a second checkout adds a second subscription and the
   // user is charged twice for tiers that were meant to replace one another.

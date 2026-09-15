@@ -13,9 +13,11 @@ import type {
   RunIntent,
   ServerMsg,
   StudioEventLog,
+  StudioEventSelection,
   StudioEventState,
 } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
+import type { RestoreStatus } from './restore-status';
 import { fetchCheckpoints, fetchMessages } from './api';
 import {
   MOCK_MODE,
@@ -27,6 +29,7 @@ import {
   mockMessages,
   mockPlaytest,
   mockQuota,
+  mockSelection,
   mockStudioState,
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
@@ -83,7 +86,20 @@ export interface ChatItem {
    * for a conversation loaded from history and for a worker too old to send it, which renders as
    * no cost line rather than a zero.
    */
-  sparksSpent?: number;
+  creditsSpent?: number;
+  /**
+   * What this run's prompt cost against its ceiling, and what the trim dropped — from the
+   * `context_budget` message.
+   *
+   * UNDEFINED UNTIL THE WORKER SENDS ONE, which is the whole contract: a conversation loaded from
+   * history and a worker too old to send it show no budget rather than a confident zero, and
+   * `dropped` being absent means nothing was dropped rather than "we did not look".
+   */
+  context?: {
+    usedChars: number;
+    maxChars: number;
+    dropped?: { groups: number; chars: number };
+  };
 }
 
 export interface AgentStatus {
@@ -92,12 +108,12 @@ export interface AgentStatus {
   step?: number;
   totalSteps?: number;
   /**
-   * What THIS run has cost so far, in Sparks. Reported by the worker; never estimated here.
+   * What THIS run has cost so far, in Credits. Reported by the worker; never estimated here.
    *
    * Distinct from the account-wide `quota` message. A user watching a build wants to know what
    * the build is costing, and that was the one figure the server tracked and never sent.
    */
-  sparksSpent?: number;
+  creditsSpent?: number;
   /** The tool running right now, when the phase came from one. */
   tool?: string;
   /**
@@ -112,6 +128,9 @@ export interface AgentStatus {
 
 export type ConnState = 'connecting' | 'open' | 'reconnecting' | 'offline';
 
+/** One person on the project, exactly as ServerMsg.presence carries them. */
+export type PresenceState = Extract<ServerMsg, { type: 'presence' }>['present'][number];
+
 export interface ProjectSocket {
   conn: ConnState;
   messages: ChatItem[];
@@ -123,8 +142,31 @@ export interface ProjectSocket {
    * different copy. Neither says anything about the plugin being installed;
    * there is no signal for that. See lib/studio-connection.ts.
    */
-  studio: { connected: boolean; state: StudioEventState | null; everConnected: boolean };
+  studio: {
+    connected: boolean;
+    state: StudioEventState | null;
+    everConnected: boolean;
+    /**
+     * What is selected in Studio right now, from the `studio_selection` broadcast.
+     *
+     * THE MESSAGE WAS ARRIVING AND BEING DROPPED. The plugin captured the selection, the worker
+     * re-derived every field of it and broadcast it on connect and on every real change — and
+     * `handleServerMsg` had no case for it, so it fell through the switch and the browser knew
+     * nothing about what the user was looking at. Null until the worker sends one, which is a
+     * different fact from "nothing is selected" and is why the composer's chip is absent rather
+     * than empty until then.
+     */
+    selection: StudioEventSelection | null;
+  };
   quota: QuotaState | null;
+  /**
+   * Everyone the worker can currently see on this project, from the `presence` message.
+   *
+   * Empty until the first one arrives, which is a different fact from "you are alone" — the
+   * component that renders it says nothing at all rather than announcing an emptiness it has not
+   * been told about yet.
+   */
+  presence: PresenceState[];
   agentStatus: AgentStatus | null;
   /**
    * Every distinct `agent_status.phase` this client has seen on the CURRENT
@@ -150,11 +192,30 @@ export interface ProjectSocket {
   playtest: PlaytestRun | null;
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
+  /**
+   * The restore this project is doing, or the last one it did, or null.
+   *
+   * NEVER synthesised here, for the same reason as `playtest` above: if the worker has not sent a
+   * `restore_status`, this app knows nothing about any restore and the drawer says nothing. A
+   * spinner started by the click rather than by the server would keep spinning through a worker
+   * that never received the frame.
+   */
+  restoreStatus: RestoreStatus | null;
   sendChat: (text: string, mode: GolemMode) => boolean;
+  /**
+   * "I am still here, and this is what I am doing."
+   *
+   * The frame has been in the protocol and handled by the session DO since presence was written,
+   * and nothing in this app ever sent one — so `typing` could not occur and a third of the
+   * vocabulary the other people's faces are rendered from was unreachable. Returns whether it
+   * went, like every other send here: a closed socket is not a presence update.
+   */
+  signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
   editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
   stop: () => void;
-  createCheckpoint: (label: string) => void;
+  /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
+  createCheckpoint: (label: string, description?: string) => void;
   restoreCheckpoint: (checkpointId: string) => void;
   reloadHistory: () => void;
   reloadCheckpoints: () => void;
@@ -239,12 +300,15 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     connected: boolean;
     state: StudioEventState | null;
     everConnected: boolean;
+    selection: StudioEventSelection | null;
   }>({
     connected: false,
     state: null,
     everConnected: false,
+    selection: null,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
+  const [presence, setPresence] = useState<PresenceState[]>([]);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [phaseMarks, setPhaseMarks] = useState<PhaseMark[]>([]);
   const [running, setRunning] = useState(false);
@@ -252,6 +316,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const [frames, setFrames] = useState<StudioFrame[]>([]);
   const [playtest, setPlaytest] = useState<PlaytestRun | null>(null);
   const [checkpoints, setCheckpoints] = useState<CheckpointMeta[]>([]);
+  const [restoreStatus, setRestoreStatus] = useState<RestoreStatus | null>(null);
   const [checkpointsState, setCheckpointsState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -268,7 +333,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true });
+      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -356,10 +421,21 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         break;
       case 'studio_status':
         setStudio((s) => ({
+          ...s,
           connected: msg.connected,
           state: msg.state ?? null,
           everConnected: s.everConnected || msg.connected,
+          // A selection belongs to an attached Studio. Keeping the last one after the plugin
+          // dropped would offer the user a reference to objects nothing can act on any more.
+          selection: msg.connected ? s.selection : null,
         }));
+        break;
+      case 'studio_selection':
+        // Replaced wholesale, never merged: the worker sends the WHOLE selection each time and
+        // only when it genuinely changed (see sameSelection in companion.ts), so this message is
+        // the complete truth about what is selected. Merging would leave a deselected part on
+        // screen as something the user could still point at.
+        setStudio((s) => ({ ...s, selection: msg.selection }));
         break;
       case 'msg_start':
         setRunning(true);
@@ -484,9 +560,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             streaming: false,
             stopReason: msg.stopReason,
             error: msg.error,
-            // Only when the worker sent one: `?? item.sparksSpent` rather than `?? 0`, so an older
+            // Only when the worker sent one: `?? item.creditsSpent` rather than `?? 0`, so an older
             // worker leaves the field absent instead of asserting that the run was free.
-            sparksSpent: msg.sparksSpent ?? item.sparksSpent,
+            creditsSpent: msg.creditsSpent ?? item.creditsSpent,
             tools: item.tools.map((t) => (t.done ? t : { ...t, done: true, ok: false, durationMs: Date.now() - t.startedAt })),
           };
           return next;
@@ -541,7 +617,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           // Carried forward like effort, and for the same reason: the cost is settled once per
           // step while the phase changes several times within one. Falling back to `prev` keeps
           // the figure from flickering back to nothing between settlements.
-          sparksSpent: msg.sparksSpent ?? prev?.sparksSpent,
+          creditsSpent: msg.creditsSpent ?? prev?.creditsSpent,
         }));
         break;
       case 'run_state': {
@@ -601,6 +677,39 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         });
         break;
       }
+      case 'context_budget':
+        // Kept on the MESSAGE, not on `agentStatus`, for the same reason `creditsSpent` is: the
+        // status is cleared by `msg_end`, so a figure stored there would be correct for one frame
+        // and then gone — and this one is most worth reading after the run, when the user is
+        // trying to understand why a long conversation started behaving differently.
+        //
+        // The LAST report of a run wins: a sixteen-step build trims on several steps, and the size
+        // of the prompt that was actually sent last is the one that describes where the run ended
+        // up. `dropped` is carried forward from any earlier step that dropped turns, because a turn
+        // dropped on step 4 is still gone at step 16 — clearing it would un-disclose a real loss.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) return list;
+          const item = list[idx]!;
+          const next = [...list];
+          const prior = item.context?.dropped;
+          const dropped = msg.dropped
+            ? {
+                groups: (prior?.groups ?? 0) + msg.dropped.groups,
+                chars: (prior?.chars ?? 0) + msg.dropped.chars,
+              }
+            : prior;
+          next[idx] = {
+            ...item,
+            context: {
+              usedChars: msg.usedChars,
+              maxChars: msg.maxChars,
+              ...(dropped ? { dropped } : {}),
+            },
+          };
+          return next;
+        });
+        break;
       case 'quota':
         setQuota(msg.quota);
         break;
@@ -609,6 +718,12 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           const without = list.filter((c) => c.id !== msg.checkpoint.id);
           return [msg.checkpoint, ...without].sort((a, b) => b.createdAt - a.createdAt);
         });
+        break;
+      case 'restore_status':
+        // Straight through, latest wins. The worker owns the whole record — which phase, the
+        // plugin's counts, the caveat — precisely so the drawer cannot drift from what actually
+        // happened to the place.
+        setRestoreStatus(msg);
         break;
       case 'studio_frame':
         // Uncompressed RGB is heavy, so only the most recent handful are kept
@@ -627,6 +742,15 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       case 'error':
         errorCbRef.current(msg.code, msg.message);
         break;
+      case 'presence':
+        //[[ WHO ELSE IS IN THIS PROJECT.
+        //
+        //   Replaced wholesale rather than merged: the server derives this from the sockets that
+        //   are actually attached, so the message IS the whole truth about the room. Merging would
+        //   keep a person on screen after their last tab closed, and a presence indicator that
+        //   outlives the connection fails in the one way nobody notices. ]]
+        setPresence(msg.present);
+        return;
       case 'pong':
         break;
     }
@@ -647,7 +771,18 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       return;
     }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${proto}://${location.host}/api/projects/${encodeURIComponent(projectId)}/ws`;
+    //[[ THE SHARED SOCKET, FOR THE OWNER TOO.
+    //
+    //   `/api/projects/:id/ws` is owner-only and stays that way. This client asks for the shared
+    //   one because the owner is simply the strongest member there: the worker resolves their role
+    //   from the project row, not from anything on the wire, so an owner's socket is identical
+    //   either way and costs the same one database round trip.
+    //
+    //   What changes is that a collaborator gets a socket at all — they can watch a build, see who
+    //   else is here, and be refused by name when they try to start one. Pointing this at the
+    //   owner-only route would have left every collaboration feature reachable by curl and by
+    //   nothing a person can click. ]]
+    const url = `${proto}://${location.host}/api/shared/${encodeURIComponent(projectId)}/ws`;
     let ws: WebSocket;
     try {
       ws = new WebSocket(url, ['golem.v1', `golem.jwt.${token}`]);
@@ -790,13 +925,20 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     [sendRaw],
   );
 
+  const signalPresence = useCallback(
+    (activity: 'viewing' | 'typing' | 'building') => sendRaw({ type: 'presence', activity }),
+    [sendRaw],
+  );
+
   const stop = useCallback(() => {
     sendRaw({ type: 'stop' });
   }, [sendRaw]);
 
   const createCheckpoint = useCallback(
-    (label: string) => {
-      sendRaw({ type: 'checkpoint_create', label });
+    (label: string, description?: string) => {
+      // Omitted rather than sent empty: the worker turns blank into null, and a frame that always
+      // carries the field would make "they wrote nothing" indistinguishable from an older client.
+      sendRaw(description ? { type: 'checkpoint_create', label, description } : { type: 'checkpoint_create', label });
     },
     [sendRaw],
   );
@@ -814,6 +956,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     historyState,
     studio,
     quota,
+    presence,
     agentStatus,
     phaseMarks,
     running,
@@ -822,7 +965,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     playtest,
     checkpoints,
     checkpointsState,
+    restoreStatus,
     sendChat,
+    signalPresence,
     editAndResend,
     stop,
     createCheckpoint,

@@ -1,0 +1,674 @@
+---
+// ---------------------------------------------------------------------------
+// CreditMeter — the usage explorer. Move the sliders, see whether a real day of
+// building fits inside the free allowance.
+//
+// All arithmetic uses the published figures and changes none of them:
+// The ALLOWANCES are read from PLAN_LIMITS, never typed here — this component exists to answer
+// "does a real day fit inside the free allowance", and a copy of that number which can drift is
+// the one thing that would make the answer worthless.
+//   Plan 2 · Agent 4 · Super Agent 10 (+1 per extra step)
+//   1 Credit = 30 neurons; Cloudflare bills $0.011 per 1,000 neurons
+// "Whichever limit binds first applies."
+// ---------------------------------------------------------------------------
+
+import { PLAN_LIMITS } from '@golem/shared';
+
+const FREE_PER_DAY = PLAN_LIMITS.free.creditsPerDay;
+
+interface Props {
+  /** show the "what it costs to run" honesty panel */
+  showCost?: boolean;
+}
+const { showCost = true } = Astro.props;
+---
+
+<div class="meter slab slab--lift slab--pad" id="credit-meter" data-free-per-day={FREE_PER_DAY}>
+  <div class="meter__grid">
+    <div class="meter__controls">
+      <p class="meter__title">A day of building</p>
+
+      <div class="ctl is-clay">
+        <label for="sm-clay">
+          <span class="ctl__name">Questions &amp; small edits</span>
+          <span class="ctl__mode mono">Plan · 2 credits</span>
+        </label>
+        <div class="ctl__row">
+          <input
+            id="sm-clay"
+            type="range"
+            min="0"
+            max={FREE_PER_DAY}
+            step="1"
+            value="12"
+            data-cost="2"
+            data-cursor="drag"
+            data-cursor-label="drag"
+          />
+          <output for="sm-clay" id="sm-clay-out" class="ctl__out mono">12</output>
+        </div>
+      </div>
+
+      <div class="ctl is-stone">
+        <label for="sm-stone">
+          <span class="ctl__name">Features built</span>
+          <span class="ctl__mode mono">Agent · 4 credits</span>
+        </label>
+        <div class="ctl__row">
+          <input
+            id="sm-stone"
+            type="range"
+            min="0"
+            max="30"
+            step="1"
+            value="6"
+            data-cost="4"
+            data-cursor="drag"
+            data-cursor-label="drag"
+          />
+          <output for="sm-stone" id="sm-stone-out" class="ctl__out mono">6</output>
+        </div>
+      </div>
+
+      <div class="ctl is-rune">
+        <label for="sm-rune">
+          <span class="ctl__name">Verified autonomous runs</span>
+          <span class="ctl__mode mono">Super Agent · 10 credits +1/step</span>
+        </label>
+        <div class="ctl__row">
+          <input
+            id="sm-rune"
+            type="range"
+            min="0"
+            max="20"
+            step="1"
+            value="1"
+            data-cost="10"
+            data-cursor="drag"
+            data-cursor-label="drag"
+          />
+          <output for="sm-rune" id="sm-rune-out" class="ctl__out mono">1</output>
+        </div>
+      </div>
+
+      <div class="ctl ctl--sub">
+        <label for="sm-steps">
+          <span class="ctl__name">Extra steps per Super Agent run</span>
+          <span class="ctl__mode mono">+1 credit each</span>
+        </label>
+        <div class="ctl__row">
+          <input
+            id="sm-steps"
+            type="range"
+            min="0"
+            max="4"
+            step="1"
+            value="2"
+            data-cursor="drag"
+            data-cursor-label="drag"
+          />
+          <output for="sm-steps" id="sm-steps-out" class="ctl__out mono">2</output>
+        </div>
+      </div>
+    </div>
+
+    <div class="meter__result">
+      <div class="gauge">
+        <p class="gauge__label mono">Credits used per day</p>
+        <p class="gauge__value" id="sm-total">{FREE_PER_DAY}</p>
+
+        <div class="gauge__track" aria-hidden="true">
+          <span class="gauge__fill" id="sm-fill"></span>
+          <span class="gauge__mark" style={`left:calc(${FREE_PER_DAY} / 440 * 100%)`}>
+            <span class="mono">free {FREE_PER_DAY}</span>
+          </span>
+        </div>
+
+        <p class="gauge__scale mono" aria-hidden="true">
+          <span>0</span><span>{Math.round(FREE_PER_DAY * 2)}</span><span>{PLAN_LIMITS.studio.creditsPerDay} · Studio</span>
+        </p>
+      </div>
+
+      <p class="verdictline" id="sm-verdict" aria-live="polite">
+        <!-- Pre-rendered to match what the script computes for these slider defaults,
+             so the page tells the same story before JavaScript runs and for a reader
+             who has it turned off. It said "Comfortably inside the free allowance"
+             while the defaults totalled 46; correcting Plan from 1 credit to 2 makes
+             them total exactly the free daily allowance, which is the
+             monthly cap binding, not comfort. -->
+        A day like this fits the free plan — it is the monthly cap that binds. 900 free
+        credits covers about <strong>15 days</strong> of building at this intensity.
+      </p>
+
+      <dl class="figures">
+        <div>
+          <dt class="mono">Free plan</dt>
+          <dd id="sm-free">{FREE_PER_DAY} / day · {PLAN_LIMITS.free.creditsPerMonth.toLocaleString()} / month</dd>
+        </div>
+        <div>
+          <dt class="mono">Pro (waitlist)</dt>
+          <dd id="sm-pro">{PLAN_LIMITS.studio.creditsPerDay} / day · {PLAN_LIMITS.studio.creditsPerMonth.toLocaleString()} / month</dd>
+        </div>
+        <div>
+          <dt class="mono">Your month</dt>
+          <dd id="sm-month">1,800 credits</dd>
+        </div>
+        <div>
+          <dt class="mono">Binding limit</dt>
+          <dd id="sm-bind">monthly</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  {
+    showCost && (
+      <details class="honesty">
+        <summary>
+          <span>What this actually costs us to run</span>
+          <span class="honesty__chev" aria-hidden="true" />
+        </summary>
+        <div class="honesty__body">
+          <p>
+            Credits are not a made-up currency. One Credit is 30 neurons of
+            real compute, billed at $0.011 per 1,000 neurons, and the
+            ledger charges from the provider's own reported figure rather than
+            an estimate.
+          </p>
+          <ul>
+            <li>
+              A full Agent build — read the tree, edit, create instances, verify
+              — measured <strong>511 neurons</strong>, about{' '}
+              <strong>$0.0056</strong>.
+            </li>
+            <li>
+              A Super Agent build with read-back and a playtest measured{' '}
+              <strong>297 neurons</strong>, about <strong>$0.0033</strong>.
+            </li>
+            <li>
+              A Plan question with Studio attached: <strong>37–43 neurons</strong>,
+              well under half a cent.
+            </li>
+          </ul>
+          <p class="honesty__cap" id="sm-cost">
+            At the settings above that is roughly <strong>$0.02</strong> of
+            inference a day, which is why the free tier can be free without a
+            card and without a trial clock.
+          </p>
+          <p class="honesty__foot">
+            Spend is capped in the product, not just promised: a per-request
+            ceiling, a daily ceiling, a monthly billable cap and a kill switch,
+            all enforced by a single Durable Object so concurrent requests
+            cannot race past the limit. The documented hard maximum for the
+            whole service is <strong>$10.06 a month</strong>.
+          </p>
+        </div>
+      </details>
+    )
+  }
+</div>
+
+<style>
+  .meter {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .meter__grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+    align-items: start;
+  }
+
+  .meter__title {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 0 0 1.1rem;
+  }
+
+  /* ---- controls ---- */
+  .ctl {
+    margin-bottom: 1.45rem;
+  }
+
+  .ctl--sub {
+    padding-top: 1.15rem;
+    border-top: 1px dashed var(--line);
+    margin-bottom: 0;
+  }
+
+  .ctl label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+  }
+
+  .ctl__name {
+    font-size: 0.92rem;
+    font-weight: 550;
+    color: var(--ink);
+  }
+
+  .ctl__mode {
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .ctl__row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .ctl__out {
+    flex: none;
+    min-width: 2.4rem;
+    text-align: right;
+    font-size: 1.05rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type='range'] {
+    flex: 1;
+    min-width: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  input[type='range']::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+  }
+
+  input[type='range']::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+  }
+
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface);
+    box-shadow: var(--lift-1);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  input[type='range']::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--surface);
+    box-shadow: var(--lift-1);
+  }
+
+  input[type='range']:hover::-webkit-slider-thumb {
+    transform: scale(1.12);
+  }
+
+  input[type='range']:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  @media (pointer: coarse) {
+    input[type='range'] {
+      height: 34px;
+    }
+
+    input[type='range']::-webkit-slider-thumb {
+      width: 24px;
+      height: 24px;
+      margin-top: -10px;
+    }
+
+    input[type='range']::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  /* ---- result ---- */
+  .meter__result {
+    background: var(--paper-2);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-md);
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    display: grid;
+    gap: 1.1rem;
+    position: sticky;
+    top: 6rem;
+  }
+
+  .gauge__label {
+    font-size: 0.63rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  .gauge__value {
+    font-family: var(--font-body);
+    font-variation-settings: normal;
+    font-weight: 620;
+    font-size: clamp(2.2rem, 5.4vw, 3.4rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
+    margin: 0.2rem 0 2.1rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gauge__track {
+    position: relative;
+    margin-top: 0.4rem;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--line);
+    overflow: visible;
+  }
+
+  .gauge__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 11.5%;
+    border-radius: 5px;
+    background: var(--accent);
+    transition: width 380ms var(--ease-out),
+      background-color var(--dur) var(--ease-out);
+  }
+
+  .gauge__mark {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    width: 1px;
+    background: var(--ink);
+    opacity: 0.45;
+  }
+
+  .gauge__mark span {
+    position: absolute;
+    top: -1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .gauge__scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0.5rem 0 0;
+  }
+
+  .verdictline {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--ink);
+    padding-left: 0.8rem;
+    border-left: 2px solid var(--accent);
+    line-height: 1.5;
+  }
+
+  .figures {
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .figures > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+  }
+
+  .figures dt {
+    font-size: 0.63rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .figures dd {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- honesty panel ---- */
+  .honesty {
+    border-top: 1px solid var(--hairline);
+    padding-top: 1rem;
+  }
+
+  .honesty summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 550;
+    font-size: 0.93rem;
+    color: var(--ink);
+  }
+
+  .honesty summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .honesty__chev {
+    width: 10px;
+    height: 10px;
+    border-right: 1.5px solid var(--accent);
+    border-bottom: 1.5px solid var(--accent);
+    transform: rotate(45deg) translateY(-2px);
+    transition: transform var(--dur) var(--ease-out);
+    flex: none;
+  }
+
+  .honesty[open] .honesty__chev {
+    transform: rotate(225deg) translateY(-2px);
+  }
+
+  .honesty__body {
+    padding-top: 0.9rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    max-width: 66ch;
+  }
+
+  .honesty__body ul {
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.4rem;
+    margin: 0 0 1em;
+  }
+
+  .honesty__body li::marker {
+    color: var(--accent);
+  }
+
+  .honesty__cap {
+    padding: 0.7rem 0.9rem;
+    background: var(--accent-soft);
+    border-radius: var(--r-sm);
+    color: var(--ink);
+  }
+
+  .honesty__foot {
+    margin-bottom: 0;
+    font-size: 0.84rem;
+    color: var(--faint);
+  }
+
+  @media (max-width: 860px) {
+    .meter__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .meter__result {
+      position: static;
+    }
+  }
+</style>
+
+<script>
+  const root = document.getElementById('credit-meter');
+  const FREE_DAY = Number(root?.dataset.freePerDay ?? 0);
+
+  if (root) {
+    const clay = document.getElementById('sm-clay') as HTMLInputElement;
+    const stone = document.getElementById('sm-stone') as HTMLInputElement;
+    const rune = document.getElementById('sm-rune') as HTMLInputElement;
+    const steps = document.getElementById('sm-steps') as HTMLInputElement;
+
+    const outs = {
+      clay: document.getElementById('sm-clay-out')!,
+      stone: document.getElementById('sm-stone-out')!,
+      rune: document.getElementById('sm-rune-out')!,
+      steps: document.getElementById('sm-steps-out')!,
+    };
+
+    const totalEl = document.getElementById('sm-total')!;
+    const fillEl = document.getElementById('sm-fill')!;
+    const verdictEl = document.getElementById('sm-verdict')!;
+    const monthEl = document.getElementById('sm-month')!;
+    const costEl = document.getElementById('sm-cost');
+    const bindEl = document.getElementById('sm-bind');
+
+    // Read off the root's data attribute rather than typed here, so the interactive half and the
+    // rendered half cannot disagree about what "free" means. Not define:vars — that forces the
+    // whole script to plain JS and this one is TypeScript.
+    const FREE_MONTH = 900;
+    const PRO_DAY = 400;
+    const PRO_MONTH = 6000;
+    const SCALE = 440; // gauge runs 0 → 440 so the Pro mark sits inside it
+    const NEURONS_PER_CREDIT = 30;
+    const USD_PER_KILONEURON = 0.011;
+
+    const fmt = (n: number) => n.toLocaleString('en-US');
+
+    function update() {
+      const c = Number(clay.value);
+      const s = Number(stone.value);
+      const r = Number(rune.value);
+      const extra = Number(steps.value);
+
+      outs.clay.textContent = String(c);
+      outs.stone.textContent = String(s);
+      outs.rune.textContent = String(r);
+      outs.steps.textContent = String(extra);
+
+      // COSTS COME FROM THE INPUTS, not from literals here. `data-cost` was already on
+      // every slider and this line ignored it, so the label a reader sees, the attribute
+      // in the markup and the arithmetic were three copies of one number — and when Plan
+      // was corrected from 1 credit to 2 (37-43 neurons, ceil(43/30) = 2, the same
+      // `creditsForNeurons` the worker charges with), the first two changed and this did
+      // not. The Super Agent slider adds its extra steps on top, which is the one cost that is
+      // genuinely per-run rather than per-request.
+      const cost = (el: HTMLInputElement) => Number(el.dataset.cost ?? 0);
+      const perDay = c * cost(clay) + s * cost(stone) + r * (cost(rune) + extra);
+      const perMonth = perDay * 30;
+
+      totalEl.textContent = fmt(perDay);
+      monthEl.textContent = `${fmt(perMonth)} credits`;
+      (fillEl as HTMLElement).style.width = `${Math.min(100, (perDay / SCALE) * 100)}%`;
+
+      // "Whichever limit binds first applies." The monthly cap is stricter
+      // than 30 × the daily one, so say which of the two is actually binding
+      // and how many days like this the month holds.
+      const dailyOver = perDay - FREE_DAY;
+      const daysAffordable = perDay > 0 ? Math.floor(FREE_MONTH / perDay) : Infinity;
+      const withinFreeDaily = perDay <= FREE_DAY;
+      const withinFreeMonthly = perMonth <= FREE_MONTH;
+      const proOk = perDay <= PRO_DAY && perMonth <= PRO_MONTH;
+
+      if (bindEl) {
+        bindEl.textContent = !withinFreeDaily
+          ? 'daily'
+          : !withinFreeMonthly
+            ? 'monthly'
+            : 'none';
+      }
+
+      root!.classList.remove('is-clay', 'is-stone', 'is-rune');
+
+      if (withinFreeDaily && withinFreeMonthly) {
+        root!.classList.add('is-stone');
+        (fillEl as HTMLElement).style.background = 'var(--good)';
+        verdictEl.innerHTML =
+          perDay <= FREE_DAY * 0.5
+            ? 'Comfortably inside the free plan, every day of the month — nothing to pay, no card, no trial clock.'
+            : `Inside the free plan, with <strong>${fmt(FREE_DAY - perDay)}</strong> credits a day still spare.`;
+      } else if (withinFreeDaily) {
+        // fits any single day, but not thirty of them
+        root!.classList.add('is-stone');
+        (fillEl as HTMLElement).style.background = 'var(--good)';
+        verdictEl.innerHTML = `A day like this fits the free plan — it is the monthly cap that binds. 900 free credits covers about <strong>${fmt(
+          daysAffordable
+        )} days</strong> of building at this intensity.`;
+      } else if (proOk) {
+        root!.classList.add('is-rune');
+        (fillEl as HTMLElement).style.background = 'var(--accent)';
+        verdictEl.innerHTML = `That is <strong>${fmt(
+          dailyOver
+        )}</strong> credits a day past the free allowance. Pro is designed for exactly this — 400 a day — and is on the waitlist while the price is settled.`;
+      } else {
+        root!.classList.add('is-clay');
+        (fillEl as HTMLElement).style.background = 'var(--warn)';
+        verdictEl.innerHTML =
+          'Beyond even the designed Pro allowance. Apple would queue rather than fail — and we would want to talk to you before you built like this.';
+      }
+
+      if (costEl) {
+        const usd =
+          (perDay * NEURONS_PER_CREDIT * USD_PER_KILONEURON) / 1000;
+        costEl.innerHTML = `At the settings above that is roughly <strong>$${usd.toFixed(
+          2
+        )}</strong> of inference a day, which is why the free tier can be free without a card and without a trial clock.`;
+      }
+    }
+
+    [clay, stone, rune, steps].forEach((el) =>
+      el.addEventListener('input', () => {
+        update();
+        (window as any).appleTick?.(760);
+      })
+    );
+
+    update();
+  }
+</script>

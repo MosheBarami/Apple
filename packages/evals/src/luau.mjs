@@ -91,12 +91,31 @@ export function resolveLuauChecker() {
 
 /**
  * Check a Luau snippet for syntax errors.
- * @returns {{passed: boolean, detail: string}}
+ *
+ * `unavailable: true` means THE CHECK DID NOT RUN, which is not the same fact as "the code is
+ * broken" and must never be scored as one. Before this distinction existed, a machine with no
+ * luau-lsp on it failed every `luau_syntax` check on every task, and the run reported that as
+ * models writing unparseable Luau — a measurement of the machine printed as a measurement of
+ * the model. `no code to check` and `checker failed to launch` stay ordinary failures: the first
+ * is a real observation about the answer (it contained no code), and the second is a checker that
+ * exists and broke on this input.
+ *
+ * @param {string} code
+ * @param {{resolve?: () => object|null}} [opts] injectable resolver, so the absent-checker branch
+ *   is reachable from a test on a machine where the checker IS installed.
+ * @returns {{passed: boolean, detail: string, unavailable?: true, reason?: string}}
  */
-export function checkLuauSyntax(code) {
+export function checkLuauSyntax(code, opts = {}) {
   if (!code || !code.trim()) return { passed: false, detail: 'no code to check (no fenced code block found)' };
-  const checker = resolveLuauChecker();
-  if (!checker) return { passed: false, detail: 'no working Luau checker found (tried luau-lsp, luau-analyze); set LUAU_CHECK_BIN' };
+  const checker = (opts.resolve ?? resolveLuauChecker)();
+  if (!checker) {
+    return {
+      passed: false,
+      unavailable: true,
+      reason: 'luau_checker_absent',
+      detail: 'no working Luau checker found (tried luau-lsp, luau-analyze); set LUAU_CHECK_BIN',
+    };
+  }
   const dir = mkdtempSync(join(tmpdir(), 'golem-evals-luau-'));
   const file = join(dir, 'snippet.luau');
   try {

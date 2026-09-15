@@ -30,6 +30,10 @@ import { supabase, type ProjectRow } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import { AppleGlyph } from './glyphs';
 import { Icon, PATH, Popover } from './ws/primitives';
+import { NotificationInbox } from './notification-inbox';
+import { OfflineBanner } from './offline-banner';
+import { OnboardingTour } from './onboarding-tour';
+import { restartTour, writeProgress } from '../lib/onboarding';
 
 /** How many conversations the rail lists before deferring to "View all chats". */
 const RAIL_LIMIT = 8;
@@ -93,7 +97,7 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
           </Link>
           <Link to="/usage" className="gx-pop__item" role="menuitem" onClick={() => setOpen(false)}>
             <Icon d={PATH.gauge} size={15} />
-            Usage and Sparks
+            Usage and Credits
           </Link>
           <a className="gx-pop__item" role="menuitem" href="/docs" target="_blank" rel="noopener noreferrer">
             <Icon d={PATH.docs} size={15} />
@@ -136,6 +140,11 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
           </button>
         </Popover>
       </div>
+
+      {/* The bell sits in the user card rather than in the topbar because what it holds is the
+          person's, not the project's: a mention on one project and a failed card belong to the
+          same list, and that list belongs beside the account. */}
+      <NotificationInbox />
 
       <Link to="/settings" className="gx-icon-btn gx-user-card__gear" aria-label="Settings" title="Settings">
         <Icon d={PATH.settings} size={16} />
@@ -185,7 +194,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed }:
         </button>
       </div>
 
-      <Link to="/" className="gx-new" title="New chat">
+      <Link to="/" className="gx-new" title="New chat" data-tour="new-chat">
         <Icon d={PATH.compose} size={16} />
         <span className="gx-new__label">New chat</span>
         <kbd className="gx-kbd" dir="ltr" aria-hidden="true">
@@ -235,6 +244,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed }:
         <button
           type="button"
           className="gx-card-btn"
+          data-tour="checkpoints"
           onClick={() => openCheckpoints?.()}
           disabled={openCheckpoints === null}
           title={
@@ -271,8 +281,20 @@ function Shell() {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, newProject } = useShell();
   const { theme, setTheme } = useTheme();
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // Remounting the tour is how "Show me around" restarts it: the component reads its progress on
+  // mount, and the command has just written a fresh one.
+  const [tourNonce, setTourNonce] = useState(0);
 
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
+  // The same query the rail runs, by the same key, so this costs nothing and cannot disagree with
+  // the list the user is looking at.
+  const navProjects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
+  // THE TOUR WAITS UNTIL THIS IS KNOWN. `isPending` and "you have no projects" are the same value
+  // here — `undefined` — and the difference between them is the difference between a first step
+  // that welcomes a new builder and one that tells someone with eleven projects to make their
+  // first. Nothing is rendered until the fetch has actually answered.
+  const knowsProjects = navProjects.isSuccess;
+  const hasProjects = knowsProjects && (navProjects.data?.length ?? 0) > 0;
   // A FAILED PROFILE FETCH IS NOT "YOU ARE NOT AN ADMIN", and this reads as though it were.
   // Hiding the link is still the right default — offering one that 403s would be worse — but the
   // rail has to say the fetch failed rather than quietly rearranging itself. The usage meter,
@@ -320,6 +342,9 @@ function Shell() {
     { id: 'toggle-rail', title: railCollapsed ? 'Expand the sidebar' : 'Collapse the sidebar', section: 'View', keywords: ['nav', 'panel'], run: toggleRailCollapsed },
     { id: 'toggle-theme', title: theme === 'dark' ? 'Switch to light' : 'Switch to dark', section: 'View', keywords: ['theme', 'dark', 'light', 'appearance'], run: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
     { id: 'shortcuts', title: 'Keyboard shortcuts', section: 'View', keywords: ['keys', 'hotkeys', 'bindings'], hint: shortcutLabel(SHORTCUTS.help), run: () => setShowShortcuts(true) },
+    // A tour you get exactly one chance at is a tour people skip on their first nervous minute and
+    // can never ask for again.
+    { id: 'show-tour', title: 'Show me around', section: 'View', keywords: ['tour', 'onboarding', 'guide', 'tutorial', 'help'], run: () => { writeProgress(restartTour()); setTourNonce((n) => n + 1); } },
     { id: 'sign-out', title: 'Sign out', section: 'Account', keywords: ['logout', 'log out', 'leave'], run: () => void signOut() },
   ]);
 
@@ -331,6 +356,9 @@ function Shell() {
       <a className="gx-sr" href="#main-content">
         Skip to content
       </a>
+
+      {/* Renders nothing unless something was actually observed — see lib/connectivity.ts. */}
+      <OfflineBanner />
 
       <Rail
         name={name}
@@ -351,6 +379,7 @@ function Shell() {
 
       <CommandPalette />
       {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+      {knowsProjects && <OnboardingTour key={tourNonce} done={{ hasProject: hasProjects }} />}
     </div>
   );
 }

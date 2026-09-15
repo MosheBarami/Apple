@@ -55,7 +55,7 @@ export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
   const dropped = status === 'disconnected';
 
   return (
-    <section className="gx-connect" aria-labelledby="gx-connect-title">
+    <section className="gx-connect" aria-labelledby="gx-connect-title" data-tour="connect-studio">
       <h2 className="gx-connect__title" id="gx-connect-title">
         {dropped ? 'Roblox Studio disconnected' : 'Connect Roblox Studio'}
       </h2>

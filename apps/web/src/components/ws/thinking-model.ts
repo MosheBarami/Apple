@@ -98,6 +98,14 @@ export interface TimelineStage {
   items?: string[];
   /** Plan: what the request genuinely did not say, surfaced not assumed. */
   questions?: string[];
+  /**
+   * Plan: what the request did not say and the worker decided anyway.
+   *
+   * The opposite of `questions`, and a separate field so the card can label them as opposites.
+   * Merging them would let a decision already acted on render under a heading that says nothing
+   * was assumed.
+   */
+  assumptions?: string[];
   /** Actions: the nested checklist. */
   actions?: ActionRow[];
   /** Validation: the gates that actually ran. */
@@ -181,12 +189,20 @@ export function buildTimeline(input: TimelineInput): TimelineStage[] {
 
   const checklist = nonEmpty(input.intent?.checklist);
   const questions = nonEmpty(input.intent?.questions);
-  if (checklist.length > 0) {
+  const assumptions = nonEmpty(input.intent?.assumptions);
+  // ASSUMPTIONS OPEN THIS ROW TOO, not just the checklist.
+  //
+  // The checklist used to be the only key. A request made entirely of adjectives — "make it
+  // cozier" — names no object, so it has no checklist at all, and that is precisely the request
+  // where what the worker assumed is the only thing worth reading. Gating the row on the
+  // checklist hid the assumption in the one case it mattered most.
+  if (checklist.length > 0 || assumptions.length > 0) {
     stages.push({
       kind: 'plan',
       label: 'Plan',
-      items: checklist,
+      items: checklist.length > 0 ? checklist : undefined,
       questions: questions.length > 0 ? questions : undefined,
+      assumptions: assumptions.length > 0 ? assumptions : undefined,
       live: false,
     });
   }

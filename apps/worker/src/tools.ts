@@ -2,10 +2,11 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
 import { rgbBase64ToDataUrl } from './png';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
-import { searchDocs } from './rag';
+import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
+import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
 import {
   chooseAssetSource,
   verifyCreatorStoreAsset,
@@ -23,6 +24,22 @@ import {
   type ScannedScriptInput,
 } from './assets';
 import { searchAssetLibrary } from './asset-library';
+import {
+  applyEdits,
+  checkSyntax,
+  describeSyntax,
+  diffHunks,
+  diffStat,
+  formatScript,
+  reviewPlace,
+  reviewScript,
+  sourceHash,
+  symbolLookup,
+  symbolSearch,
+  symbolsInFile,
+  type ScriptFile,
+} from './luau-review';
+import { propertyChangeGroups } from './property-diff';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
@@ -36,7 +53,17 @@ import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } fr
 import { formatPanelReport, runCriticPanel } from './critic';
 import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
+// The audio tools are DEFINED in audio-tools.ts and registered here with one spread. Their
+// descriptions carry the whole cluster's product surface — what the model may claim about
+// generated audio, and in particular that none of it reaches the user's Roblox place — so they
+// live beside the modules that enforce those limits rather than in the middle of this file.
+// audio-tools.ts imports only `AgentCtx` back from here, as a TYPE, so there is no module cycle.
+import { AUDIO_TOOLS } from './audio-tools';
+import { admitProgram, isRefusal, capPrints, type SandboxJob } from './sandbox';
 import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
+import { runWebTool, webToolDef, type WebToolCtx, type WorkspaceStore } from './webtools';
+import type { WebFetchLike } from './net-policy';
+import { chat } from './gateway';
 
 export interface AgentCtx {
   env: Env;
@@ -49,12 +76,31 @@ export interface AgentCtx {
    * nothing to attribute it to, which is different from failing to record it.
    */
   projectId?: string;
+  /**
+   * Which asset sources this build may use, already layered across org, user and project.
+   *
+   * Resolved ONCE in the session DO, where the user is known, and carried as a value so a tool
+   * reads a field instead of querying per call. Optional because the eval harness builds an
+   * AgentCtx directly with no policy to hand it — the admin `/run-tool` route goes through
+   * `this.agentCtx()` like every real step and so already carries it — and
+   * `allowedSources(undefined)` is `[]`, so the harness gets the safe answer rather than a
+   * permissive one by omission.
+   */
+  assetSources?: AssetSourcePolicy;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
   /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
   restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
-  addMemoryFact(fact: string): Promise<void>;
+  /**
+   * Save one fact to project memory — or report that it was not saved.
+   *
+   * The outcome is part of the contract because the user's memory setting can turn this into a
+   * proposal (`suggested`) or refuse it outright (`off`). A tool that reported success for a write
+   * that did not happen would teach the model something false about the world, and it would keep
+   * acting on it for the rest of the run.
+   */
+  addMemoryFact(fact: string): Promise<'saved' | 'suggested' | 'refused'>;
   /**
    * Forward a rasterised frame to the browser.
    *
@@ -110,6 +156,21 @@ export interface AgentCtx {
    * never whether the gate runs.
    */
   libraryAssetIds?: Set<number>;
+  /**
+   * Outbound HTTP for the web-facing tools.
+   *
+   * Optional, and it defaults to the global `fetch` — exactly like `fetchImpl` in assets.ts, and
+   * for the same reason: a suite that exercises `web_fetch` must be able to do so WITHOUT the
+   * internet. A test that reaches the real network is not testing this worker, it is testing
+   * whoever happens to answer, and it fails on an aeroplane.
+   */
+  webFetch?: WebFetchLike;
+  /**
+   * The project's scratch file store. Defaults to KV keyed by the project id.
+   *
+   * Injectable for the same reason, and because the eval harness has no KV.
+   */
+  workspace?: WorkspaceStore;
 }
 
 /**
@@ -148,6 +209,103 @@ interface ToolImpl {
   def: GatewayToolDef;
   studio: boolean; // requires studio connection
   run(ctx: AgentCtx, args: Record<string, unknown>): Promise<unknown>;
+}
+
+/* ------------------------------------------------------------- propose_plan --- */
+
+/**
+ * One step of the plan the agent announces before it builds.
+ *
+ * `tool` is REQUIRED and is validated against the real registry. It is not decoration: it is what
+ * lets the run loop settle the step against what actually ran, and what stops a plan naming a
+ * capability the product does not have.
+ */
+export interface ProposedStep {
+  title: string;
+  detail?: string;
+  tool: string;
+}
+
+export interface ProposedPlan {
+  title?: string;
+  steps: ProposedStep[];
+}
+
+/**
+ * Twelve, not forty.
+ *
+ * The browser's validator accepts 40 steps per build_plan. That is the shape limit, not the useful
+ * one: a plan nobody reads to the end is the same as no plan, and the step ceiling for a Stone run
+ * (session.ts) is in this neighbourhood anyway — a 30-step plan is a promise the run cannot keep.
+ */
+const MAX_PLAN_STEPS = 12;
+
+/**
+ * The five tools that answer "is this any good", pinned by verification-tools.test.mjs.
+ *
+ * Kept as a list here rather than a substring test so that renaming a verifier breaks a plan's
+ * verification requirement loudly instead of quietly accepting a plan with no check in it.
+ */
+const VERIFIER_TOOLS = ['run_and_check', 'run_spec', 'audit_build', 'check_composition', 'inspect_visually'] as const;
+
+const clip = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+/**
+ * Read the model's plan, or say exactly why it is not one.
+ *
+ * Every `error` return is phrased as an instruction the model can act on in the next step, because
+ * that is the only channel a refusal has. "steps must be an array" teaches nothing; naming the tool
+ * that does not exist, or the five that would satisfy the verification rule, does.
+ */
+function readProposedPlan(a: Record<string, unknown>): ProposedPlan | { error: string } {
+  const raw = a.steps;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return { error: 'propose_plan needs a non-empty `steps` array; each step is { title, detail?, tool }.' };
+  }
+  if (raw.length > MAX_PLAN_STEPS) {
+    return {
+      error:
+        `that plan has ${raw.length} steps and the limit is ${MAX_PLAN_STEPS}. It was refused rather than ` +
+        'truncated, because a clipped plan reads as the whole commitment. Group the small steps together.',
+    };
+  }
+
+  const registered = new Set(toolNames());
+  const steps: ProposedStep[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const entry = raw[i];
+    if (typeof entry !== 'object' || entry === null) return { error: `step ${i + 1} is not an object.` };
+    const step = entry as Record<string, unknown>;
+    const title = clip(step.title, 200);
+    if (!title) return { error: `step ${i + 1} has no title. Say what the step delivers.` };
+    const tool = clip(step.tool, 64);
+    if (!tool) {
+      return {
+        error: `step ${i + 1} ("${title}") names no tool. Every step must say which tool will carry it out — a step with no tool is a wish, not a plan.`,
+      };
+    }
+    if (tool === 'propose_plan') {
+      return { error: `step ${i + 1} names propose_plan. The plan does not contain itself; list the work.` };
+    }
+    if (!registered.has(tool)) {
+      return {
+        error:
+          `step ${i + 1} names the tool "${tool}", which does not exist. The user reads a plan as a commitment, ` +
+          'so a step that cannot be carried out is refused. Use an exact name from the tools you were given.',
+      };
+    }
+    steps.push({ title, ...(clip(step.detail, 800) ? { detail: clip(step.detail, 800) } : {}), tool });
+  }
+
+  if (!steps.some((s) => (VERIFIER_TOOLS as readonly string[]).includes(s.tool))) {
+    return {
+      error:
+        'this plan never checks its own work. Add at least one verification step using one of: ' +
+        `${VERIFIER_TOOLS.join(', ')}. A build with no planned check ends with "Done." and nothing proven.`,
+    };
+  }
+
+  return { ...(clip(a.title, 200) ? { title: clip(a.title, 200) } : {}), steps };
 }
 
 /**
@@ -193,10 +351,87 @@ function round2(n: number): string {
 
 const MAX_RESULT_CHARS = 3000; // tool output is re-sent every later step, so keep it tight
 
+/** Errors before warnings before anything else, so a size cap never truncates away the errors. */
+function severityRank(severity: string): number {
+  return severity === 'error' ? 0 : severity === 'warn' ? 1 : 2;
+}
+
+/** One finding as a line a model can act on: where, which rule, what, and why it matters. */
+function renderFinding(f: { line: number; rule: string; detail: string; why?: string }): string {
+  return `line ${f.line}: ${f.rule} — ${f.detail}${f.why ? ` (${f.why})` : ''}`;
+}
+
+/**
+ * Every script in the place, in ONE Studio round trip.
+ *
+ * The require graph, the place-wide symbol index and the run-context checks all need every source
+ * at once. `list_scripts` then N × `read_script` returns the same bytes at N times the latency,
+ * and a 40-script place would spend most of a turn waiting. `truncated` is carried through rather
+ * than dropped: a place-wide answer computed over an unknowingly partial place is exactly the
+ * failure-to-observe-rendered-as-observation this repository keeps finding.
+ */
+async function dumpScripts(
+  ctx: AgentCtx,
+  root?: string,
+): Promise<{ files: ScriptFile[]; truncated: boolean } | { error: string }> {
+  const raw = await op(ctx, { op: 'dump_scripts', root, maxScripts: 80, maxChars: 400_000 }, 45_000);
+  if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) {
+    return { error: String((raw as { error: unknown }).error) };
+  }
+  const list = (raw as { scripts?: unknown }).scripts;
+  if (!Array.isArray(list)) return { error: 'the plugin returned no script list' };
+  const files: ScriptFile[] = [];
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.path !== 'string' || typeof e.source !== 'string') continue;
+    files.push({ path: e.path, source: e.source, className: typeof e.class === 'string' ? e.class : undefined });
+  }
+  return { files, truncated: (raw as { truncated?: unknown }).truncated === true };
+}
+
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) return { error: res.error ?? 'operation failed' };
   return res.data ?? { ok: true };
+}
+
+/**
+ * How long the WORKER waits on a code-execution op, given the wall number in the job.
+ *
+ * Twice the wall plus five seconds, and the slack is the honest part: the plugin has never read
+ * `timeoutMs` and could not honour it if it did, so `job.limits.wallMs` is a request and this is
+ * the point at which the worker stops waiting for an answer. sandbox.ts records that asymmetry as
+ * `enforcement.wall: 'unenforced'` for the studio backend. Giving up earlier than the engine
+ * plausibly needs would turn slow-but-finished work into a phantom timeout.
+ */
+function studioWaitMs(job: SandboxJob): number {
+  return job.limits.wallMs * 2 + 5_000;
+}
+
+/**
+ * Apply the output ceiling to what Studio sent back.
+ *
+ * The plugin collects `__prints` with no bound at all (Ops.luau `run_code`), so this is the first
+ * point in the system that can cut it — which is exactly why sandbox.ts calls the studio backend's
+ * output enforcement `truncate-after-transfer` rather than `truncate`. The bytes are already here.
+ *
+ * The truncation is ANNOUNCED. `runTool`'s generic `MAX_RESULT_CHARS` slice would cut the JSON in
+ * the middle and append a char count, leaving a model to read a shortened log as a complete one —
+ * a failure to observe rendering as an observation, on the tool whose entire output is evidence.
+ */
+function capStudioPrints(raw: unknown, job: SandboxJob): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.prints)) return raw;
+  const capped = capPrints(o.prints, job.limits.outputBytes);
+  if (!capped.truncated) return { ...o, prints: capped.prints };
+  return {
+    ...o,
+    prints: capped.prints,
+    outputTruncated: true,
+    outputNote: `${capped.dropped} further print line(s) were dropped at the ${job.limits.outputBytes}-byte output ceiling; what you see above is the part that fit, not the whole log`,
+  };
 }
 
 /**
@@ -785,6 +1020,101 @@ async function recordPlacedAsset(
   }
 }
 
+/* --------------------------------------------- the web tools' two capabilities ---
+ *
+ * webtools.ts holds the contracts, the allowlists and the failure shapes, and it deliberately
+ * imports nothing heavy — it can be loaded and exercised on its own. The two capabilities that
+ * genuinely need the rest of this worker are wired in here instead: reading text out of an image
+ * (the vision model, through the gateway that budgets and attributes it) and putting a captured
+ * image in front of the user (KV storage plus the panel `generate_image` already uses).
+ *
+ * Both are OPTIONAL on the web-tool context and both have a defined absence. That is the point of
+ * injecting them: the tools stay testable without a model call, and a missing capability is
+ * reported as one rather than showing up as an empty transcription or an invisible screenshot.
+ */
+const OCR_SCHEMA = {
+  name: 'image_text',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['text'],
+    properties: { text: { type: 'string', maxLength: 4000 } },
+  },
+};
+
+const OCR_PROMPT =
+  'You transcribe text from images. Return ONLY the characters that are actually visible, in reading order, '
+  + 'preserving line breaks. Never translate, never summarise, never describe the picture, and never guess at '
+  + 'text that is too small or too blurred to read. If the image contains no legible text, return an empty string.';
+
+/** Tolerant of a model that wraps its JSON in a fence, strict about what it must contain. */
+function parseOcr(raw: string): { text: string } | { error: string } {
+  const body = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return { error: 'the transcription came back as something other than JSON' };
+  }
+  const text = (parsed as { text?: unknown } | null)?.text;
+  // A missing field is NOT an empty transcription. Defaulting it to '' here is precisely the
+  // failure-as-observation shape: "the engine answered in a form we could not read" would reach
+  // the model as "this image has no text in it".
+  if (typeof text !== 'string') return { error: 'the transcription had no text field' };
+  return { text };
+}
+
+async function readImageText(env: Env, dataUrl: string, opts: { language: string }): Promise<{ text: string } | { error: string }> {
+  const hint = opts.language === 'auto' ? '' : ` The text is expected to be in ${opts.language === 'he' ? 'Hebrew' : 'English'}.`;
+  try {
+    const res = await chat(
+      env,
+      {
+        model: 'vision',
+        messages: [
+          { role: 'system', content: OCR_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: `Transcribe the text in this image.${hint}` },
+              { type: 'image_url', image_url: { url: dataUrl } },
+            ],
+          },
+        ],
+        jsonSchema: OCR_SCHEMA,
+        maxTokens: 1200,
+      },
+      { kind: 'visual:ocr', cacheTtl: 0 },
+    );
+    return parseOcr(res.text ?? '');
+  } catch (e) {
+    // Scrubbed for the same reason every other tool error is: the engine's identity must not cross
+    // this boundary, and the actionable half of the message still does.
+    return { error: scrubEngineIdentity(e instanceof Error ? e.message : String(e)) };
+  }
+}
+
+/** The AgentCtx a web tool sees. Capabilities are attached only where they can actually work. */
+function webCtx(ctx: AgentCtx): WebToolCtx {
+  return {
+    env: ctx.env,
+    projectId: ctx.projectId,
+    fetchImpl: ctx.webFetch,
+    workspace: ctx.workspace,
+    readTextFromImage: (dataUrl, opts) => readImageText(ctx.env, dataUrl, opts),
+    showImage: async (pngBase64, subject, meta) => {
+      // No project means no key to store the pixels under and no route that could serve them —
+      // the same refusal `generate_image` makes, and for the same reason. Returning false here is
+      // what makes `screenshot_page` say "captured but not displayed" instead of implying a
+      // picture the user can never see.
+      if (!ctx.projectId) return false;
+      const imageId = await storeImage(ctx.env, pngBase64, ctx.projectId);
+      ctx.uiDetail = imagePanel(ctx.projectId, imageId, subject, meta);
+      return true;
+    },
+  };
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -804,7 +1134,12 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: (ctx, a) => op(ctx, { op: 'list_scripts', root: a.root as string | undefined }),
   },
   read_script: {
-    def: { name: 'read_script', description: 'Read full source of a script by path.', parameters: S({ path: { type: 'string' } }, ['path']) },
+    def: {
+      name: 'read_script',
+      description:
+        'Read full source of a script by path. The reply carries `baseHash`: pass it back as `base_hash` on edit_script and the write is refused rather than overwriting a change someone made in Studio in between.',
+      parameters: S({ path: { type: 'string' } }, ['path']),
+    },
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'read_script', path: String(a.path ?? '') }),
   },
@@ -812,7 +1147,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'edit_script',
       description:
-        'Create or edit a script. Provide either `source` (full new content) or `edits` (find/replace list, exact match). To create a new script set `create_class` + `create_parent`.',
+        'Create or edit a script. Provide either `source` (full new content) or `edits` (find/replace list, exact match). To create a new script set `create_class` + `create_parent`. ' +
+        'The result is parsed BEFORE it is written: a body that does not compile is refused and nothing is changed. Pass `base_hash` from read_script to also refuse a write over a concurrent Studio edit.',
       parameters: S(
         {
           path: { type: 'string', description: 'Full path, e.g. game.ServerScriptService.RoundManager' },
@@ -823,27 +1159,283 @@ export const TOOLS: Record<string, ToolImpl> = {
           },
           create_class: { type: 'string', enum: ['Script', 'LocalScript', 'ModuleScript'] },
           create_parent: { type: 'string', description: 'Parent path when creating' },
+          base_hash: {
+            type: 'string',
+            description: 'The `baseHash` read_script returned for this path. The edit is refused if the file has changed since.',
+          },
         },
         ['path'],
       ),
     },
     studio: true,
-    run: (ctx, a) =>
-      op(ctx, {
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      const hasSource = typeof a.source === 'string';
+      const edits = Array.isArray(a.edits) ? (a.edits as { find: string; replace: string; all?: boolean }[]) : undefined;
+      if (!hasSource && !(edits && edits.length)) {
+        return { error: 'pass either `source` (the full new body) or a non-empty `edits` list' };
+      }
+      const create =
+        a.create_class && a.create_parent
+          ? { className: a.create_class as 'Script' | 'LocalScript' | 'ModuleScript', parent: String(a.create_parent) }
+          : undefined;
+
+      // READ BEFORE WRITING — for three things at once, all of which need the current text:
+      // the base hash the write is pinned to, the text `edits` will be applied to (so the RESULT
+      // can be parsed before Studio holds it), and the "before" side of the diff the user sees.
+      //
+      // Only the resolver's own not-found is absence. A timeout, a dropped plugin or a path that
+      // resolves to a Folder all produce an error too, and reading any of those as "nothing there,
+      // safe to create" is the overwrite this read exists to prevent.
+      const existing = await op(ctx, { op: 'read_script', path });
+      const readError =
+        existing && typeof existing === 'object' && 'error' in (existing as Record<string, unknown>)
+          ? String((existing as { error: unknown }).error)
+          : null;
+      const absent = readError !== null && /\bnot found\b/i.test(readError);
+      if (readError !== null && !absent) {
+        return { error: `could not read ${path} before editing: ${readError}. Nothing was written.` };
+      }
+      if (absent && !create) {
+        return { error: `script not found: ${path} — pass create_class and create_parent to create it` };
+      }
+      if (absent && !hasSource) {
+        return { error: `${path} does not exist yet, so there is nothing for \`edits\` to match. Pass \`source\` with the full body.` };
+      }
+
+      const before = absent ? null : String((existing as { source?: unknown }).source ?? '');
+      const baseHash = before === null ? undefined : sourceHash(before);
+      const claimed = typeof a.base_hash === 'string' ? a.base_hash.trim().toLowerCase() : '';
+      if (claimed && baseHash && claimed !== baseHash) {
+        return {
+          error:
+            `${path} has changed since you read it — the edit was computed against a version that is no longer there, so nothing was written. ` +
+            `Read the script again and re-apply your change on top of the current text.`,
+          currentBaseHash: baseHash,
+        };
+      }
+
+      let after: string;
+      if (hasSource) {
+        after = String(a.source);
+      } else {
+        const applied = applyEdits(before ?? '', edits!);
+        if (!applied.ok) {
+          return {
+            error: `${applied.error} in ${path}. Nothing was written — read the script again and match the text that is actually there.`,
+          };
+        }
+        after = applied.source;
+      }
+
+      // THE PRE-WRITE PARSE. A body that does not compile used to be discovered by run_spec, after
+      // the user's file had already been replaced, and reported as a spec failure rather than as
+      // the edit that caused it.
+      const problems = checkSyntax(after);
+      if (problems.length) {
+        return {
+          error:
+            `refused: the result would not parse — ${describeSyntax(problems)}. Nothing was written, ${path} is unchanged.`,
+          syntaxErrors: problems.slice(0, 5),
+        };
+      }
+
+      const res = await op(ctx, {
         op: 'edit_script',
-        path: String(a.path ?? ''),
-        source: a.source as string | undefined,
-        edits: a.edits as { find: string; replace: string; all?: boolean }[] | undefined,
-        create:
-          a.create_class && a.create_parent
-            ? { className: a.create_class as 'Script' | 'LocalScript' | 'ModuleScript', parent: String(a.create_parent) }
-            : undefined,
-      }),
+        path,
+        source: hasSource ? after : undefined,
+        edits: hasSource ? undefined : edits,
+        create,
+        baseHash,
+      });
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      const hunks = diffHunks(before ?? '', after);
+      const stat = diffStat(hunks);
+      if (hunks.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [
+            {
+              type: 'code_diff',
+              path,
+              language: 'luau',
+              hunks,
+              summary: `+${stat.added} / -${stat.removed}${before === null ? ' · new script' : ''}`,
+            },
+          ],
+        };
+      }
+
+      // The review runs on what was written, so a warning here is about the file as it now stands.
+      const review = reviewScript(path, after, create?.className);
+      const warnings = review.findings.filter((f) => f.severity !== 'error').slice(0, 3);
+      return {
+        ...(res as Record<string, unknown>),
+        added: stat.added,
+        removed: stat.removed,
+        ...(warnings.length ? { warnings: warnings.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}`) } : {}),
+      };
+    },
   },
   search_scripts: {
-    def: { name: 'search_scripts', description: 'Search all script sources for a string. Returns matches with paths and line numbers.', parameters: S({ query: { type: 'string' } }, ['query']) },
+    def: { name: 'search_scripts', description: 'Search all script sources for a string. Returns matches with paths and line numbers. For a NAME rather than a substring, find_symbol resolves scope and search_scripts does not.', parameters: S({ query: { type: 'string' } }, ['query']) },
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'search_scripts', query: String(a.query ?? ''), maxResults: 40 }),
+  },
+  review_scripts: {
+    def: {
+      name: 'review_scripts',
+      description:
+        'Static review of the project\'s Luau: syntax errors, dead code, unused and write-only locals, accidental globals, require cycles, ' +
+        'unvalidated RemoteEvent handlers and client-invoked RemoteFunctions, DataStore lost updates, and scripts whose class does not match ' +
+        'the container they live in. A whole-place review also reports the require graph: which module depends on which, what a require ' +
+        'expression failed to resolve to, load order, and cycles. Pass `path` for one script, or omit it to review the whole place. ' +
+        'This reads; it changes nothing.',
+      parameters: S({
+        path: { type: 'string', description: 'One script to review. Omit to review every script in the place.' },
+        root: { type: 'string', description: 'Limit a whole-place review to a subtree, e.g. game.ServerScriptService' },
+        include_warnings: { type: 'boolean', description: 'Include warnings as well as errors. Default true.' },
+        dependencies: { type: 'boolean', description: 'Include the full require graph, not just its cycles. Default false.' },
+      }),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const includeWarnings = a.include_warnings !== false;
+      const keep = (severity: string): boolean => severity === 'error' || includeWarnings;
+
+      if (typeof a.path === 'string' && a.path.trim()) {
+        const path = a.path.trim();
+        const raw = await op(ctx, { op: 'read_script', path });
+        if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+        const source = String((raw as { source?: unknown }).source ?? '');
+        const className = typeof (raw as { class?: unknown }).class === 'string' ? String((raw as { class: string }).class) : undefined;
+        const review = reviewScript(path, source, className);
+        const findings = review.findings.filter((f) => keep(f.severity));
+        return {
+          path,
+          parsed: review.ok,
+          context: review.context,
+          errors: review.errors,
+          warnings: review.warnings,
+          requires: review.requires.slice(0, 20),
+          findings: findings.slice(0, 25).map(renderFinding),
+          ...(findings.length > 25 ? { more: findings.length - 25 } : {}),
+        };
+      }
+
+      const dump = await dumpScripts(ctx, typeof a.root === 'string' ? a.root : undefined);
+      if ('error' in dump) return { error: dump.error };
+      if (!dump.files.length) return { scripts: 0, note: 'no scripts found in this place' };
+
+      const place = reviewPlace(dump.files);
+      const flat = place.scripts
+        .flatMap((s) => s.findings.filter((f) => keep(f.severity)).map((f) => ({ ...f, path: s.path })))
+        .concat(place.crossFile.filter((f) => keep(f.severity)));
+      // Errors first: a place with 200 style warnings and one require cycle must not bury the cycle.
+      flat.sort((x, y) => severityRank(x.severity) - severityRank(y.severity) || x.path.localeCompare(y.path) || x.line - y.line);
+      return {
+        scripts: place.totals.scripts,
+        parsed: place.totals.parsed,
+        errors: place.totals.errors,
+        warnings: place.totals.warnings,
+        requireCycles: place.dependencies.cycles.map((c) => c.join(' -> ')),
+        ...(dump.truncated ? { truncated: 'not every script was read — the reply hit the size budget, so this review covers only the scripts listed' } : {}),
+        findings: flat.slice(0, 30).map((f) => `${f.path}:${f.line} ${f.rule} — ${f.detail}`),
+        ...(flat.length > 30 ? { more: flat.length - 30 } : {}),
+      };
+    },
+  },
+  find_symbol: {
+    def: {
+      name: 'find_symbol',
+      description:
+        'Resolve a name the way the language does, not the way grep does. With `path` + `line` + `column` it returns the declaration the ' +
+        'identifier at that position refers to plus every read and write of THAT binding (shadowed names are different symbols). With `name` ' +
+        'alone it lists declarations across the place — functions, locals, types — with their file and line.',
+      parameters: S({
+        name: { type: 'string', description: 'Name, or part of one, to look up across the place.' },
+        path: { type: 'string', description: 'Script to resolve a position in.' },
+        line: { type: 'number', description: '1-based line of the identifier.' },
+        column: { type: 'number', description: '1-based column of the identifier.' },
+      }),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = typeof a.path === 'string' ? a.path.trim() : '';
+      const line = Number(a.line);
+      const column = Number(a.column);
+      const name = typeof a.name === 'string' ? a.name.trim() : '';
+
+      if (path && Number.isFinite(line) && line > 0) {
+        const raw = await op(ctx, { op: 'read_script', path });
+        if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+        const source = String((raw as { source?: unknown }).source ?? '');
+        if (!Number.isFinite(column) || column <= 0) {
+          // No column: report every declaration on that line rather than guessing one.
+          const onLine = symbolsInFile(path, source, name).filter((s) => s.line === line);
+          if (!onLine.length) return { error: `no declaration on ${path} line ${line} — pass \`column\` to resolve a reference instead` };
+          return { path, line, declarations: onLine.map((s) => `${s.kind} ${s.name} (line ${s.line})`) };
+        }
+        const hit = symbolLookup(path, source, line, column);
+        if (!hit) {
+          return { error: `nothing resolvable at ${path} line ${line} column ${column} — it may be a global, a field, or inside a comment or string` };
+        }
+        return {
+          name: hit.name,
+          kind: hit.kind,
+          definedAt: `${path}:${hit.definition.line}:${hit.definition.column}`,
+          reads: hit.reads,
+          writes: hit.writes,
+          references: hit.references.slice(0, 40).map((r) => `${path}:${r.line}:${r.column} ${r.kind}`),
+          ...(hit.references.length > 40 ? { more: hit.references.length - 40 } : {}),
+        };
+      }
+
+      if (!name) return { error: 'pass `name`, or `path` + `line` (+ `column`) to resolve a position' };
+      const dump = await dumpScripts(ctx);
+      if ('error' in dump) return { error: dump.error };
+      const hits = symbolSearch(dump.files, name);
+      if (!hits.length) return { name, declarations: [], note: 'no declaration of that name — search_scripts finds it as text if it is a field or a string' };
+      return {
+        name,
+        declarations: hits.slice(0, 40).map((s) => `${s.path}:${s.line} ${s.kind} ${s.name}`),
+        ...(hits.length > 40 ? { more: hits.length - 40 } : {}),
+      };
+    },
+  },
+  format_script: {
+    def: {
+      name: 'format_script',
+      description:
+        'Re-indent and normalise spacing in a script. The formatter proves its own output holds exactly the same tokens and comments as the ' +
+        'input, and the write is abandoned if it does not — so this can never change what a script does. Refuses a script that does not lex.',
+      parameters: S({ path: { type: 'string', description: 'Script to format.' } }, ['path']),
+    },
+    studio: true,
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '').trim();
+      if (!path) return { error: 'pass `path`' };
+      const raw = await op(ctx, { op: 'read_script', path });
+      if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
+      const before = String((raw as { source?: unknown }).source ?? '');
+      const formatted = formatScript(before);
+      if (!formatted.ok) return { error: formatted.error };
+      if (!formatted.changed) return { path, changed: false, note: 'already formatted' };
+
+      const res = await op(ctx, { op: 'edit_script', path, source: formatted.code, baseHash: sourceHash(before) });
+      if (res && typeof res === 'object' && 'error' in (res as Record<string, unknown>)) return res;
+
+      const hunks = diffHunks(before, formatted.code);
+      const stat = diffStat(hunks);
+      if (hunks.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [{ type: 'code_diff', path, language: 'luau', hunks, summary: `formatting only · +${stat.added} / -${stat.removed}` }],
+        };
+      }
+      return { path, changed: true, added: stat.added, removed: stat.removed };
+    },
   },
   create_instances: {
     def: {
@@ -855,14 +1447,57 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'create_instances', items: (a.items as never[]) ?? [] }),
   },
+  /**
+   * SET, AND SAY WHAT IT WAS.
+   *
+   * This was a bare pass-through to the plugin op: it read nothing first and emitted no panel, so a
+   * run that moved a wall forty studs reported "set_properties ok" and the person had to go and
+   * look. Meanwhile `PropertyRow.changed` / `.previous` and the renderer that draws
+   * `<s>previous</s> → value` had existed since the schema was written with no producer in the
+   * product at all — the before→after block only ever showed the after.
+   *
+   * Read-before-write is the pattern edit_script already uses to compute its diff (it reads the
+   * current source to hash it, and turns the same read into hunks). One extra op, on a call the
+   * model makes when it is changing something a person asked for.
+   *
+   * THE READ COMES FIRST AND ITS FAILURE IS NOT SWALLOWED INTO A CLAIM. If the instance could not
+   * be read, `propertyChangeGroups` marks nothing changed — see its comment. A panel that said
+   * "0 → 0.5" on the strength of having written 0.5 would be asserting something never observed.
+   */
   set_properties: {
     def: {
       name: 'set_properties',
-      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances.',
+      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances. Reports what each value WAS, so you can quote the change rather than the intention.',
       parameters: S({ path: { type: 'string' }, props: { type: 'object' }, attributes: { type: 'object' } }, ['path']),
     },
     studio: true,
-    run: (ctx, a) => op(ctx, { op: 'set_props', path: String(a.path ?? ''), props: a.props as never, attributes: a.attributes as never }),
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      const props = (a.props ?? undefined) as Record<string, unknown> | undefined;
+      const attributes = (a.attributes ?? undefined) as Record<string, unknown> | undefined;
+
+      // Best effort, and its failure is recorded as a failure rather than as "nothing changed":
+      // a refusal here must not stop the write the user asked for.
+      const seen = await op(ctx, { op: 'get_instance', path });
+      const prior =
+        seen && typeof seen === 'object' && !('error' in (seen as Record<string, unknown>))
+          ? (seen as { class?: string; props?: Record<string, unknown>; attributes?: Record<string, unknown> })
+          : null;
+
+      const res = await op(ctx, { op: 'set_props', path, props: props as never, attributes: attributes as never });
+      if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
+
+      const groups = propertyChangeGroups({ props, attributes }, prior, displayTagged);
+      if (groups.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [{ type: 'property_inspector', path, className: prior?.class, groups }],
+        };
+      }
+      // Stated on the RESULT as well as in the panel, because the model reads this and the person
+      // reads that: a step that could not see the previous values must not be quoted as if it had.
+      return { ...(res as Record<string, unknown>), priorValuesRead: prior !== null };
+    },
   },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
@@ -1023,10 +1658,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     run: async (ctx, a) => {
-      const code = String(a.code ?? '');
-      // Refused BEFORE the op is queued. By the time an asset reaches the place its scripts have
+      // Admitted BEFORE the op is queued. By the time an asset reaches the place its scripts have
       // already had their chance to run, so there is no useful check on the far side of this.
-      return refuseLuauIngress(code) ?? (await op(ctx, { op: 'run_code', code, timeoutMs: 10_000 }, 25_000));
+      // The ingress gate is handed to admission rather than called beside it: sandbox.ts REFUSES
+      // Luau bound for Studio that arrives without one, so this cannot be forgotten later.
+      const job = admitProgram({
+        runtime: 'luau',
+        backend: 'studio',
+        source: String(a.code ?? ''),
+        ingress: refuseLuauIngress,
+      });
+      if (isRefusal(job)) return { error: job.error, ...(job.blocked ? { blocked: job.blocked } : {}) };
+      const raw = await op(ctx, { op: 'run_code', code: job.source, timeoutMs: job.limits.wallMs }, studioWaitMs(job));
+      return capStudioPrints(raw, job);
     },
   },
   run_and_check: {
@@ -1508,12 +2152,18 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (refusal) return { error: refusal };
       const cases = (a.cases as SpecCase[]).map((c) => ({ name: String(c.name), code: String(c.code) }));
 
-      const source = specLuau(cases);
-      // Model-authored code. Same gate run_luau applies, for the same reason.
-      const blocked = refuseLuauIngress(source);
-      if (blocked) return blocked;
+      // Model-authored code, admitted the same way run_luau's is: same ingress gate, and now the
+      // same source-size and output ceilings, under the `roblox-spec` runtime whose ceilings are
+      // the harness's rather than a single snippet's.
+      const job = admitProgram({
+        runtime: 'roblox-spec',
+        backend: 'studio',
+        source: specLuau(cases),
+        ingress: refuseLuauIngress,
+      });
+      if (isRefusal(job)) return { error: job.error, ...(job.blocked ? { blocked: job.blocked } : {}) };
 
-      const raw = await op(ctx, { op: 'run_code', code: source, timeoutMs: 20_000 }, 40_000);
+      const raw = await op(ctx, { op: 'run_code', code: job.source, timeoutMs: job.limits.wallMs }, studioWaitMs(job));
       if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
 
       const run = parseSpecRun(raw);
@@ -1796,7 +2446,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'inspect_visually',
       description:
-        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Sparks — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Use this for what only an image can show: whether the thing reads.',
+        'Render the scene and have it critiqued as an image against a visual quality gate. Returns a score, named defects and specific fixes. Call this after building anything visual, and again after fixing, until it passes. It renders and calls a vision model, so it costs Credits — run audit_build FIRST, which is free, checks geometry and the Lighting configuration, and finds a different class of defect. Use this for what only an image can show: whether the thing reads.',
       parameters: S(
         {
           target: { type: 'string', description: 'instance path to inspect. Omit for the whole workspace.' },
@@ -1909,13 +2559,29 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: false,
-    run: async (_ctx, a) => chooseAssetSource(String(a.need ?? 'prop') as AssetNeed),
+    run: async (ctx, a) => {
+      const need = String(a.need ?? 'prop') as AssetNeed;
+      const chosen = chooseAssetSource(need);
+      const allowed = allowedSources(ctx.assetSources);
+      // The ordered list is the product's own recommendation; the policy is the customer's
+      // permission. Returning the full list and letting the model pick a forbidden entry would
+      // mean discovering the refusal one tool call later, with a plan already built around it.
+      const usable = chosen.filter((c) => allowed.includes(c.source));
+      if (usable.length) return usable;
+      return {
+        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'library')
+          ?? 'no asset source is available for this need',
+        // The unusable list is returned too: a model told only "no" cannot explain to the person
+        // what it would have done, and that explanation is what makes the setting make sense.
+        wouldHaveUsed: chosen.map((c) => c.source),
+      };
+    },
   },
   search_asset_library: {
     def: {
       name: 'search_asset_library',
       description:
-        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially.",
+        "Search Apple's curated CC0 asset library. Every hit has a recorded licence that permits use — which is not the same as being safe, and each id is still resolved and security-gated by insert_asset like any other. Prefer this over the Creator Store for anything procedural geometry cannot do — foliage and characters especially. EVERY HIT CARRIES `availability`: \"insertable\" means assetId is a real Roblox id you can pass to insert_asset now; \"needs_import\" means the library holds this asset but its bytes have not been uploaded to Roblox yet, so assetId is null — say so plainly and build the thing another way for now, never invent an id for it. Results are ranked with the curated packs above the bulk Creator Store scrape, so the earlier hits are the better-made ones.",
       parameters: S(
         {
           query: { type: 'string' },
@@ -1927,12 +2593,28 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const refused = sourceRefusal(ctx.assetSources, 'library');
+      // BEFORE the query, not after. Filtering afterwards spends a D1 read, and an empty result
+      // would read as "the curated library has nothing like that" — a claim about a table this
+      // caller was never allowed to look in.
+      if (refused) return { error: refused };
       let hits;
       try {
         hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
           kind: a.kind ? (String(a.kind) as AssetKind) : undefined,
           maxTriangles: a.maxTriangles ? Number(a.maxTriangles) : undefined,
-          insertableOnly: true,
+          //[[ THIS USED TO PASS `insertableOnly: true`, AND THAT ONE FLAG HID THE LIBRARY.
+          //
+          //   In this library "has a Roblox id" means "came from the Creator Store scrape" — 2008
+          //   user uploads named "Bakiiiiiiiiiiiiiiii" and "Part2". The curated CC0 packs (Kenney,
+          //   Poly Haven, ambientCG, Quaternius, OpenGameArt, game-icons) carry no id until
+          //   somebody imports them, so filtering on an id returned the junk and nothing else.
+          //
+          //   So the filter is gone and the FACT is returned instead: every hit says whether it is
+          //   insertable now or needs an import, and the model is told below what to do with each.
+          //   A caller that genuinely cannot wait for an import asks for `insertableOnly`; this one
+          //   can, because telling the person "the library has this, it needs importing" is a far
+          //   better answer than handing them an anime rip. ]]
           k: 8,
         });
       } catch (e) {
@@ -1964,7 +2646,20 @@ export const TOOLS: Record<string, ToolImpl> = {
         (ctx.discoveredAssetIds ??= new Set()).add(h.robloxAssetId);
         (ctx.libraryAssetIds ??= new Set()).add(h.robloxAssetId);
       }
-      return hits.map((h) => ({ assetId: h.robloxAssetId, name: h.name, kind: h.kind, triangles: h.triangles, boundsStuds: h.boundsStuds, tags: h.tags }));
+      // `availability` travels with every hit, because "we have nothing like that" and "we have
+      // exactly that, it is not imported yet" are different answers and the person deserves the
+      // second one. `assetId` is null on a needs_import row — that is the truth, and insert_asset
+      // would refuse an invented id anyway.
+      return hits.map((h) => ({
+        assetId: h.robloxAssetId,
+        name: h.name,
+        kind: h.kind,
+        triangles: h.triangles,
+        boundsStuds: h.boundsStuds,
+        tags: h.tags,
+        availability: h.availability,
+        source: h.source,
+      }));
     },
   },
   find_verified_asset: {
@@ -1976,6 +2671,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store');
+      // BEFORE the search, for the same reason search_asset_library refuses before its query: an
+      // empty result would read as "the Creator Store has nothing like that" — a claim about a
+      // catalogue this caller was never allowed to look in.
+      if (refused) return { error: refused };
       const integrity: DetailsIntegrity = { missing: [] };
       const res = await findVerifiedAssets(ctx.env, String(a.query ?? ''), {
         category: 'mesh',
@@ -2028,6 +2728,16 @@ export const TOOLS: Record<string, ToolImpl> = {
       // nobody searched for is visible in the transcript and in the audit log rather than inferred.
       const fromLibrary = ctx.libraryAssetIds?.has(assetId) === true;
       const provenance: AssetProvenanceSource = fromLibrary ? 'library' : ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
+
+      // BEFORE verification, not after: this is a question about where the id came from, which
+      // `provenance` already answers for free, and it costs nothing to ask now. Verification below
+      // spends a real Creator Store network call — paying for it on an id nobody was allowed to go
+      // looking for through this app in the first place would be the same mistake search_asset_library
+      // and find_verified_asset avoid above. `user_supplied` is never refused here — see
+      // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
+      // Apple's, and still faces the full gate immediately below regardless.
+      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance);
+      if (sourceRefused) return { error: sourceRefused };
 
       const integrity: DetailsIntegrity = { missing: [] };
       const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance, fetchImpl: strictDetailsFetch(integrity) });
@@ -2207,8 +2917,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const hits = await searchDocs(ctx.env, String(a.query ?? ''), 5);
-      return hits.map((h) => ({ title: h.title, url: h.url, excerpt: h.text.slice(0, 900) }));
+      const { hits, outcome, citations } = await searchDocsDetailed(ctx.env, String(a.query ?? ''), 5);
+      //[[ TELL THE MODEL WHICH KIND OF NOTHING THIS IS.
+      //
+      //   An empty array is the same token sequence whether the documentation has no answer or
+      //   whether nobody ever filled the index, and the model's behaviour should differ: on a real
+      //   miss it should answer from what it knows and say so; on an empty index it must not claim
+      //   the documentation was consulted. It cannot make that distinction from `[]`.
+      //
+      //   Results, when there are any, keep the plain array shape the prompt describes — plus the
+      //   citation number the answer is expected to cite by. ]]
+      if (!hits.length) return { results: [], searched: outcome.kind !== 'empty-index' && outcome.kind !== 'unavailable', note: outcome.detail, conclusive: outcome.certain };
+      const n = new Map(citations.map((cit) => [cit.url, cit.n]));
+      return hits.map((h) => ({ citation: n.get(h.url) ?? null, title: h.title, url: h.url, excerpt: h.text.slice(0, 900) }));
     },
   },
   remember: {
@@ -2219,8 +2940,16 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      await ctx.addMemoryFact(String(a.fact ?? ''));
-      return { saved: true };
+      const outcome = await ctx.addMemoryFact(String(a.fact ?? ''));
+      // Each branch says what actually happened, in words the model can act on: under review it
+      // must not tell the user the fact is remembered, and with memory off it must stop trying.
+      if (outcome === 'suggested') {
+        return { saved: false, status: 'awaiting_approval', note: 'Queued for the user to approve in the memory panel. Do not tell them it is remembered yet.' };
+      }
+      if (outcome === 'refused') {
+        return { saved: false, status: 'memory_off', note: 'This user has turned memory off. Nothing was stored; do not call remember again this run.' };
+      }
+      return { saved: true, status: 'saved' };
     },
   },
   create_checkpoint: {
@@ -2231,6 +2960,189 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     run: async (ctx, a) => ctx.createCheckpoint(String(a.label ?? 'checkpoint'), 'auto'),
+  },
+  /**
+   * SAY WHAT YOU ARE ABOUT TO DO, BEFORE YOU DO IT.
+   *
+   * Everything downstream of this has existed since the component registry was written and none of
+   * it could ever run: `BuildPlanBlock` (apps/web/src/lib/generative-ui/schema.ts), `BuildPlanView`
+   * (render.tsx), `plannedStepsFromDocs` lifting pending steps into the Thinking card's Actions
+   * list (gates.ts), `PlanStep.tool` rendered as a monospace chip. `grep -r "build_plan"
+   * apps/worker/src` returned nothing, so the only producer in the whole product was a fixture in
+   * /ui-lab. This is the producer.
+   *
+   * It is deliberately NOT in PLAN_TOOLS (router.ts). Plan mode's whole deliverable is a prose
+   * roadmap; a second, structured plan on top of that is two answers to one question. This is for
+   * Agent and Super Agent, which otherwise start building with nothing announced.
+   *
+   * THREE REFUSALS, and each one is a defect this codebase has shipped in another form:
+   *
+   *   - a step whose `tool` is not a registered tool. The user reads a plan as a commitment, and
+   *     `edit_scripts` is a commitment the run cannot keep. Same class as the system prompt naming
+   *     `get_instance` while it was not a tool (see prompt-tool-names.test.mjs).
+   *   - a plan with no verification step. Announcing the build and not the check is how a run ends
+   *     with "Done." and nothing proven — the thing the five verifiers exist to prevent.
+   *   - a plan longer than the cap. Truncating would show a card the user reads as the whole
+   *     commitment while the tail was silently dropped.
+   *
+   * Titles are CLIPPED rather than refused, because the browser's validator drops a whole document
+   * whose label exceeds LIMITS.maxLabelLength — a plan that vanishes is worse than a clipped one.
+   */
+  propose_plan: {
+    def: {
+      name: 'propose_plan',
+      description:
+        'Announce the ordered plan for this request BEFORE you start building it. Call this once, as your first step, then carry it out. Each step is { title, detail?, tool } — `tool` must be the exact name of a tool you will actually call for that step, and at least one step must be a verification step (run_and_check, run_spec, audit_build, check_composition or inspect_visually), because a build with no planned check proves nothing. The plan is shown to the user as a checklist while the run happens, so write each title as the thing they will get ("A platform players spawn onto"), not as an internal action. Costs nothing: no model calls, no images, no change to the project. Do not call it twice — if the work turns out differently, say so in your reply rather than re-planning.',
+      parameters: S(
+        {
+          steps: {
+            type: 'array',
+            description: `The ordered steps, up to ${MAX_PLAN_STEPS}. At least one must use a verification tool.`,
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'What this step delivers, as a short phrase the user would recognise.' },
+                detail: { type: 'string', description: 'One sentence of specifics: which instance, which script, which property.' },
+                tool: { type: 'string', description: 'The exact name of the tool this step will call.' },
+              },
+              required: ['title', 'tool'],
+            },
+          },
+          title: { type: 'string', description: 'Optional name for the plan, e.g. "Spawn platform".' },
+        },
+        ['steps'],
+      ),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const plan = readProposedPlan(a);
+      if ('error' in plan) return plan;
+
+      ctx.uiDetail = {
+        v: 1,
+        blocks: [
+          {
+            type: 'build_plan',
+            ...(plan.title ? { title: plan.title } : {}),
+            // PENDING, every one of them. Nothing in this list has happened at the moment it is
+            // proposed, and a step drawn as done before it ran is this house's own
+            // failure-to-observe defect wearing a plan's clothes. session.ts settles the statuses
+            // against the oplog when the run ends.
+            steps: plan.steps.map((s) => ({ title: s.title, ...(s.detail ? { detail: s.detail } : {}), tool: s.tool, status: 'pending' as const })),
+          },
+        ],
+      };
+
+      return {
+        steps: plan.steps.length,
+        // The model gets the plan back so the transcript carries the commitment it just made;
+        // without it the plan exists only in a UI payload the model never sees again.
+        plan: plan.steps.map((s, i) => `${i + 1}. ${s.title} — ${s.tool}`),
+      };
+    },
+  },
+
+  /* ------------------------------------------------------- the web-facing tools ---
+   *
+   * Ten tools defined in webtools.ts, registered here ONE BY ONE rather than spread in from a
+   * loop. That is deliberate and it is not style: three separate guards in this repository find
+   * the tool table by PARSING THIS LITERAL — tool-vocabulary.test.mjs (every tool must have a
+   * written label), tools-for-mode.test.mjs (Plan must reach nothing that mutates) and
+   * prompt-tool-names.test.mjs. A `...spread` is invisible to all three, so ten tools would
+   * quietly acquire no label, no mode assertion and no prompt check. An entry that a guard cannot
+   * see is an entry with no guard.
+   *
+   * Each body is two lines because the real work — the typed contract, the argument validation,
+   * the host/repo/path allowlists, and the rule that a failed fetch is an error rather than an
+   * empty result — lives in webtools.ts where it can be tested without a Studio, a project or a
+   * network. `runWebTool` validates before dispatching, so no body here is ever reached with an
+   * argument nobody checked.
+   */
+  web_fetch: {
+    def: webToolDef('web_fetch'),
+    studio: false,
+    run: (ctx, a) => runWebTool('web_fetch', webCtx(ctx), a),
+  },
+  browse_page: {
+    def: webToolDef('browse_page'),
+    studio: false,
+    run: (ctx, a) => runWebTool('browse_page', webCtx(ctx), a),
+  },
+  web_search: {
+    def: webToolDef('web_search'),
+    studio: false,
+    run: (ctx, a) => runWebTool('web_search', webCtx(ctx), a),
+  },
+  screenshot_page: {
+    def: webToolDef('screenshot_page'),
+    studio: false,
+    run: (ctx, a) => runWebTool('screenshot_page', webCtx(ctx), a),
+  },
+  ocr_image: {
+    def: webToolDef('ocr_image'),
+    studio: false,
+    run: (ctx, a) => runWebTool('ocr_image', webCtx(ctx), a),
+  },
+  github_lookup: {
+    def: webToolDef('github_lookup'),
+    studio: false,
+    run: (ctx, a) => runWebTool('github_lookup', webCtx(ctx), a),
+  },
+  git_history: {
+    def: webToolDef('git_history'),
+    studio: false,
+    run: (ctx, a) => runWebTool('git_history', webCtx(ctx), a),
+  },
+  workspace_list: {
+    def: webToolDef('workspace_list'),
+    studio: false,
+    run: (ctx, a) => runWebTool('workspace_list', webCtx(ctx), a),
+  },
+  workspace_read: {
+    def: webToolDef('workspace_read'),
+    studio: false,
+    run: (ctx, a) => runWebTool('workspace_read', webCtx(ctx), a),
+  },
+  workspace_write: {
+    def: webToolDef('workspace_write'),
+    studio: false,
+    run: (ctx, a) => runWebTool('workspace_write', webCtx(ctx), a),
+  },
+  /*
+   * THE AUDIO TOOLS, REGISTERED ONE BY ONE ON PURPOSE.
+   *
+   * These four were first added as `...AUDIO_TOOLS`, which worked perfectly and was wrong:
+   * webtools-wiring.test.mjs refuses a spread here, and the reason is in its own comment — three
+   * separate guards read THIS LITERAL out of the source to decide what every tool owes the rest of
+   * the product. tool-vocabulary.test.mjs (apps/web) holds each name to a written label, so a
+   * spread-in tool renders in the Thinking card as `design_sound`; phase-coverage.test.mjs holds it
+   * to a phase, so one that is missing falls through to `default: 'building'` and announces that it
+   * is building the user's world while it renders a footstep; tools-for-mode.test.mjs holds it to a
+   * mode. A spread satisfies every test of the tools themselves and is invisible to all three.
+   *
+   * The bodies live in audio-tools.ts because their DESCRIPTIONS are the product surface for this
+   * cluster — in particular the standing promise that none of this audio reaches the user's Roblox
+   * place — and belong beside the modules that enforce it. What has to be here is the name.
+   */
+  design_sound: {
+    def: AUDIO_TOOLS.design_sound!.def,
+    studio: AUDIO_TOOLS.design_sound!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.design_sound!.run(ctx, a),
+  },
+  assign_sounds: {
+    def: AUDIO_TOOLS.assign_sounds!.def,
+    studio: AUDIO_TOOLS.assign_sounds!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.assign_sounds!.run(ctx, a),
+  },
+  generate_sound: {
+    def: AUDIO_TOOLS.generate_sound!.def,
+    studio: AUDIO_TOOLS.generate_sound!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.generate_sound!.run(ctx, a),
+  },
+  speak_line: {
+    def: AUDIO_TOOLS.speak_line!.def,
+    studio: AUDIO_TOOLS.speak_line!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.speak_line!.run(ctx, a),
   },
 };
 
@@ -2324,11 +3236,38 @@ export async function runTool(
   if (impl.studio && !ctx.studioConnected()) {
     return { summary: `${name}: Studio not connected`, resultForLlm: JSON.stringify({ error: 'Studio is not connected. Ask the user to connect Studio, or continue without Studio tools.' }), ok: false };
   }
+  // UNPARSEABLE ARGUMENTS ARE NOT ABSENT ARGUMENTS. This used to swallow the parse error and
+  // continue with `{}`, so `'{not json'` reached web_fetch and came back as
+  // `web_fetch: url is required` — which tells the model to ADD A URL to a string that was never
+  // read. It would then send the same malformed payload with a url appended and get the same
+  // answer forever. A failure to read the arguments must not render as a reading of them.
   let args: Record<string, unknown> = {};
-  try {
-    args = argsJson ? (JSON.parse(argsJson) as Record<string, unknown>) : {};
-  } catch {
-    return { summary: `${name}: bad arguments`, resultForLlm: JSON.stringify({ error: 'arguments were not valid JSON' }), ok: false };
+  if (argsJson) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(argsJson);
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err);
+      return {
+        summary: `${name}: arguments are not valid JSON`,
+        resultForLlm: JSON.stringify({
+          error: `${name}: the arguments are not valid JSON and were not run — ${why}`,
+        }),
+        ok: false,
+      };
+    }
+    // `"3"`, `null` and `[1,2]` all parse. None of them is an argument object, and spreading them
+    // into a tool gives it a shape it never declared rather than telling it what arrived.
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {
+        summary: `${name}: arguments are not an object`,
+        resultForLlm: JSON.stringify({
+          error: `${name}: the arguments must be a JSON object, got ${Array.isArray(parsed) ? 'an array' : parsed === null ? 'null' : typeof parsed}`,
+        }),
+        ok: false,
+      };
+    }
+    args = parsed as Record<string, unknown>;
   }
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row

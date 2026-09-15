@@ -7,11 +7,11 @@
  *      was already applying them. plans.tsx was written to replace that — its own header says so —
  *      and was then never imported by anything, so the contradiction stayed on screen and the
  *      component that fixed it sat in the repo with zero callers.
- *   2. The Sparks ring was handed `sparksRemaining`, which is allowance PLUS purchased credits, and
+ *   2. The Credits ring was handed `creditsRemaining`, which is allowance PLUS purchased credits, and
  *      divided it by the daily allowance. With 1,440 credits on the free plan it rendered a full
  *      ring captioned "1481 of 60" and an aria-label saying that was what remained TODAY. Credits
  *      are not today's and do not reset. Verified in the browser before and after: it now reads
- *      "41 of 60 Sparks of allowance remaining today" with the credits on their own line.
+ *      "41 of 60 Credits of allowance remaining today" with the credits on their own line.
  *
  * WHAT THESE TESTS ARE, stated because it bounds what they prove: apps/web has no DOM renderer, so
  * nothing here mounts the page. These read the ROUTE'S SOURCE and pin the wiring — that it derives
@@ -39,7 +39,7 @@ const sharedOut = join(mkdtempSync(join(tmpdir(), 'plans-shared-')), 'shared.mjs
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + sharedOut], { stdio: 'pipe' });
-const { PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD } = await import(sharedOut);
+const { PLAN_IDS, PLAN_LIMITS, CREDITS_PER_BUILD } = await import(sharedOut);
 
 /** Source with comments stripped, so a class named in prose is not mistaken for one in use. */
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -56,7 +56,7 @@ test('the ladder reads the enforced table, so it cannot drift from the server ag
   assert.match(plans, /PLAN_IDS/, 'and every tier the server knows is listed');
   assert.match(plans, /from '@golem\/shared'/, 'from shared, not a local copy');
   // No tier count, no price and no allowance may be written into this file as a literal.
-  assert.doesNotMatch(plans, /\bsparksPerMonth:\s*\d/, 'an allowance literal would be a second source of truth');
+  assert.doesNotMatch(plans, /\bcreditsPerMonth:\s*\d/, 'an allowance literal would be a second source of truth');
 });
 
 test('THE PRO WAITLIST IS GONE from the signed-in page', () => {
@@ -66,9 +66,9 @@ test('THE PRO WAITLIST IS GONE from the signed-in page', () => {
 });
 
 test('THE RING SHOWS THE ALLOWANCE, never allowance-plus-credits', () => {
-  // The precise regression: sparksRemaining is the sum, and the ring's denominator is the daily
+  // The precise regression: creditsRemaining is the sum, and the ring's denominator is the daily
   // allowance, so any credit balance made the caption read as nonsense.
-  assert.doesNotMatch(usageCode, /quota\.sparksRemaining/,
+  assert.doesNotMatch(usageCode, /quota\.creditsRemaining/,
     'the page must not read the combined figure at all');
   assert.match(usageCode, /remaining=\{view\.allowanceRemaining\}/, 'the arc is the allowance');
   assert.match(usageCode, /daily=\{view\.allowanceTotal\}/, 'over the allowance total');
@@ -157,7 +157,7 @@ test('cancelling says nothing was charged', () => {
 /**
  * NO TIER ADVERTISES A COUNT OF BUILDS IT CANNOT AFFORD.
  *
- * Free grants 60 Sparks a day and a quality-gated build costs 77, so buildsPerDay floors to zero
+ * Free grants 60 Credits a day and a quality-gated build costs 77, so buildsPerDay floors to zero
  * and the pricing page said "up to 0 builds a day". I verified this ladder in a browser and read
  * the layout rather than the figures; scripts/check-offer.mjs is what named it, and it is the same
  * call usage-meter-model.ts already makes for the meter — "0 builds" reads as a fault in the
@@ -170,7 +170,7 @@ test('NO TIER IS ADVERTISED AS AFFORDING ZERO BUILDS A DAY', () => {
   const src = code(plans);
   assert.match(src, /buildsPerDay\(id\) >= 1 \?/, 'the per-day claim must be conditional');
   // The alternative branch has to say something true rather than nothing.
-  assert.match(src, /one build costs \{SPARKS_PER_BUILD\}/,
+  assert.match(src, /one build costs \{CREDITS_PER_BUILD\}/,
     'a tier that cannot afford a daily build should state the two numbers instead');
 });
 
@@ -178,7 +178,7 @@ test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
   // This test used to say the opposite. It asserted that SOME tier floors to zero builds, as a
   // tripwire: "if no tier floors to zero any more, the conditional branch above is dead and should
   // go". The repricing on 2026-09-14 tripped it, which is the tripwire working — free went from 60
-  // Sparks a day against a 77-Spark build to 231, exactly three builds.
+  // Credits a day against a 77-Credit build to 231, exactly three builds.
   //
   // The branch STAYS, and the assertion is inverted rather than deleted. A pricing page printing
   // "up to 0 builds a day" is a specific, public embarrassment, the branch costs four lines, and
@@ -186,16 +186,104 @@ test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
   // paid tier being set below it. What changes is that the healthy state is now asserted as the
   // expectation instead of the exception.
   for (const p of PLAN_IDS) {
-    assert.ok(Number.isFinite(PLAN_LIMITS[p].sparksPerDay), `${p} has no daily allowance`);
-    assert.ok(Number.isFinite(PLAN_LIMITS[p].sparksPerMonth), `${p} has no monthly allowance`);
+    assert.ok(Number.isFinite(PLAN_LIMITS[p].creditsPerDay), `${p} has no daily allowance`);
+    assert.ok(Number.isFinite(PLAN_LIMITS[p].creditsPerMonth), `${p} has no monthly allowance`);
     assert.ok(
-      PLAN_LIMITS[p].sparksPerMonth <= PLAN_LIMITS[p].sparksPerDay * 31,
+      PLAN_LIMITS[p].creditsPerMonth <= PLAN_LIMITS[p].creditsPerDay * 31,
       `${p} grants a month nobody can reach at its daily rate`,
     );
     assert.ok(
-      Math.floor(PLAN_LIMITS[p].sparksPerDay / SPARKS_PER_BUILD) >= 1,
-      `${p} grants ${PLAN_LIMITS[p].sparksPerDay} Sparks a day and a build costs ${SPARKS_PER_BUILD} — ` +
+      Math.floor(PLAN_LIMITS[p].creditsPerDay / CREDITS_PER_BUILD) >= 1,
+      `${p} grants ${PLAN_LIMITS[p].creditsPerDay} Credits a day and a build costs ${CREDITS_PER_BUILD} — ` +
         'it would advertise itself as affording no builds',
     );
   }
+});
+
+// --- coming back from the PORTAL, not only from the checkout -------------------------------
+
+/**
+ * THE END STATE WAS CONFIRMED; THE ACT WAS NOT.
+ *
+ * Cancelling happens in Stripe's portal. The return_url was a bare /app/usage, and the only return
+ * handling on this page read `?checkout=`, which is the other round trip entirely — so a user who
+ * had just cancelled came back to a page that looked exactly as it had before, and stayed that way
+ * until the webhook landed. Stripe's own confirmation was the last thing the product said to them.
+ *
+ * The note reports what the SERVER now says, for the same reason the checkout branch does: the
+ * cancellation is real when the webhook applies it, not when a browser returns to a URL.
+ */
+test('THE RETURN FROM THE PORTAL IS RECOGNISED AT ALL', () => {
+  assert.match(usageCode, /get\('billing'\)|billing=returned/,
+    'the portal return flag must be read, or a cancellation is invisible until the webhook lands');
+});
+
+test('and it reports the SERVER state rather than asserting the cancellation', () => {
+  // Never "You have cancelled" from a URL parameter. The same rule the checkout return already
+  // follows, and the reason this page stopped lying about plans.
+  assert.match(usageCode, /billingView\?\.state === 'cancelling'|billingView\.state === 'cancelling'/,
+    "the note must read the server's own state");
+  assert.doesNotMatch(usage, /You(?:'|’)ve cancelled|Your plan has been cancelled|Cancellation confirmed/i,
+    'a client-side claim about a cancellation is the sentence this page exists not to print');
+});
+
+test('the portal flag is taken back out of the URL too', () => {
+  // Same reason as the checkout flag: a reload or a shared link would replay a confirmation.
+  assert.match(usageCode, /searchParams\.delete\('billing'\)/);
+});
+
+test('and the return refetches, because the webhook may not have landed yet', () => {
+  const effect = usageCode.slice(usageCode.indexOf("get('billing')") - 600, usageCode.indexOf("get('billing')") + 600);
+  assert.match(effect, /me\.refetch\(\)/, 'the page must ask the server again rather than assume');
+});
+
+// --- what the change costs, before the user leaves for Stripe ---------------------------------
+
+/**
+ * A PAYING CUSTOMER WAS HANDED STRAIGHT TO STRIPE.
+ *
+ * The ladder prints each tier's monthly price, and for someone already on a paid tier that is not
+ * the number about to be charged: a mid-period change is prorated, net of a credit for the time
+ * already bought. `else portal.mutate()` sent them off the page and the first figure they saw was
+ * on Stripe's own checkout — the amount, the credit and the date all first appeared after they had
+ * committed to going there.
+ */
+test('A PAID-TO-PAID CHANGE IS NO LONGER A BARE REDIRECT', () => {
+  const at = usageCode.indexOf('onChoose=');
+  const choose = usageCode.slice(at, at + 900);
+  assert.match(
+    choose,
+    /if \(currentPlan === 'free' && canBuy\) checkout\.mutate\(plan\);[\s\S]*?else if \(canBuy\) setPendingChange\(plan\);/,
+    'a paying user choosing a tier that HAS a price must be quoted, not redirected',
+  );
+  // The redirect that survives is the move down to Free, which is a cancellation and has no
+  // upgrade invoice to preview. It must come after the priced branch, never instead of it.
+  assert.ok(
+    choose.indexOf('setPendingChange(plan)') < choose.indexOf('else portal.mutate()'),
+    'the bare redirect may only be the fall-through for a tier with no price',
+  );
+  assert.match(usageCode, /import \{ ConfirmDialog \}/, 'it asks first');
+  assert.match(usageCode, /fetchBillingPreview/, 'and the amount comes from the server');
+});
+
+test('the sentence about money comes from billing-copy, not from a template on this page', () => {
+  // The same rule the notice follows. A page that formats an amount inline makes the "is this a
+  // charge or a credit" call again in every place it prints one.
+  assert.match(usageCode, /planChangePreviewLine\(/);
+  assert.doesNotMatch(usageCode, /costs \$\{|charges \$\{/, 'no hand-rolled money sentence here');
+});
+
+test('THE CHANGE IS STILL STRIPE’S TO MAKE — confirming opens the portal, it does not set a plan', () => {
+  assert.match(usageCode, /onConfirm=\{\(\) => portal\.mutate\(\)\}/,
+    'the dialog is a preview and a confirmation, never an entitlement');
+});
+
+test('nothing is priced until a tier is actually chosen', () => {
+  // A preview on page load would ask Stripe a question on every visit to /usage.
+  assert.match(usageCode, /enabled: pendingChange !== null/);
+});
+
+test('a preview still in flight says so rather than showing an empty amount', () => {
+  assert.match(usageCode, /preview\.isPending/,
+    'the pending case is its own sentence — a blank where a number goes reads as free');
 });

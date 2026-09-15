@@ -58,8 +58,32 @@ const PLAN_TOOLS = [
   'list_scripts',
   'read_script',
   'search_scripts',
+  // The two read-only code-intelligence tools. `review_scripts` parses and analyses; `find_symbol`
+  // resolves a name through scopes. Neither can send a mutating op — they read scripts and return
+  // findings — and "what would you do here" is exactly the question they answer. `format_script`
+  // is deliberately NOT here: it writes.
+  'review_scripts',
+  'find_symbol',
   'search_docs',
   'remember',
+  // The READ-ONLY web tools. Each one reads something outside the user's project — a page, a
+  // search, a repository, an image, the project's own scratch files — and none of them can reach
+  // the place at all: they are not Studio tools and have no op to send. Planning is exactly the
+  // activity that wants them, since "what would you do here" is often answered by reading the
+  // documentation or the upstream repository first.
+  //
+  // `workspace_write` is deliberately NOT here. It writes nothing into the place either, but the
+  // rule this list enforces is about what a user can hand Plan without thinking, and "it only
+  // writes to Golem's own files" is a distinction the user did not agree to. Plan reads.
+  'web_fetch',
+  'browse_page',
+  'web_search',
+  'screenshot_page',
+  'ocr_image',
+  'github_lookup',
+  'git_history',
+  'workspace_list',
+  'workspace_read',
 ];
 
 export function toolsForMode(mode: GolemMode, studioConnected: boolean, allNames: string[]): Set<string> {

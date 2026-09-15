@@ -554,7 +554,7 @@ Allocation, consistent with the owner's stated intent:
 
 Hard-code a per-project and per-day cap on `GenerateModelAsync` calls (the observed
 platform limit is 10/min; Golem should sit well under it, e.g. 3 per project, 30/day
-account-wide), enforced in the Worker's Sparks/Quota DO. Free today ≠ free forever;
+account-wide), enforced in the Worker's Credits/Quota DO. Free today ≠ free forever;
 the cap means a pricing change is a config edit, not an incident.
 
 ## E5. Implementation order (highest value first)

@@ -94,7 +94,7 @@ Three variable families, one stylesheet request, each with one job.
   `font-stretch` and that Archivo actually finished loading, rather than trusting
   that the declaration is in the file.
 - **Body**: **Figtree**, 300–900.
-- **Micro / metadata**: **Geist Mono** — timestamps, Spark counts, step
+- **Micro / metadata**: **Geist Mono** — timestamps, Credit counts, step
   numerals, file names. Nothing else.
 
 Superseded: Inter throughout, and the Fraunces serif before it.
@@ -148,14 +148,14 @@ one screen tall was the means; that is the end.
 ├──────────────────────────────────────────────────────────────┤
 │  · Modes                                                     │
 │  PICK HOW HARD IT SHOULD THINK.                              │  #modes
-│  [ PLAN 2 sparks ] [ AGENT 4 sparks ] [ SUPER AGENT 10 ]     │
+│  [ PLAN 2 credits ] [ AGENT 4 credits ] [ SUPER AGENT 10 ]     │
 ├──────────────────────────────────────────────────────────────┤
 │  · How it works                                              │
 │  THREE STEPS, THEN IT IS IN YOUR PLACE.                      │  #how
 │  [ 01 Connect Studio ] [ 02 Say what … ] [ 03 Playtest … ]   │
 ├──────────────────────────────────────────────────────────────┤
 │  · Pricing                                                   │
-│  SPARKS, NOT SEATS.                                          │  #pricing
+│  CREDITS, NOT SEATS.                                          │  #pricing
 │  [ FREE $0 ] [ BUILDER $12/mo · Popular ] [ STUDIO $40/mo ]  │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -197,10 +197,10 @@ one screen tall was the means; that is the end.
   thumbnail, a shared link and a reader with scripting off all get the finished
   page. `prefers-reduced-motion` collapses it to 1ms rather than removing it —
   `animation: none` on a `both`-filled entrance leaves the element invisible.
-- **Every figure is read, never typed.** Plan names, prices, Spark allowances and
+- **Every figure is read, never typed.** Plan names, prices, Credit allowances and
   builds-per-month come from `PLAN_LIMITS` / `PLAN_COPY` in `packages/shared`;
   the install destination comes from `STUDIO_PLUGIN_INSTALL_HREF`.
-  `scripts/check-offer.mjs` and `scripts/check-spark-figures.mjs` enforce it.
+  `scripts/check-offer.mjs` and `scripts/check-credit-figures.mjs` enforce it.
 
 ### Three deliberate departures from the supplied design
 
@@ -216,7 +216,7 @@ compare the page against the artifact will notice and need the reason.
 2. **"Apple model only" on the free tier is gone.** A plan-conditional model
    entitlement has no code path in `gateway.ts`. Publishing it would advertise a
    restriction nothing enforces and a capability nothing withholds.
-3. **"Credits" → "Sparks".** Credits already means something else here: the
+3. **"Credits" → "Credits".** Credits already means something else here: the
    purchased, non-expiring balance. Two meanings for one word, on the page that
    introduces the unit, is how a reader budgets against the wrong number.
 
@@ -316,7 +316,7 @@ A **bordered rounded card** (`--surface`, `--line`), not a bare list.
 └────────────────────────────────────────────────────────┘
 ```
 
-- Header: a small **amber sparkle glyph**, the word `Thinking`, then
+- Header: a small **amber creditle glyph**, the word `Thinking`, then
   `Click to expand` in `--faint`, then a chevron pushed right that rotates on
   open.
 - Body: a **vertical timeline**. Each stage is a hollow ring bullet with a

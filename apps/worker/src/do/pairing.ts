@@ -10,7 +10,36 @@ interface Pairing {
 }
 
 const TTL_MS = 10 * 60 * 1000;
-const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no confusable chars
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no confusable chars (no I, L, O, 0, 1)
+
+/**
+ * A pairing code, drawn UNIFORMLY from the alphabet.
+ *
+ * `ALPHABET[b % 31]` over a random byte is modulo bias: 256 = 8*31 + 8, so the first EIGHT letters
+ * get one extra chance in 256. Measured over 2,000,000 bytes before this changed:
+ *
+ *   A +9.3%  F +9.3%  H +9.2%  G +9.2%   …   Q -3.7%  T -3.7%  S -3.9%
+ *
+ * A 13.5% spread, worth about 0.75 bits of the 29.7 this code carries (31^6 = 8.875e8) — an
+ * attacker guessing most-likely-first is roughly 1.7x better off. That is a SMALL effect and worth
+ * stating as small. It is fixed because the fix is one loop and because `/api/studio/claim` is
+ * unauthenticated: a correct code is the entire credential, and it returns a projectId and a userId.
+ *
+ * 248 is 8*31, so every accepted byte maps to exactly 8 of the 256 values and the draw is flat.
+ * Exported so the distribution can be measured directly; inline, it was unreachable from a test.
+ */
+export function newPairingCode(length = 6): string {
+  const out: string[] = [];
+  while (out.length < length) {
+    const bytes = crypto.getRandomValues(new Uint8Array(length));
+    for (const b of bytes) {
+      if (b >= 248) continue; // reject the tail that does not divide evenly, rather than fold it
+      out.push(ALPHABET[b % ALPHABET.length]!);
+      if (out.length === length) break;
+    }
+  }
+  return out.join('');
+}
 
 export class PairingDO extends DurableObject<Env> {
   async fetch(req: Request): Promise<Response> {
@@ -24,20 +53,57 @@ export class PairingDO extends DurableObject<Env> {
         else if (val.userId === body.userId) userCodes++;
       }
       if (userCodes >= 5) return Response.json({ error: 'too many active codes' }, { status: 429 });
-      const bytes = crypto.getRandomValues(new Uint8Array(6));
-      const code = [...bytes].map((b) => ALPHABET[b % ALPHABET.length]).join('');
+      //[[ A SUPERSEDED CODE IS CANCELLED BY THE SURFACE THAT SUPERSEDED IT, NOT HERE.
+      //
+      //   Retiring every other live code for this project at mint time was tried and taken back
+      //   out. It kills a code that a SECOND open tab is still displaying, beside a live countdown
+      //   — a dialog that shows an expiry time for a credential the server has already destroyed,
+      //   which is this repository's central defect wearing a clock. The dialog cancels the code
+      //   it was itself holding, explicitly, before it mints a replacement: that is the one caller
+      //   that knows the old code is no longer on anybody's screen. See /cancel below. ]]
+      const code = newPairingCode();
       await this.ctx.storage.put(`code:${code}`, { ...body, createdAt: Date.now() } satisfies Pairing);
       await this.ctx.storage.setAlarm(Date.now() + TTL_MS + 1000);
       return Response.json({ code, expiresAtIso: new Date(Date.now() + TTL_MS).toISOString() });
     }
     if (url.pathname === '/claim' && req.method === 'POST') {
       const { code } = (await req.json()) as { code: string };
-      const key = `code:${(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+      // `(code || '').toUpperCase()` threw a 500 for any non-string — a number, an object, an array
+      // — which is a crash handed to an UNAUTHENTICATED caller for a malformed body. A bad code is
+      // a refusal, not an exception.
+      if (typeof code !== 'string') return Response.json({ error: 'invalid or expired code' }, { status: 404 });
+      const key = `code:${code.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
       const pairing = await this.ctx.storage.get<Pairing>(key);
       if (!pairing || Date.now() - pairing.createdAt > TTL_MS) return Response.json({ error: 'invalid or expired code' }, { status: 404 });
       await this.ctx.storage.delete(key); // single use
       return Response.json(pairing);
     }
+    //[[ CANCEL A CODE THAT IS NO LONGER WANTED.
+    //
+    //   Closing the pairing dialog did nothing to the code it had just shown: it stayed claimable
+    //   for its full ten minutes, and `/api/studio/claim` is UNAUTHENTICATED, so an abandoned code
+    //   on somebody's screen or in a screenshot was a live credential to a project.
+    //
+    //   OWNERSHIP IS CHECKED AGAINST THE MINTING USER, which is the whole security content of this
+    //   route. Without it, cancel is a denial-of-service primitive: guess a code, revoke somebody
+    //   else's pairing. The answer is deliberately the SAME for a code that does not exist, a code
+    //   that expired, and a code belonging to another user — `{ ok: true, cancelled: false }` — so
+    //   this cannot be used to test whether a code exists. That is the same reasoning that makes
+    //   /claim answer one sentence for every kind of bad code. ]]
+    if (url.pathname === '/cancel' && req.method === 'POST') {
+      const body = (await req.json().catch(() => null)) as { code?: unknown; userId?: unknown } | null;
+      const rawCode = body?.code;
+      const userId = body?.userId;
+      if (typeof rawCode !== 'string' || typeof userId !== 'string' || !userId) {
+        return Response.json({ ok: true, cancelled: false });
+      }
+      const key = `code:${rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+      const pairing = await this.ctx.storage.get<Pairing>(key);
+      if (!pairing || pairing.userId !== userId) return Response.json({ ok: true, cancelled: false });
+      await this.ctx.storage.delete(key);
+      return Response.json({ ok: true, cancelled: true });
+    }
+
     return Response.json({ error: 'not found' }, { status: 404 });
   }
 

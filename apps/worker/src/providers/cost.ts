@@ -1,22 +1,22 @@
 // Cost accounting across providers that bill in different units.
 //
 // The BudgetDO ceiling is denominated in Cloudflare neurons and nothing is going to change that:
-// it is the unit the daily/monthly caps, the Spark price and the admin report are all written in.
+// it is the unit the daily/monthly caps, the Credit price and the admin report are all written in.
 // So a provider that bills in tokens has to be converted INTO neurons before it can be reserved
 // or settled, or its spend would escape the ceiling entirely.
 //
 // The conversion is the same one pricing.ts already uses in the other direction:
 //   neuronsPerToken = (usdPerMToken / 1e6) / USD_PER_NEURON
 // which is to say: price the call in dollars, then divide by the dollar value of a neuron.
-import { NEURONS_PER_SPARK, USD_PER_NEURON, neuronsFor, sparksForNeurons } from '../pricing';
+import { NEURONS_PER_CREDIT, USD_PER_NEURON, neuronsFor, creditsForNeurons } from '../pricing';
 import type { ProviderModel } from './types';
 
 export interface CostBreakdown {
   usd: number;
   /** what the BudgetDO ledger is charged, always rounded UP — never under-bill the ledger */
   neurons: number;
-  /** the user-facing unit, derived from neurons via NEURONS_PER_SPARK */
-  sparks: number;
+  /** the user-facing unit, derived from neurons via NEURONS_PER_CREDIT */
+  credits: number;
 }
 
 /**
@@ -44,7 +44,7 @@ export function neuronsForModelTokens(
   return Math.ceil(usd / USD_PER_NEURON);
 }
 
-/** Full breakdown for display: dollars, ledger neurons, and the Spark figure the UI shows. */
+/** Full breakdown for display: dollars, ledger neurons, and the Credit figure the UI shows. */
 export function costOf(
   model: ProviderModel,
   inputTokens: number,
@@ -52,7 +52,7 @@ export function costOf(
   cachedInputTokens = 0,
 ): CostBreakdown {
   const neurons = neuronsForModelTokens(model, inputTokens, outputTokens, cachedInputTokens);
-  return { usd: neurons * USD_PER_NEURON, neurons, sparks: sparksForNeurons(neurons) };
+  return { usd: neurons * USD_PER_NEURON, neurons, credits: creditsForNeurons(neurons) };
 }
 
 /**
@@ -71,4 +71,4 @@ export function blendedPricePer1M(model: ProviderModel): number {
   return (model.inputCostPer1M * 3 + model.outputCostPer1M) / 4;
 }
 
-export { NEURONS_PER_SPARK, USD_PER_NEURON };
+export { NEURONS_PER_CREDIT, USD_PER_NEURON };

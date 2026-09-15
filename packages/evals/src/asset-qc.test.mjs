@@ -45,6 +45,16 @@ execFileSync(
   { stdio: 'pipe', cwd: WORKER },
 );
 
+// provenance.ts is bundled the same way asset-library is, and for the same reason: it imports
+// from asset-library.ts, so a plain transpile would leave those imports unresolved.
+const provOut = join(dir, 'provenance.mjs');
+execFileSync(
+  esbuild,
+  [src('provenance.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + provOut],
+  { stdio: 'pipe', cwd: WORKER },
+);
+const { attributionReport, renderAttribution } = await import(provOut);
+
 const {
   ASSET_NEEDS,
   ASSET_KINDS,
@@ -558,14 +568,55 @@ test('an unrecognised licence string is rejected rather than guessed at', () => 
   assert.match(r.errors.join(' '), /not a recognised licence/);
 });
 
-test('CC-BY is allowed but warns, and is rejected under the CC0-only v1 policy', () => {
+test('CC-BY is allowed but warns, and is rejected when an ingest asks for no-credit licences', () => {
   const ccby = goodRecord({ licence: 'CC BY 4.0', attributionRequired: true });
   const permissive = validateProvenance(ccby);
   assert.equal(permissive.ok, true, permissive.errors.join('; '));
   assert.match(permissive.warnings.join(' '), /credit line/);
   const strict = validateProvenance(ccby, { cc0Only: true });
   assert.equal(strict.ok, false);
-  assert.match(strict.errors.join(' '), /CC0 only/);
+  // The REASON, not a licence id and not a fixed sentence. The message has been reworded twice
+  // — once when the rule stopped being a list of three ids, once when the policy it enforced was
+  // retired — and both times this assertion went red for a wording change rather than a
+  // behaviour one. What must hold is that the refusal is about the credit line.
+  assert.match(strict.errors.join(' '), /credit line|attribution/, 'the reason must name the obligation');
+});
+
+test('THE POLICY IS "NO ATTRIBUTION OWED", NOT "THE STRING SAYS CC0"', () => {
+  // These are different rules and the gate used to be the first one wearing the second one's name:
+  // an explicit list of three licence ids, which refused ROBLOX-TOU — a licence with
+  // attributionRequired FALSE, because using a free Creator Store asset owes nobody a credit. That
+  // would have excluded the ~100,000 library rows that are already Roblox asset ids and need no
+  // upload at all: the one part of the library with nothing standing between it and a game.
+  const tou = goodRecord({
+    source: 'creator_store',
+    licence: 'Roblox Terms of Use',
+    attributionRequired: false,
+    robloxAssetId: 4969855485,
+  });
+  const strict = validateProvenance(tou, { cc0Only: true });
+  assert.equal(strict.ok, true, strict.errors.join('; '));
+
+  // And the gate still bites wherever an obligation really exists — the control, so this is not
+  // simply a loosening that lets everything through.
+  for (const l of ['CC BY 4.0', 'CC BY 3.0', 'MIT', 'Apache 2.0']) {
+    const rec = goodRecord({ licence: l, attributionRequired: true });
+    assert.equal(validateProvenance(rec, { cc0Only: true }).ok, false, `${l} owes a credit line and must be refused`);
+  }
+});
+
+test('A ROBLOX ASSET ID WE DID NOT MINT NEEDS NO HASH — and one we did still does', () => {
+  // `robloxAssetId` meant one thing when it was written: "we uploaded this, here is the id we got
+  // back", and the hash invariant rests on it — we must always be able to say what bytes we put in
+  // somebody's account. A Creator Store row's id belongs to its own creator and we never held the
+  // bytes, so there is no hash we could honestly record. The invariant is scoped, not dropped.
+  const store = goodRecord({ source: 'creator_store', licence: 'Roblox Terms of Use', attributionRequired: false, robloxAssetId: 123456789, sha256: null });
+  assert.equal(validateProvenance(store).ok, true, validateProvenance(store).errors.join('; '));
+
+  const ours = goodRecord({ source: 'poly_haven', robloxAssetId: 123456789, sha256: null });
+  const r = validateProvenance(ours);
+  assert.equal(r.ok, false);
+  assert.match(r.errors.join(' '), /sha256 is required/, 'an id WE minted must still be accompanied by the bytes we uploaded');
 });
 
 test('provenance fields that cannot be verified later are rejected', () => {
@@ -810,4 +861,40 @@ test('the plugin refuses scripts and calls GetObjects rather than InsertService:
   const code = luauSrc.replace(/^\s*--.*$/gm, '');
   assert.equal(code.split('game:GetObjects(').length - 1, 1, 'GetObjects must be behind a single adapter');
   assert.match(luauSrc, /REFUSE this model/, 'a script-bearing model must be refused outright');
+});
+
+test('ADMITTING AN ATTRIBUTION-REQUIRED ASSET IS ONLY HONEST WHILE THE CREDITS CAN NAME IT', async () => {
+  // The library stopped refusing MIT, Apache, ISC, BSD and CC-BY, and the whole justification is
+  // that the product can now discharge the obligation. That justification is a CHAIN, and a chain
+  // asserted in a comment is a chain nobody re-checks. This is the link test: if the credits ever
+  // stop naming the author of an attribution-required asset, the decision to admit them goes red
+  // rather than silently becoming a licence violation in every customer's place.
+  const rec = goodRecord({
+    source: 'iconify',
+    licence: 'MIT',
+    attributionRequired: true,
+    author: 'Pictogrammers',
+    name: 'Abacus',
+  });
+  assert.equal(validateProvenance(rec).ok, true, 'the library must admit it at all');
+
+  const report = attributionReport('p1', [{ use: { assetId: rec.id, viaLiveApi: false }, provenance: rec }]);
+  assert.equal(report.required.length, 1, 'it must land in the REQUIRED list, not the courtesy one');
+  assert.equal(report.courtesy.length, 0);
+
+  const text = renderAttribution(report);
+  assert.match(text, /Pictogrammers/, 'the credits must name the author');
+  assert.match(text, /Abacus/, 'and the work');
+  assert.match(text, /MIT/, 'and the licence it is used under');
+  assert.match(text, /attribution required/i, 'under a heading that says the credit is owed');
+});
+
+test('and what stays refused is what CANNOT be discharged, not what is merely inconvenient', () => {
+  // Share-alike and non-commercial are excluded because a customer would inherit an obligation
+  // they never agreed to — a Roblox place cannot carry a source-distribution or copyleft duty.
+  // That distinction is the reason the gate is still a gate.
+  for (const l of ['CC BY-SA 4.0', 'CC BY-NC 4.0', 'GPL 3.0', 'SIL Open Font License']) {
+    const rec = goodRecord({ licence: l, attributionRequired: true });
+    assert.equal(validateProvenance(rec).ok, false, `${l} must still be refused outright`);
+  }
 });

@@ -85,6 +85,9 @@ importers:
       '@golem/design':
         specifier: workspace:*
         version: link:../../packages/design
+      '@golem/evals':
+        specifier: workspace:*
+        version: link:../../packages/evals
       '@golem/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -121,6 +124,8 @@ importers:
       '@golem/design':
         specifier: workspace:*
         version: link:../design
+
+  packages/sdk: {}
 
   packages/shared: {}
 

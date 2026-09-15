@@ -10,12 +10,21 @@ export interface Env {
   PAIRING_DO: DurableObjectNamespace;
   ADMIN_DO: DurableObjectNamespace;
   BUDGET_DO: DurableObjectNamespace;
+  DISCORD_DO: DurableObjectNamespace;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
+  /** The resvg renderer, bound in wrangler.jsonc. Absent means this deployment cannot rasterise. */
+  RESVG_WASM?: WebAssembly.Module;
+  /** 32 bytes, base64. Wraps customers' own third-party credentials; without it they are refused. */
+  CREDENTIAL_KEY?: string;
+  /** The Roblox account library assets are created under. Public id, not a credential;
+   *  the credential is ROBLOX_API_KEY, declared further down beside the other asset fields. */
+  ROBLOX_CREATOR_USER_ID?: string;
+  ROBLOX_CREATOR_GROUP_ID?: string;
   /**
    * Stripe webhook signing secret. Absent in every environment until billing is switched on,
    * and the webhook route REFUSES rather than degrading to trusting an unsigned body — an
@@ -37,6 +46,20 @@ export interface Env {
   STRIPE_PRICE_BUILDER?: string;
   STRIPE_PRICE_STUDIO?: string;
   /**
+   * The Discord application's PUBLIC KEY, from the developer portal's General Information page.
+   * It is what proves an interaction really came from Discord. Absent everywhere until the owner
+   * creates the application, and `/api/discord/interactions` REFUSES with 503 rather than
+   * degrading to trusting an unsigned body — unverified, that endpoint is a public button that
+   * spends other people's credits.
+   */
+  DISCORD_PUBLIC_KEY?: string;
+  /**
+   * The bot token. Used for exactly one thing: registering the slash commands. Replying to an
+   * interaction and editing that reply are authenticated by the interaction's own token, so
+   * nothing on the hot path needs this and nothing on the hot path is given it.
+   */
+  DISCORD_BOT_TOKEN?: string;
+  /**
    * Open Cloud key, scope `creator-store-product:read`, free from
    * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to
    * the unauthenticated toolbox-service/v1 endpoint — it is never required.
@@ -44,6 +67,28 @@ export interface Env {
   ROBLOX_API_KEY?: string;
   /** Optional dedicated Vectorize index for the asset library; falls back to VEC. */
   VEC_ASSETS?: VectorizeIndex;
+  // ---------------------------------------------------------------------------
+  // The web-facing tools (webtools.ts). Every one of these is OPTIONAL and unset by default, and
+  // each absence has a defined, visible answer rather than a silent degradation — a tool whose
+  // capability is missing reports `not_configured` and is dropped from the offered toolset, so
+  // the model is never handed a tool that cannot work here.
+  // ---------------------------------------------------------------------------
+  /**
+   * Extra hosts the web tools may reach, comma-separated (`docs.example.com,.example.org`).
+   * ADDED to the built-in allowlist, never replacing it. A malformed list is refused whole:
+   * see `webPolicy`, and the note there about why a partially-applied allowlist is worse than none.
+   */
+  WEB_TOOL_ALLOWLIST?: string;
+  /** JSON search endpoint for `web_search`. Its own host must also be on the allowlist. */
+  SEARCH_API_URL?: string;
+  SEARCH_API_KEY?: string;
+  /** PNG rendering endpoint for `screenshot_page`. Its own host must also be on the allowlist. */
+  SCREENSHOT_API_URL?: string;
+  SCREENSHOT_API_KEY?: string;
+  /** Raises GitHub's rate limit for `github_lookup` and `git_history`. Both are read-only either way. */
+  GITHUB_TOKEN?: string;
+  /** Extra repositories those two tools may read: `owner/name` or `owner/*`, comma-separated. */
+  GITHUB_REPO_ALLOWLIST?: string;
   // ---------------------------------------------------------------------------
   // Alternate model providers. ALL THREE ARE UNSET and nothing in the product sets them.
   //

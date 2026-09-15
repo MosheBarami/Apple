@@ -31,10 +31,26 @@
         "-m",
         "http.server",
         "4317",
+        "--bind",
+        "127.0.0.1",
         "--directory",
         "/Users/moshe/Downloads/Design examples needed"
       ],
       "port": 4317
+    },
+    {
+      "name": "ds-bundle",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4318",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "/private/tmp/claude-501/-Users-moshe-Desktop-RbxAI/1229df72-fc9c-415b-9c48-74ef7caed40a/scratchpad/ds-bundle"
+      ],
+      "port": 4318
     }
   ]
 }

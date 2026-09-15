@@ -355,7 +355,7 @@ const TERMINAL_NOTE: Record<TerminalKind, string> = {
   failed: 'Stopped by an error',
   stopped: 'Stopped by you',
   incomplete: 'Finished without changing anything',
-  quota: 'Out of Sparks for today',
+  quota: 'Out of Credits for today',
 };
 
 /**

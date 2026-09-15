@@ -11,7 +11,7 @@
 //   1. the site and /pricing return 200
 //   2. zero user-visible "Golem"
 //   3. zero "$0 forever" / "No card required, ever" / "never be charged"
-//   4. the published free quota equals PLAN_LIMITS.free.sparksPerDay
+//   4. the published free quota equals PLAN_LIMITS.free.creditsPerDay
 //
 // TWO THINGS THIS GETS RIGHT THAT THE HAND-RUN VERSION GOT WRONG.
 //
@@ -65,7 +65,7 @@ async function get(path) {
 const shared = (() => {
   try { return readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8'); } catch { return null; }
 })();
-const freeMatch = shared?.match(/free: \{ sparksPerDay: ([\d_]+), sparksPerMonth: ([\d_]+) \}/);
+const freeMatch = shared?.match(/free: \{ creditsPerDay: ([\d_]+), creditsPerMonth: ([\d_]+) \}/);
 if (!freeMatch) {
   console.error('probe-s1: cannot read PLAN_LIMITS.free from packages/shared/src/index.ts');
   console.error('Clause 4 compares the PUBLISHED quota against that constant. With the constant unreadable there is');
@@ -121,14 +121,14 @@ if (forbidden.length) {
 
 // CLAUSE 4 — tolerant of Astro's scoping attributes on the element, which an earlier hand-written
 // grep was not: it required a bare `<strong>` and read the page as publishing nothing at all.
-const published = [...pages['/pricing'].body.matchAll(/<strong[^>]*>([\d,]+) Sparks<\/strong>\s*per day[^0-9]*([\d,]+) a month/g)]
+const published = [...pages['/pricing'].body.matchAll(/<strong[^>]*>([\d,]+) Credits<\/strong>\s*per day[^0-9]*([\d,]+) a month/g)]
   .map((m) => ({ day: Number(m[1].replace(/,/g, '')), month: Number(m[2].replace(/,/g, '')) }));
 if (!published.length) {
-  fail('no per-day Spark figure is published on /pricing at all', 'clause 4 — nothing to compare against the constant');
+  fail('no per-day Credit figure is published on /pricing at all', 'clause 4 — nothing to compare against the constant');
 } else if (!published.some((p) => p.day === FREE_PER_DAY && p.month === FREE_PER_MONTH)) {
   fail(
     `no published row matches the free plan: page has ${published.map((p) => `${p.day}/day`).join(', ')}, PLAN_LIMITS.free is ${FREE_PER_DAY}/day`,
-    'clause 4 — the published free quota must equal PLAN_LIMITS.free.sparksPerDay',
+    'clause 4 — the published free quota must equal PLAN_LIMITS.free.creditsPerDay',
   );
 }
 

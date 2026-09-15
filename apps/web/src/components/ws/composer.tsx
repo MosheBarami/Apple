@@ -5,7 +5,7 @@
 // Which foundation model answers is an implementation detail of the routing
 // layer — it changes with availability, cost and task, and a user who pinned a
 // named backend would be choosing a thing we reserve the right to move. The
-// user sees "Apple". So the only choice offered here is how much autonomy and
+// user sees "Golem". So the only choice offered here is how much autonomy and
 // budget a request gets:
 //
 //   Plan        inspects, reasons and proposes — no project edits by default
@@ -18,9 +18,29 @@
 // protocol, the stored sessions and budget accounting are untouched by this
 // vocabulary. Nothing in this file may name a provider or a model id.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { PRODUCT_MODES, PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
-import { clearDraft, readDraft, writeDraft } from '../../lib/draft';
+import {
+  MESSAGE_MAX_CHARS,
+  MESSAGE_WARN_CHARS,
+  PRODUCT_MODES,
+  PRODUCT_MODE_INFO,
+  type ProductMode,
+  type StudioEventSelection,
+} from '@golem/shared';
 import { Icon, PATH, Popover } from './primitives';
+import { matchesShortcut } from '../../lib/shortcuts';
+import { sendBinding, sendHint } from '../../lib/send-key';
+import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
+import { insertAtCursor, selectionChipLabel, selectionReference } from '../../lib/selection-reference';
+import {
+  TYPING_IDLE_MS,
+  initialPresence,
+  onComposerIdle,
+  onComposerInput,
+  onComposerLeave,
+  onComposerSubmit,
+  type SentActivity,
+} from '../../lib/presence-signal';
+import { usePrefs } from '../../lib/theme';
 
 /**
  * The swatch each mode carries. These are the existing charcoal-stone
@@ -48,7 +68,13 @@ const TONE: Record<ProductMode, string> = {
 const PLACEHOLDER = 'Ask anything about your project...';
 
 interface Props {
-  onSend: (text: string) => void;
+  /**
+   * TRUE WHEN THE MESSAGE ACTUALLY LEFT. This used to be `void`, and the type was the bug: with
+   * nothing to check, the guard that keeps a refused send from emptying the box could not be
+   * written even by someone who wanted to. A socket that closed mid-sentence took the sentence
+   * with it and the person watched their own words disappear.
+   */
+  onSend: (text: string) => boolean;
   onStop: () => void;
   running: boolean;
   disabled?: boolean;
@@ -56,13 +82,18 @@ interface Props {
   onModeChange: (m: ProductMode) => void;
   seed?: string;
   placeholder?: string;
-  /**
-   * Which project this composer belongs to.
-   *
-   * Drafts are kept per project: one shared key would show project A's unsent message in project
-   * B, which is worse than losing it — the user sends the wrong thing to the wrong place.
-   */
+  /** The project this draft belongs to. Empty means "do not persist" — draft.ts no-ops on it. */
   draftKey?: string;
+  /** What is selected in Studio right now, so the person can say "this one" instead of a path. */
+  selection?: StudioEventSelection | null;
+  /**
+   * Tell the room what this person is doing.
+   *
+   * Optional, and absent means the composer sends nothing — a workspace with no socket (mock mode,
+   * the specimen book) must not be made to invent presence. The throttling is in
+   * lib/presence-signal.ts so it can be driven with a clock rather than a keyboard.
+   */
+  onPresence?: (activity: SentActivity) => void;
 }
 
 export function Composer({
@@ -74,13 +105,55 @@ export function Composer({
   onModeChange,
   seed,
   placeholder,
-  draftKey,
+  draftKey = '',
+  selection,
+  onPresence,
 }: Props) {
-  // Read synchronously on the first render rather than in an effect: restoring in an effect paints
-  // an empty box first, and the user starts retyping into it before the draft lands on top.
+  // RESTORED ON THE FIRST RENDER, not in an effect. An effect paints an empty box first, and
+  // people start retyping into it before the draft lands on top of what they just typed.
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [modeOpen, setModeOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
+  const lastKey = useRef(draftKey);
+  const { prefs } = usePrefs();
+
+  // ONE source for the chord. The handler and the hint below both read this, so the help can
+  // never describe a key the handler does not listen for — which is how the two diverged before.
+  const sendKeyBinding = sendBinding(prefs.sendKey);
+
+  //[[ "SOMEONE ELSE IS TYPING", FROM THE ONE PLACE THAT KNOWS.
+  //
+  //   Kept in refs rather than state: a presence beat must not repaint the most-used control in
+  //   the product, and none of this is ever rendered here — it is rendered on everybody ELSE's
+  //   screen. The decision of what to send lives in lib/presence-signal.ts; this supplies the
+  //   clock and the timer. ]]
+  const presence = useRef(initialPresence());
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onPresenceRef = useRef(onPresence);
+  onPresenceRef.current = onPresence;
+
+  const beat = (step: { state: ReturnType<typeof initialPresence>; send: SentActivity | null }) => {
+    presence.current = step.state;
+    if (step.send) onPresenceRef.current?.(step.send);
+  };
+
+  const typed = () => {
+    if (!onPresenceRef.current) return;
+    beat(onComposerInput(presence.current, Date.now()));
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => beat(onComposerIdle(presence.current, Date.now())), TYPING_IDLE_MS);
+  };
+
+  // A CLAIM IS WITHDRAWN WHEN THE PERSON LEAVES, not left standing on everyone else's screen
+  // until the server's TTL happens to age it out.
+  useEffect(
+    () => () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      const step = onComposerLeave(presence.current);
+      if (step.send) onPresenceRef.current?.(step.send);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (seed) {
@@ -89,23 +162,21 @@ export function Composer({
     }
   }, [seed]);
 
-  // Switching projects swaps the draft. Without this the composer keeps the previous project's
-  // text, which is the exact failure the per-project key exists to prevent.
-  const lastKey = useRef(draftKey);
+  // Switching projects swaps the draft. Without the guard this would also fire on every render
+  // that did not change the project and overwrite what the person is typing with what is stored.
   useEffect(() => {
     if (draftKey === lastKey.current) return;
     lastKey.current = draftKey;
     setText(draftKey ? readDraft(draftKey) : '');
   }, [draftKey]);
 
-  // Persisted on a delay, not on every keystroke: localStorage writes are synchronous, and one per
-  // character is measurable on a long message. 400ms is under the time it takes to reach for the
-  // reload the draft is meant to survive.
+  // Debounced, because a write per keystroke is a synchronous localStorage call per keystroke in
+  // the one control the whole product is typed into.
   useEffect(() => {
     if (!draftKey) return;
     const timer = setTimeout(() => writeDraft(draftKey, text), 400);
     return () => clearTimeout(timer);
-  }, [text, draftKey]);
+  }, [draftKey, text]);
 
   // Grow with the content, up to the CSS max-height.
   useEffect(() => {
@@ -119,39 +190,83 @@ export function Composer({
     e?.preventDefault();
     const value = text.trim();
     if (!value || running || disabled) return;
-    onSend(value);
+    // THE REFUSAL SHORT-CIRCUITS BEFORE ANYTHING IS THROWN AWAY. A send the socket refused must
+    // leave the box and the draft exactly as they were: the words are still the person's, and the
+    // only thing that failed is the delivery.
+    if (!onSend(value)) return;
+    // The typing is over whether or not we ever announced it — and the server is about to set
+    // `building` on this socket, so this is the frame that stops the two claims overlapping.
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    beat(onComposerSubmit(presence.current, Date.now()));
     setText('');
-    // Cleared here, at the point the message actually left, rather than optimistically: a send
-    // refused because the socket had closed must leave the draft where it was.
-    if (draftKey) clearDraft(draftKey);
+    clearDraft(draftKey);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter sends, Shift+Enter makes a new line.
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // THROUGH THE SHARED MATCHER, never a hand-rolled key check. A chord matched by hand in one
+    // component is exactly what lib/shortcuts.ts exists to prevent, and it survived here — in the
+    // most-used control in the product — long enough for the help text and the behaviour to
+    // disagree about which key sends.
+    if (matchesShortcut(e, sendKeyBinding)) {
       e.preventDefault();
       submit();
     }
   };
 
+  const selectionLabel = selectionChipLabel(selection);
+
+  const insertSelection = () => {
+    const phrase = selectionReference(selection);
+    // Nothing selected produces no phrase, and inserting an empty one would move the caret for no
+    // reason. The chip is hidden in that case anyway; this is the second door on the same room.
+    if (!phrase) return;
+    const el = box.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? start;
+    const next = insertAtCursor(text, phrase, start, end);
+    setText(next.text.slice(0, MESSAGE_MAX_CHARS));
+    // Focus and caret are restored after React has painted the new value, or the browser puts the
+    // caret back at the end and the person loses their place mid-sentence.
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(next.caret, next.caret);
+    });
+  };
+
+  const showCount = text.length >= MESSAGE_WARN_CHARS;
   const activeMode = PRODUCT_MODE_INFO[mode];
 
   return (
     <div className="gx-composer">
       <form className="gx-composer__inner" onSubmit={submit}>
         <label className="gx-sr" htmlFor="gx-composer-input">
-          Describe what you want Apple to build
+          Describe what you want Golem to build
         </label>
         <textarea
           id="gx-composer-input"
           ref={box}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          // maxLength alone is not enough: browsers disagree about whether an over-long PASTE is
+          // truncated or dropped, and the box must always hold exactly what will be sent.
+          onChange={(e) => {
+            setText(e.target.value.slice(0, MESSAGE_MAX_CHARS));
+            typed();
+          }}
           onKeyDown={onKeyDown}
           rows={1}
+          maxLength={MESSAGE_MAX_CHARS}
           placeholder={placeholder ?? PLACEHOLDER}
           disabled={disabled}
+          data-tour="composer"
         />
+
+        {showCount && (
+          /* Polite, never assertive: a character count that interrupted a screen reader mid-word
+             would be a worse problem than the one it is warning about. */
+          <p className="gx-composer__count" aria-live="polite">
+            {MESSAGE_MAX_CHARS - text.length} characters left
+          </p>
+        )}
 
         <div className="gx-composer__bar">
           {/* -------------------------------------------------- mode ---- */}
@@ -189,7 +304,7 @@ export function Composer({
                     <span className="gx-pop__main">
                       {info.name}
                       <span className="gx-pop__sub">
-                        {info.blurb} Typically {info.typicalSparks} Sparks.
+                        {info.blurb} Typically {info.typicalCredits} Credits.
                       </span>
                     </span>
                   </button>
@@ -197,6 +312,18 @@ export function Composer({
               })}
             </Popover>
           </div>
+
+          {selectionLabel && (
+            <button
+              type="button"
+              className="gx-chip gx-chip--selection"
+              onClick={insertSelection}
+              title="Refer to what is selected in Studio"
+            >
+              <Icon d={PATH.surface} size={11} />
+              {selectionLabel}
+            </button>
+          )}
 
           <div className="gx-composer__tools">
             {/* Attachments and dictation are in the reference's composer, and
@@ -235,7 +362,9 @@ export function Composer({
         </div>
       </form>
 
-      <p className="gx-composer__note">Apple can make mistakes. Always review important information.</p>
+      <p className="gx-composer__note">
+        {sendHint(prefs.sendKey)} Golem can make mistakes. Always review important information.
+      </p>
     </div>
   );
 }

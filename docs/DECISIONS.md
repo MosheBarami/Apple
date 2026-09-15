@@ -50,7 +50,7 @@ Training data: only license-compatible sources (creator-docs CC-BY-4.0, permissi
 Luau, official API dump, synthetic self-generated). Provenance tracked in docs/research/provenance.md.
 
 ## ADR-006 — Business model: free tier with hard quotas, Pro later
-Free: daily "Sparks" energy quota sized so worst-case usage stays inside the free/paid-plan neuron
+Free: daily "Credits" energy quota sized so worst-case usage stays inside the free/paid-plan neuron
 allocation; queueing + per-user rate limits; abuse caps. Pro tier designed (higher quota, priority
 queue, more checkpoints) but launches as waitlist — no payment processing at v1, so no card risk and
 no per-user subsidy. Revenue switch-on is a config change, not a rebuild.
@@ -70,7 +70,7 @@ Durable Object SQLite (messages, gzipped checkpoints, op logs). Supabase keeps a
 (profiles/projects/feedback/waitlist) accessed ONLY with the user's own verified JWT + anon key +
 RLS — the Worker never holds a service-role key. Supabase project npqvyijsvzkuwddyhtpm uses
 asymmetric ES256 signing keys; Worker verifies via JWKS (cached). Quota = per-user QuotaDO
-(authoritative sparks ledger, daily reset). Pairing codes = singleton PairingDO (KV free tier
+(authoritative credits ledger, daily reset). Pairing codes = singleton PairingDO (KV free tier
 allows only 1k writes/day, so KV is reserved for JWKS/config cache).
 Provisioned: D1 golem-corpus 32c9471e-a7d7-49ee-a8fe-0a7def2c68bd, KV cc341a7db4d748139f161fdc292e6e84,
 Vectorize golem-docs (1024d cosine; may recreate at 384d pending free-tier stored-dims check),
@@ -332,11 +332,11 @@ changelog and the FAQ. A reader learned "Clay", opened the app, and found no suc
 
 **Decision.** The public vocabulary is Plan, Agent and Super Agent. The specialist axis
 (`GolemMode`: clay/stone/rune) is preserved exactly as it is on the wire, in storage and in the
-Sparks ledger — `ClientMsg.chat` still carries `mode: GolemMode` — so no stored session changes
+Credits ledger — `ClientMsg.chat` still carries `mode: GolemMode` — so no stored session changes
 meaning. Translation happens at the edge, through `PRODUCT_MODE_TO_SPECIALIST`.
 
 Internal documents keep the specialist names, and `docs/COST-MODEL.md` deliberately does: it
-measures specialists. `scripts/check-spark-figures.mjs` therefore reads a mode's neuron figure by
+measures specialists. `scripts/check-credit-figures.mjs` therefore reads a mode's neuron figure by
 its internal name and checks the published figure by its public one.
 
 **Consequence.** `scripts/check-site-semantics.mjs` fails the build if Clay, Stone or Rune appears
@@ -380,8 +380,8 @@ than transcribing:
 | enterprise | 833 | 25,000 | 324 | $8.25 | negotiated |
 
 **Why not the artifact's numbers.** The binding constraint is `DAILY_NEURON_CEILING` — 25,000
-neurons a day, which is 833 Sparks, which is **about 11 quality-gated builds a day for every user
-combined**. At 1 credit = 1 Spark, the artifact's Builder tier alone wants 40,000 a month, or 519
+neurons a day, which is 833 Credits, which is **about 11 quality-gated builds a day for every user
+combined**. At 1 credit = 1 Credit, the artifact's Builder tier alone wants 40,000 a month, or 519
 builds; the whole service makes 329. One customer would need more than everything there is.
 
 So three of the four old rows were promises the service could not keep, and had been for as long as
@@ -397,8 +397,8 @@ See OWNER-HANDOFF for what each tier would cost to actually fill.
 
 **Consequence.** `scripts/check-offer.mjs` reports OFFER COHERENT for the first time. The marketing
 site, the docs and the app now READ `PLAN_LIMITS` instead of restating it — pricing.astro,
-sparks-and-limits.astro and SparkMeter.astro all had typed-in figures, and the site was still
-advertising a Pro waitlist at 400 Sparks a day for a tier that no longer exists under that name or
+credits-and-limits.astro and CreditMeter.astro all had typed-in figures, and the site was still
+advertising a Pro waitlist at 400 Credits a day for a tier that no longer exists under that name or
 that number.
 
 ---
@@ -464,7 +464,7 @@ would have been a capability claim with no capability under it:
 2. **"Apple model only" on the free tier is dropped.** A plan-conditional model entitlement has no
    code path in `gateway.ts`. It would advertise a restriction nothing enforces and, in the same
    breath, a capability nothing withholds.
-3. **"Credits" → "Sparks".** Credits already names the purchased, non-expiring balance in this
+3. **"Credits" → "Credits".** Credits already names the purchased, non-expiring balance in this
    product. Two meanings for one word on the page that introduces the unit is how a reader plans
    against the wrong number.
 

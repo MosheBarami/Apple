@@ -15,7 +15,7 @@
  *      that hard-codes 60 fails here even though 60 is today's correct answer.
  *   2. allowanceRemaining and credits are reported separately. QuotaState's own comment is
  *      the reason: "you have 0 left today" and "you have 0 left at all" are different
- *      sentences with different next actions, and sparksRemaining — their sum — cannot
+ *      sentences with different next actions, and creditsRemaining — their sum — cannot
  *      distinguish them.
  *   3. A quota that could not be read is `unknown`, never good and never bad.
  *
@@ -43,12 +43,12 @@ const sharedOut = join(mkdtempSync(join(tmpdir(), 'shared-')), 'shared.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + sharedOut], { stdio: 'pipe' });
-const { PLAN_LIMITS, PLAN_COPY, SPARKS_PER_BUILD } = await import(sharedOut);
+const { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD } = await import(sharedOut);
 
 const NOW = Date.UTC(2026, 8, 14, 12, 0, 0);
 const quota = (over = {}) => ({
-  sparksRemaining: 40, sparksDaily: 60, sparksMonthly: 900,
-  sparksUsedToday: 20, sparksUsedThisMonth: 100,
+  creditsRemaining: 40, creditsDaily: 60, creditsMonthly: 900,
+  creditsUsedToday: 20, creditsUsedThisMonth: 100,
   resetsAtIso: new Date(NOW + 3 * 3600_000).toISOString(),
   plan: 'free', allowanceRemaining: 40, credits: 0, ...over,
 });
@@ -90,14 +90,14 @@ test('pending wins even when a stale quota is still in hand, and absence alone i
 test('allowanceTotal comes from PLAN_LIMITS, for every plan', () => {
   for (const plan of Object.keys(PLAN_LIMITS)) {
     const v = meterView(quota({ plan, allowanceRemaining: 5 }), NOW);
-    assert.equal(v.allowanceTotal, PLAN_LIMITS[plan].sparksPerDay,
+    assert.equal(v.allowanceTotal, PLAN_LIMITS[plan].creditsPerDay,
       `${plan} must track the enforced table`);
     assert.equal(v.planName, PLAN_COPY[plan].name);
   }
 });
 
 test('a plan the client does not know falls back to the wire figure, not to a guess', () => {
-  const v = meterView(quota({ plan: 'platinum', sparksDaily: 123, allowanceRemaining: 10 }), NOW);
+  const v = meterView(quota({ plan: 'platinum', creditsDaily: 123, allowanceRemaining: 10 }), NOW);
   assert.equal(v.allowanceTotal, 123);
   assert.equal(v.planName, null, 'it must not invent a name for an unknown plan');
 });
@@ -146,7 +146,7 @@ test('the bar fills against the plan total and is clamped', () => {
   // so the literal was a second copy of an allowance — the one thing rule 1 of this component
   // forbids, in the test written to enforce it. And free is 231 a day, which is three whole builds
   // and therefore odd, so "half" does not land on a tidy fraction anyway.
-  const total = PLAN_LIMITS.free.sparksPerDay;
+  const total = PLAN_LIMITS.free.creditsPerDay;
   const some = Math.floor(total / 2);
   assert.equal(meterView(quota({ allowanceRemaining: some, plan: 'free' }), NOW).allowanceFraction, some / total);
   assert.equal(meterView(quota({ allowanceRemaining: 999, plan: 'free' }), NOW).allowanceFraction, 1,
@@ -155,23 +155,23 @@ test('the bar fills against the plan total and is clamped', () => {
 });
 
 test('running low is warned before it is spent', () => {
-  assert.equal(meterView(quota({ allowanceRemaining: Math.floor(PLAN_LIMITS.free.sparksPerDay * 0.7) }), NOW).tone, 'good');
-  assert.equal(meterView(quota({ allowanceRemaining: Math.floor(PLAN_LIMITS.free.sparksPerDay * 0.08) }), NOW).tone,
+  assert.equal(meterView(quota({ allowanceRemaining: Math.floor(PLAN_LIMITS.free.creditsPerDay * 0.7) }), NOW).tone, 'good');
+  assert.equal(meterView(quota({ allowanceRemaining: Math.floor(PLAN_LIMITS.free.creditsPerDay * 0.08) }), NOW).tone,
     'warn', 'under a tenth of the allowance is low');
   assert.equal(meterView(quota({ allowanceRemaining: 1 }), NOW).tone, 'warn');
 });
 
 test('the builds hint is withheld below one whole build rather than shown as zero', () => {
-  const under = meterView(quota({ allowanceRemaining: SPARKS_PER_BUILD - 1, credits: 0 }), NOW);
+  const under = meterView(quota({ allowanceRemaining: CREDITS_PER_BUILD - 1, credits: 0 }), NOW);
   assert.equal(under.buildsHint, null, '"0 builds" reads as a fault in the account');
-  const over = meterView(quota({ allowanceRemaining: SPARKS_PER_BUILD * 3, credits: 0 }), NOW);
+  const over = meterView(quota({ allowanceRemaining: CREDITS_PER_BUILD * 3, credits: 0 }), NOW);
   assert.match(over.buildsHint, /3 more builds/);
-  const one = meterView(quota({ allowanceRemaining: SPARKS_PER_BUILD, credits: 0 }), NOW);
+  const one = meterView(quota({ allowanceRemaining: CREDITS_PER_BUILD, credits: 0 }), NOW);
   assert.match(one.buildsHint, /1 more build\b/, 'singular, not "1 more builds"');
 });
 
 test('the builds hint counts purchased credits, because they are spendable too', () => {
-  const v = meterView(quota({ allowanceRemaining: 0, credits: SPARKS_PER_BUILD * 2 }), NOW);
+  const v = meterView(quota({ allowanceRemaining: 0, credits: CREDITS_PER_BUILD * 2 }), NOW);
   assert.match(v.buildsHint, /2 more builds/);
 });
 
@@ -202,7 +202,7 @@ test('negative or fractional balances from the wire are not rendered raw', () =>
  */
 test('A SPENT MONTH IS NOT REPORTED AS A SPENT DAY', () => {
   const v = meterView(quota({
-    sparksUsedToday: 0, sparksUsedThisMonth: PLAN_LIMITS.free.sparksPerMonth,
+    creditsUsedToday: 0, creditsUsedThisMonth: PLAN_LIMITS.free.creditsPerMonth,
     allowanceRemaining: 0, credits: 0,
   }), NOW);
 
@@ -214,7 +214,7 @@ test('A SPENT MONTH IS NOT REPORTED AS A SPENT DAY', () => {
 
 test('and the reset it offers is the MONTH boundary, not a few hours away', () => {
   const v = meterView(quota({
-    sparksUsedToday: 0, sparksUsedThisMonth: PLAN_LIMITS.free.sparksPerMonth,
+    creditsUsedToday: 0, creditsUsedThisMonth: PLAN_LIMITS.free.creditsPerMonth,
     allowanceRemaining: 0,
     // the wire's own figure is the DAILY reset, three hours out — the number that used to be shown
     resetsAtIso: new Date(NOW + 3 * 3600_000).toISOString(),
@@ -226,14 +226,14 @@ test('and the reset it offers is the MONTH boundary, not a few hours away', () =
 test('the month total is read from PLAN_LIMITS too, for every plan', () => {
   for (const plan of Object.keys(PLAN_LIMITS)) {
     const v = meterView(quota({
-      plan, sparksUsedToday: 0,
-      sparksDaily: PLAN_LIMITS[plan].sparksPerDay,
-      sparksMonthly: PLAN_LIMITS[plan].sparksPerMonth,
-      sparksUsedThisMonth: PLAN_LIMITS[plan].sparksPerMonth - 1,
+      plan, creditsUsedToday: 0,
+      creditsDaily: PLAN_LIMITS[plan].creditsPerDay,
+      creditsMonthly: PLAN_LIMITS[plan].creditsPerMonth,
+      creditsUsedThisMonth: PLAN_LIMITS[plan].creditsPerMonth - 1,
       allowanceRemaining: 1,
     }), NOW);
     assert.equal(v.period, 'month', `${plan}: one left this month, a whole day left today`);
-    assert.equal(v.allowanceTotal, PLAN_LIMITS[plan].sparksPerMonth, `${plan} monthly total`);
+    assert.equal(v.allowanceTotal, PLAN_LIMITS[plan].creditsPerMonth, `${plan} monthly total`);
     assert.match(v.detail, /a month/, `${plan} must say which period`);
     assert.match(v.headline, /this month/, `${plan} headline`);
   }
@@ -241,11 +241,11 @@ test('the month total is read from PLAN_LIMITS too, for every plan', () => {
 
 test('an ordinary day is still reported as a day', () => {
   // The common case must not have been collateral damage: plenty of month left, some day spent.
-  const v = meterView(quota({ sparksUsedToday: 20, sparksUsedThisMonth: 100, allowanceRemaining: 40 }), NOW);
+  const v = meterView(quota({ creditsUsedToday: 20, creditsUsedThisMonth: 100, allowanceRemaining: 40 }), NOW);
   assert.equal(v.period, 'day');
   assert.match(v.headline, /left today/);
   assert.match(v.detail, /a day/);
-  assert.equal(v.allowanceTotal, PLAN_LIMITS.free.sparksPerDay);
+  assert.equal(v.allowanceTotal, PLAN_LIMITS.free.creditsPerDay);
   assert.equal(v.resetsIn, 'resets in 3h', 'and it is the wire figure that is used');
 });
 

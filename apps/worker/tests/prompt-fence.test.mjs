@@ -153,12 +153,23 @@ test('a run with no persisted fence id is given a fresh one, never a shared cons
   //
   // Asserted against the source because the fence is built inside the tool loop of a Durable
   // Object, and the property at stake is "this expression can never evaluate to a constant".
+  //
+  // The tag itself now lives in injection.ts (`fenceToolOutput`) — session.ts no longer contains
+  // the template literal, because `tool="${call.name}"` interpolated a MODEL-SUPPLIED name into an
+  // attribute of the one tag whose authority is that content cannot write it. The property this
+  // test has always guarded is unchanged and is asserted in both halves: session.ts must hand the
+  // MINTED id to the builder, and the builder must refuse a falsy one rather than fence with it.
   const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8');
 
-  const fence = /<untrusted-tool-output id="\$\{([^}]*)\}"/.exec(SESSION);
-  assert.ok(fence, 'the tool-output fence must still exist');
-  assert.doesNotMatch(fence[1], /\?\?\s*''/, 'the fence id must not fall back to a constant');
-  assert.match(fence[1], /fenceIdFor\(agent\)/, 'it must go through the minting helper');
+  const call = /fenceToolOutput\(\{\s*fenceId:\s*([^,]+),/.exec(SESSION);
+  assert.ok(call, 'the tool loop must still build its fence through fenceToolOutput');
+  assert.doesNotMatch(call[1], /\?\?\s*''/, 'the fence id must not fall back to a constant');
+  assert.match(call[1], /this\.fenceIdFor\(agent\)/, 'it must go through the minting helper');
+  assert.equal(
+    SESSION.split('fenceToolOutput({').length - 1,
+    1,
+    'exactly one call site — a second one is a second fence policy',
+  );
 
   const helper = SESSION.slice(SESSION.indexOf('private fenceIdFor('), SESSION.indexOf('private captureProvenance('));
   assert.match(helper, /crypto\.randomUUID\(\)/, 'a missing id must be minted, not defaulted');

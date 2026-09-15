@@ -14,7 +14,7 @@
  *
  * These tests are about the SHAPE of the contract rather than the exact wording: that no failure
  * escapes unclassified, that no explanation is empty, that Retry is offered only where repeating
- * could work, and that the two 429s — out of Sparks, and going too fast — never give each other's
+ * could work, and that the two 429s — out of Credits, and going too fast — never give each other's
  * advice. Wording is checked only where getting it wrong would be a lie.
  */
 import test from 'node:test';
@@ -74,10 +74,10 @@ test('a failure never blames the user for our own break', () => {
 });
 
 test('THE TWO 429s NEVER GIVE EACH OTHER\'S ADVICE', () => {
-  // Telling a user who is out of Sparks to "wait a few seconds" is a brush-off: waiting seconds
+  // Telling a user who is out of Credits to "wait a few seconds" is a brush-off: waiting seconds
   // does nothing, and the thing that helps is on a page they are not being sent to.
-  const spent = T.explainFailure(api(429, 'Daily Sparks used up'));
-  assert.equal(spent.kind, 'out_of_sparks');
+  const spent = T.explainFailure(api(429, 'Daily Credits used up'));
+  assert.equal(spent.kind, 'out_of_credits');
   assert.equal(spent.href, '/app/usage', 'it must point at where the answer is');
   assert.doesNotMatch(spent.next, /few seconds|slow down/i);
   assert.equal(spent.retryable, false, 'repeating it now cannot work');
@@ -140,9 +140,9 @@ test('next is ONE action, not a menu', () => {
 });
 
 test('briefFailure fits a toast and still carries the action', () => {
-  const b = T.briefFailure(api(429, 'Daily Sparks used up'));
+  const b = T.briefFailure(api(429, 'Daily Credits used up'));
   assert.ok(b.length < 120, `too long for a toast: ${b}`);
-  assert.match(b, /Sparks/);
+  assert.match(b, /Credits/);
 });
 
 // --- the surfaces --------------------------------------------------------------------------

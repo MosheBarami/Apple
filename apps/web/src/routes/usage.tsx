@@ -1,22 +1,32 @@
-// /usage — Sparks today, 30 days of history, and the plan.
+// /usage — Credits today, 30 days of history, and the plan.
 //
 // Every number on this page comes from the live quota or from @golem/shared.
-// Sparks are billed from the compute a run actually consumes, so the per-mode
+// Credits are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { meterView } from '../components/usage-meter-model';
+import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import { PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import {
+  billingChangeLine,
+  billingNotice,
+  planChangePreviewLine,
+  type SubscriptionView,
+} from '../lib/billing-copy';
 import {
   fetchBillingConfig,
+  fetchBillingHistory,
+  fetchBillingPreview,
   fetchMe,
   fetchUsage,
   openBillingPortal,
   startCheckout,
   type UsageDay,
 } from '../lib/api';
+import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
 
 const MODES: ProductMode[] = ['plan', 'agent', 'super'];
@@ -24,14 +34,14 @@ const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
  *
- * It used to be handed `sparksRemaining`, which is allowance plus purchased credits, and divide it
+ * It used to be handed `creditsRemaining`, which is allowance plus purchased credits, and divide it
  * by the daily allowance. A user with 1,440 credits on the free plan saw a full ring captioned
  * "1500 of 60", and an aria-label telling them that was what remained TODAY. Both numbers were
  * real and the sentence they formed was not: credits are not today's, they do not reset, and
  * spending them is a different decision from spending an allowance. This is the same rule
  * usage-meter-model.ts is built around, applied to the surface that states it in the largest type.
  */
-function SparksRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
+function CreditsRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const frac = daily > 0 ? Math.max(0, Math.min(1, remaining / daily)) : 0;
@@ -42,7 +52,7 @@ function SparksRing({ remaining, daily, period }: { remaining: number; daily: nu
       height="140"
       viewBox="0 0 140 140"
       role="img"
-      aria-label={`${remaining} of ${daily} Sparks of allowance remaining ${window}`}
+      aria-label={`${remaining} of ${daily} Credits of allowance remaining ${window}`}
     >
       <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="9" />
       <circle
@@ -67,15 +77,86 @@ function SparksRing({ remaining, daily, period }: { remaining: number; daily: nu
   );
 }
 
+/**
+ * THE SUBSCRIPTION, SAID OUT LOUD.
+ *
+ * Before this the page could render exactly one billing fact — the tier — because the tier was the
+ * only thing the webhook wrote down. A renewal date, a pending cancellation, a failed payment and a
+ * card awaiting authentication all arrived on the same Stripe event and were dropped, so the
+ * product's first word to a user whose card had expired was the cancellation.
+ *
+ * Every sentence here comes from `billingNotice`, which is tested on its own. Nothing in this
+ * component decides what a date means.
+ */
+/**
+ * A billing instant in the viewer's OWN locale and timezone. A date shown in UTC to someone in
+ * Auckland can be the wrong day, on the one subject where the day is the whole point.
+ */
+const formatDay = (unixSeconds: number): string =>
+  new Date(unixSeconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+
+function BillingNotice({ view, onManage }: { view: SubscriptionView; onManage: () => void }) {
+  const notice = billingNotice(view, {
+    planName: PLAN_COPY[isPlanId(view.plan) ? view.plan : 'free'].name,
+    formatDate: formatDay,
+  });
+  if (!notice) return null;
+  return (
+    <div className={`billing-notice billing-notice--${notice.tone}`} role={notice.tone === 'warn' ? 'alert' : 'status'}>
+      <p className="billing-notice__head">{notice.headline}</p>
+      {notice.detail && <p className="billing-notice__detail">{notice.detail}</p>}
+      {notice.action && view.hasBillingAccount && (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onManage}>
+          {notice.action}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * WHAT HAS HAPPENED TO THIS ACCOUNT'S BILLING.
+ *
+ * `plan` was overwritten in place by the webhook, so "when did this go from Studio to Free, and on
+ * which Stripe event" had no answer on our side at all — not for the user, and not for whoever had
+ * to answer their email about it. Collapsed by default: a history is for the moment someone
+ * disagrees with a charge, not a thing to read every visit.
+ */
+function BillingHistory() {
+  const history = useQuery({ queryKey: ['billing-history'], queryFn: fetchBillingHistory, retry: false });
+  const lines = (history.data?.events ?? [])
+    .map((e) => ({
+      key: `${e.at}:${e.eventId ?? ''}`,
+      text: billingChangeLine(e, {
+        planName: (id) => (isPlanId(id) ? PLAN_COPY[id].name : id),
+        formatDate: (millis) => new Date(millis).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+      }),
+    }))
+    .filter((l): l is { key: string; text: string } => l.text !== null);
+  // Nothing recorded is not the same as a history that failed to load, and neither is worth an
+  // empty disclosure triangle on a page that is mostly about Credits.
+  if (history.isPending || history.isError || lines.length === 0) return null;
+  return (
+    <details className="billing-history">
+      <summary>Billing history</summary>
+      <ul className="billing-history__list">
+        {lines.map((l) => (
+          <li key={l.key}>{l.text}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 function UsageBars({ days }: { days: UsageDay[] }) {
   // The API returns sparse rows; build a dense 30-day series so gaps read as zero.
-  const byDay = new Map(days.map((d) => [d.day, d.sparks]));
-  const series: { day: string; sparks: number }[] = [];
+  const byDay = new Map(days.map((d) => [d.day, d.credits]));
+  const series: { day: string; credits: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-    series.push({ day: d, sparks: byDay.get(d) ?? 0 });
+    series.push({ day: d, credits: byDay.get(d) ?? 0 });
   }
-  const max = Math.max(10, ...series.map((s) => s.sparks));
+  const max = Math.max(10, ...series.map((s) => s.credits));
   const W = 600;
   const H = 150;
   const pad = 4;
@@ -87,11 +168,11 @@ function UsageBars({ days }: { days: UsageDay[] }) {
         viewBox={`0 0 ${W} ${H + 24}`}
         className="usage-bars"
         role="img"
-        aria-label="Sparks spent per day over the last 30 days"
+        aria-label="Credits spent per day over the last 30 days"
       >
         <line x1={pad} x2={W - pad} y1={H} y2={H} className="bar-base" />
         {series.map((s, i) => {
-          const h = Math.max(s.sparks > 0 ? 3 : 1.5, (s.sparks / max) * H);
+          const h = Math.max(s.credits > 0 ? 3 : 1.5, (s.credits / max) * H);
           const x = pad + i * bw;
           const label = new Date(`${s.day}T00:00:00Z`).toLocaleDateString(undefined, {
             month: 'short',
@@ -105,9 +186,9 @@ function UsageBars({ days }: { days: UsageDay[] }) {
                 width={bw - 4}
                 height={h}
                 rx={2}
-                className={s.sparks > 0 ? 'bar bar-active' : 'bar'}
+                className={s.credits > 0 ? 'bar bar-active' : 'bar'}
               >
-                <title>{`${label}: ${s.sparks} Sparks`}</title>
+                <title>{`${label}: ${s.credits} Credits`}</title>
               </rect>
               {/* Anchor the end labels inward so they are not clipped by the viewBox. */}
               {(i === 0 || i === 29 || i === 15) && (
@@ -165,15 +246,30 @@ export function UsagePage() {
    * this page lie again, in the same way the waitlist did.
    */
   const [returned, setReturned] = useState<'done' | 'cancelled' | null>(null);
+  /**
+   * AND COMING BACK FROM THE BILLING PORTAL IS NOT A CANCELLATION.
+   *
+   * The end state was already confirmed — "Your Builder plan ends on 3 October" — but only once the
+   * webhook had landed, and nothing acknowledged the ACT. A user who cancelled on Stripe's page came
+   * back to a page identical to the one they left, so the last word on the subject was Stripe's.
+   *
+   * This is the same shape as the checkout return and for the same reason: the flag says a visit
+   * happened, never what was done. What is printed comes from the server, after a refetch.
+   */
+  const [fromPortal, setFromPortal] = useState(false);
   useEffect(() => {
-    const flag = new URLSearchParams(window.location.search).get('checkout');
-    if (flag !== 'done' && flag !== 'cancelled') return;
-    setReturned(flag);
-    // Take the flag back out of the URL, so a reload or a shared link does not replay it.
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get('checkout');
+    const portal = params.get('billing') === 'returned';
+    if (flag !== 'done' && flag !== 'cancelled' && !portal) return;
+    if (flag === 'done' || flag === 'cancelled') setReturned(flag);
+    if (portal) setFromPortal(true);
+    // Take the flags back out of the URL, so a reload or a shared link does not replay them.
     const url = new URL(window.location.href);
     url.searchParams.delete('checkout');
+    url.searchParams.delete('billing');
     window.history.replaceState({}, '', url.toString());
-    if (flag === 'done') void me.refetch();
+    if (flag === 'done' || portal) void me.refetch();
   }, []);
 
   const checkout = useMutation({
@@ -196,7 +292,37 @@ export function UsagePage() {
     onError: (e: Error) => toast(`Couldn't open billing: ${e.message}`, 'error'),
   });
 
+  /**
+   * WHAT THIS CHANGE COSTS, ASKED BEFORE THE USER LEAVES THE PRODUCT.
+   *
+   * The ladder prints each tier's monthly price, and for someone already paying that is not the
+   * number about to be charged: a mid-period change is prorated, net of a credit for the time
+   * already bought on the old tier. This page used to send them straight to Stripe, so the amount,
+   * the credit and the date it applies from were first seen on a page outside the product, after
+   * they had already clicked through to it.
+   *
+   * IT STILL BUYS NOTHING. Confirming opens the Billing Portal exactly as before; proration, tax
+   * and when a downgrade takes effect remain Stripe's to decide and the webhook remains the only
+   * thing that moves an entitlement. This is a quote, shown first.
+   */
+  const [pendingChange, setPendingChange] = useState<PlanId | null>(null);
+  const preview = useQuery({
+    queryKey: ['billing-preview', pendingChange],
+    queryFn: () => fetchBillingPreview(pendingChange as PlanId),
+    // Nothing is priced on page load: this asks Stripe a question, and only a chosen tier is a
+    // question worth asking.
+    enabled: pendingChange !== null,
+    // A quote goes stale the moment the period moves on, and a retry storm on a billing endpoint
+    // is not worth a second attempt at a number the dialog can honestly say it does not have.
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+  });
+
   const currentPlan: PlanId = isPlanId(me.data?.quota?.plan) ? me.data.quota.plan : 'free';
+  // Absent on an older worker, which is not the same as "no subscription" — so the notice is simply
+  // not rendered rather than rendered as a claim that there is nothing.
+  const billingView = me.data?.billing ?? null;
 
   return (
     <div className="page">
@@ -204,7 +330,7 @@ export function UsagePage() {
         <div>
           <h1 className="page-title">Usage</h1>
           <p className="page-sub">
-            Sparks are Apple&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
+            Credits are Apple&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
             measured typical costs, not fixed prices.
           </p>
         </div>
@@ -212,7 +338,7 @@ export function UsagePage() {
 
       {me.isPending && (
         <p className="muted" aria-busy="true">
-          Loading your Sparks…
+          Loading your Credits…
         </p>
       )}
 
@@ -224,9 +350,9 @@ export function UsagePage() {
 
       {me.isSuccess && (
         <div className="usage-grid">
-          <div className="card sparks-card">
-            <h2>{view.period === 'month' ? 'This month\u2019s Sparks' : 'Today\u2019s Sparks'}</h2>
-            <SparksRing
+          <div className="card credits-card">
+            <h2>{view.period === 'month' ? 'This month\u2019s Credits' : 'Today\u2019s Credits'}</h2>
+            <CreditsRing
               remaining={view.allowanceRemaining}
               daily={view.allowanceTotal}
               period={view.period}
@@ -236,8 +362,8 @@ export function UsagePage() {
                 is one — but when there is one it must be here, or the ring understates what the
                 user can actually spend. */}
             {view.credits > 0 && (
-              <p className="sparks-credits">
-                <strong>{view.credits.toLocaleString()}</strong> purchased credits, which do not expire
+              <p className="credits-credits">
+                <strong>{formatNumber(view.credits)}</strong> purchased credits, which do not expire
                 <span className="muted"> — spent only once the allowance is gone</span>
               </p>
             )}
@@ -248,7 +374,7 @@ export function UsagePage() {
                   <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
                   <span className="mode-cost-name">{PRODUCT_MODE_INFO[m].name}</span>
                   <span className="mode-cost-blurb">{PRODUCT_MODE_INFO[m].blurb}</span>
-                  <span className="mode-cost-value">{PRODUCT_MODE_INFO[m].typicalSparks}</span>
+                  <span className="mode-cost-value">{PRODUCT_MODE_INFO[m].typicalCredits}</span>
                 </li>
               ))}
             </ul>
@@ -264,7 +390,7 @@ export function UsagePage() {
             {usage.isError && <Failure error={usage.error} onRetry={() => void usage.refetch()} compact />}
             {usage.isSuccess &&
               (usage.data.days.length === 0 ? (
-                <p className="muted">No Sparks spent yet — go build something.</p>
+                <p className="muted">No Credits spent yet — go build something.</p>
               ) : (
                 <UsageBars days={usage.data.days} />
               ))}
@@ -300,9 +426,42 @@ export function UsagePage() {
             </p>
           )}
 
+          {/*
+            BACK FROM THE BILLING PORTAL. Every word here is read off the server's own state after a
+            refetch — the flag in the URL only says a visit happened. Claiming the cancellation from
+            the return alone would be the same lie the checkout branch is careful not to tell, on the
+            change a customer is most likely to come back and check.
+          */}
+          {fromPortal && billingView && (
+            <p className="plans-note" role="status">
+              {billingView.state === 'cancelling' ? (
+                <>
+                  Your plan is set to end
+                  {typeof billingView.endsAt === 'number' && Number.isFinite(billingView.endsAt)
+                    ? ` on ${formatDay(billingView.endsAt)}`
+                    : ''}
+                  . You keep it until then, and nothing is charged after that.
+                </>
+              ) : (
+                <>
+                  Nothing here has changed yet. A change made in the billing portal takes effect when
+                  Stripe confirms it, usually within a few seconds.
+                </>
+              )}{' '}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void me.refetch()}>
+                Check again
+              </button>
+            </p>
+          )}
+
+          {billingView && <BillingNotice view={billingView} onManage={() => portal.mutate()} />}
+
           <PlanLadder
             current={currentPlan}
             busyPlan={busyPlan}
+            // What this deployment actually charges in, from the server rather than assumed by the
+            // page. Undefined while the config is in flight, which falls back to the declared code.
+            currency={billing.data?.currency}
             // Absent when this deployment has no Stripe key, which makes the ladder render "Not
             // available yet" on each tier rather than a button that cannot work.
             availability={
@@ -320,13 +479,76 @@ export function UsagePage() {
                     // to decide, and the portal is where it does that.
                     const canBuy = billing.data.purchasable.includes(plan);
                     if (currentPlan === 'free' && canBuy) checkout.mutate(plan);
+                    // A PRICED SWAP IS QUOTED FIRST. The portal is still where it happens; the
+                    // dialog exists so the prorated amount is seen here rather than only there.
+                    else if (canBuy) setPendingChange(plan);
+                    // Moving down to Free is a cancellation, not a priced swap — there is no
+                    // upgrade invoice to preview, and the portal IS the cancellation flow.
                     else portal.mutate();
                   }
                 : undefined
             }
           />
 
-          {currentPlan !== 'free' && (
+          {/*
+            THE QUOTE, SHOWN BEFORE THE USER LEAVES FOR STRIPE.
+
+            Three states and three different sentences, because the honest answer differs: a figure
+            while it is being fetched is not yet knowable, the amount once it arrives, and — when
+            Stripe could not answer or the record has nothing to price against — a plain statement
+            that we could not get it. That last one is why the copy lives in billing-copy.ts: a
+            template here would have rendered the missing amount as a formatted zero, which is a
+            sentence about money made out of a failed request.
+          */}
+          {pendingChange && (
+            <ConfirmDialog
+              title={`Move to ${PLAN_COPY[pendingChange].name}`}
+              ceremony="dialog"
+              tone="primary"
+              confirmLabel="Continue to Stripe"
+              busyLabel="Opening Stripe…"
+              busy={portal.isPending}
+              onConfirm={() => portal.mutate()}
+              onClose={() => setPendingChange(null)}
+              details={
+                preview.data && preview.data.lines.length > 0 ? (
+                  <ul className="preview-lines">
+                    {preview.data.lines.map((line, i) => (
+                      <li key={`${line.description}-${i}`}>
+                        <span>{line.description}</span>
+                        {/* Formatted in the currency the SERVER said it charges, never with a '$'
+                            glued on here. */}
+                        <span className="preview-lines__amount">
+                          {formatMoney(line.amount, { currency: preview.data.currency })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : undefined
+              }
+            >
+              {preview.isPending
+                ? 'Asking Stripe what this change costs…'
+                : planChangePreviewLine(preview.data ?? null, {
+                    planName: PLAN_COPY[pendingChange].name,
+                    formatMoney: (amount, currency) => formatMoney(amount, { currency }),
+                    formatDate: formatDay,
+                  })}{' '}
+              You will confirm the change on Stripe&rsquo;s own page.
+            </ConfirmDialog>
+          )}
+
+          {/*
+            GATED ON HAVING A BILLING ACCOUNT, NOT ON BEING ON A PAID PLAN.
+            This was `currentPlan !== 'free'`, which hid the portal from exactly the people who
+            most need it: a customer whose subscription lapsed is back on Free with invoices, a
+            saved card and a cancellation to reverse, and no way to reach any of them. The server
+            already keeps the Stripe customer id across a plan change for this reason; the page was
+            the half that did not honour it.
+          */}
+          {billingView?.hasBillingAccount && <BillingHistory />}
+
+          {billingView?.hasBillingAccount && (
             <p className="plans-manage">
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => portal.mutate()}>
                 Manage billing, invoices and cancellation

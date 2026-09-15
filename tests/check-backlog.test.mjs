@@ -292,14 +292,14 @@ test('THE STRONGEST NEW RULE — a "done" row whose evidence opens NOT ATTEMPTED
 });
 
 test('...anchored, because an unanchored version matched the word "not" in ordinary prose', () => {
-  // The first draft flagged `231 Sparks/day, not the 60 this row claimed` — a row whose evidence is
+  // The first draft flagged `231 Credits/day, not the 60 this row claimed` — a row whose evidence is
   // a correct citation containing ordinary English. Fifth over-broad negative match this session.
   // The positive control above is what makes this absence check mean anything.
   const r = run(keep(scratch(one({
     id: 'f-1', name: 'quota', status: 'done',
     // Cites the met gate rather than a path: an UNTRACKED path is not a citation, which the
     // fixture repo makes true of every path. The subject here is the prose, not the citation.
-    evidence: 'G1 — the ladder grants 231 Sparks/day, not the 60 this row claimed',
+    evidence: 'G1 — the ladder grants 231 Credits/day, not the 60 this row claimed',
   }), bucket('A', 1, 1))));
   assert.equal(r.exit, 0, r.out);
   assert.doesNotMatch(r.out, /its own evidence says otherwise/);

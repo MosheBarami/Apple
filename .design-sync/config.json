@@ -1,0 +1,6 @@
+{
+  "projectId": "e5844442-53e6-4cd7-bf31-dc1b9207cea4",
+  "projectName": "Apple Design System",
+  "shape": "package",
+  "note": "Bundle is authored by hand, not by the converter. packages/design is a Roblox rule engine (no React, no dist, no Storybook) and apps/web is a Vite SPA rather than a library, so neither fits the converter's envelope. The upload LAYOUT is the contract and is produced directly."
+}

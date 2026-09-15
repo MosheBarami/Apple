@@ -41,7 +41,7 @@ test('a failed run offers to run again', () => {
 
 test('retry is offered only when the run did not succeed', () => {
   // `outcome` is undefined for a clean run, and the button lives inside that block — a "Try again"
-  // under a successful run invites the user to spend a Spark undoing work that went fine.
+  // under a successful run invites the user to spend a Credit undoing work that went fine.
   const block = TURN.slice(TURN.indexOf('{outcome && ('), TURN.indexOf('<Stamp at={item.createdAt} align="start"'));
   assert.match(block, /Try again/);
   assert.match(TURN, /const outcome = item\.stopReason && item\.stopReason !== 'done'/);
@@ -49,7 +49,7 @@ test('retry is offered only when the run did not succeed', () => {
 
 test('a quota stop offers no retry', () => {
   // The run did not fail; the account ran out. A button that re-runs into the same wall teaches
-  // the user the product is broken rather than that they are out of Sparks.
+  // the user the product is broken rather than that they are out of Credits.
   assert.match(TURN, /item\.stopReason !== 'quota'/);
 });
 

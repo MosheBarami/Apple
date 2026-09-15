@@ -7,6 +7,7 @@ local LogService = game:GetService("LogService")
 local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
 
+local Companion = require(script.Parent.Companion)
 local Generation = require(script.Parent.Generation)
 local Paths = require(script.Parent.Paths)
 local Render = require(script.Parent.Render)
@@ -18,6 +19,14 @@ local MUTATING = {
 	edit_script = true, create_instances = true, set_props = true, delete_instances = true,
 	move_instances = true, restore = true, insert_asset = true, run_code = true,
 	generate_model = true,
+	--[[ The companion's direct-manipulation ops. Every one of them changes the place, so
+		 every one of them takes an undo recording — a user who drags a slider in the
+		 companion panel and then presses Ctrl+Z in Studio must get their scene back.
+		 `run_mode` is deliberately NOT here: starting or stopping the simulation changes
+		 no property of any instance, and taking a recording for it would put an empty
+		 entry in the user's undo stack. ]]
+	transform_instances = true, clone_instances = true, group_instances = true,
+	ungroup_instances = true, rename_instance = true, set_locked = true, set_visible = true,
 }
 
 -- Ops that assign typed properties, and are therefore the two ways an asset id can enter a place
@@ -117,6 +126,30 @@ local function escapeLuaPattern(str: string): string
 	return (str:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%0"))
 end
 
+--[[
+	FNV-1a/32 over the bytes of a script, as lowercase hex.
+
+	This has ONE job: agree, byte for byte, with `sourceHash` in apps/worker/src/luau-review.ts, so
+	the worker can say "I computed this edit against exactly the text you still hold" and the write
+	transaction can check it. The worker encodes to UTF-8 before hashing precisely because a Luau
+	string already is its UTF-8 bytes and `string.byte` cannot see anything else.
+
+	The multiply is split into 16-bit halves because `h * 16777619` reaches 2^56, past the point a
+	double represents integers exactly — computing it directly gives a number that is close to the
+	right answer and never equal to it, which is the worst possible failure for a comparison.
+]]
+local function sourceHash(s: string): string
+	local h = 0x811c9dc5
+	for i = 1, #s do
+		h = bit32.bxor(h, string.byte(s, i))
+		local lo = bit32.band(h, 0xffff)
+		local hi = bit32.rshift(h, 16)
+		h = ((hi * 16777619) % 65536) * 65536 + (lo * 16777619) % 4294967296
+		h = h % 4294967296
+	end
+	return string.format("%08x", h)
+end
+
 local handlers: { [string]: (op: any) -> any } = {}
 
 handlers.ping = function(_)
@@ -169,7 +202,45 @@ end
 handlers.read_script = function(op)
 	local inst = Paths.resolve(op.path)
 	if not inst:IsA("LuaSourceContainer") then error(op.path .. " is not a script") end
-	return { path = op.path, source = ScriptEditorService:GetEditorSource(inst :: any) }
+	local src = ScriptEditorService:GetEditorSource(inst :: any)
+	-- The hash travels with the source so an edit computed from THIS read can be pinned to it.
+	return { path = op.path, source = src, baseHash = sourceHash(src), class = inst.ClassName }
+end
+
+--[[
+	Every script's path, class and source in one reply, under a total character budget.
+
+	`truncated` is the honest half: when the budget or the file cap stops the walk, the caller is
+	told, because a place-wide analysis over an unknowingly partial place reports "no require
+	cycles" about scripts it never saw.
+]]
+handlers.dump_scripts = function(op)
+	local root = if op.root then Paths.resolve(op.root) else nil
+	local maxScripts = math.clamp(op.maxScripts or 80, 1, 400)
+	local maxChars = math.clamp(op.maxChars or 400000, 1000, 2000000)
+	local out = {}
+	local used = 0
+	local truncated = false
+	eachScript(root, function(s)
+		local src = ScriptEditorService:GetEditorSource(s :: any)
+		if used + #src > maxChars then
+			truncated = true
+			return true
+		end
+		used += #src
+		table.insert(out, {
+			path = Paths.fullPath(s),
+			class = s.ClassName,
+			source = src,
+			baseHash = sourceHash(src),
+		})
+		if #out >= maxScripts then
+			truncated = true
+			return true
+		end
+		return false
+	end)
+	return { scripts = out, truncated = truncated, chars = used }
 end
 
 handlers.edit_script = function(op)
@@ -192,6 +263,17 @@ handlers.edit_script = function(op)
 	if not script2:IsA("LuaSourceContainer") then error(op.path .. " is not a script") end
 	local applied: any = { path = Paths.fullPath(script2) }
 	ScriptEditorService:UpdateSourceAsync(script2 :: any, function(old: string): string
+		-- CONCURRENT EDIT CHECK, INSIDE THE TRANSACTION.
+		--
+		-- `source` mode replaces the file wholesale, so a Studio-side edit made between the read
+		-- the worker computed against and this write is destroyed with no trace. Checking here
+		-- rather than before the call is the whole point: `UpdateSourceAsync` hands us the text it
+		-- is about to overwrite, which is the only moment the answer cannot go stale.
+		if op.baseHash ~= nil and sourceHash(old) ~= op.baseHash then
+			error(
+				("%s changed in Studio since it was read — nothing was written. Read it again and re-apply the change on top of the current text."):format(op.path)
+			)
+		end
 		if op.source ~= nil then
 			applied.mode = "replace"
 			return op.source
@@ -216,6 +298,8 @@ handlers.edit_script = function(op)
 	end)
 	local finalSrc = ScriptEditorService:GetEditorSource(script2 :: any)
 	applied.lines = select(2, string.gsub(finalSrc, "\n", "\n")) + 1
+	-- The hash of what is now on disk, so the next edit can be pinned without re-reading.
+	applied.baseHash = sourceHash(finalSrc)
 	return applied
 end
 
@@ -490,16 +574,43 @@ handlers.get_logs = function(op)
 	return { entries = out, total = #history }
 end
 
+--[[ THE TEST CONTROLS.
+
+	 This was `if op.action == "start" then Run() else Stop() end`, and the `else` is the
+	 whole reason it is now written out. EVERY action that was not exactly "start"
+	 stopped the user's simulation: a typo, an action a newer worker sends to an older
+	 plugin, anything at all. A control surface whose unknown input is "stop" is a
+	 control surface that fails open, and it fails open onto the one button nobody wants
+	 pressed by accident mid-playtest.
+
+	 The decision is `Companion.planTest`, which is pure and is where the state machine is
+	 tested. This function is the effect: read the two flags, ask for a plan, make the
+	 calls. Pause and resume are the state the flags disagree about — run mode still on,
+	 simulation not stepping — which is why both are read rather than just IsRunning. ]]
 handlers.run_mode = function(op)
-	if op.action == "start" then
-		if RunService:IsRunning() then return { alreadyRunning = true } end
-		RunService:Run()
-		return { started = true }
-	else
-		if not RunService:IsRunning() then return { alreadyStopped = true } end
-		RunService:Stop()
-		return { stopped = true }
+	local before = { running = RunService:IsRunning(), runMode = (RunService :: any):IsRunMode() }
+	local plan, refusal = Companion.planTest(op.action, before.running, before.runMode)
+	if not plan then
+		return { error = refusal }
 	end
+	for _, call in (plan :: any).calls do
+		(RunService :: any)[call](RunService)
+	end
+	return {
+		action = op.action,
+		note = (plan :: any).note,
+		noop = (plan :: any).noop,
+		calls = (plan :: any).calls,
+		-- The state AFTER the calls, read back rather than predicted. A companion panel
+		-- that rendered the state it assumed would show "running" for a Run() the engine
+		-- refused.
+		running = RunService:IsRunning(),
+		runMode = (RunService :: any):IsRunMode(),
+		-- Kept for the worker's playtest tool, which has read these two since before the
+		-- panel existed and would otherwise read nil as "it did not start".
+		started = (not before.running) and RunService:IsRunning() or nil,
+		stopped = before.runMode and not (RunService :: any):IsRunMode() or nil,
+	}
 end
 
 handlers.get_selection = function(_)
@@ -634,16 +745,477 @@ handlers.inspect_model = function(op)
 	return { qc = verdict, qcText = Generation.verdictToText(verdict) }
 end
 
+-- ------------------------------------------------ companion direct manipulation --
+--[[
+	The ops behind the Studio companion's own controls: transform, clone, group,
+	ungroup, rename, lock and hide. These are what a person clicks, with no model in
+	the loop, so they are held to a different standard than an agent tool — a wrong
+	answer here is not a bad suggestion, it is the user's own scene rearranged.
+
+	THREE RULES THEY ALL FOLLOW.
+
+	  1. RESOLVE EVERYTHING BEFORE CHANGING ANYTHING. A bad path in position 7 must
+	     leave positions 1-6 untouched. `Ops.execute` cancels the recording on a raise,
+	     which covers the real engine, but the op should not depend on that alone.
+	  2. REFUSE BY RAISING, not by returning `{ error = … }`. A returned error still
+	     COMMITS the recording (see `Ops.execute`: the pcall succeeded), so a refusal
+	     that returns leaves an empty entry on the user's undo stack. A raise cancels.
+	  3. REPORT WHAT DID NOT HAPPEN. Every one of these returns the paths it skipped
+	     rather than folding them into a success count, because a companion panel that
+	     says "4 locked" when it locked nothing is a failure to observe rendered as an
+	     observation.
+]]
+
+--- A validated list of paths from the op envelope. Bounded, because these ops are
+--- driven by a selection and a Studio user can select a whole place with one drag.
+local function pathList(op: any, field: string): { string }
+	local raw = op[field]
+	if type(raw) ~= "table" then
+		return error(("%s: expected a list of paths, got %s"):format(field, typeof(raw)))
+	end
+	local list = raw :: { any }
+	if #list == 0 then
+		return error(("%s: no paths given"):format(field))
+	end
+	if #list > 200 then
+		return error(("%s: at most 200 paths per op, got %d"):format(field, #list))
+	end
+	local out: { string } = {}
+	for i, p in list do
+		if type(p) ~= "string" then
+			return error(("%s[%d]: a path must be a string, got %s"):format(field, i, typeof(p)))
+		end
+		table.insert(out, p)
+	end
+	return out
+end
+
+--- Every BasePart this instance is, or contains.
+local function partsUnder(inst: Instance): { BasePart }
+	local out: { BasePart } = {}
+	if inst:IsA("BasePart") then
+		table.insert(out, inst :: BasePart)
+		return out
+	end
+	for _, d in inst:GetDescendants() do
+		if d:IsA("BasePart") then
+			table.insert(out, d :: BasePart)
+		end
+	end
+	return out
+end
+
+--- The first free sibling name under `parent` derived from `base`.
+local function uniqueName(parent: Instance, base: string): string
+	if not parent:FindFirstChild(base) then
+		return base
+	end
+	for n = 2, 999 do
+		local candidate = ("%s (%d)"):format(base, n)
+		if not parent:FindFirstChild(candidate) then
+			return candidate
+		end
+	end
+	return error(("%s already holds 999 things called %q"):format(Paths.fullPath(parent), base))
+end
+
+--[[ A transform turns parts about a point. This is the point, and those are the parts.
+
+	 Each target turns about ITS OWN centre rather than about the centre of the whole
+	 selection. That is a choice, and it is the one that composes: rotating three models
+	 ninety degrees leaves each of them rotated in place, which is what "rotate these"
+	 means when the things are separate objects. Turning them about a shared centroid
+	 would also FLING them around each other, and a user who wanted that asked for a
+	 different control. ]]
+local function spatialBody(inst: Instance): (Vector3?, { BasePart })
+	if inst:IsA("BasePart") then
+		return (inst :: BasePart).Position, { inst :: BasePart }
+	end
+	if inst:IsA("Model") then
+		local parts = partsUnder(inst)
+		if #parts == 0 then
+			return nil, {}
+		end
+		local cf = (inst :: Model):GetBoundingBox()
+		return cf.Position, parts
+	end
+	return nil, {}
+end
+
+handlers.transform_instances = function(op)
+	local plan, refusal = Companion.planTransform(op)
+	if not plan then
+		return error(refusal)
+	end
+	local p = plan :: any
+	local paths = pathList(op, "paths")
+
+	local targets = {}
+	for _, path in paths do
+		local inst = Paths.resolve(path)
+		local origin, parts = spatialBody(inst)
+		if not origin then
+			return error(
+				("transform_instances: %s is a %s with nothing to move. Only a BasePart, or a Model containing one, can be transformed."):format(
+					path,
+					inst.ClassName
+				)
+			)
+		end
+		table.insert(targets, { path = path, origin = origin :: Vector3, parts = parts })
+	end
+
+	local touched = 0
+	for _, t in targets do
+		for _, part in t.parts do
+			local cf = part.CFrame
+			-- Where the part ends up: its offset from the pivot, turned, scaled, then
+			-- translated. `plan.rotate` is the identity and `plan.scale` is exactly 1
+			-- when they were not asked for, so all three run unconditionally.
+			local newPos = t.origin + p.rotate:VectorToWorldSpace(cf.Position - t.origin) * p.scale + p.move
+			-- Its orientation: composed with the rotation, then re-seated at newPos.
+			local turned = p.rotate * cf
+			part.CFrame = turned + (newPos - turned.Position)
+			if p.scaled then
+				part.Size = part.Size * p.scale
+			end
+			touched += 1
+		end
+	end
+	return {
+		transformed = #targets,
+		parts = touched,
+		moved = p.moved,
+		rotated = p.rotated,
+		scaled = p.scaled,
+	}
+end
+
+--[[ Clone, and why the copy is renamed.
+
+	 Studio's own Ctrl+D leaves the copy sharing its source's name, and in Studio that is
+	 harmless — the Explorer addresses instances by identity. This protocol addresses them
+	 by PATH, and two siblings with one name have one path between them. A returned path
+	 that resolves to the original is worse than no path at all: every later op the
+	 companion sends about "the copy" would silently hit the thing it was copied from.
+
+	 So the copy takes the first free `Name (n)`, and the path handed back resolves to the
+	 copy. That is stated here because it is a visible difference from Studio. ]]
+handlers.clone_instances = function(op)
+	local paths = pathList(op, "paths")
+	local parentOverride: Instance? = if op.parent then Paths.resolve(op.parent) else nil
+	local sources = {}
+	for _, path in paths do
+		local inst = Paths.resolve(path)
+		local refused = Companion.refuseStructural(inst, path, "clone")
+		if refused then
+			return error(refused)
+		end
+		if (inst :: any).Archivable == false then
+			return error(
+				("clone_instances: %s has Archivable off, which is the engine's own way of saying it must not be copied"):format(
+					path
+				)
+			)
+		end
+		local parent = parentOverride or inst.Parent
+		if not parent then
+			return error(("clone_instances: %s has no parent, so there is nowhere to put the copy"):format(path))
+		end
+		table.insert(sources, { inst = inst, parent = parent :: Instance })
+	end
+
+	local created = {}
+	for _, s in sources do
+		local copy = s.inst:Clone()
+		if not copy then
+			return error(("clone_instances: the engine refused to copy %s"):format(Paths.fullPath(s.inst)))
+		end
+		copy.Name = uniqueName(s.parent, s.inst.Name)
+		copy.Parent = s.parent
+		table.insert(created, Paths.fullPath(copy))
+	end
+	return { created = created }
+end
+
+--[[ Group into a Model, the way Studio's Ctrl+G does: the new Model lands where the
+	 FIRST target was, and everything else moves in beside it. Targets from elsewhere in
+	 the tree are counted and reported rather than refused — reparenting into a Model
+	 moves nothing in world space, so this is a reorganisation, not a relocation — but a
+	 caller who did not mean to reach across the tree should be able to see that it
+	 happened. ]]
+handlers.group_instances = function(op)
+	local paths = pathList(op, "paths")
+	local name, nameErr = Companion.validateName(op.name or "Model", "group_instances")
+	if not name then
+		return error(nameErr)
+	end
+
+	local targets = {}
+	for _, path in paths do
+		local inst = Paths.resolve(path)
+		local refused = Companion.refuseStructural(inst, path, "group")
+		if refused then
+			return error(refused)
+		end
+		if not inst.Parent then
+			return error(("group_instances: %s has no parent"):format(path))
+		end
+		table.insert(targets, inst)
+	end
+
+	local home = (targets[1] :: Instance).Parent :: Instance
+	local fromElsewhere = 0
+	for _, inst in targets do
+		if inst.Parent ~= home then
+			fromElsewhere += 1
+		end
+	end
+
+	local model = Instance.new("Model")
+	model.Name = uniqueName(home, name :: string)
+	model.Parent = home
+	for _, inst in targets do
+		inst.Parent = model
+	end
+	return { path = Paths.fullPath(model), grouped = #targets, fromOtherParents = fromElsewhere }
+end
+
+handlers.ungroup_instances = function(op)
+	local paths = pathList(op, "paths")
+	local targets = {}
+	for _, path in paths do
+		local inst = Paths.resolve(path)
+		local refused = Companion.refuseStructural(inst, path, "ungroup")
+		if refused then
+			return error(refused)
+		end
+		if not (inst:IsA("Model") or inst:IsA("Folder")) then
+			return error(
+				("ungroup_instances: %s is a %s. Only a Model or a Folder holds children on behalf of something else; ungrouping anything else would move its parts out of the thing that owns them."):format(
+					path,
+					inst.ClassName
+				)
+			)
+		end
+		if not inst.Parent then
+			return error(("ungroup_instances: %s has no parent to release its children into"):format(path))
+		end
+		table.insert(targets, inst)
+	end
+
+	local released = {}
+	local removed = {}
+	for _, inst in targets do
+		local parent = inst.Parent :: Instance
+		for _, child in inst:GetChildren() do
+			child.Parent = parent
+			table.insert(released, Paths.fullPath(child))
+		end
+		table.insert(removed, Paths.fullPath(inst))
+		inst:Destroy()
+	end
+	return { released = released, removed = removed }
+end
+
+--[[ Rename, with the new path PROVED rather than assumed.
+
+	 A rename is the one edit that changes how everything else addresses the instance.
+	 `Paths.fullPath` and `Paths.parse` are two pieces of code that have to agree about
+	 quoting for that address to survive, and a name a user typed is exactly the input
+	 that finds the place they disagree. So the new path is resolved back here, in the
+	 same op, and the rename is UNDONE if it does not land on the instance it names.
+
+	 THE ROUND-TRIP CHECK CANNOT BE FALSIFIED TODAY, and should not be read as a tested
+	 clause. `Companion.validateName` already refuses the one input known to break the
+	 quoting (a double quote), and the sibling check below refuses the other way two
+	 instances can share a path — so with both in place there is no name left that
+	 reaches here and fails. It stays because it is the DISAGREEMENT that is being
+	 guarded against: the day the two codecs drift, this catches it in the op that caused
+	 it rather than in some later op that resolves to the wrong instance. The mutation
+	 suite deliberately does not claim to cover it. ]]
+handlers.rename_instance = function(op)
+	if type(op.path) ~= "string" then
+		return error(("rename_instance: path must be a string, got %s"):format(typeof(op.path)))
+	end
+	local inst = Paths.resolve(op.path)
+	local refused = Companion.refuseStructural(inst, op.path, "rename")
+	if refused then
+		return error(refused)
+	end
+	local name, nameErr = Companion.validateName(op.name)
+	if not name then
+		return error(nameErr)
+	end
+	local wanted = name :: string
+	local parent = inst.Parent
+	if parent then
+		local clash = parent:FindFirstChild(wanted)
+		if clash and clash ~= inst then
+			return error(
+				("rename_instance: %s already has a child called %q, and two siblings sharing one name cannot both be addressed by path."):format(
+					Paths.fullPath(parent),
+					wanted
+				)
+			)
+		end
+	end
+
+	local was = inst.Name
+	inst.Name = wanted
+	local after = Paths.fullPath(inst)
+	local ok, back = pcall(Paths.resolve, after)
+	if not ok or back ~= inst then
+		inst.Name = was
+		return error(
+			("rename_instance: %q produces the path %s, which does not resolve back to this instance. The rename was undone."):format(
+				wanted,
+				after
+			)
+		)
+	end
+	return { path = after, was = was, name = wanted }
+end
+
+handlers.set_locked = function(op)
+	if type(op.locked) ~= "boolean" then
+		return error(("set_locked: locked must be true or false, got %s"):format(typeof(op.locked)))
+	end
+	local paths = pathList(op, "paths")
+	local changed = 0
+	local skipped = {}
+	for _, path in paths do
+		local inst = Paths.resolve(path)
+		local parts = partsUnder(inst)
+		if #parts == 0 then
+			table.insert(skipped, path)
+		end
+		for _, part in parts do
+			(part :: any).Locked = op.locked
+			changed += 1
+		end
+	end
+	return { locked = op.locked, parts = changed, skipped = skipped }
+end
+
+--[[ Hiding a part must not forget what it looked like.
+
+	 A BasePart has no Visible property, so hiding one means Transparency = 1 and showing
+	 it again means putting the old value back. Putting 0 back instead — the obvious
+	 implementation — turns every deliberately translucent window, water plane and ghost
+	 into solid plastic, and the user has no way to know which parts were changed.
+
+	 The old value is kept in an attribute on the part itself, so it survives a save, a
+	 reload, and a different companion session. Hiding something already hidden does NOT
+	 overwrite it: the guard is `== nil`, so the FIRST hide is the one that is remembered
+	 and a double hide is idempotent. ]]
+local function setPartVisible(part: BasePart, visible: boolean)
+	local remembered = part:GetAttribute(Companion.HIDDEN_ATTRIBUTE)
+	if not visible then
+		if remembered == nil then
+			part:SetAttribute(Companion.HIDDEN_ATTRIBUTE, part.Transparency)
+		end
+		part.Transparency = 1
+		return
+	end
+	if type(remembered) == "number" then
+		part.Transparency = remembered
+		part:SetAttribute(Companion.HIDDEN_ATTRIBUTE, nil)
+	end
+	-- No attribute means this part was never hidden by the companion. Showing it is
+	-- already true, and forcing Transparency to 0 would be this op editing something
+	-- nobody asked it to touch.
+end
+
+handlers.set_visible = function(op)
+	if type(op.visible) ~= "boolean" then
+		return error(("set_visible: visible must be true or false, got %s"):format(typeof(op.visible)))
+	end
+	local paths = pathList(op, "paths")
+	local parts = 0
+	local guiObjects = 0
+	local skipped = {}
+	for _, path in paths do
+		local inst = Paths.resolve(path)
+		local body = partsUnder(inst)
+		if #body > 0 then
+			for _, part in body do
+				setPartVisible(part, op.visible)
+				parts += 1
+			end
+		else
+			-- Anything with a Visible property — every GuiObject — takes it directly.
+			-- Anything else is reported as skipped rather than counted as done.
+			local ok = pcall(function()
+				(inst :: any).Visible = op.visible
+			end)
+			if ok then
+				guiObjects += 1
+			else
+				table.insert(skipped, path)
+			end
+		end
+	end
+	return { visible = op.visible, parts = parts, guiObjects = guiObjects, skipped = skipped }
+end
+
 handlers.undo_waypoint = function(op)
 	ChangeHistoryService:SetWaypoint(op.name or "Apple")
 	return { waypoint = true }
+end
+
+--[[ WHAT KIND OF FAILURE WAS THAT?
+
+	 `OpResult.error` is a sentence written for a human. Until this existed it was the ONLY thing
+	 separating "that path does not exist" from "Studio never answered", so the agent decided
+	 whether to retry by pattern-matching English — and a reworded error silently changed the
+	 decision. `OpFailureKind` in packages/shared is the typed answer; the worker's op-failure.ts
+	 turns a kind plus "does this op mutate" into a retry verdict.
+
+	 NOTHING HERE READS AN ERROR MESSAGE. That is the whole discipline of this function. It
+	 classifies from three things it genuinely owns:
+
+	   * whether the op exists at all                     -> refused
+	   * whether an undo recording could be opened        -> conflict
+	   * whether the path the op ADDRESSED still resolves -> not_found
+
+	 The third is an observation of the place as it stands now, not a guess about the wording: if
+	 the instance the op was aimed at is not there, the failure is a missing target whatever the
+	 handler happened to say on its way out.
+
+	 EVERYTHING ELSE IS `internal`, WHICH IS NOT RETRYABLE. That is the deliberately conservative
+	 default: an unclassified failure must never invite a repeat of a mutation. Narrowing it
+	 further means giving the remaining `error(...)` sites structured kinds — a per-site change
+	 across this file and Paths.luau — and until that is done, the honest report is "not known",
+	 not a plausible guess. ]]
+local function primaryPath(opBody: any): string?
+	if type(opBody.path) == "string" then return opBody.path end
+	if type(opBody.paths) == "table" and type(opBody.paths[1]) == "string" then return opBody.paths[1] end
+	if type(opBody.root) == "string" then return opBody.root end
+	if type(opBody.parent) == "string" then return opBody.parent end
+	return nil
+end
+
+local function classifyFailure(opBody: any): string
+	-- An op that CREATES the thing it names cannot be judged by whether that thing exists: the
+	-- whole point of the call was that it did not.
+	if opBody.create ~= nil then return "internal" end
+	local path = primaryPath(opBody)
+	if path then
+		local ok = pcall(Paths.resolve, path)
+		if not ok then return "not_found" end
+	end
+	return "internal"
 end
 
 function Ops.execute(id: string, opBody: any): any
 	local kind = opBody.op
 	local handler = handlers[kind]
 	if not handler then
-		return { id = id, ok = false, error = "unknown op: " .. tostring(kind) }
+		-- `refused`, not `internal`: the plugin understood the request perfectly and declined it.
+		-- An op this build does not implement is the one failure a retry can never fix, and an
+		-- older installed build lacking a newer op is the steady state (see plugin-version.ts).
+		return { id = id, ok = false, error = "unknown op: " .. tostring(kind), failure = "refused" }
 	end
 	local t0 = os.clock()
 	--[[ A MUTATING OP WITHOUT A RECORDING IS REFUSED, NOT PERFORMED.
@@ -673,6 +1245,10 @@ function Ops.execute(id: string, opBody: any): any
 				ok = false,
 				error = "could not open an undo recording (another one is already open), so this "
 					.. "mutation was refused rather than performed without one",
+				-- `conflict`: Studio is not in a state that allows this, and it may well allow it
+				-- later. It is NOT retryable automatically all the same — the open recording is
+				-- usually a leaked one, and hammering it changes nothing.
+				failure = "conflict",
 			}
 		end
 	end
@@ -686,10 +1262,20 @@ function Ops.execute(id: string, opBody: any): any
 	end
 	local durationMs = math.floor((os.clock() - t0) * 1000)
 	if not ok then
-		return { id = id, ok = false, error = tostring(result), durationMs = durationMs }
+		return { id = id, ok = false, error = tostring(result), durationMs = durationMs, failure = classifyFailure(opBody) }
 	end
 	if type(result) == "table" and result.error then
-		return { id = id, ok = false, error = tostring(result.error), data = result, durationMs = durationMs }
+		-- A handler that knows what kind of failure it produced says so; one that does not leaves
+		-- the field off and the worker reads that as unclassified, never as retryable.
+		local declared = if type(result.failure) == "string" then result.failure else nil
+		return {
+			id = id,
+			ok = false,
+			error = tostring(result.error),
+			data = result,
+			durationMs = durationMs,
+			failure = declared or classifyFailure(opBody),
+		}
 	end
 	return { id = id, ok = true, data = result, durationMs = durationMs }
 end
