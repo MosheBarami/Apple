@@ -39,7 +39,6 @@ import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
-import { ACCESS_LOADING, allows, normaliseAccess } from '../lib/capabilities';
 import { checkpointAuthorView, rosterNames } from '../lib/checkpoint-author';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
@@ -47,7 +46,6 @@ import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { StudioActivity } from '../components/ws/studio-activity';
-import { FilesPanel } from '../components/ws/files-panel';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
@@ -393,13 +391,6 @@ export function WorkspacePage() {
       run: () => setDrawer('checkpoints'),
     },
     {
-      id: 'ws-files',
-      title: "This project's files",
-      section: 'Project',
-      keywords: ['files', 'notes', 'versions', 'revert', 'put back', 'history'],
-      run: () => setDrawer('files'),
-    },
-    {
       id: 'ws-history',
       title: 'What Apple did in Studio',
       section: 'Run',
@@ -429,10 +420,14 @@ export function WorkspacePage() {
       run: () => setDrawer('members'),
     },
     {
+      // ONE ENTRY, NOT TWO. Both sides gave Files a command and the ids collided, which
+      // command-palette.test.mjs fails on by name. The keywords are the union of both: the panel
+      // really does own the download and the trash AND the per-version "Put back", so a user who
+      // searches for either word has to land here.
       id: 'ws-files',
       title: 'Project files',
       section: 'Project',
-      keywords: ['files', 'workspace', 'notes', 'download', 'trash'],
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash', 'versions', 'revert', 'put back', 'history'],
       run: () => setDrawer('files'),
     },
     {
