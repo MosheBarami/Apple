@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../failure';
 import { ApiError, fetchMemory, saveMemory } from '../../lib/api';
 import { useToast } from '../toast';
+import { useUnsavedGuard } from '../../lib/unsaved';
 
 const FACT_MAX = 300;
 const SUMMARY_MAX = 3000;
@@ -33,6 +34,10 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
   const [adding, setAdding] = useState('');
   // Edits are local until saved, so the panel does not fight the user's typing on every refetch.
   const [dirty, setDirty] = useState(false);
+
+  // The panel's edit lives here and nowhere else, so closing the tab on it is the one loss with
+  // no recovery — see lib/unsaved.ts for what this does and does not cover.
+  useUnsavedGuard(dirty);
 
   // Adopt the server's copy only while there is nothing unsaved to lose.
   useEffect(() => {

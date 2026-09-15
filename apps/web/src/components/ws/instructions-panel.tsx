@@ -30,6 +30,7 @@ import {
   type PromptProfile,
 } from '../../lib/api';
 import { useToast } from '../toast';
+import { useUnsavedGuard } from '../../lib/unsaved';
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
 const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
@@ -99,6 +100,10 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
   const [prefs, setPrefs] = useState<Preferences>({});
   const [profile, setProfile] = useState<PromptProfile>({});
   const [dirty, setDirty] = useState(false);
+
+  // The panel's edit lives here and nowhere else, so closing the tab on it is the one loss with
+  // no recovery — see lib/unsaved.ts for what this does and does not cover.
+  useUnsavedGuard(dirty);
   const [adding, setAdding] = useState('');
   const [addTtl, setAddTtl] = useState('');
   const [showAudit, setShowAudit] = useState(false);
