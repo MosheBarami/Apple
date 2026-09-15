@@ -35565,7 +35565,7 @@
       "@roblox/globaltype/Plugin.CreatePluginAction/return/0"
     ],
     "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Plugin#CreatePluginAction",
-    "code_sample": "local pluginAction = plugin:CreatePluginAction(\n\t\"HelloWorldAction\",\n\t\"Hello World\",\n\t\"Prints a 'Hello world!'\",\n\t\"rbxasset://textures/sparkle.png\",\n\ttrue\n)\npluginAction.Name = \"Test Action\"\n\nlocal function actionTriggered()\n\tprint(\"Hello world!\")\nend\n\npluginAction.Triggered:Connect(actionTriggered)"
+    "code_sample": "local pluginAction = plugin:CreatePluginAction(\n\t\"HelloWorldAction\",\n\t\"Hello World\",\n\t\"Prints a 'Hello world!'\",\n\t\"rbxasset://textures/creditle.png\",\n\ttrue\n)\npluginAction.Name = \"Test Action\"\n\nlocal function actionTriggered()\n\tprint(\"Hello world!\")\nend\n\npluginAction.Triggered:Connect(actionTriggered)"
   },
   "@roblox/globaltype/Plugin.CreatePluginMenu/param/0": {
     "documentation": "The main object responsible for creating custom Studio widgets, toolbars, buttons, and other plugin UI elements."
@@ -93166,41 +93166,41 @@
     "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Hopper",
     "code_sample": ""
   },
-  "@roblox/globaltype/Sparkles": {
-    "documentation": "A particle emitter with the visual aesthetic of sparkles.",
+  "@roblox/globaltype/Creditles": {
+    "documentation": "A particle emitter with the visual aesthetic of creditles.",
     "keys": {
-      "Color": "@roblox/globaltype/Sparkles.Color",
-      "Enabled": "@roblox/globaltype/Sparkles.Enabled",
-      "LocalTransparencyModifier": "@roblox/globaltype/Sparkles.LocalTransparencyModifier",
-      "SparkleColor": "@roblox/globaltype/Sparkles.SparkleColor",
-      "TimeScale": "@roblox/globaltype/Sparkles.TimeScale"
+      "Color": "@roblox/globaltype/Creditles.Color",
+      "Enabled": "@roblox/globaltype/Creditles.Enabled",
+      "LocalTransparencyModifier": "@roblox/globaltype/Creditles.LocalTransparencyModifier",
+      "CreditleColor": "@roblox/globaltype/Creditles.CreditleColor",
+      "TimeScale": "@roblox/globaltype/Creditles.TimeScale"
     },
-    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Sparkles",
-    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add sparkles that are colored to the player's torso color\n\tlocal sparkles = Instance.new(\"Sparkles\")\n\tsparkles.Parent = hrp\n\tsparkles.SparkleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tsparkles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
+    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Creditles",
+    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add creditles that are colored to the player's torso color\n\tlocal creditles = Instance.new(\"Creditles\")\n\tcreditles.Parent = hrp\n\tcreditles.CreditleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tcreditles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
   },
-  "@roblox/globaltype/Sparkles.Color": {
-    "documentation": "Determines the color of the sparkle particles.",
-    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Sparkles#Color",
-    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add sparkles that are colored to the player's torso color\n\tlocal sparkles = Instance.new(\"Sparkles\")\n\tsparkles.Parent = hrp\n\tsparkles.SparkleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tsparkles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
+  "@roblox/globaltype/Creditles.Color": {
+    "documentation": "Determines the color of the creditle particles.",
+    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Creditles#Color",
+    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add creditles that are colored to the player's torso color\n\tlocal creditles = Instance.new(\"Creditles\")\n\tcreditles.Parent = hrp\n\tcreditles.CreditleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tcreditles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
   },
-  "@roblox/globaltype/Sparkles.Enabled": {
-    "documentation": "Determines whether sparkles are emit.",
-    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Sparkles#Enabled",
-    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add sparkles that are colored to the player's torso color\n\tlocal sparkles = Instance.new(\"Sparkles\")\n\tsparkles.Parent = hrp\n\tsparkles.SparkleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tsparkles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
+  "@roblox/globaltype/Creditles.Enabled": {
+    "documentation": "Determines whether creditles are emit.",
+    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Creditles#Enabled",
+    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add creditles that are colored to the player's torso color\n\tlocal creditles = Instance.new(\"Creditles\")\n\tcreditles.Parent = hrp\n\tcreditles.CreditleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tcreditles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
   },
-  "@roblox/globaltype/Sparkles.LocalTransparencyModifier": {
+  "@roblox/globaltype/Creditles.LocalTransparencyModifier": {
     "documentation": "",
-    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Sparkles#LocalTransparencyModifier",
+    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Creditles#LocalTransparencyModifier",
     "code_sample": ""
   },
-  "@roblox/globaltype/Sparkles.SparkleColor": {
-    "documentation": "Determines the color of the sparkle particles.",
-    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Sparkles#SparkleColor",
-    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add sparkles that are colored to the player's torso color\n\tlocal sparkles = Instance.new(\"Sparkles\")\n\tsparkles.Parent = hrp\n\tsparkles.SparkleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tsparkles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
+  "@roblox/globaltype/Creditles.CreditleColor": {
+    "documentation": "Determines the color of the creditle particles.",
+    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Creditles#CreditleColor",
+    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterSpawned(character)\n\tlocal hrp = character:WaitForChild(\"HumanoidRootPart\")\n\t-- Add creditles that are colored to the player's torso color\n\tlocal creditles = Instance.new(\"Creditles\")\n\tcreditles.Parent = hrp\n\tcreditles.CreditleColor = character:WaitForChild(\"Body Colors\").TorsoColor.Color\n\tcreditles.Enabled = true\nend\n\nlocal function onPlayerAdded(player)\n\tplayer.CharacterAdded:Connect(onCharacterSpawned)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
   },
-  "@roblox/globaltype/Sparkles.TimeScale": {
+  "@roblox/globaltype/Creditles.TimeScale": {
     "documentation": "",
-    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Sparkles#TimeScale",
+    "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Creditles#TimeScale",
     "code_sample": ""
   },
   "@roblox/globaltype/OpenCloudApiV1": {
@@ -101656,7 +101656,7 @@
       "@roblox/globaltype/Players.GetPlayers/return/0"
     ],
     "learn_more_link": "https://create.roblox.com/docs/reference/engine/classes/Players#GetPlayers",
-    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterAdded(character)\n\t-- Give them sparkles on their head if they don't have them yet\n\tif not character:FindFirstChild(\"Sparkles\") then\n\t\tlocal sparkles = Instance.new(\"Sparkles\")\n\t\tsparkles.Parent = character:WaitForChild(\"Head\")\n\tend\nend\n\nlocal function onPlayerAdded(player)\n\t-- Check if they already spawned in\n\tif player.Character then\n\t\tonCharacterAdded(player.Character)\n\tend\n\t-- Listen for the player (re)spawning\n\tplayer.CharacterAdded:Connect(onCharacterAdded)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
+    "code_sample": "local Players = game:GetService(\"Players\")\n\nlocal function onCharacterAdded(character)\n\t-- Give them creditles on their head if they don't have them yet\n\tif not character:FindFirstChild(\"Creditles\") then\n\t\tlocal creditles = Instance.new(\"Creditles\")\n\t\tcreditles.Parent = character:WaitForChild(\"Head\")\n\tend\nend\n\nlocal function onPlayerAdded(player)\n\t-- Check if they already spawned in\n\tif player.Character then\n\t\tonCharacterAdded(player.Character)\n\tend\n\t-- Listen for the player (re)spawning\n\tplayer.CharacterAdded:Connect(onCharacterAdded)\nend\n\nPlayers.PlayerAdded:Connect(onPlayerAdded)"
   },
   "@roblox/globaltype/Players.getPlayers/param/0": {
     "documentation": "A service that contains presently connected <code>Player</code> objects."

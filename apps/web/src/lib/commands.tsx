@@ -10,6 +10,7 @@
 // first — by the shell, which is always mounted.
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
@@ -36,27 +37,47 @@ export function CommandProvider({ children }: { children: ReactNode }) {
   const [groups, setGroups] = useState<Map<string, Command[]>>(() => new Map());
   const [open, setOpen] = useState(false);
 
+  /**
+   * BUILT ONCE, DELIBERATELY — and this is not a micro-optimisation, it is the difference between
+   * the app idling and the app spinning.
+   *
+   * Both of these used to be rebuilt inside the `useMemo` below, whose deps include `groups`.
+   * `useCommands` lists them in its effect's dependency array, so the cycle was: register →
+   * `groups` changes → their identity changes → the effect re-runs → unregister, register →
+   * `groups` changes → … For every contributor, forever, from the moment the shell mounted. React
+   * caps it with "Maximum update depth exceeded" a few hundred times a second, which is why the
+   * screen looked fine and the fan did not.
+   *
+   * An empty dependency list is safe because `setGroups` takes an UPDATER: neither of these reads
+   * anything from the render that created it.
+   */
+  const register = useCallback((key: string, commands: Command[]) => {
+    setGroups((prev) => {
+      const next = new Map(prev);
+      next.set(key, commands);
+      return next;
+    });
+  }, []);
+
+  const unregister = useCallback((key: string) => {
+    setGroups((prev) => {
+      if (!prev.has(key)) return prev; // no state change, no re-render
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<Registry>(
     () => ({
       // Insertion order is Map order, which is what keeps the palette's default list stable.
       commands: dedupeByTitle([...groups.values()].flat()),
-      register: (key, commands) =>
-        setGroups((prev) => {
-          const next = new Map(prev);
-          next.set(key, commands);
-          return next;
-        }),
-      unregister: (key) =>
-        setGroups((prev) => {
-          if (!prev.has(key)) return prev; // no state change, no re-render
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        }),
+      register,
+      unregister,
       open,
       setOpen,
     }),
-    [groups, open],
+    [groups, open, register, unregister],
   );
 
   return <CommandContext.Provider value={value}>{children}</CommandContext.Provider>;

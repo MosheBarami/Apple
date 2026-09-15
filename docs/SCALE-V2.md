@@ -18,7 +18,7 @@ Ground truth this design is built on, unchanged:
 | Hard maximum $10.06/month | `docs/COST-MODEL.md` |
 | Quality-gated build ≈ 16 steps × ~145 neurons + 1–2 critiques ≈ 2,300 neurons ($0.025) | task brief, **measured** |
 | Stone full build+verify 511 neurons; Rune 297; Clay question 37–43; critique 63–72; memory ~21; embed 1 | **measured** |
-| Free = 60 Sparks/day, 1 Spark = 30 neurons = 1,800 neurons/day | `pricing.ts` |
+| Free = 60 Credits/day, 1 Credit = 30 neurons = 1,800 neurons/day | `pricing.ts` |
 | ~30 successful requests/minute sustained; 3021 is the rate-limit code | **measured**, `docs/COST-MODEL.md` |
 | p95 17.3s under 6 concurrent, 2.0s median; 20-user test, zero inference errors | **measured** |
 | Prefix caching verified working on kimi-k2.5, verified **not surfaced** on glm-5.3-flash | **measured** |
@@ -35,7 +35,7 @@ Read from the code, not from the docs.
 
 ```
 browser WS ──"chat"──► SessionDO.startRun()
-                          │  QuotaDO.spend(1 Spark)          ← refuse if empty
+                          │  QuotaDO.spend(1 Credit)          ← refuse if empty
                           │  put('agent', AgentState)         ← the entire continuation
                           └─ setAlarm(now + 10ms)
                                     │
@@ -341,7 +341,7 @@ Signals that already exist in the code, promoted into `abuse_flag`:
 
 A flagged job is not refused — refusal is indistinguishable from a bug to a legitimate user who
 tripped a heuristic. It scores −200, which puts it behind everything, and it ages out of the flag in
-an hour. It still consumes their own Sparks, so the flag costs the service nothing to be wrong
+an hour. It still consumes their own Credits, so the flag costs the service nothing to be wrong
 about.
 
 ---
@@ -607,7 +607,7 @@ not capacity — on a heavy day the last user is still told to come back tomorro
 that message honest, ordered, and survivable. It does not make it go away. Only money does.
 
 **It does not fix the free-plan arithmetic.** One quality-gated build is ~2,300 neurons; a Free day
-is 1,800 neurons (60 Sparks × 30). A gated build still does not fit in a Free day, and public
+is 1,800 neurons (60 Credits × 30). A gated build still does not fit in a Free day, and public
 pricing is not changing. The scheduler makes the shortfall visible and ordered rather than sudden.
 
 **It barely helps with RPM.** 30 req/min ÷ ~16 calls per build = ~1.9 builds/minute of rate

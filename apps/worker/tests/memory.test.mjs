@@ -24,7 +24,12 @@ const out = join(tmpdir(), `apple-memory-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'memory.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
-const { normaliseMemory, isMemoryEmpty, SUMMARY_MAX, FACT_MAX, FACTS_MAX } = await import(`file://${out}`);
+const {
+  normaliseMemory, isMemoryEmpty, SUMMARY_MAX, FACT_MAX, FACTS_MAX, SUGGESTED_MAX,
+  MEMORY_MODES, isMemoryMode, memoryWritable, memoryReadable, memoryForPrompt,
+  applyUserEdit, applyModelUpdate, addModelFact, decideSuggestedFact, decideSuggestedSummary,
+  originOf, factFingerprint, normaliseFact,
+} = await import(`file://${out}`);
 process.on('exit', () => rmSync(out, { force: true }));
 
 // ------------------------------------------------------------- normalisation ---
@@ -224,4 +229,239 @@ test('the panel says an edit does not change what was already built', () => {
 test('saving refreshes the places that render the summary', () => {
   assert.match(PANEL, /queryKey: \['project', projectId\]/);
   assert.match(PANEL, /queryKey: \['projects'\]/);
+});
+
+// ==========================================================================================
+// CREDENTIALS MUST NOT BECOME MEMORY
+//
+// A transcript that contained an API key used to put that key into the system prompt of every
+// later run, forever, where nobody looks. Every fixture below carries ONE credential inside
+// ordinary prose, and every assertion is a pair: the secret is gone AND the prose survived. The
+// second half is what stops a normaliser that drops the whole field from passing as a redactor.
+// ==========================================================================================
+
+const JWT = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+const OPENAI = 'sk-proj-AbCdEfGhIjKlMnOpQrStUv';
+
+test('a secret in a model-written fact is redacted, and the sentence around it survives', () => {
+  const m = normaliseMemory({ facts: [`the shop calls the API with ${JWT} on every purchase`] });
+  assert.equal(m.facts.length, 1, 'the fact is kept — redaction is not deletion');
+  assert.ok(!m.facts[0].includes(JWT), 'the token must not be stored');
+  assert.match(m.facts[0], /the shop calls the API with/, 'the prose around it is still there');
+  assert.match(m.facts[0], /\[redacted:jwt\]/, 'and it says what was removed');
+});
+
+test('a secret in the summary is redacted too — both fields, not just the one that was noticed', () => {
+  const m = normaliseMemory({ summary: `A tycoon. The owner's key is ${OPENAI} and it is used server-side.` });
+  assert.ok(!m.summary.includes(OPENAI));
+  assert.match(m.summary, /A tycoon\./);
+});
+
+test('redaction is on the WRITE, so neither writer can get a credential in', () => {
+  // The user's own editor and the model's distiller are different code paths into the same field.
+  // A redactor wired to one of them is a redactor for the case that happens to be tested.
+  const byUser = applyUserEdit(null, { facts: [`my key is ${OPENAI}`] });
+  const byModel = applyModelUpdate(null, { summary: 'x', facts: [`the key is ${OPENAI}`] }, 'auto');
+  const bySuggestion = applyModelUpdate(null, { summary: 's', facts: [`the key is ${OPENAI}`] }, 'review');
+  assert.ok(!byUser.facts[0].includes(OPENAI), 'user edit');
+  assert.ok(!byModel.facts[0].includes(OPENAI), 'model update');
+  assert.ok(!bySuggestion.suggested.facts[0].includes(OPENAI), 'a proposal is stored too, so it is scanned too');
+});
+
+test('the credential is cut before the length cap, not after', () => {
+  // Truncating first leaves half a token behind: still enough to identify the account, no longer
+  // recognisable as a secret by anything downstream.
+  const padded = `${'x'.repeat(FACT_MAX - 10)} ${JWT}`;
+  const m = normaliseMemory({ facts: [padded] });
+  assert.ok(!m.facts[0].includes(JWT.slice(0, 8)), 'no prefix of the token survives the cap');
+  assert.ok(m.facts[0].length <= FACT_MAX);
+});
+
+// ==========================================================================================
+// THE OFF SWITCH
+// ==========================================================================================
+
+test('the three modes are a checked vocabulary, not a cast', () => {
+  for (const bad of ['Auto', 'OFF', '', null, undefined, 0, {}, '__proto__']) assert.equal(isMemoryMode(bad), false, JSON.stringify(bad));
+  for (const good of MEMORY_MODES) assert.equal(isMemoryMode(good), true, good);
+  assert.deepEqual([...MEMORY_MODES].sort(), ['auto', 'off', 'review']);
+});
+
+test('with memory off the model writes nothing — and the SAME input under auto does write', () => {
+  // The second half is the point. "Nothing changed" is only evidence about the mode if the fixture
+  // is one that changes something when the mode is different.
+  const stored = { summary: 'a tycoon', facts: ['doors use TweenService'] };
+  const off = applyModelUpdate(stored, { summary: 'a racer', facts: ['lava kills'] }, 'off');
+  const auto = applyModelUpdate(stored, { summary: 'a racer', facts: ['lava kills'] }, 'auto');
+  // The WHOLE memory, not just the fact list: an off switch that diverted the write into the
+  // review queue instead of dropping it would satisfy "the facts did not change" and would still
+  // be keeping everything the user asked it to stop keeping.
+  assert.deepEqual(off, normaliseMemory(stored), 'off changed nothing at all, including the queue');
+  assert.deepEqual(auto.facts, ['lava kills'], 'the same fixture under auto is a real write');
+  assert.equal(auto.summary, 'a racer');
+});
+
+test('with memory off the remember tool refuses rather than reporting a save', () => {
+  const off = addModelFact({ facts: [] }, 'the map is 512 studs', 'off');
+  assert.equal(off.outcome, 'refused');
+  assert.deepEqual(off.memory.facts, []);
+  assert.deepEqual(off.memory.suggested.facts, [], 'and it was not quietly queued for later either');
+  const on = addModelFact({ facts: [] }, 'the map is 512 studs', 'auto');
+  assert.equal(on.outcome, 'saved');
+  assert.deepEqual(on.memory.facts, ['the map is 512 studs']);
+});
+
+test('with memory off nothing stored reaches the prompt either', () => {
+  // An off switch that only stops new writes leaves the agent acting on everything it already
+  // knows — which is not what the person who turned it off asked for.
+  const stored = { summary: 'a tycoon', facts: ['doors use TweenService'] };
+  assert.deepEqual(memoryForPrompt(stored, 'off'), { summary: null, facts: [] });
+  assert.deepEqual(memoryForPrompt(stored, 'auto'), { summary: 'a tycoon', facts: ['doors use TweenService'] });
+  assert.equal(memoryWritable('off'), false);
+  assert.equal(memoryReadable('off'), false);
+});
+
+// ==========================================================================================
+// REVIEW: THE MODEL MAY PROPOSE, NOT DECIDE
+// ==========================================================================================
+
+test('under review a distilled fact is proposed and active memory is untouched', () => {
+  const stored = { summary: 'a tycoon', facts: ['doors use TweenService'] };
+  const after = applyModelUpdate(stored, { summary: 'a racing game', facts: ['lava kills', 'doors use TweenService'] }, 'review');
+  assert.deepEqual(after.facts, ['doors use TweenService'], 'what was already remembered is unchanged');
+  assert.equal(after.summary, 'a tycoon', 'and so is the summary');
+  assert.deepEqual(after.suggested.facts, ['lava kills'], 'only the NEW fact is a proposal');
+  assert.equal(after.suggested.summary, 'a racing game');
+});
+
+test('a proposal for something already remembered is not a question anyone needs to answer', () => {
+  const after = applyModelUpdate({ facts: ['lava kills'] }, { facts: ['Lava Kills'] }, 'review');
+  assert.deepEqual(after.suggested.facts, [], 'case-insensitively the same fact');
+});
+
+test('a pending proposal never reaches the prompt', () => {
+  const m = applyModelUpdate({ facts: ['a'] }, { facts: ['b'] }, 'review');
+  assert.deepEqual(memoryForPrompt(m, 'review').facts, ['a'], 'b is proposed, not in force');
+});
+
+test('accepting a proposal moves it into memory and records that the MODEL said it', () => {
+  const proposed = applyModelUpdate({ facts: [] }, { facts: ['lava kills'] }, 'review');
+  const { memory, matched } = decideSuggestedFact(proposed, 'lava kills', 'accept');
+  assert.equal(matched, true);
+  assert.deepEqual(memory.facts, ['lava kills']);
+  assert.deepEqual(memory.suggested.facts, [], 'and it leaves the queue');
+  assert.equal(originOf(memory, 'lava kills'), 'model', 'approving is not authoring');
+});
+
+test('discarding a proposal removes it WITHOUT remembering it', () => {
+  const proposed = applyModelUpdate({ facts: [] }, { facts: ['lava kills'] }, 'review');
+  const { memory, matched } = decideSuggestedFact(proposed, 'lava kills', 'discard');
+  assert.equal(matched, true);
+  assert.deepEqual(memory.facts, [], 'the whole point');
+  assert.deepEqual(memory.suggested.facts, []);
+});
+
+test('a decision about something that was never proposed is reported as unmatched', () => {
+  // Same 200 for "done" and "there was nothing there" would let a stale panel report a decision
+  // that was never recorded.
+  const { matched, memory } = decideSuggestedFact({ facts: ['a'], suggested: { facts: ['b'] } }, 'c', 'accept');
+  assert.equal(matched, false);
+  assert.deepEqual(memory.facts, ['a']);
+  assert.deepEqual(memory.suggested.facts, ['b'], 'and nothing else was disturbed');
+});
+
+test('the proposed summary is decided separately from the facts', () => {
+  const m = { summary: 'old', facts: [], suggested: { summary: 'new', facts: ['x'] } };
+  const accepted = decideSuggestedSummary(m, 'accept');
+  assert.equal(accepted.memory.summary, 'new');
+  assert.equal(accepted.memory.suggested.summary, null);
+  assert.deepEqual(accepted.memory.suggested.facts, ['x'], 'the fact queue is untouched');
+  const discarded = decideSuggestedSummary(m, 'discard');
+  assert.equal(discarded.memory.summary, 'old');
+  assert.equal(discarded.memory.suggested.summary, null);
+});
+
+test('under review the remember tool queues instead of saving, and says so', () => {
+  const r = addModelFact({ facts: [] }, 'the map is 512 studs', 'review');
+  assert.equal(r.outcome, 'suggested');
+  assert.deepEqual(r.memory.facts, []);
+  assert.deepEqual(r.memory.suggested.facts, ['the map is 512 studs']);
+});
+
+test('the proposal queue is bounded', () => {
+  const many = Array.from({ length: SUGGESTED_MAX + 6 }, (_, i) => `proposal ${i}`);
+  const m = applyModelUpdate({ facts: [] }, { facts: many }, 'review');
+  assert.ok(m.suggested.facts.length <= SUGGESTED_MAX, `queue ran to ${m.suggested.facts.length}`);
+});
+
+// ==========================================================================================
+// WHO SAID IT
+// ==========================================================================================
+
+test('a fact the person wrote, a fact the model wrote and a fact nobody attributed are three different answers', () => {
+  const legacy = normaliseMemory({ facts: ['written by an older deploy'] });
+  assert.equal(originOf(legacy, 'written by an older deploy'), null, 'unrecorded is null, never a default');
+
+  const mine = applyUserEdit(legacy, { facts: ['written by an older deploy', 'I added this one'] });
+  assert.equal(originOf(mine, 'I added this one'), 'user');
+  assert.equal(originOf(mine, 'written by an older deploy'), 'user', 'a fact present in a save is one the user stands behind');
+
+  const theirs = applyModelUpdate({ facts: [] }, { facts: ['the model noticed this'] }, 'auto');
+  assert.equal(originOf(theirs, 'the model noticed this'), 'model');
+});
+
+test('correcting one fact does not claim authorship of the model fact next to it', () => {
+  const stored = applyModelUpdate({ facts: [] }, { facts: ['doors use TweenService', 'lava kills'] }, 'auto');
+  const edited = applyUserEdit(stored, { facts: ['doors use TweenService', 'lava kills instantly'] });
+  assert.equal(originOf(edited, 'doors use TweenService'), 'model', 'untouched, so still theirs');
+  assert.equal(originOf(edited, 'lava kills instantly'), 'user', 'rewritten, so now yours');
+});
+
+test('an origin for a fact that is gone is dropped, and one for a fact that is not there is never adopted', () => {
+  const m = normaliseMemory({
+    facts: ['still here'],
+    origins: { 'still here': 'model', 'deleted long ago': 'model', __proto__: 'user', 'still here ': 'user' },
+  });
+  assert.deepEqual(Object.keys(m.origins), ['still here']);
+  assert.equal(originOf(m, 'still here'), 'model');
+  assert.equal(Object.getPrototypeOf(m.origins), Object.prototype, 'the map is a plain object, not a polluted one');
+  assert.equal(({}).toString(), '[object Object]', 'and nothing global was touched');
+});
+
+test('an origin value nobody defined is dropped rather than trusted', () => {
+  const m = normaliseMemory({ facts: ['x'], origins: { x: 'anthropic' } });
+  assert.equal(originOf(m, 'x'), null, 'an unknown author is an unknown author');
+});
+
+test('a user edit does not silently answer the review queue', () => {
+  const pending = applyModelUpdate({ facts: ['a'] }, { facts: ['b'] }, 'review');
+  const edited = applyUserEdit(pending, { facts: ['a', 'c'] });
+  assert.deepEqual(edited.suggested.facts, ['b'], 'the proposal still needs a decision');
+});
+
+test('a user edit that writes the proposed fact by hand takes it out of the queue', () => {
+  // Otherwise the panel asks you to decide about a fact that is already on the screen above it.
+  const pending = applyModelUpdate({ facts: ['a'] }, { facts: ['b'] }, 'review');
+  const edited = applyUserEdit(pending, { facts: ['a', 'B'] });
+  assert.deepEqual(edited.suggested.facts, []);
+  assert.equal(originOf(edited, 'B'), 'user');
+});
+
+test('the fingerprint is the identity used everywhere, and it ignores case and reflow', () => {
+  assert.equal(factFingerprint('Doors  use\n TweenService'), factFingerprint('doors use tweenservice'));
+  assert.equal(normaliseFact('  spaced   out  '), 'spaced out');
+  assert.equal(normaliseFact(42), null);
+});
+
+test('emptiness counts a pending proposal — it is waiting on the user', () => {
+  assert.equal(isMemoryEmpty({ summary: null, facts: [] }), true);
+  assert.equal(isMemoryEmpty({ summary: null, facts: [], suggested: { summary: null, facts: ['x'] } }), false);
+});
+
+test('storage written before any of this existed reads back as a complete memory', () => {
+  // The DO holds `{ summary, facts }` rows written by an older deploy. A reader that assumed the
+  // new fields would throw on the first project anyone opens.
+  const m = normaliseMemory({ summary: 'old shape', facts: ['a'] });
+  assert.deepEqual(m.suggested, { summary: null, facts: [] });
+  assert.deepEqual(m.origins, {});
 });

@@ -4207,12 +4207,12 @@
       "versions": 47
     },
     {
-      "url": "https://github.com/sparkiyy/Compo",
+      "url": "https://github.com/creditiyy/Compo",
       "category": "registry-package",
       "kind": "repo",
       "origin": "registry:wally",
       "declaredLicence": "MIT",
-      "registryName": "sparkiyy/compo",
+      "registryName": "creditiyy/compo",
       "versions": 3
     },
     {
@@ -9463,12 +9463,12 @@
       "versions": 7
     },
     {
-      "url": "https://github.com/teakzc/sparkle",
+      "url": "https://github.com/teakzc/creditle",
       "category": "registry-package",
       "kind": "repo",
       "origin": "registry:pesde",
       "declaredLicence": "MIT",
-      "registryName": "teakzc/sparkle",
+      "registryName": "teakzc/creditle",
       "versions": 2
     },
     {

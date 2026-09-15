@@ -1,7 +1,7 @@
 // DiscordDO — singleton. Who on Discord may spend which Apple account, and the progress pusher.
 //
 // THE SECURITY QUESTION THIS OBJECT ANSWERS: a Discord user id is just a number in a webhook body.
-// Before any command can spend an account's Sparks, that Discord user must have PROVED they own
+// Before any command can spend an account's Credits, that Discord user must have PROVED they own
 // the Apple account. The proof is a code that only a signed-in owner of the account can mint:
 //
 //   1. Signed in to Apple, on a project you own, you press Connect Discord. The worker checks

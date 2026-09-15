@@ -148,7 +148,7 @@ true.** Gate 14 is about third-party comparative inference through AI Gateway. T
 production core model — `@cf/zai-org/glm-5.3-flash` on the keyless `env.AI` binding —
 works today, and was driven end to end this session through the real product path.
 
-What actually blocks them is the free plan's **daily Spark allowance**, which this
+What actually blocks them is the free plan's **daily Credit allowance**, which this
 session spent on the golden creation test (60 of 60). It resets at
 2026-09-02T00:00:00Z. §25 forbids raising the cap and §33 forbids purchasing, so both
 are **quota-blocked, not capability-blocked** — a distinction worth keeping, because one
@@ -197,7 +197,7 @@ the live SessionDO, the live database.
 | `resume` | answered with `run_state` — it had been declared in the protocol and silently unhandled |
 | after reconnect | 32 messages, quota state identical |
 
-Costs no Sparks, which is why it ran with the daily allowance at zero: only starting a
+Costs no Credits, which is why it ran with the daily allowance at zero: only starting a
 run spends quota. `evidence/2026-09-01-persistence-reconnect.md`.
 
 **What that leaves open, stated rather than glossed:** Studio dropping mid-run,
@@ -215,7 +215,7 @@ inside this environment and the other two are not.**
 | §11 gate | state |
 |---|---|
 | historical exposed live credentials invalidated | **HUMAN-ONLY.** Two password changes in the Supabase dashboard; `BLOCKERS.md` §3 has the exact steps. §5.1 forbids merging until then, and that is why PR #1 is still Draft |
-| two fresh creation exercises demonstrate generality | **one done.** The second stopped on the daily Spark cap, which §25 forbids raising — it waits for the reset, not for a purchase |
+| two fresh creation exercises demonstrate generality | **one done.** The second stopped on the daily Credit cap, which §25 forbids raising — it waits for the reset, not for a purchase |
 | no unresolved release-blocking critic finding | **one pass run, findings fixed, no confirmation pass yet** |
 
 Everything else in §11 is met and was checked rather than assumed: CI green on the
@@ -246,7 +246,7 @@ second exercise on a different shape would test. A fresh creation
 request went through the deployed Worker, real Supabase auth, the keyless
 `@cf/zai-org/glm-5.3-flash` path, the Golem router in product mode Agent, Golem's own
 tools, and the paired Studio plugin into live place 116648235878426. 18 tool calls,
-212 s, 49 Sparks. Claude wrote the user's sentence and nothing else.
+212 s, 49 Credits. Claude wrote the user's sentence and nothing else.
 
 It produced a `ParkourCourse` of 21 parts and two `--!strict` scripts (94 and 96
 lines), and it **read the existing project before writing** — which changed what it
@@ -269,7 +269,7 @@ explanation. `evidence/2026-09-01-golden-creation-parkour.md`.
 
 **§9.1 wants two exercises across different game shapes. This is one.** The second is
 **quota-blocked, not capability-blocked**: the run cost 49 of the free plan's 60 daily
-Sparks. §25 forbids raising the cap, so it waits for the daily reset rather than for a
+Credits. §25 forbids raising the cap, so it waits for the daily reset rather than for a
 purchase.
 
 ## Tally
@@ -461,7 +461,7 @@ candidates, most false positives, two real.
 
 ### The second creation exercise (§11 gate 2) — PARTIAL, and the cost it revealed
 
-Run 2026-09-02 at the Spark reset. An ore-mining tycoon loop, the simulator family against
+Run 2026-09-02 at the Credit reset. An ore-mining tycoon loop, the simulator family against
 the first exercise's parkour: economy, per-player state, a carry limit, persistence, a HUD
 and a purchase. Golem checkpointed, wrote server, client and HUD Luau, playtested, read its
 own output and iterated on `OreTycoonServer` twice more — then **hit the 16-step limit and
@@ -471,10 +471,10 @@ stopped**.
 family, which is what the gate is about. It does not show a working feature, and the first
 exercise was only accepted because the finished result was driven and verified. That
 verification was impossible here: the Studio MCP bridge disconnected, the run took the whole
-Spark allowance, and the local `ADMIN_KEY` is stale against the deployed secret.
+Credit allowance, and the local `ADMIN_KEY` is stale against the deployed secret.
 
-**The cost is the finding.** 60 Sparks — the entire free daily allowance — for one request
-that did not finish, against a published *"Agent · 4 sparks · ≈15 requests a free day"*.
+**The cost is the finding.** 60 Credits — the entire free daily allowance — for one request
+that did not finish, against a published *"Agent · 4 credits · ≈15 requests a free day"*.
 Corroborated by the ledger: 60/17 events today, 60/23 yesterday, 62/38 on the 30th.
 
 Earlier the same day I corrected the Plan figure and wired a CI guard enforcing the whole
@@ -517,7 +517,7 @@ written down, because reporting only failures would make an audit look like faul
 
 | claim | verdict |
 |---|---|
-| a Plan request costs 1 spark | **wrong** — 2, from `ceil(43/30)`. In six places, plus three inside the calculator |
+| a Plan request costs 1 credit | **wrong** — 2, from `ceil(43/30)`. In six places, plus three inside the calculator |
 | the modes are Clay, Stone, Rune | **wrong** — those are internal identities `packages/shared` forbids surfacing. 96 occurrences |
 | quota resets on a rolling 24h clock | **wrong** — `QuotaDO` fixes midnight UTC for everyone |
 | the Privacy Policy will be updated before an opt-in program exists | **wrong** — the toggle already ships. HUMAN-ONLY |

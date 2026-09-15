@@ -15,6 +15,9 @@ export const PROJECT_COLUMNS =
 
 export type ProjectScope = 'active' | 'archived';
 
+/** The scopes a stored preference is checked against. See lib/view-state.ts for why that matters. */
+export const PROJECT_SCOPES = ['active', 'archived'] as const;
+
 /**
  * Which query keys hold a project list.
  *
@@ -24,3 +27,21 @@ export type ProjectScope = 'active' | 'archived';
  * user a project they just archived.
  */
 export const PROJECT_LIST_KEYS = [['projects'], ['projects-archived'], ['projects-nav']] as const;
+
+/**
+ * Which scope the dashboard should actually show, given the one it remembered.
+ *
+ * The Archived tab appears only once something is in it — an always-present, always-empty tab is
+ * chrome. That is fine until the scope is REMEMBERED: restore 'archived' on a dashboard with
+ * nothing archived and the tab strip does not render, so the view is stuck on an empty list with
+ * no control anywhere on the page to leave it. The remembered preference has to yield to what can
+ * actually be displayed.
+ *
+ * A count of `null` means the archived list has not answered yet. The scope is left alone until it
+ * does: flipping to 'active' on a not-yet-loaded list would move the tab under the user a moment
+ * after they arrived, which is the same defect in the opposite direction.
+ */
+export function scopeToShow(stored: ProjectScope, archivedCount: number | null): ProjectScope {
+  if (stored === 'archived' && archivedCount === 0) return 'active';
+  return stored;
+}

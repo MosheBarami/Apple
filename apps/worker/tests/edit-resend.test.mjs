@@ -85,7 +85,12 @@ test('the new run starts only after the history is cut', () => {
 });
 
 test('the edited text is capped like any other prompt', () => {
-  assert.match(code, /msg\.text\.slice\(0, 8000\)/);
+  // Was pinned to the literal 8000. The cap is now the shared MESSAGE_MAX_CHARS constant, which is
+  // better code and broke a test about the CAP for a reason about its spelling. Assert both halves:
+  // the edit path slices by the constant, and the constant is still 8000.
+  assert.match(code, /msg\.text\.slice\(0, MESSAGE_MAX_CHARS\)/);
+  const shared = readFileSync(join(REPO, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+  assert.match(shared, /export const MESSAGE_MAX_CHARS = 8000;/);
 });
 
 // ----------------------------------------------------------------- the protocol ---

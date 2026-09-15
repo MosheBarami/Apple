@@ -139,7 +139,7 @@ export function RoadmapPage() {
       disabled={suggest.isPending || projectId === ''}
       title="Reads your place and picks the next few things worth doing."
     >
-      <Icon d={PATH.sparkle} size={15} />
+      <Icon d={PATH.creditle} size={15} />
       {suggest.isPending ? 'Reading your place…' : 'Suggest next milestone'}
     </button>
   );

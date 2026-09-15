@@ -15,6 +15,7 @@ import {
   type ModelTestResponse,
   type RagHit,
 } from '../lib/api';
+import { formatNumber } from '../lib/format';
 import { MOCK_MODE } from '../lib/mock';
 
 const ADMIN_KEY_STORAGE = 'apple-admin-key';
@@ -99,7 +100,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
             <div>
               <dt>Today</dt>
               <dd>
-                {d.state.dayNeurons.toLocaleString()} neurons ({dayUsedPct}% of today&rsquo;s ceiling)
+                {formatNumber(d.state.dayNeurons)} neurons ({dayUsedPct}% of today&rsquo;s ceiling)
                 <div className="meter" aria-hidden="true">
                   <span style={{ width: `${dayUsedPct}%` }} />
                 </div>
@@ -107,7 +108,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
             </div>
             <div>
               <dt>Free allowance left today</dt>
-              <dd>{d.state.freeRemainingToday.toLocaleString()} neurons</dd>
+              <dd>{formatNumber(d.state.freeRemainingToday)} neurons</dd>
             </div>
             <div>
               <dt>Worst case this month</dt>
@@ -144,7 +145,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
                 <tr key={row.day}>
                   <td>{row.day}</td>
                   <td>{row.calls}</td>
-                  <td>{row.neurons.toLocaleString()}</td>
+                  <td>{formatNumber(row.neurons)}</td>
                   <td>{row.billableUsd > 0 ? usd(row.billableUsd) : '—'}</td>
                 </tr>
               ))}
@@ -163,7 +164,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
                   <td>{row.kind}</td>
                   <td className="mono-cell">{row.model.split('/').pop()}</td>
                   <td>{row.calls}</td>
-                  <td>{row.neurons.toLocaleString()}</td>
+                  <td>{formatNumber(row.neurons)}</td>
                 </tr>
               ))}
               {d.breakdown.length === 0 && <tr><td colSpan={4} className="muted">Nothing yet.</td></tr>}

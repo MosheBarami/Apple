@@ -1,16 +1,21 @@
 /* ==========================================================================
    APPLE — landing surface.
 
-   Blue-black ground, a blue→violet accent ramp, and display type set in Archivo
-   at font-stretch:118%. Owner-supplied direction; the exact values and the
-   artifact they came from are quoted in docs/DECISIONS.md (ADR-020).
+   DAYLIGHT BASEPLATE, and it SUPERSEDES the blue-black ground with the
+   blue→violet ramp and the Archivo display type set at font-stretch:118%. The
+   owner's words were that the page was too dark and felt like a prototype, and
+   a dark page whose every headline is condensed uppercase is most of both.
 
-   THE STRETCH AXIS IS LOAD-BEARING. Archivo is a variable font with a width
-   axis, and every display line here sets 118%. At the default 100% the same
-   markup reads as an ordinary grotesque and the design is simply gone. If the
-   webfont fails to load, the fallback stack cannot honour the axis — which is
-   why the fallback is a condensed system face rather than a neutral one, so the
-   unstyled frame is at least the right shape.
+   What replaced it: a pale Roblox baseplate in daylight — a bevelled stud
+   surface that drifts about a pixel a second while one slow light crosses it —
+   with sentence-case Rubik over the top and a single warm line in the
+   headline. Two themes now, light-first, because the un-stamped default is
+   what most visitors get and it was the state the old file never declared.
+
+   THE WIDTH AXIS IS GONE, deliberately. `--stretch` and every
+   `font-stretch: var(--stretch)` are deleted rather than left pointing at a
+   family that has no `wdth` axis, which is the dead-declaration failure
+   global.css already records for Fraunces axes left on Archivo.
 
    SUPERSEDED: "one viewport, no scroll". This surface used to hold the whole
    proposition in a single frame, with how-it-works and pricing deliberately
@@ -29,63 +34,204 @@
    1. Tokens
    -------------------------------------------------------------------------- */
 
+/* DAYLIGHT BASEPLATE. A Roblox baseplate seen in daylight: a bevelled stud
+   surface drifting about a pixel a second, with one slow light crossing it.
+
+   EVERY COLOUR IS DECLARED HERE, ON BARE `:root`, FIRST. That is not a style
+   preference, it is the bug this stylesheet's neighbour already recorded: a
+   token whose only declaration sits inside `@media (prefers-color-scheme: dark)`
+   simply does not exist for the visitor who has expressed no preference, which
+   is most visitors. So the light palette is the unconditional one and dark is
+   an override, twice — once for the system preference and once for an explicit
+   stamp. Those two dark blocks are the drift hazard global.css got caught by,
+   so apps/site/tests/living-background.test.mjs now asserts they declare the
+   same token names with the same values. They cannot silently disagree again.
+
+   THE FIELD PUSHES ONE WAY. In light every decorative layer may only lighten,
+   except --stud-edge; in dark every layer may only darken, except --catch. So
+   each theme has exactly one knob that can walk the backdrop toward the type,
+   and --field-bound is COMPUTED from it — the worst pixel the animation can
+   produce under the headline:
+     light: --sky-high #c3d8f2 under --stud-edge a.07                -> #b6cbe4
+     dark : --sky-low  #262e40 under --stud-top a.045, --catch a.04  -> #383e4e
+   Change either alpha and recompute the bound. It is arithmetic, not taste.
+   Contrast on that worst pixel, light: ink 10.75, ink-2 6.91, link 5.25,
+   muted 4.94, accent-ink 4.81, good 4.64. Dark: ink 8.60, ink-2 6.05,
+   link 5.74, accent 5.44, good 6.21, muted 5.17. All clear 4.5:1. */
 :root {
+  color-scheme: light dark;
+
   /* --- ground and surfaces --------------------------------------------- */
-  --ground: #080a0f; /* page base */
-  --ground-deep: #0a0c13; /* the deepest inset, rails */
-  --surface: #10131c; /* every card face */
+  --ground: #edf1f7; /* page base below the hero */
+  --ground-2: #e4ebf6; /* alternating band */
+  --surface: #ffffff; /* card and panel faces */
+  --surface-2: #f4f7fc; /* inset wells */
 
-  /* --- ink -------------------------------------------------------------
-     Ratios are against --ground unless noted, computed rather than guessed;
-     the landing e2e measures every text node against what is actually behind
-     it, so a tone that only passes on the ground is not good enough for type
-     sitting on --surface. */
-  --ink: #f3f5f9; /* 16.8:1 — body and card titles */
-  --ink-bright: #ffffff; /* 18.4:1 — the hero's first line only */
-  --ink-2: #b9c0cf; /* 9.4:1 — card body copy */
-  --muted: #8d95a8; /* 5.9:1 — section copy, all mono metadata */
-  --on-gradient: #cfe0f7; /* the hero sub, over the blue backdrop */
+  /* --- the hero sky ----------------------------------------------------- */
+  --sky-high: #c3d8f2;
+  --sky-mid: #dce7f6; /* the band the headline sits in */
+  --sky-low: #f6e8d6; /* warm horizon */
+  /* Hue-matched, NOT `transparent`. `transparent` is rgba(0,0,0,0) and Safari
+     fringes it grey when it interpolates a gradient premultiplied. */
+  --sky-0: rgba(246, 232, 214, 0);
+  --field-bound: #b6cbe4; /* the contrast contract, computed above */
 
-  /* --- the accent ramp -------------------------------------------------- */
-  --cyan: #38b6ff;
-  --blue: #2f7dff;
-  --blue-soft: #6fa8ff; /* links, eyebrows, step numerals — 8.2:1 on --ground */
+  /* --- the plate -------------------------------------------------------- */
+  /* MEASURED ON THE RENDERED PAGE, not chosen from the table. At a .72 cap the
+     44px grid reads as bright polka dots on pale blue and competes with the
+     headline for attention — loud, and the wrong kind of Roblox. At .34 the
+     same geometry reads as moulded plastic catching the light, which is what a
+     stud is. This alpha is NOT in the --field-bound arithmetic: the cap only
+     ever lightens a light backdrop, so lowering it moves every contrast ratio
+     the safe way and the bound below still holds. */
+  --stud-top: rgba(255, 255, 255, 0.34); /* stud cap */
+  --stud-edge: rgba(16, 24, 35, 0.07); /* stud bevel shadow — the light knob */
+  --stud-seam: rgba(16, 24, 35, 0.035); /* 1px face grid */
+  --bloom: rgba(255, 244, 226, 0.6); /* warm haze */
+  --catch: rgba(255, 252, 244, 0.55); /* the moving light */
 
-  /* THE DESIGN'S RAMP, DARKENED, BECAUSE THIS ONE CARRIES WHITE TEXT.
-     The artifact fills its primary button with #38b6ff → #2f7dff → #8b5cf6 and
-     labels it in white. Measured against white those stops are 2.26:1, 3.82:1
-     and 4.23:1 — every one of them under the 4.5:1 a 14px label needs, and the
-     brightest barely half of it. It looks completely fine, which is why the
-     rendered-pixel audit in tests/e2e/landing.spec.ts is what caught it and no
-     palette table would have.
+  /* --- ink -------------------------------------------------------------- */
+  --ink: #101823; /* headlines, card titles */
+  --ink-2: #2e3a4e; /* body copy */
+  --muted: #454f66; /* metadata, ledes */
 
-     Same hue path, same 135° sweep, shifted dark enough to carry a label: the
-     worst point of this interpolation measures 5.16:1. The bright stops above
-     stay as marks and fills — the eyebrow dot, the list bullets, the focus ring
-     — where nothing sits on top of them. The design's violet has no token of
-     its own: it appears only as a tuned end stop inside two gradients, and a
-     token nothing references is a decision nobody made. */
-  --btn-grad: linear-gradient(135deg, #2563eb, #7c3aed);
+  /* --- accent ----------------------------------------------------------- */
+  --accent: #b0470c; /* fills */
+  --accent-ink: #8a3709; /* the accent AS TEXT — darker, because it is read */
+  --accent-on: #fff6ee; /* a label on an accent fill: 5.24:1 */
+  --accent-soft: rgba(176, 71, 12, 0.1);
+  --link: #1e40af; /* links only */
+  --good: #1c5e41; /* pilot lamp, step ticks */
+  --good-halo: rgba(28, 94, 65, 0.34);
+  --good-0: rgba(28, 94, 65, 0);
 
-  /* --- lines ------------------------------------------------------------ */
-  --line: rgba(255, 255, 255, 0.055); /* section seams */
-  --line-2: rgba(255, 255, 255, 0.085); /* card borders */
-  --line-3: rgba(255, 255, 255, 0.13); /* interactive borders */
+  /* --- lines and shadow -------------------------------------------------
+     A box-shadow LIST contains commas, so the shadow itself cannot be a
+     themed token without the two themes each restating the whole list.
+     Tokenise the colour, not the shadow. */
+  --line: rgba(16, 24, 35, 0.09); /* section seams */
+  --line-2: rgba(16, 24, 35, 0.14); /* card borders */
+  --line-3: rgba(16, 24, 35, 0.22); /* interactive borders */
+  --shadow-ink: rgba(16, 24, 35, 0.07);
+  --shadow-ink-2: rgba(16, 24, 35, 0.06);
+  --header-bg: rgba(237, 241, 247, 0.84);
 
-  /* --- type ------------------------------------------------------------- */
-  --font-display: 'Archivo', 'Arial Narrow', 'Helvetica Neue Condensed', sans-serif;
-  --font-sans: 'Figtree', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* --- type -------------------------------------------------------------
+     TWO FAMILIES, AND NO WIDTH AXIS. Rubik's rounded terminals rhyme with a
+     stud's cylinder — the bit of cartoon the direction wants — on plain
+     grotesque bones. Rubik has no `wdth` axis, so `--stretch` is DELETED
+     rather than left dangling: a `font-stretch` a family cannot honour is the
+     dead-declaration failure global.css already records for Fraunces axes
+     left on Archivo. Dropping Archivo's `wdth,wght` pair is also most of a
+     75 kB font saving. */
+  --font-display: 'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Rubik', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
-  --stretch: 118%;
 
   /* --- rhythm ----------------------------------------------------------- */
   --gutter: clamp(1.1rem, 4vw, 1.6rem);
+  --stud: 44px;
   --r-sm: 9px;
   --r-md: 14px;
   --r-lg: 18px;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur: 220ms;
+  --ease: cubic-bezier(0.22, 0.68, 0.28, 1);
+  --ease-soft: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-ui: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 160ms;
+
+  /* --- the motion budget, in one place ----------------------------------
+     Primes, so the arrangement never resolves into a loop a reader can catch:
+     LCM(43, 79, 62) is 210,854s, a little over 58 hours. `alternate` is what
+     doubles the bloom's 31s into a real 62s period, so somebody present for
+     thirty seconds never sees it return to where it started. */
+  --dur-bloom: 31s;
+  --dur-studs: 43s;
+  --dur-catch: 79s;
+
+  /* The plate is at full strength across the top of the hero and gone by the
+     time the copy ends. 46% held it at full strength straight through the
+     headline; 32% puts the falloff where the reader starts reading. */
+  --field-mask: radial-gradient(128% 96% at 50% 0%, #000 0%, #000 32%, transparent 88%);
 }
+
+/* THE SYSTEM-DARK OVERRIDE. `:not([data-theme='light'])` is load-bearing: it
+   is what lets an explicit light stamp beat a dark operating system, without
+   the light palette having to be written out a second time. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground: #0e1727;
+    --ground-2: #121d31;
+    --surface: #1b2334;
+    --surface-2: #1d2536;
+    --sky-high: #0b1322;
+    --sky-mid: #16243b;
+    --sky-low: #262e40;
+    --sky-0: rgba(38, 46, 64, 0);
+    --field-bound: #383e4e;
+    --stud-top: rgba(255, 255, 255, 0.045);
+    --stud-edge: rgba(0, 0, 0, 0.3);
+    --stud-seam: rgba(198, 212, 240, 0.03);
+    --bloom: rgba(42, 28, 16, 0.5);
+    --catch: rgba(255, 226, 180, 0.04);
+    --ink: #f1f5fb;
+    --ink-2: #c6d0e0;
+    --muted: #aab5c9;
+    --accent: #ffa457;
+    --accent-ink: #ffa457;
+    --accent-on: #17110a;
+    --accent-soft: rgba(255, 164, 87, 0.14);
+    --link: #93c2f7;
+    --good: #4ade9b;
+    --good-halo: rgba(74, 222, 155, 0.3);
+    --good-0: rgba(74, 222, 155, 0);
+    --line: rgba(198, 212, 240, 0.1);
+    --line-2: rgba(198, 212, 240, 0.15);
+    --line-3: rgba(198, 212, 240, 0.24);
+    --shadow-ink: rgba(0, 0, 0, 0.35);
+    --shadow-ink-2: rgba(0, 0, 0, 0.4);
+    --header-bg: rgba(14, 23, 39, 0.84);
+  }
+}
+
+/* THE EXPLICIT DARK STAMP. Token-for-token identical to the block above, and
+   the test asserts that rather than trusting it. */
+:root[data-theme='dark'] {
+  --ground: #0e1727;
+  --ground-2: #121d31;
+  --surface: #1b2334;
+  --surface-2: #1d2536;
+  --sky-high: #0b1322;
+  --sky-mid: #16243b;
+  --sky-low: #262e40;
+  --sky-0: rgba(38, 46, 64, 0);
+  --field-bound: #383e4e;
+  --stud-top: rgba(255, 255, 255, 0.045);
+  --stud-edge: rgba(0, 0, 0, 0.3);
+  --stud-seam: rgba(198, 212, 240, 0.03);
+  --bloom: rgba(42, 28, 16, 0.5);
+  --catch: rgba(255, 226, 180, 0.04);
+  --ink: #f1f5fb;
+  --ink-2: #c6d0e0;
+  --muted: #aab5c9;
+  --accent: #ffa457;
+  --accent-ink: #ffa457;
+  --accent-on: #17110a;
+  --accent-soft: rgba(255, 164, 87, 0.14);
+  --link: #93c2f7;
+  --good: #4ade9b;
+  --good-halo: rgba(74, 222, 155, 0.3);
+  --good-0: rgba(74, 222, 155, 0);
+  --line: rgba(198, 212, 240, 0.1);
+  --line-2: rgba(198, 212, 240, 0.15);
+  --line-3: rgba(198, 212, 240, 0.24);
+  --shadow-ink: rgba(0, 0, 0, 0.35);
+  --shadow-ink-2: rgba(0, 0, 0, 0.4);
+  --header-bg: rgba(14, 23, 39, 0.84);
+}
+
+/* The stamps themselves, so form controls and scrollbars follow the page. */
+:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='light'] { color-scheme: light; }
 
 /* --------------------------------------------------------------------------
    2. Reset and base
@@ -120,11 +266,11 @@ body {
 }
 
 ::selection {
-  background: rgba(47, 125, 255, 0.32);
+  background: var(--accent-soft);
 }
 
 a {
-  color: var(--blue-soft);
+  color: var(--link);
   text-decoration: none;
 }
 
@@ -136,7 +282,7 @@ a:hover {
    the page and asserts a ring appears; :focus-visible keeps it off mouse
    clicks without keeping it off keyboards. */
 :focus-visible {
-  outline: 2px solid var(--cyan);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 4px;
 }
@@ -150,12 +296,15 @@ svg {
    3. Type
    -------------------------------------------------------------------------- */
 
+/* CASE IS A SYSTEM, and the blanket `text-transform: uppercase` that used to
+   sit here was the single largest reason this page sounded like the competitor.
+   Sentence case for sentences; uppercase survives only as a LABEL — the
+   wordmark, an eyebrow, a mode name — where it is doing work no sentence does. */
 .ap-display {
   font-family: var(--font-display);
-  font-stretch: var(--stretch);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: -0.022em;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.021em;
   text-wrap: balance;
 }
 
@@ -166,7 +315,7 @@ svg {
   margin: 0 0 0.6rem;
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--blue-soft);
+  color: var(--link);
 }
 
 /* A CHILD ELEMENT, NOT `::before`. The dot is the brightest thing inside the
@@ -180,7 +329,7 @@ svg {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--blue);
+  background: var(--accent);
   flex: none;
 }
 
@@ -211,7 +360,7 @@ svg {
   gap: 1.1rem;
   padding: 0.8rem var(--gutter);
   border-bottom: 1px solid var(--line);
-  background: rgba(8, 10, 15, 0.84);
+  background: var(--header-bg);
   backdrop-filter: blur(14px);
 }
 
@@ -221,7 +370,6 @@ svg {
   gap: 0.55rem;
   flex: none;
   font-family: var(--font-display);
-  font-stretch: var(--stretch);
   font-weight: 800;
   font-size: 1.06rem;
   text-transform: uppercase;
@@ -275,7 +423,7 @@ svg {
   padding: 0.62rem 1.05rem;
   border: 1px solid var(--line-3);
   border-radius: var(--r-sm);
-  background: transparent;
+  background: var(--surface);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 0.86rem;
@@ -285,25 +433,26 @@ svg {
 }
 
 .ap-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
   border-color: var(--line-3);
   text-decoration: none;
 }
 
 .ap-btn--primary {
   border-color: transparent;
-  background: var(--btn-grad);
-  color: #fff;
+  /* A FLAT WARM FILL, NOT A RAMP. --btn-grad existed only to carry white text
+     at 5.16:1 at its worst interpolated point, which is a number somebody had
+     to sample pixels to find. A solid --accent carries --accent-on at 5.24:1
+     with nothing to interpolate and nothing to re-audit, and hover no longer
+     has to avoid walking its own contrast down. */
+  background: var(--accent);
+  color: var(--accent-on);
   font-weight: 700;
 }
 
 .ap-btn--primary:hover {
-  /* Brightness UP on a fill that only just clears its contrast floor walks it
-     back down. 1.08 took the worst point of the ramp from 5.16:1 to roughly
-     4.4:1 — a hover state that fails the check the resting state passes. Lift
-     the border instead and leave the fill where it was measured. */
-  background: var(--btn-grad);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 6px 18px var(--accent-soft);
 }
 
 .ap-btn--lg {
@@ -322,18 +471,159 @@ svg {
 
 .ap-hero {
   position: relative;
-  padding: 5rem var(--gutter) 4.5rem;
+  isolation: isolate;
+  padding: clamp(3.25rem, 7vw, 5rem) var(--gutter) clamp(2.75rem, 5vw, 4rem);
   overflow: hidden;
-  background: radial-gradient(
-    ellipse 120% 90% at 50% -10%,
-    #1f5fd0 0%,
-    #123a8a 34%,
-    #0b1733 62%,
-    var(--ground) 88%
+  border-bottom: 1px solid var(--line);
+  /* THE BASE IS THE BOUND, and that is what stops --field-bound being a number
+     in a comment that nothing keeps honest. It is the worst pixel the field can
+     produce — the darkest in light, the lightest in dark — and every contrast
+     ratio in §1 was computed against it. Painting the hero's own base with it
+     means that if a field layer fails to paint at all, what shows through is
+     the case that was already measured, not an untested colour. */
+  background: var(--field-bound);
+}
+
+/* ---------------------------------------------------------- the living field --
+   Four empty spans and no script. This is what stands where a WebGL <canvas>
+   driven by a three.js tag from cdnjs used to: the owner rejected that
+   animation in as many words, and it also made the route's zero-JavaScript
+   claim false. Every layer here is transform and opacity only, so the whole
+   background is three compositor layers and no per-frame paint.
+
+   `contain: layout paint style` — NOT `strict`, which implies size containment,
+   and this element takes its size from `inset: 0` on its containing block. With
+   size containment it would collapse to nothing and the hero would be blank. */
+.ap-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  contain: layout paint style;
+}
+
+.ap-field > * {
+  position: absolute;
+  display: block;
+}
+
+/* L1 — the sky. STATIC, and that is the point: the composition is complete at
+   first paint, so a screenshot, the og render and a reader with reduced motion
+   all get the frame the page was drawn as. The sun sits low-left; the one
+   moving haze is low-right, so they never fight. */
+.ap-field__sky {
+  inset: 0;
+  background:
+    radial-gradient(58% 44% at 24% 78%, var(--sky-low) 0%, var(--sky-0) 64%),
+    linear-gradient(
+      180deg,
+      var(--sky-high) 0%,
+      var(--sky-mid) 48%,
+      var(--sky-low) 86%,
+      var(--ground) 100%
+    );
+}
+
+/* L2 — the bloom. In light it is a near-white warm haze and can only lighten;
+   in dark it is a warm shadow and can only darken. Either way it cannot walk
+   the backdrop toward the type, which is why it is not in --field-bound. */
+.ap-field__bloom {
+  inset: -18% -10%;
+  background: radial-gradient(40% 34% at 70% 64%, var(--bloom) 0%, var(--sky-0) 70%);
+  opacity: 0.62;
+  will-change: transform, opacity;
+  animation: ap-bloom var(--dur-bloom) var(--ease-soft) infinite alternate;
+}
+
+@keyframes ap-bloom {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.62;
+  }
+  to {
+    transform: translate3d(-6%, 3%, 0) scale(1.1);
+    opacity: 0.44;
+  }
+}
+
+/* L3 — the plate. The mask lives on this STATIC wrapper and never on the
+   animated child: a mask applied to an animating element drops it off the
+   compositor on some engines, which is how a pure-CSS background ends up
+   repainting the hero sixty times a second. */
+.ap-field__plate {
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: var(--field-mask);
+  mask-image: var(--field-mask);
+}
+
+/* L4 — the studs. A bright cap high in the cell with its own shadow just below
+   it, which is how a cylinder standing on a square face reads; the cap is
+   listed first so it paints over its own shadow. Inset a full tile on every
+   side so a 44px translate can never expose an edge.
+
+   This is the layer that tells the page apart from every other studded Roblox
+   page: the competitor drifts flat dots. This is a bevelled plastic surface,
+   and a light crosses it. */
+.ap-field__studs {
+  position: absolute;
+  inset: calc(var(--stud) * -1);
+  background-image:
+    radial-gradient(circle at 50% 44%, var(--stud-top) 0 17%, transparent 18%),
+    radial-gradient(circle at 50% 58%, var(--stud-edge) 0 18%, transparent 19%),
+    linear-gradient(to right, var(--stud-seam) 0 1px, transparent 1px),
+    linear-gradient(to bottom, var(--stud-seam) 0 1px, transparent 1px);
+  background-size: var(--stud) var(--stud);
+  will-change: transform;
+  /* `linear` IS MANDATORY. Any easing on a continuously drifting repeating
+     texture puts a visible hitch at the loop seam, twice a period. */
+  animation: ap-stud-drift var(--dur-studs) linear infinite;
+}
+
+/* Exactly ONE tile, so the frame at 43s is pixel-identical to the frame at 0
+   and the loop is seamless by arithmetic rather than by a fade. 44px diagonally
+   in 43s is 1.02 px/s per axis: above about 1.5 px/s a repeating texture reads
+   as scrolling, below about 0.5 px/s it reads as dead.
+
+   The keyframe READS the token, so dropping --stud to 34px on a phone rescales
+   the grid and reslows the drift with no second rule. */
+@keyframes ap-stud-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(var(--stud), var(--stud), 0); }
+}
+
+/* L5 — the catch. One soft light crossing the plate, so the studs brighten as
+   it passes. NO mix-blend-mode: plain alpha over a near-white source only
+   lightens, which is strictly gentler than `screen` and keeps the layer on the
+   compositor. Linear, because light sweeping a surface does not ease — easing
+   makes it hesitate, and a hesitating highlight reads as a loading bug.
+
+   340% of a 46%-wide band over 79s is about 28 px/s at 1440px: fast enough to
+   be a sweep rather than a tint, rare enough to happen roughly once a visit. */
+.ap-field__catch {
+  top: -18%;
+  left: -64%;
+  width: 46%;
+  height: 138%;
+  background: linear-gradient(
+    100deg,
+    var(--sky-0) 0%,
+    var(--catch) 44%,
+    var(--catch) 56%,
+    var(--sky-0) 100%
   );
+  will-change: transform;
+  animation: ap-catch var(--dur-catch) linear infinite;
+}
+
+@keyframes ap-catch {
+  from { transform: translate3d(0, 0, 0) skewX(-11deg); }
+  to { transform: translate3d(340%, 0, 0) skewX(-11deg); }
 }
 
 .ap-hero__inner {
+  position: relative;
+  z-index: 1;
   max-width: 62rem;
   margin: 0 auto;
 }
@@ -344,59 +634,66 @@ svg {
   gap: 0.5rem;
   height: 34px;
   padding: 0 0.7rem;
-  border: 1px solid var(--line-3);
+  border: 1px solid var(--line-2);
   border-radius: 999px;
-  background: rgba(10, 14, 26, 0.55);
-  backdrop-filter: blur(8px);
-  color: #eaf2ff;
+  background: var(--surface);
+  color: var(--ink-2);
   font-size: 0.82rem;
   font-weight: 600;
 }
 
-.ap-badge__dot {
+/* A STATUS LIGHT, NOT A NOTIFICATION. The ring exists for 30% of the cycle and
+   rests for 70%, which reads as equipment idling; a 1–2s pulse demands
+   attention the page has no right to ask for. */
+.ap-badge__dot,
+.ap-live__dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--cyan);
+  background: var(--good);
   flex: none;
+  animation: ap-pilot 3.4s var(--ease-soft) infinite;
+}
+
+@keyframes ap-pilot {
+  0%,
+  70%,
+  100% { box-shadow: 0 0 0 0 var(--good-halo); }
+  86% { box-shadow: 0 0 0 4px var(--good-0); }
 }
 
 .ap-hero h1 {
-  margin: 1.5rem 0 0;
-  font-size: clamp(2.5rem, 7vw, 4.7rem);
-  line-height: 0.92;
+  margin: 1.3rem 0 0;
+  /* 3.05rem is 48.8px at the top of the clamp, under the 3.4rem cap
+     scripts/check-copy.mjs enforces and 1.67x smaller than the competitor's
+     81.6px. The maximum must stay a bare rem immediately before the closing
+     paren — that guard reads the top term, and a calc() there hides the size
+     from it entirely. */
+  font-size: clamp(2.05rem, 4.4vw, 3.05rem);
+  line-height: 1.04;
+  color: var(--ink);
 }
 
 .ap-hero__l1 {
   display: block;
-  color: var(--ink-bright);
-  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.3);
 }
 
-/* Line two is a gradient-clipped phrase. `color: transparent` with a clipped
-   background has no fallback if the clip is unsupported, so the colour is set
-   first and the clip layered over it — an unsupporting browser gets readable
-   pale-blue type rather than an invisible headline. */
+/* SOLID, NOT GRADIENT-CLIPPED. A clipped headline has no fallback colour of its
+   own, and the colour here IS the argument: one warm line on an otherwise cool
+   page, which is the whole accent budget of the hero spent in one place.
+   tests/e2e/landing.spec.ts had an assertion that a background-clip:text
+   element exists, and it went with the gradient. */
 .ap-hero__l2 {
   display: block;
-  color: #c4e8ff;
-  background: linear-gradient(180deg, #f6fcff, #c4e8ff 58%, #e2d8ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-@supports ((-webkit-background-clip: text) or (background-clip: text)) {
-  .ap-hero__l2 {
-    color: transparent;
-  }
+  color: var(--accent-ink);
 }
 
 .ap-hero__sub {
   max-width: 54ch;
   margin: 1.4rem 0 0;
-  font-size: 1.08rem;
-  line-height: 1.62;
-  color: var(--on-gradient);
+  font-size: 1.06rem;
+  line-height: 1.6;
+  color: var(--ink-2);
   text-wrap: pretty;
 }
 
@@ -408,9 +705,9 @@ svg {
 }
 
 .ap-hero__note {
-  margin: 1.1rem 0 0;
-  font-size: 0.8rem;
-  color: #9fb4d4;
+  margin: 0.95rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .ap-chips {
@@ -426,11 +723,16 @@ svg {
   padding: 0.42rem 0.8rem;
   border: 1px solid var(--line-2);
   border-radius: 999px;
-  background: rgba(10, 14, 26, 0.55);
-  backdrop-filter: blur(8px);
-  color: #eaf2ff;
+  background: var(--surface);
+  color: var(--ink-2);
   font-size: 0.83rem;
   font-weight: 500;
+  transition: border-color var(--dur) var(--ease-ui), color var(--dur) var(--ease-ui);
+}
+
+.ap-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* --------------------------------------------------------------------------
@@ -452,7 +754,7 @@ svg {
 
 .ap-section h2 {
   margin: 0 0 0.7rem;
-  font-size: clamp(1.8rem, 3.6vw, 2.7rem);
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
   line-height: 0.98;
   max-width: 24ch;
 }
@@ -526,7 +828,7 @@ svg {
   height: 5px;
   margin-top: 0.42em;
   border-radius: 50%;
-  background: var(--blue);
+  background: var(--accent);
   flex: none;
   align-self: flex-start;
 }
@@ -539,7 +841,7 @@ svg {
   font-family: var(--font-mono);
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--blue-soft);
+  color: var(--link);
   letter-spacing: 0.04em;
 }
 
@@ -558,7 +860,6 @@ svg {
 .ap-model__name {
   margin: 0;
   font-family: var(--font-display);
-  font-stretch: var(--stretch);
   font-size: 1.3rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -582,7 +883,6 @@ svg {
 
 .ap-price__n {
   font-family: var(--font-display);
-  font-stretch: var(--stretch);
   font-size: 2.3rem;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -598,15 +898,15 @@ svg {
 }
 
 .ap-card--featured {
-  border-color: rgba(47, 125, 255, 0.55);
+  border-color: var(--accent);
 }
 
 .ap-pill {
   display: inline-block;
   padding: 0.16rem 0.5rem;
   border-radius: 999px;
-  background: rgba(47, 125, 255, 0.16);
-  color: var(--blue-soft);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -650,12 +950,23 @@ svg {
    12. Motion
    -------------------------------------------------------------------------- */
 
-@keyframes ap-rise {
-  from {
+/* DOWN, NOT UP. The page used to rise from below, which is every SaaS page
+   there has ever been. Things on a baseplate are SET DOWN: in from above, one
+   pixel past, then rest.
+
+   The overshoot is KEYFRAMED rather than carried by a springy bezier, because a
+   cubic-bezier with y > 1 overshoots opacity too, and an element that flashes
+   past opaque is a flicker rather than a settle. */
+@keyframes ap-settle {
+  0% {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translate3d(0, -7px, 0);
   }
-  to {
+  60% {
+    opacity: 1;
+    transform: translate3d(0, 1px, 0);
+  }
+  100% {
     opacity: 1;
     transform: none;
   }
@@ -666,17 +977,49 @@ svg {
    observer that may never fire. A thumbnail, a shared link and a reader with
    scripting off all get the finished page. */
 .ap-in {
-  animation: ap-rise 620ms var(--ease) both;
+  animation: ap-settle 520ms var(--ease) both;
 }
 
+/* A TEXT CARET'S RATE, and a hard step rather than a fade — a fading caret
+   reads as a pulsing dot, not a cursor. It does NOT type: a field that types
+   itself is a claim about a product that is not running on this page, and it is
+   the first thing a visitor recognises from the competitor. The prompt is
+   already written and the caret rests at the end of it. */
+@keyframes ap-blink {
+  0%,
+  50% { opacity: 1; }
+  50.01%,
+  100% { opacity: 0; }
+}
+
+/* THE WHOLE MOTION BUDGET, STOPPED IN ONE PLACE.
+
+   Every field layer's resting declaration equals its `from` keyframe, so
+   `animation: none` lands them exactly on the first still frame — which is the
+   frame the design was drawn as, complete, with nothing fading in.
+
+   That is NOT true of `.ap-in`, which is `both`-filled from opacity 0 and would
+   park the entire hero invisible. It is collapsed to an instant instead. The
+   distinction is the reason this block lists them separately rather than
+   reaching for one blanket `*{animation:none}`. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 
-  /* Not `animation: none` on a `both`-filled entrance — that would leave the
-     element at its from-state, invisible. The animation is collapsed to an
-     instant instead, so the finished frame is what renders. */
+  .ap-field__bloom,
+  .ap-field__studs,
+  .ap-field__catch,
+  .ap-badge__dot,
+  .ap-live__dot {
+    animation: none !important;
+  }
+
+  .ap-caret {
+    animation: none;
+    opacity: 1;
+  }
+
   .ap-in {
     animation-duration: 1ms;
     animation-delay: 0ms !important;
@@ -686,6 +1029,15 @@ svg {
   *::before,
   *::after {
     transition-duration: 1ms !important;
+  }
+}
+
+/* Decoration is not information. In a forced-colours mode the field carries no
+   meaning a reader would miss, and every gradient in it would be overridden to
+   a flat system colour anyway. */
+@media (forced-colors: active) {
+  .ap-field {
+    display: none;
   }
 }
 
@@ -704,8 +1056,8 @@ svg {
   z-index: 100;
   padding: 0.6rem 1rem;
   border-radius: 0 0 var(--r-sm) 0;
-  background: var(--blue);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-on);
   font-weight: 600;
 }
 
@@ -760,7 +1112,7 @@ svg {
   flex-wrap: wrap;
   padding: 0.7rem 0.95rem;
   border-bottom: 1px solid var(--line);
-  background: var(--ground-deep);
+  background: var(--ground-2);
 }
 
 .ap-panel__name {
@@ -797,7 +1149,7 @@ svg {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #35d07f;
+  background: var(--good);
   flex: none;
 }
 
@@ -815,8 +1167,8 @@ svg {
   max-width: min(100%, 32rem);
   padding: 0.65rem 0.85rem;
   border-radius: var(--r-md) var(--r-md) 4px var(--r-md);
-  background: rgba(47, 125, 255, 0.14);
-  border: 1px solid rgba(47, 125, 255, 0.28);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
   color: var(--ink);
   font-size: 0.92rem;
   line-height: 1.55;
@@ -854,7 +1206,7 @@ svg {
 }
 
 .ap-steps__tick {
-  color: #35d07f;
+  color: var(--good);
   font-size: 0.8rem;
   flex: none;
 }
@@ -961,7 +1313,7 @@ svg {
 code {
   font-family: var(--font-mono);
   font-size: 0.88em;
-  color: var(--blue-soft);
+  color: var(--link);
   overflow-wrap: anywhere;
 }
 
@@ -970,11 +1322,49 @@ code {
    with `!important`, so this cannot reintroduce motion for someone who asked
    for none. */
 .ap-hero__inner > .ap-in:nth-child(1) { animation-delay: 0ms; }
-.ap-hero__inner > .ap-in:nth-child(2) { animation-delay: 60ms; }
-.ap-hero__inner > .ap-in:nth-child(3) { animation-delay: 120ms; }
-.ap-hero__inner > .ap-in:nth-child(4) { animation-delay: 180ms; }
-.ap-hero__inner > .ap-in:nth-child(5) { animation-delay: 240ms; }
-.ap-hero__inner > .ap-in:nth-child(6) { animation-delay: 300ms; }
+.ap-hero__inner > .ap-in:nth-child(2) { animation-delay: 55ms; }
+.ap-hero__inner > .ap-in:nth-child(3) { animation-delay: 110ms; }
+.ap-hero__inner > .ap-in:nth-child(4) { animation-delay: 165ms; }
+.ap-hero__inner > .ap-in:nth-child(5) { animation-delay: 220ms; }
+.ap-hero__inner > .ap-in:nth-child(6) { animation-delay: 275ms; }
+.ap-hero__inner > .ap-in:nth-child(7) { animation-delay: 330ms; }
+/* The last block lands at 850ms, under the second where a stagger stops being
+   a sequence and starts being a wait. */
+.ap-hero__inner > .ap-in:nth-child(8) { animation-delay: 385ms; }
+
+/* ------------------------------------------------------------------- the slip --
+   The prompt, already written, with the caret at rest at the end of it. An
+   invitation rather than a demonstration, and true either way. */
+.ap-slip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 34rem;
+  margin: 1.2rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 1px 2px var(--shadow-ink-2), 0 8px 22px var(--shadow-ink);
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  min-width: 0;
+}
+
+.ap-slip .ap-mono {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ap-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  flex: none;
+  vertical-align: -0.16em;
+  background: var(--ink);
+  animation: ap-blink 1.1s steps(1, end) infinite;
+}
 
 /* --------------------------------------------------------------------------
    17. Narrow screens
@@ -1048,10 +1438,60 @@ code {
     /* 7vw bottoms out at the 2.5rem floor on a phone, which set the headline
        over five lines and cost 184px. A steeper vw with a lower floor keeps it
        to four and keeps the buttons on the first screen. */
-    font-size: clamp(2rem, 8.6vw, 4.7rem);
+    font-size: clamp(1.9rem, 6vw, 3.2rem);
   }
 
   .ap-chips {
     margin-top: 1.6rem;
   }
+
+  /* One token. The stud grid reads at 34px on a phone, and because the drift
+     keyframe translates by exactly --stud, the same change slows the drift from
+     1.02 px/s to 0.79 px/s — proportionate to the smaller tile — with no second
+     rule to keep in step. */
+  :root {
+    --stud: 34px;
+  }
+}
+
+/* ------------------------------------------------------------------------ proof --- */
+
+/* WHAT USED TO SIT HERE was `.ap-hero__stage`, the 880px slot the three.js
+   BuildStage component filled. The owner rejected that animation outright, and
+   it was also the reason this route's zero-JavaScript claim was false: the
+   built page carried an inline script and a live cdnjs three.js request while
+   tests/e2e/landing.spec.ts asserted neither existed. The component, the slot
+   and the request are all gone; the living field behind the hero is what
+   carries the page now. */
+
+/* PROOF, NOT ADJECTIVES. Three figures a reader could go and check. Laid out as one row that
+   wraps rather than a three-column grid, so a narrow screen stacks them instead of squeezing
+   six-digit numbers into 90px columns. */
+.ap-proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(1.4rem, 5vw, 3.2rem);
+  margin: clamp(1.6rem, 3.5vw, 2.4rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ap-proof__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.ap-proof__n {
+  font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ap-proof__what {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  max-width: 22ch;
 }

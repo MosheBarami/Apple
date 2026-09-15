@@ -93,11 +93,11 @@ export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_
 export const MAX_NEURONS_PER_REQUEST = 1_200;
 
 /**
- * Sparks are the user-facing unit. Recalibrated for GLM-5.3-flash: a measured Stone build runs
- * far cheaper than on the previous model, so a Spark is worth fewer neurons and the same daily
+ * Credits are the user-facing unit. Recalibrated for GLM-5.3-flash: a measured Stone build runs
+ * far cheaper than on the previous model, so a Credit is worth fewer neurons and the same daily
  * allowance stretches further in real work.
  */
-export const NEURONS_PER_SPARK = 30;
+export const NEURONS_PER_CREDIT = 30;
 
 // The plan ladder now lives in @golem/shared: the limits are both a server rule and a page of
 // copy, and written down twice they drift — a plan page disagreeing with the ledger that enforces
@@ -105,13 +105,13 @@ export const NEURONS_PER_SPARK = 30;
 // import of `PLAN_LIMITS` from this module keeps working.
 export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@golem/shared';
 
-// SPARKS_PER_BUILD is in @golem/shared too, for the same reason. Asserted against the measured
+// CREDITS_PER_BUILD is in @golem/shared too, for the same reason. Asserted against the measured
 // cost here so the shared constant cannot drift away from the arithmetic it came from.
-export { SPARKS_PER_BUILD } from '@golem/shared';
+export { CREDITS_PER_BUILD } from '@golem/shared';
 
 /** What the shared constant must equal, derived rather than restated. */
-export const SPARKS_PER_BUILD_DERIVED = Math.ceil(2_300 / NEURONS_PER_SPARK);
+export const CREDITS_PER_BUILD_DERIVED = Math.ceil(2_300 / NEURONS_PER_CREDIT);
 
-export function sparksForNeurons(neurons: number): number {
-  return Math.max(1, Math.ceil(neurons / NEURONS_PER_SPARK));
+export function creditsForNeurons(neurons: number): number {
+  return Math.max(1, Math.ceil(neurons / NEURONS_PER_CREDIT));
 }

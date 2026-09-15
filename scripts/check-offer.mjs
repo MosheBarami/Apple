@@ -12,7 +12,7 @@
 //      neuron rate with a 1.4× margin. The free plan is exempt from THIS rule and only this one:
 //      a free tier is customer acquisition, and a margin rule that included it would make any free
 //      tier arithmetically impossible, which is a rule about nothing.
-//   2. A plan granting more Sparks per day than BudgetDO's own daily neuron ceiling can serve.
+//   2. A plan granting more Credits per day than BudgetDO's own daily neuron ceiling can serve.
 //      This is the one that matters most: it is not a pricing mistake, it is a promise the service
 //      cannot keep for even one user, and it fails at the moment someone tries to use what they
 //      bought.
@@ -32,12 +32,12 @@ import { fileURLToPath } from 'node:url';
 import { copyProblems, planProblems, termProblems } from './lib/offer-rules.mjs';
 
 import { createHash } from 'node:crypto';
-import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD } from '../packages/shared/src/index.ts';
+import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, CREDITS_PER_BUILD } from '../packages/shared/src/index.ts';
 import {
   BILLABLE_NEURONS_PER_DAY,
   DAILY_NEURON_CEILING,
   FREE_NEURONS_PER_DAY,
-  NEURONS_PER_SPARK,
+  NEURONS_PER_CREDIT,
   USD_PER_NEURON,
 } from '../apps/worker/src/pricing.ts';
 
@@ -89,8 +89,8 @@ console.log(`DENOMINATOR ${copySurface.length} files; EXCEPTIONS ${EXCEPTIONS.le
 // Measured: the daily-ceiling rule replaced by `if (false)` and the contractual-terms list emptied
 // to `[]` both left that suite at 12/12 green, and G-ORACLE-3 could not be falsified. Violating
 // inputs have to come from somewhere other than the tree being checked.
-const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_LIMITS[id].sparksPerDay, PLAN_LIMITS[id].sparksPerMonth]));
-const ceilingSparks = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_SPARK);
+const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_LIMITS[id].creditsPerDay, PLAN_LIMITS[id].creditsPerMonth]));
+const ceilingCredits = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDIT);
 
 const sources = copySurface.flatMap((rel) => {
   try { return [{ rel, src: readFileSync(join(ROOT, rel), 'utf8') }]; } catch { return []; }
@@ -100,9 +100,9 @@ const { problems: planIssues, notes: note } = planProblems({
   planIds: PLAN_IDS,
   limits: PLAN_LIMITS,
   copy: PLAN_COPY,
-  ceilingSparks,
-  sparksPerBuild: SPARKS_PER_BUILD,
-  usdPerSpark: NEURONS_PER_SPARK * USD_PER_NEURON,
+  ceilingCredits,
+  creditsPerBuild: CREDITS_PER_BUILD,
+  usdPerCredit: NEURONS_PER_CREDIT * USD_PER_NEURON,
   margin: MARGIN,
   ceilingDetail:
     ` (${DAILY_NEURON_CEILING.toLocaleString()} neurons = ${FREE_NEURONS_PER_DAY.toLocaleString()} free + ` +

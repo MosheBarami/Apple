@@ -12,6 +12,7 @@ import type {
   PluginPollRequest,
   PluginPollResponse,
   StudioEventState,
+  StudioEventSelection,
   CheckpointMeta,
   GolemMode,
   GatewayRequest,
@@ -21,7 +22,10 @@ import type {
   StudioFrame,
   PlaytestRun,
   RenderViewResult,
+  StudioPlace,
+  StudioLinkSummary,
 } from '@golem/shared';
+import { MESSAGE_MAX_CHARS, type AssetSourcePolicy } from '@golem/shared';
 import {
   admitFrame,
   FrameRate,
@@ -31,25 +35,64 @@ import {
   type RawFrame,
 } from '../frame-bus';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
-import { sparksForNeurons } from '../pricing';
+import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { assetLibraryAvailable } from '../asset-library';
+import { notify } from '../notify';
+import { usageBand } from '../notifications';
+import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool } from '@golem/shared';
-import { trimTranscript } from '../transcript';
+import { trimTranscriptReport } from '../transcript';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
-import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
+import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
+import { runIntentFor } from '../run-intent';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
+import { CollabStore, collabContext } from './collab-store.ts';
+import { asCollabRole, can, type CollabRole } from '../collab.ts';
+import { makeBeat, presenceSnapshot, type PresenceActivity } from '../presence.ts';
 import { partitionOpsByRun } from '../op-attribution';
-import { MIN_QUERY, escapeLike, isSearchable, snippetAround } from '../search';
-import { normaliseMemory } from '../memory';
+import { placeAdmission, readPlaceReport, servesOps, type PlaceAdmission } from '../studio-place';
+import { WORKER_FAILURES, asFailureKind } from '../op-failure';
+import { latestSelection, sameSelection, companionOpAccess, sanitizeCompanionOp, companionRefusal } from '../companion';
+import {
+  MIN_QUERY,
+  authorForRole,
+  isSearchable,
+  narrowing,
+  parseSearchFilter,
+  runSearch,
+  zeroCounts,
+  type SearchFilter,
+  type SearchRecord,
+} from '../search';
+import {
+  addModelFact,
+  applyModelUpdate,
+  applyUserEdit,
+  decideSuggestedFact,
+  decideSuggestedSummary,
+  isSuggestionDecision,
+  memoryForPrompt,
+  memoryWritable,
+  normaliseMemory,
+  type MemoryMode,
+} from '../memory';
+import { memoryAccessFor } from '../memory-store';
+import { EMPTY_PERSONALISATION, applyToolPermissions, memoryModeOf, personalisationForProject } from '../preferences';
+import { allModels } from '../providers/registry';
+import { recordEvent } from '../analytics';
+import { flushEvents } from '../analytics-sink';
+import { fenceToolOutput, describeThreats } from '../injection.ts';
+import { scoreSubmission, type Submission } from '../abuse.ts';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -72,8 +115,8 @@ interface AgentState {
   llm: GatewayRequest['messages'];
   step: number;
   maxSteps: number;
-  sparksSpent: number;
-  /** neurons this run has consumed, so Sparks round once per run instead of once per call */
+  creditsSpent: number;
+  /** neurons this run has consumed, so Credits round once per run instead of once per call */
   neuronsUsed?: number;
   trace: ToolTraceEntry[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
@@ -112,6 +155,25 @@ interface AgentState {
   discoveredAssetIds?: number[];
   /** The subset of the above that came from the curated library rather than the Creator Store. */
   libraryAssetIds?: number[];
+  /**
+   * The tool permissions in force for this run, already layered org-then-user-then-project.
+   *
+   * Pinned to the RUN rather than re-read per step: a preference edited mid-build would otherwise
+   * change what the agent may do between step 4 and step 5, which is a run that behaves two
+   * different ways and an audit trail that cannot explain either. Optional, so a run persisted by
+   * an older deployment deserialises unchanged and simply narrows nothing.
+   */
+  toolPermissions?: Record<string, 'allow' | 'ask' | 'deny'>;
+  /**
+   * Whether this run may write to memory, and whether it has to ask first.
+   *
+   * Pinned exactly like `toolPermissions`, for exactly the same reason: memory is written at the
+   * TAIL of a run, so a setting read at that moment would be the setting as it stood after the
+   * work, not the one in force when the user started it. Someone who turns memory off mid-build
+   * has told the product not to keep this run either. Optional, so a run persisted by an older
+   * deployment deserialises unchanged and falls back to the resolved default.
+   */
+  memoryMode?: MemoryMode;
   /** how many times this run has been steered back to work after replying without acting */
   nudges?: number;
   /** the user's request, kept so the automatic visual gate can judge against the actual intent */
@@ -137,6 +199,14 @@ interface AgentState {
    * message sent while nobody is listening, and `run_intent` is emitted exactly once per run.
    */
   intent?: RunIntent;
+  /**
+   * The plan `propose_plan` announced, and the tool row it was announced on.
+   *
+   * Kept so `settlePlan` can re-state it at the end of the run against what actually ran. Bounded
+   * by the tool's own 12-step cap and its 200/800-character clips, so it cannot be the thing that
+   * pushes the persisted AgentState past the Durable Object's value limit.
+   */
+  plan?: RunPlan;
 }
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
@@ -198,6 +268,91 @@ function asGolemMode(x: unknown): GolemMode | null {
 }
 const STEP_STALE_MS = 180_000;
 
+/**
+ * HOW LONG A RUN MAY LAST — CHECKLIST-V2 §50.14.
+ *
+ * STEP_LIMITS bounds how many TIMES work is attempted. Nothing bounded how LONG those attempts
+ * take, and `startedAt` was read exactly once, at the end, to report a `durationMs` nobody acted
+ * on. A rune run of 24 steps each waiting on a slow provider runs for over an hour and spends the
+ * whole time. The runaway that matters is not usually a fast loop; it is a slow one.
+ *
+ * Ordered by how long the mode is meant to work: Plan is a question, Agent is a build, Super Agent
+ * is long-horizon. None of them is an hour.
+ */
+export const RUN_WALL_MS: Record<GolemMode, number> = {
+  clay: 5 * 60_000,
+  stone: 20 * 60_000,
+  rune: 45 * 60_000,
+};
+
+/** The strictest ceiling, which is what an unrecognised mode gets. */
+const STRICTEST_RUN_WALL_MS = Math.min(...Object.values(RUN_WALL_MS));
+
+export interface RunDurationVerdict {
+  over: boolean;
+  elapsedMs: number;
+  capMs: number;
+  /** What to tell the agent. Never blames the step ceiling for a time limit. */
+  reason: string;
+}
+
+/**
+ * Has this run been going too long?
+ *
+ * AN UNREADABLE CLOCK STOPS THE RUN. `Date.now() - NaN` is NaN and `NaN > cap` is FALSE, so the
+ * naive form of this check removes the limit exactly when the state is corrupt. A deadline that
+ * cannot be computed is a deadline that has passed — the same rule resolveMembership applies to an
+ * expiry it cannot read.
+ *
+ * A start time in the FUTURE is corrupt too, not a run with extra credit.
+ *
+ * An unrecognised mode gets the STRICTEST ceiling rather than none. session.ts validates mode at
+ * every ingress, so this is defence in depth — and the safe direction for a value nobody
+ * recognised is the tightest bound.
+ */
+export function runDurationVerdict(input: {
+  startedAt: unknown;
+  mode: unknown;
+  now: unknown;
+}): RunDurationVerdict {
+  const capMs =
+    typeof input.mode === 'string' && Object.prototype.hasOwnProperty.call(RUN_WALL_MS, input.mode)
+      ? RUN_WALL_MS[input.mode as GolemMode]
+      : STRICTEST_RUN_WALL_MS;
+
+  const started = input.startedAt;
+  const now = input.now;
+  if (typeof started !== 'number' || !Number.isFinite(started) || typeof now !== 'number' || !Number.isFinite(now)) {
+    return {
+      over: true,
+      elapsedMs: 0,
+      capMs,
+      reason: 'this run was stopped because its start time could not be read — an unreadable clock is not an unlimited one',
+    };
+  }
+  const elapsedMs = now - started;
+  if (elapsedMs < 0) {
+    return {
+      over: true,
+      elapsedMs: 0,
+      capMs,
+      reason: 'this run was stopped because its start time is in the future — the clock could not be trusted',
+    };
+  }
+  if (elapsedMs >= capMs) {
+    return {
+      over: true,
+      elapsedMs,
+      capMs,
+      reason:
+        `this run reached its time limit of ${Math.round(capMs / 60_000)} minutes (it had been going ` +
+        `${Math.round(elapsedMs / 60_000)}). Everything done so far is saved — send another message to carry on.`,
+    };
+  }
+  return { over: false, elapsedMs, capMs, reason: '' };
+}
+
+
 // ---------------------------------------------------------------------------------------------
 // PLUGIN POLL PACING — this is the largest recurring cost in the system, not inference.
 //
@@ -257,85 +412,6 @@ const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
 
-// ---------------------------------------------------------------------------------------------
-// THE INTENT AND PLAN ROWS OF THE THINKING CARD.
-//
-// The card has four stages. Actions and Validation were already backed by real events — a tool
-// start/end pair, and the composition/semantic gate's actual verdict. Intent and Plan were not
-// backed by anything, so the frontend rendered nothing rather than inventing them.
-//
-// This closes that gap AT ZERO MODEL COST. `intentCheck` in semantic.ts is regex and lexicons:
-// the file has no imports at all and no reference to fetch, the gateway or env, so there is no
-// path from here to a paid provider. It runs in well under a millisecond on an 8,000-character
-// request, which is why it can be on the critical path of every single run.
-//
-// The honesty rules, which are the whole point:
-//
-//   summary   The user's OWN OPENING SENTENCE, whitespace-normalised and truncated. Not a
-//             paraphrase — paraphrasing needs a model, and this must stay free. Not a synthesised
-//             sentence either: without a model, any synthesis is a fill-in-the-blanks template
-//             ("Build a <noun> with <n> features"), which reads like understanding while proving
-//             none. Echoing the request verbatim is the only restatement that cannot be wrong,
-//             and it is exactly what the reference card shows.
-//   checklist EXACTLY what the extractor found the user asked for by name, and nothing else. An
-//             empty checklist is the correct answer for "what does this script do?" — there is
-//             no list of things to build, so no list is shown.
-//   questions ONLY the places the extractor could see the request genuinely did not settle
-//             (a hedged clause, a building noun that reads as either a room or a facade). Never
-//             padded to look thorough.
-//
-// Both lists are capped. A cap TRUNCATES a real list to bound the socket payload; nothing here
-// ever pads a short one.
-// ---------------------------------------------------------------------------------------------
-const MAX_INTENT_CHECKLIST = 16;
-const MAX_INTENT_QUESTIONS = 6;
-const MAX_INTENT_SUMMARY = 160;
-
-/** Split on sentence punctuation without lookbehind, keeping the terminator. */
-function sentences(flat: string): string[] {
-  const out: string[] = [];
-  const re = /[.!?]+(?:\s|$)/g;
-  let start = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(flat))) {
-    out.push(flat.slice(start, m.index + m[0].trimEnd().length).trim());
-    start = re.lastIndex;
-  }
-  if (start < flat.length) out.push(flat.slice(start).trim());
-  return out.filter(Boolean);
-}
-
-/**
- * The one-line restatement: the user's own words, normalised and cut at a word boundary.
- *
- * Prefers the first sentence that carries at least three words, so an opening "Hey!" or "Ok."
- * does not become the whole Intent row. Returns '' when the request has no words at all, and the
- * caller then emits nothing rather than an empty row.
- */
-function restate(request: string): string {
-  const flat = request.replace(/\s+/g, ' ').trim();
-  if (!flat) return '';
-  const parts = sentences(flat);
-  const pick = parts.find((s) => s.split(' ').length >= 3) ?? parts[0] ?? flat;
-  if (pick.length <= MAX_INTENT_SUMMARY) return pick;
-  const cut = pick.slice(0, MAX_INTENT_SUMMARY);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > 40 ? cut.slice(0, space) : cut).replace(/[,;:.\s]+$/, '')}…`;
-}
-
-/**
- * What the agent understood, derived from the request alone. Null only when there is genuinely
- * nothing to say — an empty request produces no Intent row rather than a blank one.
- */
-function runIntentFor(request: string): RunIntent | null {
-  const report = intentCheck(request);
-  const summary = restate(request);
-  const checklist = report.checklist.slice(0, MAX_INTENT_CHECKLIST);
-  const questions = report.questions.slice(0, MAX_INTENT_QUESTIONS);
-  if (!summary && !checklist.length && !questions.length) return null;
-  return { summary, checklist, questions };
-}
-
 export class SessionDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
   private opQueue: PendingOp[] = [];
@@ -364,6 +440,34 @@ export class SessionDO extends DurableObject<Env> {
           id integer primary key autoincrement, op_id text, kind text, ok integer,
           summary text, created_at integer not null);
       `);
+      //[[ WHY a failure is recorded as a KIND and not only as a sentence: see src/op-failure.ts.
+      //
+      //   `create table if not exists` does nothing at all to an object that already has the
+      //   table, so the column has to be added explicitly for every project that existed before
+      //   this. SQLite has no `add column if not exists`, so the duplicate-column error on every
+      //   later boot is the expected outcome and is swallowed — it is the success case, not a
+      //   fault, and letting it escape would take the whole object down on its second start. ]]
+      try {
+        this.sql.exec(`alter table oplog add column failure text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
+      //[[ WHICH RUN DID THIS. The record's anchor back into the conversation.
+      //
+      //   `PendingOp.runId` already tags every queued op — op-attribution.ts depends on it to stop
+      //   a cancelled run's mutations reaching the place. The oplog threw it away, so no history
+      //   row could name the run that made the change, and the workspace's own search handler had
+      //   to say so: "the oplog row carries no anchor to a message". A user who finds the change
+      //   could not get to the conversation that caused it.
+      //
+      //   Nullable on purpose. An op taken between runs — a manual checkpoint, a snapshot —
+      //   belongs to NO run, and inheriting the previous one would send that user into a
+      //   conversation that did not cause what they are looking at. ]]
+      try {
+        this.sql.exec(`alter table oplog add column run_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
       const q = await this.ctx.storage.get<PendingOp[]>('opQueue');
       if (q) this.opQueue = q;
       const seq = await this.ctx.storage.get<number>('seq');
@@ -388,6 +492,12 @@ export class SessionDO extends DurableObject<Env> {
       //   bug the producer was written to fix, re-entering through the recovery path. ]]
       const bound = await this.ctx.storage.get<{ projectId: string }>('bind');
       if (bound) this.boundProjectId = bound.projectId;
+      //[[ The place binding, for the reason above it and one more: if this were read lazily on
+      //   first use, an evicted-and-revived instance would see `null` on the poll that revived it
+      //   and BIND to whatever place was open — turning the guard into a rubber stamp at exactly
+      //   the moment it matters, since a long-evicted project is one the user has been away from
+      //   and may well have opened something else since. ]]
+      this.boundPlace = (await this.ctx.storage.get<StudioPlace>('pluginPlace')) ?? null;
     });
   }
 
@@ -403,6 +513,91 @@ export class SessionDO extends DurableObject<Env> {
 
   /** The project this session is bound to, or null before the binding has been read. */
   private boundProjectId: string | null = null;
+
+  /**
+   * The collaboration store, built over this object's own SQLite on first use.
+   *
+   * Lazy rather than constructed in `blockConcurrencyWhile`: a project that nobody has ever
+   * commented on should not pay for eight `create table if not exists` statements on every cold
+   * start, and the store applies its own schema the moment it is first touched.
+   */
+  private collabStore: CollabStore | null = null;
+
+  private get collab(): CollabStore {
+    if (this.collabStore === null) this.collabStore = new CollabStore(this.sql);
+    return this.collabStore;
+  }
+
+  /**
+   * WHO IS ON THIS SOCKET.
+   *
+   * `X-Golem-Role` is trusted for exactly one reason: a Durable Object is reachable only through
+   * its stub, every worker path that forwards to `/ws` SETS this header (overwriting whatever the
+   * browser sent), and `sessionStub` is itself confined to ownership-checked and admin-gated call
+   * sites by a static check in packages/evals/src/security.test.mjs. The value is still validated
+   * against the allowlist rather than cast — a header that says `superuser` is a refusal, not a
+   * role — and the owner is recognised from the binding rather than from anything on the wire.
+   */
+  private socketRole(req: Request, bind: { ownerId: string }): { userId: string; role: CollabRole } | null {
+    const userId = req.headers.get('X-User-Id');
+    if (!userId) return null;
+    if (userId === bind.ownerId) return { userId, role: 'owner' };
+    const role = asCollabRole(req.headers.get('X-Golem-Role'));
+    return role === null ? null : { userId, role };
+  }
+
+  /** What each attached socket last told us about itself. Survives hibernation with the socket. */
+  private presenceBeats(): unknown[] {
+    const out: unknown[] = [];
+    for (const ws of this.ctx.getWebSockets('client')) {
+      try {
+        const att = ws.deserializeAttachment() as unknown;
+        if (att) out.push(att);
+      } catch {
+        /* a socket with no attachment is simply not present */
+      }
+    }
+    return out;
+  }
+
+  /** The identity this socket was accepted with, or null for one that predates the attachment. */
+  private beatOf(ws: WebSocket): { userId: string; role: CollabRole; connectionId: string; activity: PresenceActivity } | null {
+    try {
+      const att = ws.deserializeAttachment() as { userId?: unknown; role?: unknown; connectionId?: unknown; activity?: unknown } | null;
+      const role = asCollabRole(att?.role);
+      if (!att || role === null || typeof att.userId !== 'string' || typeof att.connectionId !== 'string') return null;
+      const activity = att.activity === 'typing' || att.activity === 'building' ? att.activity : 'viewing';
+      return { userId: att.userId, role, connectionId: att.connectionId, activity };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Refresh this socket's heartbeat, and tell the room. */
+  private touch(ws: WebSocket, activity?: PresenceActivity) {
+    const current = this.beatOf(ws);
+    if (current === null) return;
+    const beat = makeBeat({
+      userId: current.userId,
+      role: current.role,
+      connectionId: current.connectionId,
+      nowMs: Date.now(),
+      activity: activity ?? current.activity,
+    });
+    if (beat === null) return;
+    try {
+      ws.serializeAttachment(beat);
+    } catch {
+      /* a closing socket cannot be updated, and does not need to be */
+    }
+    this.broadcastPresence();
+  }
+
+  /** Tell everyone who is here. Called on connect, on heartbeat and on close. */
+  private broadcastPresence() {
+    const snap = presenceSnapshot(this.presenceBeats(), Date.now());
+    this.broadcast({ type: 'presence', present: snap.present });
+  }
 
   private broadcast(msg: ServerMsg) {
     const data = JSON.stringify(msg);
@@ -433,6 +628,43 @@ export class SessionDO extends DurableObject<Env> {
     return Date.now() < deadline;
   }
 
+  /**
+   * When the plugin last polled, or null if it never has.
+   *
+   * Reads the larger of the checkpointed value and the in-memory one for the same reason
+   * `pluginConnected()` does: the heartbeat is only written to storage every 4s, so between
+   * checkpoints storage is behind by up to that much and reporting it would age the link by four
+   * seconds every time somebody opened a tab.
+   */
+  private async pluginLastSeenAt(): Promise<number | null> {
+    const stored = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
+    const last = Math.max(stored, this.lastSeenWrittenAt);
+    return last > 0 ? last : null;
+  }
+
+  /**
+   * The whole state of this project's link to Studio, in one shape, for the owner.
+   *
+   * `paired` and `connected` are kept apart deliberately: a project keeps its pairing across a
+   * Studio restart and a closed laptop, and collapsing the two would send a user to mint a code
+   * they already have. Everything here was already known to this object and none of it was
+   * reachable by the person who owns the project — `/info` carries most of it and sits behind the
+   * admin key.
+   */
+  private async linkSummary(): Promise<StudioLinkSummary> {
+    const client = await this.ctx.storage.get<PluginClientInfo>('pluginClient');
+    const hash = await this.ctx.storage.get<string>('pluginTokenHash');
+    return {
+      paired: !!hash,
+      connected: await this.pluginConnected(),
+      lastSeenAt: await this.pluginLastSeenAt(),
+      queuedOps: this.opQueue.length,
+      pluginVersion: client?.version ?? null,
+      pluginProtocol: client?.protocol ?? null,
+      place: this.boundPlace,
+    };
+  }
+
   /** When this project last did anything: a run stepped, or an op was queued. */
   private async lastActivityAt(): Promise<number> {
     if (this.lastActivity) return this.lastActivity;
@@ -459,8 +691,15 @@ export class SessionDO extends DurableObject<Env> {
     if (!bind) return json({ error: 'session not initialized' }, 400);
 
     if (path === '/ws') {
-      const userId = req.headers.get('X-User-Id');
-      if (userId !== bind.ownerId) return json({ error: 'forbidden' }, 403);
+      // A MEMBER MAY WATCH; WHAT THEY MAY DO IS DECIDED PER MESSAGE.
+      //
+      // This used to be `userId !== bind.ownerId → 403`, which is correct for a single-tenant
+      // product and is the whole of "shared projects" in a collaborative one. The identity is
+      // resolved here once and rides on the socket; `webSocketMessage` asks the capability
+      // question for each thing the socket tries to DO, because a viewer watching a build and a
+      // viewer starting one are the same connection.
+      const who = this.socketRole(req, bind);
+      if (who === null) return json({ error: 'forbidden' }, 403);
       // the JWT is kept only in memory for the lifetime of this DO instance so a
       // background memory sync can use it; it is never written to durable storage
       const jwt = req.headers.get('X-User-Jwt');
@@ -468,6 +707,14 @@ export class SessionDO extends DurableObject<Env> {
       const pair = new WebSocketPair();
       const [client, server] = [pair[0], pair[1]];
       this.ctx.acceptWebSocket(server, ['client']);
+      // The socket carries its own identity, so a hibernated object waking to a message still
+      // knows who is on the other end without a storage read.
+      const beat = makeBeat({ userId: who.userId, role: who.role, connectionId: crypto.randomUUID(), nowMs: Date.now() });
+      if (beat === null) return json({ error: 'forbidden' }, 403);
+      server.serializeAttachment(beat);
+      // Everyone already here learns someone arrived; the arriver gets the list in the same shape
+      // rather than a special one-off payload.
+      this.broadcastPresence();
       const quota = await this.quotaState(bind.ownerId);
       server.send(
         JSON.stringify({
@@ -475,10 +722,45 @@ export class SessionDO extends DurableObject<Env> {
           sessionId: bind.projectId,
           studioConnected: await this.pluginConnected(),
           quota,
+          //[[ "NOT CONNECTED" IS TWO DIFFERENT FACTS AND THE USER CAN ONLY ACT ON ONE OF THEM.
+          //
+          //   A Studio that stopped polling ten seconds ago is a hiccup; one that stopped in March
+          //   is a machine that is off. The boolean reads identically for both, and the timestamp
+          //   that separates them was already being kept — `pluginLastSeen`, checkpointed every 4s
+          //   and used by `pluginConnected()` to make this very judgement. It simply never crossed
+          //   the wire. Null means it has never polled at all, which is a third state again. ]]
+          studioLastSeenAt: await this.pluginLastSeenAt(),
+          queuedOps: this.opQueue.length,
+          studioPlace: this.boundPlace,
         } satisfies ServerMsg),
       );
       const st = await this.ctx.storage.get<StudioEventState>('pluginState');
-      if (st) server.send(JSON.stringify({ type: 'studio_status', connected: await this.pluginConnected(), state: st } satisfies ServerMsg));
+      if (st) {
+        server.send(
+          JSON.stringify({
+            type: 'studio_status',
+            connected: await this.pluginConnected(),
+            state: st,
+            lastSeenAt: await this.pluginLastSeenAt(),
+            queuedOps: this.opQueue.length,
+            place: this.boundPlace,
+            placeMismatch: this.placeMismatch
+              ? {
+                  expectedPlaceName: this.placeMismatch.expected.placeName,
+                  openPlaceName: this.placeMismatch.open.placeName,
+                  openPlaceId: this.placeMismatch.open.placeId,
+                }
+              : null,
+          } satisfies ServerMsg),
+        );
+      }
+      // The selection as it stands, so a tab that opens mid-session shows what the user
+      // has in front of them rather than an empty panel until their next click.
+      const sel = this.pluginSelection ?? (await this.ctx.storage.get<StudioEventSelection>('pluginSelection')) ?? null;
+      if (sel) {
+        this.pluginSelection = sel;
+        server.send(JSON.stringify({ type: 'studio_selection', selection: sel } satisfies ServerMsg));
+      }
       // If a build is already in flight, hand the client the whole picture
       // straight away rather than making it ask.
       const live = await this.runSnapshot();
@@ -500,14 +782,45 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/plugin/register' && req.method === 'POST') {
-      const body = (await req.json()) as { tokenHash: string; pluginVersion?: string; pluginProtocol?: string };
+      const body = (await req.json()) as {
+        tokenHash: string;
+        pluginVersion?: string;
+        pluginProtocol?: string;
+        place?: unknown;
+      };
+      //[[ SUPERSESSION IS RECORDED, NOT ONLY PERFORMED.
+      //
+      //   A fresh pairing has always replaced the previous plugin token, and the Studio that lost
+      //   it found out by getting a 401 on its next poll — a bare "invalid token", which is what
+      //   this server also says to a forged one. Keeping the hash it used to be lets the poll tell
+      //   those two apart and say the true thing: somebody paired this project from another
+      //   window. Only the HASH is kept, never the token. ]]
+      const previous = await this.ctx.storage.get<string>('pluginTokenHash');
+      if (previous && previous !== body.tokenHash) {
+        await this.ctx.storage.put('pluginSuperseded', { hash: previous, at: Date.now() });
+      }
       // a fresh pairing supersedes any previous plugin token for this project
       await this.ctx.storage.put({ pluginTokenHash: body.tokenHash, pluginTokenIssuedAt: Date.now() });
+      //[[ THE PLACE, CONFIRMED AT PAIRING RATHER THAN DISCOVERED LATER.
+      //
+      //   The plugin sends what it has open in the claim, so the binding exists before the first
+      //   op can be queued. A pairing from a plugin too old to send one, or from a place that has
+      //   never been saved to Roblox, simply leaves this unbound — `placeAdmission` then binds on
+      //   the first identifiable state event, and refuses nothing in the meantime. ]]
+      const claimed = placeAdmission(null, readPlaceReport(body.place), Date.now());
+      const place = claimed.verdict === 'bind' ? claimed.place : null;
+      if (place) await this.ctx.storage.put<StudioPlace>('pluginPlace', place);
+      else await this.ctx.storage.delete('pluginPlace');
+      this.boundPlace = place;
+      this.placeMismatch = null;
       // Record what paired, at the moment it paired, so the server knows what it is
       // talking to before the first poll rather than after it. A plugin that reports
       // nothing simply leaves this unknown, which every consumer already handles.
       await this.recordPluginClient(sanitizeVersion(body.pluginVersion), parseProtocol(body.pluginProtocol));
-      return json({ ok: true });
+      // The bound place travels back out so the claim response can CONFIRM it — the plugin prints
+      // which place it just bound this project to, rather than the user finding out later, or not
+      // at all. Null is the honest answer for a place that cannot be identified.
+      return json({ ok: true, place });
     }
 
     if (path === '/plugin/poll' && req.method === 'POST') {
@@ -519,11 +832,70 @@ export class SessionDO extends DurableObject<Env> {
         issuedAt = Date.now();
         await this.ctx.storage.put('pluginTokenIssuedAt', issuedAt);
       }
-      if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS) return json({ error: 'token expired' }, 401);
-      if (!(await timingSafeEqual(await sha256hex(token), expect))) return json({ error: 'invalid token' }, 401);
+      if (!expect || Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS) {
+        return json({ error: 'token expired', message: 'This pairing has expired. Pair again from the Apple web app.' }, 401);
+      }
+      const presented = await sha256hex(token);
+      if (!(await timingSafeEqual(presented, expect))) {
+        // Was this the token we replaced? Then the honest answer is not "invalid" — this plugin
+        // was paired correctly and has been superseded, which is a thing the user did and can
+        // therefore understand and undo. Anything else really is an unknown token.
+        const superseded = await this.ctx.storage.get<{ hash: string; at: number }>('pluginSuperseded');
+        if (superseded && (await timingSafeEqual(presented, superseded.hash))) {
+          return json(
+            {
+              error: 'superseded',
+              message:
+                'This project was paired again from another Studio window, so this one was disconnected. ' +
+                'Pair again from the Apple web app to bring it back here.',
+            },
+            401,
+          );
+        }
+        return json({ error: 'invalid token' }, 401);
+      }
       const reported = readPluginHeaders(req.headers);
       const body = (await req.json()) as PluginPollRequest;
       return this.handlePluginPoll(body, reported);
+    }
+
+    //[[ COLLABORATION: comments, mentions, reactions, reviews, approvals and version history.
+    //
+    //   One door, because the thing that must cross exactly once is the IDENTITY. The worker has
+    //   already resolved who this is and what they may do; `collabContext` re-validates the role
+    //   against the allowlist here rather than trusting the string, and a body that cannot produce
+    //   an actor produces a refusal from every method in the store.
+    //
+    //   The store does the writing and makes none of the decisions — see do/collab-store.ts. ]]
+    if (path === '/collab' && req.method === 'POST') {
+      const payload = (await req.json().catch(() => null)) as {
+        method?: unknown;
+        path?: unknown;
+        body?: unknown;
+        userId?: unknown;
+        role?: unknown;
+        directory?: unknown;
+      } | null;
+      if (!payload || typeof payload.method !== 'string' || typeof payload.path !== 'string') {
+        return json({ error: 'bad_request' }, 400);
+      }
+      const body = payload.body && typeof payload.body === 'object' ? (payload.body as Record<string, unknown>) : {};
+      const ctx = collabContext(
+        payload.userId,
+        payload.role,
+        Date.now(),
+        Array.isArray(payload.directory) ? payload.directory : undefined,
+      );
+      const out = this.collab.handle(payload.method, payload.path, body, ctx);
+      return json(out.body, out.status);
+    }
+
+    if (path === '/collab/presence' && req.method === 'GET') {
+      // Derived from the sockets that are actually attached, never from a stored list: a list
+      // would outlive the connections it describes, and presence that outlives the connection is
+      // the feature failing in the one way its users would never notice.
+      const snap = presenceSnapshot(this.presenceBeats(), Date.now());
+      return json(snap);
     }
 
     if (path === '/messages' && req.method === 'GET') {
@@ -566,67 +938,92 @@ export class SessionDO extends DurableObject<Env> {
       const body = (await req.json().catch(() => null)) as unknown;
       if (!body || typeof body !== 'object') return json({ error: 'expected a memory object' }, 400);
 
-      const memory = normaliseMemory((body as { memory?: unknown }).memory ?? body);
+      //[[ AN EDIT IS NOT AN AUTHORSHIP CLAIM, AND IT IS NOT AN ANSWER TO THE REVIEW QUEUE.
+      //
+      //   `applyUserEdit` keeps the origin of every fact that was already there — correcting a typo
+      //   in one line does not make the other eleven yours — and leaves pending proposals pending,
+      //   because discarding them because somebody fixed a typo would be a decision the product
+      //   made on the user's behalf. It normalises what it is handed, so the credential scan and
+      //   the caps still run on this path. ]]
+      const memory = applyUserEdit(await this.ctx.storage.get<unknown>('memory'), normaliseMemory((body as { memory?: unknown }).memory ?? body));
       await this.ctx.storage.put('memory', memory);
       const editedAt = new Date().toISOString();
       await this.ctx.storage.put('memoryEditedAt', editedAt);
       return json({ memory, editedAt });
     }
 
+    if (path === '/memory/suggestions' && req.method === 'POST') {
+      //[[ ANSWERING WHAT APPLE ASKED TO REMEMBER.
+      //
+      //   Under `review` the distiller writes into a queue instead of into memory, and this is the
+      //   only door out of that queue. Two things are load-bearing:
+      //
+      //     - THE DECISION NAMES WHAT IT IS ABOUT. The client sends the fact's TEXT, and a decision
+      //       about something that is no longer proposed comes back 404 rather than 200. A panel
+      //       that had been open for ten minutes would otherwise report "discarded" for a
+      //       suggestion a second tab had already accepted — a decision the user never made,
+      //       displayed as one they did.
+      //     - ACCEPTING IS NOT AUTHORING. The accepted fact is recorded as the MODEL's, because
+      //       that is who wrote it; re-attributing it on approval would erase the only trace that
+      //       it was ever proposed. ]]
+      const body = (await req.json().catch(() => null)) as { decision?: unknown; fact?: unknown; target?: unknown } | null;
+      if (!body || typeof body !== 'object') return json({ error: 'expected a decision object' }, 400);
+      if (!isSuggestionDecision(body.decision)) return json({ error: 'decision must be accept or discard' }, 400);
+      const stored = await this.ctx.storage.get<unknown>('memory');
+      const out =
+        body.target === 'summary'
+          ? decideSuggestedSummary(stored, body.decision)
+          : decideSuggestedFact(stored, body.fact, body.decision);
+      if (!out.matched) return json({ error: 'that is not waiting for a decision', memory: normaliseMemory(stored) }, 404);
+      await this.ctx.storage.put('memory', out.memory);
+      // The same stamp the editor writes: a memory a person has curated and one the model wrote
+      // unattended are different things, and accepting a proposal is curation.
+      const editedAt = new Date().toISOString();
+      await this.ctx.storage.put('memoryEditedAt', editedAt);
+      return json({ memory: out.memory, editedAt });
+    }
+
     if (path === '/search' && req.method === 'GET') {
-      //[[ SEARCH THE WHOLE CONVERSATION, NOT THE PART THE UI HAPPENS TO HOLD.
+      //[[ SEARCH THE WHOLE PROJECT, NOT THE PART THE UI HAPPENS TO HOLD — AND NOT ONLY WHAT WAS SAID.
       //
       //   A client-side filter over the last 100 messages is the cheap version, and it is worse
       //   than nothing: it answers "not found" for text that IS in the conversation, and the user
       //   has no way to tell that from the real answer. So the query runs here, against every row.
       //
-      //   LIKE rather than FTS5: the DO's SQLite build cannot be relied on to carry the FTS
-      //   extension, and a transcript is bounded by the DO itself. A scan over a few thousand rows
-      //   is the honest implementation at this size, and it does not silently tokenise Hebrew
-      //   wrongly the way a naive FTS configuration would. ]]
+      //   It also runs against every KIND of row. A user looking for "the door checkpoint" was
+      //   searching a transcript for the name of a checkpoint; a user looking for the render the
+      //   agent produced was searching prose for an artifact. The records this gathers — messages,
+      //   the tool steps that produced artifacts, checkpoints, the operation log, and what Apple
+      //   remembers — are the five things a project actually contains.
+      //
+      //   MATCHING AND RANKING HAPPEN IN `runSearch`, NOT HERE. The SQL below narrows rows; it
+      //   does not decide what a result is. That split is what lets the prefilter be skipped
+      //   entirely for a query SQLite's ASCII-only case folding would mishandle, without any other
+      //   part of the answer changing — see `likePrefilterable`.
+      //
+      //   ORDER IS BY RELEVANCE. `order by created_at desc limit 40` answers "what matched most
+      //   recently", which is a different question and the one the UI had to apologise for by
+      //   saying "showing the most recent — there are more". ]]
       const raw = url.searchParams.get('q') ?? '';
+      const filter = parseSearchFilter(url.searchParams);
+      const echo = {
+        query: raw.trim(),
+        // What was actually applied, so the panel renders the filter the server used rather than
+        // the one the user believes it sent.
+        applied: { types: filter.types, authors: filter.authors, from: filter.from, to: filter.to },
+        ignored: filter.ignored,
+      };
       if (!isSearchable(raw)) {
-        return json({ query: raw, tooShort: raw.trim().length < MIN_QUERY, results: [], total: 0 });
+        return json({ ...echo, tooShort: raw.trim().length < MIN_QUERY, results: [], counts: zeroCounts(), total: 0, more: false, scanned: 0, scanTruncated: false });
       }
-      const q = raw.trim();
-      const limit = Math.min(100, Number(url.searchParams.get('limit')) || 40);
-
-      // The value is BOUND, never interpolated — the escape is about LIKE's wildcards being SQL's
-      // rather than the user's, not about injection.
-      const pattern = `%${escapeLike(q)}%`;
-      const rows = this.sql
-        .exec(
-          `select id, role, mode, content, created_at from messages
-           where content like ? escape '\\'
-           order by created_at desc limit ?`,
-          pattern,
-          limit + 1,
-        )
-        .toArray() as { id: string; role: string; mode: string | null; content: string; created_at: number }[];
-
-      const more = rows.length > limit;
-      const kept = more ? rows.slice(0, limit) : rows;
-
-      return json({
-        query: q,
-        // Stated so the UI can say "showing the 40 most recent of more" rather than implying these
-        // are all of them.
-        more,
-        total: kept.length,
-        results: kept.map((r) => {
-          const snip = snippetAround(r.content, q);
-          return {
-            id: r.id,
-            role: r.role,
-            mode: r.mode,
-            createdAt: new Date(r.created_at).toISOString(),
-            snippet: snip?.text ?? r.content.slice(0, 160),
-            matchStart: snip?.matchStart ?? 0,
-            matchLength: snip?.matchLength ?? 0,
-            occurrences: snip?.occurrences ?? 0,
-          };
-        }),
-      });
+      if (filter.impossible) {
+        // Every filter was narrowed away, or the window closes before it opens. Returning the
+        // unfiltered project here would be a full page of results for a question nobody asked.
+        return json({ ...echo, impossible: true, results: [], counts: zeroCounts(), total: 0, more: false, scanned: 0, scanTruncated: false });
+      }
+      const gathered = await this.searchRecords(filter);
+      const out = runSearch(gathered.records, filter);
+      return json({ ...echo, ...out, scanned: gathered.scanned, scanTruncated: gathered.truncated });
     }
 
     if (path === '/export' && req.method === 'GET') {
@@ -729,7 +1126,7 @@ export class SessionDO extends DurableObject<Env> {
       // sets the same step ceiling the socket path does.
       const runMode = mode === undefined || mode === null ? 'stone' : asGolemMode(mode);
       if (!runMode) return json({ ok: false, error: `unknown mode` }, 400);
-      await this.startRun(bind, text.slice(0, 8000), runMode, effort);
+      await this.startRun(bind, text.slice(0, MESSAGE_MAX_CHARS), runMode, effort);
       return json({ ok: true, started: true, mode: runMode, effort: effort ?? 'adaptive' });
     }
 
@@ -762,6 +1159,128 @@ export class SessionDO extends DurableObject<Env> {
       return json({ run: await this.runSnapshot() });
     }
 
+    /**
+     * One companion op, driven by a person rather than by a model.
+     *
+     * The caller's PERMISSION is checked in index.ts, which is the only place that has a
+     * user. What is checked HERE is which ops this channel carries at all, and it is
+     * checked again on purpose: `/studio-op` above forwards anything it is handed, and
+     * the difference between the two routes is the entire security boundary. A single
+     * check in the caller is a convention the next caller forgets; a check in the
+     * receiver is a property of the route.
+     */
+    if (path === '/companion-op' && req.method === 'POST') {
+      const body = (await req.json().catch(() => null)) as { op?: Record<string, unknown>; timeoutMs?: number } | null;
+      const raw = body?.op;
+      if (!raw || typeof raw !== 'object' || companionOpAccess(raw) === null) {
+        return json({ ok: false, error: companionRefusal(raw) }, 400);
+      }
+      if (!(await this.pluginConnected())) return json({ ok: false, error: 'Studio is not connected' }, 409);
+      // Shorter ceiling than /studio-op: a person is watching this one, and a request the
+      // panel holds open for two minutes is indistinguishable from a broken panel.
+      const timeoutMs = Math.min(Math.max(Number(body?.timeoutMs) || 20_000, 1_000), 60_000);
+      return json(await this.execStudioOp(sanitizeCompanionOp(raw) as unknown as StudioOp, timeoutMs));
+    }
+
+    //[[ THE STUDIO LINK, FOR THE PERSON WHO OWNS THE PROJECT.
+    //
+    //   Everything below was already known to this object and none of it was reachable by a
+    //   signed-in user. `/info` carries most of it and sits behind the admin key, so the product's
+    //   own troubleshooting page could only tell people to try things — and two docs pages tell
+    //   them to "disconnect from the web workspace", which until `/studio/revoke` below did not
+    //   exist anywhere. index.ts owns the question of WHO may call these; this object owns what
+    //   they say. ]]
+    if (path === '/studio/link') {
+      return json(await this.linkSummary());
+    }
+
+    if (path === '/studio/diagnostics') {
+      const agent = await this.ctx.storage.get<AgentState>('agent');
+      const state = await this.ctx.storage.get<StudioEventState>('pluginState');
+      const issuedAt = (await this.ctx.storage.get<number>('pluginTokenIssuedAt')) ?? null;
+      // The same window /info reports, and the same ordering, so an operator and a user are
+      // looking at one record rather than two that can disagree.
+      //
+      // `runId` is renamed out of the column name here rather than left as `run_id`, because this
+      // payload is read by the browser and every other field on it is already camelCase. A caller
+      // that has to know the storage spelling of one field is a caller that will get it wrong.
+      const recentOps = (
+        this.sql
+          .exec(`select op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit 25`)
+          .toArray() as { op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
+      ).map((r) => ({
+        op_id: r.op_id,
+        kind: r.kind,
+        ok: r.ok,
+        summary: r.summary,
+        created_at: r.created_at,
+        failure: r.failure,
+        /** The run that asked for this op, or null for one taken outside a run. */
+        runId: r.run_id,
+      }));
+      return json({
+        link: await this.linkSummary(),
+        agentStatus: agent?.status ?? 'idle',
+        /** When the pairing token was issued and when it lapses — the 30-day clock, made visible. */
+        pairedAt: issuedAt,
+        pairingExpiresAt: issuedAt === null ? null : issuedAt + PLUGIN_TOKEN_TTL_MS,
+        /** What Studio last said about itself. Null when it has never reported. */
+        openPlace: state
+          ? { placeName: state.placeName, placeId: state.placeId, gameId: state.gameId, isRunMode: state.isRunMode }
+          : null,
+        placeMismatch: this.placeMismatch
+          ? {
+              expectedPlaceName: this.placeMismatch.expected.placeName,
+              openPlaceName: this.placeMismatch.open.placeName,
+              openPlaceId: this.placeMismatch.open.placeId,
+              message: this.placeMismatch.message,
+            }
+          : null,
+        recentOps,
+      });
+    }
+
+    //[[ DISCONNECT THIS STUDIO. The route the documentation has been promising.
+    //
+    //   docs/troubleshooting and docs/plugin both tell the user to "disconnect from the web
+    //   workspace"; there was no such thing. The only way to revoke a plugin's access was to
+    //   delete the entire project.
+    //
+    //   Deleting the token hash is what actually revokes: the next poll cannot match it and is
+    //   answered 401, which the plugin already handles by clearing its saved session. The
+    //   heartbeat is cleared in the same breath so `pluginConnected()` reports the truth
+    //   immediately rather than for one more poll interval, and the place binding goes with it
+    //   because it described a pairing that no longer exists. ]]
+    if (path === '/studio/revoke' && req.method === 'POST') {
+      const had = !!(await this.ctx.storage.get<string>('pluginTokenHash'));
+      await this.ctx.storage.delete(['pluginTokenHash', 'pluginTokenIssuedAt', 'pluginLastSeen', 'pluginPlace', 'pluginSuperseded']);
+      this.lastSeenWrittenAt = 0;
+      this.pollDueBy = 0;
+      this.pluginSeenRecently = false;
+      this.boundPlace = null;
+      this.placeMismatch = null;
+      this.broadcast({ type: 'studio_status', connected: false, lastSeenAt: null, queuedOps: this.opQueue.length, place: null, placeMismatch: null });
+      // A poll parked in the long hold is released at once, so the plugin learns within a
+      // round trip instead of after the hold expires.
+      this.pollWaiter?.();
+      return json({ ok: true, revoked: had });
+    }
+
+    //[[ REBIND THE PROJECT TO THE PLACE STUDIO HAS OPEN NOW.
+    //
+    //   The escape hatch for the refusal above, and the reason that refusal is safe to ship. A
+    //   user who genuinely moved their project into a new place — "Save As", a republish under a
+    //   new id — would otherwise have to re-pair to get out of a permanent refusal. Clearing the
+    //   binding is enough: the next identifiable state event binds, which is the same path a
+    //   first-time pairing takes. ]]
+    if (path === '/studio/place/rebind' && req.method === 'POST') {
+      await this.ctx.storage.delete('pluginPlace');
+      this.boundPlace = null;
+      this.placeMismatch = null;
+      this.pollWaiter?.();
+      return json({ ok: true });
+    }
+
     if (path === '/info') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
       const msgs = this.sql.exec(`select count(*) as c from messages`).one() as { c: number };
@@ -775,6 +1294,8 @@ export class SessionDO extends DurableObject<Env> {
         messages: msgs.c,
         pluginConnected: await this.pluginConnected(),
         queuedOps: this.opQueue.length,
+        // The same record the owner sees at /studio/diagnostics, so the two views cannot drift.
+        link: await this.linkSummary(),
         oplog,
       });
     }
@@ -823,9 +1344,39 @@ export class SessionDO extends DurableObject<Env> {
     const bind = await this.bind();
     if (!bind) return;
 
+    //[[ WHAT THIS SOCKET MAY DO, ASKED PER MESSAGE.
+    //
+    //   The handshake decided WHO. It cannot decide WHAT, because one connection carries reads and
+    //   writes both: a viewer watching a build and a viewer trying to start one arrive on the same
+    //   socket, a millisecond apart.
+    //
+    //   A socket with no readable identity is refused rather than assumed. Before this change only
+    //   the owner could hold one, so a socket open across the deploy that introduced attachments
+    //   IS the owner's — and defaulting it to `owner` on that reasoning is precisely the shape
+    //   this repository keeps finding: an inference that is true today, load-bearing forever, and
+    //   silent when it stops being true. The cost of refusing is one reconnect; the cost of
+    //   assuming is every future socket that fails to carry a role.
+    const me = this.beatOf(ws);
+    const mayNot = (action: Parameters<typeof can>[1]): boolean => me === null || !can(me.role, action);
+    const refuse = (message: string) => {
+      ws.send(JSON.stringify({ type: 'error', code: 'forbidden', message } satisfies ServerMsg));
+    };
+
     switch (msg.type) {
       case 'ping':
-        ws.send(JSON.stringify({ type: 'pong' } satisfies ServerMsg));
+        this.touch(ws);
+        //[[ THE ROUND TRIP, MEASURED IN ONE CLOCK DOMAIN.
+        //
+        //   `t` is the browser's own timestamp, echoed back untouched. The server deliberately
+        //   does NOT substitute its own clock: the difference between two unsynchronised clocks
+        //   is not latency, and a "latency" reading that is really clock skew is a number that
+        //   looks like a measurement and is not one. A tab from an older build sends no `t` and
+        //   is ponged without one, which the client reads as "not measured" rather than as 0. ]]
+        ws.send(JSON.stringify({ type: 'pong', ...(typeof msg.t === 'number' ? { t: msg.t } : {}) } satisfies ServerMsg));
+        return;
+      case 'presence':
+        // The client says what it is doing; it does not get to say who it is.
+        this.touch(ws, msg.activity === 'typing' || msg.activity === 'building' ? msg.activity : 'viewing');
         return;
       case 'resume':
         // Previously declared in the protocol and silently unhandled.
@@ -833,6 +1384,15 @@ export class SessionDO extends DurableObject<Env> {
         return;
       case 'chat':
         {
+          if (mayNot('chat')) {
+            refuse(
+              me === null
+                ? 'This connection is out of date — reload the page to keep building.'
+                : 'Your role on this project can read and comment, but not build.',
+            );
+            return;
+          }
+          this.touch(ws, 'building');
           const mode = asGolemMode(msg.mode);
           if (!mode) {
             // Refused by name. A `?? 'clay'` default here would accept a hostile value and run it
@@ -840,7 +1400,18 @@ export class SessionDO extends DurableObject<Env> {
             this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
             return;
           }
-          await this.startRun(bind, msg.text.slice(0, 8000), mode);
+          const text = msg.text.slice(0, MESSAGE_MAX_CHARS);
+          //[[ THE SAME BUILD, ASKED AGAIN.
+          //
+          //   Quota answers "can this account afford another run" and the IP limiter answers "is
+          //   one address hammering the edge". Neither can see that this is the fourth copy of the
+          //   same 600-word prompt in three minutes — each run is paid for and each request is
+          //   under the ceiling, and all four burn a build on one intention.
+          //
+          //   The history is this project's own user messages, read here rather than kept in
+          //   memory so a reconnect, a new isolate or a second tab does not reset the count. ]]
+          if (this.refuseAbusive(text)) return;
+          await this.startRun(bind, text, mode);
         }
         return;
       case 'edit_resend': {
@@ -860,6 +1431,14 @@ export class SessionDO extends DurableObject<Env> {
         //        not silently become "truncate from the beginning".
         //     3. It must be a USER message. Editing what Apple said and replaying from there
         //        would let the transcript assert the assistant produced text it never produced. ]]
+        if (mayNot('chat')) {
+          refuse(
+            me === null
+              ? 'This connection is out of date — reload the page to keep building.'
+              : 'Your role on this project cannot edit the conversation.',
+          );
+          return;
+        }
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
           this.broadcast({ type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
@@ -878,7 +1457,7 @@ export class SessionDO extends DurableObject<Env> {
           return;
         }
 
-        const text = msg.text.slice(0, 8000).trim();
+        const text = msg.text.slice(0, MESSAGE_MAX_CHARS).trim();
         if (!text) {
           this.broadcast({ type: 'error', code: 'edit', message: 'An edited message cannot be empty.' });
           return;
@@ -907,6 +1486,9 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       case 'stop': {
+        // Stopping someone else's build is an act, not a view: a viewer watching a run must not be
+        // able to end it.
+        if (mayNot('chat')) return;
         // Written to its OWN key, never into the agent blob. The run holds a copy of that blob
         // for the length of a step and writes it back at the tail, so a stop written into the
         // same blob either gets erased by that write or erases the step's own progress,
@@ -918,11 +1500,21 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       case 'checkpoint_create': {
+        if (mayNot('build')) {
+          refuse('Your role on this project cannot create checkpoints.');
+          return;
+        }
         const res = await this.createCheckpoint(msg.label.slice(0, 60) || 'checkpoint', 'manual');
         if ('error' in res) this.broadcast({ type: 'error', code: 'checkpoint', message: res.error });
         return;
       }
       case 'checkpoint_restore': {
+        // Restoring discards work other members did after the checkpoint, so it takes the same
+        // capability the version history requires — admin or owner. See collab.ts.
+        if (mayNot('restore_version')) {
+          refuse('Restoring a checkpoint discards work other people did. Only a project admin can do that.');
+          return;
+        }
         const res = await this.restoreCheckpoint(msg.checkpointId);
         if (!res.ok) this.broadcast({ type: 'error', code: 'restore', message: res.error ?? 'restore failed' });
         return;
@@ -931,7 +1523,9 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   async webSocketClose() {
-    /* hibernation-friendly: nothing to clean */
+    // Nothing to clean — but the room has changed, and presence is derived from the sockets that
+    // are still attached, so the people left behind need to be told.
+    this.broadcastPresence();
   }
 
   // ------------------------------------------------------------------ agent run
@@ -944,7 +1538,7 @@ export class SessionDO extends DurableObject<Env> {
    *
    * Durable Objects are single-threaded, but this function awaits — and the storage read that
    * decides whether a run is already in flight is one of the things it awaits. Two `chat`
-   * frames arriving together both saw an idle agent, so both spent a Spark, both inserted a
+   * frames arriving together both saw an idle agent, so both spent a Credit, both inserted a
    * user row, and one of the two `msg_start` broadcasts never got its `msg_end`: a message
    * that sits in the transcript spinning forever.
    *
@@ -981,11 +1575,11 @@ export class SessionDO extends DurableObject<Env> {
     // must not travel into the run the user starts next.
     await clearStop(this.ctx.storage);
 
-    // Sparks are billed from measured usage after each model call, so entering a run only
+    // Credits are billed from measured usage after each model call, so entering a run only
     // requires having some balance left — the user is never charged for an estimate.
     const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
     if (!quota.ok) {
-      this.broadcast({ type: 'error', code: 'quota', message: 'Daily Sparks are used up. They refill at midnight UTC.' });
+      this.broadcast({ type: 'error', code: 'quota', message: 'Daily Credits are used up. They refill at midnight UTC.' });
       this.broadcast({ type: 'quota', quota: quota.state });
       return;
     }
@@ -994,7 +1588,7 @@ export class SessionDO extends DurableObject<Env> {
     const userMsgId = crypto.randomUUID();
     this.sql.exec(`insert into messages(id, role, mode, content, created_at) values(?,?,?,?,?)`, userMsgId, 'user', mode, text, Date.now());
 
-    const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
+    const memory = normaliseMemory(await this.ctx.storage.get<unknown>('memory'));
     const studioConnected = await this.pluginConnected();
     const pluginState = await this.ctx.storage.get<StudioEventState>('pluginState');
     const traits = classifyRequest(text);
@@ -1007,14 +1601,49 @@ export class SessionDO extends DurableObject<Env> {
     //   is NOT escaped — mangling it would corrupt the evidence the agent reasons from — so the
     //   tag carries a secret instead of relying on the content not containing one. ]]
     const fenceId = crypto.randomUUID().slice(0, 8);
+    //[[ WHAT THE PERSON ASKED FOR, as opposed to what Apple worked out for itself.
+    //
+    //   Scoped memory lives in D1 rather than in this DO because it is not per-project: "answer me
+    //   in Hebrew" is a fact about the person, and a preference that has to be re-taught in every
+    //   new project is not a preference. The access context is built from what this DO has already
+    //   PROVEN — it is bound to one project and knows its owner — so the read can only ever reach
+    //   this project's rows, this owner's rows, and the organisations that owner belongs to.
+    //
+    //   Best-effort: a store that cannot be read must not take the conversation down with it. The
+    //   fallback is EMPTY personalisation, which is the honest degraded state — no settings applied
+    //   and no settings invented — and it is visible in the memory panel, which reads the same
+    //   rows through the same functions. ]]
+    const personalisation = await (async () => {
+      try {
+        const access = await memoryAccessFor(this.env, bind.ownerId, [bind.projectId]);
+        return await personalisationForProject(this.env, access, { projectId: bind.projectId }, fenceId, {
+          knownModelIds: allModels().map((m) => m.id),
+          knownToolNames: toolNames(),
+        });
+      } catch {
+        return EMPTY_PERSONALISATION;
+      }
+    })();
+    this.pinnedPrefs = personalisation.prefs;
+    const promptMemory = memoryForPrompt(memory, personalisation.memoryMode);
     const sys = systemPrompt({
       mode,
       studioConnected,
       assetLibraryAvailable: await assetLibraryAvailable(this.env),
       placeName: pluginState?.placeName ?? null,
       projectName: bind.projectName,
-      memorySummary: memory.summary,
-      memoryFacts: memory.facts,
+      //[[ MEMORY OFF MEANS OFF ON THE READ SIDE TOO.
+      //
+      //   A switch that only stopped new writes would leave the agent acting on everything it had
+      //   already worked out — which is not what the person who turned it off asked for, and is
+      //   indistinguishable from the switch not working.
+      //
+      //   What it does NOT drop is `personalisation` below. Those are settings the person TYPED —
+      //   the language to answer in, the project's instructions, the team's rules. They are things
+      //   they told Apple, not things Apple noticed, and silently ignoring them would be a second,
+      //   unannounced setting hiding inside this one. ]]
+      memorySummary: promptMemory.summary,
+      memoryFacts: promptMemory.facts,
       // The art-direction brief is ~1,800 tokens on every step, so only visual requests pay for
       // it. The request text doubles as the scene-kind hint — resolveKind matches on substrings.
       sceneKind: traits.visualDesignTask && mode !== 'clay' ? text : undefined,
@@ -1024,6 +1653,7 @@ export class SessionDO extends DurableObject<Env> {
       //   style families §L asks for, and padding a thin match into a prompt would
       //   spend tokens on every step to tell the model what it did not need. ]]
       uiBrief: traits.uiDesignTask && mode !== 'clay' ? (designBrief(text)?.text ?? null) : null,
+      personalisation: personalisation.promptBlock,
       fenceId,
     });
 
@@ -1045,7 +1675,7 @@ export class SessionDO extends DurableObject<Env> {
       llm: [{ role: 'system', content: sys }, ...history, { role: 'user', content: text, pinned: true }],
       step: 0,
       maxSteps: STEP_LIMITS[mode],
-      sparksSpent: 1,
+      creditsSpent: 1,
       trace: [],
       finalText: '',
       startedAt: Date.now(),
@@ -1057,6 +1687,8 @@ export class SessionDO extends DurableObject<Env> {
       traits,
       forcedEffort,
       request: text,
+      toolPermissions: personalisation.prefs.tool_permissions,
+      memoryMode: personalisation.memoryMode,
       // Persisted with the run, not just broadcast: a browser that refreshes mid-build replays
       // this out of runSnapshot() instead of losing the Intent and Plan rows.
       intent: intent ?? undefined,
@@ -1191,6 +1823,15 @@ export class SessionDO extends DurableObject<Env> {
     agent.lastStepAt = Date.now();
     this.lastActivity = agent.lastStepAt;
 
+    // TIME before STEPS: a run that has been going too long should be told so, not told it ran out
+    // of steps. What stopped it has to be what it is told, or the next attempt repeats it.
+    const duration = runDurationVerdict({ startedAt: agent.startedAt, mode: agent.mode, now: Date.now() });
+    if (duration.over) {
+      agent.finalText = agent.finalText || duration.reason;
+      await this.finishRun(agent, 'done');
+      return;
+    }
+
     if (agent.step > agent.maxSteps) {
       agent.finalText = agent.finalText || 'I reached the step limit for this run. Progress so far is saved — send another message to continue.';
       await this.finishRun(agent, 'done');
@@ -1198,8 +1839,8 @@ export class SessionDO extends DurableObject<Env> {
     }
     if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
-      if (state.sparksRemaining <= 0) {
-        agent.finalText = agent.finalText || 'I paused because your daily Sparks ran out. Progress is saved.';
+      if (state.creditsRemaining <= 0) {
+        agent.finalText = agent.finalText || 'I paused because your daily Credits ran out. Progress is saved.';
         await this.finishRun(agent, 'quota');
         return;
       }
@@ -1214,16 +1855,46 @@ export class SessionDO extends DurableObject<Env> {
         agent.llm[0] = { ...agent.llm[0], content: collapsed };
       }
     }
-    agent.llm = trimTranscript(agent.llm, MAX_PROMPT_CHARS);
+    //[[ THE TRIM STOPS BEING SILENT HERE.
+    //
+    //   `trimTranscriptReport` is the same function with the same arithmetic — `trimTranscript` now
+    //   calls it and takes `.llm` — plus the two figures nobody could see: what this step's prompt
+    //   costs against the ceiling, and what had to be dropped to get under it.
+    //
+    //   `dropped` rides only on a step that ACTUALLY dropped something. Sending `{ groups: 0 }`
+    //   every step would make "nothing was trimmed" and "this worker does not report trims" the
+    //   same message, and the client renders a note from its presence.
+    //
+    //   Note what is NOT reported: the collapseArtDirection step above shortens OUR OWN system
+    //   prompt, not the user's conversation. It is a cost optimisation on our instructions, and
+    //   announcing it to a builder as "context was truncated" would describe a loss they did not
+    //   take. What they can lose is turns, and that is what this counts. ]]
+    const trimmed = trimTranscriptReport(agent.llm, MAX_PROMPT_CHARS);
+    agent.llm = trimmed.llm;
+    this.broadcast({
+      type: 'context_budget',
+      msgId: agent.msgId,
+      usedChars: trimmed.after,
+      maxChars: trimmed.maxChars,
+      ...(trimmed.droppedGroups > 0
+        ? { dropped: { groups: trimmed.droppedGroups, chars: trimmed.droppedChars } }
+        : {}),
+    });
     await this.persistAgent(agent);
     // The opening phase of a step is 'understanding' on the first step and
     // otherwise carries whatever the previous tool left us in, until the next
     // tool call renames it. Never invent a stage the agent has not entered.
     agent.phase = agent.step === 1 ? (agent.mode === 'clay' ? 'understanding' : 'planning') : (agent.phase ?? 'building');
-    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, totalSteps: agent.maxSteps, sparksSpent: agent.sparksSpent });
+    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, totalSteps: agent.maxSteps, creditsSpent: agent.creditsSpent });
 
     const studioConnected = await this.pluginConnected();
-    const allowed = toolsForMode(agent.mode, studioConnected, toolNames());
+    //[[ NARROWING ONLY, and in this order.
+    //
+    //   `toolsForMode` is what enforces Plan mode's read-only promise to the user — it is the
+    //   guarantee, not a token optimisation. Preferences are applied ON TOP of it and can only
+    //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
+    //   it cannot touch the project. See applyToolPermissions. ]]
+    const allowed = applyToolPermissions(toolsForMode(agent.mode, studioConnected, toolNames()), agent.toolPermissions);
 
     // Decide how hard to think about THIS step. Cheap by default, expensive where it changes the
     // outcome — visual design, recovery from failure, anything irreversible.
@@ -1249,7 +1920,7 @@ export class SessionDO extends DurableObject<Env> {
       totalSteps: agent.maxSteps,
       effort: choice.effort,
       effortReason: choice.reason,
-      sparksSpent: agent.sparksSpent,
+      creditsSpent: agent.creditsSpent,
     });
 
     // Whether the curated library exists here. Read once per isolate — it changes at most once per
@@ -1268,7 +1939,15 @@ export class SessionDO extends DurableObject<Env> {
       // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
       // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
       // The DO id is per-project and opaque, so it is never shared across tenants.
-      { kind: `${agent.mode}:step:${choice.effort}`, sessionId: this.ctx.id.toString() },
+      {
+        kind: `${agent.mode}:step:${choice.effort}`,
+        sessionId: this.ctx.id.toString(),
+        // Attribution for the model trace. Null when the run predates a bind rather than a
+        // placeholder — `breakdownBy` counts unattributed calls instead of inventing a tenant.
+        actorId: agent.userId,
+        ...(this.boundProjectId ? { projectId: this.boundProjectId } : {}),
+        runId: agent.msgId,
+      },
     );
     //[[ Same reason as seenCalls: this holds raw tool arguments verbatim and is persisted.
     //   Only the most recent turn's calls are ever read, so keeping more is pure weight. ]]
@@ -1278,20 +1957,20 @@ export class SessionDO extends DurableObject<Env> {
     agent.priorStepFailed = false;
     agent.visualDefectsFound = false;
 
-    // Sparks track real spend: charge the difference between what this call actually cost
-    // and the 1 Spark already taken for the step. Users are never billed for our estimate.
-    // Round Sparks once per RUN, not once per call: otherwise a run of five small calls costs
-    // five whole Sparks when the compute used barely fills one.
+    // Credits track real spend: charge the difference between what this call actually cost
+    // and the 1 Credit already taken for the step. Users are never billed for our estimate.
+    // Round Credits once per RUN, not once per call: otherwise a run of five small calls costs
+    // five whole Credits when the compute used barely fills one.
     agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neurons;
-    const owed = sparksForNeurons(agent.neuronsUsed) - agent.sparksSpent;
+    const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
     if (owed > 0) {
       const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-      agent.sparksSpent += owed;
+      agent.creditsSpent += owed;
       if (!settle.ok) {
         // they have run out mid-run: finish this step's work, then stop cleanly
         agent.finalText =
           (res.text || agent.finalText || '') +
-          '\n\nThat used the last of your Sparks for today. Everything so far is saved — they refill at midnight UTC.';
+          '\n\nThat used the last of your Credits for today. Everything so far is saved — they refill at midnight UTC.';
         this.broadcast({ type: 'quota', quota: settle.state });
         await this.finishRun(agent, 'quota');
         return;
@@ -1457,6 +2136,11 @@ export class SessionDO extends DurableObject<Env> {
       // means the next step should think harder rather than repeat the same cheap attempt.
       if (!out.ok) agent.priorStepFailed = true;
       if (out.ok && MUTATING_TOOLS.has(call.name)) agent.mutated = true;
+      // The plan is read back out of the panel the tool emitted rather than handed over through a
+      // second channel: one mechanism, and the thing settled at the end is by construction the
+      // thing the user was shown. A second propose_plan is ignored — the prompt says call it once,
+      // and letting a later plan replace the one the user already read would rewrite history.
+      if (call.name === 'propose_plan' && out.ok && !agent.plan) agent.plan = planFromDetail(toolId, out.detail);
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
       // Keep the live trace the reconnect snapshot replays from.
@@ -1470,10 +2154,30 @@ export class SessionDO extends DurableObject<Env> {
         detail: out.detail,
       });
       if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
-      // fence tool output as untrusted data — it can contain attacker-authored text
+      //[[ FENCE TOOL OUTPUT AS UNTRUSTED DATA — it can contain attacker-authored text.
+      //
+      //   Built by `fenceToolOutput` rather than interpolated here, for a reason that is not
+      //   tidiness. `call.name` IS MODEL-SUPPLIED: `runTool` refuses a name it does not know, but
+      //   it refuses by RETURNING an error result, and that result was then fenced with the same
+      //   name. A call named `get_project_tree" trusted="yes` wrote an attribute the content chose
+      //   onto the one tag in the transcript whose whole authority is that content cannot write it.
+      //   The name now goes through an allowlist there.
+      //
+      //   The body is passed through byte for byte — escaping it would mangle the evidence the
+      //   agent reasons from. What the scan finds is reported in the tag's ATTRIBUTES, the one
+      //   place content cannot reach because the tag carries the run's unguessable id, and on the
+      //   tool row, so the user sees that a page tried it. ]]
+      const fenced = fenceToolOutput({ fenceId: this.fenceIdFor(agent), tool: call.name, body: out.resultForLlm });
+      if (fenced.threats.length) {
+        const note = describeThreats(fenced.findings);
+        entry.summary = `${entry.summary} · ${note}`;
+        const lastUi = agent.uiTools[agent.uiTools.length - 1];
+        if (lastUi) lastUi.summary = `${lastUi.summary} · ${note}`;
+        recordEvent({ kind: 'error', scope: `tool:${call.name}`, errorKind: 'prompt_injection', message: note });
+      }
       agent.llm.push({
         role: 'tool',
-        content: `[${call.name}]\n<untrusted-tool-output id="${this.fenceIdFor(agent)}" tool="${call.name}">\n${out.resultForLlm}\n</untrusted-tool-output>`,
+        content: fenced.text,
         toolCallId: call.id,
         name: call.name,
       });
@@ -1504,6 +2208,55 @@ export class SessionDO extends DurableObject<Env> {
     this.captureProvenance(agent, ctx);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
+  }
+
+  /**
+   * Is this submission the same submission again? Returns true when the run must not start.
+   *
+   * TWO OUTCOMES ON THIS SURFACE, NOT THREE. `scoreSubmission` can say `throttle`, and a socket
+   * cannot throttle: there is nothing here that can hold a run back for thirty seconds, and a
+   * `throttle` branch that quietly started the run anyway would be a defence that reads like one
+   * and is not. So `refuse` refuses, `throttle` is RECORDED and the run proceeds, and the split is
+   * written down here rather than left for the next reader to infer.
+   *
+   * The history is this project's own message table. A read that THROWS is passed on as
+   * `historyReadable: false` rather than as an empty list — an empty list means "this user has sent
+   * nothing", which is an observation, and a failed query is the absence of one.
+   */
+  private refuseAbusive(text: string): boolean {
+    let recent: Submission[] = [];
+    let historyReadable = true;
+    try {
+      const rows = this.sql
+        .exec(`select content, created_at from messages where role = 'user' order by created_at desc limit 20`)
+        .toArray() as { content: string; created_at: number }[];
+      recent = rows.map((r) => ({ text: r.content, at: r.created_at }));
+    } catch {
+      historyReadable = false;
+    }
+    const verdict = scoreSubmission({
+      text,
+      recent,
+      now: Date.now(),
+      historyReadable,
+      // A fresh id per submission: the prompt is scanned with the same injection rules as tool
+      // output, and a prompt cannot contain an id that was minted for this scan alone.
+      fenceId: crypto.randomUUID().slice(0, 8),
+    });
+    if (verdict.action === 'allow') return false;
+    recordEvent({
+      kind: 'error',
+      scope: 'chat:ingress',
+      errorKind: verdict.action === 'refuse' ? 'abuse_refused' : 'abuse_throttled',
+      message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
+    });
+    if (verdict.action !== 'refuse') return false;
+    this.broadcast({
+      type: 'error',
+      code: 'rate_limited',
+      message: verdict.message ?? 'This request was not started because it repeats one that is already running.',
+    });
+    return true;
   }
 
   /**
@@ -1558,6 +2311,11 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+
+    // Read before anything else awaits: the notification below wants the project's name, and a
+    // storage read placed next to its use would be one more await between the run ending and the
+    // isolate going away.
+    const bindName = (await this.bind())?.projectName ?? null;
     // The signal belongs to the run it was pressed during. Leaving it set would stop the
     // user's NEXT message before its first step.
     await clearStop(this.ctx.storage);
@@ -1582,6 +2340,36 @@ export class SessionDO extends DurableObject<Env> {
     this.currentMsgId = undefined;
     if (abandoned > 0) {
       console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
+    }
+
+    // THE PLAN STOPS BEING A FORECAST HERE.
+    //
+    // propose_plan emitted every step as `pending`, which was true when the user read it and is
+    // false now. gates.ts lifts pending steps into the Thinking card as work still to come, so a
+    // plan nobody re-states leaves a finished run claiming it is about to do things it already did
+    // — and, worse, hides the steps it promised and never reached. Both halves matter, which is
+    // why the settled plan keeps the unticked ones rather than dropping them.
+    //
+    // It goes out on the SAME toolId, so the browser replaces that row's panel instead of drawing a
+    // second, contradictory card; `uiTools` is updated in step so a reconnecting browser replays
+    // the settled plan and not the proposal. See run-plan.ts for what `done` is allowed to mean.
+    //
+    // Placed AFTER the currentMsgId clear above on purpose: op-attribution.test.mjs reads the head
+    // of this method for that line, and burying it under a block this long made the guard go red.
+    if (agent.plan) {
+      const settled = settlePlan(agent.plan, agent.trace);
+      agent.plan = settled;
+      const detail = planDetail(settled);
+      const row = (agent.uiTools ?? []).find((t) => t.toolId === settled.toolId);
+      if (row) row.detail = detail;
+      this.broadcast({
+        type: 'tool_end',
+        msgId: agent.msgId,
+        toolId: settled.toolId,
+        ok: true,
+        summary: `plan: ${settled.steps.filter((s) => s.status === 'done').length}/${settled.steps.length} done`,
+        detail,
+      });
     }
 
     // A playtest cannot outlive the run that started it.
@@ -1632,20 +2420,140 @@ export class SessionDO extends DurableObject<Env> {
     // The settled cost of the whole run. Read here, after the last `quotaSpend`, because every
     // earlier broadcast of this number was taken before that step's settlement and was therefore
     // an under-count of what the user had actually been charged.
-    this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error, sparksSpent: agent.sparksSpent });
+    this.broadcast({ type: 'msg_end', msgId: agent.msgId, stopReason: reason, error, creditsSpent: agent.creditsSpent });
+
+    // BUILD LOG. One event per run, written from the branch that actually ended it, so `outcome` is
+    // the reason recorded rather than a guess made later from the reply text. `neuronsUsed` is
+    // `number | undefined` on a run persisted by an older deploy: it is passed through as null, and
+    // the cost rollup reports that run as unreadable instead of adding a zero to the total.
+    recordEvent({
+      kind: 'build',
+      outcome: reason,
+      steps: agent.step,
+      opsApplied: agent.trace.filter((t) => t.ok).length,
+      opsFailed: agent.trace.filter((t) => !t.ok).length,
+      durationMs: Date.now() - agent.startedAt,
+      neurons: agent.neuronsUsed ?? null,
+      actorId: agent.userId,
+      projectId: this.boundProjectId,
+      runId: agent.msgId,
+    });
+    //[[ THE RUN'S OUTCOME, WRITTEN DOWN RATHER THAN ONLY BROADCAST.
+    //
+    //   `msg_end` above reaches whoever has this project's socket open at this instant. That is
+    //   the right thing for someone watching, and it is the ONLY thing the product had: close the
+    //   tab and the outcome was not delayed, it was gone. There was nothing to come back to.
+    //
+    //   Addressed to the person who STARTED the run, which is the one case where actor and
+    //   recipient being the same person is the entire point - see `suppressSelf` in
+    //   notifications.ts. A run with no user on it (a session persisted by an older deploy) is not
+    //   notified rather than notified to nobody.
+    //
+    //   Best-effort and off the critical path. `notify` never throws; this is additionally on
+    //   waitUntil so a slow D1 write cannot hold the isolate open at the moment it is most likely
+    //   to be evicted. ]]
+    if (agent.userId && this.boundProjectId) {
+      // 'stopped' is the user pressing stop, which is not a failure and does not need reporting
+      // back to the person who pressed it. 'quota' is: the run ended without doing the work.
+      const failed = reason === 'error' || reason === 'incomplete' || reason === 'quota';
+      const outcome = notify(this.env, {
+        kind: failed ? 'run_failed' : 'run_complete',
+        recipientId: agent.userId,
+        projectId: this.boundProjectId,
+        projectName: bindName,
+        // The run id, so two failures of the SAME run coalesce into one line and two different
+        // runs never do.
+        subject: agent.msgId,
+        title: failed ? `That build did not finish` : `Your build finished`,
+        body: failed
+          ? (error ?? 'The run ended before it could make the change you asked for.')
+          : `${agent.trace.filter((t) => t.ok).length} change(s) applied for ${agent.creditsSpent} Credit(s).`,
+        at: Date.now(),
+      }).then(() => undefined);
+      if (this.ctx.waitUntil) this.ctx.waitUntil(outcome);
+      else await outcome;
+    }
+
+    //[[ AND WHETHER THE RUN LEFT THEM SHORT.
+    //
+    //   `usage-meter-model.ts` already turns amber at this level and do/session.ts already appends
+    //   a line to the transcript when a run spends the last Credit. Both are things you see WHILE
+    //   LOOKING, which is the same gap the run outcome had: the person whose overnight build used
+    //   the last of the day's allowance learns it by starting the next one and being refused.
+    //
+    //   The DAY and the BAND are the dedupe subject, so crossing into 'low' is said once per day
+    //   rather than after every one of the eleven runs that follow it - and crossing from 'low'
+    //   into 'exhausted' is still a second, different thing worth saying.
+    //
+    //   Read AFTER the last settlement, like `creditsSpent` above, or the figure reported is the
+    //   one from before this run paid for itself. ]]
+    if (agent.userId) {
+      const state = await this.quotaState(agent.userId).catch(() => null);
+      const band = state ? usageBand(state.creditsRemaining, state.creditsDaily) : 'fine';
+      if (state && band !== 'fine') {
+        const usage = notify(this.env, {
+          kind: 'usage_threshold',
+          recipientId: agent.userId,
+          subject: `usage:${dayKey(Date.now())}:${band}`,
+          title: band === 'exhausted' ? 'Your Credits for today are used up' : 'You are running low on Credits',
+          body:
+            band === 'exhausted'
+              ? `They refill at ${state.resetsAtIso}. Credits, or a bigger plan, cover the gap.`
+              : `${state.creditsRemaining} of ${state.creditsDaily} left today. They refill at ${state.resetsAtIso}.`,
+          at: Date.now(),
+        }).then(() => undefined);
+        if (this.ctx.waitUntil) this.ctx.waitUntil(usage);
+        else await usage;
+      }
+    }
+
+    // A Durable Object's isolate can be evicted the moment it goes idle, and a run ending is
+    // exactly when that happens — so this one flushes rather than waiting for a threshold.
+    if (this.ctx.waitUntil) this.ctx.waitUntil(flushEvents(this.env).then(() => undefined));
+    else await flushEvents(this.env);
     // background memory distillation (only after substantive runs)
-    if (agent.trace.length > 2 && reason === 'done') {
+    //
+    // The mode is checked BEFORE the model call, not inside the writer. `applyModelUpdate` would
+    // discard the result anyway, but a run with memory switched off must not spend a neuron — or a
+    // provider round-trip carrying this conversation — producing a summary nobody will ever store.
+    if (agent.trace.length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
       // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget
-      // (so it can never create an uncontrolled bill) but is not charged to the user's Sparks.
+      // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
-      if (budgetLeft.sparksRemaining <= 0) return;
-      this.ctx.waitUntil?.(this.updateMemory().catch(() => {}));
-      if (!this.ctx.waitUntil) await this.updateMemory().catch(() => {});
+      if (budgetLeft.creditsRemaining <= 0) return;
+      this.ctx.waitUntil?.(this.updateMemory(agent).catch(() => {}));
+      if (!this.ctx.waitUntil) await this.updateMemory(agent).catch(() => {});
     }
   }
 
-  private async updateMemory() {
-    const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
+  /**
+   * The memory mode in force for a run.
+   *
+   * Pinned at run start; a run persisted by an older deployment has none, so it falls back to the
+   * CURRENT resolved preference rather than to a hard-coded default — an old run should not be the
+   * one path that ignores a person's setting, and `memoryModeOf` supplies the default anyway.
+   */
+  private memoryModeOn(agent: AgentState): MemoryMode {
+    return agent.memoryMode ?? memoryModeOf(this.pinnedPrefs);
+  }
+
+  /**
+   * The last personalisation this DO resolved, kept only to answer the line above — and, via
+   * `asset_sources`, to hand the agent's tools the policy they must consult.
+   *
+   * The policy rides on this rather than being read separately because `personalisationForProject`
+   * already resolves it: `mergePreferences` narrows `asset_sources` across org, user and project
+   * layers along with every other preference, and that result is what gets assigned here. A second
+   * reader would be a second implementation of the same precedence, and the two would disagree the
+   * first time somebody set the policy at the org layer. This field was simply typed too narrowly
+   * to see it.
+   */
+  private pinnedPrefs: { memory_mode?: MemoryMode; asset_sources?: AssetSourcePolicy } | null = null;
+
+  private async updateMemory(agent?: AgentState) {
+    const mode = agent ? this.memoryModeOn(agent) : memoryModeOf(this.pinnedPrefs);
+    if (!memoryWritable(mode)) return;
+    const memory = normaliseMemory(await this.ctx.storage.get<unknown>('memory'));
     const recent = (
       this.sql.exec(`select role, content from messages order by created_at desc limit 8`).toArray() as { role: string; content: string }[]
     )
@@ -1670,23 +2578,31 @@ export class SessionDO extends DurableObject<Env> {
     try {
       const jsonStart = res.text.indexOf('{');
       const parsed = JSON.parse(res.text.slice(jsonStart)) as { summary?: string; facts?: string[] };
-      if (parsed.summary) {
-        const facts = Array.isArray(parsed.facts) ? parsed.facts.slice(0, 12).map(String) : memory.facts;
-        await this.ctx.storage.put('memory', { summary: parsed.summary.slice(0, 3000), facts });
-        // best-effort sync to Supabase registry with the user's own JWT
-        const jwt = this.liveJwt;
-        const bind = await this.bind();
-        if (jwt && bind) {
-          await fetch(`${this.env.SUPABASE_URL}/rest/v1/projects?id=eq.${bind.projectId}`, {
-            method: 'PATCH',
-            headers: {
-              apikey: this.env.SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${jwt}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ memory_summary: parsed.summary.slice(0, 3000), memory_facts: facts, last_activity_at: new Date().toISOString() }),
-          }).catch(() => {});
-        }
+      if (!parsed.summary) return;
+      //[[ WHAT THE MODEL PRODUCED IS A PROPOSAL UNTIL THE MODE SAYS OTHERWISE.
+      //
+      //   Under `auto` this is the behaviour it always had. Under `review` the distilled facts go
+      //   into the pending queue and ACTIVE memory is untouched — which is the entire content of
+      //   the setting, and the reason the decision is made in one tested function rather than by
+      //   two branches written here. Credentials are stripped by the same function, so a key that
+      //   was pasted into the conversation cannot become a permanent line in the system prompt.
+      const next = applyModelUpdate(memory, parsed, mode);
+      await this.ctx.storage.put('memory', next);
+      // best-effort sync to Supabase registry with the user's own JWT. The MIRROR carries active
+      // memory only: a proposal nobody has accepted is not something the dashboard should report
+      // as what Apple knows.
+      const jwt = this.liveJwt;
+      const bind = await this.bind();
+      if (jwt && bind) {
+        await fetch(`${this.env.SUPABASE_URL}/rest/v1/projects?id=eq.${bind.projectId}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: this.env.SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${jwt}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ memory_summary: next.summary, memory_facts: next.facts, last_activity_at: new Date().toISOString() }),
+        }).catch(() => {});
       }
     } catch {
       /* memory update is best-effort */
@@ -1705,6 +2621,7 @@ export class SessionDO extends DurableObject<Env> {
       libraryAssetIds: new Set(agent?.libraryAssetIds ?? []),
       env: this.env,
       projectId: this.boundProjectId ?? undefined,
+      assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       studioConnected: () => this.opQueue.length < 100 && this.pluginSeenRecently,
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs),
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind),
@@ -1719,9 +2636,16 @@ export class SessionDO extends DurableObject<Env> {
       },
       playtest: this.playtestBus(),
       addMemoryFact: async (fact) => {
-        const memory = (await this.ctx.storage.get<{ summary: string | null; facts: string[] }>('memory')) ?? { summary: null, facts: [] };
-        memory.facts = [...memory.facts.filter((f) => f !== fact), fact].slice(-24);
-        await this.ctx.storage.put('memory', memory);
+        // The same three-way rule as the distiller, through the same function — `remember` is a
+        // write to the same field, and a tool that obeyed a different policy from the background
+        // writer would be the hole in the setting. The OUTCOME is returned rather than swallowed:
+        // a tool that answers `saved: true` for a write that did not happen teaches the model
+        // something false about the world, and it will act on it for the rest of the run.
+        const mode = agent ? this.memoryModeOn(agent) : memoryModeOf(this.pinnedPrefs);
+        const stored = await this.ctx.storage.get<unknown>('memory');
+        const { memory, outcome } = addModelFact(stored, fact, mode);
+        if (outcome !== 'refused') await this.ctx.storage.put('memory', memory);
+        return outcome;
       },
     };
   }
@@ -1777,12 +2701,13 @@ export class SessionDO extends DurableObject<Env> {
     const verdict = admitFrame(raw, { recompress: opts.recompress });
     if (!verdict.ok) {
       this.sql.exec(
-        `insert into oplog(op_id, kind, ok, summary, created_at) values(?,?,?,?,?)`,
+        `insert into oplog(op_id, kind, ok, summary, created_at, run_id) values(?,?,?,?,?,?)`,
         'frame',
         'frame_rejected',
         0,
         `${verdict.reason}: ${verdict.detail}`.slice(0, 200),
         Date.now(),
+        this.currentMsgId ?? null,
       );
       return false;
     }
@@ -1908,7 +2833,9 @@ export class SessionDO extends DurableObject<Env> {
       const waiter = this.opWaiters.get(op.id);
       if (waiter) {
         this.opWaiters.delete(op.id);
-        waiter({ id: op.id, ok: false, error: 'The run this change belonged to has ended' });
+        // `transport`: this op was removed from the queue before any plugin collected it, so it
+        // provably never reached Studio and nothing was applied.
+        waiter({ id: op.id, ok: false, error: 'The run this change belonged to has ended', failure: WORKER_FAILURES.runEnded });
       }
     }
     return dropped.length;
@@ -1916,7 +2843,17 @@ export class SessionDO extends DurableObject<Env> {
 
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000): Promise<OpResult> {
     if (!(await this.pluginConnected())) {
-      return { id: 'none', ok: false, error: 'Studio is not connected' };
+      return { id: 'none', ok: false, error: 'Studio is not connected', failure: WORKER_FAILURES.notConnected };
+    }
+    //[[ An op must not be queued for a Studio that has the wrong place open.
+    //
+    //   Without this the op sits in the queue until its 30s waiter expires, because the poll is
+    //   refusing to collect anything — a two-line refusal turned into half a minute of nothing,
+    //   and a `timeout`, which is the one failure kind that is NOT safe to retry. Refusing here
+    //   makes it a `transport` failure instead: it provably never ran, so the agent may try again
+    //   the moment the user switches back. ]]
+    if (this.placeMismatch) {
+      return { id: 'none', ok: false, error: this.placeMismatch.message, failure: WORKER_FAILURES.placeMismatch };
     }
     this.seq += 1;
     // Tagged with the run that asked for it. A queued op outlives the request that made it —
@@ -1938,7 +2875,14 @@ export class SessionDO extends DurableObject<Env> {
     const result = await new Promise<OpResult>((resolve) => {
       const timer = setTimeout(() => {
         this.opWaiters.delete(op.id);
-        resolve({ id: op.id, ok: false, error: `Studio did not respond within ${Math.round(timeoutMs / 1000)}s` });
+        // `timeout` and not `transport`: this op may have been delivered, applied, and its report
+        // lost. op-failure.ts is what turns that distinction into a retry decision.
+        resolve({
+          id: op.id,
+          ok: false,
+          error: `Studio did not respond within ${Math.round(timeoutMs / 1000)}s`,
+          failure: WORKER_FAILURES.timeout,
+        });
       }, timeoutMs);
       this.opWaiters.set(op.id, (r) => {
         clearTimeout(timer);
@@ -1946,16 +2890,35 @@ export class SessionDO extends DurableObject<Env> {
       });
     });
     this.sql.exec(
-      `insert into oplog(op_id, kind, ok, summary, created_at) values(?,?,?,?,?)`,
+      `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
       op.id,
       studioOp.op,
       result.ok ? 1 : 0,
       result.error?.slice(0, 200) ?? '',
       Date.now(),
+      result.ok ? null : (asFailureKind(result.failure) ?? null),
+      // The op's OWN attribution, not `this.currentMsgId` read a second time: the run can have
+      // ended while this op sat in the queue, and the row must name the run that asked for it.
+      op.runId ?? null,
     );
     return result;
   }
 
+  /** What the plugin last reported as selected in Studio. Mirrored in storage. */
+  private pluginSelection: StudioEventSelection | null = null;
+  /**
+   * The place this project is bound to, mirrored from storage.
+   *
+   * Cached because it is consulted on EVERY poll and a storage read per poll, forever, for a value
+   * that changes at most once per pairing is the kind of cost this file has already had to undo
+   * twice (see `pluginLastSeen` and `recordPluginClient`). Loaded in the constructor alongside the
+   * op queue so a revived instance judges against the real binding rather than rebinding to
+   * whatever place happens to be open at that moment — which would defeat the guard entirely.
+   */
+  private boundPlace: StudioPlace | null = null;
+  /** Set while the paired Studio has a different place open. Instance-only: it is re-derived from
+   *  the next poll, and a stale copy in storage would outlive the condition. */
+  private placeMismatch: Extract<PlaceAdmission, { verdict: 'mismatch' }> | null = null;
   private lastSeenWrittenAt = 0;
   /** When the plugin's next poll is due (last answer + the sleep we issued + grace). */
   private pollDueBy = 0;
@@ -2017,9 +2980,67 @@ export class SessionDO extends DurableObject<Env> {
     if (body.state) {
       await this.ctx.storage.put('pluginState', body.state);
     }
+
+    //[[ IS THIS THE PLACE THIS PROJECT IS PAIRED TO?
+    //
+    //   The plugin's session is a plugin-wide Studio setting, so opening a different place in the
+    //   same Studio kept the session and executed this project's ops there. `placeId` and `gameId`
+    //   had been arriving on every state event since the plugin was written and were compared to
+    //   nothing.
+    //
+    //   studio-place.ts owns the decision, including the half that matters most: an UNIDENTIFIABLE
+    //   place — a place never saved to Roblox, or one Studio is still loading, both of which report
+    //   placeId 0 — is `unverified`, is SERVED, and never counts as a mismatch. Refusing on an
+    //   absence would break a legitimate user intermittently. ]]
+    const admission = placeAdmission(this.boundPlace, readPlaceReport(body.state), Date.now());
+    if (admission.verdict === 'bind' || (admission.verdict === 'match' && admission.changed)) {
+      this.boundPlace = admission.place;
+      await this.ctx.storage.put<StudioPlace>('pluginPlace', admission.place);
+    }
+    this.placeMismatch = admission.verdict === 'mismatch' ? admission : null;
+    if (!servesOps(admission) && admission.verdict === 'mismatch') {
+      // The link is alive and the plugin is welcome to keep polling — the user may simply switch
+      // back — but it is handed NO ops, and every browser watching is told why rather than being
+      // shown a healthy green pill above a build that never starts.
+      this.broadcast({
+        type: 'studio_status',
+        connected: true,
+        lastSeenAt: now,
+        queuedOps: this.opQueue.length,
+        place: admission.expected,
+        placeMismatch: {
+          expectedPlaceName: admission.expected.placeName,
+          openPlaceName: admission.open.placeName,
+          openPlaceId: admission.open.placeId,
+        },
+      });
+      const refused: PollResponse = {
+        ops: [],
+        waitMs: 3000,
+        placeMismatch: {
+          expected: admission.expected,
+          openPlaceId: admission.open.placeId,
+          openPlaceName: admission.open.placeName,
+          message: admission.message,
+        },
+        // Carried on `client` as well so a plugin build that predates `placeMismatch` still shows
+        // the sentence: `applyClientNotice` already renders any message it is handed.
+        client: { compatible: true, message: admission.message },
+      };
+      return json(refused);
+    }
+
     if (!wasConnected) {
       const st = body.state ?? (await this.ctx.storage.get<StudioEventState>('pluginState'));
-      this.broadcast({ type: 'studio_status', connected: true, state: st ?? undefined });
+      this.broadcast({
+        type: 'studio_status',
+        connected: true,
+        state: st ?? undefined,
+        lastSeenAt: now,
+        queuedOps: this.opQueue.length,
+        place: this.boundPlace,
+        placeMismatch: null,
+      });
     }
     for (const r of body.results ?? []) {
       const waiter = this.opWaiters.get(r.id);
@@ -2030,6 +3051,28 @@ export class SessionDO extends DurableObject<Env> {
     }
     const logs = (body.events ?? []).filter((e) => e.kind === 'log');
     if (logs.length) this.broadcast({ type: 'studio_log', entries: logs.slice(-40) as never });
+
+    //[[ WHAT IS SELECTED IN STUDIO, KEPT AND FORWARDED.
+    //
+    //   The plugin pushes this when the user clicks, rather than the browser polling for
+    //   it: a poll would cost a round trip per tick forever and still be a tick stale,
+    //   which is exactly long enough for "select the door, then press the button" to act
+    //   on the wrong thing.
+    //
+    //   Persisted on every change rather than on a timer. It is one storage write per
+    //   poll at the very worst — the plugin holds only the LATEST selection between polls
+    //   and drops a repeat of what it last sent — and the alternative is a browser that
+    //   connects after a Durable Object eviction being shown a selection the user left
+    //   minutes ago, with nothing to correct it until they happen to click again.
+    //
+    //   `latestSelection` re-derives every field; see companion.ts for why none of them
+    //   is taken on the sender's word. ]]
+    const selection = latestSelection(body.events);
+    if (selection && !sameSelection(selection, this.pluginSelection)) {
+      this.pluginSelection = selection;
+      await this.ctx.storage.put('pluginSelection', selection);
+      this.broadcast({ type: 'studio_selection', selection });
+    }
 
     // long-poll: if agent is running and no ops queued, wait briefly for new ops
     const agent = await this.ctx.storage.get<AgentState>('agent');
@@ -2105,6 +3148,172 @@ export class SessionDO extends DurableObject<Env> {
     // older plugin that does not read this field is unaffected either way.
     if (notice) res.client = notice;
     return json(res);
+  }
+
+  // ------------------------------------------------------------------ search
+  /**
+   * Every record in this project a search could return, narrowed as far as SQL safely can.
+   *
+   * THE TYPE FILTER IS NOT APPLIED HERE, and that is deliberate. The panel shows a count beside
+   * every type — "Messages 12 · Checkpoints 2" — and those counts have to be computed with the
+   * other filters applied but not the type one, or choosing a type collapses every other count to
+   * zero and choosing it back becomes a guess. `runSearch` is where the type filter lands.
+   *
+   * THE PREFILTER IS AN OPTIMISATION, NEVER THE DEFINITION. `narrowing` omits it entirely for a
+   * query SQLite's ASCII-only case folding would mishandle — `Дверь` — and the scan cap does the
+   * bounding instead. A prefilter that drops rows the matcher would have accepted is a search that
+   * silently misses, which is the one failure a user cannot detect from the result list.
+   *
+   * The cap that remains is REPORTED rather than quiet: `truncated` is the difference between
+   * "nothing else matches" and "nothing else was looked at".
+   */
+  private async searchRecords(filter: SearchFilter): Promise<{ records: SearchRecord[]; scanned: number; truncated: boolean }> {
+    const SCAN_MESSAGES = 2000;
+    const SCAN_ROWS = 1000;
+    const records: SearchRecord[] = [];
+    let scanned = 0;
+    let truncated = false;
+
+    // ----- what was said
+    {
+      const n = narrowing(filter, { columns: ['content'] });
+      const rows = this.sql
+        .exec(
+          `select id, role, content, created_at from messages ${n.where} order by created_at desc limit ?`,
+          ...n.args,
+          SCAN_MESSAGES + 1,
+        )
+        .toArray() as { id: string; role: string; content: string; created_at: number }[];
+      if (rows.length > SCAN_MESSAGES) truncated = true;
+      for (const r of rows.slice(0, SCAN_MESSAGES)) {
+        scanned += 1;
+        records.push({
+          id: r.id,
+          type: 'message',
+          author: authorForRole(r.role),
+          title: null,
+          body: r.content,
+          createdAt: r.created_at,
+          messageId: r.id,
+        });
+      }
+    }
+
+    // ----- what the agent produced: one record per tool step, which is what the work surface
+    //       builds its artifact panels from. The message's own text need not mention the tool at
+    //       all, so this is its own query rather than a pass over the rows above.
+    {
+      const n = narrowing(filter, { columns: ['tool_trace'], require: ['tool_trace is not null'] });
+      const rows = this.sql
+        .exec(
+          `select id, tool_trace, created_at from messages ${n.where} order by created_at desc limit ?`,
+          ...n.args,
+          SCAN_MESSAGES + 1,
+        )
+        .toArray() as { id: string; tool_trace: string | null; created_at: number }[];
+      if (rows.length > SCAN_MESSAGES) truncated = true;
+      for (const r of rows.slice(0, SCAN_MESSAGES)) {
+        let trace: ToolTraceEntry[] = [];
+        try {
+          const parsed = JSON.parse(r.tool_trace ?? '[]');
+          if (Array.isArray(parsed)) trace = parsed as ToolTraceEntry[];
+        } catch {
+          // A trace written in an older shape is skipped rather than taking the whole search down
+          // with it; the message itself is still searchable through the query above.
+          continue;
+        }
+        trace.forEach((entry, i) => {
+          if (!entry || typeof entry.tool !== 'string') return;
+          scanned += 1;
+          records.push({
+            id: `${r.id}:${i}`,
+            type: 'artifact',
+            author: 'apple',
+            title: entry.tool,
+            body: typeof entry.summary === 'string' ? entry.summary : '',
+            createdAt: r.created_at,
+            messageId: r.id,
+          });
+        });
+      }
+    }
+
+    // ----- what can be rolled back to. A manual checkpoint is attributed to the person who asked
+    //       for it and an automatic one to Apple, so the author filter means what it says on both.
+    {
+      const n = narrowing(filter, { columns: ['label', 'kind'] });
+      const rows = this.sql
+        .exec(
+          `select id, label, kind, created_at from checkpoints ${n.where} order by created_at desc limit ?`,
+          ...n.args,
+          SCAN_ROWS,
+        )
+        .toArray() as { id: string; label: string; kind: string; created_at: number }[];
+      for (const r of rows) {
+        scanned += 1;
+        records.push({
+          id: r.id,
+          type: 'checkpoint',
+          author: r.kind === 'manual' ? 'you' : 'apple',
+          title: r.label,
+          body: r.kind,
+          createdAt: r.created_at,
+        });
+      }
+    }
+
+    // ----- what was done to the place. The project's own operation history, which until now was
+    //       readable only as the last 25 rows on the status payload.
+    {
+      const n = narrowing(filter, { columns: ['summary', 'kind'] });
+      const rows = this.sql
+        .exec(
+          `select id, kind, ok, summary, created_at, run_id from oplog ${n.where} order by created_at desc limit ?`,
+          ...n.args,
+          SCAN_ROWS + 1,
+        )
+        .toArray() as { id: number; kind: string | null; ok: number | null; summary: string | null; created_at: number; run_id: string | null }[];
+      if (rows.length > SCAN_ROWS) truncated = true;
+      for (const r of rows.slice(0, SCAN_ROWS)) {
+        scanned += 1;
+        records.push({
+          id: `op:${r.id}`,
+          type: 'activity',
+          author: 'apple',
+          title: r.kind ?? null,
+          body: r.summary ?? '',
+          createdAt: r.created_at,
+          // The anchor back into the conversation. OMITTED, not nulled, for an op taken outside a
+          // run: `messageId` present is what tells the workspace it has somewhere to go, and a
+          // record that claims an anchor it does not have scrolls the user to nothing.
+          ...(r.run_id ? { messageId: r.run_id } : {}),
+        });
+      }
+    }
+
+    // ----- what Apple remembers. Held in storage rather than SQL, and carrying one honest
+    //       timestamp: the human correction if there was one, otherwise the newest message, since
+    //       the model writes memory at the tail of a run. Never `Date.now()`, which would claim an
+    //       edit that never happened and would drift into every "since yesterday" window.
+    {
+      const stored = normaliseMemory((await this.ctx.storage.get<unknown>('memory')) ?? null);
+      const editedAt = await this.ctx.storage.get<string>('memoryEditedAt');
+      const edited = editedAt ? Date.parse(editedAt) : NaN;
+      const newest = (
+        this.sql.exec(`select max(created_at) as t from messages`).toArray() as { t: number | null }[]
+      )[0]?.t;
+      const at = Number.isFinite(edited) ? edited : newest ?? 0;
+      if (stored.summary) {
+        scanned += 1;
+        records.push({ id: 'memory:summary', type: 'memory', author: 'apple', title: null, body: stored.summary, createdAt: at });
+      }
+      stored.facts.forEach((fact, i) => {
+        scanned += 1;
+        records.push({ id: `memory:fact:${i}`, type: 'memory', author: 'apple', title: null, body: fact, createdAt: at });
+      });
+    }
+
+    return { records, scanned, truncated };
   }
 
   // ------------------------------------------------------------------ checkpoints
@@ -2236,9 +3445,9 @@ export class SessionDO extends DurableObject<Env> {
     return { ok: true, fidelity };
   }
 
-  private async quotaSpend(userId: string, sparks: number, kind: string): Promise<{ ok: boolean; state: QuotaState }> {
+  private async quotaSpend(userId: string, credits: number, kind: string): Promise<{ ok: boolean; state: QuotaState }> {
     const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(userId));
-    const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ sparks, kind }) });
+    const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ credits, kind }) });
     const data = (await res.json()) as { ok: boolean; state: QuotaState };
     return data;
   }

@@ -31,7 +31,7 @@ export function UsageMeter({ quota, pending = false, failed = false, now = Date.
   const bare = v.tone === 'unknown' || v.tone === 'pending';
 
   return (
-    <div className={`gx-usage is-${v.tone}`}>
+    <div className={`gx-usage is-${v.tone}`} data-tour="usage-meter">
       <div className="gx-usage__top">
         <span className="gx-usage__head">{v.headline}</span>
         {v.planName && <span className="gx-usage__plan">{v.planName}</span>}

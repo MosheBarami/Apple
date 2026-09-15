@@ -3,7 +3,7 @@ mode=stone
 request=Add a timed parkour challenge to my game. I want a short course of floating platforms players jump across, a start pad and a finish pad, and a timer on screen that starts when they step on the start pad and stops at the finish. Show them their best time so far.
 
 checkpoint before: {"id":"c014e5dd-3d6b-48d6-bfcf-4f7baca7c3a5","label":"pre-golden-1788287275499","kind":"manual","createdAt":1788287277322,"scriptCount":34,"instanceCount":1148,"sizeBytes":317903}
-1.1s hello studioConnected=true sparks=60
+1.1s hello studioConnected=true credits=60
 1.3s [planning]
 1.3s ERROR checkpoint: Couldn't snapshot your project before starting (The run this change belonged to has ended). Continuing without an undo point.
 1.3s [planning 1/16]
@@ -101,4 +101,4 @@ I reached the step limit for this run. Progress so far is saved — send another
 --- summary ---
 elapsed=212.3s tools=18 toolErrors=1
 toolsUsed=get_project_tree, list_scripts, read_script, create_checkpoint, run_luau, edit_script, run_and_check, render_view
-sparksRemaining after=11 usedToday=49
+creditsRemaining after=11 usedToday=49

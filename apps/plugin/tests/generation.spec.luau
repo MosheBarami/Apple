@@ -1,5 +1,5 @@
 --!nocheck
---!modules Version,Paths,Serializer,Render,Generation,Ops
+--!modules Version,Paths,Serializer,Render,Generation,Companion,Ops
 --[[
 	Generation — the gate in front of the marketplace.
 

@@ -163,9 +163,33 @@ export interface ViewStats {
  * the scene is flat.
  */
 export function pixelHardFails(views: ViewStats[]): string[] {
-  const judged = views.filter((v) => v.coverage >= 0.05);
-  if (!judged.length) return [];
   const fails: string[] = [];
+
+  // A COVERAGE FIGURE NOBODY COULD READ IS NOT A COVERAGE OF ZERO.
+  //
+  // `coverage` comes from the plugin's own render metadata — vision.ts:262 is
+  // `coverage: view.meta.subjectCoverage`, unvalidated. When that value is absent, null or
+  // non-finite, `v.coverage >= 0.05` is false, every view is dropped, and this returned [] — the
+  // same answer it returns for an image with nothing wrong. Measured on a flat grey plate, the
+  // exact failure this module exists to catch:
+  //
+  //   coverage 0.5     -> 2 failures    coverage missing/null/NaN -> 0 failures, reads as clean
+  //
+  // The low-coverage FILTER is right and is kept: sky and ground fill are legitimately flat, and an
+  // empty frame would trip every threshold for the wrong reason. What was missing is the difference
+  // between a frame that was empty and a frame that could not be measured.
+  const unreadable = views.filter(
+    (v) => typeof v.coverage !== 'number' || !Number.isFinite(v.coverage) || v.coverage < 0,
+  );
+  if (unreadable.length) {
+    fails.push(
+      `${unreadable.length} view(s) could not be judged — no readable coverage figure for ` +
+      `${unreadable.map((v) => v.name).join(', ')}. Nothing below covers them.`,
+    );
+  }
+
+  const judged = views.filter((v) => !unreadable.includes(v) && v.coverage >= 0.05);
+  if (!judged.length) return fails;
   const best = (pick: (s: PixelStats) => number) => Math.max(...judged.map((v) => pick(v.stats)));
 
   const colour = best((s) => s.colorfulness);

@@ -1,7 +1,7 @@
 /**
  * PROVING YOU OWN THE ACCOUNT BEFORE YOU CAN SPEND IT.
  *
- * `/build` from Discord spends a paying customer's Sparks. The only thing standing between that
+ * `/build` from Discord spends a paying customer's Credits. The only thing standing between that
  * and a stranger is the link: a code minted by somebody SIGNED IN to the Apple account, redeemed
  * once, in Discord, by a user id Discord itself vouched for.
  *

@@ -9,7 +9,7 @@
  *
  * The assertion that matters most is the last one in the first block: a request that fails
  * verification must not reach a command handler AT ALL. A 401 returned after the handler already
- * spent a Spark is not a refusal, it is a receipt.
+ * spent a Credit is not a refusal, it is a receipt.
  *
  * Run with:  node --test           (from apps/worker)
  */

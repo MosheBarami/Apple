@@ -5,7 +5,7 @@ lose Wi-Fi, restart Studio, leave a job running, and return later. The product m
 survive normal reality."*
 
 Run against `https://golem.moshe-barami111.workers.dev` — the live Worker, the live
-SessionDO, the live database. No fixtures. **It costs no Sparks**, which is why it was
+SessionDO, the live database. No fixtures. **It costs no Credits**, which is why it was
 runnable with the daily allowance already exhausted: only starting a run spends quota,
 and this starts none.
 
@@ -17,7 +17,7 @@ and this starts none.
 hello keys      : type, sessionId, studioConnected, quota
 sessionId       : b0766f21-7028-47cc-b9ab-e19198b144d2
 studioConnected : true
-sparksRemaining : 0
+creditsRemaining : 0
 ```
 
 Quota is in the FIRST frame, before anything is typed. A user returning to an exhausted
@@ -29,7 +29,7 @@ allowance learns it from the room they walk into rather than from a failed send.
 transport from the websocket that produced them. The most recent is the quota-exhaustion
 reply from earlier today, verbatim:
 
-> *"That used the last of your Sparks for today. Everything so far is saved — they
+> *"That used the last of your Credits for today. Everything so far is saved — they
 > refill at midnight UTC."*
 
 Which is the claim in that message being checked by the thing it is a claim about.
@@ -68,7 +68,7 @@ flight. A returning user with a live run gets the run.
 ### 6. Nothing shifted
 
 **32 messages after reconnect, unchanged.** Quota state identical
-(`sparksUsedToday: 60`, `resetsAtIso: 2026-09-02T00:00:00.000Z`).
+(`creditsUsedToday: 60`, `resetsAtIso: 2026-09-02T00:00:00.000Z`).
 
 ## Disposition
 
@@ -77,7 +77,7 @@ reconnect: PROVEN against the deployed product.**
 
 **Not covered here**, and not claimed: Studio disconnecting mid-run and recovering;
 cancellation and the stop signal; a long-running task outliving the UI session. Those
-need a run in flight, which needs Sparks. The quota resets at 2026-09-02T00:00:00Z and
+need a run in flight, which needs Credits. The quota resets at 2026-09-02T00:00:00Z and
 §25 forbids raising it.
 
 Also not covered: this drove the API directly rather than a signed-in browser. The

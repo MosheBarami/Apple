@@ -4,12 +4,12 @@
 hello keys      : type, sessionId, studioConnected, quota
 sessionId       : b0766f21-7028-47cc-b9ab-e19198b144d2
 studioConnected : true
-sparksRemaining : 0
+creditsRemaining : 0
 
 ## 2. Conversation history survives, and is served independently of the socket
 messages persisted : 32
 last role/at       : assistant · 2026-09-01T18:48:45.561Z
-last text (head)   :   That used the last of your Sparks for today. Everything so far is saved — they refill at
+last text (head)   :   That used the last of your Credits for today. Everything so far is saved — they refill at
 
 ## 3. Checkpoints — the undo points, across sessions
 checkpoints persisted : 19

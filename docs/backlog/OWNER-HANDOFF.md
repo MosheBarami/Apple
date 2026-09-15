@@ -14,19 +14,19 @@ Regenerated every pass. Last regenerated: **pass 2**.
 ## OH-1 · ~~The free plan cannot complete a single build~~ — CLOSED 2026-09-14
 
 **Closed by.** The owner's "choose whatever on that pricing" in session on 2026-09-14, recorded
-with his exact words in `docs/DECISIONS.md`. Free is now 231 Sparks a day — three whole builds —
+with his exact words in `docs/DECISIONS.md`. Free is now 231 Credits a day — three whole builds —
 and 2,310 a month.
 
-**Verified.** `node scripts/check-offer.mjs` prints `ok  free: 231 Sparks/day affords 3 build(s)`.
+**Verified.** `node scripts/check-offer.mjs` prints `ok  free: 231 Credits/day affords 3 build(s)`.
 
 **Measured this pass (2026-09-14, UTC):**
 
 ```
-BROKEN: the free plan grants 60 Sparks/day and one quality-gated build costs 77 —
+BROKEN: the free plan grants 60 Credits/day and one quality-gated build costs 77 —
 a free user cannot complete a single build in a day
 ```
 
-Derived, not asserted: `PLAN_LIMITS.free.sparksPerDay = 60`, `SPARKS_PER_BUILD = 77`, so
+Derived, not asserted: `PLAN_LIMITS.free.creditsPerDay = 60`, `CREDITS_PER_BUILD = 77`, so
 `buildsPerDay('free') === 0`.
 
 **Rows it unblocks.** 1 — `G-OFFER-1`. It also decides whether S1's published free quota can be
@@ -38,7 +38,7 @@ by `QuotaDO` and by every surface), the arithmetic is derived rather than restat
 The only missing input is the number, which §12.5 reserves to you.
 
 **Why this is not mine to fix.** Raising the allowance is a commercial decision with a direct cost:
-at 77 Sparks/day the free tier costs $0.025/user/day to serve. Lowering `SPARKS_PER_BUILD` instead
+at 77 Credits/day the free tier costs $0.025/user/day to serve. Lowering `CREDITS_PER_BUILD` instead
 would mean making builds cheaper, which is engineering — but choosing *that* over raising the
 allowance is still your call, because the two have different bills.
 
@@ -47,7 +47,7 @@ allowance is still your call, because the two have different bills.
 ## OH-2 · ~~Two plans promise more per day than the service can serve~~ — CLOSED 2026-09-14
 
 **Closed by.** Lowering the allowances, not raising the bill. Team and Enterprise are gone; the
-plan set is free / builder / studio / enterprise and every row is under the 833 Sparks/day the
+plan set is free / builder / studio / enterprise and every row is under the 833 Credits/day the
 service can actually serve. See `docs/DECISIONS.md`.
 
 ---
@@ -59,16 +59,16 @@ service can actually serve. See `docs/DECISIONS.md`.
 `BILLABLE_NEURONS_PER_DAY` is 15,000, sized in its own comment to cap your AI bill at about
 **$5.02 a month**. With the free 10,000/day Cloudflare allocation that is 25,000 neurons a day:
 
-  833 Sparks a day · 25,323 a month · **about 329 quality-gated builds a month, for every user
+  833 Credits a day · 25,323 a month · **about 329 quality-gated builds a month, for every user
   combined.**
 
 The plans now fit inside that, so nothing is broken. But it means the service can carry roughly
 **one** paying Builder customer before free users start being turned away, because that customer's
-12,600 Sparks is half of everything there is.
+12,600 Credits is half of everything there is.
 
-What each tier would cost you to actually FILL, at $0.00033 a Spark:
+What each tier would cost you to actually FILL, at $0.00033 a Credit:
 
-| tier | Sparks/month | cost to serve one customer | price | margin |
+| tier | Credits/month | cost to serve one customer | price | margin |
 |---|---|---|---|---|
 | free | 2,310 | $0.76 | $0 | — (acquisition) |
 | builder | 12,600 | $4.16 | $12 | 2.9× |
@@ -87,21 +87,21 @@ every test stays green.
 
 **Approve-by test.** `node scripts/check-offer.mjs` stays coherent at any ceiling — this is not a
 correctness question, it is a capacity one. The number to watch is how many customers you can
-serve, which is `DAILY_NEURON_CEILING / 30 / (a plan's sparksPerDay)`.
+serve, which is `DAILY_NEURON_CEILING / 30 / (a plan's creditsPerDay)`.
 
 **Measured this pass (2026-09-14, UTC):**
 
 ```
-BROKEN: team grants 1500 Sparks/day but the WHOLE SERVICE can serve 833
-BROKEN: enterprise grants 6000 Sparks/day but the WHOLE SERVICE can serve 833
+BROKEN: team grants 1500 Credits/day but the WHOLE SERVICE can serve 833
+BROKEN: enterprise grants 6000 Credits/day but the WHOLE SERVICE can serve 833
 ```
 
 The service ceiling is `DAILY_NEURON_CEILING` = 10,000 free + 15,000 billable = 25,000 neurons,
-which at `NEURONS_PER_SPARK` = 30 is 833 Sparks **for every user combined**. A single Team
+which at `NEURONS_PER_CREDIT` = 30 is 833 Credits **for every user combined**. A single Team
 subscriber using their allowance would exhaust the entire day for everyone.
 
 **Rows it unblocks.** 1 — `G-OFFER-1`. S10 also depends on it: a refusal that says "you are out of
-Sparks" when in fact the *service* is out is the wrong sentence, and the user cannot act on it.
+Credits" when in fact the *service* is out is the wrong sentence, and the user cannot act on it.
 
 **Already built on this side.** BudgetDO enforces the ceiling and is the only spend guard (AI
 Gateway is on Standard billing with uncapped overage, §1.1). The kill switch, the per-request

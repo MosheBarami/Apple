@@ -1,5 +1,5 @@
 --!nocheck
---!modules Version,Paths,Serializer,Render,Generation,Ops
+--!modules Version,Paths,Serializer,Render,Generation,Companion,Ops
 --[[
 	edit_script — how Golem changes code that already exists.
 

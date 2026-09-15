@@ -32,11 +32,11 @@ const LINK = {
 };
 
 const QUOTA = {
-  sparksRemaining: 140,
-  sparksDaily: 200,
-  sparksMonthly: 4000,
-  sparksUsedToday: 60,
-  sparksUsedThisMonth: 900,
+  creditsRemaining: 140,
+  creditsDaily: 200,
+  creditsMonthly: 4000,
+  creditsUsedToday: 60,
+  creditsUsedThisMonth: 900,
   resetsAtIso: new Date(Date.now() + 5 * 3600_000).toISOString(),
   plan: 'builder',
   allowanceRemaining: 140,
@@ -129,7 +129,7 @@ test('/credits reports the balance, ephemerally', async () => {
   const out = await handleInteraction(cmd('credits'), ports());
   assert.equal(out.status, 200);
   assertMessage(out.body);
-  assert.match(out.body.data.content, /140 Sparks/);
+  assert.match(out.body.data.content, /140 Credits/);
 });
 
 test('/status reports the live run using the same words the web app uses', async () => {
@@ -198,11 +198,11 @@ test('/build does not start a second run on top of a live one', async () => {
 });
 
 test('a refused start is reported in the loading message, not left spinning forever', async () => {
-  const p = ports({ startBuild: async () => ({ ok: false, error: 'out of Sparks for today' }) });
+  const p = ports({ startBuild: async () => ({ ok: false, error: 'out of Credits for today' }) });
   const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'a lava obby' }]), p);
   const edits = [];
   await out.deferred(async (content) => void edits.push(content));
-  assert.match(edits[0], /out of Sparks for today/);
+  assert.match(edits[0], /out of Credits for today/);
   assert.equal(
     p.calls.some((c) => c[0] === 'watchRun'),
     false,

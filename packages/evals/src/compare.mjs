@@ -10,11 +10,16 @@ function load(file) {
   return data;
 }
 
+const measured = (n) => typeof n === 'number' && Number.isFinite(n);
+
+// A null score is a cell nothing could be graded in. Printing "0.0" for it, and then a delta
+// against it, manufactures a regression out of an outage.
 function pct(n) {
-  return (n * 100).toFixed(1);
+  return measured(n) ? (n * 100).toFixed(1) : '—';
 }
 
 function deltaStr(a, b) {
+  if (!measured(a) || !measured(b)) return '  n/a';
   const d = (b - a) * 100;
   const sign = d > 0.049 ? '+' : d < -0.049 ? '' : ' ';
   return `${sign}${d.toFixed(1)}`;

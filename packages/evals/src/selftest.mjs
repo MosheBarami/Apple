@@ -164,14 +164,23 @@ const perTask = [
   { taskId: 'a', category: 'cat1', model: 'clay', ok: true, score: 1, taskWeight: 1 },
   { taskId: 'b', category: 'cat1', model: 'clay', ok: true, score: 0, taskWeight: 3 },
   { taskId: 'a', category: 'cat1', model: 'stone', ok: true, score: 0.5, taskWeight: 1 },
-  { taskId: 'c', category: 'cat2', model: 'clay', ok: false, score: 0, taskWeight: 1 },
+  { taskId: 'c', category: 'cat2', model: 'clay', ok: false, score: null, taskWeight: 1, ungradedReason: 'transport_error' },
 ];
 const agg = aggregate(perTask);
 const clayCat1 = agg.perCategory.find((c) => c.model === 'clay' && c.category === 'cat1');
 check('task weights honored in category aggregate (1*1+3*0)/4', approx(clayCat1.score, 0.25), `got ${clayCat1?.score}`);
 const clayOverall = agg.overall.find((o) => o.model === 'clay');
-check('overall includes transport-error tasks as 0', approx(clayOverall.score, 0.2), `got ${clayOverall?.score}`);
+// CHANGED, deliberately. This used to assert 0.2 — the transport error averaged in as a zero, so
+// a gateway outage on one task in five printed as the model scoring 5 points worse. The failed
+// job now leaves the mean entirely (0.25, the same as the graded cat1 cell) and is reported
+// beside it as an ungraded count. See metrics.mjs.
+check('a transport error leaves the mean rather than averaging in as 0', approx(clayOverall.score, 0.25), `got ${clayOverall?.score}`);
 check('transport errors counted', clayOverall.transportErrors === 1);
+check('ungraded counted separately from graded tasks', clayOverall.ungraded === 1 && clayOverall.gradedTasks === 2 && clayOverall.tasks === 3, JSON.stringify(clayOverall));
+// A cell where nothing could be graded reports null, not 0 — the table prints a dash for it.
+const allUngraded = aggregate([{ taskId: 'z', category: 'cat9', model: 'clay', ok: false, score: null, taskWeight: 1, ungradedReason: 'timeout' }]);
+check('a category with nothing graded scores null, not 0', allUngraded.perCategory[0].score === null, JSON.stringify(allUngraded.perCategory[0]));
+check('the table prints a dash for it, not 0.0', formatTable(['clay'], allUngraded.perCategory, allUngraded.overall).includes('—'));
 const table = formatTable(['clay', 'stone'], agg.perCategory, agg.overall);
 check('table renders categories and OVERALL row', table.includes('cat1') && table.includes('OVERALL'));
 check('transport folds system into prompt', buildPrompt('SYS', 'USER') === 'SYS\n\n---\n\nUSER' && buildPrompt(undefined, 'U') === 'U');

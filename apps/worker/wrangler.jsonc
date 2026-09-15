@@ -22,7 +22,11 @@
   "d1_databases": [{ "binding": "CORPUS", "database_name": "golem-corpus", "database_id": "32c9471e-a7d7-49ee-a8fe-0a7def2c68bd" }],
   "kv_namespaces": [{ "binding": "KV", "id": "cc341a7db4d748139f161fdc292e6e84" }],
   "vectorize": [{ "binding": "VEC", "index_name": "golem-docs" }],
-  "vars": {
+    "vars": {
+    // The Roblox account new library assets are created under. A public user id, not a
+    // credential — the secret is ROBLOX_API_KEY. Read off the published Golem plugin
+    // (asset 132128477945417, creator Herobrine583522) so the two cannot disagree.
+    "ROBLOX_CREATOR_USER_ID": "11279664020",
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
     "ENVIRONMENT": "production",

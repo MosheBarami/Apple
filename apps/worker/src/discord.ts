@@ -194,7 +194,7 @@ export const COMMANDS = [
     options: [{ type: 3, name: 'prompt', description: 'What should Apple build?', required: true, min_length: 3, max_length: 800 }],
   },
   { name: 'status', type: 1, description: 'How is the current build going?' },
-  { name: 'credits', type: 1, description: 'How many Sparks do you have left?' },
+  { name: 'credits', type: 1, description: 'How many Credits do you have left?' },
 ] as const;
 
 export const COMMAND_NAMES = COMMANDS.map((c) => c.name);
@@ -291,7 +291,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
     return {
       status: 200,
       body: say(
-        `**${q.sparksRemaining} Sparks** left — ${q.allowanceRemaining} from today's ${q.plan} allowance` +
+        `**${q.creditsRemaining} Credits** left — ${q.allowanceRemaining} from today's ${q.plan} allowance` +
           `${q.credits > 0 ? `, plus ${q.credits} purchased` : ''}.\nToday's allowance refills ${friendlyReset(q.resetsAtIso)}.`,
       ),
     };
@@ -327,7 +327,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
       body: thinking(),
       reply: { applicationId, token },
       deferred: async (edit) => {
-        // Refused BEFORE a Spark is spent rather than after: a build with no Studio attached burns
+        // Refused BEFORE a Credit is spent rather than after: a build with no Studio attached burns
         // the allowance producing changes that have nowhere to land.
         const health = await ports.projectHealth(link.projectId);
         if (health && !health.pluginConnected) {

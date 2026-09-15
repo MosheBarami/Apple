@@ -38,10 +38,10 @@ Nothing is done until a committed machine says so. A unit of work is finished on
 3.3 SESSION ORIGIN. Every station probe must originate from a session created THIS PASS by the public signup flow with a fresh address at a real, externally-readable inbox, using only requests a browser makes. No seeded account, no locally minted JWT, no service-role key, no test-only auth path, no bypass header, no direct database insert. If confirmation mail does not arrive within 10 minutes, S2 is BLOCKED and S3, S4, S10, S11, S12 are BLOCKED WITH IT — a funnel whose first step fails for a stranger has no proven steps after it. Record the address, the inbox fetch, and timestamps.
 
 3.4 Stations. Each is PROVEN only by a probe of the DEPLOYED origin, captured to a file and fingerprinted.
-- **S1 Land** — site and `/pricing` return 200, zero user-visible "Golem", zero "$0 forever" / "No card required, ever" / "never be charged", published free quota equals `PLAN_LIMITS.free.sparksPerDay` in `apps/worker/src/pricing.ts`.
+- **S1 Land** — site and `/pricing` return 200, zero user-visible "Golem", zero "$0 forever" / "No card required, ever" / "never be charged", published free quota equals `PLAN_LIMITS.free.creditsPerDay` in `apps/worker/src/pricing.ts`.
 - **S2 Sign up** — a brand-new email reaches a usable session.
 - **S3 Create** — a project created from the deployed `/app` survives a full reload and a new browser session.
-- **S4 Chat** — a message from the deployed workspace yields a streamed reply, a per-run cost, and a live Spark balance rendered IN the workspace.
+- **S4 Chat** — a message from the deployed workspace yields a streamed reply, a per-run cost, and a live Credit balance rendered IN the workspace.
 - **S5 Pair** — the plugin pairs from a build a person can install. Creator Store distribution is a DISTRIBUTION handoff and may be cited only by S5, only for the words "installable by a stranger".
 - **S6 Build** — with a paired plugin the agent's tools execute and change the place. Tools that can change a place with no plugin: 0.
 - **S7 See** — a successful `render_view` puts a frame in the browser.
@@ -107,7 +107,7 @@ No ledger row may be closed until §6 is discharged. Each item is a gate: RED-FI
 
 6.7 `scripts/check-dispositions.mjs` FAILS when: STRUCTURALLY-BLOCKED cites a constraint any other closed row in the same section also faces, or cites "not built", "no caller yet", "requires refactor", or anything inside this repository; FACET-BOUND names a parent that is not itself CLOSED-WITH-EVIDENCE; MERGE-DUPLICATE names a survivor whose name is not an exact string match; ACCEPTED_DEBT quotes a string that does not appear byte-for-byte in `docs/DECISIONS.md` alongside this row's id; or any disposition applied to more than 20 rows in one pass lacks a per-row justification with a distinct proving citation (identical citations across rows collapse to one row and reopen the rest).
 
-6.8 `scripts/check-offer.mjs` FAILS unless, computed from `apps/worker/src/pricing.ts` and `docs/COST-MODEL.md`: every plan's monthly price exceeds its monthly Sparks priced at measured neuron cost × 1.4; no plan's `sparksPerDay` exceeds the compiled BudgetDO daily neuron ceiling; the free plan's daily allowance affords at least one complete quality-gated build; every quota stated in `apps/site` and `apps/web` equals the enforced constant; every advertised plan-conditional feature resolves to a code path that branches on plan.
+6.8 `scripts/check-offer.mjs` FAILS unless, computed from `apps/worker/src/pricing.ts` and `docs/COST-MODEL.md`: every plan's monthly price exceeds its monthly Credits priced at measured neuron cost × 1.4; no plan's `creditsPerDay` exceeds the compiled BudgetDO daily neuron ceiling; the free plan's daily allowance affords at least one complete quality-gated build; every quota stated in `apps/site` and `apps/web` equals the enforced constant; every advertised plan-conditional feature resolves to a code path that branches on plan.
 
 6.9 `scripts/check-pixels.mjs --deployed` captures every route in the deployed route table at 1440×900 and 390×844, light and dark, to `docs/evidence/pixels/<pass>/<route>.png`, and FAILS on: a route whose PNG is >92% one colour; a `<body>` computed `font-family` that is a bare system stack not in `packages/design`; a route with zero elements using a `packages/design` token; a frame differing from its committed baseline by >2% with no baseline update in the same commit.
 
@@ -157,7 +157,7 @@ pnpm test                                          # root script
 node scripts/check-workspace-coverage.mjs
 node scripts/check-escape-hatches.mjs && node scripts/check-backlog.mjs && node scripts/check-deadends.mjs && node scripts/check-dispositions.mjs
 node scripts/check-offer.mjs && node scripts/check-rebrand.mjs
-node scripts/check-site-links.mjs && node scripts/check-site-semantics.mjs && node scripts/check-landing-budget.mjs && node scripts/check-app-bundle.mjs && node scripts/check-spark-figures.mjs
+node scripts/check-site-links.mjs && node scripts/check-site-semantics.mjs && node scripts/check-landing-budget.mjs && node scripts/check-app-bundle.mjs && node scripts/check-credit-figures.mjs
 python3 scripts/secret-scan.py
 npx playwright test --reporter=line                # every spec, including the signed-in deployed journey
 node scripts/check-pixels.mjs --deployed
@@ -279,7 +279,7 @@ Anything short of §16.0 or §16 is a pass boundary, not an ending.
 4. A computed quality-gated build costs more than a whole day's free allowance, and the constant computing it has zero consumers.
 5. Generated geometry is session-scoped and does not survive save/publish.
 6. Checkpoint restore skips Terrain and Camera, whitelists properties, and counts only what it attempted, so skipped state can never register as a failure.
-7. A live Spark balance is broadcast to the client and rendered nowhere.
+7. A live Credit balance is broadcast to the client and rendered nowhere.
 8. Memory facts injected into every system prompt are never fetched by the client.
 9. A privacy consent flag is written by the settings UI and read by nothing.
 10. The tool list narrows by `studioConnected` only, never by the plugin's reported protocol — null for the only artifact anyone could install.

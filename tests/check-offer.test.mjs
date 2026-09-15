@@ -14,8 +14,8 @@ import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, SPARKS_PER_BUILD, buildsPerDay, buildsPerMonth } from '../packages/shared/src/index.ts';
-import { DAILY_NEURON_CEILING, NEURONS_PER_SPARK, USD_PER_NEURON } from '../apps/worker/src/pricing.ts';
+import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, CREDITS_PER_BUILD, buildsPerDay, buildsPerMonth } from '../packages/shared/src/index.ts';
+import { DAILY_NEURON_CEILING, NEURONS_PER_CREDIT, USD_PER_NEURON } from '../apps/worker/src/pricing.ts';
 import { copyProblems, planProblems, termProblems } from '../scripts/lib/offer-rules.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,13 +46,13 @@ test('it prints a real denominator first', () => {
 test('a free tier that cannot finish one build is a broken offer, and this one is', () => {
   // Computed, not restated: if the allowance is raised past one build this assertion flips, and it
   // should — the point is the RELATIONSHIP, not today's number.
-  const affords = Math.floor(PLAN_LIMITS.free.sparksPerDay / SPARKS_PER_BUILD);
+  const affords = Math.floor(PLAN_LIMITS.free.creditsPerDay / CREDITS_PER_BUILD);
   assert.equal(affords, buildsPerDay('free'), 'the helper and the arithmetic must agree');
 
   const r = run();
   if (affords === 0) {
     assert.equal(r.exit, 1, 'a free tier affording zero builds must fail the check');
-    assert.match(r.out, /the free plan grants \d+ Sparks\/day and one quality-gated build costs \d+/);
+    assert.match(r.out, /the free plan grants \d+ Credits\/day and one quality-gated build costs \d+/);
   } else {
     assert.doesNotMatch(r.out, /the free plan grants/, 'a sufficient free tier must not be reported');
   }
@@ -61,21 +61,21 @@ test('a free tier that cannot finish one build is a broken offer, and this one i
 test('a plan promising more per day than the service can serve is reported', () => {
   // The ceiling is the WHOLE SERVICE's, so this is not a pricing mistake — it is a promise that
   // fails the moment one subscriber uses what they bought.
-  const ceiling = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_SPARK);
-  const over = PLAN_IDS.filter((id) => PLAN_LIMITS[id].sparksPerDay > ceiling);
+  const ceiling = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDIT);
+  const over = PLAN_IDS.filter((id) => PLAN_LIMITS[id].creditsPerDay > ceiling);
   const r = run();
   for (const id of over) {
-    assert.match(r.out, new RegExp(`BROKEN: ${id} grants ${PLAN_LIMITS[id].sparksPerDay} Sparks/day`));
+    assert.match(r.out, new RegExp(`BROKEN: ${id} grants ${PLAN_LIMITS[id].creditsPerDay} Credits/day`));
   }
   if (over.length) assert.equal(r.exit, 1);
 });
 
 test('a priced plan below its margin floor is reported, and the priced plans today are above it', () => {
-  const usdPerSpark = NEURONS_PER_SPARK * USD_PER_NEURON;
+  const usdPerCredit = NEURONS_PER_CREDIT * USD_PER_NEURON;
   for (const id of PLAN_IDS) {
     const price = PLAN_COPY[id].priceUsdMonthly;
     if (price === null || price === 0) continue;
-    const floor = PLAN_LIMITS[id].sparksPerMonth * usdPerSpark * 1.4;
+    const floor = PLAN_LIMITS[id].creditsPerMonth * usdPerCredit * 1.4;
     assert.ok(price > floor, `${id} charges $${price} against a $${floor.toFixed(2)} floor`);
   }
 });
@@ -107,12 +107,12 @@ test('the contractual promises a subscription product cannot make are gone', () 
 /* ------------------------------------------------------- the helpers are honest --- */
 
 test('builds-per-month floors rather than rounds', () => {
-  // A rounded-up figure is a promise the allowance cannot keep: 6,000 Sparks at 77 each is 77
+  // A rounded-up figure is a promise the allowance cannot keep: 6,000 Credits at 77 each is 77
   // builds and a remainder, not 78.
   for (const id of PLAN_IDS) {
-    const exact = PLAN_LIMITS[id].sparksPerMonth / SPARKS_PER_BUILD;
+    const exact = PLAN_LIMITS[id].creditsPerMonth / CREDITS_PER_BUILD;
     assert.equal(buildsPerMonth(id), Math.floor(exact));
-    assert.ok(buildsPerMonth(id) * SPARKS_PER_BUILD <= PLAN_LIMITS[id].sparksPerMonth, `${id} promises more builds than it grants`);
+    assert.ok(buildsPerMonth(id) * CREDITS_PER_BUILD <= PLAN_LIMITS[id].creditsPerMonth, `${id} promises more builds than it grants`);
   }
 });
 
@@ -132,8 +132,8 @@ test('the ladder is monotonic — more money never buys less', () => {
   for (let i = 1; i < PLAN_IDS.length; i += 1) {
     const lo = PLAN_LIMITS[PLAN_IDS[i - 1]];
     const hi = PLAN_LIMITS[PLAN_IDS[i]];
-    assert.ok(hi.sparksPerDay > lo.sparksPerDay, `${PLAN_IDS[i]} grants no more per day than ${PLAN_IDS[i - 1]}`);
-    assert.ok(hi.sparksPerMonth > lo.sparksPerMonth, `${PLAN_IDS[i]} grants no more per month than ${PLAN_IDS[i - 1]}`);
+    assert.ok(hi.creditsPerDay > lo.creditsPerDay, `${PLAN_IDS[i]} grants no more per day than ${PLAN_IDS[i - 1]}`);
+    assert.ok(hi.creditsPerMonth > lo.creditsPerMonth, `${PLAN_IDS[i]} grants no more per month than ${PLAN_IDS[i - 1]}`);
   }
 });
 
@@ -141,10 +141,10 @@ test('the monthly allowance is reachable within the month', () => {
   // A monthly figure larger than 31 days of the daily figure is a number no user can ever reach,
   // which makes it advertising rather than an allowance.
   for (const id of PLAN_IDS) {
-    const reachable = PLAN_LIMITS[id].sparksPerDay * 31;
+    const reachable = PLAN_LIMITS[id].creditsPerDay * 31;
     assert.ok(
-      PLAN_LIMITS[id].sparksPerMonth <= reachable,
-      `${id} advertises ${PLAN_LIMITS[id].sparksPerMonth}/month but 31 days of its daily cap is only ${reachable}`,
+      PLAN_LIMITS[id].creditsPerMonth <= reachable,
+      `${id} advertises ${PLAN_LIMITS[id].creditsPerMonth}/month but 31 days of its daily cap is only ${reachable}`,
     );
   }
 });
@@ -172,11 +172,11 @@ test('the monthly allowance is reachable within the month', () => {
 /** A plan table that satisfies every rule, so each case below can break exactly one thing. */
 const HEALTHY = {
   planIds: ['free', 'paid'],
-  limits: { free: { sparksPerDay: 231, sparksPerMonth: 2_310 }, paid: { sparksPerDay: 416, sparksPerMonth: 12_600 } },
+  limits: { free: { creditsPerDay: 231, creditsPerMonth: 2_310 }, paid: { creditsPerDay: 416, creditsPerMonth: 12_600 } },
   copy: { free: { priceUsdMonthly: 0 }, paid: { priceUsdMonthly: 12 } },
-  ceilingSparks: 833,
-  sparksPerBuild: 77,
-  usdPerSpark: 0.00033,
+  ceilingCredits: 833,
+  creditsPerBuild: 77,
+  usdPerCredit: 0.00033,
   margin: 1.4,
 };
 
@@ -201,20 +201,20 @@ test('RULE 2 FIRES: a plan granting more per day than the service can serve is r
   // disabled without this suite noticing.
   const { problems } = planProblems({
     ...HEALTHY,
-    limits: { ...HEALTHY.limits, paid: { sparksPerDay: 6_000, sparksPerMonth: 12_600 } },
+    limits: { ...HEALTHY.limits, paid: { creditsPerDay: 6_000, creditsPerMonth: 12_600 } },
   });
   assert.equal(problems.length, 1, problems.join('\n'));
-  assert.match(problems[0], /paid grants 6000 Sparks\/day but the WHOLE SERVICE can serve 833/);
+  assert.match(problems[0], /paid grants 6000 Credits\/day but the WHOLE SERVICE can serve 833/);
   assert.match(problems[0], /exhausts the day for everyone/);
 });
 
 test('RULE 3 FIRES: a free tier that cannot finish one build is reported', () => {
   const { problems } = planProblems({
     ...HEALTHY,
-    limits: { ...HEALTHY.limits, free: { sparksPerDay: 60, sparksPerMonth: 1_800 } },
+    limits: { ...HEALTHY.limits, free: { creditsPerDay: 60, creditsPerMonth: 1_800 } },
   });
   assert.equal(problems.length, 1, problems.join('\n'));
-  assert.match(problems[0], /the free plan grants 60 Sparks\/day and one quality-gated build costs 77/);
+  assert.match(problems[0], /the free plan grants 60 Credits\/day and one quality-gated build costs 77/);
 });
 
 test('RULE 1 EXEMPTS the free tier, and only from that rule', () => {
@@ -223,24 +223,24 @@ test('RULE 1 EXEMPTS the free tier, and only from that rule', () => {
   // proves fires. Here it must produce no margin complaint at any allowance.
   const { problems } = planProblems({
     ...HEALTHY,
-    limits: { ...HEALTHY.limits, free: { sparksPerDay: 231, sparksPerMonth: 2_310 } },
+    limits: { ...HEALTHY.limits, free: { creditsPerDay: 231, creditsPerMonth: 2_310 } },
   });
   assert.deepEqual(problems.filter((p) => p.startsWith('free charges')), []);
 });
 
 test('RULE 4 FIRES: a stated quota no plan grants is reported', () => {
   const problems = copyProblems(
-    [{ rel: 'fake/page.astro', src: '<p>Start with 60 Sparks a day, then 9,000 Sparks per month.</p>' }],
+    [{ rel: 'fake/page.astro', src: '<p>Start with 60 Credits a day, then 9,000 Credits per month.</p>' }],
     new Set([231, 2_310]),
   );
   assert.equal(problems.length, 2, problems.join('\n'));
-  assert.match(problems[0], /fake\/page\.astro states 60 Sparks a day, which no plan grants/);
-  assert.match(problems[1], /states 9000 Sparks a month/);
+  assert.match(problems[0], /fake\/page\.astro states 60 Credits a day, which no plan grants/);
+  assert.match(problems[1], /states 9000 Credits a month/);
 });
 
-test('RULE 4 IS SILENT on an enforced figure, and on a number that is not a Spark claim', () => {
+test('RULE 4 IS SILENT on an enforced figure, and on a number that is not a Credit claim', () => {
   const problems = copyProblems(
-    [{ rel: 'fake/page.astro', src: '<p>231 Sparks a day.</p><style>.x{width:400px;margin:60px}</style>' }],
+    [{ rel: 'fake/page.astro', src: '<p>231 Credits a day.</p><style>.x{width:400px;margin:60px}</style>' }],
     new Set([231]),
   );
   assert.deepEqual(problems, []);
@@ -255,7 +255,7 @@ test('RULE 5 FIRES: a contractual term in copy is reported', () => {
 
 test('RULES 4 AND 5 READ THE SOURCE, NOT THE COMMENTARY ON IT', () => {
   // A comment explaining why a figure was corrected is exactly the history worth writing down, and
-  // an unstripped scan refuses to let it be written. This reported pricing.astro for a "60 Sparks a
+  // an unstripped scan refuses to let it be written. This reported pricing.astro for a "60 Credits a
   // day" that lived in a comment beside the interpolation that replaced it.
   //
   // Asymmetry is the reason the rule strips rather than the prose being reworded: a comment can
@@ -263,10 +263,10 @@ test('RULES 4 AND 5 READ THE SOURCE, NOT THE COMMENTARY ON IT', () => {
   const commented = [{
     rel: 'fake/page.astro',
     src: [
-      '// was 60 Sparks a day before the repricing',
+      '// was 60 Credits a day before the repricing',
       '/* and we must never write $0 forever */',
       '<!-- nor free forever -->',
-      '<a href="https://example.com/x">231 Sparks a day</a>',
+      '<a href="https://example.com/x">231 Credits a day</a>',
     ].join('\n'),
   }];
   assert.deepEqual(copyProblems(commented, new Set([231])), []);

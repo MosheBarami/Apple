@@ -8,7 +8,7 @@ export default defineConfig({
   // D1 (see infra/deploy-static.mjs). This value is written into every canonical/OG URL and into
   // the sitemap, so a stale value points search engines at a domain that serves nothing.
   // Change it here when a custom domain is attached, then rebuild and redeploy.
-  site: 'https://golem.moshe-barami111.workers.dev',
+  site: 'https://apple.moshe-barami111.workers.dev',
   output: 'static',
   integrations: [sitemap()],
   build: {

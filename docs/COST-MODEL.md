@@ -170,11 +170,11 @@ console has one-click "Halve the caps" / "Stop all AI generation".
 
 ## Per-user quotas
 
-Sparks are the user-facing unit, billed from what a run *actually* consumed and rounded once per
-run. Recalibrated for GLM: **1 Spark = 30 neurons** (was 90), so a Spark stays a meaningful unit
+Credits are the user-facing unit, billed from what a run *actually* consumed and rounded once per
+run. Recalibrated for GLM: **1 Credit = 30 neurons** (was 90), so a Credit stays a meaningful unit
 now that the same work costs less.
 
-| Plan | Sparks/day | Sparks/month | Roughly |
+| Plan | Credits/day | Credits/month | Roughly |
 |---|---|---|---|
 | Free | 60 | 900 | ~3 full builds, ~16 small edits, or ~45 questions per day |
 | Pro (designed, not launched) | 400 | 6,000 | ~23 full builds/day |
@@ -267,7 +267,7 @@ if it were new.
 This phase did **not** reduce the measured per-build neuron cost. A normal
 quality-gated Stone build still costs roughly what it did (~2,300 neurons by
 the estimate above), against a Free daily allowance of 1,800 neurons
-(60 Sparks x 30). **1,800 was not reached, and no accounting change was made to
+(60 Credits x 30). **1,800 was not reached, and no accounting change was made to
 make it look closer.**
 
 What the phase did find is where the money actually goes, and it is not prompt

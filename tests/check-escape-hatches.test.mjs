@@ -41,18 +41,60 @@ function scratch() {
   return dir;
 }
 
-function run(dir) {
+function runRaw(dir) {
   const proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: 120_000 });
   return { exit: proc.status, out: `${proc.stdout ?? ''}${proc.stderr ?? ''}` };
 }
 
-/** Plant a violation, run, and restore. Returns the checker's verdict on the planted tree. */
+/** Every run reports what it ADDED over the clone's baseline, so any caller can ask either question. */
+function run(dir) {
+  const base = baselineOf(dir);
+  const r = runRaw(dir);
+  const added = [...findingsOf(r.out)].filter((l) => !base.has(l));
+  return { ...r, added, addedNone: added.length === 0 };
+}
+
+/**
+ * Findings as a set of lines, so two runs can be compared.
+ *
+ * The checker prints one indented line per finding and a verdict line. Only the findings are
+ * compared: the verdict carries a count that moves whenever anything else in the tree does.
+ */
+const findingsOf = (out) => new Set(
+  out.split('\n').filter((l) => /^\s+\S.*: .+ — /.test(l)).map((l) => l.trim()),
+);
+
+/**
+ * What the CLONE says before anything is planted.
+ *
+ * These fixtures clone the real repository on purpose — a fixture with no git history gives the
+ * checker an empty denominator and every assertion passes vacuously. The cost is that the clone
+ * inherits whatever the real tree currently contains, and with several sessions landing work that
+ * is rarely nothing. Eight tests here asserted `exit === 0` and began failing the moment somebody
+ * else committed a control byte in a file none of them are about.
+ *
+ * So the baseline is measured once per clone and every plant is judged on what it ADDED. That is
+ * the assertion these tests were always making — "planting this produces this finding", "planting
+ * that produces none" — rather than the stronger and unrelated claim that the whole repository is
+ * clean at the moment the suite runs. The one test that genuinely asserts repository cleanliness
+ * still does so, by itself, where it can be read as what it is.
+ */
+const baselines = new Map();
+function baselineOf(dir) {
+  // runRaw, not run — run() asks for the baseline, and asking the baseline for itself does not end.
+  if (!baselines.has(dir)) baselines.set(dir, findingsOf(runRaw(dir).out));
+  return baselines.get(dir);
+}
+
+/** Plant a violation, run, and restore. Returns the verdict plus what the plant ADDED. */
 function withPlant(dir, rel, mutate) {
   const path = join(dir, rel);
   const before = readFileSync(path, 'utf8');
   writeFileSync(path, mutate(before));
   execFileSync('git', ['add', '-A'], { cwd: dir });
-  try { return run(dir); } finally {
+  try {
+    return run(dir);
+  } finally {
     writeFileSync(path, before);
     execFileSync('git', ['add', '-A'], { cwd: dir });
   }
@@ -78,7 +120,7 @@ let DIR;
 test('a scratch clone of the tracked tree is clean', () => {
   DIR = scratch();
   const r = run(DIR);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
   assert.match(r.out, /ESCAPE HATCHES CLEAN/);
 });
 
@@ -141,6 +183,36 @@ test('it catches a package with TypeScript sources and no typecheck', () => {
   assert.match(r.out, /no typecheck script/);
 });
 
+test('...but NOT a package that compiles its own TypeScript from a test', () => {
+  // packages/sdk has a .d.ts and two fixtures and no `typecheck` script — and
+  // tests/types.test.mjs points the compiler at both, requiring every marked line in bad.ts to
+  // error and ok.ts to compile clean. Its types are checked more strictly than a bare `tsc` would
+  // check them, and the rule called it an escape hatch.
+  //
+  // The rule's concern is TypeScript that NOTHING compiles, not TypeScript compiled under a
+  // particular script name. This asserts the distinction on the live package rather than a
+  // fixture, so if someone deletes that test the finding comes back.
+  const r = run(DIR);
+  assert.equal(
+    /packages\/sdk\/package\.json/.test(r.out), false,
+    `sdk compiles its own types from a test and must not be flagged:\n${r.out}`,
+  );
+});
+
+test('THE CONTROL: a package with neither a typecheck script nor a compiler call IS caught', () => {
+  // Without this, the exemption above could match any package at all and the rule would keep its
+  // name while catching nothing. apps/worker has TypeScript sources; strip its typecheck script
+  // and nothing in it invokes the compiler.
+  const r = withPlant(DIR, 'apps/worker/package.json', (s) => {
+    const pkg = JSON.parse(s);
+    delete pkg.scripts.typecheck;
+    return JSON.stringify(pkg, null, 2);
+  });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /nothing compiles/);
+  assert.match(r.out, /no tracked file in the package invokes tsc/);
+});
+
 test('it catches a gate marked [~]', () => {
   const r = withPlant(DIR, 'GATES.md', (s) => s.replace(/^- \[x\] /m, '- [~] '));
   assert.equal(r.exit, 1, r.out);
@@ -198,7 +270,44 @@ test('but a deferral WITH a row id is allowed, because that is a schedule', () =
   // The positive control for the test above. Without it, the detector could be flagging every
   // sentence containing "will", which would make the ledger unwritable.
   const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) => `${s}\n- w12 | I will fix the checkout flow | SCHEDULED pass 3\n`);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
+});
+
+test('A WEAK TEMPORAL WORD IN PAST-TENSE PROSE IS NOT A DEFERRAL', () => {
+  // `once` and `after` are as common in narrative as in commitments, and the co-occurrence rule
+  // cannot tell them apart on its own. This flagged my own pass-log sentence — "the check after
+  // that fix still showed the old bytes" — which is a measurement somebody already took, matching
+  // `after` and the noun "fix". Seventh over-broad negative match in this repository.
+  //
+  // Asserted on the MESSAGE rather than the exit code, deliberately. These fixtures clone the real
+  // tree, so any unrelated finding anywhere in the repository turns exit 1 and a test asserting 0
+  // reports someone else's work as this rule's failure.
+  const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) =>
+    `${s}\n  The check after that fix still showed the old bytes; content-length already said 36,951.\n`);
+  assert.equal(/still showed the old bytes/.test(r.out), false, `narrative must not be flagged:\n${r.out}`);
+});
+
+test('...but a weak word in a FORWARD-LOOKING sentence still is', () => {
+  // The control that stops the rescue above from swallowing the rule. Both of these carry only a
+  // weak marker — no "will", no "TODO" — so if the past-tense rescue were applied unconditionally
+  // they would go silent and the detector would keep its name while doing nothing.
+  for (const line of [
+    'once the plugin ships, wire the panel',
+    'after the deploy lands we add the redirect',
+  ]) {
+    const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) => `${s}\n- ${line}.\n`);
+    assert.equal(r.exit, 1, `${line}:\n${r.out}`);
+    assert.match(r.out, /a deferral with no row id/, line);
+  }
+});
+
+test('...and a STRONG marker in past-tense prose is still a deferral', () => {
+  // The rescue is scoped to sentences whose ONLY marker is weak. A TODO or a "will" sitting in a
+  // retrospective sentence is still a commitment nobody owns, and reads as one.
+  const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) =>
+    `${s}\n- It was deferred and nobody will build it.\n`);
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /a deferral with no row id/);
 });
 
 test('and past-tense prose is not a deferral', () => {
@@ -206,7 +315,7 @@ test('and past-tense prose is not a deferral', () => {
   // row containing "later the same day" and, four clauses away, the word "update".
   const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) =>
     `${s}\n| 18 | something | the frame arrived later the same day; see below, which supersedes it | we update nothing here |\n`);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
 });
 
 /* ------------------------------------------------------ the owner's stop works --- */
@@ -215,7 +324,7 @@ test('an owner HALT: is reported and is NEVER a failure', () => {
   // The one legitimate way to stop the loop. A checker that failed on it would make stopping
   // impossible, which is the opposite of what any of this is for.
   const r = withPlant(DIR, 'WORKLIST.md', (s) => `HALT: owner says stop\n\n${s}`);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
   assert.match(r.out, /OWNER HALT PRESENT — HALT: owner says stop/);
 });
 
@@ -225,18 +334,18 @@ test('the checker does not flag itself for naming the patterns it forbids', () =
   // This file and the checker both contain every string they hunt for. A checker that examined
   // itself would be permanently red, and the fix everyone reaches for is to weaken the pattern.
   const r = run(DIR);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
   assert.doesNotMatch(r.out, /check-escape-hatches\.mjs:/);
 });
 
 test('a fenced example in a ledger is not a violation', () => {
   const r = withPlant(DIR, 'docs/PASS-LOG.md', (s) => `${s}\n\n\`\`\`\nABANDON: this is an example\n\`\`\`\n`);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
 });
 
 test('an HTML-commented example is not a violation either', () => {
   const r = withPlant(DIR, 'GATES.md', (s) => `${s}\n<!-- - [~] G-EXAMPLE: what an abandoned gate would look like -->\n`);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
 });
 
 
@@ -284,7 +393,7 @@ test('it reports an owner HALT: in GATES.md too, and still exits 0', () => {
   // Only the WORKLIST.md path was tested. A HALT the checker does not report is one the reader
   // never learns about; a HALT it FAILS on would make stopping impossible.
   const r = withPlant(DIR, 'GATES.md', (s) => `HALT: owner says stop\n\n${s}`);
-  assert.equal(r.exit, 0, r.out);
+  assert.ok(r.addedNone, `this plant must add no finding; it added: ${r.added.join(' | ')}`);
   assert.match(r.out, /OWNER HALT PRESENT — HALT: owner says stop/);
 });
 
@@ -397,7 +506,7 @@ test('a CONFESSION repeated three times is a stall; a HANDOFF repeated is not', 
   // The positive control: the same three records, with the id only in the handoff line.
   const handoff = withPlant(DIR, 'docs/PASS-LOG.md', () =>
     [7, 8, 9].map((n) => record(n, '  nothing outstanding')).join(''));
-  assert.equal(handoff.exit, 0, handoff.out);
+  assert.ok(handoff.addedNone, `a repeated HANDOFF must add no finding; it added: ${handoff.added.join(' | ')}`);
   assert.doesNotMatch(handoff.out, /OH-1 has been confessed/);
 });
 
@@ -432,7 +541,7 @@ test('it does NOT fire on `|| true` inside a string, or this file could not name
   // detector. Strings and comments are stripped before the scan for exactly this reason.
   const quoted = withPlant(DIR, 'apps/worker/tests/prompt-fence.test.mjs', (src) =>
     src.replace("import test from 'node:test';", "import test from 'node:test';\n// a comment naming X || true\nconst PLANT = 'assert.ok(x || true)';"));
-  assert.equal(quoted.exit, 0, quoted.out);
+  assert.ok(quoted.addedNone, `a quoted pattern must add no finding; it added: ${quoted.added.join(' | ')}`);
   assert.doesNotMatch(quoted.out, /an assertion that cannot fail/);
 });
 
@@ -445,7 +554,7 @@ test('an untracked file in a published directory is caught before it ships', () 
   // into dist — on the night two sessions spent establishing that the live site still says Golem.
   // Third artefact in one night that was in the TREE without being in the REPOSITORY.
   const r = withPlant(DIR, 'apps/site/public/robots.txt', (src) => src);
-  assert.equal(r.exit, 0, 'a tracked file in public/ is fine');
+  assert.ok(r.addedNone, `a tracked file in public/ is fine; it added: ${r.added.join(' | ')}`);
 
   const dir = DIR;
   const stray = join(dir, 'apps', 'site', 'public', '__stray__.svg');

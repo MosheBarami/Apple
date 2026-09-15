@@ -1,0 +1,170 @@
+{
+ "ArmChair_01": {
+  "date_published": 1585605600,
+  "name": "Arm Chair 01",
+  "categories": [
+   "furniture",
+   "seating"
+  ],
+  "type": 2,
+  "tags": [
+   "gothic",
+   "vintage",
+   "chair",
+   "furniture",
+   "victorian",
+   "couch",
+   "wood",
+   "varnished",
+   "classic"
+  ],
+  "authors": {
+   "Kirill Sannikov": "All"
+  },
+  "sponsors": [
+   "66627515",
+   "4047949"
+  ],
+  "max_resolution": [
+   4096,
+   4096
+  ],
+  "polycount": 5626,
+  "texel_density": 1972.3631956341671,
+  "dimensions": [
+   848.4309017658234,
+   765.7602727413177,
+   1065.087635157397
+  ],
+  "files_hash": "8a04a102d4a1e1a480bc4288384d4a2dfd649608",
+  "description": "Free (CC0) vintage Victorian armchair 3D model - varnished carved wood frame, upholstered seat; gothic/classic styling ideal for interiors, period scenes, and renders.",
+  "category_id": "11261ec6-df2b-5150-9904-684d2558070d",
+  "category": "Furniture/Seating/Chairs",
+  "attributes": {
+   "condition": [
+    "worn"
+   ],
+   "material": [
+    "wood",
+    "fabric"
+   ]
+  },
+  "img_version": "abbc4732",
+  "download_count": 31989,
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/ArmChair_01.png?width=256&height=256&v=abbc4732"
+ },
+ "Barrel_01": {
+  "type": 2,
+  "date_published": 1585605600,
+  "name": "Barrel_01",
+  "categories": [
+   "industrial",
+   "containers"
+  ],
+  "authors": {
+   "Jorge Camacho": "All"
+  },
+  "sponsors": [
+   "3267566",
+   "11167855",
+   "11109006"
+  ],
+  "max_resolution": [
+   8192,
+   8192
+  ],
+  "polycount": 2682,
+  "texel_density": 4804.410195602988,
+  "dimensions": [
+   563.0351305007935,
+   563.0352199077606,
+   880.0000050105155
+  ],
+  "files_hash": "45ce352c4416845813a00e478950b500796b0a60",
+  "tags": [
+   "barrel",
+   "oil",
+   "explosive",
+   "radioactive",
+   "metal",
+   "red barrel",
+   "oil barrel",
+   "drums",
+   "fuel barrel",
+   "explosive barrel",
+   "industrial"
+  ],
+  "description": "Free worn red metal oil drum with explosive hazard marking - realistic, scratched, rusty industrial barrel ideal for games, VFX, and environment scenes.",
+  "category_id": "0348a0e9-773f-5146-9dd0-0d34cbdfee62",
+  "category": "Containers & Storage/Barrels & Drums/Metal Drums",
+  "attributes": {
+   "condition": [
+    "rusted"
+   ],
+   "material": [
+    "metal"
+   ]
+  },
+  "img_version": "29e315a9",
+  "download_count": 59516,
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/Barrel_01.png?width=256&height=256&v=29e315a9"
+ },
+ "anthurium_botany_01": {
+  "date_published": 1651017600,
+  "name": "Anthurium Botany 01",
+  "type": 2,
+  "authors": {
+   "Rob Tuytel": "scanning",
+   "Rico Cilliers": "modeling"
+  },
+  "categories": [
+   "plants",
+   "nature",
+   "collection: the_shed",
+   "collection: smugglers_cove"
+  ],
+  "tags": [
+   "nature",
+   "bush",
+   "leaf",
+   "shrub",
+   "leaves",
+   "forest",
+   "plant",
+   "green",
+   "jungle",
+   "outdoor",
+   "botany"
+  ],
+  "max_resolution": [
+   8192,
+   8192
+  ],
+  "polycount": 4134,
+  "texel_density": 10047.775343894895,
+  "dimensions": [
+   2806.4264059066772,
+   1800.9886145591736,
+   506.7181019112468
+  ],
+  "files_hash": "9a9818247596717d5d754411c5e63f1d8655f2cc",
+  "description": "Free 8K shrub showcasing glossy broad leaves, wet sheen, detailed veins and varied low-growing clumps.",
+  "collections": [
+   "smugglers_cove",
+   "the_shed"
+  ],
+  "category_id": "5a6111fb-71be-5686-a0cc-7e96df75aaf7",
+  "category": "Nature/Plants/Tropical Plants",
+  "attributes": {
+   "condition": [
+    "clean"
+   ],
+   "material": [
+    "plant"
+   ]
+  },
+  "img_version": "19be8ef7",
+  "download_count": 41836,
+  "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/anthurium_botany_01.png?width=256&height=256&v=19be8ef7"
+ }
+}

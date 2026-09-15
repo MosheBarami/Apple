@@ -100,7 +100,7 @@ test('a STRUCTURAL unbounded wait is not a finding — this check used to be too
 
 // ---------------------------------------------------------------- prices
 test('the price disagreement users were actually shown is caught', () => {
-  // The UI advertised 1 / 4 / 10 sparks; the balance gate charged 1 / 2 / 3.
+  // The UI advertised 1 / 4 / 10 credits; the balance gate charged 1 / 2 / 3.
   const findings = checkPriceAgreement([
     { layer: 'PRODUCT_MODE_INFO', values: { plan: 1, agent: 4, superAgent: 10 } },
     { layer: 'MODE_INFO', values: { plan: 1, agent: 2, superAgent: 3 } },

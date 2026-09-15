@@ -66,8 +66,8 @@ there is no depth, no character presence, no direction, and no proof.
 
 These are not opinions; each was verified.
 
-1. **Contradictory spark count on the same page.**
-   `apps/site/src/pages/index.astro:59` — `60 free Sparks a day`.
+1. **Contradictory credit count on the same page.**
+   `apps/site/src/pages/index.astro:59` — `60 free Credits a day`.
    `apps/site/src/pages/index.astro:126` — `you get 80, free, every day`.
    `pricing.astro:47` and the FAQ both say **60**. The `80` is wrong. Beyond the typo,
    this must become a single exported constant consumed by every surface, because a
@@ -242,7 +242,7 @@ seam tint. **One variable, one temperature, whole-section coherence.**
 | 4 | Act IV — The Proof | Verdant | `#3DD68C` | **10.5 : 1** | verification |
 | 5 | Modes | tri-colour (below) | — | — | taxonomy |
 | 6 | Trust | Cold Iron | `#7FA8C9` | **7.9 : 1** | calm authority |
-| 7 | Pricing / Sparks | Rune Amber | `#FFB454` | 9.6 : 1 | energy |
+| 7 | Pricing / Credits | Rune Amber | `#FFB454` | 9.6 : 1 | energy |
 | 8 | FAQ | none — neutral | — | — | plainness |
 | 9 | Act V — Invitation | Molten Orange | `#FF7A2F` | 7.6 : 1 | full heat |
 
@@ -271,7 +271,7 @@ Carried from the existing identity, with Stone lightened for contrast headroom.
 | Token | Hex | Contrast | Note |
 |---|---|---|---|
 | `--success` | `#3DD68C` | 10.5 : 1 | up from `#34D399` |
-| `--warn` | `#FFB454` | 9.6 : 1 | reuses ember — warnings are the same energy as sparks |
+| `--warn` | `#FFB454` | 9.6 : 1 | reuses ember — warnings are the same energy as credits |
 | `--danger` | `#FF6B6B` | 7.1 : 1 | up from `#F87171` |
 | `--info` | `#7FA8C9` | 7.9 : 1 | Cold Iron |
 
@@ -307,7 +307,7 @@ browser-painted UI (scrollbars, form controls, the overscroll gutter) matches.
 |---|---|---|
 | **Display** | Sora | Headlines, section titles, buttons, card titles. The carved voice. |
 | **Body** | Inter | All running prose, UI labels, lists. The readable voice. |
-| **System** | JetBrains Mono | Eyebrows, spark counts, tool names, timestamps, code, diffs, the rotating verb. **The rune-inscription voice** — machine-carved, not human-written. |
+| **System** | JetBrains Mono | Eyebrows, credit counts, tool names, timestamps, code, diffs, the rotating verb. **The rune-inscription voice** — machine-carved, not human-written. |
 
 No fourth face. A serif counterpoint was considered and rejected: high-contrast serifs
 read "editorial magazine," which fights "carved rune." The mono *is* the counterpoint,
@@ -424,7 +424,7 @@ sanctioned list. There is no seventh.
 3. **Section H2s — two-line clip reveal.** Whole lines, not characters. `clip-path:
    inset(100% 0 0 0) → inset(0)`, **560ms**, `--ease-carve`, 90ms stagger between lines.
    Per-character reveals on every H2 is the classic overuse failure.
-4. **Spark counter (Pricing).** Digit roll on slider change. `--t-mono-num` with
+4. **Credit counter (Pricing).** Digit roll on slider change. `--t-mono-num` with
    `tabular-nums`. Each digit column translates; **240ms**, `--ease-settle`.
 5. **Proof counters (Act IV).** Count-up on entry. **900ms**, `--ease-molten`,
    `tabular-nums`. Under reduced motion: snap to final value, no count.
@@ -839,7 +839,7 @@ arrays over **320 ms `--ease-chisel`**, except `success` / `error`, which use
 | Act IV — The Proof | `verifying` → `success` | slow rise, z 6.0, level |
 | Modes | SVG rigs only; WebGL golem parked `idle` off-canvas | — |
 | Trust | `idle`, `uSeamHeat` floored to **0.5** (calm), particles off | static |
-| Pricing | `idle`; `uSeamHeat` maps to the sparks slider value | static |
+| Pricing | `idle`; `uSeamHeat` maps to the credits slider value | static |
 | Final CTA | `greeting` on approach; `success` on CTA hover | z 4.8, centred, full frame |
 | Footer | `sleeping`; scene unmounted below the footer boundary | — |
 
@@ -886,7 +886,7 @@ separate rAF per layer.
 | Over a slider / draggable | — | stretches to 64×28 with a ↔ glyph | — |
 | **Over selectable text** | 2px | → 0 | **Native I-beam restored.** Reading must never fight the cursor. |
 | Pressed | 10px | scale 0.88 | 90 ms `--ease-settle` |
-| Golem in `building` | emits 1 spark per 120px travelled, max 8 live | — | desktop only |
+| Golem in `building` | emits 1 credit per 120px travelled, max 8 live | — | desktop only |
 
 Do **not** use `mix-blend-mode: difference` on the ring over the 3D scene. It is the
 default choice and it looks cheap over lit geometry — it inverts the golem's ember
@@ -902,10 +902,10 @@ Four sanctioned emitters. There is no fifth.
 
 | # | Emitter | When | Spec |
 |---|---|---|---|
-| 1 | **Forge sparks** | `building` state, at each strike | GPU points, additive, ember. Emitted from the forearm slab. Max **400** live (rung 1), **0** at rung 3+. Lifetime 900–1600 ms, gravity +0.6, 38° velocity cone. |
+| 1 | **Forge credits** | `building` state, at each strike | GPU points, additive, ember. Emitted from the forearm slab. Max **400** live (rung 1), **0** at rung 3+. Lifetime 900–1600 ms, gravity +0.6, 38° velocity cone. |
 | 2 | **Rune motes** | `thinking` state only | 60 slow-drifting violet motes bound to a 2.2u sphere around the head. Dissolve within 400 ms of leaving the state. |
 | 3 | **Success burst** | `success` state only | One-shot, 120 particles, radial, verdant → white, 700 ms. Rate-limited to once per **8 s**. |
-| 4 | **Cursor sparks** | pointer motion while `building` | Max 8 live. Desktop, rung 1 only. |
+| 4 | **Cursor credits** | pointer motion while `building` | Max 8 live. Desktop, rung 1 only. |
 
 **Banned outright:** ambient dust across the page; any particle behind text; particles in
 the nav, the modes grid, the trust strip, pricing, or the FAQ; any emitter that runs while
@@ -1085,7 +1085,7 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
 - **CTAs:** primary `Start building — free`; ghost `Watch a 40-second build`, which
   **scrolls to the demo rather than opening a modal**. Modals kill scroll momentum and
   a modal is the wrong container for a page whose whole argument is continuity.
-- **Fine print:** the free-sparks number, from a **single exported constant** (see §1
+- **Fine print:** the free-credits number, from a **single exported constant** (see §1
   defect #1 — the page currently states two different numbers).
 - **Scroll affordance:** a molten seam that drips one pixel of ember toward the next
   section. Diegetic, not a bouncing chevron.
@@ -1129,7 +1129,7 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
 - **The move:** a `Ctrl+Z` chip sits above it, and **pressing it actually reverses the
   animation.** The reader can undo the demo. That single interaction proves "native undo"
   better than any paragraph.
-- **Motion:** forge sparks at each strike; added diff lines carve in behind a left-edge
+- **Motion:** forge credits at each strike; added diff lines carve in behind a left-edge
   ember rule that sweeps downward.
 - **Perf:** the code pane is a **pre-tokenised static HTML string** revealed by a
   `clip-path`. No runtime syntax highlighter ships. Ever.
@@ -1153,7 +1153,7 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
 
 - **Proves:** the cost model is honest and legible.
 - **Demonstration:** three cards, each with the SVG golem in a distinct pose, each with an
-  interactive **spark meter** — drag a "how big is your ask" slider and each card shows
+  interactive **credit meter** — drag a "how big is your ask" slider and each card shows
   what that costs in its mode. Cost becomes something you *experience*, not something you
   read.
 - **Treatment:** this is where carved stone beats glass. `.stone` + `.stone--seam` with a
@@ -1171,15 +1171,15 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
 - **The rationale:** a design that goes quiet exactly where a competitor would go loud is
   itself a trust signal. Restraint at the trust section is the argument.
 
-### 8 · Pricing / Sparks
+### 8 · Pricing / Credits
 **Accent** Rune Amber
 
-- **Demonstration:** a daily-sparks bar that fills as you drag a "requests per day"
+- **Demonstration:** a daily-credits bar that fills as you drag a "requests per day"
   slider, showing what the free tier actually covers — **including where it runs out.**
   The free tier is the product's strongest asset; showing its edge honestly is more
   persuasive than hiding it.
 - The golem's `uSeamHeat` maps to the slider value: drag it high and the golem visibly
-  burns brighter. Sparks become energy you can see.
+  burns brighter. Credits become energy you can see.
 
 ### 9 · FAQ
 **Accent** none — neutral
@@ -1283,7 +1283,7 @@ rig, the mode cards and the app all consume the same state machine without pulli
 The rebuild is not done until every one of these passes.
 
 **Correctness**
-- [ ] The free-spark number appears identically on every surface, sourced from one
+- [ ] The free-credit number appears identically on every surface, sourced from one
       exported constant. (Currently 60 vs 80 — §1 defect #1.)
 - [ ] `og:image` is a 1200×630 **PNG** and unfurls correctly on X, Slack, Discord and
       LinkedIn.

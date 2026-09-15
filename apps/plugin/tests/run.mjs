@@ -122,6 +122,7 @@ BrickColor = { new = function(v) return { __type = "BrickColor", Name = tostring
 	 one thing worth getting right, because a camera that looks down +Z renders the
 	 world behind it and every assertion still passes. ]]
 local __cframe
+local __cframeMT
 local function __sub(a, b) return __vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end
 local function __dot(a, b) return a.X * b.X + a.Y * b.Y + a.Z * b.Z end
 local function __norm(v)
@@ -197,8 +198,47 @@ __cframe = function(px, py, pz, right, up, back)
 			right.Y, up.Y, back.Y,
 			right.Z, up.Z, back.Z
 	end
-	return self
+	return setmetatable(self, __cframeMT)
 end
+
+--[[ CFrame ARITHMETIC. Added for the companion's transform ops, which are three lines
+	 of algebra and were untestable without it — \`rot * part.CFrame\` and
+	 \`cf + offset\` are how the engine spells "rotate this, then put it there", and a
+	 stub CFrame that supports neither forces the code under test to be written in some
+	 other shape than the one that ships.
+
+	 \`*\` is the only one with a choice to make: a Vector3 on the right is a POINT being
+	 transformed into world space, a CFrame on the right is a frame being composed. The
+	 sign convention is the same one \`__cframe\` documents — the stored third column is
+	 BACK, which is -LookVector — so composing reads the right operand's back column out
+	 rather than its look vector. Getting that backwards mirrors every rotation through
+	 the origin and leaves every assertion still passing on axis-aligned input, which is
+	 exactly the mistake worth spelling out. ]]
+__cframeMT = {
+	__add = function(cf, v)
+		local p = cf.Position
+		local back = __vec3(-cf.LookVector.X, -cf.LookVector.Y, -cf.LookVector.Z)
+		return __cframe(p.X + v.X, p.Y + v.Y, p.Z + v.Z, cf.RightVector, cf.UpVector, back)
+	end,
+	__sub = function(cf, v)
+		local p = cf.Position
+		local back = __vec3(-cf.LookVector.X, -cf.LookVector.Y, -cf.LookVector.Z)
+		return __cframe(p.X - v.X, p.Y - v.Y, p.Z - v.Z, cf.RightVector, cf.UpVector, back)
+	end,
+	__mul = function(a, b)
+		if rawget(b, "__type") == "Vector3" then
+			return a:PointToWorldSpace(b)
+		end
+		local p = a:PointToWorldSpace(b.Position)
+		local bBack = __vec3(-b.LookVector.X, -b.LookVector.Y, -b.LookVector.Z)
+		return __cframe(
+			p.X, p.Y, p.Z,
+			a:VectorToWorldSpace(b.RightVector),
+			a:VectorToWorldSpace(b.UpVector),
+			a:VectorToWorldSpace(bBack)
+		)
+	end,
+}
 
 CFrame = {
 	new = function(a, b, c, ...)
@@ -454,6 +494,10 @@ local __BASEPART = {
 	Size = true, CFrame = true, Position = true, Orientation = true, Anchored = true,
 	Transparency = true, Reflectance = true, Color = true, BrickColor = true,
 	Material = true, CanCollide = true, CanTouch = true, CastShadow = true, Massless = true,
+	-- Locked is what Studio's own Lock/Unlock writes, and what the companion's
+	-- set_locked op writes. Without it here, every assertion about locking would have
+	-- been made against a property the engine does not accept on a Part.
+	Locked = true,
 }
 local __GUI = {
 	Size = true, Position = true, AnchorPoint = true, BackgroundColor3 = true,
@@ -586,10 +630,39 @@ function __selection:Set(items) self.__set = items end
 function __selection:Get() return self.__set end
 __services.Selection = __selection
 
-local __runservice = {}
+--[[ RunService, WITH A SIMULATION STATE, because the test controls are a state machine.
+
+	 \`IsRunning\` used to be a constant \`false\`, which meant every test-control assertion
+	 would have been made against a simulation that is always stopped — the one state in
+	 which "pause", "resume" and "restart" all collapse to the same answer. The stub now
+	 records the calls and moves between the three states Studio actually has:
+
+	   edit     running = false, runMode = false
+	   running  running = true,  runMode = true
+	   paused   running = false, runMode = true     <- the state the two disagree about
+
+	 Nothing here simulates anything. Run/Pause/Stop only move those two flags and append
+	 to \`__calls\`, which is what a spec asserts on. ]]
+local __runservice = { __running = false, __runMode = false, __calls = {} }
 function __runservice:IsStudio() return true end
-function __runservice:IsRunning() return false end
 function __runservice:IsServer() return true end
+function __runservice:IsRunning() return self.__running end
+function __runservice:IsRunMode() return self.__runMode end
+function __runservice:IsEdit() return not self.__runMode end
+function __runservice:Run()
+	table.insert(self.__calls, "Run")
+	self.__running = true
+	self.__runMode = true
+end
+function __runservice:Pause()
+	table.insert(self.__calls, "Pause")
+	self.__running = false
+end
+function __runservice:Stop()
+	table.insert(self.__calls, "Stop")
+	self.__running = false
+	self.__runMode = false
+end
 __services.RunService = __runservice
 
 local __logservice = { __history = {} }
