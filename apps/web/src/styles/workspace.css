@@ -2576,6 +2576,15 @@
   padding: 0.9rem;
 }
 
+/*
+   THE BACKGROUND IS DECLARED, AND IT WAS NOT. `.gx-row` is used on a <button> for the three prompt
+   suggestions on an empty project. No rule set a background, so Chrome supplied its own —
+   `buttonface`, which in dark mode is #6b6b6b: a flat neutral grey in a product whose every token
+   is warm. The first thing anybody sees in a new project was three grey slabs, and no stylesheet
+   in the repository contains that colour.
+   A button with no background does not inherit the page's. It inherits the BROWSER's, and the
+   browser's changes with the colour scheme — which is why this was invisible in light mode.
+*/
 .gx-row {
   display: flex;
   align-items: center;
@@ -2585,6 +2594,20 @@
   border: 1px solid var(--gx-line);
   margin-bottom: 0.45rem;
   font-size: 0.85rem;
+  /* The four the UA supplies and a <button> must give back. */
+  appearance: none;
+  background: var(--gx-raised, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+}
+
+/* A suggestion is an invitation, so it answers the pointer. */
+.gx-seeds .gx-row:hover,
+.gx-seeds .gx-row:focus-visible {
+  border-color: var(--gx-accent, var(--gx-ink-2));
+  background: var(--gx-panel, var(--gx-raised));
 }
 
 .gx-row__main {
@@ -5475,4 +5498,18 @@
   font-size: 0.78rem;
   color: var(--gx-bad, #d27653);
   overflow-wrap: anywhere;
+}
+
+/* A <button> wearing a row's class. The UA reset belongs here rather than as seven inline
+   properties at the call site — where it was, which made it invisible to every check that reads
+   stylesheets and impossible to reuse at the next button that needs it. */
+.gx-row__main--button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
 }

@@ -301,10 +301,13 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
           // control is unreachable by keyboard in some engines. The name is its own control.
           <div key={row.path} className="gx-row">
             <Icon d={PATH.layers} size={14} />
+            {/* The button reset lives in the stylesheet, not here. It was seven inline
+                properties — background, border, font, colour, padding, align, cursor — the whole
+                UA reset written at one call site, invisible to every check that reads CSS and
+                impossible to reuse at the next button that needs it. */}
             <button
               type="button"
-              className="gx-row__main"
-              style={{ textAlign: 'left', cursor: 'pointer', background: 'none', border: 0, font: 'inherit', color: 'inherit', padding: 0 }}
+              className="gx-row__main gx-row__main--button"
               onClick={() => {
                 setPrefix(row.path);
                 setOpen(null);
