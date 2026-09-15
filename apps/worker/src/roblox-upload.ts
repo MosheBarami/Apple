@@ -23,6 +23,7 @@
 // `error` rather than a number — because "the upload was accepted" and "the asset exists" are
 // different facts and a function that returned only the id would conflate them.
 import type { AssetKind } from './assets';
+import { redactSecrets } from './redaction.ts';
 
 /** Verified 2026-09-15: POST with an invalid key answers 401, so the endpoint is live. */
 const ASSETS_ENDPOINT = 'https://apis.roblox.com/assets/v1/assets';
@@ -128,6 +129,26 @@ export interface UploadInput {
 }
 
 /**
+ * Roblox's own words about a failure — with the credential taken out of them.
+ *
+ * KEEPING THE BODY IS THE POINT AND SO IS REDACTING IT. A generic "upload failed" hides the one
+ * sentence that separates "the key lacks a scope" from "the creator id is wrong" from "the file
+ * was rejected", and those need three different actions. But an Open Cloud 401 very often echoes
+ * the key it just refused — `{"message":"Invalid API Key: gk_live_…"}` — and this string does not
+ * stop here: it becomes an import failure, a tool row, a log line, and part of a model's context.
+ * On this path the key is a CUSTOMER'S, connected through settings, which is the one credential in
+ * the product that belongs to somebody else.
+ *
+ * REDACT, THEN TRUNCATE. Cutting first leaves the head of a key inside the excerpt and pushes the
+ * placeholder past the cut — redacted-looking, not redacted. Same order, same reason, as
+ * net-policy.ts, which has guarded every other outbound call this way for longer than this one has
+ * existed.
+ */
+function providerError(text: string, status: number): string {
+  return redactSecrets(text, { max: 400 }).text || `HTTP ${status}`;
+}
+
+/**
  * Start one upload. Returns the operation, and the asset id when Roblox answered with it directly.
  *
  * `fetchImpl` is injectable so the tests exercise the real request construction — the multipart
@@ -173,7 +194,7 @@ export async function uploadAsset(
       status: res.status,
       // The body verbatim, truncated. A generic "upload failed" would hide the one sentence that
       // says whether the key lacks a scope, the creator is wrong, or the file was rejected.
-      error: text.slice(0, 400) || `HTTP ${res.status}`,
+      error: providerError(text, res.status),
       operationId: null,
     };
   }
@@ -195,7 +216,7 @@ export async function pollOperation(
     headers: { 'x-api-key': env.ROBLOX_API_KEY },
   });
   const text = await res.text();
-  if (!res.ok) return { ok: false, status: res.status, error: text.slice(0, 400) || `HTTP ${res.status}`, operationId };
+  if (!res.ok) return { ok: false, status: res.status, error: providerError(text, res.status), operationId };
   let body: Record<string, unknown> | null = null;
   try { body = JSON.parse(text) as Record<string, unknown>; } catch { /* not JSON */ }
   // An operation that reports an error is a FAILURE, not an incomplete success. Roblox answers 200
