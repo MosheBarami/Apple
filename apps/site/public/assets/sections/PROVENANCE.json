@@ -19,7 +19,8 @@
         "height": 864
       },
       "bytes": 17236,
-      "subject": "A flat pale-green baseplate with low round studs, and hovering just above it a translucent pale-blue holographic outline of a tower being placed, with a thin bright orange progress ring beside it. Low-profile matte plastic shapes only, no tall bricks, no studs on the shapes themselves."
+      "subject": "A flat pale-green baseplate with low round studs, and hovering just above it a translucent pale-blue holographic outline of a tower being placed, with a thin bright orange progress ring beside it. Low-profile matte plastic shapes only, no tall bricks, no studs on the shapes themselves.",
+      "ground": "#f6f4e7"
     },
     {
       "file": "labelled-assets.webp",
@@ -31,7 +32,8 @@
         "height": 864
       },
       "bytes": 18214,
-      "subject": "Three small matte plastic objects arranged in a row — a mint crate, a sky-blue barrel, a pale coral lamp — each with a small blank paper label tag on a thin string attached to it, tags blank with no writing."
+      "subject": "Three small matte plastic objects arranged in a row — a mint crate, a sky-blue barrel, a pale coral lamp — each with a small blank paper label tag on a thin string attached to it, tags blank with no writing.",
+      "ground": "#f1ede7"
     },
     {
       "file": "two-modes.webp",
@@ -43,7 +45,8 @@
         "height": 864
       },
       "bytes": 12914,
-      "subject": "A short pale-grey path splitting into two: the left branch ends in a small mint magnifying glass resting flat, the right branch ends in a small warm-orange hammer resting flat."
+      "subject": "A short pale-grey path splitting into two: the left branch ends in a small mint magnifying glass resting flat, the right branch ends in a small warm-orange hammer resting flat.",
+      "ground": "#f2efe7"
     },
     {
       "file": "plug-in.webp",
@@ -55,7 +58,9 @@
         "height": 864
       },
       "bytes": 12698,
-      "subject": "A small sky-blue plug on a short soft cable just about to slot into a mint socket block, a tiny warm-orange spark dot in the gap between them."
+      "subject": "A small sky-blue plug on a short soft cable just about to slot into a mint socket block, a tiny warm-orange spark dot in the gap between them.",
+      "ground": "#ece9e2"
     }
-  ]
+  ],
+  "groundNote": "Each render's own studio ground, averaged from its four corner pixels in a canvas and rounded to a hex. They are NOT the same colour — #f6f4e7 to #ece9e2, ten levels apart — so one shared plate would show a visible seam under at least one of them. On dark the figure sits on a plate of its own ground and the image multiplies onto it, which is why the edge of the file is never a rectangle."
 }

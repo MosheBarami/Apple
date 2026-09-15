@@ -48,7 +48,7 @@ test('EVERY ILLUSTRATION IS RECORDED, AND EVERY RECORD MATCHES THE FILE', () => 
     assert.equal(buf.length, f.bytes, `${f.file} is ${buf.length} bytes, recorded as ${f.bytes}`);
     const size = webpSize(buf, f.file);
     assert.deepEqual(size, f.intrinsic, `${f.file} is ${size.width}x${size.height}, recorded as ${f.intrinsic.width}x${f.intrinsic.height}`);
-    for (const need of ['seed', 'subject', 'section']) {
+    for (const need of ['seed', 'subject', 'section', 'ground']) {
       assert.ok(f[need], `${f.file} does not record its ${need} — regenerating it would be guesswork`);
     }
   }
@@ -81,4 +81,21 @@ test('THE BUILT PAGE RESERVES THE SPACE, AND CLAIMS NOTHING FOR THE PICTURE', ()
     seen += 1;
   }
   assert.equal(seen, record.files.length, 'not every recorded figure was found in the page');
+});
+
+test('AND EACH FIGURE CARRIES ITS OWN GROUND, not a shared one', () => {
+  // The four renders do not share a studio ground — #f6f4e7 down to #ece9e2 — and on dark the
+  // figure sits on a plate of exactly that colour so the file's own edge never shows as a
+  // rectangle. One shared value would seam under at least one of them, silently, and only in the
+  // theme nobody is looking at while they edit.
+  const index = join(SITE, 'dist', 'index.html');
+  const html = readFileSync(index, 'utf8');
+  const grounds = record.files.map((f) => f.ground);
+
+  for (const f of record.files) {
+    assert.match(f.ground, /^#[0-9a-f]{6}$/, `${f.file} records "${f.ground}", which is not a hex colour`);
+    assert.ok(html.includes(`--fig-ground: ${f.ground}`), `${f.ground} is recorded for ${f.file} and never reaches the page`);
+  }
+  assert.equal(new Set(grounds).size, grounds.length,
+    'two figures record the same ground — either one is wrong, or they were measured off the same file');
 });

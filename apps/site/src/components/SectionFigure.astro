@@ -1,4 +1,6 @@
 ---
+import provenance from '../../public/assets/sections/PROVENANCE.json';
+
 /**
  * The one original illustration a section is allowed.
  *
@@ -26,9 +28,24 @@ interface Props {
   height?: number;
 }
 const { src, width = 1152, height = 864 } = Astro.props;
+
+/*
+ * THE RENDER'S OWN GROUND, PER FILE.
+ *
+ * On a dark page a cream rectangle reads as something pasted on. The fix is to put the figure on a
+ * plate of exactly its own studio ground and let the image multiply onto it, so the edge of the
+ * file is never visible as an edge — but the four grounds are NOT the same colour (#f6f4e7 down to
+ * #ece9e2, ten levels apart), so a single shared plate would seam under at least one of them.
+ *
+ * Read from the provenance record, which is where each one was written down after being measured
+ * off the file's own corner pixels. A number typed into a stylesheet beside four files that each
+ * have a different one is the drift this record exists to stop.
+ */
+const ground = provenance.files.find((f) => f.file === `${src}.webp`)?.ground;
+if (!ground) throw new Error(`no ground recorded for ${src}.webp — add it to assets/sections/PROVENANCE.json`);
 ---
 
-<div class="ap-fig" aria-hidden="true">
+<div class="ap-fig" aria-hidden="true" style={`--fig-ground: ${ground}`}>
   <img
     src={`/assets/sections/${src}.webp`}
     alt=""
@@ -64,19 +81,22 @@ const { src, width = 1152, height = 864 } = Astro.props;
     mix-blend-mode: multiply;
   }
 
+  /* DARK: THE FIGURE GETS A PLATE OF ITS OWN GROUND.
+     multiply over a dark page would erase the artwork, and leaving the file's cream rectangle
+     sitting on navy reads as something pasted in from elsewhere. The plate is the same colour the
+     render already has, so multiply resolves to the artwork and nothing else, and what the reader
+     sees is one deliberate light panel rather than the edge of an image file. */
   @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme='light'])) .ap-fig img {
-      /* multiply over a dark ground would erase the artwork. On dark the render keeps its own
-         light ground, softened rather than blended, which is legible instead of invisible. */
-      mix-blend-mode: normal;
-      opacity: 0.92;
+    :global(:root:not([data-theme='light'])) .ap-fig {
+      background: var(--fig-ground);
       border-radius: 0.9rem;
+      box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 8px 24px rgb(0 0 0 / 0.22);
     }
   }
 
-  :global(:root[data-theme='dark']) .ap-fig img {
-    mix-blend-mode: normal;
-    opacity: 0.92;
+  :global(:root[data-theme='dark']) .ap-fig {
+    background: var(--fig-ground);
     border-radius: 0.9rem;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 8px 24px rgb(0 0 0 / 0.22);
   }
 </style>
