@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { supabase, type ProfileRow } from '../lib/supabase';
 import { Failure } from '../components/failure';
+import { RobloxKeyPanel } from '../components/roblox-key-panel';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { usePrefs } from '../lib/theme';
@@ -499,6 +500,12 @@ export function SettingsPage() {
           <button type="button" className="btn" onClick={() => guard('sign-out-everywhere')}>
             Sign out on all devices
           </button>
+        </Row>
+      </Section>
+
+      <Section title="Connections" visible={sectionShows('roblox-key')}>
+        <Row id="roblox-key" visible={shows('roblox-key')}>
+          <RobloxKeyPanel />
         </Row>
       </Section>
 

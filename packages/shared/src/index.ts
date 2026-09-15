@@ -1528,3 +1528,29 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
     values: everyPlan((p) => PLAN_COPY[p].priceUsdMonthly === null),
   },
 ];
+
+// ---------------------------------------------------------------------------------------------
+// Roblox Open Cloud scopes
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The Open Cloud scopes a customer's own key can carry, as Roblox names them.
+ *
+ * SHARED because both ends need the same list and they need it to be the SAME list: the settings
+ * panel offers the choices, the worker validates what comes back, and a vocabulary that existed in
+ * two places would let the panel offer a scope the worker refuses — a control that cannot work,
+ * discovered only by the person who ticked it.
+ */
+export const ROBLOX_SCOPES = [
+  'asset:read',
+  'asset:write',
+  'universe-messaging-service:publish',
+  'universe.place:write',
+  'user.social:read',
+  'creator-store-product:read',
+] as const;
+export type RobloxScope = (typeof ROBLOX_SCOPES)[number];
+
+export function isRobloxScope(v: unknown): v is RobloxScope {
+  return typeof v === 'string' && (ROBLOX_SCOPES as readonly string[]).includes(v);
+}

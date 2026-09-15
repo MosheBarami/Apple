@@ -37,6 +37,7 @@
 //    "They gave us a key" and "they agreed to this particular action" are different facts, which
 //    is the lesson the 299 uploads taught at the account level and which applies again here.
 import type { Env } from './env';
+import { isRobloxScope, ROBLOX_SCOPES, type RobloxScope } from '@golem/shared';
 
 export interface CredentialEnv {
   CORPUS: Env['CORPUS'];
@@ -44,24 +45,12 @@ export interface CredentialEnv {
   CREDENTIAL_KEY?: string;
 }
 
-/**
- * The Open Cloud scopes a key can carry, as Roblox names them. Recorded from what the CUSTOMER
- * declares rather than probed, because probing means making a real call against their account with
- * a credential we have not yet been told we may use.
- */
-export const ROBLOX_SCOPES = [
-  'asset:read',
-  'asset:write',
-  'universe-messaging-service:publish',
-  'universe.place:write',
-  'user.social:read',
-  'creator-store-product:read',
-] as const;
-export type RobloxScope = (typeof ROBLOX_SCOPES)[number];
-
-export function isRobloxScope(v: unknown): v is RobloxScope {
-  return typeof v === 'string' && (ROBLOX_SCOPES as readonly string[]).includes(v);
-}
+// The scope vocabulary lives in @golem/shared: the settings panel offers these choices and this
+// module validates what comes back, and a list that existed in two places would let the panel
+// offer a scope the worker refuses. They are RECORDED from what the customer declares rather than
+// probed, because probing means making a real call against their account with a credential we have
+// not yet been told we may use.
+export { ROBLOX_SCOPES, isRobloxScope, type RobloxScope } from '@golem/shared';
 
 export interface StoredCredential {
   userId: string;

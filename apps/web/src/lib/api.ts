@@ -1,6 +1,6 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
-import { PRICE_CURRENCY } from '@golem/shared';
+import { PRICE_CURRENCY, type RobloxScope } from '@golem/shared';
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
@@ -826,3 +826,36 @@ export async function downloadProjectFile(projectId: string, path: string): Prom
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// ------------------------------------------------------- the customer's own Roblox key
+
+export interface StoredRobloxKey {
+  robloxCreatorId: string;
+  creatorType: 'user' | 'group';
+  scopes: RobloxScope[];
+  fingerprint: string;
+  hint: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/**
+ * Connect, inspect and disconnect the customer's own Roblox Open Cloud key.
+ *
+ * NOTHING HERE RETURNS THE KEY. The PUT sends one and gets back a description; the GET never had
+ * it. That is a property of the server, and it is restated here so nobody adds a `fetchRobloxKey`
+ * that reads a secret into the browser because the type looked like it should.
+ */
+export const fetchRobloxKey = (): Promise<{ credential: StoredRobloxKey | null }> =>
+  request('/api/me/roblox-key');
+
+export const putRobloxKey = (body: {
+  apiKey: string;
+  robloxCreatorId: string;
+  creatorType: 'user' | 'group';
+  scopes: RobloxScope[];
+}): Promise<{ credential: StoredRobloxKey }> =>
+  request('/api/me/roblox-key', { method: 'PUT', body: JSON.stringify(body) });
+
+export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
+  request('/api/me/roblox-key', { method: 'DELETE' });

@@ -45,6 +45,12 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   // in the keyboard-shortcuts dialog, beside the binding it changes. A search on this page that
   // returned it would reveal a row this page does not have — the exact failure the registry exists
   // to prevent. tests/settings-search.test.mjs checks that it is reachable there instead.
+  {
+    id: 'roblox-key',
+    title: 'Your Roblox account',
+    section: 'Connections',
+    keywords: ['roblox', 'open cloud', 'api key', 'connect', 'upload', 'creator', 'credential', 'account'],
+  },
   { id: 'training-opt-in', title: 'Contribute anonymised snippets', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out'] },
   { id: 'reset-settings', title: 'Reset settings', section: 'Privacy', keywords: ['default', 'defaults', 'restore', 'undo', 'clear'] },
 ];
