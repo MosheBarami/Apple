@@ -3863,6 +3863,21 @@ app.post('/api/shared/:id/members', async (c) => {
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
   if (userId === ctx.project.owner_id) return c.json({ error: 'owner_is_not_a_member' }, 400);
 
+  // THE SAME REFUSAL `planBulkInvite` MAKES (membership.ts, 'bad_expiry'), because the two routes
+  // write the same column. `classifyGrant` treats an expires_at it cannot parse as DEAD, so a
+  // pass-through here accepted `expiresAt: 'next tuesday'` with a 201 and wrote a member who could
+  // never open the project and whom the roster then reports as 'expired'. An invitation that was
+  // never going to work must be refused, not stored. Absent, null and empty all mean "no expiry" —
+  // the empty string is what an untouched date input sends, and it was being written verbatim.
+  let expiresAt: string | null = null;
+  const rawExpiry = body?.expiresAt;
+  if (rawExpiry !== undefined && rawExpiry !== null && rawExpiry !== '') {
+    if (typeof rawExpiry !== 'string' || !Number.isFinite(Date.parse(rawExpiry))) {
+      return c.json({ error: 'bad_expiry' }, 400);
+    }
+    expiresAt = rawExpiry;
+  }
+
   // READ BEFORE WRITE. The insert merges onto (project_id, user_id), so the row this lands on is
   // gone the moment it succeeds — and with it the only evidence of what this request actually did.
   // `invited`, `role_changed`, `renewed` and `reactivated` are all this one route.
@@ -3876,7 +3891,7 @@ app.post('/api/shared/:id/members', async (c) => {
       user_id: userId,
       role,
       invited_by: ctx.user.userId,
-      expires_at: typeof body?.expiresAt === 'string' ? body.expiresAt : null,
+      expires_at: expiresAt,
       revoked_at: null,
       // An explicit invitation says "this person is a member, at this role, from now". Leaving a
       // suspension in place under it would produce a member the roster calls suspended and the
