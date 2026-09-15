@@ -6,6 +6,7 @@ import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
+import { checkRobloxCredential } from './roblox-check';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -2910,7 +2911,7 @@ app.post('/api/admin/assets/unimport', async (c) => {
 app.put('/api/me/roblox-key', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'not signed in' }, 401);
-  const body = await c.req.json<{ apiKey?: string; robloxCreatorId?: string; creatorType?: string; scopes?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ apiKey?: string; robloxCreatorId?: string; creatorType?: string; scopes?: unknown; expiresAt?: unknown }>().catch(() => null);
   if (!body) return c.json({ error: 'a JSON body is required' }, 400);
   const res = await putRobloxCredential(c.env as never, {
     userId: user.userId,
@@ -2918,7 +2919,28 @@ app.put('/api/me/roblox-key', async (c) => {
     robloxCreatorId: String(body.robloxCreatorId ?? ''),
     creatorType: body.creatorType === 'group' ? 'group' : 'user',
     scopes: body.scopes,
+    // Optional, and validated in the store rather than here: a date already past is refused with
+    // its own sentence, because storing a key Roblox has already expired produces a credential
+    // that fails on first use for a reason the row itself knew.
+    expiresAt: body.expiresAt,
   });
+  // A CONNECTED ROBLOX ACCOUNT IS A SECURITY EVENT ON THIS ACCOUNT, and it was the one credential
+  // path that produced no record at all: minting, rotating and revoking an Apple API key each fire
+  // one of these, while attaching a key that can create things in somebody's real Roblox account
+  // fired nothing. Unremarkable on the day you do it; the only warning you get on the day you did
+  // not. Fire-and-forget, after the write — see securityNotice.
+  if (res.ok && res.credential) {
+    securityNotice(
+      c,
+      user.userId,
+      `roblox:${res.credential.robloxCreatorId}`,
+      'A Roblox account was connected to Apple',
+      `Apple can now act on Roblox ${res.credential.creatorType === 'group' ? 'group' : 'account'} `
+      + `${res.credential.robloxCreatorId} with a key ending ${res.credential.hint}. `
+      + `Permissions: ${res.credential.scopes.join(', ') || 'none'}. `
+      + 'If this was not you, disconnect it in Settings and revoke the key on Roblox.',
+    );
+  }
   // The response carries the DESCRIPTION, never the key — see user-credentials.ts rule 1.
   return res.ok ? c.json({ credential: res.credential }) : c.json({ error: res.error }, 400);
 });
@@ -2929,10 +2951,39 @@ app.get('/api/me/roblox-key', async (c) => {
   return c.json({ credential: await describeRobloxCredential(c.env as never, user.userId) });
 });
 
+/**
+ * Is the connected key still alive? Asked on purpose rather than discovered by a failed build.
+ *
+ * A GET that makes an outbound call is unusual and is right here: it reads a state that only
+ * Roblox holds, changes nothing, and the answer is worthless if it is cached. `roblox-check.ts`
+ * owns the three verdicts, including the one that says the check could not be made.
+ */
+app.get('/api/me/roblox-key/check', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  return c.json(await checkRobloxCredential(c.env as never, user.userId));
+});
+
 app.delete('/api/me/roblox-key', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'not signed in' }, 401);
-  return c.json({ removed: await deleteRobloxCredential(c.env as never, user.userId) });
+  // Read before deleting: the notice names WHICH account was disconnected, and after the delete
+  // there is nothing left to name it with. A notice saying "a Roblox account" is a notice that
+  // cannot be checked against what the owner expected.
+  const was = await describeRobloxCredential(c.env as never, user.userId);
+  const removed = await deleteRobloxCredential(c.env as never, user.userId);
+  if (removed && was) {
+    securityNotice(
+      c,
+      user.userId,
+      `roblox:${was.robloxCreatorId}`,
+      'A Roblox account was disconnected from Apple',
+      `Apple can no longer act on Roblox account ${was.robloxCreatorId}. `
+      + 'Anything already created in that account stays there, and the key itself still works on '
+      + 'Roblox until you revoke it at create.roblox.com.',
+    );
+  }
+  return c.json({ removed });
 });
 
 /**

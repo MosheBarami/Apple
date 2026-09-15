@@ -2732,20 +2732,36 @@ export class SessionDO extends DurableObject<Env> {
     // be noted on submissions that are otherwise fine, and those were the submissions whose
     // findings were discarded. Nothing fires on a clean verdict: `signals` is empty and there is
     // nothing to say.
+    //
+    // A pasted credential gets its OWN `errorKind` rather than the generic `abuse_noted`. It is
+    // the one finding here that is about the user's own property rather than their conduct, and
+    // an operator reading the trace for leaked keys should not have to grep message bodies.
     if (verdict.signals.length > 0) {
+      const secret = verdict.signals.some((s) => s.code === 'secret_in_prompt');
       recordEvent({
         kind: 'error',
         scope: 'chat:ingress',
         errorKind:
-          verdict.action === 'refuse' ? 'abuse_refused' : verdict.action === 'throttle' ? 'abuse_throttled' : 'abuse_noted',
+          verdict.action === 'refuse'
+            ? 'abuse_refused'
+            : verdict.action === 'throttle'
+              ? 'abuse_throttled'
+              : secret
+                ? 'secret_in_prompt'
+                : 'abuse_noted',
         message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
       });
     }
     // And told to the person it is about. A credential in a transcript is theirs to rotate whether
     // or not this particular run starts, so this is sent on both paths — see `advisory` for why it
     // covers the pasted key and not the injection pattern.
+    //
+    // SENT AS `notice`, NOT AS `error`. This was an `error` only because the wire had no other
+    // channel; it now has one. The run is still going and nothing failed, and a failure-shaped
+    // banner over a build that is happily building teaches people to distrust both the banner and
+    // the build. The browser renders it as an info toast with a link to where keys live.
     const notice = advisory(verdict);
-    if (notice) this.broadcast({ type: 'error', code: notice.code, message: notice.message });
+    if (notice) this.broadcast({ type: 'notice', code: notice.code, message: notice.message });
     if (verdict.action === 'allow') return false;
     if (verdict.action !== 'refuse') return false;
     this.broadcast({

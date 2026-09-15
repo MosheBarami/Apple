@@ -2748,6 +2748,26 @@
 }
 
 /* The "we don't know yet" state: one quiet line, never the steps. */
+/* The measured line about the link: latency, queue depth, when it was last seen — or, in the one
+   case that blocks a build, the place mismatch. Quiet by default because most of what it says is
+   reassurance; the mismatch is the exception and reads as one, since that state is a green
+   connection above a build that will never start. */
+.gx-link-detail {
+  margin: 0.35rem 0 0;
+  padding: 0 0.1rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--gx-ink-3);
+}
+
+.gx-link-detail.is-blocking {
+  padding: 0.45rem 0.6rem;
+  border-inline-start: 2px solid var(--gx-warn);
+  border-radius: var(--gx-r-sm);
+  background: var(--gx-raise);
+  color: var(--gx-ink-2);
+}
+
 .gx-connect--quiet {
   display: flex;
   align-items: center;

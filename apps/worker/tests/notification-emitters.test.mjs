@@ -105,15 +105,24 @@ test('the balance is read after the last settlement, or the figure reported is t
 
 /* ------------------------------------------------------------------- security events --- */
 
-test('the five routes that change a credential or a membership all tell the account holder', () => {
-  // securityNotice exists at ONE place and is called at five. A route that stopped calling it
+test('the seven routes that change a credential or a membership all tell the account holder', () => {
+  // securityNotice exists at ONE place and is called at seven. A route that stopped calling it
   // would leave a security log nobody is told about, which is a security log nobody reads on the
   // day something is wrong.
+  //
+  // IT WAS FIVE. Connecting a Roblox account — a credential that can create things in somebody's
+  // real Roblox account, permanently — fired nothing at all, while minting an Apple API key fired
+  // one. The count moving is the point of pinning it: adding a credential route and not telling
+  // the account holder about it should be a decision somebody makes on purpose, in this file.
   const body = code(index);
   assert.match(body, /function securityNotice\(/, 'securityNotice is gone');
   assert.match(body, /kind: 'security_event'/, 'securityNotice no longer emits the security kind');
   const calls = [...body.matchAll(/\bsecurityNotice\(/g)].length - 1; // minus the declaration
-  assert.equal(calls, 5, `expected the five call sites (mint, rotate, revoke, invite, remove); found ${calls}`);
+  assert.equal(
+    calls,
+    7,
+    `expected the seven call sites (mint, rotate, revoke, invite, remove, roblox connect, roblox disconnect); found ${calls}`,
+  );
 });
 
 test('a key event is keyed on the key and a membership event on the pair, so repeats coalesce', () => {
@@ -133,13 +142,16 @@ test('the membership notice goes to the OWNER, not to the person who was added o
   // in their list, which is the arrival they actually care about.
   const body = code(index);
   const sites = [...body.matchAll(/securityNotice\(\s*c,\s*([A-Za-z_.]+),/g)].map((m) => m[1]);
-  assert.equal(sites.length, 5, `could not read all five call sites; read ${JSON.stringify(sites)}`);
+  assert.equal(sites.length, 7, `could not read all seven call sites; read ${JSON.stringify(sites)}`);
   assert.deepEqual(
     sites.filter((s) => s === 'ctx.project.owner_id').length,
     2,
     'the two membership routes must address the project owner',
   );
-  assert.deepEqual(sites.filter((s) => s === 'user.userId').length, 3, 'the three key routes address the key owner');
+  // Three Apple keys and two Roblox connection events, all addressed to the person on the token —
+  // never to an id read off a body, which would be a way to post alarming sentences into anybody's
+  // account history.
+  assert.deepEqual(sites.filter((s) => s === 'user.userId').length, 5, 'the credential routes address the key owner');
 });
 
 test('a notification that cannot be delivered does not fail the security action it reports', () => {

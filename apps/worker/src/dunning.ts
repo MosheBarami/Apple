@@ -138,7 +138,21 @@ export function interpretDunningEvent(event: unknown): DunningNotice | null {
     userId,
     eventId: typeof e.id === 'string' && e.id.length > 0 ? e.id : null,
     subjectId: typeof obj['id'] === 'string' ? obj['id'] : null,
-    amountDue: intOrNull(obj['amount_due']),
+    /*
+     * TWO STRIPE OBJECTS, TWO NAMES FOR THE SAME NUMBER.
+     *
+     * The three payment kinds arrive as an Invoice, which carries `amount_due`. `checkout_expired`
+     * arrives as a Checkout Session, and a Checkout Session HAS NO `amount_due` — it carries
+     * `amount_total` (Stripe's own expired-session payload lists `amount_subtotal`, `amount_total`
+     * and `currency`, and no `amount_due` anywhere). Reading only `amount_due` therefore made the
+     * amount permanently null for exactly the kind whose whole job is to remind somebody which
+     * plan they were part-way through buying, and the copy said "The checkout you started has
+     * expired" about a checkout the reader has no way to identify.
+     *
+     * Nothing is invented when both are absent: intOrNull refuses anything that is not a finite
+     * integer, and formatAmount renders a null as no clause at all.
+     */
+    amountDue: intOrNull(obj['amount_due']) ?? intOrNull(obj['amount_total']),
     currency: typeof obj['currency'] === 'string' ? obj['currency'] : null,
     attempt,
   };
@@ -195,8 +209,11 @@ export function dunningCopy(n: DunningNotice): DunningCopy {
       return {
         title: 'The checkout you started has expired',
         body:
-          'Nothing was charged and your plan has not changed. Checkout pages are held open for an ' +
-          'hour; choosing the plan again on your Usage page starts a fresh one.',
+          (amount
+            ? `The ${amount} you were part-way through paying was never charged, and your plan has not changed. `
+            : 'Nothing was charged and your plan has not changed. ') +
+          'Checkout pages are held open for an hour; choosing the plan again on your Usage page ' +
+          'starts a fresh one.',
       };
   }
 }
