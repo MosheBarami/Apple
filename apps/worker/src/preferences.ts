@@ -491,6 +491,28 @@ export function applyToolPermissions(base: ReadonlySet<string>, perms: Readonly<
   return out;
 }
 
+/**
+ * WHAT THE NARROWING ACTUALLY TOOK, so it can be said out loud.
+ *
+ * `applyToolPermissions` removed tools and nothing recorded which — so "why did Apple not use
+ * run_luau on that run" had no answer anywhere in the product, and a capability that is silently
+ * not there is indistinguishable, from the user's side, from one that is broken.
+ *
+ * ONLY WHAT WAS THERE TO TAKE. A permission naming a tool this mode never had changes nothing, and
+ * reporting it would tell somebody a capability was withheld when it was never offered — denying
+ * delete_instances in Plan mode is a no-op, and announcing it invents a restriction. Sorted, so the
+ * same run reports the same sentence twice rather than whatever order the object happened to have.
+ */
+export function deniedTools(base: ReadonlySet<string>, perms: Readonly<Record<string, ToolPermission>> | undefined): string[] {
+  if (!perms) return [];
+  const out: string[] = [];
+  for (const [tool, perm] of Object.entries(perms)) {
+    if (!isToolPermission(perm) || perm === 'allow') continue;
+    if (base.has(tool)) out.push(tool);
+  }
+  return out.sort();
+}
+
 // ---------------------------------------------------------------------------------------------
 // the personal prompt profile
 // ---------------------------------------------------------------------------------------------

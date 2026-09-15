@@ -187,6 +187,7 @@ export function Turn({
           status={isLast ? status : null}
           streaming={item.streaming}
           intent={item.intent}
+          deniedTools={item.deniedTools}
           gates={gates}
           plannedSteps={plannedSteps}
           activity={activity}

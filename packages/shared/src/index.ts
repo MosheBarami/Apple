@@ -675,6 +675,14 @@ export interface RunSnapshot {
   effortReason?: string;
   /** What the agent understood, replayed so a refresh does not lose it. */
   intent?: RunIntent;
+  /**
+   * Tools this run was NOT given, because a tool permission removed them.
+   *
+   * Replayed for the same reason `intent` is: the narrowing is announced once, at the first step,
+   * and a refresh at step nine would otherwise leave the run looking as though nothing had been
+   * withheld. Absent when nothing was — which is a different fact from an empty list arriving.
+   */
+  deniedTools?: string[];
 }
 
 /**
@@ -959,6 +967,18 @@ export type ServerMsg =
   | { type: 'playtest_state'; run: PlaytestRun | null }
   // Emitted once, at run start, after the request has been classified.
   | { type: 'run_intent'; msgId: string; intent: RunIntent }
+  /**
+   * WHAT THIS RUN WAS NOT ALLOWED TO DO, emitted once, at the first step.
+   *
+   * A tool permission REMOVES a tool from the set the model is offered, and until now nothing said
+   * so: the agent simply never used it, and "why did Apple not run that script" had no answer in
+   * the product. Tools that the mode never had are not listed — denying delete_instances in Plan
+   * mode withholds nothing, and reporting it would invent a restriction.
+   *
+   * Only sent when something WAS removed. No message means nothing was withheld, which is a
+   * different claim from an empty list and is the reason this is not folded into agent_status.
+   */
+  | { type: 'tools_denied'; msgId: string; tools: string[] }
   | { type: 'error'; code: string; message: string }
   /**
    * WHO ELSE IS IN THIS PROJECT RIGHT NOW.

@@ -40,7 +40,11 @@ function bundle(rel, name) {
 const T = await import(`file://${bundle('tools.ts', 'tools')}`);
 const P = await import(`file://${bundle('preferences.ts', 'preferences')}`);
 const R = await import(`file://${bundle('router.ts', 'router')}`);
+const A = await import(`file://${bundle('analytics.ts', 'analytics')}`);
 const S = await import(`file://${join(ROOT, 'packages/shared/src/index.ts')}`);
+
+const SESSION = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+const SHARED = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
 
 test('every tool the settings panel can govern is a tool the registry has', () => {
   const real = new Set(T.toolNames());
@@ -90,9 +94,13 @@ test('DENYING A GOVERNED TOOL ACTUALLY REMOVES IT FROM THE RUN', () => {
   // The claim that makes the panel worth building. Asserted against the toolset the run loop
   // assembles, not against the merged preferences: a permission that merges and never narrows is
   // a control that moves.
+  const base = R.toolsForMode('stone', true, T.toolNames());
+  // Not vacuous: `stone` is the default builder and has every tool, so every governed name must
+  // actually be in the set being narrowed. An earlier draft of this test named a mode that does
+  // not exist ('agent'), fell through to the read-only default, and skipped ten of the twelve
+  // while reporting green.
   for (const g of S.GOVERNED_TOOLS) {
-    const base = R.toolsForMode('agent', true, T.toolNames());
-    if (!base.has(g.name)) continue; // a tool Agent mode never had cannot be denied from it
+    assert.ok(base.has(g.name), `${g.name} is not in the builder toolset — this assertion measures nothing`);
     const narrowed = P.applyToolPermissions(base, { [g.name]: 'deny' });
     assert.equal(narrowed.has(g.name), false, `${g.name} survived its own denial`);
     assert.equal(narrowed.size, base.size - 1, `${g.name}: denying it took something else too`);
@@ -100,9 +108,56 @@ test('DENYING A GOVERNED TOOL ACTUALLY REMOVES IT FROM THE RUN', () => {
 });
 
 test('and denying one leaves the read-only tools alone', () => {
-  const base = R.toolsForMode('agent', true, T.toolNames());
+  const base = R.toolsForMode('stone', true, T.toolNames());
   const narrowed = P.applyToolPermissions(base, { delete_instances: 'deny' });
   for (const readOnly of ['read_script', 'get_project_tree', 'search_scripts']) {
     if (base.has(readOnly)) assert.equal(narrowed.has(readOnly), true, readOnly);
   }
+});
+
+/* ------------------------------------------- the narrowing has to leave a record --- */
+
+test('WHAT WAS TAKEN AWAY IS NAMEABLE, not just absent', () => {
+  // "Why did Apple not use run_luau on that run" had no answer anywhere: the tool was removed from
+  // the set and nothing was logged, broadcast, or told to anyone. A capability that is silently
+  // not there is indistinguishable, from inside, from a product that is broken.
+  const base = R.toolsForMode('stone', true, T.toolNames());
+  assert.deepEqual(P.deniedTools(base, { run_luau: 'deny', delete_instances: 'ask' }).sort(), ['delete_instances', 'run_luau']);
+  assert.deepEqual(P.deniedTools(base, { run_luau: 'allow' }), [], 'allow removes nothing');
+  assert.deepEqual(P.deniedTools(base, undefined), []);
+  assert.deepEqual(P.deniedTools(base, {}), []);
+});
+
+test('and it names only what was ACTUALLY there to take', () => {
+  // A permission naming a tool this mode never had changes nothing, so reporting it would tell the
+  // user a capability was withheld when it was never offered. Plan mode is the case: denying
+  // delete_instances there is a no-op, and announcing it invents a restriction.
+  const plan = R.toolsForMode('clay', true, T.toolNames());
+  assert.equal(plan.has('delete_instances'), false, 'clay is supposed to be the read-only mode');
+  assert.deepEqual(P.deniedTools(plan, { delete_instances: 'deny', run_luau: 'deny' }), [],
+    'reported a restriction on tools clay never had');
+  const base = R.toolsForMode('stone', true, T.toolNames());
+  const perms = { run_luau: 'deny', not_a_tool_at_all: 'deny' };
+  assert.deepEqual(P.deniedTools(base, perms), ['run_luau']);
+  assert.equal(P.applyToolPermissions(base, perms).size, base.size - 1);
+});
+
+test('the run loop records it, broadcasts it, and replays it', () => {
+  // Three separate ways to leave this half-built: compute and never send, send and never persist
+  // (so a refresh loses it), or send with no audit line behind it.
+  assert.match(SESSION, /deniedTools\(/, 'the run loop never computes what was removed');
+  assert.match(SESSION, /type: 'tools_denied'/, 'nothing is broadcast');
+  assert.match(SESSION, /action: 'tool_denied'/, 'no audit event is recorded');
+  assert.match(SESSION, /deniedTools:/, 'the snapshot does not replay it, so a refresh loses it');
+  assert.match(SHARED, /type: 'tools_denied'/, 'the wire has no such message');
+});
+
+test('the audit event the analytics module accepts is the one the loop sends', () => {
+  // `allowed` defaults to FALSE on an unreadable value in analytics.ts, deliberately — a record of
+  // a permission decision nobody can confirm was permitted must not be filed as permitted.
+  const res = A.recordEvent({ kind: 'audit', action: 'tool_denied', actorKind: 'user', subject: 'run_luau', allowed: false });
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.equal(res.event.action, 'tool_denied');
+  assert.equal(res.event.allowed, false);
+  assert.equal(res.event.subject, 'run_luau');
 });

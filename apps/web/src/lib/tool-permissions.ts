@@ -86,6 +86,33 @@ export function floorNote(floor: ToolPermission, scope: MemoryScope | undefined)
   return `Already ${what}${who}. A narrower rule can be made here; it cannot be widened.`;
 }
 
+/**
+ * What to say about the tools this run was NOT given.
+ *
+ * Until the worker started sending this list, a permission was invisible from the user's side: the
+ * agent simply never used the tool, and a capability that is silently missing reads exactly like a
+ * broken product. The person most likely to hit it is the one who set the permission — and they
+ * still have to be told, because they set it on another project three weeks ago.
+ *
+ * NAMED IN THE SAME WORDS THE PANEL USES. "run_luau was not available" is the tool table leaking
+ * into the product, and it describes a control nobody has seen. A tool with no label — one an
+ * organisation set, or one that arrived through an import — falls back to its raw name rather than
+ * being dropped: under-reporting what was withheld is the one direction a sentence about
+ * permissions must never fail in.
+ *
+ * Null, not an empty string, when nothing was withheld. There is no line to draw.
+ */
+export function deniedNote(tools: readonly string[] | undefined): string | null {
+  const names = (tools ?? [])
+    .map((t) => (typeof t === 'string' ? t.trim() : ''))
+    .filter(Boolean)
+    .map((t) => GOVERNED_TOOLS.find((g) => g.name === t)?.label ?? t);
+  if (!names.length) return null;
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  const verb = names.length === 1 ? 'was' : 'were';
+  return `${list} ${verb} not available on this run — turned off in your settings.`;
+}
+
 export const PERMISSION_LABEL: Readonly<Record<ToolPermission, string>> = {
   allow: 'Allowed',
   // `ask` narrows to a refusal today — nothing in this product can interrupt a run to ask — and

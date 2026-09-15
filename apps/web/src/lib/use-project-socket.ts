@@ -80,6 +80,14 @@ export interface ChatItem {
    */
   intent?: RunIntent;
   /**
+   * Tools this run was NOT given, because a tool permission removed them — from `tools_denied`.
+   *
+   * Absent until the worker sends one, which is the whole contract: no message means nothing was
+   * withheld, and a conversation loaded from history is correctly silent rather than claiming a
+   * check it never made.
+   */
+  deniedTools?: string[];
+  /**
    * What this run cost, settled, from `msg_end`.
    *
    * It lives on the MESSAGE rather than on `AgentStatus` because `msg_end` clears the status in
@@ -652,6 +660,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             createdAt: run.startedAt,
             // Replayed only when the snapshot genuinely carries one.
             intent: run.intent,
+            // Same: `tools_denied` is broadcast once at the first step, so without this a refresh
+            // at step nine leaves the run looking as though nothing had been withheld from it.
+            deniedTools: run.deniedTools,
           };
           const idx = list.findIndex((m) => m.id === run.msgId);
           if (idx === -1) return [...list, restored];
@@ -661,6 +672,18 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         });
         break;
       }
+      case 'tools_denied':
+        // Kept on the MESSAGE rather than on `agentStatus`, for the reason `creditsSpent` is:
+        // `msg_end` clears the status, and this is a fact about the run that is most worth reading
+        // AFTER it, by someone asking why the agent did not do the thing they expected.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) return list;
+          const next = [...list];
+          next[idx] = { ...list[idx]!, deniedTools: msg.tools };
+          return next;
+        });
+        break;
       case 'context_budget':
         // Kept on the MESSAGE, not on `agentStatus`, for the same reason `creditsSpent` is: the
         // status is cleared by `msg_end`, so a figure stored there would be correct for one frame

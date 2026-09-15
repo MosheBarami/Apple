@@ -1495,6 +1495,14 @@
   line-height: 1.5;
 }
 
+/* A capability that was withheld is not the same kind of fact as a cost or an effort tier: it
+   explains a step that never happened, so it is the one line here that has to be noticed. Warm,
+   not red — nothing went wrong, the product did what it was told. */
+.gx-think__denied {
+  padding-block-end: 0.5rem;
+  color: var(--gx-warn, #e0b062);
+}
+
 /* --- the vertical timeline: Intent / Plan / Actions / Validation ---------- */
 
 .gx-timeline {
