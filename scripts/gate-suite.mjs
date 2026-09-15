@@ -36,55 +36,34 @@ const rootTests = readdirSync(join(ROOT, 'tests'))
   .filter((f) => f.endsWith('.test.mjs'))
   .map((f) => join('tests', f));
 
-//[[ --at-head: RUN THE SUITE AT A COMMIT, IN A TREE NOTHING CAN EDIT.
+//[[ --at-head IS WITHDRAWN. I SHIPPED IT AND IT COULD CORRUPT THE SHARED CHECKOUT.
 //
-//   The staleness guard below is correct and, on a busy checkout, permanently unsatisfiable. With
-//   several sessions working at once the fingerprint moved three times in nine seconds — three
-//   reads, three values — so the suite could never finish over a still tree and G90 could never
-//   go green, however healthy the suite actually was. That is the guard being RIGHT: the run
-//   genuinely does not describe any one tree. It is not a reason to loosen it.
+//   The problem it solves is real: with several sessions editing, the fingerprint moved three
+//   times in nine seconds, so the suite can never finish over a still tree and G90 can never go
+//   green however healthy the suite is. Running at a commit in a detached worktree is the right
+//   shape and rbxai-04 measured it working — 780/780 at HEAD while the same suite on disk was
+//   1468 pass / 4 fail.
 //
-//   So the gate stops asking "does this mixture pass" and asks "does HEAD pass", which is the
-//   question evidence is supposed to answer anyway — §10.1 does not let a pass end on a dirty
-//   tree, and a recorded green should describe a commit somebody can check out.
+//   What I built was not that. It symlinked the MAIN checkout's node_modules INTO an in-repo
+//   worktree and then ran `pnpm -r test` there, which makes the two trees share one set of module
+//   directories — so anything pnpm writes while resolving inside the worktree lands in the
+//   checkout every other session is using. Five workspace links (@golem/shared in web, site and
+//   worker; @golem/design in worker and evals) were found pointing into a worktree tonight, and
+//   for some window every typecheck and test in the main tree was reading a frozen copy at an old
+//   commit. I cannot prove my run caused it and I am not going to claim it did not.
 //
-//   A detached worktree at HEAD cannot change while the suite runs, so the inner run's own
-//   fingerprint check is satisfied by construction rather than by luck. `node_modules` is
-//   symlinked rather than installed: the dependencies are the ones the main checkout resolved,
-//   which is what the bare command tests against too.
+//   The falsification harness has used in-repo worktrees all night without incident, because it
+//   never symlinks node_modules and never invokes pnpm. That is the difference, and it is the
+//   whole difference.
 //
-//   Bare `gate-suite` still measures the WORKING TREE, deliberately. That is the useful thing
-//   while you are editing, and it is where the staleness guard earns its place. Proposed by
-//   rbxai-04, who measured 780/780 at HEAD while the same suite on disk was 1468 pass / 4 fail —
-//   two different questions with two different answers, and the gate wants the first one.
-if (process.argv.includes('--at-head')) {
-  const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
-  const dir = join(ROOT, '.claude', 'worktrees', `gate-suite-${sha.slice(0, 7)}`);
-  const quiet = { cwd: ROOT, stdio: 'ignore' };
-  try { execFileSync('git', ['worktree', 'remove', dir, '--force'], quiet); } catch { /* not there */ }
-  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, sha], { cwd: ROOT, stdio: 'inherit' });
-  try {
-    // Every workspace member that actually has modules resolved, plus the root.
-    for (const rel of ['', 'apps/web', 'apps/site', 'apps/worker', 'packages/evals', 'packages/corpus']) {
-      const from = join(ROOT, rel, 'node_modules');
-      if (!existsSync(from)) continue;
-      const to = join(dir, rel, 'node_modules');
-      if (existsSync(to)) continue;
-      mkdirSync(dirname(to), { recursive: true });
-      symlinkSync(from, to, 'dir');
-    }
-    // The worktree's OWN copy of this script, without the flag, so the real work happens once and
-    // its result is a statement about a tree that cannot move underneath it.
-    const r = spawnSync(process.execPath, [join(dir, 'scripts', 'gate-suite.mjs')], {
-      cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
-    });
-    process.stdout.write(`  at HEAD ${sha.slice(0, 7)} in a detached worktree\n`);
-    process.stdout.write(`${r.stdout ?? ''}${r.stderr ?? ''}`);
-    process.exit(r.status ?? 1);
-  } finally {
-    try { execFileSync('git', ['worktree', 'remove', dir, '--force'], quiet); } catch { /* left for inspection */ }
-  }
-}
+//   The safe shape, for whoever builds it next: put the worktree OUTSIDE the repository, so its
+//   own pnpm-workspace.yaml is the nearest workspace root rather than the main one, and give it
+//   its OWN modules via `pnpm install --offline` from the shared store. Never share module
+//   directories between two trees that both run pnpm.
+//
+//   Tommy's phrasing is the one worth keeping: a dead harness gives a WRONG number about the RIGHT
+//   tree; this gives a RIGHT number about the WRONG tree. Every habit built today inspects the
+//   measurement. None of them inspects the RESOLUTION. ]]
 
 const fingerprintBefore = treeFingerprint(ROOT);
 
