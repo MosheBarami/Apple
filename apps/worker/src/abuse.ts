@@ -315,33 +315,48 @@ export function scoreSubmission(input: {
   };
 }
 
+/** A non-fatal thing the person needs to be told about a prompt that was NOT blocked. */
+export interface AbuseNotice {
+  code: AbuseCode;
+  message: string;
+}
+
 /**
- * The one thing a user must be TOLD about their own prompt, or null when there is nothing.
+ * What an ALLOWED submission still has to say out loud.
  *
- * WHY THIS IS A FUNCTION AND NOT A BRANCH AT THE CALL SITE. `secret_in_prompt` carries weight 0,
- * so every verdict containing it is `allow` — and the call site returned on `allow` before it
- * recorded anything. The product noticed somebody paste a live API key into a conversation, said
- * nothing, wrote nothing, and passed the key to the model. An observation made and discarded is
- * indistinguishable from never having looked, which is the failure this repository keeps naming,
- * inverted.
+ * WHY THIS EXISTS AT ALL. `secret_in_prompt` carries weight 0 on purpose — a user who pastes their
+ * own API key needs telling, not blocking. But weight 0 also meant the finding never changed the
+ * action, and the call site in do/session.ts returned at `action === 'allow'` before it recorded
+ * anything, so on the submissions this signal is ABOUT the finding was computed, attached to a
+ * verdict, and thrown away. The detector ran perfectly and nobody was ever told. That is the same
+ * shape as a guard that cannot see what it guards and reports clean.
  *
- * IT NEVER QUOTES THE SECRET. `summariseDisclosures` already renders a kind and a masked preview,
- * and a warning that repeats the credential back would put it into a second place — a broadcast, a
- * log line, a screenshot of a toast.
+ * ONLY THE CREDENTIAL, NOT THE INJECTION, and the asymmetry is deliberate. Pasting a page or a
+ * README that contains "ignore previous instructions" is an ordinary Tuesday for a builder asking
+ * what a script does; a banner on every such paste is a banner people learn to dismiss without
+ * reading — including on the rare day it is about their key. `injection_attempt` stays on the
+ * verdict and in the event log, where the trace and the operator can see it, and off the screen.
  *
- * A verdict with no `disclosures` at all reads as "nothing observed": the caller is a Durable
- * Object and may hold an object from an older shape, and an absent field must never be read as a
- * clean scan.
+ * The message deliberately does not name the credential or echo any part of it. It is already in
+ * the transcript once; repeating it into a toast puts it somewhere else too.
  */
-export function disclosureNotice(
-  verdict: { signals?: readonly AbuseSignal[]; disclosures?: readonly unknown[] },
-): { code: 'secret_in_prompt'; message: string } | null {
-  if (!Array.isArray(verdict?.disclosures) || verdict.disclosures.length === 0) return null;
-  const signal = verdict.signals?.find((s) => s.code === 'secret_in_prompt');
-  if (!signal) return null;
+export function advisory(verdict: { signals?: readonly AbuseSignal[] }): AbuseNotice | null {
+  // Tolerant of a verdict that has no `signals` at all. The caller is a Durable Object and may
+  // hold an object persisted under an older shape; that must read as "nothing observed" and return
+  // null, not throw partway through ingress.
+  //
+  // Gated on the SIGNAL, deliberately, and not on the `disclosures` array beside it. Both are
+  // written by the same branch of `scoreSubmission`, but `disclosures` is the optional one — and a
+  // real detection that goes silent because an optional field did not survive a round trip is the
+  // discarded-observation bug this function was written to end, reintroduced one level down.
+  const secret = verdict?.signals?.find((s) => s.code === 'secret_in_prompt');
+  if (!secret) return null;
   return {
     code: 'secret_in_prompt',
-    message: `That message ${signal.detail.replace(/^the prompt /, '')}. It was still sent — nothing was blocked.`,
+    // Independent of `action`: a refused run leaves the key sitting in the conversation exactly as
+    // an allowed one does, so the advice is the same either way.
+    message:
+      'That message contains what looks like a credential. It is now in this conversation, so rotate it — anyone who can read the project can read it.',
   };
 }
 

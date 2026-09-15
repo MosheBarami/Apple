@@ -36,7 +36,16 @@ test('the plugin still computes a fidelity report worth surfacing', () => {
 
 test('ok reflects the plugin verdict, not merely that the op was delivered', () => {
   assert.match(body, /if \(!d\.restored\)/, 'a plugin-reported incomplete restore must not return ok');
-  assert.match(body, /return \{ ok: false, error: d\.error \?\? 'restore incomplete', fidelity \}/);
+  // Asserted as a BRANCH rather than as one exact return statement. The property under test is
+  // "refuses, names the plugin's own reason or a default, and still says how far it got"; pinning
+  // the literal spelling made this fail the moment the reason was lifted into a variable so the
+  // same sentence could also be broadcast to the browser — a test failing over punctuation while
+  // the behaviour it guards was intact.
+  const at = body.indexOf('if (!d.restored)');
+  const branch = body.slice(at, at + 400);
+  assert.match(branch, /d\.error \?\? 'restore incomplete'/, "the plugin's own reason, or a default — never an empty error");
+  assert.match(branch, /ok: false/);
+  assert.match(branch, /fidelity/, 'a refusal must still carry the counts, so the UI can say how far it got');
   // The bare success that hid everything must be gone.
   assert.equal(/return \{ ok: true \};\s*\n\s*\}/.test(body), false, 'the bare `{ ok: true }` must be gone');
 });

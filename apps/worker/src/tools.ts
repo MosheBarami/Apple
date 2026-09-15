@@ -39,6 +39,7 @@ import {
   symbolsInFile,
   type ScriptFile,
 } from './luau-review';
+import { propertyChangeGroups } from './property-diff';
 import { CENSUS_LUAU, parseCensus, destructiveDelta, needsProtection } from './playtest';
 import { countConsole, parseLogEntries } from './playtest-stream';
 import { PLAYTEST_FRAME_MIN_INTERVAL_MS } from './frame-bus';
@@ -1446,14 +1447,57 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     run: (ctx, a) => op(ctx, { op: 'create_instances', items: (a.items as never[]) ?? [] }),
   },
+  /**
+   * SET, AND SAY WHAT IT WAS.
+   *
+   * This was a bare pass-through to the plugin op: it read nothing first and emitted no panel, so a
+   * run that moved a wall forty studs reported "set_properties ok" and the person had to go and
+   * look. Meanwhile `PropertyRow.changed` / `.previous` and the renderer that draws
+   * `<s>previous</s> → value` had existed since the schema was written with no producer in the
+   * product at all — the before→after block only ever showed the after.
+   *
+   * Read-before-write is the pattern edit_script already uses to compute its diff (it reads the
+   * current source to hash it, and turns the same read into hunks). One extra op, on a call the
+   * model makes when it is changing something a person asked for.
+   *
+   * THE READ COMES FIRST AND ITS FAILURE IS NOT SWALLOWED INTO A CLAIM. If the instance could not
+   * be read, `propertyChangeGroups` marks nothing changed — see its comment. A panel that said
+   * "0 → 0.5" on the strength of having written 0.5 would be asserting something never observed.
+   */
   set_properties: {
     def: {
       name: 'set_properties',
-      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances.',
+      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances. Reports what each value WAS, so you can quote the change rather than the intention.',
       parameters: S({ path: { type: 'string' }, props: { type: 'object' }, attributes: { type: 'object' } }, ['path']),
     },
     studio: true,
-    run: (ctx, a) => op(ctx, { op: 'set_props', path: String(a.path ?? ''), props: a.props as never, attributes: a.attributes as never }),
+    run: async (ctx, a) => {
+      const path = String(a.path ?? '');
+      const props = (a.props ?? undefined) as Record<string, unknown> | undefined;
+      const attributes = (a.attributes ?? undefined) as Record<string, unknown> | undefined;
+
+      // Best effort, and its failure is recorded as a failure rather than as "nothing changed":
+      // a refusal here must not stop the write the user asked for.
+      const seen = await op(ctx, { op: 'get_instance', path });
+      const prior =
+        seen && typeof seen === 'object' && !('error' in (seen as Record<string, unknown>))
+          ? (seen as { class?: string; props?: Record<string, unknown>; attributes?: Record<string, unknown> })
+          : null;
+
+      const res = await op(ctx, { op: 'set_props', path, props: props as never, attributes: attributes as never });
+      if (!res || typeof res !== 'object' || 'error' in (res as Record<string, unknown>)) return res;
+
+      const groups = propertyChangeGroups({ props, attributes }, prior, displayTagged);
+      if (groups.length) {
+        ctx.uiDetail = {
+          v: 1,
+          blocks: [{ type: 'property_inspector', path, className: prior?.class, groups }],
+        };
+      }
+      // Stated on the RESULT as well as in the panel, because the model reads this and the person
+      // reads that: a step that could not see the previous values must not be quoted as if it had.
+      return { ...(res as Record<string, unknown>), priorValuesRead: prior !== null };
+    },
   },
   delete_instances: {
     def: { name: 'delete_instances', description: 'Delete instances by path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },

@@ -280,3 +280,44 @@ test('a link redeemed against a NaN clock is refused', () => {
   assert.equal(out.ok, false);
   assert.equal(out.reason, 'malformed');
 });
+
+// ---------------------------------------------------------------------------------------------
+// The scope survives redemption
+// ---------------------------------------------------------------------------------------------
+
+test('a link minted for ONE CHAT does not become a project-wide membership', () => {
+  // THE HOLE THIS CLOSES. `redeemShareLink` refuses a chat link presented at a build — and then
+  // the redemption wrote a grant with no scope on it at all, so the moment the link was accepted
+  // the holder was an ordinary project member: the roster, every version, every artifact. The
+  // refusals above were real and lasted exactly one request.
+  const chat = { user_id: MEMBER, role: 'commenter', scope: 'chat', resource_id: 'c-9' };
+  const at = (resource) => resolveMembership({ userId: MEMBER, ownerId: OWNER, grants: [chat], nowMs: NOW, resource });
+
+  assert.equal(at({ kind: 'chat', id: 'c-9' })?.role, 'commenter', 'the chat it was minted for still opens');
+  assert.equal(at({ kind: 'chat', id: null })?.role, 'commenter', 'a route on the chat surface that names no id still opens');
+  assert.equal(at(undefined), null, 'a project-wide route is not a chat');
+  assert.equal(at({ kind: 'build', id: 'c-9' }), null, 'the same id under another kind is another resource');
+  assert.equal(at({ kind: 'chat', id: 'c-8' }), null, 'another chat is another chat');
+
+  // …and the door is told WHY, so it can answer 403 "your link is chat-scoped" instead of 404
+  // "no such project" to someone who is demonstrably holding a link to it.
+  const refused = decideAccess({ userId: MEMBER, ownerId: OWNER, grants: [chat], nowMs: NOW, action: 'read' });
+  assert.equal(refused.allowed, false);
+  assert.equal(refused.status, 403);
+  assert.equal(refused.reason, 'scoped_grant');
+});
+
+test('a grant whose scope cannot be read is dead, not project-wide', () => {
+  const at = (row, resource) => resolveMembership({ userId: MEMBER, ownerId: OWNER, grants: [row], nowMs: NOW, resource });
+  for (const bad of ['everything', 'Chat', '', 7, {}, []]) {
+    assert.equal(at({ user_id: MEMBER, role: 'editor', scope: bad }, 'any'), null, `scope ${JSON.stringify(bad)} must not widen to project`);
+  }
+  // A scoped grant that names no resource cannot be confined to one, so it is refused rather than
+  // quietly promoted to the whole project — the direction the expiry rule already goes.
+  assert.equal(at({ user_id: MEMBER, role: 'editor', scope: 'chat', resource_id: null }, { kind: 'chat', id: 'c-1' }), null);
+  assert.equal(at({ user_id: MEMBER, role: 'editor', scope: 'chat', resource_id: '  ' }, 'any'), null);
+  // THE CONTROL: a row with no scope column at all is a Postgres membership row, and those are
+  // project-wide. Without this the two assertions above would pass on a function that refused
+  // every grant ever written.
+  assert.equal(at({ user_id: MEMBER, role: 'editor' }, undefined)?.role, 'editor');
+});

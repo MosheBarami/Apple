@@ -30,6 +30,7 @@
 import {
   WORKSPACE_EXTENSIONS,
   WORKSPACE_MAX_BYTES,
+  WORKSPACE_MAX_DEPTH,
   WORKSPACE_MAX_VERSIONS,
   WORKSPACE_TRASH_TTL_SECONDS,
   checkWorkspacePath,
@@ -285,6 +286,122 @@ export async function revertWorkspaceFile(
   if (!got.ok) return got;
   const written = await store.write(got.path, got.content);
   return { ok: true, path: got.path, restoredFrom: version, version: written.version, bytes: written.bytes };
+}
+
+/* ------------------------------------------------------------------ folders --- */
+
+/**
+ * A FOLDER IS A PREFIX. There is nothing else to validate.
+ *
+ * `checkWorkspacePath` cannot be reused directly — it requires a known file EXTENSION, which a
+ * folder does not have — so this is the same segment rule with that one clause removed, and it is
+ * deliberately written next to it rather than somewhere a reader would have to go looking. The
+ * depth allowance is one less than a file's, because every file under this prefix needs a segment
+ * of its own and a folder at the limit could hold nothing.
+ */
+function checkWorkspacePrefix(raw: string): { ok: true; prefix: string } | { ok: false; detail: string } {
+  const value = (raw ?? '').trim().replace(/\/+$/, '');
+  if (!value) return { ok: false, detail: 'no folder was given' };
+  if (value.length > 190) return { ok: false, detail: 'that folder path is too long' };
+  if (value.startsWith('/') || /^[A-Za-z]:/.test(value)) return { ok: false, detail: 'the folder must be inside the project workspace' };
+  if (value.includes('\\')) return { ok: false, detail: 'use "/" as the separator' };
+  const segments = value.split('/');
+  if (segments.length > WORKSPACE_MAX_DEPTH - 1) return { ok: false, detail: `at most ${WORKSPACE_MAX_DEPTH - 1} folder levels` };
+  for (const seg of segments) {
+    if (seg === '') return { ok: false, detail: 'the folder path has an empty segment' };
+    if (seg === '.' || seg === '..') return { ok: false, detail: '"." and ".." are not allowed in a workspace path' };
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(seg)) return { ok: false, detail: `"${seg.slice(0, 40)}" is not a usable folder name` };
+  }
+  return { ok: true, prefix: value };
+}
+
+/**
+ * Rename or relocate a whole folder.
+ *
+ * NOTHING MOVES UNTIL EVERYTHING CAN. Every destination is built, validated and checked for
+ * occupancy before the first write, because KV has no transaction and a batch that stops halfway
+ * leaves the folder existing twice — partly under each name — with nothing to tell a user which
+ * half is which. Pre-checking cannot make this atomic against a concurrent writer; it removes the
+ * failure this product can actually cause, which is the destination that was already taken.
+ *
+ * Moving a folder INTO ITSELF is refused rather than resolved. `notes` -> `notes/archive` would
+ * walk every file into its own new parent, and a caller who asked for that asked for something
+ * this cannot do; rewriting their request into a different one is how a guard becomes a bug.
+ */
+export async function moveWorkspaceFolder(
+  store: WorkspaceStore,
+  fromRaw: string,
+  toRaw: string,
+): Promise<WorkspaceOp<{ from: string; to: string; moved: number; files: { from: string; to: string }[] }>> {
+  const from = checkWorkspacePrefix(fromRaw);
+  if (!from.ok) return fail('bad_path', from.detail);
+  const to = checkWorkspacePrefix(toRaw);
+  if (!to.ok) return fail('bad_destination', to.detail);
+  if (from.prefix === to.prefix) return fail('same_path', 'the folder already has that name');
+  if (to.prefix.startsWith(`${from.prefix}/`)) {
+    return fail('occupied', `${to.prefix} is inside ${from.prefix}, so the folder cannot move there`);
+  }
+
+  const files = await store.list(`${from.prefix}/`);
+  if (!files.length) return fail('not_found', `there is no folder at ${from.prefix}`);
+
+  const planned: { from: string; to: string }[] = [];
+  for (const file of files) {
+    const destination = `${to.prefix}/${file.path.slice(from.prefix.length + 1)}`;
+    const verdict = checkWorkspacePath(destination);
+    if (!verdict.ok) return fail('bad_destination', `${destination} would not be a usable path: ${verdict.detail}`);
+    if (await store.read(verdict.path)) return fail('occupied', `there is already a file at ${verdict.path}`);
+    planned.push({ from: file.path, to: verdict.path });
+  }
+
+  const moved: { from: string; to: string }[] = [];
+  for (const one of planned) {
+    const res = await store.move(one.from, one.to);
+    // Reported rather than thrown: the files already moved are moved, and a caller told only
+    // "failed" would have no idea the folder is now in two places. This is the concurrent-writer
+    // case the pre-check cannot close.
+    if (!res.ok) {
+      return fail(
+        res.reason === 'occupied' ? 'occupied' : 'not_found',
+        `moved ${moved.length} of ${planned.length} files, then stopped at ${one.from} — the folder is now in two places`,
+      );
+    }
+    moved.push(one);
+  }
+  return { ok: true, from: from.prefix, to: to.prefix, moved: moved.length, files: moved };
+}
+
+/**
+ * Delete a whole folder, recoverably.
+ *
+ * One `remove` per file, which is the ORDINARY soft delete: each lands in the same trash with the
+ * same deadline and comes back through the same undelete. A bulk path that deleted outright would
+ * be the only deletion in this product a user cannot undo, and it would be the one that removes the
+ * most at once.
+ */
+export async function deleteWorkspaceFolder(
+  store: WorkspaceStore,
+  prefixRaw: string,
+): Promise<WorkspaceOp<{ prefix: string; deleted: number; paths: string[]; deletedAt: number; expiresAt: number }>> {
+  const verdict = checkWorkspacePrefix(prefixRaw);
+  if (!verdict.ok) return fail('bad_path', verdict.detail);
+  const files = await store.list(`${verdict.prefix}/`);
+  if (!files.length) return fail('not_found', `there is no folder at ${verdict.prefix}`);
+
+  const paths: string[] = [];
+  let deletedAt = 0;
+  let expiresAt = 0;
+  for (const file of files) {
+    const res = await store.remove(file.path);
+    if (!res) continue;
+    paths.push(file.path);
+    // The LAST deadline written, so the sentence the UI shows is one that is true of every file in
+    // the batch rather than of the first one.
+    deletedAt = res.deletedAt;
+    expiresAt = res.expiresAt;
+  }
+  if (!paths.length) return fail('not_found', `there is no folder at ${verdict.prefix}`);
+  return { ok: true, prefix: verdict.prefix, deleted: paths.length, paths, deletedAt, expiresAt };
 }
 
 export async function trashOf(store: WorkspaceStore): Promise<{ entries: WorkspaceTrashEntry[]; retentionDays: number }> {
