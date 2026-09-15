@@ -4306,6 +4306,48 @@
   color: var(--gx-ink-2, var(--gx-ink));
 }
 
+/* The permission rows are a COLUMN, not the wrapping row `.prefs__set` gives the convention
+   checkboxes. Twelve controls that each carry a sentence do not wrap into anything readable, and
+   the sentence is the part that makes the choice a decision rather than a label. */
+.prefs__tools {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prefs__tool {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
+.prefs__tool .field {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prefs__tool .mem__fact {
+  flex: none;
+  width: auto;
+  min-width: 11rem;
+}
+
+/* The consequence of a denial, and the reason a looser choice is missing. Both are small and
+   quiet: they are read once, when the person is deciding, and never again. */
+.prefs__tool .prefs__value,
+.prefs__tool .prefs__over {
+  font-size: 0.73rem;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.prefs__tool .prefs__value {
+  color: var(--gx-ink-3);
+}
+
 .prefs__profile {
   display: flex;
   flex-direction: column;

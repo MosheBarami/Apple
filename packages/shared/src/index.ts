@@ -1647,3 +1647,63 @@ export interface AssetSourcePolicy {
 }
 
 export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+
+// ---------------------------------------------------------------------------------------------
+// What Apple is ALLOWED TO DO
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * SHARED for the same reason the asset-source choices are, and with more at stake.
+ *
+ * The worker validates every tool permission against the real registry (preferences.ts:293), so a
+ * settings panel offering a name the registry does not have would render a switch that is silently
+ * refused on save — and the person who flicked it would go away believing they had denied
+ * something. The vocabulary and the governed list therefore live here, where both halves read one
+ * literal, and tool-permissions.test.mjs in apps/worker holds every name below to a real tool.
+ */
+export const TOOL_PERMISSIONS = ['allow', 'ask', 'deny'] as const;
+export type ToolPermission = (typeof TOOL_PERMISSIONS)[number];
+
+export const isToolPermission = (v: unknown): v is ToolPermission =>
+  typeof v === 'string' && (TOOL_PERMISSIONS as readonly string[]).includes(v);
+
+/**
+ * How strict each answer is. THE ORDER OF THE LITERAL IS THE ORDER OF STRICTNESS — deriving the
+ * rank from the array rather than writing a second table is what stops the browser and the worker
+ * holding two different opinions about whether `ask` outranks `allow`.
+ */
+export const toolPermissionRank = (p: ToolPermission): number => TOOL_PERMISSIONS.indexOf(p);
+
+export interface GovernedTool {
+  name: string;
+  /** What a person calls it. Never the tool name — "run_luau" is not a sentence. */
+  label: string;
+  /** What denying it actually stops. The consequence, not the category. */
+  stops: string;
+}
+
+/**
+ * The write tools a person may govern, in the order the panel lists them.
+ *
+ * NOT every tool in the registry. The read-only ones — read_script, get_project_tree, search_docs —
+ * have nothing to deny, and a switch beside each of them would be forty controls of which twelve
+ * matter, with the twelve being the ones nobody finds. Each entry says what denying it STOPS,
+ * because "set_properties: deny" is a label and "Apple can no longer recolour, move or resize
+ * anything already in your place" is a decision someone can actually make.
+ */
+export const GOVERNED_TOOLS: readonly GovernedTool[] = [
+  { name: 'edit_script', label: 'Change existing scripts', stops: 'Apple can still read your code, but cannot rewrite a line of it.' },
+  { name: 'format_script', label: 'Reformat scripts', stops: 'Apple cannot reindent or restyle a script you wrote.' },
+  { name: 'create_instances', label: 'Add parts and objects', stops: 'Apple cannot put anything new into your place.' },
+  { name: 'set_properties', label: 'Change parts that already exist', stops: 'Apple cannot recolour, move or resize anything already in your place.' },
+  { name: 'delete_instances', label: 'Delete parts and objects', stops: 'Apple cannot remove anything from your place.' },
+  { name: 'run_luau', label: 'Run code in your place', stops: 'Apple cannot execute a script against your open project.' },
+  { name: 'run_and_check', label: 'Playtest the game', stops: 'Apple cannot start a playtest, so it can no longer check its own work by running it.' },
+  { name: 'insert_asset', label: 'Insert assets from the Creator Store', stops: 'Apple cannot pull other creators’ models into your place.' },
+  { name: 'install_module', label: 'Install Luau modules', stops: 'Apple cannot add third-party code to your project.' },
+  { name: 'generate_model', label: 'Generate 3D models', stops: 'Apple cannot spend Credits building geometry from scratch.' },
+  { name: 'generate_image', label: 'Generate images', stops: 'Apple cannot spend Credits making textures, decals or thumbnails.' },
+  { name: 'workspace_write', label: 'Write files in the workspace', stops: 'Apple cannot write to the file workspace beside your project.' },
+];
+
+export const GOVERNED_TOOL_NAMES: readonly string[] = GOVERNED_TOOLS.map((t) => t.name);

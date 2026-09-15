@@ -104,8 +104,13 @@ export const LANGUAGE_NAMES: Readonly<Record<LanguageTag, string>> = {
 export const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
 export type ResponseLength = (typeof RESPONSE_LENGTHS)[number];
 
-export const TOOL_PERMISSIONS = ['allow', 'ask', 'deny'] as const;
-export type ToolPermission = (typeof TOOL_PERMISSIONS)[number];
+// The vocabulary lives in @golem/shared for the reason the asset-source one does, and with more at
+// stake: the settings panel now RENDERS a control per governed tool, and this module refuses any
+// name the registry does not have. Two arrays that agree today are not one array — the failure only
+// shows up when somebody edits one of them, and it shows up as a save that silently refuses a
+// permission the user believes they set. See tool-permissions.test.mjs.
+import { TOOL_PERMISSIONS, isToolPermission, type ToolPermission } from '@golem/shared';
+export { TOOL_PERMISSIONS, isToolPermission, type ToolPermission };
 export const TOOL_PERMISSION_ENTRIES_MAX = 64;
 
 const inList = <T extends readonly string[]>(list: T, v: unknown): v is T[number] => typeof v === 'string' && (list as readonly string[]).includes(v);
@@ -114,7 +119,6 @@ export const isCodingStyle = (v: unknown): v is CodingStyle => inList(CODING_STY
 export const isRobloxConvention = (v: unknown): v is RobloxConvention => inList(ROBLOX_CONVENTIONS, v);
 export const isLanguageTag = (v: unknown): v is LanguageTag => inList(LANGUAGES, v);
 export const isResponseLength = (v: unknown): v is ResponseLength => inList(RESPONSE_LENGTHS, v);
-export const isToolPermission = (v: unknown): v is ToolPermission => inList(TOOL_PERMISSIONS, v);
 // The vocabulary lives in @golem/shared: the dialog offers these choices and this module
 // validates what comes back, and a list in two places lets the dialog offer an option the worker
 // refuses. The narrowing rules below are the worker's, because they are about layered policy

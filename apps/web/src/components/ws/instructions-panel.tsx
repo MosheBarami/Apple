@@ -29,6 +29,17 @@ import {
   type Preferences,
   type PromptProfile,
 } from '../../lib/api';
+import {
+  GOVERNED_TOOLS,
+  PERMISSION_LABEL,
+  TOOL_PERMISSIONS,
+  choiceDisabled,
+  floorFrom,
+  floorNote,
+  permissionOf,
+  withPermission,
+  type ToolPermission,
+} from '../../lib/tool-permissions';
 import { useToast } from '../toast';
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
@@ -310,6 +321,59 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
               />
               <span>{c.label}</span>
             </label>
+          );
+        })}
+      </fieldset>
+
+      {/* --------------------------------------------------- what Apple may DO -- */}
+      {/*
+        The one group of settings on this panel that is not about taste.
+        Everything above changes how Apple answers; this changes what it is permitted to touch —
+        so it layers the other way round, strictest-wins, and the server intersects rather than
+        overrides. That asymmetry is visible here rather than explained: when a stricter rule is
+        already in force from another layer, the looser options are GONE from the menu and the
+        reason is written beside it. A dropdown still offering "Allowed" under an account-level
+        deny would be a control wired to nothing, which is the defect this codebase keeps finding.
+      */}
+      <fieldset className="prefs__set prefs__tools" disabled={!canWrite}>
+        <legend className="field-label">What Apple may do in this project</legend>
+        <p className="mem__note">
+          Everything not listed here — reading your scripts, searching the docs, looking at the
+          viewport — Apple does anyway. These are the ones that change your work.
+        </p>
+        {GOVERNED_TOOLS.map((g) => {
+          const mine = permissionOf(prefs.tool_permissions, g.name);
+          // The merged answer for this project, straight from the server. It already contains
+          // this layer's own contribution, which is why `floorFrom` compares the two rather than
+          // reading the merged value alone — see tool-permissions.ts.
+          const effective = permissionOf(resolved.data?.preferences.tool_permissions, g.name);
+          const floor = floorFrom(mine, effective);
+          return (
+            <div key={g.name} className="prefs__tool">
+              <label className="field">
+                <span className="field-label field-label--sub">{g.label}</span>
+                <select
+                  className="mem__fact"
+                  value={mine}
+                  disabled={!canWrite}
+                  onChange={(e) =>
+                    setPref('tool_permissions', withPermission(prefs.tool_permissions, g.name, e.target.value as ToolPermission))
+                  }
+                >
+                  {TOOL_PERMISSIONS.filter((p) => !choiceDisabled(p, floor)).map((p) => (
+                    <option key={p} value={p}>
+                      {PERMISSION_LABEL[p]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {mine !== 'allow' && <span className="prefs__value">{g.stops}</span>}
+              {floor && (
+                <span className="prefs__over" role="status">
+                  {floorNote(floor, resolved.data?.sources.tool_permissions)}
+                </span>
+              )}
+            </div>
           );
         })}
       </fieldset>
