@@ -41,6 +41,13 @@ export const ASSET_SOURCE_SITES = [
   'poly_pizza',
   'opengameart',
   'sketchfab',
+  // Added after a 15-source survey that verified each one by fetching it. Every one of these is a
+  // community or institution that already assembled the collection — none of it is authored here,
+  // which is the owner's standing rule for this library.
+  'iconify',
+  'game_icons',
+  'wikimedia',
+  'cgbookcase',
   'roblox_official',
   'creator_store',
   'generated_roblox',
@@ -72,6 +79,10 @@ export const ASSET_ORIGINALITY: Readonly<Record<AssetSourceSite, AssetOriginalit
   poly_pizza: 'third_party',
   opengameart: 'third_party',
   sketchfab: 'third_party',
+  iconify: 'third_party',
+  game_icons: 'third_party',
+  wikimedia: 'third_party',
+  cgbookcase: 'third_party',
   roblox_official: 'third_party',
   creator_store: 'third_party',
   generated_roblox: 'user_generated',
@@ -196,6 +207,16 @@ export const LICENCES: Readonly<Record<string, LicenceRule>> = {
     allowedInLibrary: false,
     why: 'non-commercial and share-alike — both obligations are undischargeable in a customer place',
   },
+  // Permissive code-style licences, which is what the icon sets ship under. They require the
+  // notice to travel, not the source — dischargeable by a credits list, unlike share-alike.
+  'MIT': { commercialUse: true, attributionRequired: true, shareAlike: false, allowedInLibrary: true, why: 'permissive; the notice must travel with the work' },
+  'ISC': { commercialUse: true, attributionRequired: true, shareAlike: false, allowedInLibrary: true, why: 'as MIT' },
+  'Apache-2.0': { commercialUse: true, attributionRequired: true, shareAlike: false, allowedInLibrary: true, why: 'permissive; notice and NOTICE file must travel' },
+  'BSD-3-Clause': { commercialUse: true, attributionRequired: true, shareAlike: false, allowedInLibrary: true, why: 'as MIT, plus a no-endorsement clause' },
+  'Unlicense': { commercialUse: true, attributionRequired: false, shareAlike: false, allowedInLibrary: true, why: 'public domain dedication' },
+  'OFL-1.1': { commercialUse: true, attributionRequired: true, shareAlike: true, allowedInLibrary: false, why: 'the reserved-font-name and bundling rules cannot be discharged inside a Roblox place' },
+  'PD': { commercialUse: true, attributionRequired: false, shareAlike: false, allowedInLibrary: true, why: 'public domain — no rights reserved to discharge' },
+  'GPL-2.0': { commercialUse: true, attributionRequired: true, shareAlike: true, allowedInLibrary: false, why: 'as GPL-3.0' },
   'GPL-3.0': { commercialUse: true, attributionRequired: true, shareAlike: true, allowedInLibrary: false, why: 'source-distribution obligation is undischargeable here' },
   'ROBLOX-TOU': {
     commercialUse: true,
@@ -231,8 +252,20 @@ export function normaliseLicence(verbatim: string): string | null {
   if (isCc && nc && sa) return 'CC-BY-NC-SA-4.0';
   if (isCc && nc) return 'CC-BY-NC-4.0';
   if (isCc && sa) return 'CC-BY-SA-4.0';
-  if (/\bgpl\b|general public license/.test(t)) return 'GPL-3.0';
+  if (/\bgpl\b|general public license/.test(t)) return /\b2(\.0)?\b/.test(t) ? 'GPL-2.0' : 'GPL-3.0';
+  // Checked BEFORE the CC family: "MIT License" contains no CC marker, but ordering these together
+  // keeps the whole permissive block in one place and makes the precedence readable.
+  if (/\bmit\b/.test(t)) return 'MIT';
+  if (/\bisc\b/.test(t)) return 'ISC';
+  if (/apache/.test(t)) return 'Apache-2.0';
+  if (/bsd[- ]?3|bsd 3-clause/.test(t)) return 'BSD-3-Clause';
+  if (/\bunlicense\b/.test(t)) return 'Unlicense';
+  if (/open font license|\bofl\b|sil open font/.test(t)) return 'OFL-1.1';
   if (/\bcc0\b|creative commons zero|public domain dedication/.test(t)) return 'CC0-1.0';
+  // Plain "Public domain" is NOT CC0. Both permit everything, but they are different statements —
+  // CC0 is a deliberate waiver by a rights-holder, PD is the absence of rights — and Wikimedia
+  // prints them as different strings on different files. Recording them as one would lose that.
+  if (/^pd$|public domain/.test(t)) return 'PD';
   if (/\bcc[- ]?by\b|creative commons attribution/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
   if (/roblox terms of use|roblox-tou/.test(t)) return 'ROBLOX-TOU';
   if (/roblox-generated|generationservice/.test(t)) return 'ROBLOX-GENERATED';

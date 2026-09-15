@@ -67,6 +67,22 @@ export const SOURCE_CREDITS: Readonly<Record<AssetSourceSite, SourceCredit | nul
   poly_pizza: null,
   opengameart: null,
   sketchfab: null,
+  // Iconify is a distributor, not a rights-holder: it asks for nothing of its own, and the
+  // obligation always belongs to the SET the icon came from. Recording a credit here would
+  // attribute to the wrong party, which is worse than recording none.
+  iconify: null,
+  game_icons: {
+    text: 'Icons made by the game-icons.net contributors',
+    url: 'https://game-icons.net',
+    // ALWAYS, not live_api: this one is a licence obligation, not a courtesy. Most of game-icons
+    // is CC BY 3.0, and its about page states the wording it wants. Two contributor folders
+    // (Viscious Speed, Zeromancer) are CC0 and owe nothing — the per-asset licence decides, and
+    // this credit is the fallback for the CC BY majority.
+    when: 'always',
+    why: 'CC BY 3.0 over most of the set; game-icons.net/about asks for "Icons made by {author}. Available on https://game-icons.net"',
+  },
+  wikimedia: null,
+  cgbookcase: null,
   roblox_official: null,
   creator_store: null,
   generated_roblox: null,
