@@ -35,6 +35,12 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   { id: 'display-name', title: 'Display name', section: 'Profile', keywords: ['name', 'nickname', 'call me', 'profile'] },
   { id: 'email-address', title: 'Email address', section: 'Security', keywords: ['mail', 'address', 'change email', 'verified', 'confirm'] },
   { id: 'password', title: 'Password', section: 'Security', keywords: ['change password', 'passphrase', 'credentials', 'reset'] },
+  {
+    id: 'two-step',
+    title: 'Two-step verification',
+    section: 'Security',
+    keywords: ['two factor', '2fa', 'mfa', 'authenticator', 'totp', 'code', 'google authenticator', 'one time password'],
+  },
   { id: 'sign-out-everywhere', title: 'Sign out everywhere', section: 'Security', keywords: ['sessions', 'devices', 'revoke', 'logout all', 'stolen', 'lost laptop'] },
   {
     id: 'security-history',
