@@ -39,7 +39,7 @@ const DEPLOYED = 'https://golem.moshe-barami111.workers.dev';
 /* ------------------------------------------------------------------- flags --- */
 
 const argv = process.argv.slice(2);
-const flags = { base: null, pass: null, writeBaseline: false, deployed: false, routes: null, tokens: null };
+const flags = { base: null, pass: null, writeBaseline: false, deployed: false, routes: null, tokens: null, baseline: null };
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
   if (a === '--deployed') { flags.deployed = true; continue; }
@@ -56,9 +56,15 @@ for (let i = 0; i < argv.length; i += 1) {
   // packages/design/src/tokens.mjs started existing, which is the good outcome making its own
   // guard unobservable.
   if (a === '--tokens') { flags.tokens = argv[i + 1]; i += 1; continue; }
+  // `--baseline <dir>` points the comparison at another baseline. Same reason as `--tokens`: the
+  // cross-build rule below is unreachable from a test otherwise, because the real baseline is a
+  // fixed path in this repository and a test cannot write into it. Pointing it at an empty
+  // directory does not buy a clean run — nothing is compared, and the CAPTURED line says
+  // "0 compared against a baseline" in the same breath as the verdict.
+  if (a === '--baseline') { flags.baseline = argv[i + 1]; i += 1; continue; }
   if (a === '--routes') { flags.routes = (argv[i + 1] ?? '').split(',').map((r) => r.trim()).filter(Boolean); i += 1; continue; }
   console.error(`check-pixels: unrecognised flag ${a}`);
-  console.error('check-pixels: known flags — --deployed --base <url> --pass <n> --write-baseline');
+  console.error('check-pixels: known flags — --deployed --base <url> --pass <n> --write-baseline --routes <a,b> --tokens <path> --baseline <dir>');
   process.exit(2);
 }
 if (!flags.deployed && !flags.base) {
@@ -124,7 +130,30 @@ const fail = (what, where, why) => findings.push({ what, where, why });
 
 const PASS = flags.pass ?? 'unpassed';
 const OUT = join(ROOT, 'docs', 'evidence', 'pixels', String(PASS));
-const BASELINE = join(ROOT, 'docs', 'evidence', 'pixels', 'baseline');
+const BASELINE = flags.baseline ?? join(ROOT, 'docs', 'evidence', 'pixels', 'baseline');
+
+//[[ A BASELINE THAT DOES NOT SAY WHERE IT CAME FROM CANNOT ANSWER THE QUESTION IT IS ASKED.
+//
+//   Run `--deployed` against a baseline captured from a local build and all 72 frames differ by
+//   76-99.9%, and every one is reported as "an undeclared regression". They are not. They are two
+//   different BUILDS being compared — the deployed site is months of work behind the repository —
+//   and a pixel diff cannot tell that apart from someone quietly changing the design.
+//
+//   Measured: that is exactly what pass 12 produced. 72 findings across 72 frames, while the three
+//   intrinsic rules above — one-colour, bare system font, no design token — fired on NONE of them.
+//   A rule that fires on 100% of frames is not measuring what its message claims.
+//
+//   So the baseline records its origin and sha, and a comparison across origins is reported as
+//   what it is. Not softened: it still fails, because a deployed site that does not look like the
+//   repository IS a finding. It stops being called the wrong finding. ]]
+const PROVENANCE = join(BASELINE, 'PROVENANCE.json');
+const baselineProvenance = (() => {
+  try { return JSON.parse(readFileSync(PROVENANCE, 'utf8')); } catch { return null; }
+})();
+// Unknown provenance is treated as cross-build, not as same-build. The baseline committed before
+// this field existed has none, and assuming it matches would be assuming the answer.
+const sameBuild = baselineProvenance !== null && baselineProvenance.origin === BASE;
+const crossBuild = [];
 
 const slug = (route, vp, scheme) =>
   `${route.replace(/^\//, '').replace(/\/$/, '') || 'index'}`.replace(/\//g, '_') + `--${vp}--${scheme}.png`;
@@ -278,7 +307,11 @@ try {
             }
             compared += 1;
             const ratio = diff / total;
-            if (ratio > 0.02 && !baselineTouchedInHead(baseFile)) {
+            if (ratio > 0.02 && !baselineTouchedInHead(baseFile) && !sameBuild) {
+              // Recorded, not reported per frame. Seventy-two copies of the same sentence bury the
+              // one fact that matters, which is that the two sides are different builds.
+              crossBuild.push(`${route} ${vp.name}/${scheme} ${(ratio * 100).toFixed(1)}%`);
+            } else if (ratio > 0.02 && !baselineTouchedInHead(baseFile)) {
               fail(
                 `${route} differs from its baseline by ${(ratio * 100).toFixed(1)}% at ${vp.name}/${scheme}`,
                 file,
@@ -302,6 +335,26 @@ function baselineTouchedInHead(file) {
     return execFileSync('git', ['show', '--name-only', '--format=', 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
       .split('\n').map((l) => l.trim()).includes(rel);
   } catch { return false; }
+}
+
+if (flags.writeBaseline) {
+  // Written AFTER the sweep, so a baseline that failed part-way through does not claim an origin
+  // for frames it never captured.
+  let sha = 'unknown';
+  try { sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(); } catch { /* not a repo */ }
+  writeFileSync(PROVENANCE, `${JSON.stringify({ origin: BASE, sha, frames: captured }, null, 2)}\n`);
+  console.log(`BASELINE PROVENANCE written — origin ${BASE}, sha ${sha.slice(0, 7)}`);
+}
+
+if (crossBuild.length) {
+  const from = baselineProvenance === null
+    ? 'a baseline that does not record its origin'
+    : `a baseline captured from ${baselineProvenance.origin} at ${String(baselineProvenance.sha).slice(0, 7)}`;
+  fail(
+    `${crossBuild.length} of ${compared} compared frame(s) differ from ${from}`,
+    'check-pixels',
+    `this capture is from ${BASE}. Comparing two BUILDS cannot distinguish a regression from a deploy that is behind the repository — deploy, or re-baseline with --write-baseline, before reading these as regressions`,
+  );
 }
 
 console.log(`CAPTURED ${captured} frame(s) into docs/evidence/pixels/${PASS}/; ${compared} compared against a baseline`);
