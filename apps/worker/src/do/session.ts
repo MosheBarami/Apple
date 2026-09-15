@@ -52,6 +52,7 @@ import {
   PLAYTEST_FRAME_WIDTH,
   type RawFrame,
 } from '../frame-bus';
+import { promptWithAttachments } from '../attachments';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
@@ -1772,7 +1773,21 @@ export class SessionDO extends DurableObject<Env> {
           //   The history is this project's own user messages, read here rather than kept in
           //   memory so a reconnect, a new isolate or a second tab does not reset the count. ]]
           if (this.refuseAbusive(text)) return;
-          await this.startRun(bind, text, mode, undefined, ws);
+          //[[ THE FILES THE PERSON ATTACHED BECOME PART OF THE MESSAGE.
+          //
+          //   `attachments` has been on this frame since the protocol was written and this handler
+          //   read `msg.text` and `msg.mode` and nothing else — so a file that was uploaded,
+          //   stored, and shown as a chip on the composer was dropped on the floor at the one
+          //   place it mattered, and the person got an answer about a file nobody had read.
+          //
+          //   AFTER the abuse check on purpose: scoring a 24,000-character fold as a submission
+          //   would flag every attachment as spam, and the duplicate detector would stop reading
+          //   the prompt the person actually wrote.
+          //
+          //   The project comes from `bind`, never from the frame — that is what stops an id from
+          //   somebody else's project resolving here. ]]
+          const withFiles = await promptWithAttachments(this.env, bind.projectId, text, msg.attachments);
+          await this.startRun(bind, withFiles, mode, undefined, ws);
         }
         return;
       case 'edit_resend': {

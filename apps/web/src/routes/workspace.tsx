@@ -47,7 +47,7 @@ import {
 } from '../lib/api';
 import { FilesPanel } from '../components/ws/files-panel';
 import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
-import type { AssetSourcePolicy } from '@golem/shared';
+import type { AssetSourcePolicy, ChatAttachment } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
 import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
@@ -678,7 +678,7 @@ export function WorkspacePage() {
     return true;
   };
 
-  const send = (text: string): boolean => {
+  const send = (text: string, attachments: ChatAttachment[] = []): boolean => {
     if (askFirst(text)) return false;
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     stick.current = true;
@@ -687,7 +687,7 @@ export function WorkspacePage() {
     // The product mode the user picked becomes the internal specialist here,
     // at the one point a message is built. Everything downstream — the wire
     // protocol, stored sessions, budget accounting — still speaks GolemMode.
-    if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode])) {
+    if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode], attachments)) {
       toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
       return false;
     }
@@ -1069,6 +1069,11 @@ export function WorkspacePage() {
           onSend={send}
           onStop={stop}
           draftKey={projectId}
+          // The upload target. Same value as the draft key here and a different KIND of thing —
+          // see the prop's own comment: one is a storage namespace, the other is authorisation.
+          projectId={projectId}
+          // A refused file says so where every other refusal in this workspace says so.
+          onNotice={(m) => toast(m, 'error')}
           running={running}
           disabled={conn !== 'open'}
           mode={mode}

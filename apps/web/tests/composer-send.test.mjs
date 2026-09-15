@@ -124,12 +124,20 @@ test('bare Enter is NOT in the global shortcut map', () => {
 test('the composer matches through the SHARED matcher, not a hand-rolled key check', () => {
   // This is the regression. A hand-matched chord in one component is exactly what lib/shortcuts.ts
   // exists to prevent, and it survived here, in the most-used control in the product.
+  //
+  // THE BAN IS ON HAND-MATCHING THE SEND, not on the word Enter. The @-mention picker claims
+  // Enter for itself while it is open — that is a different key doing a different job, and it is
+  // guarded by `mentionHits.length` so it can only fire when a list is on screen. So the branch
+  // is cut out and the ban is applied to everything else, which is where the defect lived.
   const code = stripComments(COMPOSER);
   assert.match(code, /matchesShortcut\(e, sendKeyBinding\)/);
+  const guard = code.indexOf('if (mentionHits.length) {');
+  assert.ok(guard !== -1, 'the mention branch must stay guarded, or it claims Enter with no list open');
+  const withoutPicker = code.slice(0, guard) + code.slice(code.indexOf('matchesShortcut(e, sendKeyBinding)'));
   assert.equal(
-    /e\.key === 'Enter'/.test(code),
+    /e\.key === 'Enter'/.test(withoutPicker),
     false,
-    'the composer must not hand-match Enter — that is how the help and the behaviour diverged',
+    'the composer must not hand-match Enter to send — that is how the help and the behaviour diverged',
   );
 });
 
@@ -164,21 +172,21 @@ test('the dialog offers the choice and writes it to the shared preference store'
 test('onSend reports whether the message left', () => {
   // The type is the fix: with `void` there was nothing for submit() to check, so the guard could
   // not have been written even by someone who wanted it.
-  assert.match(COMPOSER, /onSend: \(text: string\) => boolean/);
+  assert.match(COMPOSER, /onSend: \(text: string, attachments: ChatAttachment\[\]\) => boolean/);
 });
 
 test('a refused send returns before the box or the draft is cleared', () => {
   const submit = COMPOSER.slice(COMPOSER.indexOf('const submit ='), COMPOSER.indexOf('const onKeyDown'));
-  assert.match(submit, /if \(!onSend\(value\)\) return;/, 'the refusal must short-circuit');
-  const guard = submit.indexOf('if (!onSend(value)) return;');
+  assert.match(submit, /if \(!onSend\(value, readyAttachments\(staged\)\)\) return;/, 'the refusal must short-circuit');
+  const guard = submit.indexOf('if (!onSend(value, readyAttachments(staged))) return;');
   assert.ok(guard !== -1);
   assert.ok(guard < submit.indexOf("setText('')"), 'the guard must precede emptying the box');
   assert.ok(guard < submit.indexOf('clearDraft(draftKey)'), 'the guard must precede clearing the draft');
 });
 
 test('the workspace returns false when the socket refused the message', () => {
-  const fn = WS.slice(WS.indexOf('const send = (text: string)'), WS.indexOf('const lastAssistantId'));
-  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\]\)\) \{/);
+  const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
+  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments\)\) \{/);
   assert.match(fn, /return false;/);
   assert.match(fn, /return true;/);
 });
@@ -186,7 +194,7 @@ test('the workspace returns false when the socket refused the message', () => {
 test('and it says the message is still there, because it is', () => {
   // The old copy — "Not connected yet — hang on a moment." — was true and useless: by the time it
   // was read the words it referred to had been deleted.
-  const fn = WS.slice(WS.indexOf('const send = (text: string)'), WS.indexOf('const lastAssistantId'));
+  const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
   assert.match(fn, /still in the box/);
 });
 

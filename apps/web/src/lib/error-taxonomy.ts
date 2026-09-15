@@ -219,6 +219,39 @@ export function explainFailure(err: unknown): Explained {
     };
   }
 
+  //[[ THE TWO REFUSALS THAT MUST NOT OFFER A RETRY.
+  //
+  //   Both used to fall through to the generic 4xx below: "Apple could not make sense of that
+  //   request", `retryable: true` — a Try again button over a file that will be refused in exactly
+  //   the same way every single time it is sent, and a headline that blames the client for
+  //   something the person did on purpose.
+  //
+  //   `next` is null in both because the server's own sentence is the actionable half and it
+  //   arrives in `detail`: "That file is larger than 32 KB. Attach the part that matters."
+  //   Duplicating a shortened version of it here would be the filler the header of this file
+  //   already refuses. ]]
+  if (status === 413) {
+    return {
+      kind: 'rejected',
+      title: 'That file is too big',
+      safety: REFUSED,
+      next: null,
+      retryable: false,
+      detail,
+    };
+  }
+
+  if (status === 415) {
+    return {
+      kind: 'rejected',
+      title: 'Apple cannot read that kind of file',
+      safety: REFUSED,
+      next: null,
+      retryable: false,
+      detail,
+    };
+  }
+
   if (status === 503) {
     return {
       kind: 'not_configured',

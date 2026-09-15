@@ -747,62 +747,55 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Clear empty and unavailable search states
       · Every state is named in copy rather than rendered as an empty list: idle with the 'searches every message, artifact, checkpoint and memory' explainer and a 'keep typing — 2 characters at least' variant (apps/web/src/components/ws/search-pan
 
-## 17. MESSAGE COMPOSER AND ATTACHMENTS  —  35%   ✓6 ~2 ☐12
+## 17. MESSAGE COMPOSER AND ATTACHMENTS  —  85%   ✓16 ~2 ☐2
 
 - [✓] Multiline message input
-      · apps/web/src/components/ws/composer.tsx:189 renders a <textarea> (rows=1, maxLength=MESSAGE_MAX_CHARS) that auto-grows in the effect at composer.tsx:131-135; apps/web/src/styles/workspace.css:2075-2089 gives it min-height 56px / max-height 
+      · apps/web/src/components/ws/composer.tsx:525 renders a <textarea> (rows=1, maxLength at :552) that auto-grows in the effect at composer.tsx:252-256; apps/web/src/styles/workspace.css gives it min-height 56px / max-height 230px. Line numbers re-read after the attachment pass moved them.
 - [✓] Configurable send shortcut
-      · The preference is apps/web/src/lib/prefs.ts SEND_KEYS ('enter' | 'mod-enter'); apps/web/src/lib/send-key.ts:47 sendBinding maps it to a Shortcut; the composer matches through the shared matcher at apps/web/src/components/ws/composer.tsx:104
+      · The preference is apps/web/src/lib/prefs.ts SEND_KEYS ('enter' | 'mod-enter'); apps/web/src/lib/send-key.ts:47 sendBinding maps it to a Shortcut (composer.tsx:159); the composer matches through the shared matcher at composer.tsx:496, now AFTER the @-picker’s own key claim.
 - [✓] Draft persistence
       · apps/web/src/lib/draft.ts readDraft/writeDraft/clearDraft/clearAllDrafts, keyed per project ('apple.draft.<projectId>'), capped at DRAFT_MAX = MESSAGE_MAX_CHARS, every access try/catch-wrapped. Wired: apps/web/src/components/ws/composer.tsx
 - [✓] Draft recovery after refresh
-      · Recovery is on the first render, not in an effect: apps/web/src/components/ws/composer.tsx:96 `useState(() => (draftKey ? readDraft(draftKey) : ''))`, asserted verbatim by apps/web/tests/draft.test.mjs:153 'the draft is restored on the FIRS
-- [☐] File attachment upload
-      · The composer's attach button is permanently disabled and says so: apps/web/src/components/ws/composer.tsx:275-283 (`disabled`, title 'Attachments aren’t supported yet'). No upload route exists — I enumerated every `app.get/post/put/delete` 
-      → Three files. (1) apps/worker/wrangler.jsonc: add an r2_buckets binding named ATTACHMENTS. (2) apps/worker/src/index.ts: add `app.post('/api/projects/:id/attachments')` behind the existing project-membership check, streaming the body to R2 at `${projectId}/${crypto.randomUUID()}/${name}` and returnin
+      · Recovery is on the first render, not in an effect: apps/web/src/components/ws/composer.tsx:150 `useState(() => (draftKey ? readDraft(draftKey) : ''))`, asserted verbatim by apps/web/tests/draft.test.mjs 'the draft is restored on the FIRST render'.
+- [✓] File attachment upload
+      · BUILT. POST/GET/DELETE /api/projects/:id/attachments in apps/worker/src/index.ts over apps/worker/src/attachments.ts; the composer stages, uploads and sends them (apps/web/src/components/ws/composer.tsx). 14 executed-route tests: apps/worker/tests/attachment-routes-live.test.mjs.
+      · AND IT REACHES THE MODEL: promptWithAttachments folds each file into the message at the chat ingress (apps/worker/src/do/session.ts case 'chat'), asserted by apps/worker/tests/attachment-prompt.test.mjs. KV, not R2 — no bucket exists and provisioning one is the owner’s call.
 - [☐] Image attachment upload
-      · Same absence as file upload, plus no image-specific path. apps/worker/src/index.ts:441 serves GET /api/projects/:id/images/:imageId, but that reads GENERATED images out of KV (apps/worker/src/imagegen.ts, IMAGE_TTL_SECONDS) — it is a read r
-      → Build on the file-attachment route above: in apps/worker/src/index.ts's new POST /api/projects/:id/attachments, set kind:'image' for image/png|jpeg|webp|gif and have apps/worker/src/do/session.ts pass image attachments to the vision-capable branch of apps/worker/src/gateway.ts (the flattening at gat
+      · STILL NOT BUILT, and now refused BY NAME rather than accepted and dropped: validateAttachment answers image_unsupported and the picker, paste and drop all end in "Apple can’t read images yet" (packages/shared/src/attachments.ts, asserted in apps/worker/tests/attachment-policy.test.mjs).
+      → The upload substrate is done; what is missing is the model half. session.ts would have to pass image attachments to a vision-capable branch and the run’s model would have to be one — that is a routing and spend decision, not a UI one. Until it exists, accepting an image would be a lie.
 - [☐] Audio attachment upload
-      · The mic button is disabled and labelled 'Voice input — not supported yet' (apps/web/src/components/ws/composer.tsx:285-291). There is no capture or transcription anywhere: grepped apps/web/src, apps/worker/src and packages/shared/src for ge
-      → apps/web/src/components/ws/composer.tsx:285-291: replace the disabled mic with a MediaRecorder capture that POSTs the blob to the new /api/projects/:id/attachments route with kind:'file', mime audio/webm. Then add a transcription step in apps/worker/src/index.ts (or a new apps/worker/src/transcribe.
-- [☐] Pasted image handling
-      · The existing [~] mark cites apps/web/tests/image-expiry.test.mjs, and that test is about something else entirely: its own header says it covers SafeImage rendering an expired GENERATED image (IMAGE_TTL_SECONDS from apps/worker/src/imagegen.
-      → apps/web/src/components/ws/composer.tsx:189: add an onPaste handler to the textarea that scans e.clipboardData.items for kind==='file' && type.startsWith('image/'), calls e.preventDefault() for those, and routes the File through the same upload path as the attach button. It must fall through untouch
-- [☐] Drag-and-drop attachments
-      · No drop target exists anywhere in the signed-in app. Grepped apps/web/src for onDragOver, onDrop, dragenter, dataTransfer, draggable: the only three hits are `draggable={false}` defences on <img> tags (apps/web/src/components/ws/evidence-ca
-      → apps/web/src/components/ws/composer.tsx: put onDragOver (preventDefault) / onDragLeave / onDrop on the .gx-composer__inner <form>, read e.dataTransfer.files, feed them through the same upload path as the attach button, and add a .gx-composer__inner.is-dropping rule in apps/web/src/styles/workspace.c
-- [☐] Attachment upload progress
-      · Nothing uploads, so nothing reports progress. Grepped apps/web/src for 'upload' — every hit is prose about Roblox Open Cloud uploads (roblox-key.ts:56, asset-sources.ts:44) or the ui-lab label at apps/web/src/routes/ui-lab.tsx:302 ('Snapsho
-      → Blocked on File attachment upload. Once apps/worker/src/index.ts serves POST /api/projects/:id/attachments, add an uploadAttachment(projectId, file, onProgress) in apps/web/src/lib/api.ts using XMLHttpRequest (fetch cannot report request progress) and render a determinate bar per staged attachment i
-- [☐] Attachment upload cancellation
-      · No upload exists to cancel. apps/web/src/lib/api.ts passes no AbortSignal on any request (grepped AbortController/AbortSignal across apps/web/src) and there is no per-attachment state in apps/web/src/components/ws/composer.tsx — its only st
-      → Blocked on File attachment upload. Give each staged attachment in apps/web/src/components/ws/composer.tsx an AbortController (or xhr.abort() if XHR is used for progress), render a × on the in-flight row that calls it, and drop the entry from the staged list without surfacing an error — a cancel is n
-- [☐] Attachment retry
-      · No upload exists to retry. The repo does have a retry vocabulary for runs — apps/web/tests/retry-run.test.mjs and apps/web/src/lib/error-taxonomy.ts — but neither mentions attachments or uploads (grepped both for attach/upload: no hits). ap
-      → Blocked on File attachment upload. Keep failed uploads in the staged list in apps/web/src/components/ws/composer.tsx with a 'Retry' button that re-POSTs the same File object, and classify the failure through the existing apps/web/src/lib/error-taxonomy.ts so a 413 reads as 'too large' and a network 
-- [☐] Attachment size validation
-      · No size limit is declared or enforced for attachments on either side. packages/shared/src/index.ts:411 declares ChatAttachment.size but nothing writes or reads it (grepped ChatAttachment|attachments repo-wide — only the declaration at :411 
-      → Add MAX_ATTACHMENT_BYTES to packages/shared/src/index.ts beside MESSAGE_MAX_CHARS (line 401) so browser and worker cannot drift — the same single-source-of-truth rule apps/web/tests/composer-send.test.mjs:195 already enforces for message length. Check it in the new POST route in apps/worker/src/inde
-- [☐] Attachment type validation
-      · Nothing constrains an attachment's mime type. packages/shared/src/index.ts:411-417 declares ChatAttachment.kind as 'image' | 'file' and .mime as a bare string, with no allowlist constant anywhere and no code that assigns either field. The o
-      → Add an ATTACHMENT_MIME_ALLOWLIST to packages/shared/src/index.ts next to the ChatAttachment interface (line 411). Enforce it server-side in the new POST /api/projects/:id/attachments in apps/worker/src/index.ts by sniffing the leading bytes rather than trusting the Content-Type header, and mirror it
-- [☐] Attachment removal before sending
-      · The composer holds no staged-attachment list to remove from: apps/web/src/components/ws/composer.tsx:96-101 is its entire state (text, modeOpen, box ref, lastKey ref, prefs), and submit() at :138-147 sends only the trimmed text. The one rem
-      → Blocked on File attachment upload. Add `const [staged, setStaged] = useState<ChatAttachment[]>([])` to apps/web/src/components/ws/composer.tsx, render a chip row above .gx-composer__bar with a × per item that splices it out and DELETEs its r2Key so the orphan does not linger in R2, and clear the lis
-- [☐] Project resource mentions
-      · There is no way to reference a project file, asset or checkpoint from the composer. apps/web/src/components/ws/composer.tsx imports exactly one reference helper, apps/web/src/lib/selection-reference.ts, and that is for live Studio selection
-      → Add an @-picker to apps/web/src/components/ws/composer.tsx: on '@' typed at a word boundary, open the existing Popover primitive over results from GET /api/projects/:id/files (apps/worker/src/index.ts, already serving) and GET /api/projects/:id/search, and on pick insert a backticked path through in
+      · SKIPPED DELIBERATELY. The mic is still disabled and still says "Voice input isn’t supported yet" (apps/web/src/components/ws/composer.tsx), which apps/web/tests/composer-attachments.test.mjs now pins so it cannot be quietly wired to nothing.
+      → Needs a transcription model and a per-minute spend decision the owner has not made. MediaRecorder capture is the easy half; a Whisper call billed against BudgetDO is the half that costs money.
+- [~] Pasted image handling
+      · A PASTED FILE IS HANDLED; A PASTED IMAGE IS REFUSED IN WORDS. onPaste scans clipboardData for files and routes them through the same admission path as the picker, calling preventDefault only in the branch that found one — a plain text paste is untouched (apps/web/src/components/ws/composer.tsx).
+      → The remaining half is the same blocker as image attachment upload: this build cannot show an image to a model. The paste path is already wired to whatever admitFiles admits, so it becomes ✓ the day images are admitted.
+- [✓] Drag-and-drop attachments
+      · onDragOver/onDragLeave/onDrop on the composer form, lighting up only when dataTransfer.types includes ‘Files’ so dragged TEXT does not promise an upload that will not happen; dragleave ignores moves onto a child, or the highlight flickers across the box. .gx-composer__inner.is-dropping in workspace.css.
+- [✓] Attachment upload progress
+      · A determinate bar from real bytes: uploadAttachment in apps/web/src/lib/api.ts uses XMLHttpRequest because fetch cannot report REQUEST progress, and fires only when e.lengthComputable — a bar that animates without knowing the total is a lie. role="progressbar" with aria-valuenow, styled .gx-attach__bar.
+- [✓] Attachment upload cancellation
+      · One AbortController per in-flight row; × aborts the request and then DELETEs the object if its bytes had already landed, so no orphan sits in the store for a week. An abort rejects with UploadAborted and leaves NO failed row — a cancel is not an error the person must react to.
+- [✓] Attachment retry
+      · The File object is kept beside the row so Retry re-posts the same bytes rather than re-opening the picker. Failures classify through apps/web/src/lib/error-taxonomy.ts, which learned 413 and 415: both are retryable:false, so no Try again is offered over a file that can never be accepted.
+- [✓] Attachment size validation
+      · MAX_ATTACHMENT_BYTES (32 KiB) in packages/shared/src/attachments.ts, imported by both ends so the picker cannot accept what the server refuses. Measured on the bytes that ARRIVED, not on Content-Length — a lying length is tested at apps/worker/tests/attachment-routes-live.test.mjs. 413 with the ceiling in the sentence.
+- [✓] Attachment type validation
+      · ATTACHMENT_MIME_ALLOWLIST plus magic-byte sniffing: a PNG renamed notes.txt and posted as text/plain is refused on its leading bytes, as are NUL bytes and invalid UTF-8. The <input accept> is BUILT from the allowlist, so the dialog cannot offer a type the worker refuses. 415, distinct from 413 and 400.
+- [✓] Attachment removal before sending
+      · A chip row above the tool bar, one × per file including the ones that already succeeded. Removal aborts, DELETEs and splices. Send is BLOCKED while anything is uploading or failed, with the reason in an aria-live line — a file still on the screen has not been sent.
+- [✓] Project resource mentions
+      · Typing @ at a word boundary opens a listbox of the project’s own files (GET /api/projects/:id/files, fetched once per project) and picking one inserts the backticked path the agent’s workspace_read tool opens. apps/web/src/lib/mentions.ts + apps/web/tests/mentions.test.mjs (21 tests).
+      · me@example.com is NOT a mention; the token is read at the caret, not at the end of the box; and the picker claims Enter/Arrows/Tab/Escape BEFORE the send binding, so a send chord cannot fire with a half-typed @pla in the message.
 - [~] Studio object references
       · This is real and reachable, and the checklist's cited proof (packages/corpus/src/intake/forks.test.mjs, about parsing GitHub repo slugs) is the wrong file. The feature is apps/web/src/lib/selection-reference.ts — selectionReference/selectio
       · REFUTED: REFUTED on deployment. The browser half is real (apps/web/src/lib/selection-reference.ts, the chip at composer.tsx:257-267, insertSelection at 162-178, all present in the deployed bundle) and the tests pass — but no user
-- [~] Prompt template insertion
-      · A seeding path exists and works, but it is starter text, not templates. apps/web/src/components/ws/composer.tsx:74 takes a `seed` prop and :106-111 REPLACES the whole box with it. Two producers: apps/web/src/routes/workspace.tsx:58-62 SUGGE
-      → Two changes in apps/web/src/components/ws/composer.tsx. First, make seeding non-destructive: route the seed effect at composer.tsx:106-111 through insertAtCursor from apps/web/src/lib/selection-reference.ts instead of setText(seed), so a half-written draft survives a suggestion click. Second, back t
+- [✓] Prompt template insertion
+      · Both halves. The seed no longer replaces the box: it goes through insertPhrase/insertAtCursor, so clicking a suggestion over a half-written sentence keeps the sentence (apps/web/tests/composer-templates.test.mjs).
+      · And a Templates chip in the composer offers PROJECT_TEMPLATES — previously reachable only in the new-project dialog, i.e. once in a project’s life — minus the blank start, filtered by the null prompt rather than by name so a sixth template needs no edit here.
 - [✓] Message length feedback
-      · apps/web/src/components/ws/composer.tsx:180 `showCount = text.length >= MESSAGE_WARN_CHARS` and :204-209 renders '<n> characters left' in an aria-live="polite" region; the box is clamped on change at :195 and carries maxLength at :197. The 
+      · apps/web/src/components/ws/composer.tsx:510 `showCount = text.length >= MESSAGE_WARN_CHARS` and :590 renders '<n> characters left' in an aria-live="polite" region; the box is clamped on change at :529 and carries maxLength at :552.
 - [✓] Clear submission failure recovery
-      · The onSend contract is boolean, not void, and that is the whole fix: apps/web/src/components/ws/composer.tsx:69 `onSend: (text: string) => boolean` and :144 `if (!onSend(value)) return;` short-circuits BEFORE setText('') at :145 and clearDr
+      · The onSend contract is boolean, not void: composer.tsx:100 `onSend: (text: string, attachments: ChatAttachment[]) => boolean` and :452 `if (!onSend(value, readyAttachments(staged))) return;` short-circuits BEFORE the box, the draft AND the staged files are cleared. Signature re-read this pass.
 
 ## 16. CONVERSATION MANAGEMENT  —  45%   ✓7 ~4 ☐9
 
