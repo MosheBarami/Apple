@@ -140,5 +140,9 @@ test('an empty archive says something different from having no projects', () => 
 test('the two scopes read from different caches', () => {
   // One cache for both means switching tabs shows the previous tab's rows for a frame, which reads
   // as the archive being wrong.
-  assert.match(DASH, /queryKey: scope === 'active' \? \['projects'\] : \['projects-archived'\]/);
+  //
+  // The active key gained a tag-filter segment (see tags.test.mjs); what matters here is unchanged
+  // and is what this asserts — the two scopes are never the same key, and the archived one is not
+  // narrowed by anything.
+  assert.match(DASH, /queryKey: scope === 'active' \? \['projects',[^\]]*\] : \['projects-archived'\]/);
 });

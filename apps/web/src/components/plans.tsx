@@ -15,7 +15,9 @@ import {
   PLAN_COPY,
   PLAN_IDS,
   PLAN_LIMITS,
+  PLAN_SUPPORT,
   PRICE_CURRENCY,
+  SUPPORT_EMAIL,
   buildsPerDay,
   buildsPerMonth,
   formatMoney,
@@ -131,11 +133,23 @@ export function PlanLadder({
               ))}
             </ul>
 
+            {/* Three of the four tiers said nothing at all about support, which a reader cannot
+                distinguish from "there is none". Stated for every plan, including the free one:
+                what the channel is, and what is actually promised about a reply. No response time
+                — nobody has committed to one, and a missed published SLA is worse than an honest
+                "best effort". */}
+            <p className="plan__support">
+              <span className="plan__support-label">Support</span>
+              <span>
+                {PLAN_SUPPORT[id].channel}. {PLAN_SUPPORT[id].promise}
+              </span>
+            </p>
+
             <div className="plan__action">
               {isCurrent ? (
                 <span className="plan__on">You are on this plan</span>
               ) : !priced ? (
-                <a className="btn" href="mailto:hello@apple.build?subject=Enterprise%20plan">
+                <a className="btn" href={`mailto:${SUPPORT_EMAIL}?subject=Enterprise%20plan`}>
                   Get in touch
                 </a>
               ) : availability === 'checking' ? (
@@ -167,8 +181,16 @@ export function PlanLadder({
       })}
       {/* SAID ONCE, IN WORDS. A symbol is not a currency — the same glyph is three different
           currencies in en-US, en-CA and en-AU — and until this line the only place the charge
-          currency appeared was Stripe's own page, after the user had committed. */}
-      <p className="plans-currency">All prices in {currency}. You are charged in {currency}.</p>
+          currency appeared was Stripe's own page, after the user had committed.
+
+          AND THE SAME IS TRUE OF TAX. The checkout asks Stripe to calculate it, so a buyer in a
+          jurisdiction we are registered in pays the figure above PLUS tax — for a German buyer,
+          19% more than the number they just read. Quoting the bare figure and letting them find
+          out from their bank statement is the same failure as quoting a bare '$'. */}
+      <p className="plans-currency">
+        All prices in {currency}, excluding tax. You are charged in {currency}, and any VAT or sales
+        tax is calculated at checkout from your billing address.
+      </p>
     </div>
   );
 }

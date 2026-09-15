@@ -21,7 +21,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import {
   MESSAGE_MAX_CHARS,
   MESSAGE_WARN_CHARS,
-  PRODUCT_MODES,
+  PRODUCT_MODES_OFFERED,
   PRODUCT_MODE_INFO,
   type ProductMode,
   type StudioEventSelection,
@@ -240,7 +240,7 @@ export function Composer({
     <div className="gx-composer">
       <form className="gx-composer__inner" onSubmit={submit}>
         <label className="gx-sr" htmlFor="gx-composer-input">
-          Describe what you want Golem to build
+          What should Apple build in your place?
         </label>
         <textarea
           id="gx-composer-input"
@@ -286,7 +286,7 @@ export function Composer({
               </span>
             </button>
             <Popover open={modeOpen} onClose={() => setModeOpen(false)} label="Mode">
-              {PRODUCT_MODES.map((id) => {
+              {PRODUCT_MODES_OFFERED.map((id) => {
                 const info = PRODUCT_MODE_INFO[id];
                 return (
                   <button
@@ -363,7 +363,7 @@ export function Composer({
       </form>
 
       <p className="gx-composer__note">
-        {sendHint(prefs.sendKey)} Golem can make mistakes. Always review important information.
+        {sendHint(prefs.sendKey)} Apple can get things wrong. Check what it changed before you publish.
       </p>
     </div>
   );

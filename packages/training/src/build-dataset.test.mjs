@@ -6,7 +6,10 @@
 // curve looks healthy the whole way down.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findBlockEnd, maskLiterals, looksLikeDescription, assignSplits } from './build-dataset.mjs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { findBlockEnd, maskLiterals, looksLikeDescription, assignSplits, admissibleSources } from './build-dataset.mjs';
 
 // --------------------------------------------------------------- block matching ---
 // THE BUG: the first version matched `function ... end` with a lazy quantifier and an indentation
@@ -152,4 +155,64 @@ test('an empty corpus does not divide by zero', () => {
   const { have, total } = assignSplits({});
   assert.equal(total, 0);
   assert.equal(have.train + have.val + have.test, 0);
+});
+
+// ------------------------------------------------------- admissibility verdicts ---
+// THE BUG: the verdict chain tested `!dir` FIRST, so a source the registry marks
+// `training: forbidden` was recorded as "no checkout on disk" whenever nobody had cloned it.
+// Both verdicts exclude the source, so the admitted set never changed and nothing failed — the
+// only symptom was a provenance record that blamed the operator's disk for a licence decision, and
+// described a permanent refusal in the language of a transient one. Found by rebuilding the
+// dataset on a machine that deliberately did not hold the CC-BY repo and diffing the regenerated
+// card against the committed one.
+
+function manifestFixture(sources) {
+  const dir = mkdtempSync(join(tmpdir(), 'golem-admissible-'));
+  const raw = join(dir, 'raw');
+  mkdirSync(raw, { recursive: true });
+  writeFileSync(join(raw, 'manifest.json'), JSON.stringify({ sources }));
+  return {
+    manifestPath: join(raw, 'manifest.json'),
+    rawDir: raw,
+    mk: (name) => mkdirSync(join(raw, name), { recursive: true }),
+  };
+}
+
+test('A FORBIDDEN SOURCE IS REPORTED AS FORBIDDEN EVEN WITH NOTHING ON DISK', () => {
+  const f = manifestFixture({
+    'Roblox__creator-docs': { url: 'https://github.com/Roblox/creator-docs', licence: { spdx: 'CC-BY-4.0' } },
+  });
+  const { admitted, rejected } = admissibleSources(f);
+  assert.equal(admitted.length, 0);
+  assert.match(rejected[0].reason, /training: forbidden/, 'absence must not overwrite the licence verdict');
+});
+
+test('and it is reported the same way once the files ARE there — the verdict does not depend on disk', () => {
+  const f = manifestFixture({
+    'Roblox__creator-docs': { url: 'https://github.com/Roblox/creator-docs', licence: { spdx: 'CC-BY-4.0' } },
+  });
+  f.mk('Roblox__creator-docs');
+  assert.match(admissibleSources(f).rejected[0].reason, /training: forbidden/);
+});
+
+test('THE CONTROL — the absence clause still fires for a source with nothing else against it', () => {
+  // Moving a clause to the end of a ternary chain is worthless if it stops firing at all.
+  const f = manifestFixture({ ok__repo: { url: 'https://github.com/ok/repo', licence: { spdx: 'MIT' } } });
+  const r = admissibleSources(f);
+  assert.equal(r.admitted.length, 0);
+  assert.equal(r.rejected[0].reason, 'no checkout on disk');
+});
+
+test('THE OTHER CONTROL — a permissive source that IS present is admitted', () => {
+  // Without this, a chain that rejected everything would pass every test above.
+  const f = manifestFixture({ ok__repo: { url: 'https://github.com/ok/repo', licence: { spdx: 'MIT' }, sha: 'abc' } });
+  f.mk('ok__repo');
+  const r = admissibleSources(f);
+  assert.deepEqual(r.rejected, []);
+  assert.equal(r.admitted[0].spdx, 'MIT');
+});
+
+test('a non-permissive SPDX is named by its SPDX id, not by absence', () => {
+  const f = manifestFixture({ x__y: { url: 'https://github.com/x/y', licence: { spdx: 'GPL-3.0' } } });
+  assert.match(admissibleSources(f).rejected[0].reason, /GPL-3\.0 not permissive/);
 });

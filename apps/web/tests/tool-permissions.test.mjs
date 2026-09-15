@@ -1,138 +1,149 @@
-// What Apple is allowed to DO, as a control a person can actually reach.
-//
-// The worker half of this has been complete and tested for a while: preferences.ts validates a
-// tool permission against the real registry, merges org → user → project towards the STRICTEST
-// answer, and narrows the run's toolset with it. None of that was reachable from the product —
-// savePreferences could carry `tool_permissions` and no screen ever set it.
-//
-// The failures this file is written against are the ones a permissions UI always has:
-//
-//   1. A SWITCH THE SERVER WILL REFUSE. The worker checks each tool name against `toolNames()`.
-//      A panel with its own hand-typed list offers a control that is rejected on save, and the
-//      person who flicked it leaves believing they denied something. (The name check itself lives
-//      in apps/worker/tests/tool-permissions.test.mjs, where the real registry is.)
-//   2. A SWITCH THAT CANNOT DO WHAT IT APPEARS TO DO. Layers narrow: a project may tighten an
-//      account denial and may never loosen it. A dropdown offering "allow" under an account-level
-//      deny is a control wired to nothing.
-//   3. A STORED BLOB THAT GROWS FOREVER. `allow` is the absence of a restriction, not a
-//      restriction. Writing it down makes a row, an audit line, and a merge input that says
-//      nothing.
+/**
+ * THE SETTING THE WORKER ENFORCES AND NOTHING COULD SET.
+ *
+ * `tool_permissions` is real all the way down on the server: `normalisePreferences` validates it
+ * against the live tool registry (preferences.ts), it INTERSECTS towards the most restrictive
+ * value across org/user/project rather than overriding, and `applyToolPermissions` narrows the
+ * mode's toolset on every single step of every run — pinned by preferences.test.mjs.
+ *
+ * `grep -rn tool_permissions apps/web/src` returned exactly one line: the TYPE in api.ts. No
+ * control anywhere. A user could not withhold `run_luau` from an agent working in their game.
+ * The enforcement existed; the decision it enforces could not be made.
+ *
+ * WHAT THIS FILE PINS, and each one is a way the control could be worse than absent:
+ *
+ *   1. Every tool it offers EXISTS. The server rejects an unknown name with `unknown_tool`, so a
+ *      typo here is a checkbox that silently saves nothing. The list is checked against the
+ *      worker's own TOOLS registry, parsed out of the source.
+ *   2. It offers nothing READ-ONLY. Blocking `read_script` buys no safety and breaks the agent;
+ *      the read-only set is exactly Plan mode's toolset, and nothing in it may appear here.
+ *   3. It writes 'deny' and never 'allow'. `allow` is not a capability — applyToolPermissions
+ *      only ever REMOVES — so an "allow" entry would be a stored setting that grants nothing
+ *      while reading like permission. And it never writes 'ask', because nothing in this product
+ *      can interrupt a run to ask: preferences.ts collapses 'ask' to a refusal, so an Ask option
+ *      would be a control promising a confirmation that never comes.
+ *   4. Clearing the last block REMOVES the key rather than storing an empty object, because the
+ *      server treats an empty map as "not set" and a caller that kept one would disagree with it.
+ *
+ * Run with:  node --test           (from apps/web)
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 
-const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(mkdtempSync(join(tmpdir(), 'toolperm-')), 'a.mjs');
-// esbuild lives in the worker's node_modules, not the web app's — the same path every other web
-// test that bundles TypeScript uses. The bundle is what pulls in @golem/shared.
-execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
-  [join(WEB, 'src', 'lib', 'tool-permissions.ts'), '--bundle', '--format=esm', '--target=es2022',
-   '--platform=neutral', '--main-fields=main,module', '--outfile=' + out],
-  { cwd: WEB, stdio: 'pipe' });
-const T = await import(`file://${out}`);
+import {
+  GOVERNABLE_TOOLS,
+  blockedTools,
+  withToolBlocked,
+} from '../src/components/ws/tool-permissions.ts';
 
-const PANEL = readFileSync(join(WEB, 'src', 'components', 'ws', 'instructions-panel.tsx'), 'utf8');
+const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+const workerTools = read('../../worker/src/tools.ts');
+const workerRouter = read('../../worker/src/router.ts');
+const workerPrefs = read('../../worker/src/preferences.ts');
 
-/* ------------------------------------------------------- what the control says --- */
+/** The keys of `export const TOOLS`, by brace-matching — the same parse tool-vocabulary uses. */
+function registeredTools() {
+  const start = workerTools.indexOf('{', workerTools.indexOf('export const TOOLS'));
+  let depth = 0;
+  let end = start;
+  for (let i = start; i < workerTools.length; i += 1) {
+    if (workerTools[i] === '{') depth += 1;
+    else if (workerTools[i] === '}') {
+      depth -= 1;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  return [...workerTools.slice(start, end).matchAll(/^ {2}([a-z_][a-z0-9_]*):\s*\{/gm)].map((m) => m[1]);
+}
 
-test('every governed tool says what denying it STOPS, not what it is called', () => {
-  // "set_properties" is a label. "Apple can no longer recolour, move or resize anything already in
-  // your place" is the thing somebody needs in order to decide.
-  assert.ok(T.GOVERNED_TOOLS.length >= 10, `only ${T.GOVERNED_TOOLS.length} tools governed`);
-  for (const g of T.GOVERNED_TOOLS) {
-    assert.ok(g.label.length > 3 && !g.label.includes('_'), `${g.name}: the label is the tool name`);
-    assert.ok(g.stops.length > 30, `${g.name}: must say what denying it stops`);
-    assert.match(g.stops, /Apple/, `${g.name}: say who stops doing it`);
+/** Plan mode's toolset: the tools that cannot change a project. */
+function planTools() {
+  const decl = workerRouter.slice(workerRouter.indexOf('const PLAN_TOOLS = ['));
+  return [...decl.slice(0, decl.indexOf(']')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+}
+
+test('CONTROL: the worker sources really parsed, so nothing below is vacuous', () => {
+  assert.ok(registeredTools().length >= 20, `parsed ${registeredTools().length} tools`);
+  assert.ok(planTools().length >= 4, 'PLAN_TOOLS did not parse');
+  assert.ok(GOVERNABLE_TOOLS.length > 0, 'the control offers nothing at all');
+});
+
+test('EVERY TOOL OFFERED EXISTS — a typo here is a checkbox that saves nothing', () => {
+  const real = new Set(registeredTools());
+  const phantom = GOVERNABLE_TOOLS.filter((t) => !real.has(t.tool)).map((t) => t.tool);
+  assert.deepEqual(phantom, [], `the server would reject these as unknown_tool: ${phantom.join(', ')}`);
+});
+
+test('nothing read-only is offered, because blocking it buys nothing and breaks the agent', () => {
+  const readOnly = new Set(planTools());
+  const pointless = GOVERNABLE_TOOLS.filter((t) => readOnly.has(t.tool)).map((t) => t.tool);
+  assert.deepEqual(pointless, [], `these cannot change anything, so blocking them is only damage: ${pointless.join(', ')}`);
+});
+
+test('the tools that actually mutate a project are all offered', () => {
+  // The set the run loop itself calls mutating. Leaving one out would be a safety control with a
+  // hole in it, which is worse than no control because it reads as complete.
+  const decl = workerTools.length && readFileSync(new URL('../../worker/src/do/session.ts', import.meta.url), 'utf8');
+  const mutating = [...decl.slice(decl.indexOf('const MUTATING_TOOLS'), decl.indexOf('const MUTATING_TOOLS') + 400)
+    .matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.ok(mutating.length >= 5, 'MUTATING_TOOLS did not parse');
+  const offered = new Set(GOVERNABLE_TOOLS.map((t) => t.tool));
+  const missing = mutating.filter((t) => !offered.has(t));
+  assert.deepEqual(missing, [], `these change the user's project and cannot be withheld: ${missing.join(', ')}`);
+});
+
+test('the list fits the server\'s entry cap', () => {
+  const cap = Number(/TOOL_PERMISSION_ENTRIES_MAX = (\d+)/.exec(workerPrefs)?.[1]);
+  assert.ok(Number.isFinite(cap), 'the cap could not be read from the worker');
+  assert.ok(GOVERNABLE_TOOLS.length <= cap, `${GOVERNABLE_TOOLS.length} entries against a cap of ${cap}`);
+});
+
+test('every offered tool says WHY someone would withhold it', () => {
+  for (const t of GOVERNABLE_TOOLS) {
+    assert.ok(t.label && t.label.length > 3, `${t.tool} has no label`);
+    assert.ok(t.why && t.why.length > 10, `${t.tool} gives the user no reason to decide`);
   }
 });
 
-test('the destructive ones are all governed — the list is not the easy half', () => {
-  for (const name of ['delete_instances', 'run_luau', 'edit_script', 'set_properties', 'install_module']) {
-    assert.ok(T.GOVERNED_TOOL_NAMES.includes(name), `${name} cannot be denied from the product`);
-  }
+/* -------------------------------------------------------------------- the toggle --- */
+
+test('BLOCKING WRITES deny, never allow and never ask', () => {
+  const out = withToolBlocked(undefined, 'run_luau', true);
+  assert.deepEqual(out, { run_luau: 'deny' });
+  for (const v of Object.values(out)) assert.equal(v, 'deny');
 });
 
-/* -------------------------------------------------------------- the stored blob --- */
-
-test('allow is not written down — it is the absence of a restriction', () => {
-  // A stored `allow` is a memory row, an audit line and a merge input that all say nothing. Worse,
-  // it survives: deleting the restriction later leaves the row behind saying "allowed", which reads
-  // in the history as a decision somebody made.
-  assert.deepEqual(T.withPermission({}, 'run_luau', 'allow'), {});
-  assert.deepEqual(T.withPermission({ run_luau: 'deny' }, 'run_luau', 'allow'), {});
-  assert.deepEqual(T.withPermission({ run_luau: 'deny', edit_script: 'ask' }, 'run_luau', 'allow'), { edit_script: 'ask' });
+test('unblocking removes the key rather than storing an allow', () => {
+  // An `allow` entry grants nothing — applyToolPermissions only ever removes — so storing one
+  // would be a setting that reads like permission and confers none.
+  const blocked = withToolBlocked({ run_luau: 'deny', delete_instances: 'deny' }, 'run_luau', false);
+  assert.deepEqual(blocked, { delete_instances: 'deny' });
 });
 
-test('deny and ask are written down, and nothing else is touched', () => {
-  assert.deepEqual(T.withPermission({ edit_script: 'ask' }, 'run_luau', 'deny'), { edit_script: 'ask', run_luau: 'deny' });
-  assert.deepEqual(T.withPermission({ run_luau: 'deny' }, 'run_luau', 'ask'), { run_luau: 'ask' });
+test('clearing the LAST block yields undefined, not an empty object', () => {
+  // The server treats an empty map as "not set" and deletes the row. A client holding {} would
+  // disagree with what was stored.
+  assert.equal(withToolBlocked({ run_luau: 'deny' }, 'run_luau', false), undefined);
+  assert.equal(withToolBlocked(undefined, 'run_luau', false), undefined);
 });
 
-test('a missing entry reads as allow, and junk in the blob does not', () => {
-  assert.equal(T.permissionOf(undefined, 'run_luau'), 'allow');
-  assert.equal(T.permissionOf({}, 'run_luau'), 'allow');
-  assert.equal(T.permissionOf({ run_luau: 'deny' }, 'run_luau'), 'deny');
-  // Everything in storage arrives as unknown. A value that is not one of the three is not a
-  // permission, and guessing "deny" would silently disable a tool nobody disabled.
-  assert.equal(T.permissionOf({ run_luau: 'DENY' }, 'run_luau'), 'allow');
-  assert.equal(T.permissionOf({ run_luau: 42 }, 'run_luau'), 'allow');
+test('an ask stored by something else still reads as blocked, because that is what it does', () => {
+  // preferences.ts collapses 'ask' to a refusal. A checkbox that drew it as unblocked would be
+  // telling the user the tool is available when the worker has already removed it.
+  assert.deepEqual(blockedTools({ run_luau: 'ask' }), new Set(['run_luau']));
+  assert.deepEqual(blockedTools({ run_luau: 'deny' }), new Set(['run_luau']));
+  assert.deepEqual(blockedTools({ run_luau: 'allow' }), new Set());
+  assert.deepEqual(blockedTools(undefined), new Set());
 });
 
-/* ------------------------------------------------------------------- the layers --- */
+/* -------------------------------------------------------------------- the wiring --- */
 
-test('a denial from ANOTHER layer is detected, and this layer’s own is not', () => {
-  // The merged value already contains this layer's contribution, so "effective is stricter than
-  // mine" is the only honest evidence that somebody else set it — max(layers) > mine implies some
-  // other layer holds that value. Without this distinction the panel locks the user out of the
-  // setting they themselves just made.
-  assert.equal(T.floorFrom('allow', 'deny'), 'deny', 'someone above denied it');
-  assert.equal(T.floorFrom('ask', 'deny'), 'deny');
-  assert.equal(T.floorFrom('deny', 'deny'), undefined, 'that is my own denial — I may lift it');
-  assert.equal(T.floorFrom('deny', 'allow'), undefined, 'cannot happen, and is not a lock');
-  assert.equal(T.floorFrom('allow', 'allow'), undefined);
-});
-
-test('a floor removes only the choices that are LOOSER than it', () => {
-  // The rule the server enforces: a lower layer may tighten and may never widen. A dropdown that
-  // still offered "allow" under an account-level deny would be a control wired to nothing.
-  assert.equal(T.choiceDisabled('allow', 'deny'), true);
-  assert.equal(T.choiceDisabled('ask', 'deny'), true);
-  assert.equal(T.choiceDisabled('deny', 'deny'), false);
-  assert.equal(T.choiceDisabled('allow', 'ask'), true);
-  assert.equal(T.choiceDisabled('deny', 'ask'), false, 'tightening further is always allowed');
-  // No floor at all disables nothing.
-  for (const p of T.TOOL_PERMISSIONS) assert.equal(T.choiceDisabled(p, undefined), false, p);
-});
-
-test('the lock names the layer, because an unexplained dead control reads as a broken one', () => {
-  assert.match(T.floorNote('deny', 'org'), /organisation/i);
-  assert.match(T.floorNote('deny', 'user'), /account/i);
-  assert.match(T.floorNote('ask', undefined), /cannot/i);
-  assert.ok(T.floorNote('deny', 'org').length > 20);
-});
-
-/* ---------------------------------------------------------------- it is wired in --- */
-
-test('the panel renders the editor and saves it through the preferences mutation', () => {
-  assert.match(PANEL, /GOVERNED_TOOLS/, 'the panel does not render the governed list');
-  assert.match(PANEL, /withPermission\(/, 'the panel does not write through the blob helper');
-  assert.match(PANEL, /setPref\('tool_permissions'/, 'the edit never reaches the save mutation');
-  assert.match(PANEL, /floorFrom\(/, 'the panel does not read the layer already in force');
-});
-
-test('the editor is NOT gated to one scope — a project policy is the same control', () => {
-  // instructions-panel already has a scope tab, and savePreferences(scope, scopeId, prefs) writes
-  // to whichever layer is selected. The failure to guard against is the profile block's shape,
-  // `{scope === 'user' && ...}`, wrapped around the permission editor — which would leave a
-  // project-scoped tool policy unreachable while looking done.
-  const block = PANEL.slice(PANEL.indexOf('GOVERNED_TOOLS.map'));
-  assert.ok(block.length > 0, 'no GOVERNED_TOOLS.map in the panel');
-  const before = PANEL.slice(0, PANEL.indexOf('GOVERNED_TOOLS.map'));
-  const lastGate = before.lastIndexOf("scope === 'user' && (");
-  const lastClose = before.lastIndexOf('</div>');
-  assert.ok(lastGate < lastClose, 'the tool-permission editor sits inside the user-only block');
+test('the panel actually renders the control', () => {
+  // The whole point of the item: the enforcement existed and nothing could reach it. A module
+  // with no caller would leave it exactly as it was.
+  const panel = read('../src/components/ws/instructions-panel.tsx');
+  assert.match(panel, /GOVERNABLE_TOOLS/, 'the instructions panel never offers the tool permissions');
+  assert.match(panel, /withToolBlocked/, 'the panel renders the list but cannot change it');
+  assert.match(panel, /tool_permissions/, 'nothing is saved under the key the worker reads');
 });

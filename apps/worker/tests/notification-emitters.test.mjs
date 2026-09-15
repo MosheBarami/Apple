@@ -160,7 +160,12 @@ test('the Stripe webhook still emits the only billing alarm the product has', ()
   const emit = /notify\(c\.env, \{\s*kind: 'billing_issue',([\s\S]{0,400}?)\}\)/.exec(body);
   assert.ok(emit, 'the dunning path no longer notifies');
   assert.match(emit[1], /recipientId: dunning\.userId/);
-  assert.match(emit[1], /subject: dunning\.invoiceId \?\? dunning\.eventId/, 'three retries of one invoice are one problem');
+  // The field was `invoiceId` when this was written and is now `subjectId`: the module grew a
+  // fourth kind, `checkout_expired`, whose subject is a Checkout Session rather than an invoice,
+  // and a field called `invoiceId` holding `cs_…` is the kind of mislabelling that reads correctly
+  // and is wrong. The property asserted here is unchanged — the notice dedupes on WHAT IT IS
+  // ABOUT, so three Stripe retries of one invoice are one problem and one line with a count.
+  assert.match(emit[1], /subject: dunning\.subjectId \?\? dunning\.eventId/, 'three retries of one invoice are one problem');
 });
 
 /* -------------------------------------------------- every kind, and who can produce it --- */

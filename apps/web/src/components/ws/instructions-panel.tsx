@@ -29,18 +29,9 @@ import {
   type Preferences,
   type PromptProfile,
 } from '../../lib/api';
-import {
-  GOVERNED_TOOLS,
-  PERMISSION_LABEL,
-  TOOL_PERMISSIONS,
-  choiceDisabled,
-  floorFrom,
-  floorNote,
-  permissionOf,
-  withPermission,
-  type ToolPermission,
-} from '../../lib/tool-permissions';
+import { floorFrom, floorNote, permissionOf } from '../../lib/tool-permissions';
 import { useToast } from '../toast';
+import { GOVERNABLE_TOOLS, blockedTools, withToolBlocked } from './tool-permissions';
 import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../../lib/notification-inbox.ts';
 import { MANDATORY_REASON, eventEnabled, toggledEvents } from '../../lib/notification-prefs.ts';
 
@@ -307,6 +298,73 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         </select>
       </label>
 
+      {/* --------------------------------------------------------- what Apple may touch -- */}
+      {/*
+        The worker has enforced `tool_permissions` on every step of every run for a long time —
+        applyToolPermissions narrows the mode's toolset, and preferences.test.mjs pins that it can
+        only ever narrow. Nothing in the product could set it: the only mention anywhere in
+        apps/web was the TYPE. This is the decision that enforcement was waiting for.
+
+        Two states, not three. `allow` is the absence of a restriction rather than a grant, so
+        storing one would read like permission and confer nothing; `ask` is collapsed to a refusal
+        by the worker because nothing here can interrupt a run to ask, so offering it would promise
+        a confirmation that never comes. See tool-permissions.ts.
+
+        AND A BLOCK SET ABOVE THIS LAYER IS DRAWN AS WHAT IT IS. The layers intersect towards the
+        strictest answer, so a tool blocked for the account cannot be unblocked here — a checkbox
+        that still cleared would be a control wired to nothing, and the person who cleared it would
+        leave believing the tool was back. Those rows are ticked, disabled, and say which layer
+        decided. `floorFrom` compares this layer's own value against the merged one rather than
+        reading the merged value alone, because the merged value already contains this layer — see
+        lib/tool-permissions.ts.
+      */}
+      <fieldset className="prefs__set" disabled={!canWrite}>
+        <legend className="field-label">What Apple may do here</legend>
+        <p className="prefs__note">
+          Everything is allowed unless you block it. Blocks add up across your organisation, your
+          account and this project — the strictest one wins, so a block set elsewhere cannot be
+          undone here.
+        </p>
+        {(['changes', 'spends'] as const).map((group) => (
+          <div key={group} className="prefs__group">
+            <span className="prefs__group-label">
+              {group === 'changes' ? 'Changes your project' : 'Costs Credits beyond the run'}
+            </span>
+            {GOVERNABLE_TOOLS.filter((t) => t.group === group).map((t) => {
+              const blocked = blockedTools(prefs.tool_permissions).has(t.tool);
+              // The merged answer for this project, straight from the server. `floorFrom` returns
+              // a value only when some OTHER layer is stricter than this one, which is the only
+              // honest evidence that the block was not made here.
+              const floor = floorFrom(
+                permissionOf(prefs.tool_permissions, t.tool),
+                permissionOf(resolved.data?.preferences.tool_permissions, t.tool),
+              );
+              return (
+                <label key={t.tool} className="prefs__check prefs__check--reasoned">
+                  <input
+                    type="checkbox"
+                    checked={blocked || floor !== undefined}
+                    disabled={!canWrite || floor !== undefined}
+                    onChange={() => setPref('tool_permissions', withToolBlocked(prefs.tool_permissions, t.tool, !blocked))}
+                  />
+                  <span>
+                    <span className="prefs__check-label">Block: {t.label}</span>
+                    {/* The reason is shown, not hidden behind a tooltip. A permission control
+                        whose consequences are invisible is one people either ignore or misuse. */}
+                    <span className="prefs__check-why">{t.why}</span>
+                    {floor && (
+                      <span className="prefs__check-why" role="status">
+                        {floorNote(floor, resolved.data?.sources.tool_permissions)}
+                      </span>
+                    )}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ))}
+      </fieldset>
+
       <fieldset className="prefs__set" disabled={!canWrite}>
         <legend className="field-label">Roblox conventions</legend>
         {CONVENTIONS.map((c) => {
@@ -323,59 +381,6 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
               />
               <span>{c.label}</span>
             </label>
-          );
-        })}
-      </fieldset>
-
-      {/* --------------------------------------------------- what Apple may DO -- */}
-      {/*
-        The one group of settings on this panel that is not about taste.
-        Everything above changes how Apple answers; this changes what it is permitted to touch —
-        so it layers the other way round, strictest-wins, and the server intersects rather than
-        overrides. That asymmetry is visible here rather than explained: when a stricter rule is
-        already in force from another layer, the looser options are GONE from the menu and the
-        reason is written beside it. A dropdown still offering "Allowed" under an account-level
-        deny would be a control wired to nothing, which is the defect this codebase keeps finding.
-      */}
-      <fieldset className="prefs__set prefs__tools" disabled={!canWrite}>
-        <legend className="field-label">What Apple may do in this project</legend>
-        <p className="mem__note">
-          Everything not listed here — reading your scripts, searching the docs, looking at the
-          viewport — Apple does anyway. These are the ones that change your work.
-        </p>
-        {GOVERNED_TOOLS.map((g) => {
-          const mine = permissionOf(prefs.tool_permissions, g.name);
-          // The merged answer for this project, straight from the server. It already contains
-          // this layer's own contribution, which is why `floorFrom` compares the two rather than
-          // reading the merged value alone — see tool-permissions.ts.
-          const effective = permissionOf(resolved.data?.preferences.tool_permissions, g.name);
-          const floor = floorFrom(mine, effective);
-          return (
-            <div key={g.name} className="prefs__tool">
-              <label className="field">
-                <span className="field-label field-label--sub">{g.label}</span>
-                <select
-                  className="mem__fact"
-                  value={mine}
-                  disabled={!canWrite}
-                  onChange={(e) =>
-                    setPref('tool_permissions', withPermission(prefs.tool_permissions, g.name, e.target.value as ToolPermission))
-                  }
-                >
-                  {TOOL_PERMISSIONS.filter((p) => !choiceDisabled(p, floor)).map((p) => (
-                    <option key={p} value={p}>
-                      {PERMISSION_LABEL[p]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {mine !== 'allow' && <span className="prefs__value">{g.stops}</span>}
-              {floor && (
-                <span className="prefs__over" role="status">
-                  {floorNote(floor, resolved.data?.sources.tool_permissions)}
-                </span>
-              )}
-            </div>
           );
         })}
       </fieldset>

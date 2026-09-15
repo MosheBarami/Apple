@@ -21,13 +21,16 @@
 //   prompt is built from. This file only COMPARES two values it was handed, using the strictness
 //   order that lives in @golem/shared — a second implementation of the layering rule in the
 //   browser would disagree with the server the first time either one changed.
-import { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES, TOOL_PERMISSIONS, isToolPermission, toolPermissionRank, type ToolPermission } from '@golem/shared';
+//
+// THE CONTROL ITSELF IS A BLOCK LIST, and it lives in components/ws/tool-permissions.ts. Two
+// states, not three: `allow` is the absence of a restriction, and `ask` is collapsed to a refusal
+// by the worker. What is left here is the part that control cannot answer on its own — which
+// layer imposed a block, and what to tell a person about a tool a finished run never got.
+import { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES, isToolPermission, toolPermissionRank, type ToolPermission } from '@golem/shared';
 import type { MemoryScope } from './api';
 
-export { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES, TOOL_PERMISSIONS };
+export { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES };
 export type { ToolPermission };
-
-export type PermissionMap = Record<string, ToolPermission>;
 
 /**
  * What this layer says about one tool.
@@ -41,16 +44,6 @@ export function permissionOf(map: Readonly<Record<string, unknown>> | undefined,
   return isToolPermission(v) ? v : 'allow';
 }
 
-/** Set one tool's permission, dropping the key entirely when the answer is `allow`. */
-export function withPermission(map: Readonly<Record<string, unknown>> | undefined, tool: string, perm: ToolPermission): PermissionMap {
-  const next: PermissionMap = {};
-  for (const [k, v] of Object.entries(map ?? {})) {
-    if (k !== tool && isToolPermission(v)) next[k] = v;
-  }
-  if (perm !== 'allow') next[tool] = perm;
-  return next;
-}
-
 /**
  * The strictness some OTHER layer has already imposed, or undefined when this layer is on its own.
  *
@@ -60,11 +53,6 @@ export function withPermission(map: Readonly<Record<string, unknown>> | undefine
  */
 export function floorFrom(mine: ToolPermission, effective: ToolPermission): ToolPermission | undefined {
   return toolPermissionRank(effective) > toolPermissionRank(mine) ? effective : undefined;
-}
-
-/** A choice looser than the floor is a control wired to nothing — the server would discard it. */
-export function choiceDisabled(choice: ToolPermission, floor: ToolPermission | undefined): boolean {
-  return floor !== undefined && toolPermissionRank(choice) < toolPermissionRank(floor);
 }
 
 const SCOPE_WORD: Record<MemoryScope, string> = {
@@ -112,11 +100,3 @@ export function deniedNote(tools: readonly string[] | undefined): string | null 
   const verb = names.length === 1 ? 'was' : 'were';
   return `${list} ${verb} not available on this run — turned off in your settings.`;
 }
-
-export const PERMISSION_LABEL: Readonly<Record<ToolPermission, string>> = {
-  allow: 'Allowed',
-  // `ask` narrows to a refusal today — nothing in this product can interrupt a run to ask — and
-  // the label says so rather than promising a prompt that never arrives. See applyToolPermissions.
-  ask: 'Ask first (blocks it for now)',
-  deny: 'Never',
-};

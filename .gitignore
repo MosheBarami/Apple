@@ -50,6 +50,11 @@ packages/corpus/raw/*
 # directory is reachable at all.
 packages/corpus/data/library/*
 !packages/corpus/data/library/index.json
+# 19 KB, and it earns its place the same way cgbookcase.json does: it is not a cache of somebody
+# else's catalogue, it is what Roblox's details endpoint SAID about the fifty ids the genre kits
+# pin, on a date. The 10 MB search harvest it replaces as evidence is ignored below, and a guard
+# whose evidence is not in the checkout is a guard that reports clean without looking.
+!packages/corpus/data/library/kit-pins.json
 !packages/corpus/data/library/cgbookcase.json
 !packages/corpus/data/library/game_icons.json
 !packages/corpus/data/library/kenney.json
@@ -81,6 +86,20 @@ packages/corpus/data/library/*
 !packages/corpus/data/registry-seeds.json
 packages/evals/results/raw/
 
+# THE HARVESTED ROBLOXQA ROWS: derived, third-party, and 4.8 MB. The EVIDENCE about them is not.
+#
+# `scripts/harvest-hf.mjs` pulls TorpedoSoftware/RobloxQA-v2.0 into gate.jsonl (1.9 MB) and
+# headroom.jsonl (2.9 MB). Both are re-fetchable from the pinned `revision` in dataset-card.json,
+# and neither is ours to redistribute simply because it is convenient.
+#
+# The reason this rule has to exist rather than being assumed: `qa-overlap.test.mjs` already
+# explains its own fallback path with the words "the derived .jsonl rows are gitignored" — and
+# until now no rule said so, so a `git add packages/evals/data/` would have committed 4.8 MB of
+# someone else's dataset and the test's stated reasoning would have been false. The small files
+# beside them — question-keys.json, excluded-gate-rows.json, train-overlap.json, dataset-card.json
+# — are the committed evidence those tests actually read, and they stay.
+packages/evals/data/robloxqa/*.jsonl
+
 # Playwright
 test-results/
 playwright-report/
@@ -110,6 +129,15 @@ packages/training/mlxdata/
 # dataset that is not itself tracked. It is re-included by name.
 packages/training/data/*
 !packages/training/data/dataset-card.json
+# Same rule, same reason, for the Hugging Face harvest: `scripts/harvest-hf.mjs` writes its
+# REFUSALS to data/hf/REJECTED.json — seven rejected datasets with the measurement that killed each
+# one, and the served-or-not verdict on five Roblox models. That file is the entire evidence for
+# every "we did not use this" decision, and it was landing inside an ignored directory, so none of
+# it would ever have reached the repository. A failure file nobody can read is the same shape as no
+# failure file. The directory is re-included; any ADMITTED rows it may hold in future are large and
+# derived, and stay out.
+!packages/training/data/hf/
+packages/training/data/hf/*.jsonl
 packages/training/mlxdata-text/
 packages/training/mlxdata/
 

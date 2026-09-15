@@ -12,7 +12,7 @@
 // WHAT IT DOES NOT DO. It does not judge prose. It matches four specific constructions and two
 // measurable properties, and everything else is left alone — a linter with opinions about writing
 // gets disabled within a month.
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,6 +31,21 @@ const SHAPES = [
     re: /\b(describe|tell|type|say)\b[^.!?]{0,40}\b(and|then|,)\s*(we|it|apple|ai|watch)\b[^.!?]{0,30}\b(build|make|create|come to life|get built)/i,
     found: 'revix.tech H1: "DESCRIBE IT. WATCH IT GET BUILT." · superbullet.ai: "Just describe what you want, and watch your game come to life."',
     why: 'It describes the INTERFACE, not the product. Every competitor says it, so it distinguishes nothing, and it promises a passivity the product does not have.',
+  },
+  {
+    //[[ THE SAME CLAIM SPLIT ACROSS TWO SENTENCES, WHICH IS HOW EVERY RIVAL ACTUALLY WRITES IT.
+    //
+    //   The first rule needs the whole thing inside one sentence — `[^.!?]{0,40}` between the verb
+    //   and the connective. revix.tech does not write it that way and neither did we: the app's
+    //   own <title> was "Apple — Describe it. Apple builds it." and it passed all six rules,
+    //   because the full stop in the middle is exactly what the first rule refuses to cross.
+    //
+    //   It sat in the browser tab of every screen of the signed-in product while this checker
+    //   reported CLEAN, and it was found by reading the page rather than by running the check.
+    id: 'describe-it-then-builds-it',
+    re: /\b(describe|tell|type|say)\s+(it|your|what|us)\b[^.!?]{0,30}[.!?]\s*(we|it|apple|ai|the ai)\s+(?:\w+\s+){0,2}(build|make|create)/i,
+    found: 'revix.tech H1: "DESCRIBE IT. WATCH IT GET BUILT." · this product\'s own app title, until it was read',
+    why: 'Splitting it over two sentences does not make it a different sentence. It is the same promise, in the same shape, that three of the four rivals lead with.',
   },
   {
     // The back half of the same headline, standing on its own. The first rule needs a
@@ -93,6 +108,16 @@ function pages() {
   walk(join(ROOT, 'apps', 'site', 'src'), /\.(astro|md|mdx)$/);
   walk(join(ROOT, 'apps', 'web', 'src', 'routes'), /\.tsx$/);
   walk(join(ROOT, 'apps', 'web', 'src', 'components'), /\.tsx$/);
+  //[[ THE APP'S SHELL, WHICH THIS CHECK NEVER OPENED.
+  //
+  //   `apps/web/index.html` carries the <title> and the meta description, and it is neither a
+  //   route nor a component — so the walk above missed it and it sat in production reading
+  //   "Apple — Describe it. Apple builds it.", which is revix.tech's headline and the first rule
+  //   in the table below. It was the browser tab on every screen of the signed-in product, and
+  //   the guard reported CLEAN over all 85 pages for weeks.
+  for (const shell of [join(ROOT, 'apps', 'web', 'index.html'), join(ROOT, 'apps', 'site', 'index.html')]) {
+    if (existsSync(shell)) out.push(shell);
+  }
   return out;
 }
 

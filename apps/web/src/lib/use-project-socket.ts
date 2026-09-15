@@ -16,9 +16,15 @@ import type {
   StudioEventSelection,
   StudioEventState,
 } from '@golem/shared';
+// The rule for what counts as a new version of a message, shared with the DO so the count this
+// client shows before the round trip and the rows the server writes cannot disagree.
+import { recordsRevision } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
 import type { RestoreStatus } from './restore-status';
 import { fetchCheckpoints, fetchMessages } from './api';
+// One definition of what a client-minted id looks like, and one place that reconciles it with the
+// server's. Two would drift, and the drift is invisible until an Edit truncates from nowhere.
+import { adoptUserMessageId, localId } from './message-identity';
 import {
   MOCK_MODE,
   mockCheckpoints,
@@ -33,6 +39,7 @@ import {
   mockStudioState,
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
+import { NO_LINK_FACTS, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
 
 export interface ToolEvent {
   toolId: string;
@@ -71,6 +78,16 @@ export interface ChatItem {
   stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
   error?: string;
   createdAt: number;
+  /**
+   * How many earlier versions of this message the user wrote before editing it.
+   *
+   * Comes with the transcript so the "edited" mark can be drawn without one request per turn, and
+   * is incremented optimistically when an edit is sent — the server applies the same rule (see
+   * `recordsRevision` in @golem/shared), so the two agree, and a reload corrects them if they ever
+   * do not. Undefined means "nothing known", never "none": a worker that predates the feature
+   * sends no field, and drawing "no earlier versions" from that would be an answer nobody checked.
+   */
+  revisions?: number;
   /**
    * What the worker announced it understood the request to be, from the
    * `run_intent` message (and replayed on `run_state`). UNDEFINED UNTIL THE
@@ -167,6 +184,14 @@ export interface ProjectSocket {
      * than empty until then.
      */
     selection: StudioEventSelection | null;
+    /**
+     * WHEN it last polled, HOW MUCH is waiting, WHICH place it has open, and HOW SLOW the round
+     * trip is — the four questions a user actually has once `connected` is false, every one of
+     * which the worker already measured and put on the wire, and every one of which this hook used
+     * to drop on the floor. See lib/studio-connection.ts for the rules, and for why an unmeasured
+     * round trip is null here rather than 0.
+     */
+    link: StudioLinkFacts;
   };
   quota: QuotaState | null;
   /**
@@ -237,8 +262,6 @@ const MAX_LOGS = 300;
 const MAX_PHASE_MARKS = 120;
 /** Each frame is ~207KB of base64 at the default 288x180. Keep very few. */
 const MAX_FRAMES = 8;
-let localIdCounter = 0;
-const localId = () => `local-${Date.now()}-${localIdCounter++}`;
 
 /** Fixture conversation for mock mode — never reachable in a production build. */
 function mockHistory(): ChatItem[] {
@@ -311,11 +334,13 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     state: StudioEventState | null;
     everConnected: boolean;
     selection: StudioEventSelection | null;
+    link: StudioLinkFacts;
   }>({
     connected: false,
     state: null,
     everConnected: false,
     selection: null,
+    link: NO_LINK_FACTS,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [presence, setPresence] = useState<PresenceState[]>([]);
@@ -343,7 +368,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection });
+      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -369,6 +394,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           })),
           streaming: false,
           createdAt: new Date(m.createdAt).getTime(),
+          revisions: m.revisions,
         }));
         setMessages((live) => {
           // keep any items that arrived over the socket while history loaded
@@ -427,6 +453,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           ...s,
           connected: msg.studioConnected,
           everConnected: s.everConnected || msg.studioConnected,
+          link: linkFactsFrom(s.link, msg),
         }));
         break;
       case 'studio_status':
@@ -435,6 +462,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           connected: msg.connected,
           state: msg.state ?? null,
           everConnected: s.everConnected || msg.connected,
+          link: linkFactsFrom(s.link, msg),
           // A selection belongs to an attached Studio. Keeping the last one after the plugin
           // dropped would offer the user a reference to objects nothing can act on any more.
           selection: msg.connected ? s.selection : null,
@@ -453,7 +481,14 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         // would attribute its timings to this one, and `agent_status` has no
         // msgId with which to catch the mistake later.
         setPhaseMarks([]);
-        setMessages((list) => {
+        setMessages((raw) => {
+          // THE USER'S OWN MESSAGE GETS ITS REAL NAME HERE.
+          //
+          // It was appended optimistically under an id this client minted, which no server had
+          // ever heard of — so Edit, Try again and Regenerate, all of which resolve that id
+          // against the messages table, failed on anything sent in this session and worked after a
+          // reload. `adoptUserMessageId` returns the same array when there is nothing to adopt.
+          const list = adoptUserMessageId(raw, msg.userMsgId);
           const existing = list.findIndex((m) => m.id === msg.msgId);
           if (existing !== -1) {
             // `run_intent` may have created the shell first; fill in the mode
@@ -780,6 +815,21 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         setPresence(msg.present);
         return;
       case 'pong':
+        //[[ THE ONLY ROUND TRIP THIS APP CAN HONESTLY TIME, and it was being thrown away.
+        //
+        //   `t` is the browser's own clock at send, echoed back untouched by the worker — so the
+        //   subtraction happens entirely in one clock domain, which is the only arrangement that
+        //   means anything. Comparing a server timestamp with a local one would produce clock skew
+        //   wearing the costume of latency.
+        //
+        //   NOTHING IS SET WHEN `t` IS ABSENT. A tab talking to a worker build that does not echo
+        //   it has not measured the link, and `Date.now() - undefined` is NaN while
+        //   `Date.now() - 0` is a plausible-looking 1.7 trillion. Staying null is the honest state,
+        //   and `latencyLabel` renders null as nothing at all. ]]
+        if (typeof msg.t === 'number') {
+          const rtt = Date.now() - msg.t;
+          setStudio((s) => ({ ...s, link: { ...s.link, rttMs: rtt >= 0 ? rtt : null } }));
+        }
         break;
     }
   }, []);
@@ -826,7 +876,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setConn('open');
       if (pingTimer.current) window.clearInterval(pingTimer.current);
       pingTimer.current = window.setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' } satisfies ClientMsg));
+        // `t` is this browser's clock, echoed back untouched on the pong so the round trip is
+        // measured in one clock domain. See the 'pong' case.
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping', t: Date.now() } satisfies ClientMsg));
       }, 25_000);
     };
 
@@ -850,7 +902,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       }
       if (closedRef.current) return;
       setConn('reconnecting');
-      setStudio((s) => ({ ...s, connected: false }));
+      // The round trip belonged to the socket that just closed. Keeping the last number would
+      // report a link that is measurably fast while nothing can reach it at all; the heartbeat and
+      // the queue depth DO survive, because they are facts about Studio rather than about this
+      // socket, and dating the disconnection is the whole point of keeping them.
+      setStudio((s) => ({ ...s, connected: false, link: { ...s.link, rttMs: null } }));
       const attempt = attemptsRef.current++;
       const delay = Math.min(30_000, 1000 * 2 ** attempt) + Math.random() * 500;
       reconnectTimer.current = window.setTimeout(() => void connect(), delay);
@@ -919,9 +975,17 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         setMessages((list) => {
           const idx = list.findIndex((m) => m.id === messageId);
           const kept = idx === -1 ? list : list.slice(0, idx);
+          // The message that replaces an edited one is the SAME message, one version later, so its
+          // history comes with it. `recordsRevision` is the server's own rule, imported rather than
+          // restated: a retry resends the text unchanged on purpose, and counting that would tell
+          // someone who regenerated four times that they had rewritten their prompt four times.
+          const edited = idx === -1 ? undefined : list[idx];
+          const carried = edited?.revisions;
+          const revisions =
+            edited && recordsRevision(edited.content, text) ? (carried ?? 0) + 1 : carried;
           return [
             ...kept,
-            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now() },
+            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
           ];
         });
       }

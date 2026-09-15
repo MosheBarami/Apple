@@ -98,6 +98,7 @@ function namespace() {
         if (u.pathname === '/studio/diagnostics') return json({ link, agentStatus: 'idle', recentOps: [] });
         if (u.pathname === '/studio/revoke') return json({ ok: true, revoked: true });
         if (u.pathname === '/studio/place/rebind') return json({ ok: true });
+        if (u.pathname === '/studio/queue') return json({ ok: true, discarded: 3 });
         if (u.pathname === '/plugin/register') return json({ ok: true, place: { placeId: 111, gameId: 900, placeName: 'Tower Defence', boundAt: 1 } });
         if (u.pathname === '/claim') return json({ projectId: PROJECT_ID, userId: USER_ID, projectName: 'Tower Defence' });
         return json({ ok: true });
@@ -246,6 +247,16 @@ test('rebinding the place reaches the session', async () => {
   assert.ok(doCalls.some((d) => d.path === '/studio/place/rebind'));
 });
 
+test('DISCARDING THE QUEUE REACHES THE SESSION AS A DELETE, and reports what went', async () => {
+  // The verb matters: the session distinguishes DELETE /studio/queue from every other path on
+  // that object, and a POST would fall through to the 404 at the bottom of its fetch.
+  reset();
+  const r = await call(`/api/projects/${PROJECT_ID}/studio/queue`, { method: 'DELETE' });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.discarded, 3, 'the count comes back so the UI can say what it threw away');
+  assert.ok(doCalls.some((d) => d.path === '/studio/queue' && d.method === 'DELETE'), 'the session was told');
+});
+
 // ------------------------------------------------------------------------- who may do all this
 
 test('NONE OF THESE ROUTES ANSWERS A STRANGER', async () => {
@@ -258,6 +269,7 @@ test('NONE OF THESE ROUTES ANSWERS A STRANGER', async () => {
     ['GET', `/api/projects/${PROJECT_ID}/studio/diagnostics`],
     ['POST', `/api/projects/${PROJECT_ID}/studio/disconnect`],
     ['POST', `/api/projects/${PROJECT_ID}/studio/place/rebind`],
+    ['DELETE', `/api/projects/${PROJECT_ID}/studio/queue`],
   ];
   for (const [method, path] of routes) {
     reset();
@@ -277,6 +289,7 @@ test('CONTROL: the owner gets through every one of those same routes', async () 
     ['GET', `/api/projects/${PROJECT_ID}/studio/diagnostics`],
     ['POST', `/api/projects/${PROJECT_ID}/studio/disconnect`],
     ['POST', `/api/projects/${PROJECT_ID}/studio/place/rebind`],
+    ['DELETE', `/api/projects/${PROJECT_ID}/studio/queue`],
   ];
   for (const [method, path] of routes) {
     reset();

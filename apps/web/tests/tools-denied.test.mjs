@@ -51,7 +51,7 @@ test('and it says WHY, not just that something is missing', () => {
 });
 
 test('a tool with no label still gets named rather than dropped', () => {
-  // GOVERNED_TOOLS is the twelve a person can set from the panel. A permission imported from a
+  // GOVERNED_TOOLS is the list a person can set from the panel. A permission imported from a
   // file, or set by an organisation, can name any tool in the registry — and a line that silently
   // omitted it would under-report what was withheld, which is the one direction that must not
   // happen in a sentence about permissions.
