@@ -1639,42 +1639,6 @@ textarea {
   color: var(--warn);
 }
 
-/* the three lanes */
-.ws-body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.ws-body.has-surface {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-}
-
-.ws-body.has-rail {
-  grid-template-columns: minmax(0, 1fr) var(--rail-w);
-}
-
-.ws-body.has-surface.has-rail {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) var(--rail-w);
-}
-
-.ws-lane {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-inline-end: 1px solid var(--hairline);
-}
-
-.ws-lane:last-child {
-  border-inline-end: 0;
-}
-
-.ws-mobile-tabs {
-  display: none;
-}
-
 /* --------------------------------------------------------------------------
    10. Chat + tool timeline
    -------------------------------------------------------------------------- */
@@ -5658,62 +5622,10 @@ html.has-cursor .cursor {
   }
 }
 
-/* tablet: one lane at a time in the workspace, tabs to switch */
+/* The three-lane switcher that used to live here is gone with the layout it switched — see
+   routes/workspace.tsx, "One lane, not three". These two rules are all that was about anything
+   still on screen. apps/web/tests/no-dead-lanes.test.mjs keeps the rest deleted. */
 @media (max-width: 1023px) {
-  .ws-body,
-  .ws-body.has-surface,
-  .ws-body.has-rail,
-  .ws-body.has-surface.has-rail {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ws-lane {
-    border-inline-end: 0;
-  }
-
-  .ws-lane[hidden] {
-    display: none;
-  }
-
-  .ws-mobile-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid var(--hairline);
-    background: var(--paper-2);
-    flex: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .ws-mobile-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .ws-mobile-tab {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    color: var(--muted);
-    font-size: 0.82rem;
-    font-weight: 540;
-    padding: 0.34rem 0.8rem;
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    white-space: nowrap;
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-  }
-
-  .ws-mobile-tab[aria-selected='true'] {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: var(--lift-1);
-  }
-
   .rail-grow {
     flex: none;
   }
