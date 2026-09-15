@@ -74,6 +74,14 @@ import { auditCitations, corpusCensus, renderCitedContext, searchDocsDetailed } 
 import type { Citation, RetrievalOutcome } from './retrieval';
 import { serveStatic, ensureStaticTables } from './static';
 import {
+  handleDiscordRequest,
+  editOriginal,
+  registerCommands,
+  type DiscordPorts,
+  type LinkRecord,
+  type RedeemResult,
+} from './discord';
+import {
   EVENT_KINDS,
   breakdownBy,
   logStats,
@@ -238,7 +246,7 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
+import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
 import { withSchema } from './schema-once';
 
@@ -247,6 +255,7 @@ export { QuotaDO } from './do/quota';
 export { PairingDO } from './do/pairing';
 export { AdminDO } from './do/admin';
 export { BudgetDO } from './do/budget';
+export { DiscordDO } from './do/discord';
 
 type Vars = {
   user: AuthedUser;
@@ -454,7 +463,7 @@ app.use('/api/*', async (c, next) => {
  * leaving this line in place would turn the endpoint into an open subscription dispenser, which is
  * why billing-route.test.mjs asserts both halves together.
  */
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook'];
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();
@@ -2155,6 +2164,154 @@ app.get('/api/providers', async (c) => {
   // the boolean survives.
   const ready = selectProvider(c.env, {}).ok;
   return c.json({ ready, models: [], auto: { model: null, reasoning: '' } });
+});
+
+// ---------------------------------------------------------------- discord
+/**
+ * APPLE ON DISCORD.
+ *
+ * `/api/discord/interactions` is the bot. It is PUBLIC — Discord is not a user and carries no JWT
+ * — and it authenticates by an Ed25519 signature over `timestamp + rawBody`, made with a key only
+ * Discord holds. The refusals have the same shape as the Stripe webhook's, for the same reason:
+ * this endpoint can spend a customer's Credits, so unverified it is a button anyone on the internet
+ * may press on somebody else's account.
+ *
+ *   - no public key configured -> 503. Never "no key, so trust the body".
+ *   - bad, forged or stale signature -> 401 BEFORE parsing and BEFORE dispatch, with the reason
+ *     logged and not returned, so a prober cannot use the answer to improve a forgery.
+ *
+ * The raw body is read with .text() inside the handler and parsed only after verification:
+ * re-serialising parsed JSON changes bytes and the signature could never match again.
+ */
+function discordStub(env: Env) {
+  return env.DISCORD_DO.get(env.DISCORD_DO.idFromName('singleton'));
+}
+
+async function okJson<T>(p: Promise<Response>): Promise<T | null> {
+  const res = await p.catch(() => null);
+  if (!res || !res.ok) return null;
+  return (await res.json().catch(() => null)) as T | null;
+}
+
+function discordPorts(env: Env, origin: string): DiscordPorts {
+  const d = discordStub(env);
+  const projectUrl = (projectId: string) => `${origin}/app/projects/${projectId}`;
+  return {
+    redeemLinkCode: async (discordUserId, code) =>
+      (await okJson<RedeemResult>(
+        d.fetch('https://do/redeem', { method: 'POST', body: JSON.stringify({ discordUserId, code }) }),
+      )) ?? { ok: false, reason: 'invalid' },
+    removeLink: async (discordUserId) =>
+      (await okJson<{ removed: boolean }>(
+        d.fetch('https://do/unlink', { method: 'POST', body: JSON.stringify({ discordUserId }) }),
+      ))?.removed === true,
+    findLink: async (discordUserId) =>
+      (
+        await okJson<{ link: LinkRecord | null }>(
+          d.fetch(`https://do/link?discordUserId=${encodeURIComponent(discordUserId)}`),
+        )
+      )?.link ?? null,
+    quota: async (appleUserId) =>
+      await okJson<QuotaState>(env.QUOTA_DO.get(env.QUOTA_DO.idFromName(appleUserId)).fetch('https://do/state')),
+    projectHealth: async (projectId) =>
+      await okJson<{ agentStatus: string; pluginConnected: boolean }>(sessionStub(env, projectId).fetch('https://do/info')),
+    run: async (projectId) =>
+      (await okJson<{ run: RunSnapshot | null }>(sessionStub(env, projectId).fetch('https://do/run-state')))?.run ?? null,
+    startBuild: async (projectId, prompt) => {
+      // The same door a chat message goes through: same run loop, same tools, same quota, same
+      // budget. A separate "Discord build" path would be a second agent to keep in step.
+      const body = await okJson<{ ok?: boolean; error?: string }>(
+        sessionStub(env, projectId).fetch('https://do/agent-run', {
+          method: 'POST',
+          body: JSON.stringify({ text: prompt, mode: 'stone' }),
+        }),
+      );
+      return body?.ok ? { ok: true } : { ok: false, error: body?.error ?? 'the project would not start a run' };
+    },
+    watchRun: async (link, applicationId, token) => {
+      await d
+        .fetch('https://do/watch', {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId: link.projectId,
+            projectName: link.projectName,
+            projectUrl: projectUrl(link.projectId),
+            applicationId,
+            token,
+          }),
+        })
+        .catch(() => {});
+    },
+    projectUrl,
+  };
+}
+
+app.post('/api/discord/interactions', async (c) => {
+  const out = await handleDiscordRequest(c.req.raw, {
+    publicKeyHex: c.env.DISCORD_PUBLIC_KEY,
+    ports: discordPorts(c.env, new URL(c.req.url).origin),
+  });
+  // Reachable only once the signature verified: every other path returns before dispatch, so
+  // nothing below can run for a request that is not from Discord.
+  if (out.deferred && out.reply) {
+    const { applicationId, token } = out.reply;
+    const work = out.deferred;
+    c.executionCtx.waitUntil(work((content) => editOriginal(applicationId, token, content).then(() => undefined)));
+  }
+  return c.json(out.body as Record<string, unknown>, out.status as 200);
+});
+
+/**
+ * Mint a link code for ONE project the caller owns.
+ *
+ * The authenticated half of the proof. Ownership is checked by `withOwnedProject` with the user's
+ * own Supabase token — exactly as pairing and checkpoints are — so a code can only ever carry a
+ * project this user really owns. Whoever presents it in Discord has thereby demonstrated they
+ * were signed in to this account, which is the whole point of the flow.
+ */
+app.post('/api/projects/:id/discord-code', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  void count(c.env, 'discord_code_create');
+  return discordStub(c.env).fetch('https://do/mint', {
+    method: 'POST',
+    body: JSON.stringify({ appleUserId: ctx.user.userId, projectId: ctx.project.id, projectName: ctx.project.name }),
+  });
+});
+
+/** Which Discord account, if any, may currently spend this user's Credits. */
+app.get('/api/discord/link', async (c) => {
+  const user = c.get('user');
+  const body = await okJson<{ link: LinkRecord | null }>(
+    discordStub(c.env).fetch(`https://do/link-for-owner?appleUserId=${encodeURIComponent(user.userId)}`),
+  );
+  return c.json({ link: body?.link ?? null });
+});
+
+/** Revoke from the Apple side. Discord's own `/unlink` revokes the same link from the other end. */
+app.delete('/api/discord/link', async (c) => {
+  const user = c.get('user');
+  const body = await okJson<{ removed: boolean }>(
+    discordStub(c.env).fetch('https://do/unlink', { method: 'POST', body: JSON.stringify({ appleUserId: user.userId }) }),
+  );
+  return c.json({ removed: body?.removed === true });
+});
+
+/**
+ * Publish the slash commands to Discord. The ONLY use of the bot token.
+ *
+ * Owner-key gated and idempotent — the PUT replaces the whole list, so running it twice changes
+ * nothing. It must be run once after the application exists, and again whenever COMMANDS changes,
+ * or Discord keeps offering commands the worker no longer has.
+ */
+app.post('/api/admin/discord/register-commands', async (c) => {
+  if (!c.env.DISCORD_BOT_TOKEN) return c.json({ error: 'no bot token configured' }, 503);
+  const res = await registerCommands(c.env.DISCORD_BOT_TOKEN);
+  if (!res.ok) {
+    console.warn('discord command registration failed:', res.status, res.detail);
+    return c.json({ error: 'discord refused the command list', status: res.status }, 502);
+  }
+  return c.json({ ok: true, registered: res.names });
 });
 
 app.get('/api/me', async (c) => {

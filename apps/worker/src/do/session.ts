@@ -1303,6 +1303,17 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     /**
+     * The same picture a reconnecting browser gets, over HTTP.
+     *
+     * Read by DiscordDO's progress pusher: a Discord reply has no socket to broadcast onto, so the
+     * only way to say "step 4 of 12, critiquing" is to ask. Deliberately the SAME snapshot the web
+     * client sees, so the two surfaces can never disagree about what the run is doing.
+     */
+    if (path === '/run-state') {
+      return json({ run: await this.runSnapshot() });
+    }
+
+    /**
      * One companion op, driven by a person rather than by a model.
      *
      * The caller's PERMISSION is checked in index.ts, which is the only place that has a

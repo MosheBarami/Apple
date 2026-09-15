@@ -59,6 +59,13 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     section: 'Connections',
     keywords: ['roblox', 'open cloud', 'api key', 'connect', 'upload', 'creator', 'credential', 'account'],
   },
+  {
+    id: 'discord',
+    title: 'Discord',
+    section: 'Connections',
+    // Nobody searching for this types "Discord" — they type the thing they want to do from it.
+    keywords: ['discord', 'bot', 'chat', 'slash command', 'link', 'unlink', 'pair', 'build from chat', 'connect'],
+  },
   { id: 'training-opt-in', title: 'Contribute anonymised snippets', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out'] },
   { id: 'reset-settings', title: 'Reset settings', section: 'Privacy', keywords: ['default', 'defaults', 'restore', 'undo', 'clear'] },
 ];
