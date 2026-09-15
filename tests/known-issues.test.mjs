@@ -91,6 +91,30 @@ test('every published issue carries the four things a reader needs', () => {
   }
 });
 
+test('an issue listed as OPEN is still true of the code that would close it', () => {
+  // The failure mode of a checked-in incident list is that it becomes a museum: an entry stays
+  // "open" months after the thing was fixed, and a visitor reads a current-sounding page describing
+  // a product that no longer exists. Every entry whose truth is decided by a constant is pinned to
+  // that constant here, so closing the defect makes this red and forces the entry to be resolved.
+  const shared = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+  const open = new Set(K.openIssues().map((i) => i.id));
+  if (open.has('plugin-not-in-creator-store')) {
+    assert.match(
+      shared,
+      /export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;/,
+      'the store listing is live — mark plugin-not-in-creator-store resolved',
+    );
+  }
+  if (open.has('plugin-presence-not-detectable')) {
+    const model = readFileSync(join(ROOT, 'apps', 'web', 'src', 'components', 'empty-state-model.ts'), 'utf8');
+    assert.match(
+      model,
+      /M06_NOT_MODELLED/,
+      'the app now models plugin presence — mark plugin-presence-not-detectable resolved',
+    );
+  }
+});
+
 test('/status publishes the list rather than only probing the API', () => {
   assert.match(STATUS, /known-issues/, 'status.astro does not read the known-issues data');
   assert.match(STATUS, /openIssues/, 'status.astro does not render the unresolved list');
