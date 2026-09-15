@@ -7,12 +7,28 @@ import BuildStage from '../components/BuildStage.astro';
  * These are counts from packages/corpus/data/library — the harvest's own totals — and they are
  * written here as literals on purpose: a landing page that queried a live database to render a
  * number would be a landing page that can fail to render. They move when the harvest moves, and
- * tests/check-proof-figures asserts they still match it.
+ * scripts/check-proof-figures.mjs recomputes each one from the file its `from`
+ * pointer names, and runs in the gate suite. An earlier version of this comment named
+ * a test that had never been written.
  */
 const proof = [
-  { n: '510,979', what: 'assets, every licence recorded' },
-  { n: '81,311', what: 'usable with no upload at all' },
-  { n: '3,017', what: 'game templates, checked against current Roblox APIs' },
+  { n: '510,979', what: 'assets, every licence recorded', from: 'library.total' },
+  { n: '81,311', what: 'usable with no upload at all', from: 'library.withRobloxId' },
+  //[[ WAS "3,017 game templates, checked against current Roblox APIs". Both halves were false.
+  //
+  //   3,017 is what a GitHub search over Roblox topics returned. It contains rojo, StyLua,
+  //   roblox-ts, a Rust CSV tool and a Bee Swarm Simulator macro — tooling and cheats, not game
+  //   templates. Nothing in this repository curates it into templates, so the noun was a claim
+  //   about work nobody has done.
+  //
+  //   And the API check the label attached to all 3,017 is recorded by the harvest for 300.
+  //   MY OWN FIRST REPLACEMENT SAID "free of removed APIs" over 1,034 and the new guard rejected
+  //   it, which is the guard earning its place: the harvester's `usable` flag ANDs in
+  //   `removed.length === 0`, and for the 2,717 repositories whose code was never read `removed`
+  //   is empty because nothing looked — not because nothing was found.
+  //
+  //   What is true of all 1,034: not archived, and carrying a licence that is not NOASSERTION. ]]
+  { n: '1,034', what: 'community Roblox projects, each with a licence on record', from: 'templates.usable' },
 ];
 
 /**

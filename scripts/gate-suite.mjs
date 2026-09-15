@@ -102,6 +102,9 @@ const parts = [
   // "clean" over two of the site's six stylesheets while an 86px h1 and a 144px numeral sat in
   // the four it never opened. A guard outside the suite is a guard that has already gone stale.
   { label: 'check-copy', ...run('node', ['scripts/check-copy.mjs']) },
+  // The three numbers a visitor is invited to check. One of them was false on both halves
+  // while a comment above it named a test that had never been written.
+  { label: 'check-proof-figures', ...run('node', ['scripts/check-proof-figures.mjs']) },
   { label: 'pnpm -r test', ...run('pnpm', ['-r', 'test']) },
 ];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make
