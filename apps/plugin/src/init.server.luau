@@ -13,7 +13,12 @@ local Version = require(script.Version)
 
 local VERSION = Version.VERSION
 local PROTOCOL = Version.PROTOCOL
-local DEFAULT_API = "https://golem.moshe-barami111.workers.dev"
+-- THE BRANDED ORIGIN. Two workers share one database — `golem` was the original deployment and
+-- `apple` is the one the product, the site and every link the customer is given point at. The
+-- plugin was still calling the old hostname, so the one piece of this product that runs on the
+-- customer's own machine was the one piece still talking to a name that is not the product's.
+-- Both serve the same routes off the same D1; this is a branding fix, not a routing fix.
+local DEFAULT_API = "https://apple.moshe-barami111.workers.dev"
 
 -- Only drive the session from the edit DataModel (Play Solo spawns a second copy).
 if not RunService:IsEdit() and not RunService:IsRunMode() then

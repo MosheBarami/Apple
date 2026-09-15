@@ -1,4 +1,6 @@
 {
-  "name": "GolemPlugin",
-  "tree": { "$path": "src" }
+  "name": "Apple",
+  "tree": {
+    "$path": "src"
+  }
 }
