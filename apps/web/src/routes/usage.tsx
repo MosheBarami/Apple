@@ -13,6 +13,7 @@ import { Failure } from '../components/failure';
 import { PRODUCT_MODES_OFFERED, PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId } from '@golem/shared';
 import {
   billingChangeLine,
+  billingDetailsSaveLine,
   billingHistoryCsv,
   billingNotice,
   formatMoney as formatInvoiceMoney,
@@ -24,6 +25,7 @@ import {
 } from '../lib/billing-copy';
 import {
   fetchBillingConfig,
+  fetchBillingDetails,
   fetchBillingHistory,
   fetchBillingPreview,
   fetchInvoice,
@@ -31,7 +33,9 @@ import {
   fetchMe,
   fetchUsage,
   openBillingPortal,
+  saveBillingDetails,
   startCheckout,
+  type BillingDetails,
   type UsageDay,
 } from '../lib/api';
 import { ConfirmDialog } from '../components/confirm-dialog';
@@ -317,6 +321,92 @@ function InvoiceList() {
         ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * THE FIELDS PRINTED ON EVERY INVOICE.
+ *
+ * Until this existed they were whatever Stripe's Checkout page collected once, at the first
+ * purchase, and nothing in this product could correct them: the billing portal edits a card and an
+ * address, not who the invoice is addressed to, what the buying entity is called, or which purchase
+ * order it quotes. A company that changed its finance contact, renamed itself, or issued a new PO
+ * had invoices that no longer matched its own records and nowhere here to say so.
+ *
+ * THE FORM IS PRE-FILLED FROM THE RECORD, which is not cosmetic. A form that opened empty over
+ * stored values would submit three blanks the moment somebody edited one of them, and the worker
+ * would then clear two fields nobody touched — off a document, monthly, after the fact.
+ */
+function BillingDetailsForm() {
+  const stored = useQuery({ queryKey: ['billing-details'], queryFn: fetchBillingDetails, retry: false });
+  const [form, setForm] = useState<BillingDetails | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [synced, setSynced] = useState<boolean | null | undefined>(undefined);
+
+  // Seeded once the record arrives, and never again: re-seeding on every render would throw away
+  // what the person is in the middle of typing each time the query refetched.
+  useEffect(() => {
+    if (stored.data && form === null) setForm(stored.data.details);
+  }, [stored.data, form]);
+
+  const save = useMutation({
+    mutationFn: (d: BillingDetails) => saveBillingDetails(d),
+    onSuccess: (r) => {
+      setError(null);
+      setSynced(r.synced);
+      setForm(r.details);
+    },
+    // The worker's own refusal names the field the person has to fix. Replacing it with a generic
+    // message here would hide which of the three boxes is wrong.
+    onError: (e: unknown) => {
+      setSynced(undefined);
+      setError(e instanceof Error ? e.message : 'Those details were refused.');
+    },
+  });
+
+  if (stored.isPending || stored.isError || form === null) return null;
+
+  const field = (key: keyof BillingDetails, label: string, type: string, hint: string) => (
+    <label className="billing-details__field">
+      <span className="billing-details__label">{label}</span>
+      {/* No class of its own: `input[type=text|email]` is already styled globally, and a class
+          that names nothing in the stylesheet is a hook somebody later trusts to exist. */}
+      <input
+        type={type}
+        value={form[key] ?? ''}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        placeholder={hint}
+      />
+    </label>
+  );
+
+  const note = billingDetailsSaveLine(synced);
+
+  return (
+    <details className="billing-details">
+      <summary>Invoice details</summary>
+      <p className="muted billing-details__intro">
+        What your invoices are addressed to. Leave a field empty to keep using your account details.
+      </p>
+      <form
+        className="billing-details__form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save.mutate(form);
+        }}
+      >
+        {field('email', 'Billing email', 'email', 'you@company.com')}
+        {field('name', 'Business name', 'text', 'Acme Ltd')}
+        {field('poNumber', 'Purchase order', 'text', 'PO-4417')}
+        <div className="billing-details__actions">
+          <button type="submit" className="btn btn-sm" disabled={save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save invoice details'}
+          </button>
+        </div>
+      </form>
+      {error && <p className="billing-details__note billing-details__note--warn">{error}</p>}
+      {!error && note && <p className={`billing-details__note billing-details__note--${note.tone}`}>{note.text}</p>}
+    </details>
   );
 }
 
@@ -804,6 +894,16 @@ export function UsagePage() {
             Free with invoices they still need to reach.
           */}
           {billingView?.hasBillingAccount && <InvoiceList />}
+
+          {/*
+            NOT GATED ON HAVING A BILLING ACCOUNT, unlike everything around it.
+
+            These fields are most useful BEFORE the first purchase: a company that sets its finance
+            contact here has it on invoice number one, because the checkout reads it. Hiding the
+            form until an invoice already exists would make the setting arrive one invoice late — on
+            the one occasion it is first needed.
+          */}
+          <BillingDetailsForm />
 
           {billingView?.hasBillingAccount && <BillingHistory />}
 

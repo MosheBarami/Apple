@@ -281,6 +281,30 @@ export interface BillingOutcome {
 }
 
 /**
+ * Which tier IS this Stripe subscription, as this deployment reads it?
+ *
+ * THE PRICE OUTRANKS THE METADATA, because the price is what Stripe bills.
+ *
+ * `metadata.plan` is written exactly once — by buildCheckoutRequest, at the FIRST purchase. Every
+ * later tier change happens in the Billing Portal, which swaps `items[].price` and leaves
+ * `metadata` untouched. So an upgrade bought there charged the new tier and entitled the old one,
+ * and a downgrade kept serving the tier nobody was paying for; the event carried the right answer
+ * all along and nothing read it.
+ *
+ * The metadata stays as the FALLBACK rather than being dropped: a price this deployment does not
+ * recognise (a legacy one, a test-mode id) must not silently demote a paying customer.
+ *
+ * ONE FUNCTION, TWO CALLERS, ON PURPOSE. `interpretStripeEvent` decides what to apply, and
+ * `reconcileSubscription` decides whether what we applied still matches. Two independent readings
+ * of the same question would let the reconciliation agree with exactly the drift it exists to find.
+ */
+export function planOfStripeSubscription(obj: Record<string, unknown>, env?: Env): PlanId {
+  const fromPrice = env ? planForPriceId(env, priceIdOfSubscription(obj)) : null;
+  const meta = (obj['metadata'] as Record<string, string> | undefined)?.['plan'];
+  return fromPrice ?? (isPlanId(meta) ? meta : 'free');
+}
+
+/**
  * Turn a verified Stripe event into what should change.
  *
  * Pure, so the decision can be tested without a network or a DO. The caller applies the result.
@@ -311,7 +335,6 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
       if (!userId) return { userId: null, eventId, ignored: 'subscription carries no metadata.userId' };
-      const planRaw = metadata['plan'];
       const status = typeof obj['status'] === 'string' ? obj['status'] : null;
       // A deletion is a lapse to free regardless of what the plan metadata still says.
       const deleted = type === 'customer.subscription.deleted';
@@ -327,8 +350,7 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
        * The metadata stays as the FALLBACK rather than being dropped: a price this deployment does
        * not recognise (a legacy one, a test-mode id) must not silently demote a paying customer.
        */
-      const fromPrice = env ? planForPriceId(env, priceIdOfSubscription(obj)) : null;
-      const plan: PlanId = deleted ? 'free' : (fromPrice ?? (isPlanId(planRaw) ? planRaw : 'free'));
+      const plan: PlanId = deleted ? 'free' : planOfStripeSubscription(obj, env);
       return {
         userId,
         eventId,
@@ -573,6 +595,154 @@ export function readInvoicePreview(payload: unknown): InvoicePreview | null {
   return { amountDue: toMajor(minor, currency), currency, prorationDate, lines };
 }
 
+// ---------------------------------------------------------------------------
+// BILLING DETAILS — who the invoice is addressed to, and what it has to quote
+// ---------------------------------------------------------------------------
+//
+// THREE FIELDS DECIDE WHETHER AN INVOICE IS A DOCUMENT SOMEBODY CAN FILE. Who it is addressed to,
+// what the buying entity is called, and which purchase order it is matched against. Until this
+// existed all three were whatever Stripe's Checkout page collected once, at the first purchase,
+// and none could be corrected afterwards without leaving the product — so a company that changed
+// its finance contact, renamed itself, or issued a new PO had invoices that no longer matched its
+// own records, and nowhere here to say so.
+//
+// THEY LIVE ON THE STRIPE CUSTOMER, NOT IN A COPY OF OUR OWN. Stripe is what prints the invoice.
+// A second address book here would drift from the one on the document, and the two would disagree
+// in front of a customer disputing a charge. QuotaDO keeps the record only so this product knows
+// what IT last set — which is what makes clearing a field distinguishable from never setting one.
+//
+// THE PO IS A CUSTOM FIELD RATHER THAN METADATA. Metadata is invisible on the document, and a
+// purchase order reference that does not appear on the invoice is the one thing it must do.
+
+/** What a customer wants on their invoices. Every field is optional and null means "not set". */
+export interface BillingDetails {
+  /** Where invoices are sent. Null falls back to the account's own address. */
+  email: string | null;
+  /** The legal or trading name of the buying entity, as it should be printed. */
+  name: string | null;
+  /** A purchase order reference the buyer's finance department matches the invoice against. */
+  poNumber: string | null;
+}
+
+/** The record an account has before anybody sets anything. Three absences, not three blanks. */
+export const NO_BILLING_DETAILS: BillingDetails = { email: null, name: null, poNumber: null };
+
+/** What the PO reference is called on the printed invoice. Named once so the clear can find it. */
+export const PO_FIELD_LABEL = 'Purchase order';
+
+/*
+ * THE CAPS ARE OURS AND THEY ARE ABOUT A PRINTED PAGE, not about Stripe's schema.
+ *
+ * 254 is the longest address RFC 5321 permits, so anything longer is not an address that could be
+ * delivered to. The other two are lengths that still fit on an invoice line beside a figure; a
+ * 2,000-character "company name" is not a name, and truncating it silently would put a different
+ * company on the document than the one that was typed. Refusing says so while it can still be
+ * fixed.
+ */
+export const BILLING_EMAIL_MAX = 254;
+export const BILLING_NAME_MAX = 120;
+export const BILLING_PO_MAX = 60;
+
+export type BillingDetailsVerdict =
+  | { ok: true; details: BillingDetails }
+  | { ok: false; status: 400; error: string };
+
+/**
+ * One free-text billing field, or a refusal naming it.
+ *
+ * Absent, null and blank all mean the same thing — not set — because a form that submits every box
+ * cannot distinguish "I left it alone" from "I emptied it" any other way, and both must be sayable.
+ *
+ * CONTROL CHARACTERS ARE REFUSED rather than stripped. A newline inside a name is a second line on
+ * an invoice nobody authored, and inside a urlencoded body it is a value that no longer means what
+ * was typed. Stripping it would store something the person did not write; refusing leaves them the
+ * one they did.
+ */
+function billingField(raw: unknown, label: string, max: number): { ok: true; value: string | null } | { ok: false; status: 400; error: string } {
+  if (raw === undefined || raw === null) return { ok: true, value: null };
+  if (typeof raw !== 'string') return { ok: false, status: 400, error: `${label} must be text` };
+  const v = raw.trim();
+  if (v.length === 0) return { ok: true, value: null };
+  // A CODE-POINT SCAN RATHER THAN A REGEX. A character class written as \u0000-\u001f is one
+  // careless editor away from becoming those bytes LITERALLY in this file — which is what happened
+  // when this check was first written: the source became binary, grep stopped finding anything in
+  // it, and the code still ran. Comparing numbers keeps every byte of this file printable.
+  for (let i = 0; i < v.length; i += 1) {
+    const code = v.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) {
+      return { ok: false, status: 400, error: `${label} cannot contain line breaks or control characters` };
+    }
+  }
+  if (v.length > max) return { ok: false, status: 400, error: `${label} is longer than ${max} characters` };
+  return { ok: true, value: v };
+}
+
+/**
+ * Deliberately conservative: one `@`, something either side, a dot in the domain, no whitespace.
+ *
+ * It is not RFC 5322 — nothing short of a parser is — and it does not need to be. This address is
+ * where a document about money is sent; the cost of refusing an exotic-but-valid address is that
+ * somebody sees an error and can use another one, and the cost of accepting `acme.test` is an
+ * invoice nobody ever receives and no error anywhere.
+ */
+function isBillingEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(v);
+}
+
+/** Validate a submitted billing record. The allowlist is the three keys named here. */
+export function readBillingDetails(raw: unknown): BillingDetailsVerdict {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return { ok: false, status: 400, error: 'billing details must be an object' };
+  }
+  const o = raw as Record<string, unknown>;
+  const email = billingField(o['email'], 'Billing email', BILLING_EMAIL_MAX);
+  if (!email.ok) return email;
+  if (email.value !== null && !isBillingEmail(email.value)) {
+    return { ok: false, status: 400, error: 'Billing email is not an email address' };
+  }
+  const name = billingField(o['name'], 'Billing name', BILLING_NAME_MAX);
+  if (!name.ok) return name;
+  const po = billingField(o['poNumber'], 'Purchase order reference', BILLING_PO_MAX);
+  if (!po.ok) return po;
+  return { ok: true, details: { email: email.value, name: name.value, poNumber: po.value } };
+}
+
+/**
+ * The `POST /v1/customers/<id>` body that makes Stripe's record match this one — and NOTHING else.
+ *
+ * A BLANK IN OUR FORM MUST NOT ERASE WHAT STRIPE ALREADY HAS. Checkout collects a billing name at
+ * the first purchase; this product's form opens empty; an update that sends every key on every save
+ * wipes that name off every future invoice. Nothing about that failure is visible from here — it
+ * shows up on a document, monthly, after the fact.
+ *
+ * So the builder is given the record it is REPLACING as well as the new one, and emits a key only
+ * when the person actually said something about that field:
+ *   - a value they set          → sent, every time, so a save that failed halfway is repaired by
+ *                                 the next one rather than left half-applied;
+ *   - a value of OURS they removed → sent empty, which is how Stripe is told to unset a field. A PO
+ *                                 that keeps printing after the buyer deleted it is a false
+ *                                 statement on an invoice, reissued every month;
+ *   - a field they never touched → absent from the request entirely.
+ */
+export function buildCustomerDetailsRequest(next: BillingDetails, previous: BillingDetails): string {
+  const p = new URLSearchParams();
+  const put = (key: string, value: string | null, had: string | null): void => {
+    if (value !== null) p.set(key, value);
+    else if (had !== null) p.set(key, '');
+  };
+  put('email', next.email, previous.email);
+  put('name', next.name, previous.name);
+  if (next.poNumber !== null) {
+    p.set('invoice_settings[custom_fields][0][name]', PO_FIELD_LABEL);
+    p.set('invoice_settings[custom_fields][0][value]', next.poNumber);
+  } else if (previous.poNumber !== null) {
+    // The whole LIST is cleared, not one row emptied: a custom field with an empty value still
+    // prints its label on the invoice, which is a heading over nothing rather than a removal.
+    p.set('invoice_settings[custom_fields]', '');
+  }
+  return p.toString();
+}
+
 /** Can this deployment start a checkout at all? The webhook secret alone is not enough. */
 export function checkoutConfigured(env: Env): boolean {
   const key = (env as unknown as CheckoutEnv).STRIPE_SECRET_KEY ?? '';
@@ -611,6 +781,15 @@ export function buildCheckoutRequest(
   opts: {
     userId: string;
     email?: string | null;
+    /**
+     * The billing contact, when this account has set one — preferred over the account address.
+     *
+     * A billing contact that only took effect from the SECOND invoice would be a setting that does
+     * not work on the one occasion it is first needed: the purchase itself. Blank is not an
+     * address, so a whitespace-only preference falls back rather than sending Stripe an empty
+     * `customer_email` and creating a customer nothing can be sent to.
+     */
+    billingEmail?: string | null;
     plan: PlanId;
     returnTo: string;
     /**
@@ -653,7 +832,8 @@ export function buildCheckoutRequest(
   // checkout ever set. It is NOT an instruction about entitlement — entitlementFor still recomputes
   // from status and period, so a cancelled subscription naming 'studio' here still grants nothing.
   p.set('subscription_data[metadata][plan]', opts.plan);
-  if (opts.email) p.set('customer_email', opts.email);
+  const to = (opts.billingEmail ?? '').trim() || (opts.email ?? '').trim();
+  if (to) p.set('customer_email', to);
   /*
    * THE PROMOTION-CODE FIELD, AND THE COMMENT THAT USED TO SIT HERE.
    *
@@ -887,6 +1067,108 @@ export function invoiceBelongsTo(raw: unknown, customerId: string | null | undef
   const mine = str(customerId);
   const theirs = str(o['customer']);
   return mine !== null && theirs !== null && mine === theirs;
+}
+
+// ---------------------------------------------------------------------------
+// RECONCILIATION — does Stripe still think what we think?
+// ---------------------------------------------------------------------------
+//
+// EVERY ENTITLEMENT IN THIS PRODUCT IS APPLIED BY ONE WEBHOOK, and a webhook is a delivery. Stripe
+// gives up after its retries; a deploy can be mid-flight; a signing secret can be rotated on one
+// side. When any of that happens NOTHING SAYS SO — Stripe charges the customer, we serve whatever
+// tier the last event we did receive implied, and the only way anybody finds out is a complaint.
+//
+// This is the read that closes that gap. It moves nothing and repairs nothing: it says where the
+// two records disagree, and who has to be looked at. Repair stays manual on purpose — a job that
+// silently rewrote entitlement from a list it paged would be a second, untested entitlement path
+// with nobody watching it.
+
+export type ReconcileVerdict =
+  /** The two records agree. */
+  | 'ok'
+  /** Stripe has a subscription carrying no `metadata.userId`, so no account can ever be entitled by it. */
+  | 'unattributed'
+  /** Attributed, and we hold no subscription for that account at all. */
+  | 'missing_here'
+  /** Both sides have it, at different tiers. */
+  | 'plan_differs'
+  /** Same tier, different status — a cancellation or lapse whose event never landed. */
+  | 'status_differs';
+
+/**
+ * One subscription, as both sides read it.
+ *
+ * THE KEY SET IS THE ALLOWLIST. This report is an owner-facing dump covering every account in the
+ * deployment; carrying the Stripe object through would make it an export of everybody's billing
+ * profile — emails, payment methods, addresses — rather than a comparison of two tiers.
+ */
+export interface ReconcileRow {
+  subscriptionId: string | null;
+  userId: string | null;
+  stripePlan: PlanId | null;
+  stripeStatus: string | null;
+  /** Null means WE HAVE NO RECORD, which is not the same fact as a record saying 'free'. */
+  ourPlan: PlanId | null;
+  ourStatus: string | null;
+  verdict: ReconcileVerdict;
+}
+
+/** Compare one Stripe subscription against what this deployment stored for its account. */
+export function reconcileSubscription(
+  raw: unknown,
+  ours: Subscription | null | undefined,
+  env?: Env,
+): ReconcileRow {
+  const o = asObject(raw);
+  // A row this reader cannot parse is not a row that agrees. Dropping it would shrink the
+  // denominator by exactly the rows most likely to be worth looking at.
+  if (!o) {
+    return { subscriptionId: null, userId: null, stripePlan: null, stripeStatus: null, ourPlan: null, ourStatus: null, verdict: 'unattributed' };
+  }
+  const subscriptionId = str(o['id']);
+  const userId = str((o['metadata'] as Record<string, string> | undefined)?.['userId']);
+  const stripePlan = planOfStripeSubscription(o, env);
+  const stripeStatus = str(o['status']);
+  const base = { subscriptionId, userId, stripePlan, stripeStatus };
+
+  // Loudest first. Somebody is paying and no account can be entitled by it: the webhook ignores
+  // this on every delivery — correctly, because a guessed account is worse than none — and that
+  // refusal is otherwise completely silent.
+  // The TIER IS KEPT on an unattributed row. It was genuinely read off the price, and "somebody is
+  // paying for Studio and no account can be entitled by it" is the sentence the owner needs; the
+  // same row with the tier blanked says only that something is wrong somewhere.
+  if (!userId) return { ...base, ourPlan: null, ourStatus: null, verdict: 'unattributed' };
+  if (!ours) return { ...base, ourPlan: null, ourStatus: null, verdict: 'missing_here' };
+
+  const ourPlan = ours.plan ?? null;
+  const ourStatus = ours.status ?? null;
+  // The tier outranks the status so one drifted subscription is one finding rather than two, and
+  // because the repairs are different: a wrong tier is served wrongly today, a wrong status is a
+  // renewal or a cancellation that will be wrong at the period end.
+  if (ourPlan !== stripePlan) return { ...base, ourPlan, ourStatus, verdict: 'plan_differs' };
+  if (ourStatus !== stripeStatus) return { ...base, ourPlan, ourStatus, verdict: 'status_differs' };
+  return { ...base, ourPlan, ourStatus, verdict: 'ok' };
+}
+
+/** The findings, and the size of the thing they were found in. */
+export interface ReconcileReport {
+  /** How many subscriptions were actually examined. */
+  checked: number;
+  agreed: number;
+  /** Only the rows that disagree. The agreeing ones are a number, not a list. */
+  findings: ReconcileRow[];
+}
+
+/**
+ * Summarise, WITH THE DENOMINATOR.
+ *
+ * "No disagreements" is a fact about a query as much as about an account: over zero subscriptions
+ * it is a broken walk wearing the words of a clean one. `checked` is what lets the reader tell
+ * those apart, and it is why this is a function rather than a `.filter()` at the call site.
+ */
+export function reconcileReport(rows: readonly ReconcileRow[]): ReconcileReport {
+  const findings = rows.filter((r) => r.verdict !== 'ok');
+  return { checked: rows.length, agreed: rows.length - findings.length, findings };
 }
 
 /** Build the Billing Portal request — where a downgrade or a cancellation actually happens. */

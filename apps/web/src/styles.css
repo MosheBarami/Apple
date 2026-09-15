@@ -5526,6 +5526,66 @@ samp {
   color: var(--muted);
 }
 
+/* ---- THE FIELDS PRINTED ON THE INVOICE -----------------------------------
+   Folded away like the history beside it, and for the same reason: three boxes a finance
+   department fills in once and never looks at again should not sit open above the thing
+   people actually came to this page for. Two columns on a wide screen so the three short
+   fields do not become a tall column of near-empty rows, one on a narrow one. */
+.billing-details {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+}
+
+.billing-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.billing-details__intro {
+  margin: 0.6rem 0 0.75rem;
+  font-size: 0.8rem;
+}
+
+.billing-details__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.7rem 0.9rem;
+  align-items: end;
+}
+
+.billing-details__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.billing-details__label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* Its own row under the fields whatever the column count is, so the button never lands
+   beside a box and reads as belonging to that one field. */
+.billing-details__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.billing-details__note {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* A save Stripe refused is the one outcome that has to be noticed: the values are kept
+   here, and the invoice does not carry them yet. Coloured, not shouted — it is
+   recoverable by saving again. */
+.billing-details__note--warn {
+  color: var(--warn);
+}
+
 /* The way the ledger leaves. Right-aligned under the list so it reads as an action on
    the thing above it rather than as another history line. */
 .billing-history__export {

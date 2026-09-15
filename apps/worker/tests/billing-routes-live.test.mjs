@@ -51,8 +51,22 @@ const JWT = await new jose.SignJWT({ email: 'buyer@golem.test', role: 'authentic
 const NOW_S = Math.floor(Date.now() / 1000);
 const LATER = NOW_S + 10 * 86_400;
 
+/**
+ * The real validator, so the fake DO refuses exactly what the real one refuses.
+ *
+ * Importing it rather than re-implementing it is the point: a second copy of the rule in this file
+ * would drift from the one in the worker, and the route tests would then be asserting against a
+ * validator that ships nowhere.
+ */
+const BILLING_OUT = join(TMP, 'billing.mjs');
+execFileSync(ESBUILD, [join(WORKER, 'src', 'billing.ts'), '--bundle', '--format=esm', '--target=es2022',
+  `--outfile=${BILLING_OUT}`], { stdio: 'pipe', cwd: WORKER });
+const READ_DETAILS = (await import(`file://${BILLING_OUT}`)).readBillingDetails;
+
 /** What the user's QuotaDO answers for /billing. Set per test. */
 let doBilling = { plan: 'free', customerId: null, subscription: null, events: [] };
+/** The invoice fields this account has stored, as the DO would hold them. Reset per test. */
+let doDetails = { email: null, name: null, poNumber: null };
 /** Every DO call the routes made, so forwarding can be observed rather than assumed. */
 let doCalls = [];
 /** Every request that left for Stripe. */
@@ -104,14 +118,37 @@ function quotaNamespace() {
   return {
     idFromName: (n) => ({ toString: () => n }),
     idFromString: (n) => ({ toString: () => n }),
-    get: () => ({
+    // The id is captured, not discarded: the reconciliation route addresses ANOTHER account's DO —
+    // the one named in Stripe's subscription metadata — and "it read the right account" is the
+    // property that distinguishes a report from a coincidence.
+    get: (id) => ({
       async fetch(url, init) {
         const u = new URL(typeof url === 'string' ? url : url.url);
         let body = null;
         try { body = init?.body ? JSON.parse(init.body) : null; } catch { body = init?.body ?? null; }
-        doCalls.push({ path: u.pathname, body });
-        if (u.pathname === '/billing') return new Response(JSON.stringify(doBilling), { status: 200 });
+        doCalls.push({ path: u.pathname, body, id: id?.toString() ?? null });
+        // The real DO carries the invoice fields on this read, so the checkout can use the billing
+        // contact without a second round trip. The fake must too, or the join is never exercised.
+        if (u.pathname === '/billing') return new Response(JSON.stringify({ ...doBilling, details: doDetails }), { status: 200 });
         if (u.pathname === '/billing-customer') return new Response(JSON.stringify({ customerId: doBilling.customerId }), { status: 200 });
+        /*
+         * THE INVOICE FIELDS, MODELLED RATHER THAN ANSWERED WITH A CONSTANT.
+         *
+         * The real DO validates, stores, and returns the record it REPLACED — and the last of those
+         * is the whole reason the route can tell "never set a name" from "removed the name". A fake
+         * that echoed the request back with `previous: {}` would make the erasure test below pass
+         * against a route that never sent a clear at all.
+         */
+        if (u.pathname === '/billing-details' && (init?.method ?? 'GET') === 'GET') {
+          return new Response(JSON.stringify({ details: doDetails }), { status: 200 });
+        }
+        if (u.pathname === '/billing-details') {
+          const v = READ_DETAILS(body?.details ?? {});
+          if (!v.ok) return new Response(JSON.stringify({ error: v.error }), { status: v.status });
+          const previous = doDetails;
+          doDetails = v.details;
+          return new Response(JSON.stringify({ ok: true, details: v.details, previous }), { status: 200 });
+        }
         if (u.pathname === '/state') {
           return new Response(JSON.stringify({
             creditsRemaining: 100, creditsDaily: 231, creditsMonthly: 2310, creditsUsedToday: 0,
@@ -134,6 +171,7 @@ const env = () => ({
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
   STRIPE_PORTAL_CONFIGURATION: 'bpc_test_1',
+  ADMIN_KEY: 'owner-key-test',
   KV: { get: async () => null, put: async () => {}, delete: async () => {}, list: async () => ({ keys: [] }) },
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
   // Records what was prepared and what was bound to it. A notification is written through D1, and
@@ -170,8 +208,9 @@ async function call(path, { method = 'GET', jwt = JWT, body, headers = {} } = {}
   return { status: res.status, json: parsed, text };
 }
 
-const reset = (billing) => {
+const reset = (billing, details) => {
   doBilling = { plan: 'free', customerId: null, subscription: null, events: [], ...billing };
+  doDetails = { email: null, name: null, poNumber: null, ...details };
   doCalls = [];
   stripeCalls = [];
   d1Calls = [];
@@ -633,4 +672,225 @@ test('the preview is scoped to the caller, with no id to point elsewhere', async
   reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
   const anon = await call('/api/billing/preview?plan=studio', { jwt: null });
   assert.notEqual(anon.status, 200, "an unauthenticated caller must not price someone else's change");
+});
+
+// ------------------------------------------------------------ the fields printed on the invoice
+
+/** Every Stripe customer update this test made, parsed. */
+const customerCalls = () =>
+  stripeCalls.filter((c) => /\/v1\/customers\//.test(c.url)).map((c) => ({ url: c.url, p: new URLSearchParams(c.body) }));
+
+test('CONTROL: an account nobody has configured reads back three absences, not an error', async () => {
+  // Without this, every assertion below could pass because the route is simply broken.
+  reset();
+  const r = await call('/api/billing/details');
+  assert.equal(r.status, 200, r.text);
+  assert.deepEqual(r.json.details, { email: null, name: null, poNumber: null });
+});
+
+test('the fields are stored, and an account with no Stripe customer is told so rather than lied to', async () => {
+  // `synced: null` is not `synced: false`. There is nothing to write to yet — the customer does not
+  // exist until the first purchase — and reporting that as a failed sync would send somebody
+  // hunting a fault that is not there.
+  reset();
+  const r = await call('/api/billing/details', {
+    method: 'PUT',
+    body: { details: { email: 'finance@acme.test', name: 'Acme Ltd', poNumber: 'PO-4417' } },
+  });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.synced, null);
+  assert.deepEqual(r.json.details, { email: 'finance@acme.test', name: 'Acme Ltd', poNumber: 'PO-4417' });
+  assert.equal(customerCalls().length, 0, 'and Stripe was not called with no customer to call it about');
+  assert.equal((await call('/api/billing/details')).json.details.poNumber, 'PO-4417', 'it survived the write');
+});
+
+test('WITH A CUSTOMER, THE FIELDS REACH THE DOCUMENT — under the parameters Stripe prints from', async () => {
+  reset({ customerId: 'cus_1' });
+  const r = await call('/api/billing/details', {
+    method: 'PUT',
+    body: { details: { email: 'finance@acme.test', name: 'Acme Ltd', poNumber: 'PO-4417' } },
+  });
+  assert.equal(r.json.synced, true, r.text);
+  const [one, ...rest] = customerCalls();
+  assert.equal(rest.length, 0, 'exactly one customer update, not one per field');
+  assert.equal(one.url, 'https://api.stripe.com/v1/customers/cus_1');
+  assert.equal(one.p.get('email'), 'finance@acme.test');
+  assert.equal(one.p.get('name'), 'Acme Ltd');
+  assert.equal(one.p.get('invoice_settings[custom_fields][0][value]'), 'PO-4417');
+});
+
+test('A BLANK IN THIS FORM DOES NOT ERASE THE NAME CHECKOUT COLLECTED', async () => {
+  // The defect: Checkout collects a billing name at the first purchase, this form opens empty, and
+  // a save of the email alone sends `name=` and wipes it off every future invoice. Invisible from
+  // here — it shows up on a document, monthly, after the fact.
+  reset({ customerId: 'cus_1' });
+  const r = await call('/api/billing/details', { method: 'PUT', body: { details: { email: 'finance@acme.test' } } });
+  assert.equal(r.json.synced, true, r.text);
+  const [one] = customerCalls();
+  assert.equal(one.p.has('name'), false, 'a field nobody touched must not appear in the request at all');
+  assert.equal(one.p.has('invoice_settings[custom_fields]'), false);
+});
+
+test('but a value this product set and the person removed IS cleared on Stripe', async () => {
+  // The mirror of the test above. A PO that keeps printing after the buyer deleted it is a false
+  // statement on an invoice, reissued every month.
+  reset({ customerId: 'cus_1' }, { email: 'old@acme.test', name: 'Old Ltd', poNumber: 'PO-1' });
+  const r = await call('/api/billing/details', { method: 'PUT', body: { details: {} } });
+  assert.equal(r.json.synced, true, r.text);
+  const [one] = customerCalls();
+  assert.equal(one.p.get('name'), '', 'an empty value is how Stripe is told to unset a field');
+  assert.equal(one.p.get('email'), '');
+  assert.equal(one.p.get('invoice_settings[custom_fields]'), '', 'the list goes, not one row emptied');
+});
+
+test('an address that is not an address is refused, and Stripe is never troubled', async () => {
+  reset({ customerId: 'cus_1' });
+  const r = await call('/api/billing/details', { method: 'PUT', body: { details: { email: 'acme.test' } } });
+  assert.equal(r.status, 400, r.text);
+  assert.match(r.json.error, /email/i);
+  assert.equal(customerCalls().length, 0);
+  assert.equal((await call('/api/billing/details')).json.details.email, null, 'and nothing was stored');
+});
+
+test('WHEN STRIPE REFUSES, THE ROUTE SAYS SO — it does not report a save it could not make', async () => {
+  // A failure to observe must not render as an observation. The values are kept here, because the
+  // next save re-sends them; what is NOT claimed is that the invoice now carries them.
+  reset({ customerId: 'cus_1' });
+  stripeDown = true;
+  const r = await call('/api/billing/details', { method: 'PUT', body: { details: { name: 'Acme Ltd' } } });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.synced, false, 'false, not true and not absent');
+  assert.equal(r.json.details.name, 'Acme Ltd', 'and the record is kept, so the next save repairs it');
+});
+
+test('editing nothing is not a failed save', async () => {
+  reset({ customerId: 'cus_1' });
+  const r = await call('/api/billing/details', { method: 'PUT', body: { details: {} } });
+  assert.equal(r.json.synced, true, r.text);
+  assert.equal(customerCalls().length, 0, 'an empty request to Stripe could still fail, for no gain');
+});
+
+test('there is no customer parameter here, so a caller cannot address another account', async () => {
+  // The id written to is the one in the caller's own DO, addressed from the verified JWT subject.
+  reset({ customerId: 'cus_1' });
+  await call('/api/billing/details', {
+    method: 'PUT',
+    body: { customerId: 'cus_victim', customer: 'cus_victim', details: { name: 'Acme Ltd' } },
+  });
+  assert.equal(customerCalls()[0].url, 'https://api.stripe.com/v1/customers/cus_1');
+  const anon = await call('/api/billing/details', { jwt: null });
+  assert.notEqual(anon.status, 200, "an unauthenticated caller must not read somebody's billing contact");
+});
+
+test('THE BILLING CONTACT APPLIES TO THE FIRST INVOICE, not from the second one on', async () => {
+  // A setting that only takes effect after the purchase is a setting that does not work on the one
+  // occasion it is first needed.
+  reset({}, { email: 'finance@acme.test' });
+  const r = await call('/api/billing/checkout', { method: 'POST', body: { plan: 'builder' } });
+  assert.equal(r.status, 200, r.text);
+  const session = stripeCalls.find((c) => c.url.includes('/v1/checkout/sessions'));
+  assert.equal(new URLSearchParams(session.body).get('customer_email'), 'finance@acme.test');
+});
+
+test('and with no billing contact the checkout still names the account address', async () => {
+  reset();
+  await call('/api/billing/checkout', { method: 'POST', body: { plan: 'builder' } });
+  const session = stripeCalls.find((c) => c.url.includes('/v1/checkout/sessions'));
+  assert.equal(new URLSearchParams(session.body).get('customer_email'), 'buyer@golem.test');
+});
+
+// -------------------------------------------------- does Stripe still think what we think?
+
+const OWNER = { 'X-Admin-Key': 'owner-key-test' };
+/** Stripe's subscription list, as the reconciliation route pages it. */
+const stripeList = (data, has_more = false) => (url) =>
+  url.includes('/v1/subscriptions') ? { body: { object: 'list', data, has_more } } : null;
+const liveSub = (over = {}) => ({
+  id: 'sub_1', object: 'subscription', customer: 'cus_1', status: 'active',
+  current_period_end: LATER, cancel_at_period_end: false,
+  metadata: { userId: USER_ID }, items: { data: [{ id: 'si_1', price: { id: 'price_builder_1' } }] },
+  ...over,
+});
+
+test('the reconciliation is owner-gated, and a caller without the key never reaches Stripe', async () => {
+  reset();
+  stripeReply = stripeList([liveSub()]);
+  const r = await call('/api/admin/billing-reconcile');
+  assert.equal(r.status, 403, r.text);
+  assert.equal(stripeCalls.length, 0, 'a refused admin call must not cost a Stripe request either');
+});
+
+test('CONTROL: two records that agree produce no findings AND a denominator', async () => {
+  // "No disagreements" over zero subscriptions is a broken query wearing the words of a clean
+  // account. The count is what tells them apart, so it is asserted beside the empty list.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = stripeList([liveSub()]);
+  const r = await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.checked, 1, 'a report with no denominator is not a report');
+  assert.equal(r.json.agreed, 1);
+  assert.deepEqual(r.json.findings, []);
+});
+
+test('A MISSED WEBHOOK IS VISIBLE — the customer paying for a tier we never applied', async () => {
+  // The whole reason this route exists. Nothing in this product read Stripe's subscription list
+  // before it, so a delivery Stripe gave up on was silent on both sides until somebody complained.
+  reset({ plan: 'free', customerId: null, subscription: null });
+  stripeReply = stripeList([liveSub()]);
+  const r = await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.checked, 1);
+  assert.equal(r.json.findings.length, 1);
+  assert.equal(r.json.findings[0].verdict, 'missing_here');
+  assert.equal(r.json.findings[0].userId, USER_ID);
+});
+
+test('it reads the account Stripe names, not the caller', async () => {
+  // An owner report that compared every Stripe subscription against the OWNER's own DO would agree
+  // or disagree by coincidence. The DO addressed has to be the one in the subscription metadata.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = stripeList([liveSub({ metadata: { userId: 'u_someone_else' } })]);
+  await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.ok(doCalls.some((d) => d.id === 'u_someone_else'), `the route must address u_someone_else, saw ${JSON.stringify(doCalls.map((d) => d.id))}`);
+});
+
+test('a subscription nobody can be attributed is reported without a DO lookup to invent one', async () => {
+  reset();
+  stripeReply = stripeList([liveSub({ metadata: {} })]);
+  const r = await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.equal(r.json.findings[0].verdict, 'unattributed');
+  assert.equal(r.json.findings[0].userId, null);
+  assert.equal(doCalls.filter((d) => d.path === '/billing').length, 0, 'there is no account to look up');
+});
+
+test('a complete walk says it was complete', async () => {
+  // The other half of the test below. `truncated` has to be false on a normal walk, or the flag is
+  // just a constant and the report can never say the one thing it exists to be able to say.
+  reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
+  stripeReply = stripeList([liveSub()]);
+  const r = await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.equal(r.json.truncated, false);
+});
+
+test('A WALK THAT STOPPED SHORT SAYS SO, rather than reporting its prefix as the whole', async () => {
+  // An upstream that always answers `has_more` would otherwise spin this route until the worker is
+  // killed; the cap is what stops that, and the flag is what stops the capped result being read as
+  // a complete one. Set from the branch that decided to stop, not inferred from the row count.
+  reset();
+  stripeReply = stripeList([liveSub()], true);
+  const r = await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.equal(r.status, 200, r.text);
+  assert.equal(r.json.truncated, true);
+  assert.ok(r.json.checked >= 1, 'and what it did examine is still counted');
+});
+
+test('WHEN STRIPE CANNOT BE PAGED, THE ROUTE SAYS SO — it does not report a clean account', async () => {
+  // A failure to observe must never render as an observation, and "0 findings" off a failed fetch
+  // is the most expensive form of that: it is an all-clear on the thing that checks for silence.
+  reset();
+  stripeDown = true;
+  const r = await call('/api/admin/billing-reconcile', { headers: OWNER });
+  assert.equal(r.status, 502, r.text);
+  assert.equal(r.json.checked, undefined, 'no count may leave this route when nothing was counted');
+  assert.equal(r.json.findings, undefined);
 });
