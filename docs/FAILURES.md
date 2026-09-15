@@ -100,6 +100,33 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-65 · `join()` renders undefined as "", so a guard scanning for "undefined" saw nothing
+**Believed:** `preferences.test.mjs` proved every allowlisted preference value renders a rule the
+model actually receives. Its guard was `assert.ok(block.length > 0 && !block.includes('undefined'))`,
+applied identically across four loops — language, coding style, response length, Roblox convention.
+**True:** it could only ever work for ONE of the four. `language` reaches the output through a
+template literal — `` `Reply in ${LANGUAGE_NAMES[lang]}` `` — and `${undefined}` really does render
+the six characters `undefined`. The other three reach it through `lines.push(RULE[key])` followed by
+`lines.join('\n- ')`, and **`Array.prototype.join` renders `undefined` and `null` as the empty
+string**. A missing rule did not spell "undefined" in the block. It left a bullet with nothing after
+it — and `block.length > 0` was still true, because the other bullets were fine.
+**Cost of the error:** deleting `CODING_STYLE_RULE.oop`, `RESPONSE_LENGTH_RULE.normal` or
+`CONVENTION_RULE['no-wait-loops']` left the whole suite green. Three of the four allowlists could
+lose entries silently, which is exactly the defect the test's own comment says it exists to catch:
+"a preference the user can set and the model never hears about".
+**Caught by:** the adversarial verification pass, not by reading. The test was readable, commented,
+and wrong.
+**The rule:** **a marker-scanning assertion is only as good as the rendering path that produces the
+marker**, and one codebase routinely has several. Template interpolation stringifies `undefined`;
+`join` and `filter(Boolean)` erase it; `JSON.stringify` drops the key entirely; `String(x)` spells
+it out again. Before asserting "the output does not contain X", establish that the failure you
+fear can produce X *on the path the value actually travels*.
+**The repair, which generalises:** assert the PROPERTY rather than a symptom of its absence.
+"every allowlisted value produces exactly one non-empty bullet" is falsifiable on every path,
+needs no knowledge of how the value is interpolated, and reddens for all three deletions above.
+This is F-58's "an assertion weaker than the property it claims" with a named mechanism for HOW it
+got weaker.
+
 ### F-64 · A falsification parser that matched nothing, and reported that as zero failures
 **Believed:** three deliberate breaks to `apps/worker/src/tools.ts` had each been checked and each
 left the suite green, so the repaired oracle was unfalsifiable and the breaks were mis-aimed.
