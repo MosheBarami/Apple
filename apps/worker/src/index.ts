@@ -261,6 +261,12 @@ import {
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
 import { withSchema } from './schema-once';
+import {
+  openRecoveryRequest,
+  listRecoveryRequests,
+  findByEmail as findRecoveryByEmail,
+  decideRecoveryRequest,
+} from './recovery-requests';
 
 export { SessionDO } from './do/session';
 export { QuotaDO } from './do/quota';
@@ -475,7 +481,7 @@ app.use('/api/*', async (c, next) => {
  * leaving this line in place would turn the endpoint into an open subscription dispenser, which is
  * why billing-route.test.mjs asserts both halves together.
  */
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions'];
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions', '/api/recovery-request'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();
@@ -3634,6 +3640,113 @@ app.post('/api/security/password-changed', async (c) => {
     at: Date.now(),
   });
   return c.json(outcome.delivered ? { recorded: true } : { recorded: false, reason: outcome.reason });
+});
+
+// ------------------------------------------------- account recovery (deliberately unauthenticated)
+/**
+ * "I cannot get in at all."
+ *
+ * THE ONE ROUTE IN THIS FILE WHOSE WHOLE POINT IS THAT THERE IS NO TOKEN. Every other recovery
+ * affordance this product has needs the thing that is missing — `/forgot` mails the inbox they
+ * cannot open, the second-factor prompt wants the phone that broke, and settings is behind the
+ * sign-in that is failing. Putting this behind the JWT middleware would be a locked door with a
+ * sign saying the key is inside, so it is in `AUTH_EXEMPT` and a test fails if it is ever tidied
+ * back in.
+ *
+ * WHAT IT DOES NOT SAY. The body is identical for an address with an account and one without —
+ * byte for byte, which the route test asserts by comparing whole responses. That is not politeness
+ * about a check that happened: `recovery-requests.ts` holds a D1 binding and has no way to ask
+ * whether an account exists, so there is no branch here to get wrong. The same sentence
+ * `auth-flows.ts` uses on the client is the one the wire returns.
+ *
+ * WHAT IT DOES SAY. A write that did not happen is a 503, not a thank-you. Whether D1 accepted the
+ * row has nothing to do with the address — it fails the same way for every input — so reporting it
+ * reveals nothing, while NOT reporting it means telling somebody in trouble that their plea is in
+ * a queue it never reached. That is this repository's own named failure at the moment it costs
+ * most, and it is the reason `openRecoveryRequest` returns `recorded` rather than throwing.
+ *
+ * RATE LIMITED BY ADDRESS, because it is unauthenticated and it inserts rows. The ceiling is on
+ * the IP rather than on the address: limiting per address would take a different number of
+ * requests to trip for a repeat address than for a fresh one, which is a timing oracle wearing the
+ * limiter's clothes.
+ */
+app.post('/api/recovery-request', async (c) => {
+  const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
+  if (ipLimited(`recovery:${ip}`, 10)) {
+    return c.json({ error: 'Too many requests — wait a minute and try again.' }, 429);
+  }
+
+  const body = await c.req.json<{ email?: unknown; note?: unknown }>().catch(() => null);
+  if (!body) return c.json({ error: 'expected a JSON body' }, 400);
+
+  const outcome = await openRecoveryRequest(c.env, { email: body.email, note: body.note });
+
+  if (!outcome.recorded) {
+    // A shape problem is the caller's to fix and is not about the account: every address that is
+    // not an address is refused the same way, whether or not anybody has one.
+    if (outcome.reason === 'that does not look like an email address') {
+      return c.json({ error: 'That does not look like an email address.' }, 400);
+    }
+    void count(c.env, 'recovery_request_failed');
+    return c.json(
+      { error: 'We could not record that just now. Please try again in a minute.' },
+      503,
+    );
+  }
+
+  void count(c.env, 'recovery_request_opened');
+  //[[ NO ID IN THE REPLY. An id is a handle, and the only thing a handle on this route could be
+  //   used for is to name somebody else's request to the admin API. Nothing the caller receives
+  //   distinguishes a new request from a repeat, either — a repeat bumps `attempts` server-side
+  //   and answers exactly as the first one did. ]]
+  return c.json({
+    received: true,
+    message:
+      'Thanks — that is recorded. If that address has an account, we will be in touch at it. '
+      + 'Do not sign up again with the same address; it will not send anything.',
+  });
+});
+
+/**
+ * The operator's queue.
+ *
+ * Behind the admin key, because a list of accounts currently in trouble and how far along their
+ * recovery is remains sensitive even though it holds no addresses.
+ *
+ * `?email=` is how the row is found. The address is the OPERATOR's input, hashed here and matched
+ * against the stored hash — which is what lets the table hold no addresses while still being a
+ * queue somebody can work. The person reached them through some other channel and said who they
+ * are; this turns that into the row.
+ */
+app.get('/api/admin/recovery-requests', async (c) => {
+  const email = c.req.query('email');
+  if (email) {
+    const one = await findRecoveryByEmail(c.env, email);
+    return c.json({ requests: one ? [one] : [] });
+  }
+  const state = c.req.query('state');
+  const requests = await listRecoveryRequests(c.env, { state, limit: Number(c.req.query('limit')) || 100 });
+  return c.json({ requests });
+});
+
+/**
+ * Move a request along.
+ *
+ * The state machine lives in the store and fails closed there; this route's job is to report its
+ * refusal as a refusal. A 409 rather than a 400 because the request is well formed and the
+ * conflict is with the row's current state — an operator who gets a 400 goes looking at their own
+ * typing, which is the wrong place.
+ */
+app.post('/api/admin/recovery-requests/:id', async (c) => {
+  const body = await c.req.json<{ state?: unknown; decidedBy?: unknown }>().catch(() => null);
+  if (!body) return c.json({ error: 'expected a JSON body' }, 400);
+  const r = await decideRecoveryRequest(c.env, {
+    id: c.req.param('id'),
+    state: body.state,
+    decidedBy: body.decidedBy,
+  });
+  if (!r.ok) return c.json({ error: r.reason, state: r.state }, r.reason === 'no such request' ? 404 : 409);
+  return c.json({ ok: true, state: r.state });
 });
 
 // ---------------------------------------------------------------- API keys (JWT-authenticated)

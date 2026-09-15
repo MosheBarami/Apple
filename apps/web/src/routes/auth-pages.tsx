@@ -12,6 +12,8 @@ import { PRODUCT_MODES_OFFERED, PRODUCT_MODE_INFO } from '@golem/shared';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
+import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
+import { submitRecoveryRequest } from '../lib/api';
 import { useTheme } from '../lib/theme';
 import { AppleGlyph } from '../components/glyphs';
 import {
@@ -172,6 +174,14 @@ function CheckEmailCard({
         No mail after a minute? You may already have an account —{' '}
         <Link to={`/forgot${address ? `?email=${encodeURIComponent(address)}` : ''}`}>reset your password</Link>.
       </p>
+      {/* AND THE DOOR AFTER THAT ONE. The reset above fixes the common case — a sign-up against an
+          address that already has an account, which returns 200 and sends nothing. It does not fix
+          the case where the mail itself never arrives, and that person needs somewhere to go that
+          is not this card again. */}
+      <p className="auth-switch">
+        Still nothing?{' '}
+        <Link to={`/recovery${address ? `?email=${encodeURIComponent(address)}` : ''}`}>Tell us and we will look</Link>.
+      </p>
     </div>
   );
 }
@@ -318,10 +328,22 @@ export function LoginPage() {
             {busy ? 'Checking…' : 'Sign in'}
           </button>
           <p className="auth-switch">
-            {/* Honest about the one thing this product cannot yet do for them. Offering a "lost my
-                phone" link to a flow that does not exist would be worse than saying nothing. */}
-            Without that app you cannot get in — there are no backup codes yet. Signing out below
-            returns you to the password screen.
+            {/*[[ THIS USED TO BE A DEAD END, AND SAYING SO WAS THE HONEST THING AT THE TIME.
+                  The sentence here read "Without that app you cannot get in — there are no backup
+                  codes yet", which was true and left the person nowhere. /forgot is not the answer
+                  either: a new password lands back on this same prompt, because the password was
+                  never what was missing.
+
+                  It now points at /recovery, which takes the message and puts it in a queue an
+                  operator works. What it deliberately does NOT do is offer a code to type — there
+                  are still no backup codes in this product, and a field for one would be a control
+                  wired to nothing — or promise what the operator will decide. ]]*/}
+            Lost the phone with that app on it? Your password will not help here — a new one returns
+            you to this same screen.{' '}
+            <Link to={`/recovery${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ''}`}>
+              Tell us what happened
+            </Link>{' '}
+            and a person will look at it.
           </p>
           <p className="auth-switch">
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => void signOut()}>
@@ -375,6 +397,14 @@ export function LoginPage() {
         </p>
         <p className="auth-switch">
           New here? <Link to="/signup">Create an account</Link>
+        </p>
+        {/* THE THIRD LINK, and it is last on purpose. A reset fixes most of what brings people to
+            this page, and offering the human queue first would fill it with requests that /forgot
+            answers in seconds. This is for the person that link cannot reach: the mail never
+            arrives, or the second factor is on a phone that is gone. */}
+        <p className="auth-switch">
+          Locked out and a reset will not help?{' '}
+          <Link to={`/recovery${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ''}`}>Ask a person</Link>
         </p>
       </form>
     </AuthShell>
@@ -839,6 +869,123 @@ export function ConfirmEmailPage() {
           Go to sign in
         </Link>
       </div>
+    </AuthShell>
+  );
+}
+
+/* ---------------------------------------------------------- account recovery (the last door) --- */
+
+/**
+ * `/recovery` — for somebody every other door has already failed.
+ *
+ * WHY THERE HAS TO BE A PAGE AND NOT JUST A MAILTO. Each recovery path this product has needs the
+ * thing that is missing: `/forgot` mails the inbox they cannot open, the two-step prompt wants the
+ * phone that broke, and `/settings` is behind the sign-in that is failing. Before this existed the
+ * interface had nowhere at all to say "none of those work" — the audit for this section grepped
+ * the whole tree for `support@`, `locked out` and `account recovery` and found only the checklist
+ * lines asking for them. The owner of this product spent a week outside his own account with the
+ * screen's entire offer being to try again.
+ *
+ * THE SCREEN NEVER DECIDES ANYTHING ITSELF. `recoveryOutcome` owns the one judgement that matters
+ * — whether the plea was actually written down — because the comfortable wrong answer here is a
+ * thank-you printed over a 503, to a person who will then wait for a reply nobody will send. The
+ * three outcomes are rendered differently and the failed one keeps the form filled in, so trying
+ * again does not mean typing it all again.
+ *
+ * AND IT SAYS NOTHING ABOUT THE ADDRESS. The worker cannot discover whether an account exists, so
+ * the acknowledgement is the hedged sentence this product uses everywhere else.
+ */
+export function RecoveryRequestPage() {
+  const location = useLocation();
+  const initial = new URLSearchParams(location.search).get('email') ?? '';
+  const [email, setEmail] = useState(initial);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<RecoveryOutcome | null>(null);
+
+  const send = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy || !canSubmitRecovery(email)) return;
+    setBusy(true);
+    // The reply is not interpreted here — see the module's own note on why that matters.
+    const reply = await submitRecoveryRequest(email.trim(), note.trim());
+    setBusy(false);
+    setOutcome(recoveryOutcome(reply));
+  };
+
+  if (outcome?.kind === 'received') {
+    return (
+      <AuthShell>
+        <div className="auth-card" role="status">
+          <div className="auth-mail-icon" aria-hidden="true">
+            ✉
+          </div>
+          <h2 className="auth-card-title">That is with us</h2>
+          <p className="auth-card-sub">{outcome.message}</p>
+          {/* Said plainly, because the alternative is somebody filing the same plea six times and
+              pushing everyone else down a queue that is worked oldest-first. A repeat is absorbed
+              server-side, so this is a description of what happens, not a rule being asked for. */}
+          <p className="field-hint">
+            Sending this again will not move you up — repeats are folded into the request you already made.
+          </p>
+          <Link to="/login" className="btn btn-primary btn-block">
+            Back to sign in
+          </Link>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell>
+      <form className="auth-card" onSubmit={send} noValidate>
+        <h2 className="auth-card-title">Locked out of your account</h2>
+        <p className="auth-card-sub">
+          If the reset link never arrives, or you have lost the phone with your codes on it, tell us here and a
+          person will look at it.
+        </p>
+        {/* THE TWO FASTER DOORS FIRST. Most people who land here have not actually exhausted the
+            self-service paths — they have hit the case where signing up again with an existing
+            address returns success and sends nothing. That one is fixed by /forgot in seconds,
+            and pointing at it is worth more than a queue position. */}
+        <p className="field-hint">
+          Worth trying first: <Link to={`/forgot${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ''}`}>a
+          password reset</Link>, which also works when a sign-up confirmation never came.
+        </p>
+        {/* `received` already returned above, so anything still here is a 'retry' or a 'failed' and
+            both belong in the error slot. The narrowing is the type system's, not a convention. */}
+        {outcome && <FormError message={outcome.message} />}
+        <label className="field">
+          <span className="field-label">Email</span>
+          <input
+            type="email"
+            name="email"
+            autoComplete="email"
+            required
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">What happened</span>
+          <textarea
+            name="note"
+            rows={4}
+            maxLength={600}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="I set up two-step verification and my phone was replaced."
+          />
+        </label>
+        <button type="submit" className="btn btn-primary btn-block" disabled={busy || !canSubmitRecovery(email)}>
+          {busy ? 'Sending…' : 'Ask for help'}
+        </button>
+        <p className="auth-switch">
+          <Link to="/login">Back to sign in</Link>
+        </p>
+      </form>
     </AuthShell>
   );
 }
