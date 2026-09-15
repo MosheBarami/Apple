@@ -1585,6 +1585,29 @@
   padding-inline-start: 1.05rem;
 }
 
+/* What Apple decided for itself. Same typographic weight as the open questions above — neither
+   is more important than the other — but ruled in amber, because these are decisions already
+   acting on the build rather than gaps still waiting on an answer. The rule is what lets the eye
+   tell the two lists apart at a glance without a second heading size. */
+.gx-assumed {
+  margin-top: 0.45rem;
+  padding-inline-start: 0.6rem;
+  border-inline-start: 2px solid color-mix(in srgb, var(--gx-amber) 45%, transparent);
+  color: var(--gx-ink-3);
+  font-size: 0.77rem;
+  line-height: 1.55;
+}
+
+.gx-assumed__label {
+  display: block;
+  color: var(--gx-ink-2);
+}
+
+.gx-assumed ul {
+  margin: 0.1rem 0 0;
+  padding-inline-start: 1.05rem;
+}
+
 /* --- the Actions checklist ------------------------------------------------ */
 
 .gx-checks {
