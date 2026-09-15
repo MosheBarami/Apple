@@ -11,7 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -112,4 +112,30 @@ test('poly haven answers differently for a texture and for geometry, from the id
   const texture = await I.resolveDownload({ ...rowFor('poly_haven'), id: 'poly_haven/textures/brick-wall-001', name: 'Brick Wall 001' });
   assert.ok('url' in texture, `a texture must resolve: ${texture.error}`);
   assert.match(texture.url, /\.(jpg|png)$/, 'and to an actual image file');
+});
+
+test('AN EXPANDED PACK ROW NAMES ITS OWN FILE, and a bare pack row still refuses', async () => {
+  // The two shapes share a source and must not share an answer. A four-segment id is one file out
+  // of an archive; a three-segment id is the pack itself, which has no single file to import and
+  // must keep saying so.
+  const pack = await I.resolveDownload({
+    ...rowFor('kenney'),
+    id: 'kenney/pack/city-kit-suburban',
+    sourceUrl: 'https://kenney.nl/assets/city-kit-suburban',
+  });
+  assert.ok(!('url' in pack), 'a pack row must not resolve to a download');
+  assert.match(pack.error, /PACK of many files/);
+});
+
+test('the id slug and the expander agree, or every expanded row becomes unfindable at once', async () => {
+  // The Worker derives the entry slug from the id and matches it against the archive's own entry
+  // names; the expander derived the id from those names. They are separate implementations in
+  // separate runtimes with no shared import, so the agreement is asserted here rather than
+  // assumed — and it is asserted on the awkward cases, which is where two slug functions drift.
+  const expander = readFileSync(join(WORKER, '..', '..', 'scripts', 'expand-packs.mjs'), 'utf8');
+  const worker = readFileSync(join(WORKER, 'src', 'asset-import.ts'), 'utf8');
+  for (const piece of ["normalize('NFKD')", "replace(/[^\\w\\s/-]/g, '')", "replace(/[\\s_]+/g, '-')", "replace(/-+/g, '-')"]) {
+    assert.ok(expander.includes(piece), `the expander must still use ${piece}`);
+    assert.ok(worker.includes(piece), `and the worker must too — they derive the same slug`);
+  }
 });

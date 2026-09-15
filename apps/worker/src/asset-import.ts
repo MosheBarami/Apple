@@ -46,8 +46,15 @@ export interface ImportOutcome {
  * different piece of work with its own failure modes. So ambientCG returns null WITH A REASON
  * rather than being quietly skipped, and the reason travels all the way back to the caller.
  */
+export interface ResolvedDownload {
+  url: string;
+  contentType: string;
+  /** For an archive: which entry inside it this row means, as the slug carried in the row's id. */
+  entrySlug?: string;
+}
+
 export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind' | 'name' | 'sourceUrl'>):
-  Promise<{ url: string; contentType: string } | { error: string }> {
+  Promise<ResolvedDownload | { error: string }> {
   if (rec.source === 'poly_haven') {
     // id shape: poly_haven/<type>/<slug>. The slug is not the Poly Haven key — the key uses
     // underscores and the harvest slugified it — so the files API is asked by the ORIGINAL key,
@@ -130,7 +137,28 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     if (!id) return { error: 'the ambientCG row has no name to build an archive URL from' };
     return { url: `https://ambientcg.com/get?file=${encodeURIComponent(id)}_1K-JPG.zip`, contentType: 'application/zip' };
   }
-  if (rec.source === 'opengameart' || rec.source === 'kenney') {
+  if (rec.source === 'kenney') {
+    //[[ AN EXPANDED ROW NAMES ITS FILE IN ITS OWN ID, which is what makes it importable at all.
+    //
+    //   Kenney's archive URL carries a content hash that changes on every republish, so it cannot
+    //   be built from the row — but the row's sourceUrl is the pack page, and the page carries the
+    //   current URL. One extra fetch, and it is always the CURRENT archive rather than one
+    //   remembered from harvest time, which is the better answer anyway.
+    //
+    //   The entry is then found by matching the slug in the id. That is why the expander derives
+    //   ids from entry names instead of counters: a counter would make the row unfindable the
+    //   moment Kenney reorders a zip. ]]
+    const parts = rec.id.split('/');
+    if (parts.length < 4) {
+      return { error: 'this kenney row is a PACK of many files, not a single asset — it must be expanded into one row per file before any of it can be imported' };
+    }
+    const page = await fetch(rec.sourceUrl);
+    if (!page.ok) return { error: `the kenney pack page answered ${page.status}` };
+    const zip = /href='(https:\/\/kenney\.nl\/media\/pages\/assets\/[^']+\.zip)'/.exec(await page.text())?.[1];
+    if (!zip) return { error: `no download archive found on ${rec.sourceUrl}` };
+    return { url: zip, contentType: 'application/zip', entrySlug: parts.slice(3).join('/') };
+  }
+  if (rec.source === 'opengameart') {
     //[[ THESE ROWS ARE PACKS, NOT ASSETS, and that is the real reason rather than the first one.
     //
     //   The unzipper exists and would open either archive. What it could not do is choose: a
@@ -142,6 +170,9 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     //   write one provenance row per file, each with its own name and its own tags. That is a real
     //   piece of work and it is not this one, so the row stays honest about being a pointer to a
     //   pack rather than pretending an import will give you what its name promises. ]]
+    // An expanded OpenGameArt row carries a loose file, and the mirror lists its direct URL — but
+    // the URL is not derivable from the id, so the row must be re-read from the harvest. Until an
+    // import path carries that, an expanded row is still a reference. Named, not implied.
     return { error: `this ${rec.source} row is a PACK of many files, not a single asset — it must be expanded into one row per file before any of it can be imported` };
   }
   if (rec.source === 'generated_roblox') {
@@ -162,6 +193,26 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     return { error: `${rec.source} is an allowed source that has not been harvested yet — no rows from it exist to import` };
   }
   return { error: `no download resolver for source "${rec.source}"` };
+}
+
+/**
+ * The same slug the expander derived the row's id from.
+ *
+ * Duplicated from scripts/expand-packs.mjs deliberately: they are a plain script and a Worker
+ * module with no shared runtime, and the coupling is asserted by a test rather than by an import
+ * that cannot exist. If the two ever disagree, every expanded row becomes unfindable at once —
+ * which is loud, not silent.
+ */
+function slugOf(path: string): string {
+  return path
+    .replace(/\.[a-z0-9]+$/i, '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s/-]/g, '')
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'x';
 }
 
 const hex = (buf: ArrayBuffer) =>
@@ -225,7 +276,13 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
   //   every name the sources use and refuses rather than settling. ]]
   let contentType = resolved.contentType;
   if (contentType === 'application/zip') {
-    const picked = await extractFromZip(bytes, pickBaseColour);
+    // A material archive means "the colour map"; an expanded pack row means "the file my id
+    // names". One predicate could not serve both without guessing which kind of archive it had.
+    const wanted = resolved.entrySlug;
+    const picked = await extractFromZip(
+      bytes,
+      wanted ? (entries) => entries.find((e) => slugOf(e.name) === wanted) : pickBaseColour,
+    );
     if (!picked.ok || !picked.bytes) return { id: rec.id, ok: false, error: `could not read the archive: ${picked.error}` };
     bytes = picked.bytes;
     contentType = /\.png$/i.test(picked.name ?? '') ? 'image/png' : 'image/jpeg';
