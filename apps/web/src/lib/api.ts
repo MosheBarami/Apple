@@ -2,6 +2,8 @@
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
+import type { ApiKeyMode, ApiScope } from '@golem/shared';
+import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
@@ -1279,6 +1281,48 @@ export type RobloxKeyHealth =
   | { status: 'unknown'; reason: string; checkedAt?: string };
 
 export const checkRobloxKey = (): Promise<RobloxKeyHealth> => request('/api/me/roblox-key/check');
+
+// ------------------------------------------------------- Apple's own public-API keys
+//
+// Four routes that have existed since the public API shipped and that nothing in this app called.
+// The lifecycle is entirely the server's: it mints, it hashes, it authorizes, it retires. What was
+// missing was a way for the person who owns them to SEE them — so a leaked key could only be
+// revoked with curl, and the expiry on every row reached nobody.
+//
+// THERE IS DELIBERATELY NO `fetchApiKey`. The plaintext key exists in exactly two responses, the
+// mint and the rotate, and the server keeps only a hash. A helper that appeared to read one back
+// would be a helper somebody writes a screen around.
+
+export const fetchApiKeys = (): Promise<{ keys: ApiKeyView[] }> => request('/api/keys');
+
+/** The mint. `key` is the plaintext, and this is the only response that will ever contain it. */
+export const createApiKey = (body: {
+  name: string;
+  mode: ApiKeyMode;
+  scopes: ApiScope[];
+  projectIds: string[];
+  expiresInDays?: number | null;
+}): Promise<ApiKeyView & { key: string }> =>
+  request('/api/keys', { method: 'POST', body: JSON.stringify(body) });
+
+/**
+ * Replace a key, inheriting its scopes and projects exactly, and retire the old one after a grace.
+ *
+ * `warning` is present when the replacement was stored and the old key could NOT be retired. That
+ * is two live keys, and the server reports it rather than swallowing it — so this type carries it
+ * and the panel shows it, or the honesty stops one layer short of the person it is for.
+ */
+export const rotateApiKey = (
+  id: string,
+  graceHours?: number,
+): Promise<ApiKeyView & { key: string; replaces: string; retiresAtIso: string; warning?: string }> =>
+  request(`/api/keys/${encodeURIComponent(id)}/rotate`, {
+    method: 'POST',
+    body: JSON.stringify(graceHours === undefined ? {} : { graceHours }),
+  });
+
+export const revokeApiKey = (id: string): Promise<{ ok: boolean }> =>
+  request(`/api/keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 // ---------------------------------------------------------------- the inbox / security history
 //

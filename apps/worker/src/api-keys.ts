@@ -31,6 +31,7 @@
 // That is the correct trade — a credential whose authority silently grows is the thing scoped
 // credentials exist to prevent.
 import type { Env } from './env';
+import { API_KEY_MODES, API_SCOPES, isApiScope, type ApiKeyMode, type ApiScope } from '@golem/shared';
 import { oncePerIsolate } from './schema-once';
 
 // ---------------------------------------------------------------------------
@@ -42,9 +43,9 @@ import { oncePerIsolate } from './schema-once';
  * difference is legible in the string itself rather than hidden in a database column — a key that
  * leaks into a log, a screenshot or a git commit should announce whether it can spend money.
  */
-export const KEY_PREFIX = { live: 'gk_live_', test: 'gk_test_' } as const;
-export type KeyMode = keyof typeof KEY_PREFIX;
-export const KEY_MODES: readonly KeyMode[] = ['live', 'test'];
+export const KEY_PREFIX: Record<ApiKeyMode, string> = { live: 'gk_live_', test: 'gk_test_' };
+export type KeyMode = ApiKeyMode;
+export const KEY_MODES: readonly KeyMode[] = API_KEY_MODES;
 
 const ID_HEX = 24;
 const SECRET_HEX = 48;
@@ -53,28 +54,19 @@ const SECRET_HEX = 48;
 const KEY_RE = new RegExp(`^gk_(live|test)_([0-9a-f]{${ID_HEX}})_([0-9a-f]{${SECRET_HEX}})$`);
 
 /**
- * Every scope the public API knows about, as an explicit allowlist.
+ * The scope vocabulary now lives in @golem/shared, and is re-exported here so every existing
+ * importer and test keeps working.
  *
- * A `Record<Scope, …>` is a compile-time promise and the runtime keeps none of it: the scope list
- * on a key row is JSON that was written months ago by a route that may since have been changed, so
- * it is re-validated against THIS list every time it is read back (`normaliseScopes`). A scope
- * string nobody defines must not become a scope nobody checks.
+ * IT MOVED BECAUSE THE SETTINGS PAGE NEEDED IT. The browser cannot import from apps/worker, so a
+ * panel offering these as tickboxes would have had to keep its own copy — and a vocabulary in two
+ * places lets one side offer what the other refuses, which is the same reason the Roblox scopes
+ * are shared. What did NOT move is everything about a key: prefixes, hashing, the authorizer.
+ *
+ * The runtime re-validation this list exists for is unchanged (`normaliseScopes`): a scope list on
+ * a key row is JSON written months ago by a route that may since have changed, and a scope string
+ * nobody defines must not become a scope nobody checks.
  */
-export const API_SCOPES = [
-  'chat:write',
-  'projects:read',
-  'messages:read',
-  'runs:read',
-  'runs:write',
-  'events:read',
-] as const;
-export type ApiScope = (typeof API_SCOPES)[number];
-
-const SCOPE_SET: ReadonlySet<string> = new Set<string>(API_SCOPES);
-
-export function isApiScope(v: unknown): v is ApiScope {
-  return typeof v === 'string' && SCOPE_SET.has(v);
-}
+export { API_SCOPES, isApiScope, type ApiScope } from '@golem/shared';
 
 export interface GrantedProject {
   id: string;

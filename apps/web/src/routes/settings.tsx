@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { supabase, type ProfileRow } from '../lib/supabase';
 import { Failure } from '../components/failure';
+import { ApiKeysPanel } from '../components/api-keys-panel';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
@@ -645,9 +646,16 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Connections" visible={sectionShows('roblox-key')}>
+      <Section title="Connections" visible={sectionShows('roblox-key', 'api-keys')}>
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
+        </Row>
+        {/* Apple's OWN keys, under the same heading as the Roblox one deliberately: both are
+            credentials that act on your behalf, and the only difference is which side holds them.
+            The worker has served this whole lifecycle since the public API shipped and nothing in
+            this app called any of it — a leaked key could be revoked only with curl. */}
+        <Row id="api-keys" visible={shows('api-keys')}>
+          <ApiKeysPanel />
         </Row>
       </Section>
 

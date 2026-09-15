@@ -1606,6 +1606,44 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Apple's own public-API keys
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Every scope a public-API key can carry, and the two modes one can be minted in.
+ *
+ * MOVED HERE FROM apps/worker/src/api-keys.ts, for the reason written under the Roblox scopes
+ * below: both ends need the same list and they need it to be the SAME list. The settings panel
+ * offers these as tickboxes and the mint route validates what comes back, and a vocabulary living
+ * in two places lets the panel offer a scope the worker refuses — a control that cannot work,
+ * discovered by the person who ticked it, as a 400 with no field attached.
+ *
+ * The worker still owns everything ABOUT a key — the prefixes, the hashing, the authorizer. This
+ * is only the vocabulary.
+ */
+export const API_SCOPES = [
+  'chat:write',
+  'projects:read',
+  'messages:read',
+  'runs:read',
+  'runs:write',
+  'events:read',
+] as const;
+export type ApiScope = (typeof API_SCOPES)[number];
+
+export function isApiScope(v: unknown): v is ApiScope {
+  return typeof v === 'string' && (API_SCOPES as readonly string[]).includes(v);
+}
+
+/**
+ * `live` and `test` are different credentials with different behaviour, and the difference is
+ * legible in the key string itself (`gk_live_…` / `gk_test_…`) rather than hidden in a column — a
+ * key that leaks into a log or a screenshot should announce whether it can spend money.
+ */
+export const API_KEY_MODES = ['live', 'test'] as const;
+export type ApiKeyMode = (typeof API_KEY_MODES)[number];
+
+// ---------------------------------------------------------------------------------------------
 // Roblox Open Cloud scopes
 // ---------------------------------------------------------------------------------------------
 

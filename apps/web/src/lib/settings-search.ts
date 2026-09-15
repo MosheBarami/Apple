@@ -59,6 +59,14 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     section: 'Connections',
     keywords: ['roblox', 'open cloud', 'api key', 'connect', 'upload', 'creator', 'credential', 'account'],
   },
+  {
+    id: 'api-keys',
+    title: 'API keys',
+    section: 'Connections',
+    // The words somebody types in the ten minutes after a key leaks, which are not the words in
+    // the title: "revoke", "leaked", "token". Whoever is searching this is usually in a hurry.
+    keywords: ['api', 'key', 'token', 'sdk', 'revoke', 'rotate', 'leaked', 'secret', 'developer', 'integration', 'curl'],
+  },
   { id: 'training-opt-in', title: 'Contribute anonymised snippets', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out'] },
   { id: 'reset-settings', title: 'Reset settings', section: 'Privacy', keywords: ['default', 'defaults', 'restore', 'undo', 'clear'] },
 ];

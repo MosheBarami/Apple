@@ -4738,6 +4738,203 @@ textarea {
   color: var(--bad);
 }
 
+/* ------------------------------------------------------ your own API keys (settings) --- */
+/* The one loud thing on this panel is the secret, and it is loud for one reason: it is shown once
+   and cannot be recovered. Everything else is a list that should be readable at a glance during an
+   incident — which is when somebody comes here. */
+.ak__lede,
+.ak__state {
+  margin: 0.3rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.ak__state.is-failed {
+  color: var(--bad);
+}
+
+.ak__reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.6rem 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--warn);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+
+.ak__reveal-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ak__reveal-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+/* Wraps rather than scrolls: a key that is half off the edge invites a partial copy, and a partial
+   key fails later with an error about Apple. */
+.ak__secret {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.ak__list {
+  margin: 0.6rem 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ak__key {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+/* A key that no longer works is legible as such without reading the sentence. */
+.ak__key.is-revoked,
+.ak__key.is-expired {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+.ak__key.is-expiring {
+  border-inline-start: 3px solid var(--warn);
+}
+
+.ak__key-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.ak__key-name {
+  font-weight: 600;
+}
+
+.ak__mode,
+.ak__status {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Live spends money. It is the one badge that is allowed a colour. */
+.ak__mode.is-live {
+  color: var(--warn);
+}
+
+.ak__status.is-revoked,
+.ak__status.is-expired {
+  color: var(--bad);
+}
+
+.ak__prefix,
+.ak__scope-id {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.ak__key-what,
+.ak__key-detail {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.ak__key-actions,
+.ak__confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.ak__confirm {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: 0.84rem;
+}
+
+.ak__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: flex-start;
+  margin-top: 0.6rem;
+}
+
+.ak__label {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.ak__input {
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+}
+
+.ak__modes,
+.ak__scopes,
+.ak__grants {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.2rem 0;
+  padding: 0;
+  border: 0;
+}
+
+.ak__radio,
+.ak__scope,
+.ak__grant {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+}
+
+.ak__problem {
+  margin: 0;
+  color: var(--bad);
+  font-size: 0.82rem;
+}
+
+/* A warning is not a refusal: the key will still be minted. Different colour, same position. */
+.ak__warning {
+  margin: 0;
+  color: var(--warn);
+  font-size: 0.82rem;
+}
+
 /* A permission nothing in the product asks for yet. Quiet, beside the thing it qualifies — the
    point is that it is visible where the tickbox is, not that it shouts. */
 .rk__unused {
