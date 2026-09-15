@@ -37,7 +37,7 @@ await esbuild.build({ entryPoints: [join(WORKER, 'src', 'retrieval.ts')], bundle
 const R = await import(pathToFileURL(OUT).href);
 process.on('exit', () => rmSync(OUT, { force: true }));
 
-const GOLD = JSON.parse(readFileSync(join(REPO, 'packages', 'evals', 'tasks', 'retrieval-gold.json'), 'utf8')).queries;
+const GOLD = JSON.parse(readFileSync(join(REPO, 'packages', 'evals', 'data', 'retrieval-gold.json'), 'utf8')).queries;
 const CORPUS = readFileSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'), 'utf8')
   .split('\n')
   .filter((l) => l.trim())

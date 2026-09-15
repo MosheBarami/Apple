@@ -1073,13 +1073,60 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
   for (const r of projectRoutes) {
     const next = routes.find((o) => o.at > r.at);
     const body = src.slice(r.at, next ? next.at : src.length);
-    assert.match(body, /withOwnedProject\(c, c\.req\.param\('id'\)\)/, `${r.method.toUpperCase()} ${r.path} does not go through withOwnedProject`);
-    assert.match(body, /if \(!ctx\) return c\.json\(\{ error: 'not found' \}, 404\)/, `${r.method.toUpperCase()} ${r.path} does not refuse when ownership fails`);
+    // AN EXPLICIT ALLOWLIST OF OWNERSHIP PROOFS, not a widened regex.
+    //
+    // `/api/projects/:id/personalisation` proves ownership through `memoryScopeAccess(c, 'project', …)`,
+    // which calls `getOwnedProject(c.env, user.jwt, scopeId)` — the same proof withOwnedProject uses,
+    // behind a different name because it also resolves org and user scopes. Verified by reading it,
+    // not assumed: it UUID-checks the id, calls getOwnedProject, and returns null on any miss.
+    //
+    // The fix is deliberately NOT `/getOwnedProject|withOwnedProject/` or anything shaped like
+    // "mentions ownership somewhere". Each accepted proof is named here, so a route that invents a
+    // THIRD way to authorise still fails this sweep and someone has to come and add it on purpose.
+    // A guard that accepts a pattern accepts everything that resembles the pattern.
+    const PROOFS = [
+      /withOwnedProject\(c, c\.req\.param\('id'\)\)/,
+      /memoryScopeAccess\(c, '(?:project|user|org)', /,
+    ];
+    assert.ok(
+      PROOFS.some((re) => re.test(body)),
+      `${r.method.toUpperCase()} ${r.path} does not prove ownership by any allowed means — add the proof, or add it to PROOFS on purpose`,
+    );
+    // Same treatment as PROOFS above: the refusal was pinned to the NAME of a local variable, so a
+    // route that binds the identical check to `proven` instead of `ctx` failed a guard about
+    // authorisation for a reason that is about spelling. What must hold is that an unproven request
+    // gets the SAME 404 as a missing one — an authorisation failure that answers differently from a
+    // miss is an existence oracle.
+    const REFUSALS = [
+      /if \(!ctx\) return c\.json\(\{ error: 'not found' \}, 404\)/,
+      /if \(!proven\) return c\.json\(\{ error: 'not found' \}, 404\)/,
+    ];
+    assert.ok(
+      REFUSALS.some((re) => re.test(body)),
+      `${r.method.toUpperCase()} ${r.path} does not refuse with a 404 when ownership fails`,
+    );
   }
   // …and withOwnedProject itself still does the two things that make it work.
   const helper = src.slice(src.indexOf('async function withOwnedProject'), src.indexOf("app.get('/api/projects/:id/ws'"));
   assert.match(helper, /getOwnedProject\(c\.env, user\.jwt, projectId\)/, 'ownership must be resolved with the USER jwt');
-  assert.match(helper, /sessionStub\(c\.env, project\.id\)/, 'the DO must be addressed by the canonical row id');
+  // PINNED TO THE PROPERTY, NOT THE VARIABLE NAME. This read `sessionStub(c.env, project.id)`.
+  // withOwnedProject now resolves `const row = project ?? shared` so that a collaborator reaches the
+  // same DO as the owner, and addresses `row.id` — which is still a DATABASE row's id and still not
+  // the URL's. The old assertion failed on a rename while the property it names was intact.
+  //
+  // The second half is the one that catches the actual bug, and it did not exist before: addressing
+  // the DO by the id that came in on the REQUEST is how casing and encoding variants fan out into
+  // separate Durable Objects for one project.
+  assert.match(
+    helper,
+    /sessionStub\(c\.env, (?:project|row|shared)\.id\)/,
+    'the DO must be addressed by a canonical row id read back from the database',
+  );
+  assert.doesNotMatch(
+    helper,
+    /sessionStub\(c\.env, projectId\)/,
+    'the DO must never be addressed by the id that arrived on the request',
+  );
   assert.match(helper, /if \(!init\.ok\) return null/, 'an owner mismatch on a recycled id must refuse');
 });
 
@@ -1387,40 +1434,56 @@ test('A4 no route outside the exempt list and outside /api/admin/ is reachable u
 
 test('A5 STATIC CHECK — every tool result entering the transcript is fenced as untrusted', () => {
   const session = read('do/session.ts');
-  // Find every push of a `tool` role message and check what it carries.
+  const injection = read('injection.ts');
+
+  // THIS SWEEP USED TO REQUIRE THE FENCE TO BE VISIBLE AT THE PUSH SITE — it looked for a
+  // `role: 'tool'` push containing `out.resultForLlm` and asserted the tag literals were in the
+  // same expression. The fencing has since moved into `fenceToolOutput`, so the push now reads
+  // `content: fenced.text` and the old sweep counted ZERO fenced sites. That failure is
+  // indistinguishable from the one that matters — a push that carries raw tool output with no
+  // fence at all also counts zero — which is why this is rewritten rather than retargeted.
+  //
+  // Follow the VALUE across the boundary instead: the transcript may only receive tool output that
+  // came out of fenceToolOutput, and fenceToolOutput must be the thing that builds the fence.
   const pushes = [...session.matchAll(/agent\.llm\.push\(\{[\s\S]{0,600}?\}\);/g)].map((m) => m[0]);
   const toolPushes = pushes.filter((p) => /role:\s*'tool'/.test(p));
   assert.ok(toolPushes.length >= 2, 'expected at least the duplicate-call refusal and the real result push');
-  let fenced = 0;
+
+  // 1. No push may inline raw tool output. `out.resultForLlm` reaching a push directly is the
+  //    original defect and must never come back.
   for (const p of toolPushes) {
-    if (p.includes('out.resultForLlm')) {
-      assert.match(p, /<untrusted-tool-output /, 'a tool result reaches the transcript without an opening fence');
-      assert.match(p, /<\/untrusted-tool-output>/, 'the untrusted fence is never closed');
-      //[[ THE FENCE MUST CARRY A SECRET, and this assertion is the reason the check was
-      //   tightened rather than merely updated. The tag used to be a CONSTANT
-      //   `tool="${call.name}"`, and tool results are JSON.stringify'd — which escapes
-      //   quotes and backslashes but NOT angle brackets. So a payload containing a literal
-      //   closing tag reached the transcript verbatim (asserted by the very next test, and
-      //   correct: mangling evidence is worse) and closed the fence early, putting the
-      //   attacker's text outside the markers by the system prompt's own definition.
-      //
-      //   A per-run random id fixes that without touching the payload. Asserting only
-      //   "there is a fence" would pass against a constant tag again. ]]
-      //   The id now goes through `fenceIdFor(agent)`, which MINTS one when a run persisted by an
-      //   older deploy arrives without it. The expression this used to pin was `agent.fenceId ?? ''`,
-      //   and that fallback was the same defect one layer down: every legacy run fenced its output
-      //   with the SAME id, so the secret was shared rather than per-run. Pin the property — a
-      //   per-run id and no constant fallback — rather than the spelling.
-      assert.match(p, /id="\$\{(?:agent\.fenceId|this\.fenceIdFor\(agent\))/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
-      assert.doesNotMatch(p, /fenceId\s*\?\?\s*''/, 'the fence id must never fall back to a constant');
-      fenced++;
-    } else {
-      // The only other tool-role push is Golem's own static refusal text; it must interpolate
-      // nothing from the tool at all beyond the tool NAME.
-      assert.equal(/resultForLlm|out\.detail|res\.data/.test(p), false, 'an unfenced tool-role message carries tool output');
-    }
+    assert.equal(
+      /out\.resultForLlm|out\.detail|res\.data/.test(p),
+      false,
+      'a tool-role message carries raw tool output instead of a fenced value',
+    );
   }
-  assert.equal(fenced, 1, 'exactly one site should carry real tool output into the transcript');
+
+  // 2. Exactly one push carries the fenced value, and it is the fenced one.
+  const carrying = toolPushes.filter((p) => /content:\s*fenced\.text/.test(p));
+  assert.equal(carrying.length, 1, 'exactly one site should carry real tool output into the transcript');
+
+  // 3. That value is produced by fenceToolOutput, from the tool result, with a per-run id.
+  assert.match(
+    session,
+    /const fenced = fenceToolOutput\(\{[^}]*body: out\.resultForLlm[^}]*\}\)/,
+    'the fenced value must be built from the tool result by fenceToolOutput',
+  );
+  assert.match(
+    session,
+    /fenceId: this\.fenceIdFor\(agent\)/,
+    'the fence id must be minted per run, never a constant',
+  );
+
+  // 4. And fenceToolOutput must actually fence. Asserting only that it is CALLED would pass
+  //    against a helper that returns the body untouched.
+  assert.match(injection, /<untrusted-tool-output id="\$\{opts\.fenceId\}"/, 'the opening fence must carry the run id');
+  assert.match(injection, /<\/untrusted-tool-output>/, 'the fence must be closed');
+  assert.match(
+    injection,
+    /throw new Error\('fenceToolOutput: fenceId is required/,
+    'an empty fence id must throw, not fall back to a constant shared by every run',
+  );
 });
 
 test('A5 tool output is fenced, not sanitised — an injection payload survives verbatim', async () => {

@@ -148,7 +148,7 @@ test('a malformed gold set is refused before it can flatter anything', () => {
 });
 
 test('the shipped gold set is well formed and carries real negatives', () => {
-  const gold = JSON.parse(readFileSync(join(HERE, '..', 'tasks', 'retrieval-gold.json'), 'utf8')).queries;
+  const gold = JSON.parse(readFileSync(join(HERE, '..', 'data', 'retrieval-gold.json'), 'utf8')).queries;
   validateGoldSet(gold);
   const negatives = gold.filter((q) => q.negative === true);
   assert.ok(negatives.length >= 3, 'a gold set with no negatives cannot detect a retriever that returns everything');
