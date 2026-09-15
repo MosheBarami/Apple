@@ -30,6 +30,7 @@ import { supabase, type ProjectRow } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import { AppleGlyph } from './glyphs';
 import { Icon, PATH, Popover } from './ws/primitives';
+import { NotificationInbox } from './notification-inbox';
 import { OfflineBanner } from './offline-banner';
 import { OnboardingTour } from './onboarding-tour';
 import { restartTour, writeProgress } from '../lib/onboarding';
@@ -139,6 +140,11 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
           </button>
         </Popover>
       </div>
+
+      {/* The bell sits in the user card rather than in the topbar because what it holds is the
+          person's, not the project's: a mention on one project and a failed card belong to the
+          same list, and that list belongs beside the account. */}
+      <NotificationInbox />
 
       <Link to="/settings" className="gx-icon-btn gx-user-card__gear" aria-label="Settings" title="Settings">
         <Icon d={PATH.settings} size={16} />
