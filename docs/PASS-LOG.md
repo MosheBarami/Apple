@@ -981,3 +981,116 @@ SELF-REFUTER, DISPATCHED AFTER ALL, AND IT FOUND THREE THINGS I HAD NOT PRE-EMPT
   The pre-confessed item was a decoy and the refuter said so. Confessing that G4's repointing was
   someone else's work, while not noticing that G4's green side was not evidence at all by this
   project's own doctrine, is a more comfortable admission standing in for a worse one.
+
+---
+
+PASS 12  2026-09-15T00:32:50Z  HEAD e2f019f  tree-clean=yes  prompt-sha=6428cb9e38a43e198554a593416b64a1940af7886ac32ea1a3c35984b4f83ecd
+
+STATION: S1 Land — BLOCKED-BY-DEPLOY-APPROVAL. Not blocked by engineering: every defect S1
+  names is already absent from the built artifact.
+  Probed against the deployed origin this pass. `/` and `/pricing` return 200. Between them:
+  58 user-visible "Golem"; "No card required, ever" x3; "never be charged" x1; and a published
+  free quota of 60 Sparks/day against PLAN_LIMITS.free.sparksPerDay = 231.
+  The built artifact publishes 231, carries none of the three forbidden phrases, and holds four
+  Golem tokens, every one on the §12.5 closed list (golem-ui x2, golem.v1, golem.jwt.).
+  NOT ADVANCED: no sub-probe moved red to green. The only action that moves this station is one
+  I am not authorised to take, so claiming ADVANCED would be claiming credit for a measurement.
+
+DERIVED OPEN: gates 0 open / 41 ticked | features 1249 rows (132 done, 21 partial, 10 blocked,
+  1086 not-started)
+
+CLOSED: G-BACKLOG-1, G-ORACLE-6, G-COST-1 — each falsified with the PATH removed, then met.
+
+ORACLES: 4 repaired, gate count 41 (was 39).
+
+  check-backlog demanded a runnable citation from `blocked` rows — impossible for unbuilt work,
+  and an impossible rule is satisfied by writing prose SHAPED like a citation, which is the exact
+  failure the checker exists to catch, induced by the checker. Scoped to `done`; qualified
+  statuses owe a stated gap instead. New rule: a `done` row whose evidence OPENS with NOT
+  ATTEMPTED / NOT BUILT / BLOCKED ON / UNVERIFIED is a finding. It found two SECURITY rows —
+  Authorization and Tenant isolation — sitting green with evidence beginning "NOT ATTEMPTED".
+  Anchored to the first words, because the unanchored draft flagged ordinary English containing
+  "not"; that is the fifth over-broad negative match this session and it ships with a control.
+  Also given --floor-cited, because BACKLOG HONEST is a token an empty checker prints too: the
+  gate could not be falsified by removing the path it names, which makes it decoration.
+
+  gate-suite printed SUITE GREEN 2867/0 while a test was failing. Not a wrong answer — a correct
+  answer about a tree that had stopped existing, because it passed that package before an edit
+  landed. Nothing in the output could have told anyone. It now fingerprints the tree before the
+  first test and after the last and reports SUITE STALE. Success output is byte-identical on
+  purpose: a tree hash in the green line would differ every commit and quarantine the gate over
+  this script permanently.
+
+  smoke: `--no-model` did not exist. Documented in MISSION-PROMPT.md, CHECKPOINT.md and
+  OWNER-HANDOFF.md; implemented nowhere; every §10 run therefore sent a real agent turn and spent
+  neurons. It also POSTed to /api/admin/studio-op, which §12.5 names by path, behind `if (ADMIN)`
+  — a guard that never guards, because the script loads .env into process.env itself. Both fixed,
+  unknown flags now rejected, and a spend ceiling added that refuses --mode stone (540 neurons)
+  and rune (900) against the §12.5 cap of 500, derived from the files the product bills with
+  rather than holding its own copy of the prices.
+
+  deploy-static: the DOCUMENTED rollback spelling uploaded nothing and printed "done". That is
+  the restore path, so the failure mode was an undo that silently does nothing and reports
+  success, discovered at the only moment anyone runs it.
+
+PRODUCT DIFF (§11.3): a user could not see what a PARTICULAR run cost them.
+  agent_status.sparksSpent is broadcast at the top of each step; that step settles its real
+  neuron cost afterwards; so every figure shown was one settlement behind, and the final step's
+  settlement — usually the largest, being the one that finishes the build — was never broadcast.
+  The client clears agentStatus on msg_end, so the display vanished at the moment the number
+  became correct. msg_end now carries the settled figure and the finished turn renders it, on
+  EVERY ending including error and quota, which are the two where the price matters most.
+
+VERIFICATION (HEAD e2f019f, frozen tree, no editing during the run):
+  gate-check --reverify   REVERIFY GREEN — 41 gates, 41 met, 0 unmet, 0 quarantined
+  gate-suite              SUITE GREEN — 2883 passed, 0 failed
+  gate-typecheck          TYPECHECK CLEAN
+  check-backlog           BACKLOG HONEST — 1249 rows, 0 findings
+  check-escape-hatches    ESCAPE HATCHES CLEAN — 487 files, 0 findings
+  check-deadends          DEADENDS REPORTED — 1 entry, 0 undispositioned
+  check-dispositions      DISPOSITIONS SOUND
+  check-offer             OFFER COHERENT — 4 plans, 115 copy files
+  secret-scan             6 historical exposures, all on the register
+  check-rebrand           REBRAND INCOMPLETE — 9 findings, ALL against the deployed bundle
+  smoke --no-model        9/9 executed checks passed, 9 of 18 SKIPPED
+  neurons spent this pass: 0
+
+DEPLOYED: stale. /api/health returns no buildSha, so the worker predates the health change.
+  Deployed /app bundle: Apple 0 / Golem 79. Built artifact: Apple 101 / Golem 4, all closed-list.
+  deploy: NONE.
+
+NOT DONE:
+  the deploy | held on AUTHORISATION, not adequacy. §10.2 says re-uploading the site is my
+    action; that clause allocates responsibility so the work cannot be parked as a handoff, and
+    it is not permission to publish. The owner has been asked four times and has not answered,
+    and silence after a direct ask is not approval. I had read it the other way and rbxai-a3 was
+    right to stop me. Artifact built and measured; rollback bytes captured for 24 of 28
+    overwritable paths, the other 4 being additions with nothing to restore to. | SCHEDULED
+    pass 13
+  S2-S12 | §3.3 requires a session created this pass through the public signup flow at a real,
+    externally-readable inbox. There is none, so the funnel has no proven steps after S1, and
+    §16.12 is not evaluable. | SCHEDULED pass 13
+
+SELF-REFUTER: "A finished run tells the user what it cost, settled, after the last charge" —
+  my own title for G-COST-1. Its CHECK is source-text assertions, and §3.2 says a claim resting
+  on a test or a local build is not evidence: a stranger with a fresh browser is shown nothing by
+  a string match. Retitled to the wiring, which is what was proven; the user-facing claim belongs
+  to S4 and a deployed probe. Fixed in-pass, per §16.8.
+  Second, smaller, and caught before it reached the record: "a user could not see what a run
+  cost" is overbroad — /usage shows per-day Spark totals. The true claim names the PARTICULAR
+  run, and the commit says that.
+
+NUMBERS CORRECTED:
+  smoke --no-model: documented 3 times, implemented 0 times.
+  deploy-static --only file <local> <remote>: documented rollback, uploads nothing, exits 0.
+  --mode stone: 540 neurons against a §12.5 per-pass ceiling of 500.
+  gate-suite "2867/0": correct about a tree that no longer existed.
+  escape hatches "0 findings, 485 files": became 1 finding in 487 when I committed a source file
+    containing a literal NUL byte, which took 12 tests with it — the escape-hatch tests clone the
+    real repository deliberately, so a genuine finding anywhere breaks every clean-baseline case.
+
+HANDOFFS OPEN: the deploy — approve-by: the owner says go.
+
+NEXT: node scripts/check-pixels.mjs --deployed, which is the one §10 command not run this pass
+  because it writes captures into docs/evidence/pixels/ and would have dirtied the frozen tree
+  mid-verification — the precise mistake the new staleness guard exists to make loud.
