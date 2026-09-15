@@ -52,7 +52,23 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     // id shape: poly_haven/<type>/<slug>. The slug is not the Poly Haven key — the key uses
     // underscores and the harvest slugified it — so the files API is asked by the ORIGINAL key,
     // which is recoverable because slugification only replaced separators.
-    const slug = rec.id.split('/')[2] ?? '';
+    const [, namespace, slug = ''] = rec.id.split('/');
+    //[[ THE NAMESPACE DECIDES, AND IT HAS TO BE CHECKED FIRST.
+    //
+    //   Poly Haven MODELS also publish a Diffuse map — they are textured meshes — so the lookup
+    //   below finds one and happily returns it. That was live: a `prop` row named "Adjustable
+    //   Wrench" resolved to a picture of a wrench and would have been uploaded as an Image, giving
+    //   the library a row whose name promises geometry and whose asset is a photograph.
+    //
+    //   Caught by asset-coverage.test.mjs, which asserts the two namespaces answer differently.
+    //   The comment further down always SAID models were refused; nothing made them be. ]]
+    if (namespace !== 'textures') {
+      return {
+        error: `no Open Use path for ${rec.id}: geometry must go through the Studio importer `
+          + '(Roblox accepts external meshes only as a Model, which is not Open Use), and an HDRI '
+          + 'is a lighting probe rather than an image asset',
+      };
+    }
     const key = slug.replace(/-/g, '_');
     const res = await fetch(`https://api.polyhaven.com/files/${encodeURIComponent(key)}`);
     if (!res.ok) return { error: `poly haven files API answered ${res.status} for ${key}` };
@@ -65,7 +81,7 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     // A model's GEOMETRY has no Open Use upload path at all (see uploadTypeFor), and importing
     // only its diffuse map would stamp a `prop` row with an Image asset id — a row that says it is
     // a wrench and resolves to a picture of one. Refused with the reason rather than half-done.
-    return { error: `no Open Use path for ${key}: geometry must go through the Studio importer, and an HDRI is not an image asset` };
+    return { error: `no Open Use path for ${key}: geometry must go through the Studio importer (Roblox accepts external meshes only as a Model, which is not Open Use), and an HDRI is a lighting probe rather than an image asset` };
   }
   if (rec.source === 'iconify') {
     //[[ SVG, AND THIS DEPLOYMENT DOES NOT RENDER IT. The decision and its price, so nobody has to
@@ -115,11 +131,35 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     return { url: `https://ambientcg.com/get?file=${encodeURIComponent(id)}_1K-JPG.zip`, contentType: 'application/zip' };
   }
   if (rec.source === 'opengameart' || rec.source === 'kenney') {
-    // These two publish archives whose URL is NOT derivable from the row: OpenGameArt's file names
-    // are per-submission and Kenney's carry a content hash that changes on every republish. The
-    // unzipper exists — see unzip.ts — and what is missing is the address, which would have to be
-    // re-scraped per row. Stated as the specific gap rather than as "no support".
-    return { error: `${rec.source} publishes archives whose URL is not derivable from the row; it must be re-scraped from ${rec.sourceUrl}` };
+    //[[ THESE ROWS ARE PACKS, NOT ASSETS, and that is the real reason rather than the first one.
+    //
+    //   The unzipper exists and would open either archive. What it could not do is choose: a
+    //   Kenney pack is 130 sprites and an OpenGameArt submission is a tileset — there is no "the"
+    //   file in them, and picking one would produce a library row whose name says "City Kit" and
+    //   whose asset is one door.
+    //
+    //   Making these usable means EXPANDING them at harvest time — unzip locally, enumerate, and
+    //   write one provenance row per file, each with its own name and its own tags. That is a real
+    //   piece of work and it is not this one, so the row stays honest about being a pointer to a
+    //   pack rather than pretending an import will give you what its name promises. ]]
+    return { error: `this ${rec.source} row is a PACK of many files, not a single asset — it must be expanded into one row per file before any of it can be imported` };
+  }
+  if (rec.source === 'generated_roblox') {
+    return { error: 'this row is already a Roblox asset — it needs no import' };
+  }
+  if (rec.source === 'procedural') {
+    // Built in the place by the agent, from parts. There is no file anywhere to fetch, and that is
+    // the design rather than a gap: procedural geometry costs no upload and no licence.
+    return { error: 'this row is built in the place from parts — there is no file to import' };
+  }
+  if (rec.source === 'quaternius' || rec.source === 'poly_pizza' || rec.source === 'sketchfab' || rec.source === 'wikimedia') {
+    //[[ IN THE VOCABULARY, NOT IN THE HARVEST, and the difference matters.
+    //
+    //   These four were verified as real sources by the survey and none has been harvested yet:
+    //   Quaternius and Poly Pizza publish geometry, which has no Open Use upload path at all;
+    //   Sketchfab needs a token; Wikimedia is 9.8M files and wants a curated slice rather than a
+    //   sweep. Saying "no resolver" would read as an oversight. This says which it is. ]]
+    return { error: `${rec.source} is an allowed source that has not been harvested yet — no rows from it exist to import` };
   }
   return { error: `no download resolver for source "${rec.source}"` };
 }
