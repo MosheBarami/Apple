@@ -129,8 +129,27 @@ export const DISCLOSURE_RULES: readonly DisclosureRule[] = [
     kind: 'private_key_block',
     cls: 'secret',
     confidence: 'high',
-    pattern: /-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/g,
-    why: 'a PEM private-key header',
+    /*
+     * THE WHOLE BLOCK, NOT THE HEADER.
+     *
+     * This pattern used to be the header line alone, and the redacted output was therefore
+     * `[redacted:private_key_block]` sitting directly on top of the key it had not removed. That is
+     * the worst available failure: a marker is a CLAIM that something was taken out, so a reader
+     * who sees one stops looking, and the material is on the next line. It survived because the
+     * test's needle included the header — `text.includes(PEM)` goes false as soon as any part of
+     * the fixture goes — so header-only redaction satisfied it. secret-redaction.test.mjs now names
+     * the body lines with no header in the needle.
+     *
+     * Two branches, and the order is load-bearing. The first takes header-through-footer, so a
+     * complete block goes in one span and nothing after `-----END` is touched. The second is the
+     * truncated paste — the common shape, and the one where "stop at the footer" removes nothing at
+     * all — and it consumes only what still looks like armour (base64, whitespace, the `=` padding
+     * and the `Proc-Type:`/`DEK-Info:` headers an encrypted key carries), so a key with no closing
+     * line loses its body without the redaction running off into the surrounding prose.
+     */
+    pattern:
+      /-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED |)?PRIVATE KEY-----(?:[\s\S]*?-----END (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED |)?PRIVATE KEY-----|[A-Za-z0-9+/=\s:,.-]*)/g,
+    why: 'a PEM private-key block',
   },
   {
     kind: 'jwt',

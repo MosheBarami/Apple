@@ -106,10 +106,26 @@ export const USER_EXPORT: readonly ExportTable[] = [
     table: 'feedback',
     access: 'rls',
     ownerColumn: 'owner_id',
-    fields: ['id', 'owner_id', 'kind', 'content', 'page', 'created_at'],
-    excluded: {
-      status: 'our triage state for the report, not a fact about the person who filed it',
-    },
+    /*
+     * `status` MOVED FROM `excluded` TO HERE, AND THE REASON IT MOVED IS THE INTERESTING PART.
+     *
+     * It was excluded as "our triage state for the report, not a fact about the person who filed
+     * it", and for as long as nothing in the product showed a status to anybody, that was true: it
+     * really was a private note about our own queue.
+     *
+     * It stopped being true when GET /api/feedback began serving it to the account that filed the
+     * row, and the support dialog began rendering it as "Waiting on us" / "Answered and closed". A
+     * value this product STATES TO YOU is something you have been told, and an export that omits
+     * what you were told is not a copy of what we say about you — it is that copy minus the one
+     * field you would go looking for, which is whether anybody ever read it.
+     *
+     * The general shape, worth keeping in mind for the next column: an exclusion is a claim about
+     * a field's audience, and shipping a surface that widens the audience invalidates the claim
+     * without touching the line that makes it. apps/worker/tests/support-requests.test.mjs asserts
+     * the two halves agree, so this one cannot go stale silently again.
+     */
+    fields: ['id', 'owner_id', 'kind', 'content', 'page', 'status', 'created_at'],
+    excluded: {},
   },
   {
     store: 'postgres',

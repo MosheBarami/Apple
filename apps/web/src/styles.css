@@ -7240,3 +7240,245 @@ html.has-cursor .cursor {
 .gx-ev--diff { border-inline-start: 3px solid var(--link, #1e40af); }
 .gx-ev--test { border-inline-start: 3px solid var(--good, #1c5e41); }
 .gx-ev--assets { border-inline-start: 3px solid var(--warn, #b8860b); }
+
+/* ---------------------------------------------------------------- support dialog ---
+   Asking for help from inside the app. The categories are a radio group rather than a
+   <select> on purpose: each one carries a sentence saying when to pick it, and a select
+   hides every option but one behind a click — which is exactly the moment a stuck person
+   guesses instead of reading, and files a billing question as a bug. Tokens only; this
+   renders in both themes and right-to-left, so every edge is logical. */
+.sup__kinds {
+  border: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sup__kind {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.sup__kind:hover {
+  border-color: var(--line-strong);
+}
+
+.sup__kind.is-on {
+  border-color: var(--accent, var(--line-strong));
+  background: var(--surface-2, transparent);
+}
+
+.sup__kind input {
+  margin-block-start: 0.15rem;
+  flex: none;
+}
+
+.sup__kindtext {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.sup__kindlabel {
+  font-weight: 600;
+}
+
+.sup__kindhint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.sup__text {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  font: inherit;
+}
+
+/* The path and the countdown share a row: both answer "what exactly is about to be sent". */
+.sup__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sup__count {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* Over the limit is the one state the counter has to shout, because the Send button has
+   already gone quiet and a silent disabled button reads as a broken one. */
+.sup__count.is-over {
+  color: var(--bad, #a3352c);
+  font-weight: 600;
+}
+
+.sup__done {
+  margin-block: 0 0.6rem;
+}
+
+.sup__id {
+  font-size: 0.85em;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+/* Said, not whispered: the person's own words were changed on the way in. */
+.sup__note {
+  margin: 0 0 0.8rem;
+  padding: 0.55rem 0.7rem;
+  border-inline-start: 3px solid var(--warn, #8a5a12);
+  background: var(--warn-soft, transparent);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.sup__mine {
+  margin-block-start: 1.4rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--line);
+}
+
+.sup__minetitle {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sup__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.sup__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 0.75rem;
+  padding: 0.5rem 0;
+  border-block-start: 1px solid var(--line);
+  font-size: 0.86rem;
+}
+
+.sup__row:first-child {
+  border-block-start: 0;
+}
+
+.sup__rowkind {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.sup__rowtext {
+  grid-column: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The status sits in its own column so the eye can run down it. "Waiting on us" and
+   "Answered and closed" are the two facts a person came back to read. */
+.sup__status {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  white-space: nowrap;
+  color: var(--warn, #8a5a12);
+  font-size: 0.8rem;
+}
+
+.sup__status.is-closed {
+  color: var(--good, #256b48);
+}
+
+@media (max-width: 34rem) {
+  .sup__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sup__status {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+/* The consented attachment. The <pre> is the whole point of this block: a checkbox whose
+   contents can only be described in prose is a checkbox nobody can meaningfully tick, so
+   what would be sent is one disclosure away and is the same string that gets sent. */
+.sup__attach {
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2, transparent);
+}
+
+.sup__attachrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.sup__attachrow input {
+  margin-block-start: 0.2rem;
+  flex: none;
+}
+
+.sup__attachlabel {
+  display: block;
+  font-weight: 600;
+}
+
+.sup__attachhint {
+  display: block;
+  margin-block-start: 0.15rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.sup__attachpeek {
+  margin-block-start: 0.55rem;
+}
+
+.sup__attachpeek > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sup__attachpeek > summary:hover {
+  color: var(--ink);
+}
+
+.sup__attachtext {
+  margin-block-start: 0.5rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

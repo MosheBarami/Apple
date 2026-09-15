@@ -416,3 +416,44 @@ test('the error log redacts through this scanner, including kinds its own list n
   const long = A.redactMessage(`${'x'.repeat(200)} ${JWT}`, 240);
   assert.equal(long.includes(JWT.slice(0, 40)), false, 'truncating before redacting would leave the head of the key');
 });
+
+/**
+ * A REDACTION MARKER IS A CLAIM THAT SOMETHING WAS REMOVED, AND IT HAS TO BE TRUE.
+ *
+ * The parameterised case above is satisfied by removing the PEM HEADER, because `PEM` includes the
+ * header and `text.includes(PEM)` is false the moment any part of it goes. So
+ * `[redacted:private_key_block]` was being written at the top of a key whose body was still on the
+ * next line — a failure to redact, rendered as a redaction, in the one output a reader trusts to
+ * mean the opposite.
+ *
+ * The key material is therefore named on its own here, with no header in the needle, so no amount
+ * of header-munging can satisfy this test.
+ */
+const PEM_BODY_A = 'MIIEowIBAAKCAQEAwJqZk7vRtYnLpQxFdSgHeUbTcWmNoPiKrXaZyBvC0123456789';
+const PEM_BODY_B = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ9876543210';
+const FULL_PEM = `-----BEGIN RSA PRIVATE KEY-----\n${PEM_BODY_A}\n${PEM_BODY_B}\n-----END RSA PRIVATE KEY-----`;
+
+test('a private key is removed with its key material, not merely announced', () => {
+  const msg = `the deploy step printed this and then stopped:\n${FULL_PEM}\nnothing after that`;
+  const { text, findings } = R.redactSecrets(msg);
+  assert.ok(findings.some((f) => f.kind === 'private_key_block'), 'the block was not even found');
+  assert.equal(text.includes(PEM_BODY_A), false, 'the first line of the key survived a redaction that claimed to remove it');
+  assert.equal(text.includes(PEM_BODY_B), false, 'the rest of the key survived');
+  assert.equal(text.includes('-----END RSA PRIVATE KEY-----'), false, 'the armour footer was left dangling');
+  assert.match(text, /the deploy step printed this/, 'the surrounding message must survive');
+  assert.match(text, /nothing after that/, 'redaction ran past the end of the block and ate the message');
+});
+
+test('a key pasted without its closing armour still loses its body', () => {
+  // A truncated copy-paste is the common shape, and it is the one where "stop at the footer" does
+  // nothing at all. Everything that still looks like armour after the header goes.
+  const { text } = R.redactSecrets(`-----BEGIN PRIVATE KEY-----\n${PEM_BODY_A}`);
+  assert.equal(text.includes(PEM_BODY_A), false, 'an unterminated key block kept its body');
+});
+
+test('the finding measures the whole block, so a log does not under-report the leak', () => {
+  const [f] = R.scanSecrets(FULL_PEM, { kinds: ['private_key_block'] });
+  assert.ok(f, 'no finding at all');
+  assert.equal(f.length, FULL_PEM.length, 'the finding reports only the header length');
+  assert.equal(f.preview.includes(PEM_BODY_A), false, 'the preview is a second copy of the key');
+});

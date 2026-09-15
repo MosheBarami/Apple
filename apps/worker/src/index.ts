@@ -48,6 +48,7 @@ import {
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
+import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type ShareResource } from './collab';
 import {
   isShareToken,
@@ -2822,6 +2823,110 @@ app.get('/api/me/usage', async (c) => {
   const user = c.get('user');
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/history');
   return c.json(await res.json());
+});
+
+/*
+ * ------------------------------------------------------------------ SUPPORT
+ *
+ * `public.feedback` was created in 0001_init.sql — a category CHECK, a content bound, a `page`
+ * column that only makes sense for an in-app widget, a `status` column, two RLS policies — and
+ * until these two routes, nothing in the product ever read or wrote it. The whole support surface
+ * was an address on a marketing page, so a person whose build had just failed had to leave the
+ * app, find the site, and retype from memory what they had been doing. The schema was a design
+ * nobody built.
+ *
+ * WHAT IS DELIBERATELY NOT HERE. No priority, no assignee, no thread of replies. Each of those is
+ * a column `public.feedback` does not have, and adding one is a migration — which in this
+ * repository means a file that three previous times sat unapplied while tsc, the tests and the
+ * build all passed. These two routes are exactly what the EXISTING schema supports, so the day
+ * they ship there is no gap between what the code believes and what the database has.
+ */
+
+/** What is read back to a submitter. `owner_id` is not among them: they are the only owner. */
+const FEEDBACK_SELECT = 'id,owner_id,kind,content,page,status,created_at';
+
+interface FeedbackRow {
+  id: string;
+  owner_id: string | null;
+  kind: string;
+  content: string;
+  page: string | null;
+  status: string;
+  created_at: string;
+}
+
+/**
+ * File a support request, a bug report or a piece of feedback.
+ *
+ * IDENTITY IS STRUCTURAL HERE, NOT CHECKED. `owner_id` is assigned from `c.get('user').userId` —
+ * the subject of a JWT this worker verified against Supabase's JWKS — and the parsed body has no
+ * owner field at all for a caller to set (see support.ts: `SupportSubmission` does not have one,
+ * so there is no key to spread through by accident). A support desk whose requests could name
+ * their own author is a support desk where "I am the owner of this account" is a claim anyone can
+ * type, which is precisely the thing a support desk must not accept on trust.
+ */
+app.post('/api/feedback', async (c) => {
+  const user = c.get('user');
+  let raw: unknown = null;
+  try {
+    raw = await c.req.json();
+  } catch {
+    return c.json({ error: 'Send a JSON object with a message.' }, 400);
+  }
+  const parsed = parseSupportSubmission(raw);
+  // Refused HERE, so PostgREST is never asked. The column's CHECK constraint is not a validator:
+  // it answers an unknown category with a Postgres constraint name, and a route forwarding that
+  // hands the user an opaque failure for what is really "that is not one of the categories".
+  if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+  const { kind, content, page, redacted } = parsed.value;
+
+  const { ok, status, data } = await supaRest<FeedbackRow[]>(c.env, user.jwt, `/feedback?select=${FEEDBACK_SELECT}`, {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: JSON.stringify({ owner_id: user.userId, kind, content, page }),
+  });
+  const row = Array.isArray(data) ? data[0] : null;
+  // A receipt for a report that was never stored is worse than an error: the person stops waiting.
+  // An insert that returns no row is that case too, however cheerful its status code was.
+  if (!ok || !row) {
+    return c.json({ error: 'That did not send. Nothing was stored — please try again.', status }, 502);
+  }
+  return c.json(
+    {
+      id: row.id,
+      kind: row.kind,
+      status: row.status,
+      createdAt: row.created_at,
+      /*
+       * SAID OUT LOUD, NOT DONE QUIETLY. A credential pasted into a bug report is removed before
+       * it is stored (support.ts), and a person whose words were edited is entitled to know — both
+       * because the report they can read back will not match what they typed, and because "your
+       * API key was in there" is useful news.
+       */
+      redacted,
+    },
+    201,
+  );
+});
+
+/**
+ * The caller's own requests, newest first.
+ *
+ * NARROWED TWICE ON PURPOSE. The `owner_id=eq.` clause and the "own feedback read" RLS policy say
+ * the same thing, and the belt is not redundant with the braces: RLS is the lock that must hold,
+ * and an explicit clause means a policy edited in a dashboard cannot silently turn this route into
+ * everyone's inbox. The filter after the fetch is the third, for the same reason inverted — the
+ * database is the thing being trusted, so what it returns is checked rather than forwarded.
+ */
+app.get('/api/feedback', async (c) => {
+  const user = c.get('user');
+  const query = `/feedback?select=${FEEDBACK_SELECT}&owner_id=eq.${user.userId}&order=created_at.desc&limit=50`;
+  const { ok, data } = await supaRest<FeedbackRow[]>(c.env, user.jwt, query);
+  if (!ok || !Array.isArray(data)) return c.json({ error: 'Could not read your requests just now.' }, 502);
+  const requests = data
+    .filter((r) => r.owner_id === undefined || r.owner_id === null || r.owner_id === user.userId)
+    .map((r) => ({ id: r.id, kind: r.kind, content: r.content, page: r.page, status: r.status, createdAt: r.created_at }));
+  return c.json({ requests });
 });
 
 /**

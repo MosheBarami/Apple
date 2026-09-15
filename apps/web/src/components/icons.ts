@@ -47,6 +47,10 @@ export const ICON_PATH = {
    *  merge into a solid block below about 20px. */
   docs: 'M7 3h7l5 5v13H7zM14 3v5h5',
   shield: 'M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z',
+  /** Ask a person for help. A lifebuoy, and deliberately NOT `docs` — the manual is the thing
+   *  you read when nobody needs to be involved, and these two sit next to each other in the
+   *  account menu, so drawing them alike would make the pair unreadable at 15px. */
+  lifebuoy: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9',
   /** The inbox. Drawn open-bottomed so the unread badge can sit in the notch without covering it. */
   bell: 'M18 9a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16S18 14 18 9M13.7 19a2 2 0 0 1-3.4 0',
   /** Credits and clearance to publish — a document with a seal. Deliberately NOT
