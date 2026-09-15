@@ -76,9 +76,28 @@ test('the socket opens on the documented URL with both subprotocols, in order', 
 });
 
 test('a session with no token refuses to open rather than connecting unauthenticated', () => {
-  assert.throws(
-    () => new SessionStream({ baseUrl: 'https://api.test', projectId: PROJECT, token: '', socketFactory: () => {} }).connect(),
-    TypeError,
+  // THE OLD VERSION PROVED NOTHING. Its stub was `socketFactory: () => {}`, an arrow whose body is
+  // an empty BLOCK — it returns undefined, so `.connect()` throws
+  // "Cannot set properties of undefined (setting 'onopen')" for ANY token, valid or not. Asserting
+  // only the error CLASS, TypeError, matched that accident exactly. Measured: replacing the guard
+  // in socketProtocols with `token = token ?? ''` left this green, and a perfectly valid token
+  // still threw TypeError against the same stub.
+  //
+  // Two changes make it discriminate: a stub that returns a real object, so the only thing that can
+  // throw is the guard, and an assertion on the MESSAGE rather than the class.
+  const socket = () => ({ addEventListener() {}, close() {}, send() {} });
+  for (const bad of ['', null, undefined, 0, {}]) {
+    assert.throws(
+      () => new SessionStream({ baseUrl: 'https://api.test', projectId: PROJECT, token: bad, socketFactory: socket }).connect(),
+      /needs an access token/,
+      `token ${JSON.stringify(bad)} must be refused by name`,
+    );
+  }
+  // The control: with the same stub, a real token gets past the guard. Without this, a guard that
+  // refused EVERY token would pass every case above.
+  assert.doesNotThrow(
+    () => new SessionStream({ baseUrl: 'https://api.test', projectId: PROJECT, token: 'tok-123', socketFactory: socket }).connect(),
+    'a valid token must connect against the same stub — otherwise the cases above prove nothing',
   );
 });
 

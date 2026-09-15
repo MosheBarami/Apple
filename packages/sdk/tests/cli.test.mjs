@@ -37,7 +37,23 @@ test('an unknown flag is an error, never silently dropped', () => {
 });
 
 test('a flag that takes a value refuses to swallow the next flag as its value', () => {
+  // `--limit` IS NOT ENOUGH TO PROVE THIS, and on its own it proved nothing. It is number-typed, so
+  // with the swallow guard deleted `Number('--json')` is NaN and the number check throws the same
+  // UsageError class — the assertion passes either way, for the wrong reason. Measured: removing
+  // `next.startsWith('--')` from src/cli-args.mjs left this test green.
+  //
+  // The regression only appears on a STRING-typed flag, where nothing downstream objects:
+  // `parseArgs(['export', PROJECT, '--format', '--json'])` would yield
+  // `{ format: '--json', json: true }` — the user asked to export as JSON and instead named their
+  // format "--json" and silently lost the flag they meant.
   assert.throws(() => parseArgs(['messages', PROJECT, '--limit', '--json']), UsageError);
+  assert.throws(
+    () => parseArgs(['export', PROJECT, '--format', '--json']),
+    UsageError,
+    'a STRING flag must refuse the next flag as its value — this is the case that isolates the guard',
+  );
+  // And the message must name the flag that is short of a value, not the one it nearly ate.
+  assert.throws(() => parseArgs(['export', PROJECT, '--format', '--json']), /--format/);
 });
 
 test('--limit must be a number, so `limit=NaN` never reaches the API', () => {
