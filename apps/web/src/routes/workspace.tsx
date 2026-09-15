@@ -289,22 +289,56 @@ export function WorkspacePage() {
    * complete answer; until that exists, saying so plainly beats scrolling to nothing and looking
    * broken.
    */
+  //[[ A MESSAGE IS A PLACE, SO IT GETS AN ADDRESS.
+  //
+  //   The scroll used to be the whole of it: the URL was /projects/:id before the jump and
+  //   /projects/:id after, so the found message could not be sent to anybody and a reload put you
+  //   back at the bottom of the thread. The hash is the id the turn already renders — one naming
+  //   scheme, not two — and it is written with `replace` because a jump is not a page anyone
+  //   should have to press Back through, and search produces them in bursts.
+  //
+  //   `anchored` is what stops the loop: this writes the hash, and the effect below reads the
+  //   hash and calls this. It records the anchor it has satisfied, so the second pass is a no-op. ]]
+  const anchored = useRef<string | null>(null);
   const jumpToMessage = useCallback(
-    (messageId: string) => {
+    (messageId: string, origin: 'search' | 'link' = 'search') => {
+      anchored.current = messageId;
       const el = document.getElementById(`msg-${messageId}`);
       if (!el) {
-        toast('That message is further back than the loaded history — load more and search again.', 'info');
+        // The two callers need different advice. "Search again" is right beside an open search
+        // panel and nonsense to someone who followed a link and has no search open.
+        toast(
+          origin === 'link'
+            ? 'That message is further back than the loaded history — open the project and load more to reach it.'
+            : 'That message is further back than the loaded history — load more and search again.',
+          'info',
+        );
         return;
       }
       setDrawer(null);
+      navigate({ hash: `#msg-${messageId}` }, { replace: true });
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       // A flash rather than a persistent highlight: it answers "which one?" and then gets out of
       // the way, so the next jump is just as legible as the first.
       el.classList.add('is-found');
       setTimeout(() => el.classList.remove('is-found'), 1600);
     },
-    [toast],
+    [navigate, toast],
   );
+
+  //[[ AND AN ADDRESS THAT IS PASTED BACK IN IS HONOURED.
+  //
+  //   Deliberately gated on `historyState === 'ready'`. The workspace pages backwards from the
+  //   newest hundred, so at first paint the message a link names is usually not in the DOM yet;
+  //   jumping straight away would tell someone their message is "further back than the loaded
+  //   history" while it is still on its way — a wrong explanation, which sends them looking for
+  //   history that was never missing. ]]
+  useEffect(() => {
+    if (historyState !== 'ready') return;
+    const id = location.hash.startsWith('#msg-') ? location.hash.slice('#msg-'.length) : '';
+    if (!id || anchored.current === id) return;
+    jumpToMessage(id, 'link');
+  }, [historyState, location.hash, jumpToMessage]);
 
   //[[ A RESULT OPENS THE THING IT FOUND.
   //
