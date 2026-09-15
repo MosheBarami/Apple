@@ -857,7 +857,19 @@ export type ServerMsg =
    * repeat of the selection it last reported, so this is an event rather than a heartbeat.
    */
   | { type: 'studio_selection'; selection: StudioEventSelection }
-  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
+  //[[ `userMsgId` NAMES THE ROW THE USER'S OWN MESSAGE WAS STORED UNDER.
+  //
+  //   The client appends its own message optimistically under a locally minted id — the send is
+  //   fire-and-forget over this socket and the message has to appear at once — while the server
+  //   inserts its row under a uuid it never reported. So Edit, Try again and Regenerate, all of
+  //   which resolve that id server-side, failed on every message sent in the current session and
+  //   worked after a reload, because history comes back from /messages with real ids.
+  //
+  //   Carried here rather than on a new variant because msg_start is broadcast exactly once per
+  //   run, after the user row is inserted, and already carries the run's other id. OPTIONAL
+  //   because the worker and the web app deploy separately: a client that required it would be
+  //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
+  | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
   | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
   // `detail` carries the tool's STRUCTURED result, which the web app offers to

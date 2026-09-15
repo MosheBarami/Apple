@@ -1683,7 +1683,12 @@ export class SessionDO extends DurableObject<Env> {
       intent: intent ?? undefined,
     };
     await this.persistAgent(agent);
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
+    // `userMsgId` tells the client what the row IT optimistically rendered is actually called here.
+    // Without it every user message sent in the current session carried a client-minted id the
+    // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
+    // against the messages table — answered "That message is no longer in the conversation" until
+    // the page was reloaded. See web/src/lib/message-identity.ts.
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, userMsgId });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;

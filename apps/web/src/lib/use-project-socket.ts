@@ -18,6 +18,9 @@ import type {
 } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
 import { fetchCheckpoints, fetchMessages } from './api';
+// One definition of what a client-minted id looks like, and one place that reconciles it with the
+// server's. Two would drift, and the drift is invisible until an Edit truncates from nowhere.
+import { adoptUserMessageId, localId } from './message-identity';
 import {
   MOCK_MODE,
   mockCheckpoints,
@@ -207,8 +210,6 @@ const MAX_LOGS = 300;
 const MAX_PHASE_MARKS = 120;
 /** Each frame is ~207KB of base64 at the default 288x180. Keep very few. */
 const MAX_FRAMES = 8;
-let localIdCounter = 0;
-const localId = () => `local-${Date.now()}-${localIdCounter++}`;
 
 /** Fixture conversation for mock mode — never reachable in a production build. */
 function mockHistory(): ChatItem[] {
@@ -422,7 +423,14 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         // would attribute its timings to this one, and `agent_status` has no
         // msgId with which to catch the mistake later.
         setPhaseMarks([]);
-        setMessages((list) => {
+        setMessages((raw) => {
+          // THE USER'S OWN MESSAGE GETS ITS REAL NAME HERE.
+          //
+          // It was appended optimistically under an id this client minted, which no server had
+          // ever heard of — so Edit, Try again and Regenerate, all of which resolve that id
+          // against the messages table, failed on anything sent in this session and worked after a
+          // reload. `adoptUserMessageId` returns the same array when there is nothing to adopt.
+          const list = adoptUserMessageId(raw, msg.userMsgId);
           const existing = list.findIndex((m) => m.id === msg.msgId);
           if (existing !== -1) {
             // `run_intent` may have created the shell first; fill in the mode
