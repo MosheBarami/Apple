@@ -2795,7 +2795,7 @@ app.post('/api/admin/assets/unimport', async (c) => {
 app.put('/api/me/roblox-key', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'not signed in' }, 401);
-  const body = await c.req.json<{ apiKey?: string; robloxCreatorId?: string; creatorType?: string; scopes?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ apiKey?: string; robloxCreatorId?: string; creatorType?: string; scopes?: unknown; expiresAt?: unknown }>().catch(() => null);
   if (!body) return c.json({ error: 'a JSON body is required' }, 400);
   const res = await putRobloxCredential(c.env as never, {
     userId: user.userId,
@@ -2803,6 +2803,10 @@ app.put('/api/me/roblox-key', async (c) => {
     robloxCreatorId: String(body.robloxCreatorId ?? ''),
     creatorType: body.creatorType === 'group' ? 'group' : 'user',
     scopes: body.scopes,
+    // Optional, and validated in the store rather than here: a date already past is refused with
+    // its own sentence, because storing a key Roblox has already expired produces a credential
+    // that fails on first use for a reason the row itself knew.
+    expiresAt: body.expiresAt,
   });
   // A CONNECTED ROBLOX ACCOUNT IS A SECURITY EVENT ON THIS ACCOUNT, and it was the one credential
   // path that produced no record at all: minting, rotating and revoking an Apple API key each fire

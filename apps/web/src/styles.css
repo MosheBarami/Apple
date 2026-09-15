@@ -5166,6 +5166,22 @@ textarea {
   font-size: 0.82rem;
 }
 
+/* When the connected key runs out. Quiet until it is close, and then not quiet — the whole reason
+   the date is recorded is that Roblox will not warn anybody. */
+.rk__expiry {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.rk__expiry.is-soon {
+  padding: 0.45rem 0.6rem;
+  border-inline-start: 2px solid var(--warn);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
 /* A permission nothing in the product asks for yet. Quiet, beside the thing it qualifies — the
    point is that it is visible where the tickbox is, not that it shouts. */
 .rk__unused {

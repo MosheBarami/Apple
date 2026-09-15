@@ -32,6 +32,7 @@ import {
   SCOPE_EXPLANATIONS,
   describeStored,
   describeHealth,
+  expiryNote,
   explainKeyFailure,
   implementedScopes,
   stateOf,
@@ -184,4 +185,51 @@ test('every scope the panel offers is one the worker will accept', () => {
   for (const e of SCOPE_EXPLANATIONS) {
     assert.ok(ROBLOX_SCOPES.includes(e.scope), `${e.scope} is not a Roblox Open Cloud scope`);
   }
+});
+
+// ------------------------------------------------------------------- 4. when does this key die?
+
+const NOW = Date.parse('2026-09-15T12:00:00.000Z');
+const inDays = (n) => new Date(NOW + n * 86_400_000).toISOString();
+
+test('A KEY WITH A KNOWN EXPIRY COUNTS DOWN, AND WARNS BEFORE IT DIES', () => {
+  const far = expiryNote({ ...CRED, expiresAt: inDays(40) }, NOW);
+  clean(far.text, 'the expiry line');
+  assert.match(far.text, /40 days/);
+  assert.equal(far.soon, false);
+
+  const near = expiryNote({ ...CRED, expiresAt: inDays(4) }, NOW);
+  assert.match(near.text, /4 days/);
+  assert.equal(near.soon, true, 'under a week is the only useful moment to say it');
+  assert.match(near.text, /create\.roblox\.com|new key/i, 'and a warning with no next step is just anxiety');
+});
+
+test('NOBODY SAID is not the same as DOES NOT EXPIRE', () => {
+  // The field is optional, because Roblox shows the date once and there is no way to ask later.
+  // Rendering an unknown as permanence is the confident-sentence failure this file exists for.
+  const none = expiryNote({ ...CRED, expiresAt: null }, NOW);
+  clean(none.text, 'the unknown-expiry line');
+  assert.equal(/never expires|does not expire|permanent/i.test(none.text), false, none.text);
+  assert.match(none.text, /did not|unknown|not recorded|no expiry date/i);
+  assert.equal(none.soon, false);
+});
+
+test('a date already past reads as expired, not as a negative countdown', () => {
+  const gone = expiryNote({ ...CRED, expiresAt: inDays(-3) }, NOW);
+  clean(gone.text, 'the past-expiry line');
+  assert.match(gone.text, /expired/i);
+  assert.equal(gone.text.includes('-3'), false);
+  assert.equal(gone.soon, true, 'an expired key is at least as urgent as one about to expire');
+});
+
+test('AND A DATE THAT IS NOT A DATE IS NOT RENDERED AS ONE', () => {
+  for (const bad of ['', 'soon', '2026-13-45', undefined]) {
+    const note = expiryNote({ ...CRED, expiresAt: bad }, NOW);
+    clean(note.text, `expiry from ${JSON.stringify(bad)}`);
+  }
+});
+
+test('the panel asks for the expiry, and the client sends it', () => {
+  assert.match(PANEL, /rk-expires|expiresAt/, 'the connect form must offer the date Roblox showed');
+  assert.match(API, /expiresAt/, 'and the client must carry it to the worker');
 });

@@ -26,6 +26,8 @@ export interface StoredCredentialView {
   hint: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /** The expiry the customer copied off Roblox, or null when they did not say. Optional on the wire. */
+  expiresAt?: string | null;
 }
 
 /**
@@ -259,6 +261,47 @@ export function describeHealth(health: KeyHealth | null | undefined): string | n
   // Both remaining verdicts carry the worker's own sentence, which already names the cause. It is
   // not re-worded here: two places writing the same explanation is how they come to disagree.
   return health.reason;
+}
+
+/**
+ * When the key dies, said before it does — and never guessed.
+ *
+ * THREE ANSWERS AND NOT TWO, and the third is the one the field was added for. Roblox shows an
+ * Open Cloud key's expiry once, on the screen where it is created, and offers no way to ask
+ * afterwards; so a key whose expiry nobody recorded is UNKNOWN, which is not "permanent". Printing
+ * "never expires" over a key that dies in a fortnight is the confident sentence this file exists
+ * to prevent, and the person would find out when a build failed.
+ *
+ * `soon` drives the warning styling and is true for expired as well as expiring: a key that died
+ * yesterday is at least as urgent as one dying on Friday.
+ */
+export function expiryNote(c: StoredCredentialView, now: number): { text: string; soon: boolean } {
+  const raw = typeof c.expiresAt === 'string' ? c.expiresAt.trim() : '';
+  const ms = raw ? Date.parse(raw) : NaN;
+  if (!Number.isFinite(ms)) {
+    return {
+      text: 'No expiry date was recorded for this key. Roblox shows it when the key is created — '
+        + 'add it by replacing the key below, and Apple will warn you before it runs out.',
+      soon: false,
+    };
+  }
+  if (ms <= now) {
+    return {
+      text: 'This key has expired — the date recorded for it has passed, so Roblox will be refusing '
+        + 'it. Create a new key at create.roblox.com \u2192 Open Cloud \u2192 API Keys and paste it below.',
+      soon: true,
+    };
+  }
+  const days = Math.floor((ms - now) / 86_400_000);
+  const when = days <= 0 ? 'today' : `${days} day${days === 1 ? '' : 's'}`;
+  if (days <= 7) {
+    return {
+      text: `This key expires in ${when}. Create a new one at create.roblox.com \u2192 Open Cloud \u2192 `
+        + 'API Keys and paste it below before it runs out — nothing already built is affected.',
+      soon: true,
+    };
+  }
+  return { text: `This key expires in ${when}.`, soon: false };
 }
 
 // ---------------------------------------------------------------------------------------------

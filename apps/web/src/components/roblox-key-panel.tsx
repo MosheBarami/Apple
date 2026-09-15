@@ -35,6 +35,7 @@ import {
   SCOPE_EXPLANATIONS,
   describeHealth,
   describeStored,
+  expiryNote,
   explainKeyFailure,
   irreversibleScopes,
   problemsWith,
@@ -62,15 +63,25 @@ export function RobloxKeyPanel() {
   const [creatorId, setCreatorId] = useState('');
   const [creatorType, setCreatorType] = useState<'user' | 'group'>('user');
   const [scopes, setScopes] = useState<RobloxScope[]>([]);
+  /** The date Roblox showed when the key was made. Optional — see expiryNote for why it matters. */
+  const [expiresAt, setExpiresAt] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [problems, setProblems] = useState<ReturnType<typeof problemsWith>>([]);
 
   const connect = useMutation({
-    mutationFn: () => putRobloxKey({ apiKey: apiKey.trim(), robloxCreatorId: creatorId.trim(), creatorType, scopes }),
+    mutationFn: () =>
+      putRobloxKey({
+        apiKey: apiKey.trim(),
+        robloxCreatorId: creatorId.trim(),
+        creatorType,
+        scopes,
+        ...(expiresAt.trim() ? { expiresAt: expiresAt.trim() } : {}),
+      }),
     onSuccess: () => {
       // The key is cleared from the form the moment it is stored. Leaving it in an input means it
       // survives in the DOM, in a screenshot, and in the browser's own form restore.
       setApiKey('');
+      setExpiresAt('');
       setConfirming(false);
       setProblems([]);
       // A new key makes the last verdict a statement about a key that is no longer there.
@@ -189,6 +200,13 @@ export function RobloxKeyPanel() {
             </p>
           )}
 
+          {/* WHEN IT DIES, SAID BEFORE IT DOES. An unrecorded expiry reads as unknown rather than
+              as permanence — Roblox shows the date once and cannot be asked again. */}
+          {(() => {
+            const note = expiryNote(credential, Date.now());
+            return <p className={`rk__expiry${note.soon ? ' is-soon' : ''}`}>{note.text}</p>;
+          })()}
+
           <button
             type="button"
             className="btn btn--danger"
@@ -246,6 +264,21 @@ export function RobloxKeyPanel() {
             {problemFor('robloxCreatorId')}
           </p>
         )}
+
+        <label className="rk__label" htmlFor="rk-expires">
+          Expires on (optional)
+        </label>
+        <input
+          id="rk-expires"
+          type="date"
+          className="rk__input"
+          value={expiresAt}
+          onChange={(e) => setExpiresAt(e.target.value)}
+        />
+        <p className="rk__note">
+          Roblox shows this date when you create the key, and there is no way to ask for it
+          afterwards. Recording it here is what lets Apple warn you before the key stops working.
+        </p>
 
         <fieldset className="rk__type">
           <legend className="rk__label">Acting as</legend>

@@ -1469,6 +1469,13 @@ export interface StoredRobloxKey {
   hint: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /**
+   * When Roblox will stop accepting the key, as the customer copied it off the Open Cloud page.
+   *
+   * Optional, and null when they did not say — which is a different fact from "it does not
+   * expire". Roblox shows the date once, at creation, and has no way to be asked afterwards.
+   */
+  expiresAt?: string | null;
 }
 
 /**
@@ -1486,6 +1493,8 @@ export const putRobloxKey = (body: {
   robloxCreatorId: string;
   creatorType: 'user' | 'group';
   scopes: RobloxScope[];
+  /** `YYYY-MM-DD` from the date field, or omitted. The worker refuses a date already past. */
+  expiresAt?: string | null;
 }): Promise<{ credential: StoredRobloxKey }> =>
   request('/api/me/roblox-key', { method: 'PUT', body: JSON.stringify(body) });
 
