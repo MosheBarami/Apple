@@ -762,7 +762,23 @@ const TOOL_ARGS = {
   render_view: { view: 'hero' },
   check_composition: { intent: 'a town plaza with a clock tower' },
   inspect_visually: { intent: 'a town plaza with a clock tower' },
+  // A plan that SATISFIES its own admission rules, for the third time the same reason applies: a
+  // plan with no verification step is refused, and a refusal emits no checklist at all — so the
+  // egress scan would inspect an error and report a tool that broadcasts user-authored titles into
+  // the project as clean.
+  propose_plan: {
+    title: 'Spawn platform',
+    steps: [
+      { title: 'A platform players spawn onto', detail: 'One anchored Part in Workspace.', tool: 'create_instances' },
+      { title: 'And it holds a character', detail: 'Run it and watch nobody fall.', tool: 'run_and_check' },
+    ],
+  },
   choose_asset_source: { need: 'foliage' },
+  // A mechanic the library HAS a pattern for, for the same reason get_genre_kit takes a real
+  // genre: an unknown name returns the noMatch branch, which emits no citations and no repository
+  // urls at all — so the egress scan below would inspect a refusal and report a tool that cites
+  // third-party repositories as clean.
+  find_mechanic: { mechanic: 'a shop that sells pets for coins' },
   // A real genre, not a made-up one: an unknown name returns the error branch, which emits no
   // palette, no lighting and no sound ids — so the egress scan below would inspect a refusal and
   // report that a tool leaking asset ids is clean.
@@ -1234,9 +1250,16 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
     // SUCCESSFUL separate `read` probe, so a caller who cannot see the project still gets 404.
     // That is what stops it being an existence oracle, and it is asserted below rather than
     // trusted — admitting a third proof here is only safe while that remains true.
+    // `(?:\s*\?\?\s*'')?` — a route may give the parameter a default before handing it over, and
+    // several now do: `withOwnedProject(c, c.req.param('id') ?? '', 'read')`. That is safe by
+    // construction, because the helper cannot find a project called '' and returns null, which the
+    // REFUSALS block below then turns into the same 404 a missing project gets. Without this the
+    // sweep failed GET /api/projects/:id/automations — a route that proves ownership correctly —
+    // for having written a fallback. Pinning an authorisation guard to an exact expression is the
+    // same mistake the two comments below record, in its third form.
     const PROOFS = [
-      new RegExp(`withOwnedProject\\(c, c\\.req\\.param\\('id'\\)(?:, ${ACTION})?\\)`),
-      new RegExp(`sharedAccess\\(c, c\\.req\\.param\\('id'\\), ${ACTION}\\)`),
+      new RegExp(`withOwnedProject\\(c, c\\.req\\.param\\('id'\\)(?:\\s*\\?\\?\\s*'')?(?:, ${ACTION})?\\)`),
+      new RegExp(`sharedAccess\\(c, c\\.req\\.param\\('id'\\)(?:\\s*\\?\\?\\s*'')?, ${ACTION}\\)`),
       /memoryScopeAccess\(c, '(?:project|user|org)', /,
     ];
     assert.ok(
@@ -1253,7 +1276,16 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
       /if \(!proven\) return c\.json\(\{ error: 'not found' \}, 404\)/,
       // The sharedAccess form refuses through one helper that maps its own status to a body, so
       // the 404-vs-403 decision lives in exactly one place instead of at every call site.
-      /if \(!access\.ctx\) return collabRefusal\(c, access\.status\)/,
+      //
+      // THE ARGUMENT LIST IS OPEN-ENDED, and that is the second time this lesson has been learned
+      // in this one array. The comment above records pinning the refusal to the NAME of a local
+      // variable, so a route binding the identical check to `proven` failed a guard about
+      // authorisation for a reason that was about spelling. This pattern then pinned the ARITY:
+      // `collabRefusal(c, access.status)` matched until /api/projects/:id/files/op started passing
+      // a third argument, `access.detail`, which is the refusal carrying MORE information to the
+      // user and not less. What must hold is that the refusal goes through the one helper carrying
+      // the access status — never how many arguments follow it.
+      /if \(!access\.ctx\) return collabRefusal\(c, access\.status\b/,
     ];
     assert.ok(
       REFUSALS.some((re) => re.test(body)),
@@ -1266,9 +1298,53 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
   // assertion in this test is built to prevent.
   const shared = src.slice(src.indexOf('async function sharedAccess('), src.indexOf('const collabRefusal'));
   assert.ok(shared.length > 100, 'sharedAccess was not found — the PROOFS entry above would be unguarded');
-  assert.match(shared, /const ctx = await withOwnedProject\(c, projectId, action\)/, 'sharedAccess must go through the same gate');
-  assert.match(shared, /getProjectAccess\(c\.env, c\.get\('user'\), projectId, 'read'\)/, 'the 403 must be gated on a read probe');
-  assert.match(shared, /probe\.project === null \? 404 : 403/, 'a caller who cannot read must get 404, never 403');
+  //
+  // THE FOURTH ARGUMENT IS ALLOWED AND IT MAKES THE GATE STRICTER, NOT LOOSER. sharedAccess now
+  // forwards `resource` — what the route touches — and withOwnedProject refuses every scoped grant
+  // when it is omitted. Pinning this to three arguments failed the guard on the change that
+  // narrowed the thing the guard protects. That is the FOURTH time in this file an authorisation
+  // assertion has been pinned to a spelling rather than to a property: the variable name (`ctx` vs
+  // `proven`), the refusal's arity (`collabRefusal` gaining a detail), the id expression (`?? ''`),
+  // and now this. The property is "it goes through withOwnedProject with this route's projectId and
+  // action" — everything after that is the call getting better.
+  assert.match(
+    shared,
+    /const ctx = await withOwnedProject\(c, projectId, action\b/,
+    'sharedAccess must go through the same gate',
+  );
+  // Fifth time, same shape, and this one is the clearest: the probe grew `Date.now()` and
+  // `resource` — a clock it no longer reads off the ambient one, and the same narrowing surface
+  // forwarded above. Both make the probe MORE precise. The property is that the 403 is decided by
+  // a read probe on this projectId for this user, not the number of arguments that probe takes.
+  assert.match(
+    shared,
+    /getProjectAccess\(c\.env, c\.get\('user'\), projectId, 'read'/,
+    'the 403 must be gated on a read probe',
+  );
+  /*
+   * THIS ONE IS A REAL BEHAVIOUR CHANGE, not a spelling, and the assertion is restated rather than
+   * relaxed.
+   *
+   * It used to be one ternary: `probe.project === null ? 404 : 403`. No read, no project. The
+   * property it protected is that an outsider must not learn a project exists by being told
+   * "forbidden" instead of "not found".
+   *
+   * There is now a third case. A caller who cannot READ the project may still hold a SCOPED grant
+   * — a chat link that opens the conversation and not the project around it — and that caller can
+   * already prove the project exists, because their link works. Answering 404 hides the only fact
+   * they can act on, which is that their access is narrower than the route they tried. So
+   * `scoped_grant` gets 403 with a detail naming why.
+   *
+   * The property therefore becomes: a caller holding NO grant at all gets 404; only a caller who
+   * has already been given something may be told 403. Both branches are asserted, and the default
+   * — the branch an unknown reason falls into — must be the 404.
+   */
+  assert.match(shared, /if \(probe\.project !== null\) return \{ ctx: null, status: 403 \}/,
+    'a caller who CAN read must get 403 — they already know the project exists');
+  assert.match(shared, /reason === 'scoped_grant'/,
+    'the scoped-grant case is gone; a chat-link holder is now told 404 about a project their link opens');
+  assert.match(shared, /:\s*\{ ctx: null, status: 404 \}/,
+    'the DEFAULT branch must be 404 — a caller with no grant at all must not be told a project exists');
 
   // …and withOwnedProject itself still does the two things that make it work.
   const helper = src.slice(src.indexOf('async function withOwnedProject'), src.indexOf("app.get('/api/projects/:id/ws'"));
@@ -1353,9 +1429,35 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
   //   /api/billing/webhook — Stripe is not a user and has no JWT. It signs the body with a shared
   //     secret, and the route refuses with 503 when that secret is absent rather than trusting the
   //     payload. Asserted below so the exemption cannot outlive the verification.
+  //   /api/discord/interactions — Discord is not a user either. It authenticates by an Ed25519
+  //     signature over `timestamp + rawBody` made with a key only Discord holds: 503 when no public
+  //     key is configured, 401 before parsing and before dispatch on a bad, forged or stale
+  //     signature, with the reason logged and never returned. index.ts:2827 marks the first line
+  //     reachable only after verification. This endpoint can spend a customer's Credits, so
+  //     unverified it is a button anyone on the internet may press on somebody else's account.
+  //   /api/recovery-request — the one route whose PREMISE is that the caller has no credential:
+  //     it is for somebody who cannot sign in at all, and asking them for a token would be asking
+  //     for the thing they have lost. It defends itself four other ways, documented at the head of
+  //     recovery-requests.ts: it holds a D1 binding and nothing else, so it HAS no way to answer
+  //     "does this address have an account"; it stores the SHA-256 of the address and never the
+  //     address, so the table is not a curated list of people currently locked out; it reports a
+  //     write that did not happen as a 503 rather than a calm confirmation; and it is rate-limited
+  //     at index.ts:4421 to 10 per IP, without which it is an open write endpoint.
+  //
+  // ADDING A LINE HERE IS THE REVIEW. The two entries above were added by other lanes and this
+  // assertion is what forced them to be read rather than noticed later — which is the entire
+  // reason it compares the whole list instead of checking that the old five are still present.
   assert.deepEqual(
     exempt.sort(),
-    ['/api/billing/webhook', '/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist'],
+    [
+      '/api/billing/webhook',
+      '/api/discord/interactions',
+      '/api/health',
+      '/api/recovery-request',
+      '/api/studio/claim',
+      '/api/studio/poll',
+      '/api/waitlist',
+    ],
     'the unauthenticated route list changed — every entry needs its own review',
   );
   const webhook = src.slice(src.indexOf("app.post('/api/billing/webhook'"), src.indexOf("app.get('/api/providers'"));
@@ -1560,10 +1662,34 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       'GET /api/admin/session-info/:id',
       'GET /api/admin/session-messages/:id',
       'POST /api/admin/agent-run/:id',
+      'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
       'POST /api/admin/studio-op/:id',
     ],
     'an admin route that addresses a project by id was added or removed — review it: these bypass RLS entirely',
+  );
+  /*
+   * THE REVIEW OF THE ONE THAT WAS ADDED, since a line in the list above is worth nothing on its own.
+   *
+   * POST /api/admin/recovery-requests/:id decides an account-recovery plea — the operator marks it
+   * approved or refused. The `:id` is a RECOVERY REQUEST id, not a project id, so it is the only
+   * entry here that does not address a tenant's data at all; it matches the filter because the
+   * filter looks for `/:id` rather than for tenancy, which is the right way round for a tripwire.
+   *
+   * It is nonetheless correctly in this inventory. Deciding a recovery request is the highest-value
+   * action the admin key can take — it is the step before a human hands somebody back an account —
+   * and the thing that makes it safe is not this route. It is that recovery-requests.ts stores a
+   * hash rather than an address, so an operator with the admin key STILL cannot enumerate who is
+   * locked out; they can only decide a request whose id they were already given.
+   *
+   * Asserted rather than described: if that module ever stores the address itself, this route
+   * becomes a way to read a customer list with one service-wide credential.
+   */
+  const recovery = read('recovery-requests.ts');
+  assert.match(recovery, /sha-?256/i, 'recovery-requests.ts no longer hashes — the admin decide route can now enumerate addresses');
+  assert.equal(
+    /\bemail\s*:\s*email\b|\bvalues\([^)]*\bemail\b/i.test(recovery), false,
+    'recovery-requests.ts appears to store a raw address; the admin decide route then reads a customer list',
   );
   // The inventory is only evidence if each body IS the handler and not the file that follows it.
   // Asserted, not assumed: a body that swallowed a top-level declaration is exactly how this guard
@@ -1582,8 +1708,39 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
   const byBodyUser = bodies
     .filter((r) => r.path.startsWith('/api/admin/') && /\b(userId|user_id)\b/.test(r.body))
     .map((r) => `${r.method} ${r.path}`);
-  assert.deepEqual(byBodyUser.sort(), ['POST /api/admin/quota-reset', 'POST /api/admin/set-plan'],
-    'an admin route that acts on a named user was added or removed — review it');
+  /*
+   * TWO ADDED, BOTH REVIEWED, AND THEY ARE NOT THE SAME KIND OF THING.
+   *
+   *   GET /api/admin/account/:userId — the operator's customer lookup. It READS: plan, credits,
+   *     spend over a bounded window. It writes nothing. It is the widest read here, because it
+   *     takes any user id and answers about that person without their consent — which is exactly
+   *     what a support desk needs and exactly what must never be reachable without the admin key.
+   *     Note it validates the id against UUID_RE before touching a DO: without that, an arbitrary
+   *     string becomes a Durable Object name and the route quietly creates one.
+   *
+   *   GET /api/admin/billing-reconcile — names a user only because the rows it walks carry a user
+   *     id. It asks Stripe for subscriptions and compares them with what this product believes,
+   *     which is an operator report about the whole account base rather than an action on a
+   *     person. It refuses with 503 when billing is not configured rather than reporting an empty
+   *     reconciliation as a clean one.
+   *
+   * The two that were already here — quota-reset and set-plan — WRITE. The distinction between
+   * reading about a named person and acting on them is not enforced by anything, and should not be
+   * inferred from this comment: both kinds sit behind one service-wide credential, which is the
+   * finding this whole test is named for.
+   */
+  assert.deepEqual(byBodyUser.sort(), [
+    'GET /api/admin/account/:userId',
+    'GET /api/admin/billing-reconcile',
+    'POST /api/admin/quota-reset',
+    'POST /api/admin/set-plan',
+  ], 'an admin route that acts on a named user was added or removed — review it');
+
+  // The id validation named above, asserted so the review is not the only thing holding it.
+  const accountBody = bodies.find((r) => r.path === '/api/admin/account/:userId');
+  assert.ok(accountBody, 'GET /api/admin/account/:userId is in the inventory but its body could not be located');
+  assert.match(accountBody.body, /UUID_RE\.test/,
+    'the account lookup no longer validates the id — an arbitrary string becomes a Durable Object name and the route creates one');
 });
 
 test('A4 no route outside the exempt list and outside /api/admin/ is reachable unauthenticated', async () => {
