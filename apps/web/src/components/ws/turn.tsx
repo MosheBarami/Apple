@@ -213,6 +213,21 @@ export function Turn({
                 Try again
               </button>
             )}
+            {/* A failed run had exactly one affordance — Try again — and pressing it is the right
+                first move only when the cause was transient. /docs/troubleshooting has a section
+                per cause (Studio closed, a place too large to read, Sparks gone) and nothing in
+                the product pointed at it, so the second attempt was the user's only diagnostic.
+                New tab: reading it must not discard the conversation it happened in. */}
+            {item.stopReason === 'error' && (
+              <a
+                className="gx-outcome__help"
+                href="/docs/troubleshooting#messages"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Why runs stop
+              </a>
+            )}
           </div>
         )}
 

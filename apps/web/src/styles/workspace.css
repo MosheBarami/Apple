@@ -2931,6 +2931,24 @@
 
 .es__action { margin-top: 0.5rem; }
 
+/* The written answer, a step quieter than the action. An empty state gets ONE action (see
+   empty-state.tsx); this is a second thing to READ, so it is typeset as a footnote rather than
+   competing with the button above it. */
+.es__help {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+}
+
+.es__help a {
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.es__help a:hover {
+  color: var(--ink);
+}
+
 .es--creation { --es-edge: color-mix(in srgb, var(--acc-ember) 30%, var(--line)); --es-tint: var(--acc-ember); }
 .es--studio   { --es-edge: color-mix(in srgb, var(--acc-stone) 30%, var(--line)); --es-tint: var(--acc-stone); }
 .es--proven   { --es-edge: color-mix(in srgb, var(--good) 32%, var(--line));      --es-tint: var(--good); }
@@ -3447,6 +3465,26 @@
 }
 
 .gx-outcome__retry:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* "Why runs stop" sits beside "Try again" and must not look like a second button competing with
+   it: retrying is the action, reading is the alternative when retrying has already failed. Muted
+   rather than accented for exactly that reason. */
+.gx-outcome__help {
+  color: var(--gx-ink-3);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gx-outcome__help:hover {
+  color: var(--gx-ink-1, inherit);
+}
+
+.gx-outcome__help:focus-visible {
   outline: 2px solid var(--gx-accent, #6aa7ff);
   outline-offset: 2px;
   border-radius: 3px;

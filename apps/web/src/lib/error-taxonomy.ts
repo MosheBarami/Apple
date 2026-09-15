@@ -36,6 +36,28 @@ export type FailureKind =
   | 'ours'
   | 'rejected';
 
+/**
+ * A link to the page that explains this failure at length.
+ *
+ * SEPARATE FROM `href` ON PURPOSE, and the reason is structural rather than editorial. `href` is
+ * an in-app route and `failure.tsx` renders it with react-router's `Link`. `/docs/*` is served by
+ * the Astro site, not by the SPA — a `Link` to it would be resolved against the app's own route
+ * table and land on the not-found page, so a help link has to be a real anchor. Two fields make
+ * that difference impossible to get wrong; one field with a convention would not.
+ *
+ * It is also a SECOND thing to read, never the one action: `next` stays exactly one action, for
+ * the reason the header gives. Help sits below it.
+ */
+export interface HelpLink {
+  /** A path under /docs. Checked against the pages on disk by apps/web/tests/contextual-help. */
+  href: string;
+  label: string;
+}
+
+/** Where the long answers live. Named once so a renamed page is one edit, not a search. */
+const DOC_TROUBLESHOOTING: HelpLink = { href: '/docs/troubleshooting', label: 'Troubleshooting' };
+const DOC_SPARKS: HelpLink = { href: '/docs/sparks-and-limits', label: 'How Sparks work' };
+
 export interface Explained {
   kind: FailureKind;
   /** What happened, in the user's terms. Never a status code, never a server's own wording. */
@@ -50,8 +72,10 @@ export interface Explained {
    * carries only what a button cannot, and `retryable` carries the rest.
    */
   next: string | null;
-  /** Where that action lives, when it is somewhere in the product. */
+  /** Where that action lives, when it is somewhere in the product. An SPA route. */
   href?: string;
+  /** The written explanation, when one exists. Never a substitute for `safety` or `next`. */
+  help?: HelpLink;
   /** Whether repeating the same request could succeed. Drives whether a Retry is offered at all. */
   retryable: boolean;
   /** The server's own words. For support and for screenshots — not for the headline. */
@@ -147,6 +171,7 @@ export function explainFailure(err: unknown): Explained {
         safety: REFUSED + ' Nothing was charged for it.',
         next: 'See what is left and when it renews.',
         href: '/app/usage',
+        help: DOC_SPARKS,
         retryable: false,
         detail,
       };
@@ -180,6 +205,7 @@ export function explainFailure(err: unknown): Explained {
       title: 'A service Apple depends on did not answer',
       safety: 'We cannot tell from here whether it finished. Check before repeating anything that costs money or changes your place.',
       next: null,
+      help: DOC_TROUBLESHOOTING,
       retryable: true,
       detail,
     };
@@ -191,6 +217,7 @@ export function explainFailure(err: unknown): Explained {
       title: 'Something broke on our side',
       safety: 'Your work is saved. This is ours to fix, not something you did.',
       next: null,
+      help: DOC_TROUBLESHOOTING,
       retryable: true,
       detail,
     };
@@ -204,6 +231,7 @@ export function explainFailure(err: unknown): Explained {
       title: 'Apple could not make sense of that request',
       safety: REFUSED,
       next: 'If it keeps happening, the detail below is worth reporting.',
+      help: DOC_TROUBLESHOOTING,
       retryable: true,
       detail,
     };
@@ -214,6 +242,7 @@ export function explainFailure(err: unknown): Explained {
     title: 'Something broke on our side',
     safety: 'Your work is saved. This is ours to fix, not something you did.',
     next: null,
+    help: DOC_TROUBLESHOOTING,
     retryable: true,
     detail,
   };

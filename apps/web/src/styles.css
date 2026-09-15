@@ -4626,6 +4626,23 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* The page written for this failure. Below `next`, and quieter than it: `next` is the one action,
+   this is where the long answer lives for someone whose retry did not work. */
+.failure__help {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+}
+
+.failure__help a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.failure__help a:hover {
+  color: var(--ink, inherit);
+}
+
 .failure__detail {
   margin-top: 0.15rem;
   font-size: 0.78rem;
