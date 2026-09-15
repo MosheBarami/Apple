@@ -29,6 +29,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
   bulkInviteMembers,
+  fetchMemberEvents,
   fetchMemberImpact,
   fetchMembers,
   inviteMember,
@@ -50,7 +51,7 @@ import {
 } from '../../lib/capabilities';
 import { rankMembers } from '../../lib/member-match';
 import { BULK_INVITE_MAX, bulkRefusal, explainRejections, parseBulkIds, type BulkProblem } from '../../lib/bulk-invite';
-import { MEMBER_REASON_MAX, unauditedNote } from '../../lib/member-history';
+import { MEMBER_REASON_MAX, describeEvent, historyGap, unauditedNote } from '../../lib/member-history';
 import { readImpact } from '../../lib/member-impact';
 import { relativeTime } from '../../lib/format';
 import { useToast } from '../toast';
@@ -94,7 +95,7 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
    * Which row has opened its second step, and which step. One at a time: two half-filled pause
    * reasons on screen is two chances to attach the wrong one to the wrong person.
    */
-  const [pending, setPending] = useState<{ userId: string; kind: 'remove' | 'pause' } | null>(null);
+  const [pending, setPending] = useState<{ userId: string; kind: 'remove' | 'pause' | 'history' } | null>(null);
 
   const mayManage = allows(access, 'manage_members');
   const cannotManage = whyNot(access, 'manage_members');
@@ -339,6 +340,27 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                       </button>
                     )}
 
+                    {/* THE HISTORY HAS A READER AT LAST. membership_events is append-only and
+                        the route merges the link acceptances in from the KV grant, and neither had
+                        a client function or a view: the record was written where nobody could read
+                        it. Any member may read their own; reading somebody else's needs
+                        manage_members and is a 403 without it, so this is offered only to a caller
+                        the route will answer rather than rendering a refusal we knew about. */}
+                    {mayManage && (
+                      <button
+                        type="button"
+                        className="btn btn-quiet"
+                        aria-expanded={pending?.userId === m.userId && pending.kind === 'history'}
+                        onClick={() =>
+                          setPending((p) =>
+                            p?.userId === m.userId && p.kind === 'history' ? null : { userId: m.userId, kind: 'history' },
+                          )
+                        }
+                      >
+                        History
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       className="btn btn-quiet mb__remove"
@@ -364,6 +386,10 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                       suspend.mutate({ member: m, reason });
                     }}
                   />
+                )}
+
+                {pending?.userId === m.userId && pending.kind === 'history' && (
+                  <MemberHistory projectId={projectId} member={m} />
                 )}
 
                 {pending?.userId === m.userId && pending.kind === 'remove' && (
@@ -823,5 +849,83 @@ function PauseForm({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * What has happened to one membership.
+ *
+ * Two stores, one list, and the route does the merging: `membership_events` in Postgres holds what
+ * administrators did — invited, role changed, renewed, paused, reinstated, removed — and the
+ * ACCEPTANCE of a share link lives on the grant in KV, because a stranger redeeming a link is not
+ * yet a member of anything and an insert policy that let them write their own acceptance would let
+ * anybody write any line into any project's history. Every entry says which store it came from.
+ *
+ * All of that was written where nobody could read it. api.ts had no function for the route and no
+ * component rendered one — the acceptance in particular is the only moment in this product where
+ * anybody actually says yes, and it was recorded, merged, tested and invisible.
+ *
+ * `partial` IS RENDERED. When the KV side cannot be read in full the route says so rather than
+ * serving a short list as a whole one, and a history missing the entry somebody is looking for,
+ * with nothing saying anything is missing, is how they conclude the event never happened. That is
+ * the failure the route goes out of its way to avoid and a silent client undoes it.
+ */
+function MemberHistory({ projectId, member }: { projectId: string; member: MemberRow }) {
+  const history = useQuery({
+    queryKey: ['member-events', projectId, member.userId],
+    queryFn: () => fetchMemberEvents(projectId, member.userId),
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const gap = history.isSuccess ? historyGap(history.data) : null;
+  const lines = history.isSuccess ? (history.data.events ?? []).map(describeEvent) : [];
+
+  return (
+    <div className="mb__step" role="group" aria-label={`History for ${member.handle}`}>
+      <p className="mb__step-head">What has happened to {member.displayName ?? member.handle}</p>
+
+      {history.isPending && (
+        <p className="cs__note" aria-busy="true">
+          Reading the history…
+        </p>
+      )}
+
+      {history.isError && (
+        <p className="cs__note cs__note--bad" role="alert">
+          {history.error instanceof ApiError ? history.error.message : 'The history could not be read.'}
+        </p>
+      )}
+
+      {gap && (
+        <p className="cs__note cs__note--warn" role="status">
+          {gap}
+        </p>
+      )}
+
+      {history.isSuccess && lines.length === 0 && !gap && (
+        // Distinguished from a history we could not read, above: the append-only table genuinely
+        // has nothing for a grant older than the lifecycle migration.
+        <p className="cs__note">Nothing is recorded for them yet.</p>
+      )}
+
+      {lines.length > 0 && (
+        <ol className="mb__events">
+          {lines.map((line, i) => (
+            <li key={`${line.at ?? 'unknown'}-${i}`} className="mb__event">
+              <span className="mb__event-what">{line.text}</span>
+              <span className="mb__event-when">
+                {line.at ? relativeTime(line.at) : 'time not recorded'}
+                {/* Where it was read from. A reader who sees an acceptance with no administrator
+                    behind it should be able to tell that it came from the grant rather than from
+                    somebody's action. */}
+                {line.source === 'grant' ? ' · from the share link' : ''}
+              </span>
+              {line.reason && <span className="mb__event-why">“{line.reason}”</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
   );
 }

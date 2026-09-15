@@ -207,3 +207,36 @@ test('a REMOVED member can be put back from the list, not only a paused one', ()
   // change nothing. A control that runs and does nothing is worse than one that is not there.
   assert.equal(/status === 'expired'[^\n]*reactivate/.test(PANEL_CODE), false, 'reactivation is offered for an expiry it cannot lift');
 });
+
+// ------------------------------------------------------------- the history has a reader ---
+
+test('THE APPEND-ONLY HISTORY IS READABLE FROM THE PRODUCT', () => {
+  // membership_events has no update policy and no delete policy, the CHECK constraint matches the
+  // worker vocabulary exactly, and `inviteEventKind` names each event from what CHANGED so a
+  // demotion is not logged as an invitation. api.ts had no function for the route and nothing
+  // rendered one: all of that care was written where nobody could read it.
+  assert.match(API, /export const fetchMemberEvents/, 'no client function for /members/events');
+  assert.match(PANEL_CODE, /fetchMemberEvents\(/, 'nothing calls it');
+  assert.match(PANEL_CODE, /<MemberHistory\b/, 'the view exists and the panel does not open it');
+});
+
+test('the acceptance of a share link is in that list, and the token is not', () => {
+  // The route merges `link_accepted` in from the KV grant — the only moment in this product where
+  // anybody actually says yes — and never echoes the token back, because a history view is a place
+  // people paste from.
+  // The import alone proves nothing — it is satisfied by a file that imports the reader and then
+  // renders `event.kind` raw, which is how an unrecognised kind becomes a blank row.
+  assert.match(PANEL_CODE, /events[^\n]*\)\.map\(describeEvent\)/, 'the entries are rendered without the reader');
+  // Scoped to the history view rather than the file: elsewhere in this panel a share link is
+  // MINTED, and that control is the one place a token legitimately appears on screen.
+  const view = /function MemberHistory\([\s\S]*?\n\}/.exec(PANEL_CODE);
+  assert.ok(view, 'MemberHistory is no longer a function this test can read');
+  assert.equal(/token/i.test(view[0]), false, 'the history view names a token the route never sends');
+});
+
+test('A HISTORY WITH A HOLE IN IT SAYS SO', () => {
+  // `partial: true` means the KV side could not be read in full. Dropping the flag serves a short
+  // list as a whole one, which is how somebody concludes an event never happened.
+  assert.match(PANEL_CODE, /historyGap\(/, 'the partial flag is never read');
+  assert.match(PANEL_CODE, /\{gap &&/, 'it is read and never drawn');
+});
