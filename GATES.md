@@ -255,7 +255,7 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=c3bbf04; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=8ea8fefec1eef9175291ce62; at=2026-09-14T23:38:48.865Z
 
-- [x] G-COST-1: A finished run tells the user what it cost, settled, after the last charge
+- [x] G-COST-1: The settled run cost is wired from the last charge through to the rendered turn
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 12 --label G-COST-1 -- node --test tests/run-meters.test.mjs
     EXPECT: G-COST-1 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-COST-1; path=6765c31f4f12/53 entries; git-sha=e431dee; tree-clean=yes; deps-clean=yes; break-sha=e431dee; EXPECT=unmatched; output-sha256=2a3cb518db904887cc0c2f10b0760cb010154ae4ac9fe8c9eebb4c9ca6eed171; output-bytes=2150; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=2; deps-sha=18183589752bb8ff04949aa3; at=2026-09-14T23:42:55.516Z

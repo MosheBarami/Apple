@@ -242,8 +242,15 @@ const runOnce = () =>
 
 // THE ONLY PART OF THIS SCRIPT THAT SPENDS MONEY.
 //
-// A clay turn is ~29 neurons and a stone one ~1,266 against a §12.5 ceiling of 500 per pass, so
-// whether this block runs is a budget decision and has to be one the caller can actually make.
+// Whether this block runs is a budget decision, so it has to be one the caller can actually make.
+//
+// Two different figures describe the cost and they must not be confused. COST-MODEL records
+// MEASURED turns — clay ~29 neurons, a stone full build-and-verify in Studio ~1,266. The guard
+// above uses neither: it derives the upper end of the mode's `typicalSparks` range, which puts
+// stone at 18 Sparks = 540 neurons. That is the conservative choice for clay, where 2 Sparks = 60
+// neurons is more than the ~29 actually measured, and it refuses stone and rune on the §12.5
+// ceiling either way. The derived figure is used because it comes from the file the product bills
+// with, and a guard that keeps its own copy of the prices stops agreeing with them.
 if (NO_MODEL) {
   for (const name of [
     'chat — a real agent turn completes',
@@ -313,7 +320,13 @@ if (!NO_MODEL) {
 
 // ------------------------------------------------------------- summary ---
 const failed = checks.filter((c) => !c.pass);
-console.log(`\n${checks.length - failed.length}/${checks.length} checks passed${skipped.length ? `, ${skipped.length} SKIPPED` : ''}`);
+// The denominator names the WHOLE surface, not just what ran. "9/9 checks passed" is true and
+// reads as complete; "9/9 executed, 9 of 18 skipped" cannot be mistaken for a full smoke.
+const total = checks.length + skipped.length;
+console.log(
+  `\n${checks.length - failed.length}/${checks.length} executed checks passed` +
+  (skipped.length ? `, ${skipped.length} of ${total} SKIPPED` : ''),
+);
 if (skipped.length) {
   console.log('\nSKIPPED — these were not exercised, and this run is not a full smoke:');
   for (const sk of skipped) console.log(`  - ${sk.name} (${sk.why})`);
