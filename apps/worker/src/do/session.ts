@@ -53,7 +53,8 @@ import { trimTranscriptReport } from '../transcript';
 import { persistWithShedding } from '../persist';
 import { clearStop, requestStop, stopRequested } from '../stop-signal';
 import { singleFlight } from '../single-flight';
-import { sceneSignature, shouldRebuild, semanticCheck, intentCheck, type PassRecord } from '../semantic';
+import { sceneSignature, shouldRebuild, semanticCheck, type PassRecord } from '../semantic';
+import { runIntentFor } from '../run-intent';
 import { readPluginHeaders, clientNotice, sanitizeVersion, parseProtocol, type PluginClientInfo, type PluginCompatibility } from '../plugin-version';
 import { CollabStore, collabContext } from './collab-store.ts';
 import { asCollabRole, can, type CollabRole } from '../collab.ts';
@@ -410,85 +411,6 @@ const POLL_STALE_GRACE_MS = 8_000;
 const PLUGIN_TOKEN_TTL_MS = 30 * 24 * 3600 * 1000; // 30 days, then re-pair
 const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
 const MAX_PROMPT_CHARS = 24_000; // ~7k tokens; the transcript is re-sent every step
-
-// ---------------------------------------------------------------------------------------------
-// THE INTENT AND PLAN ROWS OF THE THINKING CARD.
-//
-// The card has four stages. Actions and Validation were already backed by real events — a tool
-// start/end pair, and the composition/semantic gate's actual verdict. Intent and Plan were not
-// backed by anything, so the frontend rendered nothing rather than inventing them.
-//
-// This closes that gap AT ZERO MODEL COST. `intentCheck` in semantic.ts is regex and lexicons:
-// the file has no imports at all and no reference to fetch, the gateway or env, so there is no
-// path from here to a paid provider. It runs in well under a millisecond on an 8,000-character
-// request, which is why it can be on the critical path of every single run.
-//
-// The honesty rules, which are the whole point:
-//
-//   summary   The user's OWN OPENING SENTENCE, whitespace-normalised and truncated. Not a
-//             paraphrase — paraphrasing needs a model, and this must stay free. Not a synthesised
-//             sentence either: without a model, any synthesis is a fill-in-the-blanks template
-//             ("Build a <noun> with <n> features"), which reads like understanding while proving
-//             none. Echoing the request verbatim is the only restatement that cannot be wrong,
-//             and it is exactly what the reference card shows.
-//   checklist EXACTLY what the extractor found the user asked for by name, and nothing else. An
-//             empty checklist is the correct answer for "what does this script do?" — there is
-//             no list of things to build, so no list is shown.
-//   questions ONLY the places the extractor could see the request genuinely did not settle
-//             (a hedged clause, a building noun that reads as either a room or a facade). Never
-//             padded to look thorough.
-//
-// Both lists are capped. A cap TRUNCATES a real list to bound the socket payload; nothing here
-// ever pads a short one.
-// ---------------------------------------------------------------------------------------------
-const MAX_INTENT_CHECKLIST = 16;
-const MAX_INTENT_QUESTIONS = 6;
-const MAX_INTENT_SUMMARY = 160;
-
-/** Split on sentence punctuation without lookbehind, keeping the terminator. */
-function sentences(flat: string): string[] {
-  const out: string[] = [];
-  const re = /[.!?]+(?:\s|$)/g;
-  let start = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(flat))) {
-    out.push(flat.slice(start, m.index + m[0].trimEnd().length).trim());
-    start = re.lastIndex;
-  }
-  if (start < flat.length) out.push(flat.slice(start).trim());
-  return out.filter(Boolean);
-}
-
-/**
- * The one-line restatement: the user's own words, normalised and cut at a word boundary.
- *
- * Prefers the first sentence that carries at least three words, so an opening "Hey!" or "Ok."
- * does not become the whole Intent row. Returns '' when the request has no words at all, and the
- * caller then emits nothing rather than an empty row.
- */
-function restate(request: string): string {
-  const flat = request.replace(/\s+/g, ' ').trim();
-  if (!flat) return '';
-  const parts = sentences(flat);
-  const pick = parts.find((s) => s.split(' ').length >= 3) ?? parts[0] ?? flat;
-  if (pick.length <= MAX_INTENT_SUMMARY) return pick;
-  const cut = pick.slice(0, MAX_INTENT_SUMMARY);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > 40 ? cut.slice(0, space) : cut).replace(/[,;:.\s]+$/, '')}…`;
-}
-
-/**
- * What the agent understood, derived from the request alone. Null only when there is genuinely
- * nothing to say — an empty request produces no Intent row rather than a blank one.
- */
-function runIntentFor(request: string): RunIntent | null {
-  const report = intentCheck(request);
-  const summary = restate(request);
-  const checklist = report.checklist.slice(0, MAX_INTENT_CHECKLIST);
-  const questions = report.questions.slice(0, MAX_INTENT_QUESTIONS);
-  if (!summary && !checklist.length && !questions.length) return null;
-  return { summary, checklist, questions };
-}
 
 export class SessionDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;

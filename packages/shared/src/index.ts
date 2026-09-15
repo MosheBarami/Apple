@@ -620,6 +620,19 @@ export interface RunIntent {
   checklist: string[];
   /** Where the request genuinely did not say. Surfaced rather than assumed. */
   questions: string[];
+  /**
+   * Where the request did not say and Apple DECIDED ANYWAY — a mood read off "cozy", a focal
+   * point nobody named outright.
+   *
+   * The opposite of `questions`, and kept apart from it for that reason: a question is still
+   * open, an assumption has already been acted on and is steering the build right now. A product
+   * that shows only the questions is reporting the choices it declined to make and hiding the
+   * ones it made.
+   *
+   * Optional on the wire because a client can be replaying a `run_intent` frame recorded by an
+   * older worker, and an absent list is not an empty one.
+   */
+  assumptions?: string[];
 }
 
 /**

@@ -483,14 +483,20 @@ export interface MockToolDetail {
 
 /**
  * What a `run_intent` message carries: a deterministic restatement of the
- * user's own words, the things the request named by hand, and the places it
- * genuinely did not say. This is the ONLY source the Thinking card's Intent and
- * Plan rows read from — without it those rows do not render at all.
+ * user's own words, the things the request named by hand, the places it
+ * genuinely did not say, and the places it did not say where Apple decided
+ * anyway. This is the ONLY source the Thinking card's Intent and Plan rows read
+ * from — without it those rows do not render at all.
+ *
+ * `questions` and `assumptions` are both populated here because the card draws
+ * them as a contrasting pair and a mock carrying only one would never show that
+ * the pair reads correctly side by side.
  */
 export const mockIntent: RunIntent = {
   summary: 'Check the lobby floor visually and fix whatever the critique finds.',
   checklist: ['lobby floor', 'visual critique pass', 'material variation'],
   questions: ['Which tile size to use for the floor', 'Whether the seating cluster is wanted now or later'],
+  assumptions: ['mood: warm (from "cosy")', 'likely focal point: "lobby floor" (inferred, not stated)'],
 };
 
 /**
