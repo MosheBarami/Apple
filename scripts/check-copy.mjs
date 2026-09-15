@@ -33,6 +33,15 @@ const SHAPES = [
     why: 'It describes the INTERFACE, not the product. Every competitor says it, so it distinguishes nothing, and it promises a passivity the product does not have.',
   },
   {
+    // The back half of the same headline, standing on its own. The first rule needs a
+    // describe/tell/type verb before it — and "Watch it build, step by step." was sitting as an h2
+    // on this project's own landing page, which is revix.tech's H1 with the first sentence removed.
+    id: 'watch-it-build',
+    re: /\bwatch\s+(it|your|the)\b[^.!?]{0,30}\b(get\s+built|be(ing)?\s+built|build|come\s+to\s+life|appear)\b/i,
+    found: 'revix.tech H1: "DESCRIBE IT. WATCH IT GET BUILT." · superbullet.ai: "watch your game come to life"',
+    why: 'It casts the customer as an audience. What this product actually offers is the opposite — named steps and a stop button — and saying "watch" throws that away to sound like everyone else.',
+  },
+  {
     id: 'one-x-whole-y',
     re: /\bone\s+(prompt|sentence|line|message|idea)\b[^.!?]{0,40}\b(whole|full|entire|complete)\b/i,
     found: 'superbullet.ai: "turn one prompt into a full Roblox game" · promptblox.ai: "build a whole world in one prompt"',
