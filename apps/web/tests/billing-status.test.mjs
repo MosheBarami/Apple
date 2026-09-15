@@ -203,3 +203,75 @@ test('a missing timestamp never renders as "on undefined"', () => {
   assert.doesNotMatch(line, /undefined|NaN|NEVER-CALLED|Invalid Date/, line);
   assert.ok(line.length > 0, 'and still says what happened');
 });
+
+// ------------------------------------------------- the cancellation, and undoing it, said out loud
+
+/**
+ * THE ROW THAT COULD NOT BE WRITTEN, NOW THAT IT CAN BE.
+ *
+ * A cancellation moves neither the plan nor the status, so the store wrote no row for it and the
+ * history was silent about the change a customer is most likely to dispute. The row now carries
+ * which way the flag went; these are the two sentences it turns into.
+ */
+test('A CANCELLATION READS AS A CANCELLATION, and never as a plan move', () => {
+  const line = billingChangeLine(
+    change({ fromPlan: 'builder', toPlan: 'builder', status: 'active', cancelAtPeriodEnd: true }),
+    lineOpts,
+  );
+  assert.match(line, /end/i, `the row must say what it was: ${line}`);
+  assert.doesNotMatch(line, /moved/i, 'the tier did not move');
+  assert.doesNotMatch(line, /became active/i, 'nor did the status — "became active" over a cancellation is a lie');
+  assert.ok(line.includes(DATE), `and it must say when: ${line}`);
+});
+
+test('AND UNDOING IT READS AS UNDOING IT', () => {
+  const line = billingChangeLine(
+    change({ fromPlan: 'builder', toPlan: 'builder', status: 'active', cancelAtPeriodEnd: false }),
+    lineOpts,
+  );
+  assert.match(line, /undone|resumed|no longer/i, `a reversal must be legible as one: ${line}`);
+  assert.doesNotMatch(line, /moved/i);
+  assert.ok(line.includes(DATE));
+});
+
+test('a row that is not about the cancellation flag says nothing about it', () => {
+  // The column is null on every other row. If this branch fired on null it would print "cancellation
+  // undone" over a failed payment, which is the opposite of what happened.
+  const line = billingChangeLine(
+    change({ fromPlan: 'builder', toPlan: 'builder', status: 'past_due', cancelAtPeriodEnd: null }),
+    lineOpts,
+  );
+  assert.match(line, /past_due/);
+  assert.doesNotMatch(line, /undone|cancel/i, `a past_due row must not mention a cancellation: ${line}`);
+});
+
+test('a tier that really did move still reads as the move', () => {
+  // The move is the fact a user checks against a bank statement, so it outranks the flag on the rare
+  // row that carries both.
+  const line = billingChangeLine(
+    change({ fromPlan: 'builder', toPlan: 'studio', cancelAtPeriodEnd: false }),
+    lineOpts,
+  );
+  assert.match(line, /Builder/);
+  assert.match(line, /Studio/);
+});
+
+test('neither cancellation sentence renders a missing date as "undefined"', () => {
+  for (const flag of [true, false]) {
+    const line = billingChangeLine(
+      change({ fromPlan: 'builder', toPlan: 'builder', cancelAtPeriodEnd: flag, at: NaN }),
+      { ...lineOpts, formatDate: () => 'NEVER-CALLED' },
+    );
+    assert.doesNotMatch(line, /undefined|NaN|NEVER-CALLED|Invalid Date/, line);
+    assert.ok(line.length > 0, 'and still says what happened');
+  }
+});
+
+test("THE CLIENT'S HISTORY ROW IS THE SERVER'S", () => {
+  // Two independent shapes for one row is how a field gets written on one side and dropped on the
+  // other. Read out of the DO's own interface rather than copied into this file.
+  const quotaTs = readFileSync(join(WEB, '..', 'worker', 'src', 'do', 'quota.ts'), 'utf8');
+  const block = quotaTs.slice(quotaTs.indexOf('interface BillingChange {'));
+  const body = block.slice(0, block.indexOf('\n}'));
+  assert.match(body, /cancelAtPeriodEnd/, 'the server row must carry the flag this copy reads');
+});

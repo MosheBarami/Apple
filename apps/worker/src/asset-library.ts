@@ -115,11 +115,173 @@ export function mintedByUs(source: AssetSourceSite): boolean {
   return !PRE_EXISTING_ID_SOURCES.includes(source);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Quality
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * HOW THE ROW GOT ITS NAME, which is the whole of the quality signal.
+ *
+ * Not a taste score and not a rating anybody typed. Every input below is a column already written
+ * on all 300,000 rows, so this is derivable for the oldest row in the table and the next one
+ * ingested alike — which is why it is computed on read rather than stored. A stored column would
+ * be its default for every row written before it existed, and a default is not a measurement: it
+ * would report a score for rows nobody has ever scored.
+ *
+ * `curated_pack` — a maintained release. Kenney, Quaternius, Poly Haven, ambientCG, cgbookcase,
+ *   game-icons and Iconify each publish a fixed catalogue with a house naming convention, so the
+ *   `name` column carries a designer's label. OpenGameArt and Poly Pizza are contributor archives
+ *   rather than single-author packs, but every submission is deliberately published art with a
+ *   licence declared at submission, which is the line that matters here.
+ *
+ * `open_upload` — a catalogue of whatever anybody uploaded, harvested in bulk. The Creator Store
+ *   rows come from `scripts/harvest-library.mjs`, which reads `a.asset.name` verbatim: that is
+ *   where "Bakiiiiiiiiiiiiiiii", "Part2" and "diediedieDIELess" come from. Sketchfab and Wikimedia
+ *   Commons are the same shape — a file per uploader, named by the uploader.
+ *
+ * `authored_here` — produced inside the product, so the name is one we generated. Clean by
+ *   construction, but a single generated thing rather than a maintained release.
+ */
+export const ASSET_CURATIONS = ['curated_pack', 'open_upload', 'authored_here'] as const;
+export type AssetCuration = (typeof ASSET_CURATIONS)[number];
+
+/**
+ * Exhaustive by construction, for the same reason ASSET_ORIGINALITY is: adding a source fails the
+ * typecheck until somebody decides, in writing, which kind of catalogue it is. An unclassified
+ * source defaulting to "curated" is precisely the mistake that put the scrape on top.
+ */
+export const SOURCE_CURATION: Readonly<Record<AssetSourceSite, AssetCuration>> = {
+  kenney: 'curated_pack',
+  quaternius: 'curated_pack',
+  ambientcg: 'curated_pack',
+  poly_haven: 'curated_pack',
+  poly_pizza: 'curated_pack',
+  opengameart: 'curated_pack',
+  game_icons: 'curated_pack',
+  iconify: 'curated_pack',
+  cgbookcase: 'curated_pack',
+  roblox_official: 'curated_pack',
+  sketchfab: 'open_upload',
+  wikimedia: 'open_upload',
+  creator_store: 'open_upload',
+  generated_roblox: 'authored_here',
+  procedural: 'authored_here',
+};
+
+export function curationOf(source: AssetSourceSite): AssetCuration {
+  return SOURCE_CURATION[source];
+}
+
+/** The base each tier starts from, before the name is read. */
+const CURATION_BASE: Readonly<Record<AssetCuration, number>> = {
+  curated_pack: 1,
+  // Named by us, so the name is clean — but one generated object, not a maintained catalogue.
+  authored_here: 0.9,
+  // Not a verdict on any individual row: it is the prior that a bulk scrape of user uploads is
+  // mostly not game art. The name check below is what lets a good row climb back out of it.
+  open_upload: 0.35,
+};
+
+/**
+ * What the `name` column says about whether anybody named this thing.
+ *
+ * EVERY RULE IS WRITTEN FROM A NAME THAT IS ACTUALLY IN THE TABLE. None of them guesses at
+ * subject matter or taste — that would be inventing a score. They read shape, and shape is the
+ * only thing a string can honestly tell you about the care that went into it.
+ *
+ * Returns a multiplier in (0, 1].
+ */
+export function nameShapeScore(name: string): number {
+  const n = String(name ?? '').trim();
+  if (!n || !/[a-z]/i.test(n)) return 0.1; // "8" / "" — nothing a person could search for
+  let m = 1;
+
+  // "Bakiiiiiiiiiiiiiiii" — one key held down.
+  if (/(.)\1{3,}/i.test(n)) m *= 0.3;
+
+  // "diediedie…" — a short unit repeated, which is the other shape a mash takes.
+  if (/(.{2,4})\1{2,}/i.test(n)) m *= 0.4;
+
+  // "Part2", "Mesh", "Model 3", "Union" — the Studio default, never renamed. The uploader did not
+  // name this; Roblox did.
+  if (/^(part|meshpart|mesh|model|union|unionoperation|decal|image|texture|baseplate|spawnlocation|script|folder|object|asset|untitled|new\s*\w*)\s*\d*$/i.test(n)) m *= 0.15;
+
+  // "diediedieDIELess" — a capital run inside a lowercase token is shouting, not CamelCase.
+  if (/[a-z][A-Z]{2,}/.test(n)) m *= 0.4;
+
+  // "Potato breaking through wall! o_0" — an uploader's caption, complete with the emoticon.
+  if (/[o0O][._-][o0O]|[:;=][-^]?[)(DPpOo3]|[!?]{2,}|\bxD\b|\^_\^/.test(n)) m *= 0.4;
+  else if (/[!?]/.test(n)) m *= 0.85;
+
+  // SHOUTING THROUGHOUT, on a name long enough that it is not an acronym like "UI" or "PBR".
+  if (n.length > 6 && n === n.toUpperCase() && /[A-Z]{4,}/.test(n)) m *= 0.5;
+
+  // A wall of characters with no separator anywhere. Two words at minimum is what a label looks
+  // like; the threshold is generous so "crate" and "rock01" are untouched.
+  if (n.length > 20 && !/[\s\-_]/.test(n)) m *= 0.5;
+
+  // Punctuation soup — more decoration than letters.
+  const junk = (n.match(/[^\w\s\-'&.()]/g) ?? []).length;
+  if (junk > 2) m *= 0.5;
+
+  return Math.max(0.05, m);
+}
+
+/**
+ * The row's quality, in [0, 1], from two recorded facts and nothing else:
+ *   `source` -> which catalogue it came from, and whether that catalogue is a curated release or
+ *               an open upload pile (SOURCE_CURATION above).
+ *   `name`   -> whether anybody named it (nameShapeScore above).
+ *
+ * Deliberately NOT an input: whether the row has a Roblox id. That is availability, it is reported
+ * separately on every hit, and letting it into the score is exactly how the scrape came to
+ * outrank the library in the first place.
+ */
+export function assetQuality(rec: { source: string; name: string }): number {
+  const base = (ASSET_SOURCE_SITES as readonly string[]).includes(rec.source)
+    ? CURATION_BASE[SOURCE_CURATION[rec.source as AssetSourceSite]]
+    // A source outside the enum is not evidence of anything, so it scores like an unknown pile
+    // rather than like a pack. It cannot be written through upsertAssets — validateProvenance
+    // refuses it — so this only guards rows that predate a source being removed.
+    : CURATION_BASE.open_upload;
+  return Math.round(base * nameShapeScore(rec.name) * 1000) / 1000;
+}
+
 /**
  * The authoritative record for one library asset. Every field is required — a nullable field is
  * explicitly `| null` and its null meaning is documented, so "we do not know" is never confused
  * with "we did not fill it in".
  */
+/**
+ * What produced a piece of geometry, when the geometry was generated rather than downloaded or
+ * authored.
+ *
+ * This exists because `source: 'generated_roblox'` on its own is an unprovable claim. It says the
+ * asset came out of a generator without saying WHICH generator or from WHAT, which is precisely
+ * the information the customer needs in order to answer "where did this come from?" about their
+ * own place — and precisely the information that cannot be reconstructed after the fact, because
+ * the prompt exists only in the session that ran it.
+ *
+ * Every field is required and non-empty. A partially-filled generation record is not a weaker
+ * record, it is a record that cannot answer the question it exists to answer, so
+ * `validateProvenance` refuses it outright rather than warning.
+ */
+export interface GenerationRecord {
+  /** The API that produced it, named exactly: `GenerationService:GenerateModelAsync`. */
+  service: string;
+  /**
+   * The model, as the platform names it in its own documentation — `Roblox Cube 3D`.
+   *
+   * Recorded as a string rather than an enum on purpose: the engine picks the model version and
+   * does not report it, so pinning a closed set here would be inventing precision we do not have.
+   */
+  model: string;
+  /** The prompt, verbatim. Never summarised — a paraphrased prompt does not reproduce the mesh. */
+  prompt: string;
+  /** ISO 8601, when generation ran. Distinct from `retrievedAt`, which is when the record was made. */
+  generatedAt: string;
+}
+
 export interface AssetProvenance {
   /** Stable, human-readable, namespaced: `kenney/city-kit-suburban/building-a-01`. */
   id: string;
@@ -166,10 +328,43 @@ export interface AssetProvenance {
   tags: string[];
   /** SHA-256 of the source file, lowercase hex. null only before the binary has been fetched. */
   sha256: string | null;
+  /**
+   * Set if and only if `source` is `generated_roblox`. Required in that case and forbidden in
+   * every other — see `validateProvenance`. Optional in the type only so rows written before this
+   * field existed still parse.
+   */
+  generation?: GenerationRecord | null;
 }
 
 /** Operational state D1 tracks alongside the record. Not part of the provenance itself. */
 export type AssetStatus = 'pending_ingest' | 'active' | 'quarantined' | 'retired';
+
+/**
+ * STATUS IS AN IMPORT LIFECYCLE. IT IS NOT A VERDICT ON THE ROW.
+ *
+ * `pending_ingest` -> `active` is the journey from "catalogued, bytes not uploaded yet" to "there
+ * is a Roblox asset id for this". `quarantined` and `retired` are the two dead ends: a health
+ * check stopped resolving (markHealth), or the row was withdrawn.
+ *
+ * Search used to filter on `status = 'active'` alone, and that single clause is what inverted the
+ * library. `scripts/ingest-assets.mjs` sends a row carrying a robloxAssetId as 'active' and every
+ * other row as 'pending_ingest' — so "we have not imported this yet" was being read as "do not
+ * show this", and the only rows left were the Creator Store scrape. The curated CC0 packs, which
+ * are the whole point of the library, could not be returned by any query.
+ *
+ * Two facts, two places: the lifecycle stays here, and whether a row can be inserted TODAY is
+ * `robloxAssetId !== null`, reported per hit as `insertable` / `availability`.
+ */
+export const SEARCHABLE_STATUSES: readonly AssetStatus[] = ['active', 'pending_ingest'];
+
+/** The rows a search must never return: dead, not merely un-imported. */
+export const UNUSABLE_STATUSES: readonly AssetStatus[] = ['quarantined', 'retired'];
+
+/**
+ * The same list as a SQL literal, built from the array so the two cannot drift apart. The values
+ * are compile-time literals from a union type, never input.
+ */
+const SEARCHABLE_STATUS_SQL = SEARCHABLE_STATUSES.map((s) => `'${s}'`).join(',');
 
 // ---------------------------------------------------------------------------------------------
 // Licences
@@ -229,6 +424,27 @@ export const LICENCES: Readonly<Record<string, LicenceRule>> = {
     allowedInLibrary: false,
     why: 'non-commercial and share-alike — both obligations are undischargeable in a customer place',
   },
+  // NoDerivs is here for the same reason the NC family is, and it is the trap of the set: its
+  // Sketchfab label is "CC Attribution-NoDerivs", so anything matching on the word *attribution*
+  // reads it as plain CC-BY and admits it. It cannot be admitted. Every route an external mesh
+  // takes into a Roblox place is a derivative work — decimating to a triangle budget, rescaling to
+  // studs, re-baking a 4K texture down to 1024 — so ND forbids the only thing we would ever do
+  // with it. Recognised and refused beats unrecognised: an unknown string is a shrug, and this is
+  // a decision.
+  'CC-BY-ND-4.0': {
+    commercialUse: true,
+    attributionRequired: true,
+    shareAlike: false,
+    allowedInLibrary: false,
+    why: 'no-derivatives: importing to Roblox means decimating, rescaling and re-baking, which is exactly the derivative work this licence forbids',
+  },
+  'CC-BY-NC-ND-4.0': {
+    commercialUse: false,
+    attributionRequired: true,
+    shareAlike: false,
+    allowedInLibrary: false,
+    why: 'non-commercial and no-derivatives — neither obligation survives an import into a customer place',
+  },
   // Permissive code-style licences, which is what the icon sets ship under. They require the
   // notice to travel, not the source — dischargeable by a credits list, unlike share-alike.
   'MIT': { commercialUse: true, attributionRequired: true, shareAlike: false, allowedInLibrary: true, why: 'permissive; the notice must travel with the work' },
@@ -271,9 +487,15 @@ export function normaliseLicence(verbatim: string): string | null {
   const isCc = /\bcc\b|creative commons/.test(t);
   const nc = /\bnc\b|non[- ]?commercial/.test(t);
   const sa = /\bsa\b|share[- ]?alike/.test(t);
+  const nd = /\bnd\b|no[- ]?derivs?\b|no[- ]?derivatives\b/.test(t);
   if (isCc && nc && sa) return 'CC-BY-NC-SA-4.0';
+  if (isCc && nc && nd) return 'CC-BY-NC-ND-4.0';
   if (isCc && nc) return 'CC-BY-NC-4.0';
   if (isCc && sa) return 'CC-BY-SA-4.0';
+  // BEFORE the plain-attribution branch below, and the ordering is the whole safety property:
+  // "CC Attribution-NoDerivs" satisfies that branch's wording too, and reaching it first would
+  // return an ALLOWED id for a licence that forbids every use this library puts an asset to.
+  if (isCc && nd) return 'CC-BY-ND-4.0';
   if (/\bgpl\b|general public license/.test(t)) return /\b2(\.0)?\b/.test(t) ? 'GPL-2.0' : 'GPL-3.0';
   // Checked BEFORE the CC family: "MIT License" contains no CC marker, but ordering these together
   // keeps the whole permissive block in one place and makes the precedence readable.
@@ -288,7 +510,10 @@ export function normaliseLicence(verbatim: string): string | null {
   // CC0 is a deliberate waiver by a rights-holder, PD is the absence of rights — and Wikimedia
   // prints them as different strings on different files. Recording them as one would lose that.
   if (/^pd$|public domain/.test(t)) return 'PD';
-  if (/\bcc[- ]?by\b|creative commons attribution/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
+  // `cc attribution` is Sketchfab's own wording for plain CC-BY — it writes neither "CC BY" nor
+  // "Creative Commons Attribution", so without this alternative every CC-BY model it publishes
+  // came back null and was refused as an unrecognised string.
+  if (/\bcc[- ]?by\b|creative commons attribution|\bcc attribution\b/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
   if (/roblox terms of use|roblox-tou/.test(t)) return 'ROBLOX-TOU';
   if (/roblox-generated|generationservice/.test(t)) return 'ROBLOX-GENERATED';
   if (/none-procedural|no third[- ]party/.test(t)) return 'NONE-PROCEDURAL';
@@ -436,6 +661,43 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
     errors.push('sha256 must be 64 lowercase hex characters or null');
   }
 
+  // Generation: required for a generation, forbidden for anything else.
+  //
+  // Both directions are errors rather than warnings, and they guard opposite mistakes.
+  //
+  //   Missing — an asset whose `source` says it was generated but which cannot name the model or
+  //   the prompt. That record does not read as "the generation was not recorded"; it reads as an
+  //   ordinary asset of the customer's own, and the credits file it as such. A failure to record
+  //   the generation must not render as a recorded generation.
+  //
+  //   Present but not a generation — a downloaded third-party asset carrying generation metadata
+  //   would be laundered out of the third-party column and into the customer's own, which is the
+  //   §42 mistake run backwards. Somebody else's work is not made yours by claiming a model made
+  //   it.
+  const isGenerated = r.source === 'generated_roblox';
+  const gen = r.generation;
+  if (gen === null || gen === undefined) {
+    if (isGenerated) {
+      errors.push(
+        'generation is required for a generated_roblox asset — a mesh that cannot name the model and prompt that produced it has no provenance, only a claim',
+      );
+    }
+  } else if (!isGenerated) {
+    errors.push(`generation is set but source is "${String(r.source)}" — only a generated_roblox asset may carry generation metadata`);
+  } else if (typeof gen !== 'object' || Array.isArray(gen)) {
+    errors.push('generation must be an object with service, model, prompt and generatedAt');
+  } else {
+    const g = gen as Partial<GenerationRecord>;
+    for (const field of ['service', 'model', 'prompt'] as const) {
+      if (typeof g[field] !== 'string' || !g[field]!.trim()) {
+        errors.push(`generation.${field} is required and must be non-empty — an unnamed ${field} cannot be audited`);
+      }
+    }
+    if (typeof g.generatedAt !== 'string' || !ISO_RE.test(g.generatedAt) || Number.isNaN(Date.parse(g.generatedAt))) {
+      errors.push('generation.generatedAt must be an ISO 8601 date-time');
+    }
+  }
+
   // The invariant that keeps the library honest: anything live in Roblox must be hashed, measured
   // and dimensioned. Nulls are only acceptable while the asset has not been imported yet.
   const weMintedTheId =
@@ -505,6 +767,81 @@ export function originalAsset(args: { id: string; name: string; kind: AssetKind;
   };
 }
 
+/** The service that generates geometry in the customer's own Studio session, named exactly. */
+export const ROBLOX_GENERATION_SERVICE = 'GenerationService:GenerateModelAsync';
+/**
+ * The model behind that service, as Roblox names it in its own documentation: GenerationService is
+ * described there as using "Roblox's Cube 3D foundation model".
+ *
+ * NOTE this is Roblox serving Cube as a first-party platform feature under the Roblox Terms of
+ * Use. It is NOT the openrail-licensed `Roblox/cube3d-*` weights on Hugging Face, whose licence
+ * restricts use to "academic or research purposes only" and which therefore cannot be run by this
+ * product at all. See docs/research/3d-asset-pipeline.md §A0.
+ */
+export const ROBLOX_GENERATION_MODEL = 'Roblox Cube 3D';
+const ROBLOX_GENERATION_DOCS = 'https://create.roblox.com/docs/reference/engine/classes/GenerationService';
+
+/**
+ * Build the provenance record for geometry generated by Roblox's own generator inside the
+ * customer's Studio session.
+ *
+ * As with `originalAsset`, the point is that this state is CONSTRUCTED rather than asserted: the
+ * only way to get `source: 'generated_roblox'` past `validateProvenance` is to come through here
+ * or to supply the same fields by hand, and this function will not build a record whose model or
+ * prompt is missing. It throws rather than returning an invalid record because the caller is a
+ * generation that just succeeded — there is no sensible partial answer, and a silently
+ * unattributed mesh is the exact outcome this is here to prevent.
+ */
+export function generatedAsset(args: {
+  id: string;
+  name: string;
+  kind: AssetKind;
+  tags: string[];
+  prompt: string;
+  /** Defaults to the Roblox generator; passed explicitly when some other generator is wired. */
+  service?: string;
+  model?: string;
+  generatedAt: string;
+  robloxAssetId?: number | null;
+  sha256?: string | null;
+  triangles?: number | null;
+  modifications?: string[];
+}): AssetProvenance {
+  const service = (args.service ?? ROBLOX_GENERATION_SERVICE).trim();
+  const model = (args.model ?? ROBLOX_GENERATION_MODEL).trim();
+  const prompt = args.prompt?.trim() ?? '';
+  if (!service) throw new Error('generatedAsset: service is required — a generation that cannot name its API has no provenance');
+  if (!model) throw new Error('generatedAsset: model is required — a generation that cannot name its model has no provenance');
+  if (!prompt) throw new Error('generatedAsset: prompt is required — a generation that cannot name its prompt cannot be reproduced or audited');
+
+  return {
+    id: args.id,
+    name: args.name,
+    kind: args.kind,
+    source: 'generated_roblox',
+    // No source page exists for a mesh that was generated rather than published. Both URLs point
+    // at the generator's documentation — the thing that made it — rather than a fabricated listing.
+    sourceUrl: ROBLOX_GENERATION_DOCS,
+    licence: 'ROBLOX-GENERATED',
+    licenceUrl: ROBLOX_GENERATION_DOCS,
+    commercialUse: true,
+    attributionRequired: false,
+    // The customer ran the generator in their own session, on their own account. Naming the
+    // service as author rather than Apple is the §42 line: this is not our work to claim.
+    author: 'Roblox GenerationService',
+    retrievedAt: args.generatedAt,
+    importedAt: args.robloxAssetId ? args.generatedAt : null,
+    modifications: args.modifications ?? [],
+    robloxAssetId: args.robloxAssetId ?? null,
+    triangles: args.triangles ?? null,
+    textureResolution: null,
+    boundsStuds: null,
+    tags: args.tags,
+    sha256: args.sha256 ?? null,
+    generation: { service, model, prompt, generatedAt: args.generatedAt },
+  };
+}
+
 /** Embedding + FTS input. Derived, never stored, so it cannot drift from the record. */
 export function assetEmbeddingInput(rec: AssetProvenance): string {
   return `${rec.kind}: ${rec.name}. Style: ${rec.tags.join(', ')}. Source: ${rec.source} by ${rec.author}.`;
@@ -543,7 +880,7 @@ export function assetEmbeddingInput(rec: AssetProvenance): string {
  * become permanent for the isolate's life.
  */
 export function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
-  return oncePerIsolate('assets', () => createAssetTables(env));
+  return oncePerIsolate('assets', () => createAssetTables(env), env.CORPUS);
 }
 
 /** Test seam: the record is per-isolate and otherwise unreachable. */
@@ -553,12 +890,12 @@ export function resetAssetSchemaCache(): void {
 
 async function createAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   await env.CORPUS.exec(
-    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
+    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, generation text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
   );
   // Deployed databases predate these two columns, and `create table if not exists` will not add
   // them. D1 has no `add column if not exists`, so the failure is caught: on an already-migrated
   // database it is a duplicate-column error and nothing else, and swallowing it is the whole point.
-  for (const col of ['imported_at text', 'modifications text']) {
+  for (const col of ['imported_at text', 'modifications text', 'generation text']) {
     try {
       await env.CORPUS.exec(`alter table asset_library add column ${col}`);
     } catch {
@@ -584,7 +921,7 @@ async function createAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
 // Writes
 // ---------------------------------------------------------------------------------------------
 
-const COLUMNS = [
+export const COLUMNS = [
   'id',
   'name',
   'kind',
@@ -604,6 +941,7 @@ const COLUMNS = [
   'bounds_studs',
   'tags',
   'sha256',
+  'generation',
   'status',
   'created_at',
   'updated_at',
@@ -618,7 +956,7 @@ export function rowsPerStatement(columnCount: number = COLUMNS.length): number {
   return Math.max(1, Math.floor(MAX_BOUND_PARAMS / columnCount));
 }
 
-function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unknown[] {
+export function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unknown[] {
   return [
     rec.id,
     rec.name,
@@ -639,6 +977,10 @@ function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unk
     rec.boundsStuds ? JSON.stringify(rec.boundsStuds) : null,
     JSON.stringify(rec.tags),
     rec.sha256,
+    // JSON text, matching modifications/tags/bounds_studs. null rather than "null" for the
+    // overwhelming majority of rows that are not generations, so the column stays queryable as
+    // "is this a generation?" without parsing.
+    rec.generation ? JSON.stringify(rec.generation) : null,
     status,
     now,
     now,
@@ -822,6 +1164,16 @@ export async function recordVerification(
 // Semantic search
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Can a place reference this row right now, or does somebody have to import it first?
+ *
+ * A separate word from `status` on purpose. The two used to be the same column and the conflation
+ * hid the entire curated library; a caller that has to re-derive this from a null id is a caller
+ * that will get it wrong, and the person on the other end of the agent gets told "we have nothing"
+ * when the truth is "we have exactly that, it needs an import".
+ */
+export type AssetAvailability = 'insertable' | 'needs_import';
+
 export interface AssetHit {
   id: string;
   name: string;
@@ -832,6 +1184,16 @@ export interface AssetHit {
   tags: string[];
   licence: string;
   attributionRequired: boolean;
+  /** Which catalogue the row came from — the fact `quality` is mostly derived from. */
+  source: AssetSourceSite;
+  /** Import lifecycle only. See SEARCHABLE_STATUSES. */
+  status: AssetStatus;
+  /** True iff a Roblox asset id is recorded, which is the only thing insertion needs. */
+  insertable: boolean;
+  /** The same fact as a word, for the agent's answer and the UI's label. */
+  availability: AssetAvailability;
+  /** 0..1, from `source` and `name`. See assetQuality. */
+  quality: number;
   score: number;
 }
 
@@ -841,8 +1203,16 @@ export interface AssetSearchOptions {
   maxTriangles?: number;
   /** The project's declared style. Retrieval strongly prefers assets sharing these tags. */
   styleTags?: string[];
-  /** Only return rows that actually have a Roblox id (i.e. are insertable today). */
+  /**
+   * Only return rows that actually have a Roblox id (i.e. are insertable today).
+   *
+   * For a caller that must insert something in this turn and cannot wait for an import. It is NOT
+   * the default: defaulting to it is the same defect as filtering on `status = 'active'`, because
+   * in this library the insertable rows are overwhelmingly the scrape.
+   */
   insertableOnly?: boolean;
+  /** Drop hits scoring below this. See assetQuality — 0..1. */
+  minQuality?: number;
   k?: number;
 }
 
@@ -861,6 +1231,9 @@ interface Row {
   tags: string;
   licence: string;
   attribution_required: number;
+  /** Both columns have existed since the table was created — see createAssetTables. */
+  source: string;
+  status: string;
 }
 
 function toHit(r: Row, score: number): AssetHit {
@@ -878,6 +1251,10 @@ function toHit(r: Row, score: number): AssetHit {
   } catch {
     tags = [];
   }
+  // The one thing insertion actually needs is an id. Nothing else on the row decides this, and in
+  // particular `status` does not: a row can be 'active' with no id only if something wrote it that
+  // way, and it would still be un-insertable.
+  const insertable = r.roblox_asset_id !== null && r.roblox_asset_id !== undefined;
   return {
     id: r.id,
     name: r.name,
@@ -888,11 +1265,16 @@ function toHit(r: Row, score: number): AssetHit {
     tags,
     licence: r.licence,
     attributionRequired: r.attribution_required === 1,
+    source: r.source as AssetSourceSite,
+    status: r.status as AssetStatus,
+    insertable,
+    availability: insertable ? 'insertable' : 'needs_import',
+    quality: assetQuality({ source: r.source, name: r.name }),
     score,
   };
 }
 
-const SELECT_COLS = `id, name, kind, roblox_asset_id, triangles, bounds_studs, tags, licence, attribution_required`;
+const SELECT_COLS = `id, name, kind, roblox_asset_id, triangles, bounds_studs, tags, licence, attribution_required, source, status`;
 
 /**
  * Hybrid retrieval over the library: Vectorize (semantic) + D1 FTS5 (keyword), merged with
@@ -983,12 +1365,24 @@ export function rerankMultiplier(hit: AssetHit, opts: AssetSearchOptions): numbe
     m *= hit.triangles <= opts.maxTriangles * 0.5 ? 1.1 : 1;
   }
   if (hit.attributionRequired) m *= 0.9; // usable, but it costs a credit line
+  //[[ QUALITY OUTWEIGHS EVERY OTHER TERM HERE, AND IT IS MEANT TO.
+  //
+  //   A curated pack row scores 1 and is unchanged; a Creator Store row named "diediedieDIELess"
+  //   lands near 0.14 and is cut to roughly a third. That gap is wider than the style-coherence
+  //   term because it is a wider fact: a mismatched style is a worse-looking build, an unnamed
+  //   2008 upload is not game art at all.
+  //
+  //   It is deliberately NOT a filter. The scrape still comes back, ranked, so a query the library
+  //   genuinely cannot answer still gets an answer — with `availability` and `quality` attached so
+  //   the agent can say what it is offering rather than passing it off as the curated library. ]]
+  m *= 0.25 + 0.75 * hit.quality;
   return m;
 }
 
 function keep(hit: AssetHit, opts: AssetSearchOptions): boolean {
   if (opts.kind && hit.kind !== opts.kind) return false;
-  if (opts.insertableOnly && hit.robloxAssetId === null) return false;
+  if (opts.insertableOnly && !hit.insertable) return false;
+  if (opts.minQuality !== undefined && hit.quality < opts.minQuality) return false;
   if (opts.maxTriangles !== undefined && hit.triangles !== null && hit.triangles > opts.maxTriangles) return false;
   return true;
 }
@@ -997,7 +1391,9 @@ async function vecSearch(env: LibraryEnv, query: string, k: number, opts: AssetS
   const [vector] = await embed(env, [query], 'embed-assets');
   if (!vector) return [];
   const index = env.VEC_ASSETS ?? env.VEC;
-  const filter: Record<string, unknown> = { ns: 'asset', status: 'active' };
+  // `$in`, not `'active'`: a vector for a row still awaiting its import is a vector for a row the
+  // library HAS. Vectorize-style metadata filtering supports $in.
+  const filter: Record<string, unknown> = { ns: 'asset', status: { $in: [...SEARCHABLE_STATUSES] } };
   if (opts.kind) filter.kind = opts.kind;
   const res = await index.query(vector, { topK: k, returnMetadata: 'all', filter: filter as never });
   const ids = res.matches.map((m) => m.id.replace(ASSET_VECTOR_PREFIX, '')).filter((id) => id.length > 0);
@@ -1020,13 +1416,25 @@ async function selectByIds(env: Pick<Env, 'CORPUS'>, ids: string[]): Promise<Row
   for (let i = 0; i < ids.length; i += MAX_BOUND_PARAMS) {
     const page = ids.slice(i, i + MAX_BOUND_PARAMS);
     const placeholders = page.map(() => '?').join(',');
-    const rows = await env.CORPUS.prepare(`select ${SELECT_COLS} from asset_library where id in (${placeholders}) and status = 'active'`)
+    const rows = await env.CORPUS.prepare(`select ${SELECT_COLS} from asset_library where id in (${placeholders}) and status in (${SEARCHABLE_STATUS_SQL})`)
       .bind(...page)
       .all<Row>();
     out.push(...rows.results);
   }
   return out;
 }
+
+/**
+ * The curated tiers as a SQL literal, derived from SOURCE_CURATION so the two cannot drift.
+ *
+ * THIS HAS TO REACH SQL, not just the JS reranker. The reranker can only reorder what the query
+ * already returned, and `limit k` is applied inside D1: with ~100,000 scrape rows against a few
+ * tens of thousands of pack rows, a bm25 top-16 for a common word can be entirely scrape, and no
+ * amount of reranking afterwards can promote a row that was never fetched.
+ */
+const CURATED_SOURCE_SQL = ASSET_SOURCE_SITES.filter((s) => SOURCE_CURATION[s] !== 'open_upload')
+  .map((s) => `'${s}'`)
+  .join(',');
 
 async function ftsSearch(env: Pick<Env, 'CORPUS'>, query: string, k: number, opts: AssetSearchOptions): Promise<AssetHit[]> {
   // sanitize into an fts5 OR query of bare terms, exactly as rag.ts does
@@ -1037,12 +1445,20 @@ async function ftsSearch(env: Pick<Env, 'CORPUS'>, query: string, k: number, opt
     .slice(0, 8);
   if (!terms.length) return [];
   const match = terms.map((t) => `"${t.replaceAll('"', '')}"`).join(' OR ');
-  const where = opts.kind ? `and l.kind = ?` : '';
-  const binds: unknown[] = opts.kind ? [match, opts.kind, k] : [match, k];
+  const binds: unknown[] = [match];
+  let where = '';
+  if (opts.kind) {
+    where += ` and l.kind = ?`;
+    binds.push(opts.kind);
+  }
+  // Applied in SQL rather than after, so a caller who needs an id today spends its k slots on rows
+  // that have one instead of discarding most of them in `keep`.
+  if (opts.insertableOnly) where += ` and l.roblox_asset_id is not null`;
+  binds.push(k);
   const rows = await env.CORPUS.prepare(
     `select ${SELECT_COLS.split(', ')
       .map((c) => `l.${c}`)
-      .join(', ')}, bm25(asset_library_fts) as rank from asset_library_fts join asset_library l on l.id = asset_library_fts.asset_id where asset_library_fts match ? and l.status = 'active' ${where} order by rank limit ?`,
+      .join(', ')}, bm25(asset_library_fts) as rank from asset_library_fts join asset_library l on l.id = asset_library_fts.asset_id where asset_library_fts match ? and l.status in (${SEARCHABLE_STATUS_SQL})${where} order by case when l.source in (${CURATED_SOURCE_SQL}) then 0 else 1 end, rank limit ?`,
   )
     .bind(...binds)
     .all<Row & { rank: number }>();

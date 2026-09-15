@@ -536,6 +536,20 @@ kbd {
   color: var(--muted);
 }
 
+/* Both of these were being asked for by the settings page with nothing behind them, so a confirmed
+   address and an unconfirmed one rendered identically — a status badge that carries no status. */
+.pill-good {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 34%, transparent);
+  background: var(--good-soft);
+}
+
+.pill-warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 34%, transparent);
+  background: var(--warn-soft);
+}
+
 .pill-quiet {
   background: var(--surface-2);
   font-size: 0.72rem;
@@ -898,6 +912,81 @@ kbd {
 .field-hint {
   color: var(--faint);
   font-weight: 440;
+}
+
+/* Starting-point picker — five cards, one of which is "empty".
+   The radio itself is kept in the page rather than replaced: it is what carries
+   the group semantics and the arrow-key behaviour, so it is made invisible and
+   the card takes its focus ring through :focus-within. */
+.tpl {
+  border: 0;
+  padding: 0;
+  margin-bottom: 0.95rem;
+  min-inline-size: 0;
+}
+
+.tpl__note {
+  margin: 0 0 0.5rem;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.tpl__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.45rem;
+}
+
+.tpl__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.tpl__card:hover {
+  border-color: var(--line-strong);
+}
+
+.tpl__card input {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.tpl__card:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tpl__card.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tpl__label {
+  font-size: 0.82rem;
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.tpl__blurb {
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 input[type='text'],
@@ -3546,6 +3635,45 @@ textarea {
   color: var(--faint);
 }
 
+/* A generated sound, played in place. The bytes need a Bearer token, so this is an object URL
+   rather than the route — see SafeAudio. The player is width-constrained because the native
+   control has its own intrinsic width and will otherwise push the asset card's grid column open. */
+.gu-audio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.gu-audio__player {
+  width: 100%;
+  max-width: 100%;
+  height: 2rem;
+}
+
+.gu-audio__save {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 0.72rem;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.gu-audio__save:hover {
+  border-color: var(--line-strong);
+}
+
+.gu-audio-loading,
+.gu-audio-gone {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
 /* ---- build plan ---- */
 
 .gu-steps {
@@ -3999,6 +4127,32 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* The working behind a prorated total: the credit for the old tier and the charge for the new one,
+   each on its own row. A single net figure is the number a customer disputes; these are the two
+   lines that answer them. Logical properties throughout — this app renders right-to-left too. */
+.preview-lines {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+
+.preview-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.25rem;
+  color: var(--muted);
+}
+
+.preview-lines__amount {
+  /* Tabular figures so the amounts line up in a column rather than wandering by digit width. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
 .toast-stack {
   position: fixed;
   inset-inline-end: 1rem;
@@ -4186,6 +4340,162 @@ textarea {
   background: var(--good-soft);
   color: var(--good);
   font-size: 1.35rem;
+}
+
+/* THE CONNECTION RECORD — what this project is bound to, above the way to change it.
+   Quieter than the code box on purpose: the code is the instruction and this is the
+   context, so it reads as a plate riveted to the machine rather than as a second call
+   to action. */
+.pairing-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.pairing-record {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+/* The three non-answers — still asking, could not tell — get the same plate so the
+   dialog does not change height under the user as the record arrives. */
+.pairing-record__unknown {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.pairing-record__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.pairing-record__ident {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pairing-record__place {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.pairing-record__sub {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--faint);
+}
+
+.pairing-record__state {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--faint);
+  padding-top: 0.1rem;
+}
+
+.pairing-record__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.pairing-record__facts dt {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.pairing-record__facts dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pairing-record__facts dd.is-lapsed {
+  color: var(--warn);
+}
+
+.pairing-record__mismatch {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--r-sm);
+  background: var(--warn-soft);
+  color: var(--ink);
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+.pairing-record__ops {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.pairing-record__ops li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.pairing-record__op {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pairing-record__when {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.pairing-record__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.pairing-record__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  color: var(--muted);
 }
 
 /* --------------------------------------------------------------------------
@@ -4832,6 +5142,80 @@ samp {
   align-items: flex-end;
   gap: 0.6rem;
   flex-wrap: wrap;
+}
+
+/* Two fields that are one setting — the start and the end of the quiet window. Side by side
+   because "from 22:00" and "until 07:00" are read as one sentence, and they wrap rather than
+   shrink so the time inputs keep their own controls usable on a phone. */
+.settings-pair {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.settings-pair .field {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+}
+
+/* The account history. A list, not a table: every row is one sentence plus when, and a table of
+   two columns is a table that exists to be a table. */
+.sec-log {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.sec-event {
+  padding: 0.6rem 0.75rem;
+  /* inline-start, not left: under a Hebrew or Arabic interface the marker belongs on the side the
+     reader starts from, and rtl-workspace.test.mjs refuses a physical text-flow property here. */
+  border-inline-start: 2px solid transparent;
+  border-radius: var(--r-xs);
+}
+
+.sec-event + .sec-event {
+  border-top: 1px solid var(--hairline);
+}
+
+/* Unread is carried by the strip AND the badge beside the title: colour alone is not a status. */
+.sec-event-new {
+  border-inline-start-color: var(--warn);
+  background: var(--surface-2);
+}
+
+.sec-event-title {
+  margin: 0 0 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-weight: 560;
+}
+
+.sec-event p.muted {
+  margin: 0 0 0.2rem;
+}
+
+.sec-when {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* The enrolment QR. WHITE GROUND, NOT DECORATION: the provider sends black-on-transparent SVG, and
+   on the dark theme this product defaults to that renders as a black square on a dark card — a code
+   no camera can read, on the one screen whose whole job is to be photographed. */
+.mfa-qr {
+  display: block;
+  background: #fff;
+  padding: 0.5rem;
+  border-radius: var(--r-xs);
+  margin: 0 0 0.75rem;
 }
 
 /* A 700px-wide box for a display name reads as a mistake; cap the measure. */

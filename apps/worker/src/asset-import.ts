@@ -2,8 +2,13 @@
 //
 // This is the step between `pending_ingest` and `active`. It fetches the bytes the provenance row
 // points at, uploads them under Apple's account as an Open Use type, and writes the resulting
-// Roblox asset id back — at which point, and only at which point, the product's own search will
-// return it, because `ftsSearch` filters on `status = 'active'`.
+// Roblox asset id back — at which point the row stops being `needs_import` and becomes something a
+// place can reference directly.
+//
+// Search no longer waits for that. It used to filter on `status = 'active'`, which meant an
+// un-imported row was indistinguishable from a dead one and the curated packs could not be found
+// at all; it now returns them labelled `needs_import` (asset-library.ts). So this file is what
+// makes a row INSERTABLE, not what makes it VISIBLE — two facts that were one column for too long.
 //
 // ONE WRITE PATH, STILL. The update goes back through `ingestAssets`, not through a bespoke UPDATE.
 // The column list, the licence gate and the FTS mirror live in `upsertAssets`; a second writer

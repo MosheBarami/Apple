@@ -126,6 +126,28 @@ export function mockRoadmap(polish = false): Promise<RoadmapResponse> {
       notes: ['Scripts inside packages were not read, so anything they build is invisible to this scan.'],
       polished: polish,
       generatedAt: new Date().toISOString(),
+      // Coherent with the note above: it says the scan did not read everything, so `limits` carries
+      // that same sentence and the counts below are floors. A fixture whose counts claimed to be
+      // totals under a note admitting otherwise would rehearse the exact defect this section
+      // exists to avoid.
+      shape: {
+        systems: {
+          currencies: ['Coins'],
+          zones: [
+            { path: 'game.Workspace.Stage1', className: 'Model', name: 'Stage1' },
+            { path: 'game.Workspace.Stage2', className: 'Model', name: 'Stage2' },
+          ],
+          serverScripts: ['game.ServerScriptService.Checkpoints', 'game.ServerScriptService.Leaderstats'],
+          clientScripts: ['game.StarterPlayer.StarterPlayerScripts.Hud'],
+          moduleScripts: ['game.ReplicatedStorage.StageConfig'],
+          guis: ['game.StarterGui.ShopUI', 'game.StarterGui.StageBanner'],
+          topLevel: ['Workspace', 'Lighting', 'ReplicatedStorage'],
+          spawns: 3,
+          parts: 1204,
+        },
+        scale: { instances: 3810, parts: 1204, scripts: 40, scriptsRead: 12 },
+        limits: ['Scripts inside packages were not read, so anything they build is invisible to this scan.'],
+      },
     },
     polish ? 1_400 : 340,
   );

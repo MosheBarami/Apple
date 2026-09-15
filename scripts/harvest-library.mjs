@@ -15,13 +15,20 @@
 // anything whose canonical id is not allowed in the library is DROPPED AND COUNTED. A harvest that
 // silently kept a CC-BY-NC icon would put an obligation on a paying customer that nobody agreed to.
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = join(ROOT, 'packages', 'corpus', 'data', 'library');
 const NOW = new Date().toISOString();
 const UA = { 'user-agent': 'apple-asset-harvest/2 (+roblox asset library; contact via repository)' };
+
+/**
+ * `--limit=N` caps pages per keyword on the paged sources, so a connector can be RUN — against the
+ * live API, for real, in under a minute — before anyone trusts it with a full sweep. Default 40 is
+ * past any cap these endpoints impose, so an unflagged run is unchanged.
+ */
+const PAGE_CAP = Math.max(1, Number(/--limit=(\d+)/.exec(process.argv.join(' '))?.[1] ?? 40));
 
 const slug = (s) =>
   String(s).toLowerCase().normalize('NFKD').replace(/[^\w\s/-]/g, '').trim()
@@ -51,19 +58,28 @@ async function get(url, { json = true, tries = 3, headers = {} } = {}) {
  * The canonical-id mapping, kept deliberately in step with normaliseLicence in
  * apps/worker/src/asset-library.ts. It is duplicated rather than imported because that file is
  * TypeScript inside a Worker bundle and this is a plain script — and the duplication is made safe
- * by tests/library-harvest.test.mjs, which asserts the two agree on every string this harvest
- * actually produced. A silent divergence here would admit a licence the worker would then refuse.
+ * by tests/asset-connectors.test.mjs, which asserts the two agree on every string this harvest
+ * actually produces. A silent divergence here would admit a licence the worker would then refuse.
+ *
+ * (That sentence named tests/library-harvest.test.mjs until now, and no such file has ever
+ * existed. A comment claiming a guard that is not there is worse than no comment: it is the
+ * reason nobody went looking.)
  */
-const DENY = /(\bnc\b|non[- ]?commercial|\bsa\b|share[- ]?alike|\bgpl\b|general public|open font|\bofl\b)/i;
-function canonicalLicence(verbatim) {
+const DENY = /(\bnc\b|non[- ]?commercial|\bsa\b|share[- ]?alike|\bnd\b|no[- ]?derivs?\b|no[- ]?derivatives\b|\bgpl\b|general public|open font|\bofl\b)/i;
+export function canonicalLicence(verbatim) {
   const t = String(verbatim ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
   if (!t) return null;
   const isCc = /\bcc\b|creative commons/.test(t);
   const nc = /\bnc\b|non[- ]?commercial/.test(t);
   const sa = /\bsa\b|share[- ]?alike/.test(t);
+  const nd = /\bnd\b|no[- ]?derivs?\b|no[- ]?derivatives\b/.test(t);
   if (isCc && nc && sa) return 'CC-BY-NC-SA-4.0';
+  if (isCc && nc && nd) return 'CC-BY-NC-ND-4.0';
   if (isCc && nc) return 'CC-BY-NC-4.0';
   if (isCc && sa) return 'CC-BY-SA-4.0';
+  // Before plain attribution, for the reason spelled out in normaliseLicence: Sketchfab labels
+  // NoDerivs "CC Attribution-NoDerivs", and the attribution branch would happily claim it.
+  if (isCc && nd) return 'CC-BY-ND-4.0';
   if (/\bgpl\b|general public license/.test(t)) return /\b2(\.0)?\b/.test(t) ? 'GPL-2.0' : 'GPL-3.0';
   if (/\bmit\b/.test(t)) return 'MIT';
   if (/\bisc\b/.test(t)) return 'ISC';
@@ -73,11 +89,12 @@ function canonicalLicence(verbatim) {
   if (/open font license|\bofl\b|sil open font/.test(t)) return 'OFL-1.1';
   if (/\bcc0\b|creative commons zero|public domain dedication/.test(t)) return 'CC0-1.0';
   if (/^pd$|public domain/.test(t)) return 'PD';
-  if (/\bcc[- ]?by\b|creative commons attribution/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
+  // `cc attribution` is Sketchfab's wording for plain CC-BY; it writes neither of the other two.
+  if (/\bcc[- ]?by\b|creative commons attribution|\bcc attribution\b/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
   if (/roblox terms of use|roblox-tou/.test(t)) return 'ROBLOX-TOU';
   return null;
 }
-const ALLOWED = new Set(['CC0-1.0', 'CC-BY-4.0', 'CC-BY-3.0', 'MIT', 'ISC', 'Apache-2.0', 'BSD-3-Clause', 'Unlicense', 'PD', 'ROBLOX-TOU']);
+export const ALLOWED = new Set(['CC0-1.0', 'CC-BY-4.0', 'CC-BY-3.0', 'MIT', 'ISC', 'Apache-2.0', 'BSD-3-Clause', 'Unlicense', 'PD', 'ROBLOX-TOU']);
 const ATTRIBUTION = new Set(['CC-BY-4.0', 'CC-BY-3.0', 'MIT', 'ISC', 'Apache-2.0', 'BSD-3-Clause']);
 
 /**
@@ -397,7 +414,18 @@ async function kenney() {
         source: 'kenney',
         sourceUrl: `https://kenney.nl/assets/${s}`,
         licence: 'Creative Commons CC0',
-        licenceUrl: 'http://creativecommons.org/publicdomain/zero/1.0/',
+        //[[ https, AND THE ONE CHARACTER HERE COST 56,718 ASSETS.
+        //
+        //   Kenney's own licence.txt writes the CC0 deed as `http://`, so this row was copied from
+        //   it verbatim — which reads like fidelity and is not. `validateProvenance` requires
+        //   https, so the entire Kenney harvest was refused at ingest: "written 453,598 · rejected
+        //   57,049", every rejection the same sentence, and the biggest curated pack in the
+        //   library — the one the whole "not a Creator Store scrape" argument rests on — never
+        //   reached D1.
+        //
+        //   creativecommons.org redirects http to https and serves the identical deed, so this is
+        //   the same document correctly addressed, not a different claim about the licence.
+        licenceUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
         author: 'Kenney',
         tags: ['kenney', 'pack', ...title.split(/\s+/)],
         download: zip,
@@ -414,6 +442,276 @@ async function kenney() {
   return { rows: out, failedPacks, packsSeen: uniq.length };
 }
 
+/* ------------------------------------------------------------------------ poly haven --- */
+
+/**
+ * THE API PUBLISHES NO LICENCE FIELD AT ALL. Verified against the live endpoint rather than
+ * assumed: across all 2,377 assets, the 37 distinct keys `/assets` returns contain nothing about
+ * rights — no `license`, no `copyright`, no `terms`. harvest-assets.mjs covered that hole with
+ * `const PH_LICENCE = 'CC0'`, which is a constant that would go on asserting CC0 for years after
+ * the site changed its mind, and would assert it inside a paying customer's place.
+ *
+ * So the licence is READ, once per run, off the sentence polyhaven.com/license prints it in, and
+ * the WHOLE SOURCE FAILS if that sentence is gone or no longer names a licence this library may
+ * keep. Carrying on with a fallback is the exact shape this repository refuses: a failure to
+ * observe rendering as an observation.
+ */
+export const PH_LICENCE_URL = 'https://polyhaven.com/license';
+const PH_STATEMENT = /Our assets are all licensed as ([A-Za-z0-9][A-Za-z0-9 .+-]{0,39}?)\s*(?:,|\.|$)/;
+
+/** Tags and script bodies stripped, entities folded, whitespace collapsed — what a reader sees. */
+const visibleText = (html) =>
+  String(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ');
+
+/** What the licence page says TODAY, or a thrown error naming what it no longer says. */
+export function readPolyHavenLicence(html) {
+  const stated = PH_STATEMENT.exec(visibleText(html))?.[1]?.trim();
+  if (!stated) {
+    throw new Error(
+      `${PH_LICENCE_URL} no longer contains the sentence this harvest reads its licence out of `
+      + '("Our assets are all licensed as …"). Every row\'s licence came from that sentence, so none are written.',
+    );
+  }
+  const id = canonicalLicence(stated);
+  if (!id || !ALLOWED.has(id)) {
+    throw new Error(`${PH_LICENCE_URL} now states "${stated}" (${id ?? 'unrecognised'}), which this library may not keep`);
+  }
+  return stated;
+}
+
+/**
+ * Pure mapper: one page of `/assets?t=<type>` into rows. Separated from the fetch so a test can
+ * feed it a recorded response — a connector nobody has run against a real payload is a guess.
+ *
+ * `licence` is a PARAMETER, never a constant in here. That is the point of the source.
+ */
+export function polyHavenRows(assets, { type, fallbackKind, licence }) {
+  const rows = [];
+  const refused = [];
+  for (const [key, a] of Object.entries(assets ?? {})) {
+    // The authors map is the only place Poly Haven names who made the thing, and validateProvenance
+    // rejects a record without one ("unknown" is not acceptable provenance). An empty map is a
+    // shape change, so the row is DROPPED and counted rather than credited to the site.
+    const authors = Object.keys(a?.authors ?? {});
+    if (!authors.length) {
+      refused.push({ id: key, licence, why: 'no author in the API response, and the site is not the author' });
+      continue;
+    }
+    const words = [...(a?.categories ?? []), ...(a?.tags ?? []), a?.name ?? key];
+    rows.push(row({
+      id: `poly_haven/${type}/${slug(key)}`,
+      name: a?.name ?? key,
+      // An HDRI is an environment map — never a prop, whatever its tags say about the scene it
+      // was shot in — so it takes the kind directly instead of going through the word matcher.
+      kind: type === 'hdris' ? 'texture' : kindFrom(words, fallbackKind),
+      source: 'poly_haven',
+      sourceUrl: `https://polyhaven.com/a/${encodeURIComponent(key)}`,
+      licence,
+      licenceUrl: PH_LICENCE_URL,
+      author: authors.join(', '),
+      tags: [...words, type],
+      // max_resolution is 4096 on most of these and validateProvenance ERRORS above Roblox's
+      // 1024px guidance, so forwarding the source's number would invalidate every row it wrote.
+      // It is also not our measurement: the field means "what we imported at", and nothing has
+      // been imported. Likewise `polycount` is left out of `triangles` — Poly Haven does not say
+      // whether it counts triangles or quads, and a budget computed from a guess is worse than a
+      // budget that knows it is missing.
+      download: `https://api.polyhaven.com/files/${encodeURIComponent(key)}`,
+    }));
+  }
+  return { rows, refused };
+}
+
+async function polyHaven() {
+  const licence = readPolyHavenLicence(await get(PH_LICENCE_URL, { json: false }));
+  const rows = [];
+  const refused = [];
+  const perType = {};
+  for (const [type, fallbackKind] of [['models', 'prop'], ['textures', 'texture'], ['hdris', 'texture']]) {
+    const assets = await get(`https://api.polyhaven.com/assets?t=${type}`);
+    // A response that is not the keyed object this endpoint has always returned is a shape change,
+    // and an empty harvest reported as success is the failure mode this file exists to avoid.
+    if (!assets || typeof assets !== 'object' || Array.isArray(assets)) {
+      throw new Error(`/assets?t=${type} returned ${Array.isArray(assets) ? 'an array' : typeof assets}, not the keyed object this harvest reads`);
+    }
+    const part = polyHavenRows(assets, { type, fallbackKind, licence });
+    perType[type] = { fetched: Object.keys(assets).length, kept: part.rows.length, refused: part.refused.length };
+    rows.push(...part.rows);
+    refused.push(...part.refused);
+    await sleep(120);
+  }
+  // The artefact carries the licence THIS RUN READ, next to the rows it licensed. A reader who
+  // doubts the column can compare it against the page without re-running anything.
+  return { rows, licenceStatedToday: licence, perType, refusedCount: refused.length, refused: refused.slice(0, 200) };
+}
+
+/* -------------------------------------------------------------------------- sketchfab --- */
+
+/**
+ * Public search needs no key — verified live, anonymously. The query narrows; THE GATE DECIDES.
+ *
+ * Asking the API for `license=cc0` and then trusting the answer would make Sketchfab's server the
+ * licence authority for a customer's Roblox place. Every row's own `license.label` is re-read and
+ * re-canonicalised here, so a filter regression upstream costs us rows and never costs a customer
+ * an obligation. The two slugs below are an optimisation on top of that, not the rule.
+ */
+export const SKETCHFAB_LICENCE_SLUGS = ['cc0', 'by'];
+
+// Sketchfab's search is keyword-driven and capped per query, so breadth comes from many narrow
+// terms rather than one wide one — the same reason the Creator Store sweep is shaped this way.
+const SKETCHFAB_TERMS = [
+  'rock', 'tree', 'crate', 'barrel', 'chair', 'table', 'lamp', 'door', 'window', 'fence',
+  'sword', 'shield', 'coin', 'chest', 'house', 'tower', 'bridge', 'car', 'boat', 'sign',
+];
+
+/** Pure mapper: search `results` into rows, with every drop given a reason. */
+export function sketchfabRows(results) {
+  const rows = [];
+  const refused = [];
+  for (const m of results ?? []) {
+    const uid = typeof m?.uid === 'string' && m.uid ? m.uid : null;
+    const licence = m?.license?.label;
+    const name = typeof m?.name === 'string' && m.name.trim() ? m.name.trim() : null;
+    // The author is the uploader Sketchfab names. `username` is the fallback for an account with
+    // no display name set — never the site, which made none of this.
+    const author = m?.user?.displayName?.trim() || m?.user?.username?.trim() || null;
+
+    if (!uid || !name) { refused.push({ id: uid ?? '(no uid)', name, licence: licence ?? null, why: 'result is missing uid or name' }); continue; }
+    if (m?.isDownloadable !== true) { refused.push({ id: uid, name, licence: licence ?? null, why: 'not downloadable, so there is nothing to import' }); continue; }
+    if (typeof licence !== 'string' || !licence.trim()) {
+      refused.push({ id: uid, name, licence: null, why: 'no licence label on the result — an unlabelled model is an unknown obligation' });
+      continue;
+    }
+    if (!author) { refused.push({ id: uid, name, licence, why: 'no uploader named, and "unknown" is not acceptable provenance' }); continue; }
+
+    const canonical = canonicalLicence(licence);
+    if (!canonical || !ALLOWED.has(canonical) || DENY.test(licence)) {
+      refused.push({ id: uid, name, licence, canonical, why: `licence "${licence}" is not one this library may keep` });
+      continue;
+    }
+
+    const words = [
+      ...(Array.isArray(m?.tags) ? m.tags.map((t) => t?.name ?? t?.slug ?? '') : []),
+      ...(Array.isArray(m?.categories) ? m.categories.map((c) => c?.name ?? '') : []),
+      name,
+    ];
+    const r = row({
+      id: `sketchfab/model/${uid.toLowerCase()}`,
+      name,
+      kind: kindFrom(words, 'prop'),
+      source: 'sketchfab',
+      sourceUrl: typeof m?.viewerUrl === 'string' ? m.viewerUrl : `https://sketchfab.com/3d-models/${uid}`,
+      licence,
+      // The per-model licence is printed on the model page itself, which is where it was read.
+      licenceUrl: typeof m?.viewerUrl === 'string' ? m.viewerUrl : `https://sketchfab.com/3d-models/${uid}`,
+      author,
+      tags: words,
+      // Not textureResolution: `archives.gltf.textureMaxResolution` is 4096 on most of these and
+      // validateProvenance errors above 1024. Not triangles either — `faceCount` counts faces,
+      // and a face is only a triangle if the mesh happens to be triangulated.
+      download: null,
+    });
+    // A row with no usable tag fails validateProvenance ("retrieval and style coherence both
+    // depend on it"), and an untagged model nobody can retrieve is not worth a row.
+    if (!r.tags.length) { refused.push({ id: uid, name, licence, why: 'no tag survived slugging, so nothing could ever retrieve it' }); continue; }
+    rows.push(r);
+  }
+  return { rows, refused };
+}
+
+/**
+ * The sweep.
+ *
+ * A REQUEST THAT FAILED IS NOT A QUERY THAT FOUND NOTHING, and this function used to write down
+ * the second when the first had happened: `try { … } catch { break; }` swallowed every error, so a
+ * Sketchfab that started demanding a key — 403 on all forty queries — returned `[]` and main()
+ * filed it as `failed: false, kept: 0`, the same words it uses for a source that was read end to
+ * end and genuinely held nothing. Nobody re-runs a source that reported success.
+ *
+ * So failures are COUNTED, named in the artefact, and two of them are fatal: a sweep no query
+ * answered, and a sweep that kept nothing while any query was lost. Both are the same claim — the
+ * zero on that line is a failure to look, and only this function is in a position to know it.
+ *
+ * `fetchPage` and `sleepMs` are injectable for ONE reason: the interesting behaviour here is what
+ * happens when the API stops answering, and that is unreachable from a test that can only harvest
+ * the real internet. The defaults are what the live run uses.
+ */
+export async function sketchfab({ fetchPage = get, sleepMs = 200 } = {}) {
+  const rows = [];
+  const refused = [];
+  const byLicenceSlug = {};
+  const failures = [];
+  let queriesAttempted = 0;
+  let queriesAnswered = 0;
+  for (const slug_ of SKETCHFAB_LICENCE_SLUGS) {
+    let keptHere = 0;
+    for (const term of SKETCHFAB_TERMS) {
+      let url = 'https://api.sketchfab.com/v3/search?type=models&downloadable=true'
+        + `&license=${encodeURIComponent(slug_)}&count=24&q=${encodeURIComponent(term)}`;
+      queriesAttempted += 1;
+      let answered = false;
+      for (let page = 0; page < PAGE_CAP && url; page++) {
+        let body;
+        // A lost page still ends this query — one flaky 500 should not take the harvest down — but
+        // it is written down with the term it lost, so a partial sweep cannot pass for a full one.
+        try { body = await fetchPage(url); }
+        catch (e) { failures.push({ licence: slug_, term, page, error: String(e?.message ?? e) }); break; }
+        answered = true;
+        // `results` is the key this endpoint returns. Guessing at alternates is what let the
+        // Creator Store report success on zero rows, so an absent array is a SHAPE FAILURE that
+        // takes the whole source down rather than a quiet zero.
+        if (!body || !Array.isArray(body.results)) {
+          throw new Error(`v3/search returned no \`results\` array for license=${slug_} q=${term} — the response shape has changed`);
+        }
+        if (!body.results.length) break;
+        const part = sketchfabRows(body.results);
+        rows.push(...part.rows);
+        refused.push(...part.refused);
+        keptHere += part.rows.length;
+        url = typeof body.next === 'string' ? body.next : null;
+        await sleep(sleepMs);
+      }
+      if (answered) queriesAnswered += 1;
+    }
+    byLicenceSlug[slug_] = keptHere;
+  }
+  if (queriesAnswered === 0) {
+    throw new Error(
+      `v3/search answered none of the ${queriesAttempted} queries this sweep asked it (first error: `
+      + `${failures[0]?.error ?? 'unknown'}) — a sweep that saw nothing is not a catalogue that holds nothing`,
+    );
+  }
+  if (!rows.length && failures.length) {
+    throw new Error(
+      `v3/search kept 0 rows while ${failures.length} of ${queriesAttempted} queries failed (first: `
+      + `${failures[0].error}) — that zero is a failure to look, not a finding`,
+    );
+  }
+  // `pageCap` is in the artefact because a capped run and a full one are different claims about
+  // how much of Sketchfab was looked at, and a file that does not say which is being read as the
+  // stronger of the two. `refused` is truncated but `refusedCount` never is — the sample is for
+  // reading, the count is the fact. `queriesAnswered` is the same kind of fact for the sweep
+  // itself: it is how a reader tells 826 rows out of forty queries from 826 out of four.
+  return {
+    rows,
+    byLicenceSlug,
+    termsSwept: SKETCHFAB_TERMS.length,
+    pageCap: PAGE_CAP,
+    licenceSlugsQueried: SKETCHFAB_LICENCE_SLUGS,
+    queriesAttempted,
+    queriesAnswered,
+    requestFailures: failures.length,
+    failures: failures.slice(0, 20),
+    refusedCount: refused.length,
+    refused: refused.slice(0, 200),
+  };
+}
+
 /* ------------------------------------------------------------------------------ main --- */
 
 const SOURCES = {
@@ -423,8 +721,18 @@ const SOURCES = {
   opengameart: openGameArt,
   cgbookcase,
   kenney,
+  poly_haven: polyHaven,
+  sketchfab,
 };
 
+/**
+ * The harvest runs when this file is EXECUTED, not when it is imported.
+ *
+ * It used to run at module scope, which meant importing a connector to test it started a live
+ * sweep of six APIs. A connector that can only be exercised by harvesting the internet is a
+ * connector nobody tests, and untested is how a licence mapping silently stops mapping.
+ */
+async function main() {
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const run = Object.entries(SOURCES).filter(([k]) => !wanted.length || wanted.includes(k));
 mkdirSync(OUT_DIR, { recursive: true });
@@ -463,7 +771,18 @@ for (const [name, fn] of run) {
     source: name,
     failed: false,
     tookMs: Date.now() - started,
-    counts: { fetched: rows.length, kept: kept.length, droppedOnLicence: dropped, duplicateIds: duplicates, byKind, byLicence },
+    // `usableWithoutUpload` is recorded PER SOURCE, not just summed into the index, so that a
+    // later run which does not re-harvest this source can carry the figure forward instead of
+    // reporting a hole where a measured number used to be.
+    counts: {
+      fetched: rows.length,
+      kept: kept.length,
+      droppedOnLicence: dropped,
+      duplicateIds: duplicates,
+      usableWithoutUpload: kept.filter((r) => r.robloxAssetId).length,
+      byKind,
+      byLicence,
+    },
     ...extra,
     assets: kept,
   }, null, 1) + '\n');
@@ -471,19 +790,56 @@ for (const [name, fn] of run) {
 }
 
 // A combined index, so one file answers "how big is the library" without reading six.
+//
+// A SOURCE WITH NO PART FILE WAS NOT RUN. It did not return nothing, and the index must not say it
+// did. This rebuild used to be a plain sum over whichever files happened to be on disk, so
+// `harvest-library.mjs sketchfab` — one source, thirty seconds — silently rewrote a TRACKED
+// manifest from 461,722 rows down to the 13,623 that session had fetched, deleting creator_store
+// and iconify from the record because their (gitignored) part files were not in that checkout.
+// Nothing was lost from the library; the file describing the library simply started lying about
+// it. So an absent source is carried forward from the previous index and MARKED as not re-run,
+// and the total says how much of itself is fresh.
+const indexPath = join(OUT_DIR, 'index.json');
+const previous = existsSync(indexPath) ? JSON.parse(readFileSync(indexPath, 'utf8')) : null;
 const parts = Object.keys(SOURCES)
   .map((n) => join(OUT_DIR, `${n}.json`))
   .filter(existsSync)
   .map((p) => JSON.parse(readFileSync(p, 'utf8')));
-const total = parts.reduce((n, p) => n + (p.assets?.length ?? 0), 0);
-const withRobloxId = parts.reduce((n, p) => n + (p.assets ?? []).filter((a) => a.robloxAssetId).length, 0);
-writeFileSync(join(OUT_DIR, 'index.json'), JSON.stringify({
+const fresh = new Set(parts.map((p) => p.source));
+const carried = Object.entries(previous?.perSource ?? {}).filter(([n]) => !fresh.has(n));
+
+const freshTotal = parts.reduce((n, p) => n + (p.assets?.length ?? 0), 0);
+const freshWithRobloxId = parts.reduce((n, p) => n + (p.assets ?? []).filter((a) => a.robloxAssetId).length, 0);
+// A carried entry's `kept` is a real measurement from a real run; it is just an OLD one, which is
+// why it travels with the date it was taken. Entries written before `usableWithoutUpload` existed
+// per-source cannot contribute to that figure, and the index names them rather than guessing.
+const carriedTotal = carried.reduce((n, [, c]) => n + (c?.kept ?? 0), 0);
+const unknownRobloxIdFor = carried.filter(([, c]) => typeof c?.usableWithoutUpload !== 'number').map(([n]) => n);
+const carriedWithRobloxId = carried.reduce((n, [, c]) => n + (typeof c?.usableWithoutUpload === 'number' ? c.usableWithoutUpload : 0), 0);
+
+writeFileSync(indexPath, JSON.stringify({
   generatedAt: NOW,
-  total,
-  usableWithoutUpload: withRobloxId,
-  // `p.failed === true`, never `p.failed` — the loose form read an empty detail array as a
-  // failure. An identity check is the difference between "this source failed" and "this source
-  // returned a value JavaScript happens to consider truthy".
-  perSource: Object.fromEntries(parts.map((p) => [p.source, p.failed === true ? { failed: true, error: p.error } : p.counts])),
+  total: freshTotal + carriedTotal,
+  freshlyHarvested: freshTotal,
+  carriedForward: carried.map(([n]) => n),
+  // Named `…Known`, with its companion list, because the honest value here is a FLOOR and a bare
+  // `usableWithoutUpload: 0` would be read as "none" by anyone who did not also read the list.
+  usableWithoutUploadKnown: freshWithRobloxId + carriedWithRobloxId,
+  usableWithoutUploadUnknownFor: unknownRobloxIdFor,
+  perSource: {
+    ...Object.fromEntries(carried.map(([n, c]) => [n, { ...c, notRunThisRun: true, lastHarvestedAt: previous?.generatedAt ?? null }])),
+    // `p.failed === true`, never `p.failed` — the loose form read an empty detail array as a
+    // failure. An identity check is the difference between "this source failed" and "this source
+    // returned a value JavaScript happens to consider truthy".
+    ...Object.fromEntries(parts.map((p) => [p.source, p.failed === true ? { failed: true, error: p.error } : p.counts])),
+  },
 }, null, 1) + '\n');
-console.error(`\nTOTAL ${total} rows · ${withRobloxId} already carry a Roblox asset id`);
+console.error(
+  `\nTOTAL ${freshTotal + carriedTotal} rows · ${freshWithRobloxId + carriedWithRobloxId} already carry a Roblox asset id`
+  + (carried.length ? `\n  (${freshTotal} fresh; ${carriedTotal} carried forward from ${carried.map(([n]) => n).join(', ')}, NOT re-harvested)` : ''),
+);
+}
+
+// `process.argv[1]` is the script node was told to run. When this file is imported instead — by a
+// test, say — argv[1] is the importer, so nothing here fires.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

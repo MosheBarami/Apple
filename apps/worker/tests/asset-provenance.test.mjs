@@ -31,13 +31,42 @@ test('agentCtx hydrates the sets from the run', () => {
 
 test('every agent-run call site passes the run in', () => {
   // A call site that forgets the argument silently reverts to the old behaviour — empty sets, no
-  // error, degraded provenance. The admin /run-tool route is the ONE that legitimately omits it,
-  // because a single tool call has no run to accumulate against.
+  // error, degraded provenance.
   const callSites = [...SESSION.matchAll(/this\.agentCtx\(([^)]*)\)/g)].map((m) => m[1].trim());
   const withRun = callSites.filter((a) => a === 'agent');
-  const without = callSites.filter((a) => a === '');
   assert.equal(withRun.length, 2, 'both agent-run call sites must pass the run');
-  assert.equal(without.length, 1, 'only the admin single-tool route may omit it');
+
+  // THE RUN-LESS SITES ARE NAMED, NOT COUNTED. A bare count is a number the next person bumps
+  // when their route trips it, which is exactly how a provenance-degrading call site gets waved
+  // through. Each single-tool route is listed here with the reason it has no run to accumulate
+  // against, and an unlisted one fails.
+  const runLess = ["path === '/run-tool'", "path === '/mcp-tool'"];
+  const without = callSites.filter((a) => a === '');
+  assert.equal(
+    without.length,
+    runLess.length,
+    `a call site builds an AgentCtx with no run and is not one of the ${runLess.length} single-tool routes this test knows about`,
+  );
+  for (const route of runLess) {
+    const at = SESSION.indexOf(route);
+    assert.ok(at > 0, `${route} is gone — this test is now guarding a route that does not exist`);
+    const block = SESSION.slice(at, at + 1200);
+    assert.match(block, /this\.agentCtx\(\)/, `${route} no longer builds the run-less ctx this test accounts for`);
+  }
+});
+
+test('the MCP route cannot reach a tool that carries provenance', () => {
+  // Why the run-less ctx is safe THERE specifically. `/run-tool` is admin-only; `/mcp-tool` is
+  // reachable with any customer's API key, so "it has no run to accumulate against" has to be a
+  // fact about the tools it can run, not a promise. These four are the ones that read or write the
+  // discovered-asset sets — if any of them ever reached the MCP surface, empty sets would mean the
+  // curated-library waiver silently stops applying.
+  const MCP = readFileSync(join(HERE, '..', 'src', 'mcp.ts'), 'utf8');
+  const names = [...MCP.matchAll(/\{ tool: '([a-z_]+)'/g)].map((m) => m[1]);
+  assert.ok(names.length >= 5, 'the mcp.ts tool scrape broke');
+  for (const carrier of ['find_verified_asset', 'search_asset_library', 'insert_asset', 'generate_model']) {
+    assert.equal(names.includes(carrier), false, `${carrier} is on the MCP surface, where the AgentCtx has no run and provenance is always empty`);
+  }
 });
 
 test('what the tools discovered is written back before the state is persisted', () => {

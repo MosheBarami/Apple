@@ -238,8 +238,14 @@ function createWriteTable(env: Pick<CreatorEnv, 'CORPUS'>): Promise<void> {
   ).run().then(() => undefined);
 }
 
+// THE THIRD ARGUMENT IS THE DATABASE, AND IT IS NOT OPTIONAL HERE. `oncePerIsolate` keys its memo
+// on the binding object; omit it and this store falls back to the isolate-wide table, where one
+// flag covers every database the process ever builds. In production that reads as identical — one
+// CORPUS per isolate — and in a test suite that fabricates a fresh D1 stub per case the second
+// stub is told the schema was already made and never gets its table. That is the whole of the bug
+// the other seven stores were fixed for; this one was written while that fix was landing.
 export function ensureWriteTable(env: Pick<CreatorEnv, 'CORPUS'>): Promise<void> {
-  return oncePerIsolate('creator-writes', () => createWriteTable(env));
+  return oncePerIsolate('creator-writes', () => createWriteTable(env), env.CORPUS);
 }
 
 export interface WriteRecord {
