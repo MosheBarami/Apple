@@ -115,32 +115,13 @@ export const isRobloxConvention = (v: unknown): v is RobloxConvention => inList(
 export const isLanguageTag = (v: unknown): v is LanguageTag => inList(LANGUAGES, v);
 export const isResponseLength = (v: unknown): v is ResponseLength => inList(RESPONSE_LENGTHS, v);
 export const isToolPermission = (v: unknown): v is ToolPermission => inList(TOOL_PERMISSIONS, v);
-/**
- * Where a build may take assets from.
- *
- *   apple_library — the curated CC0 library Apple harvested and hosts by Roblox asset id.
- *   creator_store — Roblox's own Creator Store, bought or free, under the customer's account.
- *   from_scratch  — generated or procedurally built during the run.
- *
- * A SET, not one choice: "the library and the Creator Store, but do not invent geometry" is the
- * common answer, and a single-pick control could not express it.
- */
-export const ASSET_SOURCE_CHOICES = ['apple_library', 'creator_store', 'from_scratch'] as const;
-export type AssetSourceChoice = (typeof ASSET_SOURCE_CHOICES)[number];
+// The vocabulary lives in @golem/shared: the dialog offers these choices and this module
+// validates what comes back, and a list in two places lets the dialog offer an option the worker
+// refuses. The narrowing rules below are the worker's, because they are about layered policy
+// rather than about what the words mean.
+import { ASSET_SOURCE_CHOICES, ASSET_SOURCE_DEFAULT, type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
 
-/**
- * `ask` shows the pop-up before each build. `remember` uses `allow` without asking.
- *
- * The default is `ask` WITH AN EMPTY ALLOW LIST, and the two together are deliberate: a person who
- * has never answered must be asked, and until they answer nothing is permitted. An empty list that
- * defaulted to "everything" would mean the pop-up existed only to be dismissed.
- */
-export interface AssetSourcePolicy {
-  mode: 'ask' | 'remember';
-  allow: AssetSourceChoice[];
-}
-
-export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+export { ASSET_SOURCE_CHOICES, ASSET_SOURCE_DEFAULT, type AssetSourceChoice, type AssetSourcePolicy };
 
 export function isAssetSourcePolicy(v: unknown): v is AssetSourcePolicy {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return false;

@@ -1554,3 +1554,29 @@ export type RobloxScope = (typeof ROBLOX_SCOPES)[number];
 export function isRobloxScope(v: unknown): v is RobloxScope {
   return typeof v === 'string' && (ROBLOX_SCOPES as readonly string[]).includes(v);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Where a build may take assets from
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * SHARED for the same reason the Roblox scopes are: the dialog offers these choices and the worker
+ * validates what comes back, and a vocabulary in two places lets the dialog offer an option the
+ * worker refuses — a control that cannot work, discovered by the person who ticked it.
+ */
+export const ASSET_SOURCE_CHOICES = ['apple_library', 'creator_store', 'from_scratch'] as const;
+export type AssetSourceChoice = (typeof ASSET_SOURCE_CHOICES)[number];
+
+/**
+ * `ask` shows the dialog before a build. `remember` uses `allow` without asking.
+ *
+ * The default is `ask` with an EMPTY allow list, and the two together are deliberate: a person who
+ * has never answered must be asked, and until they answer nothing is permitted. An empty list that
+ * defaulted to "everything" would mean the dialog existed only to be dismissed.
+ */
+export interface AssetSourcePolicy {
+  mode: 'ask' | 'remember';
+  allow: AssetSourceChoice[];
+}
+
+export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };

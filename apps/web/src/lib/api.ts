@@ -1,6 +1,6 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
-import { PRICE_CURRENCY, type RobloxScope } from '@golem/shared';
+import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
@@ -264,6 +264,8 @@ export interface Preferences {
   model?: string;
   response_length?: ResponseLength;
   tool_permissions?: Record<string, ToolPermission>;
+  /** Where a build may take assets from. NARROWS across layers — the server decides, not this. */
+  asset_sources?: AssetSourcePolicy;
 }
 
 export interface PromptProfile {

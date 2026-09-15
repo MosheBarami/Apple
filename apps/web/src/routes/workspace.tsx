@@ -7,7 +7,7 @@
 // drawer rather than occupying a third of the screen forever.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
@@ -27,7 +27,10 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, type SearchHit } from '../lib/api';
+import { ApiError, downloadExport, fetchPersonalisation, savePreferences, type SearchHit } from '../lib/api';
+import type { AssetSourcePolicy } from '@golem/shared';
+import { owesAnswer } from '../lib/asset-sources';
+import { AssetSourceDialog } from '../components/asset-source-dialog';
 import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
@@ -153,6 +156,23 @@ export function WorkspacePage() {
   // Your own id, so the presence row shows the OTHER people. Null until the session loads, and
   // presenceView is explicit about showing everyone rather than guessing which face is yours.
   const { session } = useAuth();
+  const qc = useQueryClient();
+
+  // The resolved policy — org, user and project already layered by the server. Re-deriving the
+  // precedence here would be a second implementation of it, and the two would diverge.
+  const userId = session?.user.id ?? '';
+  const personal = useQuery({
+    queryKey: ['personalisation', projectId],
+    queryFn: () => fetchPersonalisation(projectId),
+    enabled: projectId.length > 0,
+  });
+  const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
+
+  const saveSources = async (policy: AssetSourcePolicy) => {
+    if (!userId) throw new Error('not signed in');
+    await savePreferences('user', userId, { asset_sources: policy });
+    await qc.invalidateQueries({ queryKey: ['personalisation', projectId] });
+  };
   const selfUserId = session?.user?.id ?? null;
 
   const projectNameRef = useRef('this project');
@@ -424,7 +444,25 @@ export function WorkspacePage() {
   // RETURNS WHETHER THE MESSAGE LEFT, and the composer keeps the user's text when it did not.
   // The toast said the send had been refused while the box had already been emptied, so the one
   // thing the user needed to recover — what they had typed — was gone by the time they read why.
+  //[[ WHERE MAY APPLE GET ASSETS FROM? Asked before the first build, not during it.
+  //
+  //   The question has to be answered BEFORE the message leaves, because a build that has already
+  //   started has already decided. So a send that owes an answer is held: the text is kept, the
+  //   dialog opens, and the message goes on its own the moment the policy is stored.
+  //
+  //   `send` still returns false in that case, and that is deliberate rather than a compromise —
+  //   false means "not sent", the composer keeps the words, and nothing is lost if the person
+  //   closes the dialog. A true here would clear the box for a message that never left. ]]
+  const [heldMessage, setHeldMessage] = useState<string | null>(null);
+
+  const askFirst = (text: string): boolean => {
+    if (!owesAnswer(sourcePolicy)) return false;
+    setHeldMessage(text);
+    return true;
+  };
+
   const send = (text: string): boolean => {
+    if (askFirst(text)) return false;
     // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     stick.current = true;
     setFollowing(true);
@@ -733,6 +771,22 @@ export function WorkspacePage() {
             {connNote}
           </p>
         )}
+        {heldMessage !== null && (
+          <AssetSourceDialog
+            policy={sourcePolicy}
+            onSave={saveSources}
+            onDone={() => {
+              // The answer is stored, so the held message goes now — on its own, with no second
+              // click. Making somebody press send twice for a question they just answered is the
+              // kind of small rudeness that reads as the product not listening.
+              const text = heldMessage;
+              setHeldMessage(null);
+              if (text) send(text);
+            }}
+            onCancel={() => setHeldMessage(null)}
+          />
+        )}
+
         <Composer
           onSend={send}
           onStop={stop}
