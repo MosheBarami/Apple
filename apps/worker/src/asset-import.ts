@@ -19,6 +19,7 @@ import type { AssetProvenance } from './asset-library';
 import { ingestAssets } from './asset-ingest';
 import { uploadTypeFor, uploadAsset, pollOperation, archiveAsset, type UploadEnv, type UploadResult } from './roblox-upload';
 import { useRobloxCredential } from './user-credentials';
+import { extractFromZip, pickBaseColour } from './unzip';
 
 export interface ImportEnv extends UploadEnv {
   CORPUS: Env['CORPUS'];
@@ -45,7 +46,7 @@ export interface ImportOutcome {
  * different piece of work with its own failure modes. So ambientCG returns null WITH A REASON
  * rather than being quietly skipped, and the reason travels all the way back to the caller.
  */
-export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind' | 'name'>):
+export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind' | 'name' | 'sourceUrl'>):
   Promise<{ url: string; contentType: string } | { error: string }> {
   if (rec.source === 'poly_haven') {
     // id shape: poly_haven/<type>/<slug>. The slug is not the Poly Haven key — the key uses
@@ -105,11 +106,20 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     // a caller asked to import something that needs no importing.
     return { error: 'this row is already a Roblox asset — it needs no import' };
   }
-  if (rec.source === 'ambientcg' || rec.source === 'opengameart' || rec.source === 'kenney') {
-    // All three publish ZIP archives. Roblox will not take a zip, and unpacking one inside a
-    // Worker to find the single map or sprite that matters is a different piece of work with its
-    // own failure modes — so it is named as absent rather than attempted badly.
-    return { error: `${rec.source} publishes ZIP archives; Roblox does not accept a zip and no unpacking step exists yet` };
+  if (rec.source === 'ambientcg') {
+    // id shape: ambientcg/<type>/<slug>. The slug is the asset id lowercased, and the archive URL
+    // is built from the original casing, which the NAME preserves. 1K because Roblox caps textures
+    // at 1024 and the 4K archive is a hundred megabytes for pixels the engine discards.
+    const id = (rec.name ?? '').replace(/\s+/g, '');
+    if (!id) return { error: 'the ambientCG row has no name to build an archive URL from' };
+    return { url: `https://ambientcg.com/get?file=${encodeURIComponent(id)}_1K-JPG.zip`, contentType: 'application/zip' };
+  }
+  if (rec.source === 'opengameart' || rec.source === 'kenney') {
+    // These two publish archives whose URL is NOT derivable from the row: OpenGameArt's file names
+    // are per-submission and Kenney's carry a content hash that changes on every republish. The
+    // unzipper exists — see unzip.ts — and what is missing is the address, which would have to be
+    // re-scraped per row. Stated as the specific gap rather than as "no support".
+    return { error: `${rec.source} publishes archives whose URL is not derivable from the row; it must be re-scraped from ${rec.sourceUrl}` };
   }
   return { error: `no download resolver for source "${rec.source}"` };
 }
@@ -167,7 +177,19 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
   let bytes = await file.arrayBuffer();
   if (bytes.byteLength === 0) return { id: rec.id, ok: false, error: 'the download was empty' };
 
-  const contentType = resolved.contentType;
+  //[[ AN ARCHIVE BECOMES ONE IMAGE HERE. ambientCG publishes zip and nothing else — its own API
+  //   lists exactly one filetype category and it is `zip` — and a material archive holds six maps
+  //   of which five are wrong: a normal map is a lilac surface, a roughness map is grey. All six
+  //   would upload successfully, so picking the first image would build a library of
+  //   plausible-looking, uniformly wrong textures. `pickBaseColour` asks for the colour map by
+  //   every name the sources use and refuses rather than settling. ]]
+  let contentType = resolved.contentType;
+  if (contentType === 'application/zip') {
+    const picked = await extractFromZip(bytes, pickBaseColour);
+    if (!picked.ok || !picked.bytes) return { id: rec.id, ok: false, error: `could not read the archive: ${picked.error}` };
+    bytes = picked.bytes;
+    contentType = /\.png$/i.test(picked.name ?? '') ? 'image/png' : 'image/jpeg';
+  }
 
   const type = uploadTypeFor(rec.kind, contentType);
   if (!type) return { id: rec.id, ok: false, error: `no Open Use upload type for ${contentType}` };
