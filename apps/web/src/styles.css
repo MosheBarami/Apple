@@ -5267,6 +5267,31 @@ samp {
   flex-wrap: wrap;
 }
 
+/* The route-scoped boundary fails INSIDE the shell, so it must not claim the viewport: the rail
+   beside it is the thing that actually recovers the reader, and 100dvh here would push it off
+   screen on a phone. It is a card in the main area, not a takeover. */
+.crash-screen.is-route {
+  min-height: 0;
+  height: 100%;
+  background: transparent;
+  align-content: center;
+  overflow-y: auto;
+}
+
+.crash-card--route {
+  box-shadow: var(--lift-1);
+}
+
+.crash-card--route h1 {
+  font-size: 1.15rem;
+}
+
+.crash-hint {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 /* --------------------------------------------------------------------------
    17. Cursor & atmosphere
    -------------------------------------------------------------------------- */

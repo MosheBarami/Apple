@@ -23,6 +23,7 @@ import { ShellProvider, useShell } from '../lib/shell';
 import { useCommands } from '../lib/commands';
 import { PROJECT_COLUMNS } from '../lib/archive';
 import { CommandPalette } from './command-palette';
+import { ErrorBoundary } from './error-boundary';
 import { UsageMeter } from './usage-meter';
 import { ShortcutsDialog, useGlobalShortcut } from './shortcuts-dialog';
 import { SHORTCUTS, matchesShortcut, shortcutLabel } from '../lib/shortcuts';
@@ -390,7 +391,15 @@ function Shell() {
         >
           <Icon d={PATH.menu} />
         </button>
-        <Outlet />
+        {/* A ROUTE THAT THROWS IS A PANE THAT FAILED, NOT AN APPLICATION THAT DIED.
+            The root boundary in app.tsx sits outside the router, so a crash anywhere took the
+            rail, the palette and the toasts with it — removing the one control that would
+            actually get the reader out. This one keeps the shell up, and the key means that
+            walking away from the broken route remounts it and clears the crash, which the root
+            boundary cannot do: it has no route identity to reset against. */}
+        <ErrorBoundary key={location.pathname} scope="route">
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       <CommandPalette />
