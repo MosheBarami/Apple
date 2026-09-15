@@ -4861,7 +4861,9 @@ samp {
 
 .sec-event {
   padding: 0.6rem 0.75rem;
-  border-left: 2px solid transparent;
+  /* inline-start, not left: under a Hebrew or Arabic interface the marker belongs on the side the
+     reader starts from, and rtl-workspace.test.mjs refuses a physical text-flow property here. */
+  border-inline-start: 2px solid transparent;
   border-radius: var(--r-xs);
 }
 
