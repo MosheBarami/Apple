@@ -69,6 +69,20 @@ export interface UploadEnv {
   /** The Roblox user or group the assets are created under. One of the two, never both. */
   ROBLOX_CREATOR_USER_ID?: string;
   ROBLOX_CREATOR_GROUP_ID?: string;
+  /**
+   * EXPLICIT CONSENT TO CREATE ASSETS IN THAT ACCOUNT, and it must equal the creator id.
+   *
+   * This exists because of what happened without it. A key with `asset:write` and a user id in
+   * the config were, between them, enough to start uploading — and 299 assets were created in the
+   * owner's personal Roblox account before he had agreed to that. Roblox then refused to take
+   * them back: an Image is "not an archivable asset type", so the account keeps them for good.
+   *
+   * Configuration is not consent. A creator id answers "which account", never "may you". They are
+   * separate questions and they now need separate answers, because the first one gets set while
+   * somebody is wiring up an integration and the second one is a decision about somebody's real
+   * identity — and the action it authorises cannot be undone.
+   */
+  ROBLOX_UPLOAD_AUTHORISED_FOR?: string;
 }
 
 export type UploadResult =
@@ -85,6 +99,15 @@ export function preflight(env: UploadEnv, bytes: number, type: OpenUseUploadType
   // an owner nobody chose, which is the kind of quiet wrong answer that surfaces months later.
   if (hasUser && hasGroup) return 'both ROBLOX_CREATOR_USER_ID and ROBLOX_CREATOR_GROUP_ID are set — exactly one must be';
   if (!hasUser && !hasGroup) return 'neither ROBLOX_CREATOR_USER_ID nor ROBLOX_CREATOR_GROUP_ID is set — uploads need an owner';
+  // The consent check, and it is deliberately an EQUALITY against the account being written to
+  // rather than a boolean. A `true` would carry over when somebody changes the creator id, which
+  // is the moment it most needs to be re-asked: the account is different, so the permission is a
+  // different permission. Naming the account makes the two impossible to separate.
+  const target = env.ROBLOX_CREATOR_GROUP_ID ?? env.ROBLOX_CREATOR_USER_ID ?? '';
+  if (env.ROBLOX_UPLOAD_AUTHORISED_FOR !== target) {
+    return `uploads to Roblox account ${target} are not authorised — set ROBLOX_UPLOAD_AUTHORISED_FOR to exactly that id. `
+      + 'Creating an asset in somebody\'s account cannot be undone: Roblox refuses to archive an Image or a Decal.';
+  }
   if (!type) return 'no Open Use upload path for this content type — Models are excluded on purpose';
   if (bytes <= 0) return 'the file is empty';
   if (bytes > MAX_UPLOAD_BYTES) return `${bytes} bytes exceeds the ${MAX_UPLOAD_BYTES}-byte limit for one upload`;

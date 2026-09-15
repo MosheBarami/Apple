@@ -26,7 +26,9 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   { cwd: WORKER, stdio: 'pipe' });
 const U = await import(`file://${out}`);
 
-const ENV = { ROBLOX_API_KEY: 'key-123', ROBLOX_CREATOR_USER_ID: '99887766' };
+// The consent field is part of a working env, not an extra. Leaving it out of this fixture is
+// what the suite does on purpose in the dedicated cases below.
+const ENV = { ROBLOX_API_KEY: 'key-123', ROBLOX_CREATOR_USER_ID: '99887766', ROBLOX_UPLOAD_AUTHORISED_FOR: '99887766' };
 const FILE = new TextEncoder().encode('not really a png, but bytes are bytes').buffer;
 const INPUT = { file: FILE, contentType: 'image/jpeg', displayName: 'Brick Wall 001', description: 'x', type: 'Image' };
 
@@ -87,7 +89,7 @@ test('the JSON part carries the asset type, the trimmed name and exactly one cre
 
 test('a group creator replaces the user one rather than joining it', async () => {
   const r = recorder(200, { path: 'operations/op-1' });
-  await U.uploadAsset({ ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_GROUP_ID: '555' }, INPUT, r.impl);
+  await U.uploadAsset({ ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_GROUP_ID: '555', ROBLOX_UPLOAD_AUTHORISED_FOR: '555' }, INPUT, r.impl);
   const req = JSON.parse(r.seen[0].init.body.get('request'));
   assert.deepEqual(req.creationContext.creator, { groupId: '555' });
 });
@@ -123,6 +125,7 @@ test('preflight refuses before a byte is sent, and says which thing is wrong', (
     [{}, /ROBLOX_API_KEY/],
     [{ ROBLOX_API_KEY: 'k' }, /neither .*USER_ID nor .*GROUP_ID/],
     [{ ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_USER_ID: '1', ROBLOX_CREATOR_GROUP_ID: '2' }, /exactly one/],
+    [{ ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_USER_ID: '1' }, /not authorised/],
   ];
   for (const [env, re] of cases) assert.match(U.preflight(env, 10, 'Image') ?? '', re);
   assert.equal(U.preflight(ENV, 10, 'Image'), null, 'a good one passes — the control');
@@ -206,4 +209,44 @@ test('a 200 with no operation at all is a failure, not a silent success', async 
   const res = await U.uploadAsset(ENV, INPUT, r.impl);
   assert.equal(res.ok, false);
   assert.match(res.error, /no operation/);
+});
+
+
+/* ------------------------------------------------------------------------- consent --- */
+
+test('AN ACCOUNT IS NOT CONSENT TO WRITE TO IT — the guard that did not exist', () => {
+  // 299 assets were created in the owner's personal Roblox account before he had agreed to that,
+  // because a key with asset:write and a creator id in the config were between them enough to
+  // start. Roblox then refused to take them back — an Image is "not an archivable asset type" —
+  // so the account keeps them permanently. Configuration answers "which account". It has never
+  // answered "may you", and the two are now separate fields.
+  const configuredButUnauthorised = { ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_USER_ID: '11279664020' };
+  assert.match(U.preflight(configuredButUnauthorised, 10, 'Image') ?? '', /not authorised/);
+  assert.match(U.preflight(configuredButUnauthorised, 10, 'Image') ?? '', /cannot be undone/);
+});
+
+test('consent NAMES the account, so changing the account withdraws it', async () => {
+  // A boolean would survive an edit to the creator id — which is the exact moment the permission
+  // must be re-asked, because it is now a permission about a different person's account.
+  const moved = { ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_USER_ID: '22222', ROBLOX_UPLOAD_AUTHORISED_FOR: '11111' };
+  assert.match(U.preflight(moved, 10, 'Image') ?? '', /not authorised/);
+
+  const r = recorder(200, { path: 'operations/op-1' });
+  const res = await U.uploadAsset(moved, INPUT, r.impl);
+  assert.equal(res.ok, false);
+  assert.equal(r.seen.length, 0, 'and not one byte is sent while consent does not match');
+});
+
+test('a group id is consented to the same way as a user id', () => {
+  assert.equal(U.preflight({ ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_GROUP_ID: '555', ROBLOX_UPLOAD_AUTHORISED_FOR: '555' }, 10, 'Image'), null);
+  assert.match(U.preflight({ ROBLOX_API_KEY: 'k', ROBLOX_CREATOR_GROUP_ID: '555', ROBLOX_UPLOAD_AUTHORISED_FOR: '556' }, 10, 'Image') ?? '', /not authorised/);
+});
+
+test('and consent alone is not enough — every other refusal still applies', () => {
+  // The new gate must not become the only gate. A consented env with no key, an empty file or a
+  // format with no Open Use path is still refused, and each still says which thing is wrong.
+  const consented = { ROBLOX_CREATOR_USER_ID: '9', ROBLOX_UPLOAD_AUTHORISED_FOR: '9' };
+  assert.match(U.preflight(consented, 10, 'Image') ?? '', /ROBLOX_API_KEY/);
+  assert.match(U.preflight({ ...consented, ROBLOX_API_KEY: 'k' }, 0, 'Image') ?? '', /empty/);
+  assert.match(U.preflight({ ...consented, ROBLOX_API_KEY: 'k' }, 10, null) ?? '', /Models are excluded/);
 });
