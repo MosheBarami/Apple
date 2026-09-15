@@ -139,6 +139,83 @@
   padding: 0.55rem 0.8rem;
 }
 
+/* ------------------------------------------------- what is in the place --- */
+
+/* The inventory sits between the progress summary and the plan, because that is
+   the order the questions arrive in: how far along am I, what is here, what is
+   next. Quieter than a card — it is a reading, not an action. */
+.rm-contents {
+  margin: 0 0 1.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.rm-contents__title {
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.rm-contents__counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.7rem 1.2rem;
+  margin: 0 0 0.8rem;
+}
+
+.rm-contents__counts dt {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.rm-contents__counts dd {
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "12 read" beside "40" — the same weight would read as a second count. */
+.rm-contents__partial {
+  font-size: 0.78rem;
+  color: var(--faint);
+}
+
+.rm-contents__line {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.rm-contents__line .eyebrow {
+  margin-inline-end: 0.5rem;
+}
+
+.rm-contents__none {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+/* Said plainly and without alarm: the counts are floors. The notes above carry
+   the scan's own sentences about what it could not read. */
+.rm-contents__hedge {
+  margin: 0.7rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--faint);
+}
+
 /* --------------------------------------------------------------- spine --- */
 
 .rm-spine {

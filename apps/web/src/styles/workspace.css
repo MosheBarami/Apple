@@ -4666,6 +4666,47 @@
   color: var(--gx-ink);
 }
 
+/* --------------------------------------------------------------------------
+   The restore, while it is happening.
+
+   A restore clears the place before it rebuilds it, so the one state that must
+   never read as settled is the one in flight: `is-working` stays in the muted
+   ink the rest of the row uses and the sentence itself carries the ellipsis.
+   `is-caveat` is warn and not good on purpose — a restore nobody could verify,
+   or one that dropped properties, is not a success.
+   -------------------------------------------------------------------------- */
+
+.gx-restore {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--gx-ink-3);
+}
+
+.gx-restore.is-good { color: var(--gx-good); }
+.gx-restore.is-caveat { color: var(--gx-warn); }
+.gx-restore.is-bad { color: var(--gx-bad); }
+
+.gx-restore__counts {
+  display: block;
+  color: var(--gx-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The op-log row. `is-bad` tints only the meta line, not the sentence: the
+   thing that failed is still the thing that happened, and colouring the whole
+   row red turns a readable history into a wall of alarm. */
+
+.gx-op__detail {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.gx-op.is-bad .gx-row__meta { color: var(--gx-bad); }
 /* ------------------------------------------------------------ members drawer --- */
 /*
  * The panel existed with no styles because it had no call site — mounting it made every
@@ -4725,8 +4766,11 @@
   border-bottom: 0;
 }
 
-/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs. */
-.mb__row.is-inactive .mb__handle {
+/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs.
+   The sub-line goes with it — dimming the handle alone leaves "editor · joined by link"
+   at full strength under a faded name, which reads as the row being half-alive. */
+.mb__row.is-inactive .mb__handle,
+.mb__row.is-inactive .mb__sub {
   color: var(--gx-ink-3);
 }
 
@@ -4735,18 +4779,28 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  /* Takes the slack so the actions sit at the row's end, and yields before the
+     role select and the date input reach the width their own text needs. */
+  flex: 1 1 12rem;
 }
 
+/* `anywhere`: a handle is user-supplied and has no spaces to break at, and the drawer
+   is narrow. Without it one long id widens the row and scrolls the whole drawer. */
 .mb__handle {
   color: var(--gx-ink);
   font-size: 0.9rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .mb__sub,
 .mb__status {
   color: var(--gx-ink-3);
   font-size: 0.78rem;
+}
+
+.mb__sub {
+  overflow-wrap: anywhere;
 }
 
 .mb__status {
@@ -4784,6 +4838,19 @@
   border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
 }
 
+/* `.field` carries its own bottom margin for the page forms it was written for. Inside a
+   flex column that already has `gap`, that margin is added to the gap and the invite form
+   drifts apart. The gap is the one spacing authority here. */
+.mb__invite .field {
+  margin-block-end: 0;
+}
+
+.mb__invite .cs__input,
+.mb__invite .cs__select,
+.mb__invite .cs__date {
+  width: 100%;
+}
+
 .mb__invite-head {
   margin: 0;
   color: var(--gx-ink-3);
@@ -4801,6 +4868,11 @@
 
 .mb__invite-row .field {
   flex: 1 1 140px;
+  /* `min-width: 0`, because a flex item's default `auto` floors it at its content width: the
+     date input would refuse to shrink and push the row wider than the drawer. */
+  min-width: 0;
+}
+
 /* --------------------------------------------------------------------------
    23. The files drawer — components/ws/files-panel.tsx
 
@@ -5060,6 +5132,27 @@
   color: var(--gx-ink-3);
   font-size: 0.76rem;
   font-style: italic;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The checkpoint's own words — the field it takes, and the field it shows.
+   Distinct from `gx-row__meta` above it: the metadata is derived and the
+   description is authored, and a reader has to be able to tell which is which. */
+
+.gx-cp__note {
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.gx-cp__desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--gx-ink-2, var(--gx-ink-3));
+  font-size: 0.84rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }

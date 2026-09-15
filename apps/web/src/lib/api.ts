@@ -1,13 +1,15 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
+import type { OpLogRow } from '../components/ws/op-vocabulary';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
+import type { DeliveryPreference, NotificationEventPrefs } from './notification-prefs.ts';
 import type { BillingChange, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
@@ -353,6 +355,18 @@ export interface Preferences {
   tool_permissions?: Record<string, ToolPermission>;
   /** Where a build may take assets from. NARROWS across layers — the server decides, not this. */
   asset_sources?: AssetSourcePolicy;
+  /**
+   * When a notification is allowed to arrive: the zone, the quiet window, the digest.
+   *
+   * WHOLESALE across layers, unlike the one below. Half of one person's window and half of
+   * another's is a window nobody set — see apps/worker/src/preferences.ts.
+   */
+  notify_delivery?: DeliveryPreference;
+  /**
+   * Which kinds to hear about at all. MERGES PER ENTRY across org, account and project, so a
+   * project can mute one kind without un-muting everything the person silenced account-wide.
+   */
+  notify_events?: NotificationEventPrefs;
 }
 
 export interface PromptProfile {
@@ -495,10 +509,121 @@ export async function downloadMemoryExport(scope: MemoryScope, scopeId: string):
 export const fetchCheckpoints = (projectId: string) =>
   request<{ checkpoints: CheckpointMeta[] }>(`/api/shared/${encodeURIComponent(projectId)}/checkpoints`);
 
+/**
+ * WHAT APPLE ACTUALLY DID INSIDE STUDIO.
+ *
+ * The worker has recorded every op since the oplog existed and served it here, and nothing in this
+ * app had ever called it — a grep for 'studio/diagnostics' across apps/web returned nothing at all.
+ * `limit` and `before` page it; the worker owns their bounds and answers a cursor it cannot parse
+ * with a refusal rather than the newest page.
+ */
+export interface StudioOpLog {
+  recentOps: OpLogRow[];
+  limit: number;
+  nextBefore: number | null;
+}
+
+//[[ TWO AGENTS NAMED TWO DIFFERENT ENDPOINTS `fetchStudioDiagnostics`, AND BOTH ARE REAL.
+//
+//   One returns the connection's state — is Studio paired, when does the token lapse, is the open
+//   place the bound one. The other returns the op LOG: what Studio has been asked to do, paged.
+//   They answer different questions, and the name that fitted both was the reason they collided.
+//
+//   The op log is the one renamed, because "diagnostics" in every message the pairing dialog
+//   prints means the connection, and a rename there would leave the word meaning two things in
+//   one product.
+export const fetchStudioOpLog = (projectId: string, opts: { limit?: number; before?: number | null } = {}) => {
+  const q = new URLSearchParams();
+  if (opts.limit) q.set('limit', String(opts.limit));
+  if (opts.before) q.set('before', String(opts.before));
+  const query = q.toString();
+  return request<StudioOpLog>(
+    `/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics${query ? `?${query}` : ''}`,
+  );
+};
+
 export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE
     ? Promise.resolve({ code: 'GLM-7F3K2Q', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
     : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
+
+// ---------------------------------------------------------------- the Studio link, for its owner
+//
+// THREE ROUTES THE WORKER HAS SERVED WITH NOTHING CALLING THEM. `/studio/diagnostics` carries the
+// bound place, when the pairing was made and when its 30-day clock runs out, any place mismatch,
+// and the last operations; `/studio/disconnect` revokes the plugin's token; `/studio/place/rebind`
+// is the way out of a place mismatch that is not re-pairing. docs/troubleshooting and docs/plugin
+// have both been telling users to "disconnect from the web workspace" — a promise with no control
+// behind it until these were called from somewhere.
+//
+// All three are under /api/projects, so all three are OWNER ONLY: a collaborator is answered 404,
+// and the dialog has to render that as "we could not check" rather than as "nothing is paired".
+
+/**
+ * The whole state of this project's Studio link.
+ *
+ * Mirrors what apps/worker/src/do/session.ts assembles at `/studio/diagnostics`, the way MemberRow
+ * below mirrors RosterEntry. Every field that can be unknown is `null` rather than a zero or an
+ * empty string, because "Studio has never reported a place" and "Studio has a place open" are two
+ * different sentences and the record exists to keep them apart.
+ */
+export interface StudioDiagnosticsResponse {
+  link: StudioLinkSummary;
+  agentStatus: string;
+  /** When the pairing token was issued, and when it lapses. Null when nothing is paired. */
+  pairedAt: number | null;
+  pairingExpiresAt: number | null;
+  /** What Studio last said about itself. Null when it has never reported. */
+  openPlace: { placeName: string; placeId: number; gameId: number; isRunMode: boolean } | null;
+  /** Set when the open place is not the bound one. `message` is the worker's own wording. */
+  placeMismatch: {
+    expectedPlaceName: string;
+    openPlaceName: string;
+    openPlaceId: number;
+    message: string;
+  } | null;
+  recentOps: { op_id: string; kind: string | null; ok: number | null; summary: string | null; created_at: number }[];
+}
+
+export const fetchStudioDiagnostics = (projectId: string): Promise<StudioDiagnosticsResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockDiagnostics())
+    : request<StudioDiagnosticsResponse>(`/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics`);
+
+/** Revoke the plugin's token. The next poll is answered 401 and Studio clears its own session. */
+export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/disconnect`, { method: 'POST' });
+
+/** Forget the bound place, so the next state event from Studio binds whatever is open now. */
+export const rebindPlace = (projectId: string): Promise<{ ok: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
+
+/**
+ * CONNECTING DISCORD, FROM THE SIDE THAT CAN PROVE WHO YOU ARE.
+ *
+ * The code is minted here — signed in, on a project this account owns — and typed into Discord.
+ * That direction is the proof: only somebody signed in to this account can produce a code, so
+ * presenting one in Discord is evidence of having been signed in. Doing it the other way round
+ * would prove nothing about the Discord user at all.
+ */
+export interface DiscordLink {
+  discordUserId: string;
+  appleUserId: string;
+  projectId: string;
+  projectName: string;
+  linkedAt: number;
+}
+
+export const createDiscordCode = (projectId: string): Promise<PairingCodeDto> =>
+  MOCK_MODE
+    ? Promise.resolve({ code: 'K7MQ2XRB', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
+    : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/discord-code`, { method: 'POST' });
+
+export const fetchDiscordLink = (): Promise<{ link: DiscordLink | null }> =>
+  MOCK_MODE ? Promise.resolve({ link: null }) : request<{ link: DiscordLink | null }>('/api/discord/link');
+
+export const disconnectDiscord = (): Promise<{ removed: boolean }> =>
+  MOCK_MODE ? Promise.resolve({ removed: true }) : request<{ removed: boolean }>('/api/discord/link', { method: 'DELETE' });
 
 /**
  * Download the whole conversation as a file.
@@ -867,6 +992,63 @@ export const reactivateMember = (projectId: string, userId: string): Promise<Mem
     method: 'POST',
   });
 
+// ---------------------------------------------------------------- share links
+//
+// Minting, listing, revoking and redeeming a link by URL. The worker has had all four for a while
+// and none of them had a caller: there was no share-link function in this file at all, so a link
+// could only be created with curl and — until GET /links existed — could never be revoked at all,
+// because the token was unrecoverable the moment the mint response scrolled away.
+
+/** One link, exactly as GET /api/shared/:id/links reports it. */
+export interface ShareLinkRow {
+  /** The secret itself. It IS the link: revoking takes it, and re-sending needs it. */
+  token: string;
+  scope: 'project' | 'chat' | 'build';
+  resourceId: string | null;
+  role: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  /**
+   * Computed by the worker THROUGH `redeemShareLink` — the function that actually decides — rather
+   * than by reading the columns a second way, so this can never say live about a link the door
+   * will refuse.
+   */
+  state: string;
+}
+
+export interface ShareLinksResponse {
+  links: ShareLinkRow[];
+  /** True when KV could not be read whole: a short list, said out loud rather than shown short. */
+  partial: boolean;
+}
+
+export const fetchShareLinks = (projectId: string): Promise<ShareLinksResponse> =>
+  request<ShareLinksResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`);
+
+export const createShareLink = (
+  projectId: string,
+  body: { scope: 'project' | 'chat' | 'build'; role: string; resourceId?: string | null; expiresAt?: string | null },
+): Promise<{ token: string; scope: string; role: string; resourceId: string | null; expiresAt: string | null }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links`, { method: 'POST', body: JSON.stringify(body) });
+
+/** Stops the NEXT person. Grants already minted from the link are a membership revocation. */
+export const revokeShareLink = (projectId: string, token: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links/revoke`, { method: 'POST', body: JSON.stringify({ token }) });
+
+/**
+ * Present a link and become a member, or be told exactly why not.
+ *
+ * The project id is NOT sent: the token is looked up by itself, and the answer carries the project
+ * it belongs to. A caller that had to name the project would have to learn it from somewhere, and
+ * the only place to learn it is the link.
+ */
+export const redeemShareLinkToken = (
+  token: string,
+): Promise<{ ok: boolean; projectId: string; role: string; scope: string; resourceId?: string | null }> =>
+  request('/api/shared/links/redeem', { method: 'POST', body: JSON.stringify({ token }) });
+
 /**
  * MANY INVITATIONS, ONE REQUEST — and a per-row answer for every one of them.
  *
@@ -1116,6 +1298,18 @@ export interface RagHit {
 export const adminRagTest = (adminKey: string, query: string) =>
   request<{ hits: RagHit[] }>('/api/admin/rag-test', { method: 'POST', body: JSON.stringify({ query }) }, { 'X-Admin-Key': adminKey });
 
+/**
+ * Publish the Discord slash-command list. Idempotent — the PUT replaces the whole list — and the
+ * only place the bot token is used. It has to be run once after the Discord application exists,
+ * and again whenever the command list changes, or Discord keeps offering commands that are gone.
+ */
+export const adminRegisterDiscordCommands = (adminKey: string) =>
+  request<{ ok: boolean; registered: string[] }>(
+    '/api/admin/discord/register-commands',
+    { method: 'POST' },
+    { 'X-Admin-Key': adminKey },
+  );
+
 // ---------------------------------------------------------------- project files
 //
 // The workspace Apple writes into, from the browser. `request<T>` for everything except the
@@ -1139,7 +1333,10 @@ export const fetchFileHistory = (projectId: string, path: string) =>
   );
 
 export interface FileOpRequest {
-  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert';
+  // The folder operations take a PREFIX in `path` rather than a file, and are named separately for
+  // that reason: one op that guessed from the shape of the string would delete a whole folder for
+  // anyone who typed a path without an extension.
+  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert' | 'move_folder' | 'delete_folder';
   path: string;
   to?: string;
   version?: number;
@@ -1217,6 +1414,34 @@ export async function uploadProjectFile(
     };
   }
   return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Save the whole workspace as one ZIP.
+ *
+ * Same shape as downloadProjectFile — the route needs a Bearer token, an <a href> sends none, so
+ * the bytes are fetched and handed over as a blob, and the SERVER names the file. It is also the
+ * one download here that can legitimately be empty-handed: a project with no files is answered with
+ * a sentence rather than with a zip of nothing, and that arrives as an ApiError like any refusal.
+ */
+export async function downloadProjectArchive(projectId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/archive`, { headers });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    throw new ApiError(typeof body?.error === 'string' ? body.error : `Could not download those files (${res.status})`, res.status);
+  }
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? 'project-files.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
 }
 
 /**

@@ -20,6 +20,7 @@
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  downloadProjectArchive,
   downloadProjectFile,
   fetchFileHistory,
   fetchProjectFile,
@@ -36,9 +37,11 @@ import {
   deleteConfirm,
   formatFileBytes,
   parentPrefix,
+  deleteFolderConfirm,
   looksBinary,
   previewOf,
   refusalCopy,
+  renameFolderPrompt,
   replaceConfirm,
   revertConfirm,
   storageSummary,
@@ -200,6 +203,26 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
     <div className="gx-files">
       <p className="gx-row__meta" style={{ marginBottom: '0.7rem' }}>
         {summary.lines.join(' · ')}
+        {data.fileCount > 0 && (
+          <>
+            {' · '}
+            <button
+              type="button"
+              className="gx-btn gx-btn--ghost"
+              onClick={() => {
+                // Offered only when there is something to archive: the worker answers an empty
+                // workspace with a refusal, and a button whose only outcome is that refusal is a
+                // button that does nothing.
+                setNotice(null);
+                void downloadProjectArchive(projectId).catch((e: unknown) =>
+                  setNotice(e instanceof ApiError ? e.message : 'Could not download those files.'),
+                );
+              }}
+            >
+              Download all
+            </button>
+          </>
+        )}
       </p>
 
       {canEdit && (
@@ -273,25 +296,64 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
 
       {rows.map((row) =>
         row.kind === 'folder' ? (
-          <button
-            key={row.path}
-            type="button"
-            className="gx-row"
-            style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-            onClick={() => {
-              setPrefix(row.path);
-              setOpen(null);
-            }}
-          >
+          // NOT one <button> around the whole row, which is what it was: the folder actions cannot
+          // live inside another button — nested interactive elements are invalid HTML and the inner
+          // control is unreachable by keyboard in some engines. The name is its own control.
+          <div key={row.path} className="gx-row">
             <Icon d={PATH.layers} size={14} />
-            <span className="gx-row__main">
+            <button
+              type="button"
+              className="gx-row__main"
+              style={{ textAlign: 'left', cursor: 'pointer', background: 'none', border: 0, font: 'inherit', color: 'inherit', padding: 0 }}
+              onClick={() => {
+                setPrefix(row.path);
+                setOpen(null);
+              }}
+            >
               {row.name}
               <span className="gx-row__meta">
                 {row.fileCount} file{row.fileCount === 1 ? '' : 's'} · {formatFileBytes(row.bytes)}
               </span>
-            </span>
+            </button>
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  className="gx-btn gx-btn--outline"
+                  disabled={busy}
+                  onClick={() => {
+                    const to = window.prompt(renameFolderPrompt(row.path), row.path);
+                    if (!to || to === row.path) return;
+                    void act({ op: 'move_folder', path: row.path, to }, (result) =>
+                      `Moved ${result.moved ?? ''} file${result.moved === 1 ? '' : 's'} to ${to}`.replace('  ', ' '),
+                    ).then((result) => {
+                      // Follow the folder. Staying on a prefix that no longer exists shows an empty
+                      // folder and reads as "the move lost them".
+                      if (result && prefix === row.path) setPrefix(String(result.to ?? ''));
+                    });
+                  }}
+                >
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  className="gx-btn gx-btn--outline"
+                  disabled={busy}
+                  onClick={() => {
+                    // The count comes from the row, which is the worker's own count of the files
+                    // under the prefix — including the ones a level down that are not on screen.
+                    if (!window.confirm(deleteFolderConfirm(row.path, row.fileCount, data.trashRetentionDays))) return;
+                    void act({ op: 'delete_folder', path: row.path }, (result) =>
+                      `Moved ${result.deleted ?? ''} file${result.deleted === 1 ? '' : 's'} to the trash`.replace('  ', ' '),
+                    );
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
             <Icon d={PATH.chevronRight} size={13} />
-          </button>
+          </div>
         ) : (
           <div key={row.path} className="gx-row">
             <span className="gx-row__main">

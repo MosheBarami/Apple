@@ -432,7 +432,12 @@ export type ClientMsg =
   | { type: 'edit_resend'; messageId: string; text: string; mode: GolemMode }
   | { type: 'stop' } // interrupt agent
   | { type: 'resume' }
-  | { type: 'checkpoint_create'; label: string }
+  /**
+   * `description` is what the snapshot CONTAINS or why it was taken, in the user's own words.
+   * Optional: the label alone is still a valid checkpoint, and a required field on a save people
+   * take mid-thought would be a tax on the habit this feature depends on.
+   */
+  | { type: 'checkpoint_create'; label: string; description?: string }
   | { type: 'checkpoint_restore'; checkpointId: string }
   /**
    * "I am still here, and this is what I am doing."
@@ -952,6 +957,33 @@ export type ServerMsg =
     }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
+  /**
+   * A RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+   *
+   * There was no restore counterpart to `checkpoint` above. The worker issued one opaque op with a
+   * 120s ceiling, broadcast nothing while it ran, and broadcast only on failure when it ended — so
+   * the person who pressed Restore watched the drawer close and then had no signal at all, for up
+   * to two minutes, about the operation that was at that moment deleting and rebuilding their
+   * place. Modelled on `playtest_state`, which already streams its phases for the same reason.
+   *
+   * `fidelity` is the plugin's own count of what it put back, and it travels on the DONE frame as
+   * well as the FAILED one: a restore that recreated every instance but could not set 40
+   * properties is a success the user has to be told about, and that report reached the HTTP caller
+   * and the SDK while the browser — the only caller with a human attached — got nothing.
+   *
+   * `note` is a caveat on a SUCCEEDED restore (properties failed, or the plugin is too old to
+   * report and the result is therefore unverified); `error` is why a restore did not succeed. They
+   * are separate fields because "it worked, with a caveat" and "it did not work" must never render
+   * as the same sentence.
+   */
+  | {
+      type: 'restore_status';
+      checkpointId: string;
+      phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed';
+      fidelity?: RestoreFidelity;
+      note?: string;
+      error?: string;
+    }
   | { type: 'studio_log'; entries: StudioEventLog[] }
   // Sent in reply to `resume`, and unprompted on connect when a run is live.
   | { type: 'run_state'; run: RunSnapshot | null }
@@ -1013,6 +1045,39 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+  /**
+   * What this snapshot contains or why it was taken, or null when nobody wrote one.
+   *
+   * The only authored text on a checkpoint was a 60-character label. Everything else the drawer
+   * showed — the timestamp, the object count, the script count — is derived metadata that says
+   * nothing about what is inside. And every automatic checkpoint carries the same label, so a list
+   * of them was a column of identical rows that a person restoring had to choose between by time.
+   */
+  description?: string | null;
+  /**
+   * The person who asked for it, or null.
+   *
+   * Null means two different true things and neither of them is "you": Apple took this one itself
+   * (`auto`, `pre_agent`), or the row predates the column. It was inferred from `kind` before this
+   * field existed, which told every member of a shared project that a teammate's checkpoint was
+   * theirs — on exactly the row a restore is about to be argued over.
+   */
+  authorId?: string | null;
+}
+
+/**
+ * What the plugin reports it ACTUALLY put back, counted inside Studio.
+ *
+ * Absent — not zeroed — when the op never reached Studio at all: zeros would say "it restored
+ * nothing", which is a claim about the place, and we would not have looked.
+ */
+export interface RestoreFidelity {
+  instancesCreated: number;
+  scriptsRestored: number;
+  scriptsExpected: number;
+  failedInstances: number;
+  failedScripts: number;
+  failedProperties: number;
 }
 
 // ---------------------------------------------------------------------------
