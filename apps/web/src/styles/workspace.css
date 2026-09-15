@@ -4371,3 +4371,140 @@
 .tour-skip:hover {
   color: var(--gx-ink);
 }
+
+/* ------------------------------------------------------------ members drawer --- */
+/*
+ * The panel existed with no styles because it had no call site — mounting it made every
+ * `mb__` class in it a selector that matched nothing, and an unstyled roster reads as a
+ * broken page rather than a list. It borrows the `cs__` controls (input, select, note,
+ * count) deliberately: the search drawer and this one are the same drawer chrome, and a
+ * second set of form styles would drift from the first.
+ */
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mb__role {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.88rem;
+}
+
+/* The reason a control is off, in the same muted voice the rest of the drawer uses. */
+.mb__why {
+  color: var(--gx-ink-3);
+}
+
+.mb__controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mb__controls .cs__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mb__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gx-line, rgb(255 255 255 / 8%));
+  flex-wrap: wrap;
+}
+
+.mb__row:last-child {
+  border-bottom: 0;
+}
+
+/* A dead row is dimmed, never hidden: "was an editor" is the sentence an admin needs. */
+.mb__row.is-inactive .mb__handle {
+  color: var(--gx-ink-3);
+}
+
+.mb__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mb__handle {
+  color: var(--gx-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mb__sub,
+.mb__status {
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
+.mb__status {
+  color: var(--gx-warn, #e4b363);
+}
+
+.mb__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mb__role-label {
+  display: inline-flex;
+}
+
+.mb__owner {
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__remove:not(:disabled) {
+  color: var(--gx-bad, #f0776a);
+}
+
+.mb__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+.mb__invite-head {
+  margin: 0;
+  color: var(--gx-ink-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mb__invite-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mb__invite-row .field {
+  flex: 1 1 140px;
+}

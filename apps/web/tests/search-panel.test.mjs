@@ -287,5 +287,12 @@ test('the drawer you left open is the drawer you come back to', () => {
 test('“closed” and “a name this build does not know” are different stored states', () => {
   // Storing the empty string for closed would collapse them, and the validation that makes
   // restoring safe would have nothing left to distinguish.
-  assert.match(WSCODE, /const DRAWERS = \['none', 'checkpoints', 'memory', 'credits', 'search'\] as const/);
+  //
+  // The claim is about 'none' being a NAME in the tuple, not about the rest of the list: pinning
+  // every drawer here made adding one a two-file change and taught the next person to edit the
+  // literal until the test went green, which is the opposite of what it is for. Drawer membership
+  // is checked against the Drawer union in capabilities.test.mjs.
+  const drawers = /const DRAWERS = \[([^\]]+)\] as const/.exec(WSCODE)?.[1] ?? '';
+  assert.match(drawers, /^'none',/, "'none' must be the stored name for closed, not the empty string");
+  assert.doesNotMatch(drawers, /''/, 'the empty string would make closed and unknown the same state');
 });

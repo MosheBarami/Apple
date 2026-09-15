@@ -27,7 +27,9 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, savePreferences, type SearchHit } from '../lib/api';
+import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
+import { MembersPanel } from '../components/ws/members-panel';
+import { ACCESS_LOADING, normaliseAccess, type AccessState } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -68,9 +70,9 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -167,6 +169,28 @@ export function WorkspacePage() {
     enabled: projectId.length > 0,
   });
   const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
+
+  //[[ WHAT THIS PERSON MAY DO HERE, ASKED OUT LOUD.
+  //
+  //   `fetchProjectAccess` and `lib/capabilities` were both written and then called by nothing, so
+  //   the signed-in app never asked the server what role the viewer holds — it simply rendered the
+  //   owner's interface to everyone and let the refusals arrive as failures.
+  //
+  //   THE THREE STATES ARE KEPT APART on purpose. `unavailable` is not `viewer`: a check that did
+  //   not come back is not a verdict about the person, and rendering it as one would be this
+  //   repository's failure-to-observe pattern in its most expensive place — an authority claim the
+  //   interface has not established. `normaliseAccess` owns the mapping; nothing here reads the
+  //   payload field by field. ]]
+  const accessQuery = useQuery({
+    queryKey: ['project-access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0,
+  });
+  const access: AccessState = accessQuery.isSuccess
+    ? normaliseAccess(accessQuery.data)
+    : accessQuery.isError
+      ? { status: 'unavailable', detail: accessQuery.error instanceof ApiError ? String(accessQuery.error.status) : 'unreachable' }
+      : ACCESS_LOADING;
 
   const saveSources = async (policy: AssetSourcePolicy) => {
     if (!userId) throw new Error('not signed in');
@@ -320,6 +344,13 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['memory', 'context', 'knows'],
       run: () => setDrawer('memory'),
+    },
+    {
+      id: 'ws-members',
+      title: 'Who can build here',
+      section: 'Project',
+      keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role'],
+      run: () => setDrawer('members'),
     },
     {
       id: 'ws-credits',
@@ -596,6 +627,20 @@ export function WorkspacePage() {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
+
+          {/* Who else is in this project. An icon button beside memory rather than a named
+              control: it is opened when someone wants to add or remove a collaborator, which is
+              rarer than the thing this screen is for. The label says what the drawer answers,
+              because "Members" alone does not tell a viewer they will find their own role there. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('members')}
+            aria-label="Who can build here"
+            title="Who can build here"
+          >
+            <Icon d={PATH.people} />
+          </button>
 
           <button
             type="button"
@@ -880,6 +925,12 @@ export function WorkspacePage() {
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
         <SearchPanel projectId={projectId} onOpen={openHit} />
+      </Drawer>
+
+      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">
+        {/* Mounted only while open, like the others: the roster is a live read and a search box
+            whose text belongs to the moment it was typed in. */}
+        {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
