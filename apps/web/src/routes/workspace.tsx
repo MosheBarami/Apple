@@ -27,6 +27,7 @@ import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
+import { AutomationsPanel } from '../components/ws/automations-panel';
 import { MembersPanel } from '../components/ws/members-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
 import {
@@ -83,13 +84,13 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-// Three agents added a drawer each, from three checklist sections, and all three belong. The union
+// Four agents added a drawer each, from four checklist sections, and all four belong. The union
 // and the literal list are kept in step deliberately: search-panel.test.mjs asserts every name the
 // union can hold is a name DRAWERS accepts, because a drawer missing from the list restores as
 // closed for ever and looks like a user who simply never opened it.
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history', 'automations'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -455,6 +456,13 @@ export function WorkspacePage() {
       run: () => setDrawer('credits'),
     },
     {
+      id: 'ws-automations',
+      title: 'Saved instructions',
+      section: 'Project',
+      keywords: ['automation', 'automations', 'repeat', 'run again', 'scheduled', 'recurring'],
+      run: () => setDrawer('automations'),
+    },
+    {
       id: 'ws-connect',
       title: studioStatus === 'connected' ? 'Studio pairing' : 'Connect Studio',
       section: 'Project',
@@ -763,6 +771,19 @@ export function WorkspacePage() {
             title="Project memory"
           >
             <Icon d={PATH.brain} />
+          </button>
+
+          {/* Saved instructions. An icon button beside memory rather than a named control: it is
+              the same kind of thing — a standing fact about this project rather than a step in
+              the work — and the command palette carries the word for anyone searching for it. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('automations')}
+            aria-label="Saved instructions you can run again"
+            title="Saved instructions"
+          >
+            <Icon d={PATH.automation} />
           </button>
 
           {/* What the project owes before it can be published. An icon button
@@ -1120,6 +1141,12 @@ export function WorkspacePage() {
         {/* Mounted only while open so the request is made when a user asks the
             question, not on every workspace load for everyone who never will. */}
         {drawer === 'credits' && <CreditsPanel projectId={projectId} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'automations'} onClose={() => setDrawer(null)} title="Saved instructions">
+        {/* Mounted only while open, for the reason the memory drawer gives: the panel holds an
+            unsaved draft, and closing the drawer is the gesture people use to abandon one. */}
+        {drawer === 'automations' && <AutomationsPanel projectId={projectId} />}
       </Drawer>
 
       <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Apple remembers">
