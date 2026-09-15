@@ -109,6 +109,7 @@
      accent is no longer a hue in either theme; see global.css for why. */
   --accent: #14141a; /* fills */
   --accent-ink: #14141a; /* the accent AS TEXT */
+  --display-2: #3a3a42; /* the headline's emphasised line — quieter than --ink on light */
   --accent-on: #fafafa; /* a label on an accent fill: 17.58:1 */
   --accent-soft: rgba(20, 20, 26, 0.08);
   --link: #2b2b31; /* links only */
@@ -188,6 +189,7 @@
     --accent: #ededf2;
     --accent-ink: #ffffff;
     --accent-on: #08080a;
+    --display-2: #ffffff;
     --accent-soft: rgba(237, 237, 242, 0.10);
     --link: #d4d4d9;
     --good: #4ade9b;
@@ -222,6 +224,7 @@
   --muted: #a3a3ad;
   --accent: #ededf2;
   --accent-ink: #ffffff;
+  --display-2: #ffffff;
   /* TWO TOKENS, TWO JOBS, AND MIXING THEM UP IS WHY HALF THE HEADLINE VANISHED.
      `--accent-ink` is the accent AS TEXT, on the page. `--accent-on` is a label ON an accent fill.
      I set both to near-black for dark, which is right for the second and catastrophic for the
@@ -677,9 +680,19 @@ svg {
    page, which is the whole accent budget of the hero spent in one place.
    tests/e2e/landing.spec.ts had an assertion that a background-clip:text
    element exists, and it went with the gradient. */
+/* THE EMPHASISED HALF OF THE HEADLINE.
+ *
+ * Its own token, and that is the fix rather than the style. It was `var(--accent-ink)`, which THIS
+ * file defines as "the accent as text" and global.css defines as "ink ON an accent fill" — two
+ * meanings, one name, and global.css loads second, so the page resolved the one that is near-black
+ * and "you already have open." disappeared into the page. Measured in the browser rather than
+ * reasoned about: rgb(8,8,10) on rgb(8,8,10).
+ *
+ * A name that means opposite things in two stylesheets cannot be made safe by picking a value; it
+ * has to stop being the same name. */
 .ap-hero__l2 {
   display: block;
-  color: var(--accent-ink);
+  color: var(--display-2);
 }
 
 .ap-hero__sub {
