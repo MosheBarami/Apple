@@ -20,6 +20,21 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'apps', 'site', 'src', 'data', 'asset-wall.json');
+//[[ THE PICTURES ARE COPIED HERE, NOT HOT-LINKED.
+//
+//   The first version pointed each card at the pack's own CDN. Every URL answered 200 to curl and
+//   NONE of them rendered: 24 cards in the DOM, 24 <img> elements, `loaded: 0`. A cross-origin
+//   image is at the mercy of the other site's referrer policy, its hotlink protection and its
+//   CORS headers, and none of that is visible from a shell.
+//
+//   That is exactly the hole this script exists to prevent, one layer further out — verifying the
+//   bytes exist on their server says nothing about whether a browser will draw them on ours. So
+//   the bytes come here, are served from our own origin, and the only thing that can break them
+//   afterwards is us.
+//
+//   It is also the honest reading of the licences: CC0 asks nothing, and CC-BY asks for the credit
+//   the card already prints. Neither asks us to send visitors' requests to the author's server.
+const IMGDIR = join(ROOT, 'apps', 'site', 'public', 'assets', 'wall');
 const WANT = Number(process.argv[2] ?? 24);
 
 const get = async (url, as = 'json') => {
@@ -28,12 +43,28 @@ const get = async (url, as = 'json') => {
   return as === 'json' ? r.json() : r.text();
 };
 
-/** Does this picture actually exist? The whole point of the file. */
-async function imageLives(url) {
+/**
+ * Fetch the picture and keep it, or say it is not there.
+ *
+ * Returns the local path it was written to, or null. Nothing downstream may assume a picture
+ * exists — the card is dropped rather than rendered as a hole.
+ */
+async function keepImage(url, id) {
   try {
-    const r = await fetch(url, { method: 'GET', headers: { range: 'bytes=0-64' }, signal: AbortSignal.timeout(20_000) });
-    return (r.ok || r.status === 206) && (r.headers.get('content-type') ?? '').startsWith('image/');
-  } catch { return false; }
+    const r = await fetch(url, { signal: AbortSignal.timeout(25_000) });
+    const type = (r.headers.get('content-type') ?? '').split(';')[0];
+    if (!r.ok || !type.startsWith('image/')) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    // A "200" that is 43 bytes of tracking pixel is not the asset. Anything this small is a
+    // placeholder or an error page wearing an image content-type.
+    if (bytes.length < 400) return null;
+    const ext = type === 'image/png' ? 'png' : type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : null;
+    if (!ext) return null;
+    const file = `${id.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.${ext}`;
+    mkdirSync(IMGDIR, { recursive: true });
+    writeFileSync(join(IMGDIR, file), bytes);
+    return { path: `/assets/wall/${file}`, bytes: bytes.length };
+  } catch { return null; }
 }
 
 const sources = [];
@@ -117,10 +148,15 @@ for (let i = 0; picked.length < WANT * 2 && i < 400; i++) {
 }
 
 const kept = [];
+let bytes = 0;
 for (const row of picked) {
   if (kept.length >= WANT) break;
-  if (!(await imageLives(row.img))) { console.error(`  dropped ${row.id}: image did not answer`); continue; }
-  kept.push(row);
+  const got = await keepImage(row.img, row.id);
+  if (!got) { console.error(`  dropped ${row.id}: image did not answer with usable bytes`); continue; }
+  bytes += got.bytes;
+  // `remote` is kept as provenance — where the picture came from — while `img` is what the page
+  // actually loads. Conflating the two is how a local copy quietly becomes a hot-link again.
+  kept.push({ ...row, remote: row.img, img: got.path });
 }
 
 const byPack = {};
@@ -133,3 +169,4 @@ if (kept.length < WANT) {
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), count: kept.length, byPack, assets: kept }, null, 1));
 console.error(`\nwrote ${kept.length} assets to ${OUT.slice(ROOT.length + 1)} — ${Object.entries(byPack).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+console.error(`${(bytes / 1024).toFixed(0)} KiB of pictures in apps/site/public/assets/wall/, served from our own origin`);

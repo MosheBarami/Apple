@@ -10,7 +10,9 @@
 // on the day it was typed.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,7 +37,24 @@ test('every card carries a pack, an author and a licence', () => {
       assert.ok(typeof a[field] === 'string' && a[field].trim(), `${a.id} has no ${field}`);
     }
     assert.match(a.licenceUrl, /^https:\/\//, `${a.id}: the licence must be reachable, not asserted`);
-    assert.match(a.img, /^https:\/\//, `${a.id}: preview must be https`);
+  }
+});
+
+test('the pictures are OURS, not hot-linked', () => {
+  //[[ THE FAILURE THIS IS WRITTEN FROM. The first version pointed every card at the pack's own CDN.
+  //   Every URL answered 200 to curl and NOT ONE rendered: 24 cards in the DOM, 24 <img> elements,
+  //   `loaded: 0`. A cross-origin image is at the mercy of the other site's referrer policy, its
+  //   hotlink protection and its CORS headers, and none of that is visible from a shell — so
+  //   verifying the bytes exist on their server said nothing about whether a browser would draw
+  //   them on ours.
+  //
+  //   `remote` keeps the provenance, `img` is what the page loads, and conflating the two is how a
+  //   local copy quietly becomes a hot-link again. ]]
+  const { existsSync } = require('node:fs');
+  for (const a of wall.assets) {
+    assert.match(a.img, /^\/assets\/wall\//, `${a.id} loads from ${a.img} — that is somebody else's server`);
+    assert.ok(existsSync(join(SITE, 'public', a.img)), `${a.id}: ${a.img} is not on disk`);
+    assert.match(a.remote ?? '', /^https:\/\//, `${a.id} must still record where the picture came from`);
   }
 });
 
