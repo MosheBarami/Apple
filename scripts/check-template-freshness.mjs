@@ -17,36 +17,16 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// The rule table moved to lib/template-curation.mjs, which the curator reads too. It used to be
+// declared here and copied there, and two lists that mean the same thing drift: the copy that
+// misses a rule reports a repository as current for no reason a reader could see.
+import { API_RULES } from './lib/template-curation.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'packages', 'corpus', 'data', 'template-seeds.json');
 const N = Number(process.argv.find((a) => a.startsWith('--n='))?.split('=')[1] ?? 250);
 const SAMPLE = 12;
 
-/**
- * Calls Roblox has REMOVED or formally deprecated, and what replaced each.
- *
- * `removed` means current clients throw or the member is gone — a template containing one is
- * BROKEN, not merely dated, so it is excluded. `deprecated` still runs, so it downgrades the row
- * and the replacement is recorded for whoever imports it.
- */
-const API_RULES = [
-  ['removed', /\bLoadLibrary\s*\(/, 'LoadLibrary was removed — use a ModuleScript with require()'],
-  ['removed', /\bFilteringEnabled\b/, 'Workspace.FilteringEnabled was removed — filtering is always on'],
-  ['removed', /:\s*remove\s*\(\s*\)/, ':remove() was removed — use :Destroy()'],
-  ['removed', /:\s*children\s*\(\s*\)/, ':children() was removed — use :GetChildren()'],
-  ['removed', /:\s*findFirstChild\s*\(/, ':findFirstChild() was removed — use :FindFirstChild()'],
-  ['removed', /:\s*clone\s*\(\s*\)/, ':clone() was removed — use :Clone()'],
-  ['removed', /\bgame\.Lighting\.Sky\b/, 'Lighting.Sky was replaced by a Sky instance'],
-  ['deprecated', /\bBody(Velocity|Position|Gyro|Thrust|AngularVelocity)\b/, 'BodyMovers are deprecated — use LinearVelocity / AlignPosition / AlignOrientation'],
-  ['deprecated', /(?<![.:\w])spawn\s*\(/, 'spawn() is deprecated — use task.spawn()'],
-  ['deprecated', /(?<![.:\w])delay\s*\(/, 'delay() is deprecated — use task.delay()'],
-  ['deprecated', /(?<![.:\w])wait\s*\(\s*[\d.]*\s*\)/, 'wait() is deprecated — use task.wait()'],
-  ['deprecated', /GetService\(\s*["']Chat["']\s*\)/, 'the legacy Chat service is superseded by TextChatService'],
-  ['deprecated', /\bRay\.new\s*\(/, 'Ray.new is superseded by workspace:Raycast()'],
-  ['deprecated', /\bFindPartOnRay\w*\s*\(/, 'FindPartOnRay* is superseded by workspace:Raycast()'],
-  ['deprecated', /\bDataStoreService:GetDataStore\([^)]*\)\s*:\s*GetAsync/, 'a bare GetAsync without UpdateAsync loses writes under contention — prefer UpdateAsync'],
-];
 
 const doc = JSON.parse(readFileSync(FILE, 'utf8'));
 const byName = new Map(doc.templates.map((t) => [t.fullName, t]));
