@@ -171,8 +171,8 @@
     {
      "id": "v2-614b6aff",
      "name": "Organization-specific sign-in policies",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-e6dce725",
@@ -368,8 +368,8 @@
     {
      "id": "v2-d1bee4b0",
      "name": "Organization-enforced security requirements",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-fbf57c9c",
@@ -451,14 +451,14 @@
     {
      "id": "v2-94bb892d",
      "name": "Default organization selection",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-1c567fbb",
      "name": "Default workspace selection",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-40e563f9",
@@ -528,14 +528,14 @@
     {
      "id": "v2-66e56abb",
      "name": "Organization creation during onboarding",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-9c1d3a0d",
      "name": "Workspace creation during onboarding",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-90f59f63",
@@ -635,122 +635,122 @@
     {
      "id": "v2-bdeee052",
      "name": "Organization creation",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-8b76ab54",
      "name": "Organization profile editing",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-fd81671a",
      "name": "Organization logo management",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-8487442e",
      "name": "Organization identifier management",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-8dc6f2c1",
      "name": "Organization switcher",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-ad29d5ef",
      "name": "Organization ownership display",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-5260a89d",
      "name": "Organization ownership transfer",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-1aa9de58",
      "name": "Sole-owner departure protection",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-4b9a80e5",
      "name": "Organization billing contact",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-99b9c27c",
      "name": "Organization security settings",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-85ab767e",
      "name": "Organization default member role",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-1e465492",
      "name": "Organization domain verification",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-16aa8ae6",
      "name": "Domain-based membership policies",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-d2c8adf8",
      "name": "Organization workspace inventory",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-ad7c0320",
      "name": "Organization usage overview",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-9e2fd459",
      "name": "Organization integration inventory",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-8c35ae40",
      "name": "Organization lifecycle status",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-5c974baa",
      "name": "Organization export initiation",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-eec61db3",
      "name": "Organization deletion preview",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-3583cdc0",
      "name": "Organization deletion recovery window",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     }
    ]
   },
@@ -790,8 +790,8 @@
     {
      "id": "v2-2c7c8182",
      "name": "Invitation workspace assignment",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-0c70f5c7",
@@ -874,8 +874,8 @@
     {
      "id": "v2-6242daab",
      "name": "Seat availability visibility",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     }
    ]
   },
@@ -909,14 +909,14 @@
     {
      "id": "v2-e2de6f82",
      "name": "Organization-scoped data access",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-87d2b6d0",
      "name": "Workspace-scoped data access",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-d24d8089",
@@ -1010,122 +1010,122 @@
     {
      "id": "v2-1ddc770b",
      "name": "Workspace creation",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-68a922ab",
      "name": "Workspace naming and description",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-2f0d51fe",
      "name": "Workspace icon and color",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-bbdad02b",
      "name": "Workspace membership",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-7aad6970",
      "name": "Workspace administrator assignment",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-c59cf924",
      "name": "Workspace visibility controls",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-f8f16bab",
      "name": "Workspace switcher",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-4156d32d",
      "name": "Workspace project directory",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-d8da0daf",
      "name": "Workspace-level defaults",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-d7ade1b1",
      "name": "Workspace-specific integrations",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-089f9728",
      "name": "Workspace-specific AI policies",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-4dba5bc7",
      "name": "Workspace usage allocation",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-385a1ba0",
      "name": "Workspace spending allocation",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-2c619803",
      "name": "Workspace activity history",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-61b6c2d7",
      "name": "Workspace resource transfer",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-25046d1e",
      "name": "Workspace duplication",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-7b1fbdd1",
      "name": "Workspace archival",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-c81c3322",
      "name": "Workspace restoration",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-38c67d14",
      "name": "Workspace export",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-f20dd65b",
      "name": "Workspace deletion impact preview",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     }
    ]
   },
@@ -1213,8 +1213,8 @@
     {
      "id": "v2-1258eaa7",
      "name": "Project transfer between workspaces",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-a8317933",
@@ -1266,8 +1266,8 @@
     {
      "id": "v2-ed20f9c7",
      "name": "Organization and workspace context display",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-82b07b8f",
@@ -1391,14 +1391,14 @@
     {
      "id": "v2-ad3b5650",
      "name": "Organization-scoped search",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-43dfd7fb",
      "name": "Workspace-scoped search",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-dc258112",
@@ -1570,8 +1570,8 @@
     {
      "id": "v2-15a8929a",
      "name": "Explicit organization selection during pairing",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-50fe013d",
@@ -2314,8 +2314,8 @@
     {
      "id": "v2-160122a0",
      "name": "Organization-approved model policies",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-edb75fd5",
@@ -2374,8 +2374,8 @@
     {
      "id": "v2-be610e62",
      "name": "Organization controls for externally processed data",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     }
    ]
   },
@@ -2915,8 +2915,8 @@
     {
      "id": "v2-69c1621a",
      "name": "Organization-specific tool policies",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-7ed91e6e",
@@ -4308,8 +4308,8 @@
     {
      "id": "v2-5f40f321",
      "name": "Seat limits",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-3ba04ca0",
@@ -4409,8 +4409,8 @@
     {
      "id": "v2-53fedf2c",
      "name": "Per-organization usage breakdown",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-73e13ed2",
@@ -4564,8 +4564,8 @@
     {
      "id": "v2-629452a0",
      "name": "Seat count changes",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-f77a55b6",
@@ -4850,8 +4850,8 @@
     {
      "id": "v2-e31074f7",
      "name": "Seat charge breakdown",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-ba0471de",
@@ -4933,8 +4933,8 @@
     {
      "id": "v2-9ebc8278",
      "name": "Organization default language",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-6482dcc7",
@@ -5391,8 +5391,8 @@
     {
      "id": "v2-51d925e6",
      "name": "Organization-scoped API credentials",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-687f0471",
@@ -5528,8 +5528,8 @@
     {
      "id": "v2-946294ae",
      "name": "Organization-scoped event subscriptions",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-7bd3263c",
@@ -5772,8 +5772,8 @@
     {
      "id": "v2-dc304375",
      "name": "Organization integration installation",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-da6a7858",
@@ -5927,8 +5927,8 @@
     {
      "id": "v2-3246e6fc",
      "name": "Organization data export",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-4ad9a43d",
@@ -5957,8 +5957,8 @@
     {
      "id": "v2-76c687d8",
      "name": "Organization deletion request",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-325749e2",
@@ -6141,8 +6141,8 @@
     {
      "id": "v2-db881a36",
      "name": "Organization request rate limits",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-b361a9ea",
@@ -6237,8 +6237,8 @@
     {
      "id": "v2-be1add78",
      "name": "Organization emergency execution stop",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-70e032d4",
@@ -6391,8 +6391,8 @@
     {
      "id": "v2-c02c2b3c",
      "name": "Organization lookup",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-5c636383",
@@ -6451,8 +6451,8 @@
     {
      "id": "v2-e34042b0",
      "name": "Organization suspension controls",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-9a3f3e9b",
@@ -7391,8 +7391,8 @@
     {
      "id": "v2-47df775c",
      "name": "Invited member joins the intended organization with correct access",
-     "status": "not-started",
-     "evidence": null
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
     },
     {
      "id": "v2-d3c91533",
