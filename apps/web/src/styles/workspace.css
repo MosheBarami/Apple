@@ -130,6 +130,47 @@
   min-height: 0;
   background: var(--gx-rail);
   border-inline-end: 1px solid var(--gx-line);
+  /* The drag handle is positioned against this edge. */
+  position: relative;
+}
+
+/* The width handle. Invisible until it is wanted — a permanent line down the middle of the
+   interface is a seam the eye keeps returning to — but seven pixels wide rather than one, because
+   a one-pixel target is a target you miss. */
+.gx-rail__resize {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -3px;
+  width: 7px;
+  z-index: 3;
+  cursor: col-resize;
+  /* Without this a touch drag scrolls the page instead of moving the handle. */
+  touch-action: none;
+}
+
+.gx-rail__resize::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 3px;
+  width: 1px;
+  background: var(--gx-accent);
+  opacity: 0;
+  transition: opacity var(--gx-t-enter) var(--gx-ease);
+}
+
+.gx-rail__resize:hover::after,
+.gx-rail__resize:focus-visible::after {
+  opacity: 1;
+}
+
+.gx-rail__resize:focus-visible {
+  outline: none;
+}
+
+/* Nothing to size when the rail is an icon strip: its width is the collapsed token, not this one. */
+.gx-rail.is-collapsed .gx-rail__resize {
+  display: none;
 }
 
 .gx-rail__head {
@@ -2902,6 +2943,12 @@
 
   .gx-icon-btn.gx-rail__close {
     display: grid;
+  }
+
+  /* The rail is a fixed overlay here, so its width is not part of the layout: a handle that
+     resized it would be a control wired to nothing anyone can see the effect of. */
+  .gx-rail__resize {
+    display: none;
   }
 
   /* Specificity has to beat .gx-icon-btn, which is declared later.

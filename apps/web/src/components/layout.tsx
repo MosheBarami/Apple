@@ -12,7 +12,7 @@
 // which is the only place that knows whose checkpoints these are. The workspace
 // lends the shell an opener (see lib/shell.tsx); with no workspace mounted the
 // card is inert and says why rather than pretending to be live.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
@@ -22,6 +22,8 @@ import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
 import { useCommands } from '../lib/commands';
 import { PROJECT_COLUMNS } from '../lib/archive';
+import { RAIL_MAX, RAIL_MIN, clampRailWidth, nudgeRailWidth, widthFromPointer } from '../lib/rail-width';
+import { readViewState, writeViewState } from '../lib/view-state';
 import { CommandPalette } from './command-palette';
 import { ErrorBoundary } from './error-boundary';
 import { UsageMeter } from './usage-meter';
@@ -156,9 +158,27 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
 /* ----------------------------------------------------------------- rail --- */
 
-function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed }:
-  { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean }) {
+function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, onWidth }:
+  { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean;
+    width: number; onWidth: (next: number, persist: boolean) => void }) {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
+
+  //[[ THE DRAG, WHICH IS THE ONLY PART OF RESIZING THAT IS NOT ARITHMETIC.
+  //
+  //   Everything that can be wrong about a width — the clamp, what a cursor position means on
+  //   either side of an RTL flip, what an arrow key does — lives in lib/rail-width.ts where it can
+  //   be driven directly. This is the plumbing.
+  //
+  //   Pointer CAPTURE rather than window listeners: the moves keep arriving at the handle once the
+  //   cursor leaves it, which is most of a drag, and the capture is released for us if the pointer
+  //   is cancelled. Nothing is left attached to the window to leak.
+  //
+  //   Persisted on release and on each key, not on every move: a drag is sixty localStorage writes
+  //   a second, and only the last one is a decision. ]]
+  const dragging = useRef(false);
+  const railEl = useRef<HTMLElement>(null);
+  const isRtl = () =>
+    railEl.current ? window.getComputedStyle(railEl.current).direction === 'rtl' : false;
 
   const projects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
   const chats = projects.data ?? [];
@@ -166,6 +186,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed }:
 
   return (
     <aside
+      ref={railEl}
       className={`gx-rail${railOpen ? ' is-open' : ''}${railCollapsed ? ' is-collapsed' : ''}`}
       aria-label="Conversations"
     >
@@ -269,6 +290,50 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed }:
         <UsageMeter quota={quota} pending={quotaPending} failed={quotaFailed} />
         <AccountMenu name={name} email={email} isAdmin={isAdmin} />
       </div>
+
+      {/* Announced as a separator with a value, so a screen reader says what the width is as it
+          moves; focusable, because a drag handle nobody can reach with a keyboard is a mouse-only
+          feature. Hidden by CSS below 861px, where the rail is an overlay and its width is not
+          part of the layout, and while collapsed, where there is nothing to size. */}
+      <div
+        className="gx-rail__resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize the sidebar"
+        aria-valuenow={width}
+        aria-valuemin={RAIL_MIN}
+        aria-valuemax={RAIL_MAX}
+        tabIndex={0}
+        onPointerDown={(e) => {
+          // Stops the drag selecting the conversation titles it passes over.
+          e.preventDefault();
+          dragging.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!dragging.current || !railEl.current) return;
+          const box = railEl.current.getBoundingClientRect();
+          onWidth(widthFromPointer(e.clientX, box, isRtl()), false);
+        }}
+        onPointerUp={(e) => {
+          if (!dragging.current) return;
+          dragging.current = false;
+          e.currentTarget.releasePointerCapture(e.pointerId);
+          onWidth(width, true);
+        }}
+        onPointerCancel={() => {
+          dragging.current = false;
+          onWidth(width, true);
+        }}
+        onKeyDown={(e) => {
+          const next = nudgeRailWidth(width, e.key, isRtl());
+          // Null means a key this control does not own. Swallowing Tab here would trap a keyboard
+          // user on the handle with no way off it.
+          if (next === null) return;
+          e.preventDefault();
+          onWidth(next, true);
+        }}
+      />
     </aside>
   );
 }
@@ -285,6 +350,18 @@ function Shell() {
   // Remounting the tour is how "Show me around" restarts it: the component reads its progress on
   // mount, and the command has just written a fresh one.
   const [tourNonce, setTourNonce] = useState(0);
+
+  //[[ THE RAIL'S WIDTH IS THE USER'S, AND IT SURVIVES A RELOAD.
+  //
+  //   Read through `clampRailWidth` rather than raw: the stored value was written by some build,
+  //   possibly not this one, and a width restored blindly can be 0 — a sidebar that is present in
+  //   the layout, holds the focus order, and cannot be seen. Persisted on release rather than on
+  //   every pointermove, which would be sixty writes a second for one decision. ]]
+  const [railWidth, setRailWidth] = useState(() => readViewState('rail.width', clampRailWidth));
+  const setWidth = useCallback((next: number, persist: boolean) => {
+    setRailWidth(next);
+    if (persist) writeViewState('rail.width', next);
+  }, []);
 
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe, staleTime: 60_000, retry: 1 });
   // The same query the rail runs, by the same key, so this costs nothing and cannot disagree with
@@ -353,7 +430,12 @@ function Shell() {
   const name = me.data?.profile?.display_name ?? null;
 
   return (
-    <div className={`gx gx-shell${railCollapsed ? ' is-rail-collapsed' : ''}`}>
+    <div
+      className={`gx gx-shell${railCollapsed ? ' is-rail-collapsed' : ''}`}
+      // The grid reads this token for its first column, so the drag is one custom property away
+      // from the layout rather than a second source of truth about the rail's width.
+      style={{ '--gx-rail-w': `${railWidth}px` } as CSSProperties}
+    >
       <a className="gx-sr" href="#main-content">
         Skip to content
       </a>
@@ -368,6 +450,8 @@ function Shell() {
         quota={me.data?.quota}
         quotaPending={me.isPending}
         quotaFailed={me.isError}
+        width={railWidth}
+        onWidth={setWidth}
       />
 
       {railOpen && (
