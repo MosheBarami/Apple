@@ -152,6 +152,17 @@ function CheckEmailCard({
       <Link to="/login" className="btn btn-primary btn-block">
         Go to sign in
       </Link>
+      {/*[[ THE WAY OUT WHEN NO MAIL ARRIVES, WHICH IS A REAL CASE AND NOT AN EDGE ONE.
+            Signing up with an address that ALREADY has an account returns 200 and sends nothing —
+            deliberately, so that this screen cannot be used to discover who is registered. The
+            owner of this product sat on this card four times in one hour waiting for a message
+            that was never going to be sent, because the only thing it offered was patience.
+            Nothing here reveals whether the account exists; it offers the two doors that work in
+            the case where it does. */}
+      <p className="auth-switch">
+        No mail after a minute? You may already have an account —{' '}
+        <Link to={`/forgot${address ? `?email=${encodeURIComponent(address)}` : ''}`}>reset your password</Link>.
+      </p>
     </div>
   );
 }
@@ -427,7 +438,10 @@ export function SignupPage() {
           resending={resend === 'sending'}
           resent={resend === 'sent'}
         >
-          <p className="auth-card-sub">Click the link to confirm your address, then come back and sign in.</p>
+          {/* Conditional, because the unconditional version was false half the time. An address
+              that already has an account gets no mail at all, and "click the link" then reads as an
+              instruction the person cannot follow and cannot explain. */}
+          <p className="auth-card-sub">If this address is new, the link confirms it. Then come back and sign in.</p>
         </CheckEmailCard>
       ) : (
         <form className="auth-card" onSubmit={onSubmit} noValidate>

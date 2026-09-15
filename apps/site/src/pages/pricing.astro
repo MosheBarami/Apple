@@ -184,6 +184,19 @@ const limitFaq = [
           service enforces; this page reads them rather than restating them.
         </p>
 
+        {/*
+          THE PRICE ABOVE IS THE PRICE BEFORE TAX, AND SAYING SO IS THE POINT.
+          The checkout asks Stripe to calculate tax from the billing address, so a buyer in a
+          jurisdiction we are registered in pays more than the figure on this page. Quoting the bare
+          number and letting them discover the difference on a bank statement is the same failure as
+          quoting a bare currency symbol, which this page already stopped doing.
+        */}
+        <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
+          Prices are in {PRICE_CURRENCY} and exclude tax. Any VAT or sales tax that applies where you
+          are is calculated at checkout, and businesses can enter a VAT or GST number there so the
+          invoice carries it.
+        </p>
+
         <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
           <strong>What support means on every plan above:</strong> {PLAN_SUPPORT.free.promise} Paid
           accounts are answered first. Enterprise is different — {PLAN_SUPPORT.enterprise.promise.toLowerCase()}

@@ -41,6 +41,7 @@ export function Turn({
   onEdit,
   editable,
   onRetry,
+  onShowRevisions,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
@@ -50,11 +51,19 @@ export function Turn({
   /**
    * Run the prompt that produced this turn again.
    *
-   * Offered only on the LAST turn, and only when the run did not succeed. Retrying an older
-   * failure would discard everything after it — that is the edit path, and it has a dialog for
-   * exactly that reason.
+   * Offered only on the LAST turn, whether that turn failed ("Try again") or succeeded
+   * ("Regenerate"). Re-running an OLDER turn would discard everything after it — that is the edit
+   * path, and it has a dialog for exactly that reason.
    */
   onRetry?: () => void;
+  /**
+   * Open the earlier versions of this user message.
+   *
+   * Offered only when the transcript says there ARE earlier versions — the count rides on the
+   * message so the conversation does not need a request per turn to find out whether to draw the
+   * mark.
+   */
+  onShowRevisions?: (messageId: string) => void;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
    * flight. Undefined for every other turn, because `agent_status` carries no
@@ -154,6 +163,22 @@ export function Turn({
               Edit
             </button>
           )}
+          {/* WHAT YOU WROTE BEFORE. Beside Edit because Edit is what made it, and always visible
+              rather than revealed on hover: it is a fact about this message, not a tool.
+
+              `(item.revisions ?? 0) > 0` and not a falsy check, because undefined and 0 are
+              different facts here — a worker that predates message_revisions sends no field at
+              all, and drawing "no earlier versions" from that would be an answer nobody checked. */}
+          {onShowRevisions && (item.revisions ?? 0) > 0 && (
+            <button
+              type="button"
+              className="gx-user__edited"
+              onClick={() => onShowRevisions(item.id)}
+              title={`You edited this message. See ${item.revisions === 1 ? 'the earlier version' : `all ${item.revisions} earlier versions`}.`}
+            >
+              Edited
+            </button>
+          )}
           <Stamp at={item.createdAt} align="end" />
         </div>
       </div>
@@ -164,6 +189,35 @@ export function Turn({
   // drops anything it does not recognise. It used to be rendered verbatim, which put
   // 'rate_limited' and raw provider messages in front of users.
   const outcome = outcomeLine(item.stopReason, item.error);
+
+  /* RUNNING IT AGAIN, AND WHY THIS IS NOT INSIDE THE OUTCOME BLOCK ANY MORE.
+     It used to be: the control lived inside `{outcome && (...)}`, so it existed only after a run
+     had failed or stopped. But "that reply is fine and still not what I meant" is the ordinary
+     case, and the only other re-run path — the edit dialog — hard-refuses an unchanged message.
+     So a user who wanted a second take had to invent a change to their own prompt to get one.
+
+     Built once here and rendered by both branches below, so the failed case and the clean case
+     cannot drift into two different behaviours. The quota suppression is unchanged: that run did
+     not fail, the account ran out, and a button that walks back into the same wall reads as a
+     broken product rather than an empty balance. */
+  const retryControl =
+    onRetry && item.stopReason !== 'quota' ? (
+      <button
+        type="button"
+        className="gx-outcome__retry"
+        onClick={onRetry}
+        // Stated rather than confirmed. A dialog here would guard a loss it cannot undo — there is
+        // no message-revision store to restore the old reply from — so it would collect a click
+        // and change nothing. When revisions exist, this becomes a real confirmation.
+        title={
+          outcome
+            ? 'Run that prompt again'
+            : 'Run that prompt again. The new reply replaces this reply, which cannot be brought back.'
+        }
+      >
+        {outcome ? 'Try again' : 'Regenerate'}
+      </button>
+    ) : null;
 
   return (
     <div className="gx-turn gx-turn--agent gx-msg-in">
@@ -196,17 +250,17 @@ export function Turn({
           <GenerativeUI key={panel.id} doc={panel.doc} />
         ))}
 
-        {outcome && (
+        {outcome ? (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
+            {/* The sentence comes from outcome-model.ts, NOT from `item.error`. That field is a
+                code the worker sends ('rate_limited', 'interrupted', and on two paths the raw
+                provider message); rendering it verbatim — which is what stood here — put one
+                server's note to another in front of the person whose build died. The model turns
+                a known code into a sentence and drops anything it does not recognise. */}
             <p className="gx-outcome__text">{outcome.text}</p>
-            {/* No retry on a quota stop: the run did not fail, the account ran out, and a button
-                that re-runs into the same wall teaches the user the product is broken rather than
-                that they are out of Credits. The outcome text already says when they come back. */}
-            {onRetry && item.stopReason !== 'quota' && (
-              <button type="button" className="gx-outcome__retry" onClick={onRetry}>
-                Try again
-              </button>
-            )}
+            {/* `retryControl` is built above and is null on a quota stop, so a run that did not
+                fail but ran out of Credits still offers nothing to press. */}
+            {retryControl}
             {/* A failed run had exactly one affordance — Try again — and pressing it is the right
                 first move only when the cause was transient. /docs/troubleshooting has a section
                 per cause (Studio closed, a place too large to read, Credits gone) and nothing in
@@ -223,6 +277,10 @@ export function Turn({
               </a>
             )}
           </div>
+        ) : (
+          // Same row, no sentence: there is nothing to explain about a run that worked. It is the
+          // last thing under the reply and above the timestamp, where the eye already is.
+          retryControl && <div className="gx-outcome gx-outcome--bare">{retryControl}</div>
         )}
 
         {/* THE FOOTER ROW, AND WHY THE COST IS HERE RATHER THAN IN THE THINKING CARD.
