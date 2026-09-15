@@ -167,6 +167,15 @@ jobs:
         # nobody enforces is not a budget.
         run: node scripts/check-landing-budget.mjs
 
+      - name: Asset wall says what it shows
+        # The library section names a count and then renders cards. Nothing connected the two, and
+        # "from a library of N" over a wall of something else is the failure this repository keeps
+        # finding. Here, after the build, because "rendered" is the only place the card count is
+        # real — and because every <img> on that wall has to resolve to a file that is actually an
+        # image: the route ships no JavaScript, so a missing one renders as a broken-image glyph
+        # with nothing able to swap it out.
+        run: node scripts/check-asset-wall.mjs
+
       - name: Upload built site
         uses: actions/upload-artifact@v4
         with:

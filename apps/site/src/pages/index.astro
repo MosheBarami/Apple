@@ -30,14 +30,20 @@ const proof = [
 ];
 
 /**
- * The landing page. Five sections, ZERO JavaScript on the route.
+ * The landing page. Six sections, ZERO JavaScript on the route.
  *
  * SUPERSEDES "one viewport, no scroll". This page used to hold the whole
  * proposition in a single frame, with how-it-works and pricing deliberately
  * moved off it onto real routes. The owner's design brings them back as
- * sections — hero, product, modes, how it works, pricing — and
+ * sections — hero, product, library, modes, how it works, pricing — and
  * docs/DECISIONS.md ADR-020 records that call with the artifact it came from.
  * docs/DESIGN-SPEC.md §0–§1 is updated to match.
+ *
+ * THE LIBRARY SECTION IS NOT IN THAT DESIGN. It answers a separate complaint —
+ * that the site claims a library and never shows one. It is in the nav because
+ * a section a reader cannot navigate to is a section most readers never reach,
+ * and it costs the payload budget nothing that scripts/check-landing-budget.mjs
+ * does not still hold at 12,000 B gzip.
  *
  * WHAT DID NOT CHANGE, and is the reason this file still exists apart from
  * Base.astro: the route ships no JavaScript. Every animation is CSS, every
@@ -91,9 +97,10 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/stu
 //   literals: a landing page that queries a database is a landing page that can fail to render.
 import assetWall from '../data/asset-wall.json';
 
-/** Nav. Four anchors at sections that exist on this page, and one real route. */
+/** Nav. Five anchors at sections that exist on this page, and one real route. */
 const navLinks = [
   { href: '#product', label: 'Product' },
+  { href: '#library', label: 'Library' },
   { href: '#modes', label: 'Modes' },
   { href: '#how', label: 'How it works' },
   { href: '#pricing', label: 'Pricing' },
