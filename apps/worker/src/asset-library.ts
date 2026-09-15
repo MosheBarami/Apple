@@ -87,6 +87,36 @@ export function originalityOf(source: AssetSourceSite): AssetOriginality {
  * explicitly `| null` and its null meaning is documented, so "we do not know" is never confused
  * with "we did not fill it in".
  */
+/**
+ * What produced a piece of geometry, when the geometry was generated rather than downloaded or
+ * authored.
+ *
+ * This exists because `source: 'generated_roblox'` on its own is an unprovable claim. It says the
+ * asset came out of a generator without saying WHICH generator or from WHAT, which is precisely
+ * the information the customer needs in order to answer "where did this come from?" about their
+ * own place — and precisely the information that cannot be reconstructed after the fact, because
+ * the prompt exists only in the session that ran it.
+ *
+ * Every field is required and non-empty. A partially-filled generation record is not a weaker
+ * record, it is a record that cannot answer the question it exists to answer, so
+ * `validateProvenance` refuses it outright rather than warning.
+ */
+export interface GenerationRecord {
+  /** The API that produced it, named exactly: `GenerationService:GenerateModelAsync`. */
+  service: string;
+  /**
+   * The model, as the platform names it in its own documentation — `Roblox Cube 3D`.
+   *
+   * Recorded as a string rather than an enum on purpose: the engine picks the model version and
+   * does not report it, so pinning a closed set here would be inventing precision we do not have.
+   */
+  model: string;
+  /** The prompt, verbatim. Never summarised — a paraphrased prompt does not reproduce the mesh. */
+  prompt: string;
+  /** ISO 8601, when generation ran. Distinct from `retrievedAt`, which is when the record was made. */
+  generatedAt: string;
+}
+
 export interface AssetProvenance {
   /** Stable, human-readable, namespaced: `kenney/city-kit-suburban/building-a-01`. */
   id: string;
@@ -133,6 +163,12 @@ export interface AssetProvenance {
   tags: string[];
   /** SHA-256 of the source file, lowercase hex. null only before the binary has been fetched. */
   sha256: string | null;
+  /**
+   * Set if and only if `source` is `generated_roblox`. Required in that case and forbidden in
+   * every other — see `validateProvenance`. Optional in the type only so rows written before this
+   * field existed still parse.
+   */
+  generation?: GenerationRecord | null;
 }
 
 /** Operational state D1 tracks alongside the record. Not part of the provenance itself. */
@@ -376,6 +412,43 @@ export function validateProvenance(rec: unknown, opts: ValidateOptions = {}): Va
     errors.push('sha256 must be 64 lowercase hex characters or null');
   }
 
+  // Generation: required for a generation, forbidden for anything else.
+  //
+  // Both directions are errors rather than warnings, and they guard opposite mistakes.
+  //
+  //   Missing — an asset whose `source` says it was generated but which cannot name the model or
+  //   the prompt. That record does not read as "the generation was not recorded"; it reads as an
+  //   ordinary asset of the customer's own, and the credits file it as such. A failure to record
+  //   the generation must not render as a recorded generation.
+  //
+  //   Present but not a generation — a downloaded third-party asset carrying generation metadata
+  //   would be laundered out of the third-party column and into the customer's own, which is the
+  //   §42 mistake run backwards. Somebody else's work is not made yours by claiming a model made
+  //   it.
+  const isGenerated = r.source === 'generated_roblox';
+  const gen = r.generation;
+  if (gen === null || gen === undefined) {
+    if (isGenerated) {
+      errors.push(
+        'generation is required for a generated_roblox asset — a mesh that cannot name the model and prompt that produced it has no provenance, only a claim',
+      );
+    }
+  } else if (!isGenerated) {
+    errors.push(`generation is set but source is "${String(r.source)}" — only a generated_roblox asset may carry generation metadata`);
+  } else if (typeof gen !== 'object' || Array.isArray(gen)) {
+    errors.push('generation must be an object with service, model, prompt and generatedAt');
+  } else {
+    const g = gen as Partial<GenerationRecord>;
+    for (const field of ['service', 'model', 'prompt'] as const) {
+      if (typeof g[field] !== 'string' || !g[field]!.trim()) {
+        errors.push(`generation.${field} is required and must be non-empty — an unnamed ${field} cannot be audited`);
+      }
+    }
+    if (typeof g.generatedAt !== 'string' || !ISO_RE.test(g.generatedAt) || Number.isNaN(Date.parse(g.generatedAt))) {
+      errors.push('generation.generatedAt must be an ISO 8601 date-time');
+    }
+  }
+
   // The invariant that keeps the library honest: anything live in Roblox must be hashed, measured
   // and dimensioned. Nulls are only acceptable while the asset has not been imported yet.
   if (hasRobloxId && !opts.seed) {
@@ -437,6 +510,81 @@ export function originalAsset(args: { id: string; name: string; kind: AssetKind;
   };
 }
 
+/** The service that generates geometry in the customer's own Studio session, named exactly. */
+export const ROBLOX_GENERATION_SERVICE = 'GenerationService:GenerateModelAsync';
+/**
+ * The model behind that service, as Roblox names it in its own documentation: GenerationService is
+ * described there as using "Roblox's Cube 3D foundation model".
+ *
+ * NOTE this is Roblox serving Cube as a first-party platform feature under the Roblox Terms of
+ * Use. It is NOT the openrail-licensed `Roblox/cube3d-*` weights on Hugging Face, whose licence
+ * restricts use to "academic or research purposes only" and which therefore cannot be run by this
+ * product at all. See docs/research/3d-asset-pipeline.md §A0.
+ */
+export const ROBLOX_GENERATION_MODEL = 'Roblox Cube 3D';
+const ROBLOX_GENERATION_DOCS = 'https://create.roblox.com/docs/reference/engine/classes/GenerationService';
+
+/**
+ * Build the provenance record for geometry generated by Roblox's own generator inside the
+ * customer's Studio session.
+ *
+ * As with `originalAsset`, the point is that this state is CONSTRUCTED rather than asserted: the
+ * only way to get `source: 'generated_roblox'` past `validateProvenance` is to come through here
+ * or to supply the same fields by hand, and this function will not build a record whose model or
+ * prompt is missing. It throws rather than returning an invalid record because the caller is a
+ * generation that just succeeded — there is no sensible partial answer, and a silently
+ * unattributed mesh is the exact outcome this is here to prevent.
+ */
+export function generatedAsset(args: {
+  id: string;
+  name: string;
+  kind: AssetKind;
+  tags: string[];
+  prompt: string;
+  /** Defaults to the Roblox generator; passed explicitly when some other generator is wired. */
+  service?: string;
+  model?: string;
+  generatedAt: string;
+  robloxAssetId?: number | null;
+  sha256?: string | null;
+  triangles?: number | null;
+  modifications?: string[];
+}): AssetProvenance {
+  const service = (args.service ?? ROBLOX_GENERATION_SERVICE).trim();
+  const model = (args.model ?? ROBLOX_GENERATION_MODEL).trim();
+  const prompt = args.prompt?.trim() ?? '';
+  if (!service) throw new Error('generatedAsset: service is required — a generation that cannot name its API has no provenance');
+  if (!model) throw new Error('generatedAsset: model is required — a generation that cannot name its model has no provenance');
+  if (!prompt) throw new Error('generatedAsset: prompt is required — a generation that cannot name its prompt cannot be reproduced or audited');
+
+  return {
+    id: args.id,
+    name: args.name,
+    kind: args.kind,
+    source: 'generated_roblox',
+    // No source page exists for a mesh that was generated rather than published. Both URLs point
+    // at the generator's documentation — the thing that made it — rather than a fabricated listing.
+    sourceUrl: ROBLOX_GENERATION_DOCS,
+    licence: 'ROBLOX-GENERATED',
+    licenceUrl: ROBLOX_GENERATION_DOCS,
+    commercialUse: true,
+    attributionRequired: false,
+    // The customer ran the generator in their own session, on their own account. Naming the
+    // service as author rather than Apple is the §42 line: this is not our work to claim.
+    author: 'Roblox GenerationService',
+    retrievedAt: args.generatedAt,
+    importedAt: args.robloxAssetId ? args.generatedAt : null,
+    modifications: args.modifications ?? [],
+    robloxAssetId: args.robloxAssetId ?? null,
+    triangles: args.triangles ?? null,
+    textureResolution: null,
+    boundsStuds: null,
+    tags: args.tags,
+    sha256: args.sha256 ?? null,
+    generation: { service, model, prompt, generatedAt: args.generatedAt },
+  };
+}
+
 /** Embedding + FTS input. Derived, never stored, so it cannot drift from the record. */
 export function assetEmbeddingInput(rec: AssetProvenance): string {
   return `${rec.kind}: ${rec.name}. Style: ${rec.tags.join(', ')}. Source: ${rec.source} by ${rec.author}.`;
@@ -457,12 +605,12 @@ export function assetEmbeddingInput(rec: AssetProvenance): string {
  */
 export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   await env.CORPUS.exec(
-    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
+    `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, generation text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
   );
   // Deployed databases predate these two columns, and `create table if not exists` will not add
   // them. D1 has no `add column if not exists`, so the failure is caught: on an already-migrated
   // database it is a duplicate-column error and nothing else, and swallowing it is the whole point.
-  for (const col of ['imported_at text', 'modifications text']) {
+  for (const col of ['imported_at text', 'modifications text', 'generation text']) {
     try {
       await env.CORPUS.exec(`alter table asset_library add column ${col}`);
     } catch {
@@ -488,7 +636,7 @@ export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void>
 // Writes
 // ---------------------------------------------------------------------------------------------
 
-const COLUMNS = [
+export const COLUMNS = [
   'id',
   'name',
   'kind',
@@ -508,6 +656,7 @@ const COLUMNS = [
   'bounds_studs',
   'tags',
   'sha256',
+  'generation',
   'status',
   'created_at',
   'updated_at',
@@ -522,7 +671,7 @@ export function rowsPerStatement(columnCount: number = COLUMNS.length): number {
   return Math.max(1, Math.floor(MAX_BOUND_PARAMS / columnCount));
 }
 
-function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unknown[] {
+export function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unknown[] {
   return [
     rec.id,
     rec.name,
@@ -543,6 +692,10 @@ function bindValues(rec: AssetProvenance, status: AssetStatus, now: string): unk
     rec.boundsStuds ? JSON.stringify(rec.boundsStuds) : null,
     JSON.stringify(rec.tags),
     rec.sha256,
+    // JSON text, matching modifications/tags/bounds_studs. null rather than "null" for the
+    // overwhelming majority of rows that are not generations, so the column stays queryable as
+    // "is this a generation?" without parsing.
+    rec.generation ? JSON.stringify(rec.generation) : null,
     status,
     now,
     now,
