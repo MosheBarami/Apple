@@ -9,7 +9,7 @@ import { Cursor, Grain } from './components/atmosphere';
 import { ThemeProvider } from './lib/theme';
 import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
-import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
+import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, RecoveryRequestPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
 import { WorkspacePage } from './routes/workspace';
 import { RoadmapPage } from './routes/roadmap';
@@ -94,6 +94,12 @@ export function App() {
                       just as wrong in the other direction: a confirmation link that did NOT
                       establish a session would be redirected to /login, and the person who clicked
                       it would never learn whether it worked. */}
+                  {/* NO GuestGuard EITHER, and for a third reason. Somebody can be signed in on
+                      one device and locked out of another — a phone that was replaced, a second
+                      factor that is gone — and bouncing them to the dashboard because THIS browser
+                      has a session would hide the only page that helps. It costs nothing to leave
+                      open: the form reveals nothing and the route it posts to reveals nothing. */}
+                  <Route path="/recovery" element={<RecoveryRequestPage />} />
                   <Route path="/reset" element={<ResetPasswordPage />} />
                   <Route path="/confirm" element={<ConfirmEmailPage />} />
                   <Route

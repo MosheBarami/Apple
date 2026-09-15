@@ -194,9 +194,14 @@ test('every signed-in route is a child of the shell, so every one of them has th
   // recovery screen wrapped in the rail, the project list and ⌘K invites someone mid-recovery to go
   // and do something else, and the shell's queries would fire against a session that exists only to
   // authorise one password change. See the comment on those routes in app.tsx.
+  //
+  // /recovery is the third of that kind and the clearest case for being outside: its whole premise
+  // is that this person has no working session anywhere. Wrapping the last door in a shell whose
+  // every query needs the credential they are writing in about having lost would render a rail of
+  // failures around the form.
   assert.deepEqual(
     outside.sort(),
-    ['/confirm', '/forgot', '/login', '/reset', '/signup'],
+    ['/confirm', '/forgot', '/login', '/recovery', '/reset', '/signup'],
     `these routes are outside the shell and therefore have no command palette: ${outside.join(', ')}`,
   );
   // And the signed-in surfaces really are in there, so the assertion above cannot pass by the

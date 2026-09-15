@@ -1805,3 +1805,41 @@ export const reportPasswordChanged = (): Promise<{ recorded: boolean; reason?: s
   MOCK_MODE
     ? Promise.resolve({ recorded: true })
     : request<{ recorded: boolean; reason?: string }>('/api/security/password-changed', { method: 'POST' });
+
+/**
+ * Ask for help getting back into an account.
+ *
+ * THE ONE CALL IN THIS FILE THAT DOES NOT GO THROUGH `request`, and the reason is the whole point
+ * of the feature. `request` attaches a bearer token, and the premise here is that there is not one
+ * — the person cannot sign in, which is what they are writing in about. It also THROWS on a
+ * non-2xx, and every failure mode of this particular route is a sentence the page has to render
+ * rather than an exception to swallow: a 503 means nothing was written down, and that is the exact
+ * fact somebody out of options must be told instead of being thanked.
+ *
+ * So this returns what happened — status and parsed body, or the error — and `recoveryOutcome` in
+ * lib/account-recovery.ts decides what may be said about it. Nothing here interprets anything.
+ */
+export async function submitRecoveryRequest(
+  email: string,
+  note: string,
+): Promise<{ status?: number; body?: unknown; error?: unknown }> {
+  if (MOCK_MODE) return { status: 200, body: { received: true } };
+  try {
+    const res = await fetch('/api/recovery-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, note }),
+    });
+    noteReachability(true);
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      /* a body that is not JSON is not an acknowledgement; recoveryOutcome treats it as a failure */
+    }
+    return { status: res.status, body };
+  } catch (e) {
+    noteReachability(false);
+    return { error: e };
+  }
+}
