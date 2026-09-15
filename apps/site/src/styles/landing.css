@@ -1097,3 +1097,208 @@ code {
   text-align: center;
   max-width: 22ch;
 }
+
+/* --------------------------------------------------------------------------
+   17. The library wall
+
+   A full-bleed band of real assets that drifts slowly past, three rows at
+   three speeds, and stops the moment a pointer enters it so a card can be
+   read. Every provenance field is on the face of the card, because the point
+   of the section is that the provenance exists.
+
+   THE -50% IS ARITHMETIC, NOT A FEELING. Each row holds its cards twice; the
+   row translates from 0 to -50% of its own width and snaps back, and because
+   the second copy is identical the snap is invisible. That only holds while
+   the two copies are exactly half the row each — so the horizontal rhythm is
+   carried by a margin-right ON EVERY CARD and there is no `gap` anywhere in
+   the row or the tracks. A gap between the two tracks would make -50% land
+   half a gap short of the seam, and the wall would twitch once per cycle.
+   -------------------------------------------------------------------------- */
+
+.ap-wall {
+  margin: 2.1rem calc(var(--gutter) * -1) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.7rem;
+  overflow: hidden;
+  /* The rails fade instead of cutting, so a card leaving the frame reads as
+     continuing past the edge rather than being clipped by a box. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+
+.ap-wall__row {
+  display: flex;
+  width: max-content;
+  animation: ap-drift linear infinite;
+}
+
+/* Three speeds and one reversal, so the rows never resolve into a single
+   moving block. Slow on purpose: this is a texture behind a claim, not a
+   carousel demanding to be watched. */
+.ap-wall__row--1 { animation-duration: 94s; }
+.ap-wall__row--2 { animation-duration: 127s; animation-direction: reverse; }
+.ap-wall__row--3 { animation-duration: 108s; }
+
+@keyframes ap-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Every row stops, not just the one under the cursor: reading one card while
+   its neighbours keep sliding is worse than reading none.
+
+   :active IS NOT DECORATION, IT IS THE TOUCH CASE. Content that moves by
+   itself for longer than five seconds has to be stoppable, and :hover on a
+   phone is a mechanism that does not exist — so a wall with only a hover rule
+   is one no phone reader can ever stop. Pressing and holding does it there,
+   and it costs nothing, which matters because the route has no JavaScript to
+   offer a button with. prefers-reduced-motion below stops it outright.
+
+   :focus-within is for the day a card holds a link. Today nothing in the wall
+   takes focus, deliberately: a moving link target is a trap. */
+.ap-wall:hover .ap-wall__row,
+.ap-wall:active .ap-wall__row,
+.ap-wall:focus-within .ap-wall__row {
+  animation-play-state: paused;
+}
+
+.ap-wall__track {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ap-wall__card {
+  width: 9.4rem;
+  flex: none;
+  margin-right: 0.7rem; /* the ONLY horizontal rhythm in the row — see the note above */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.85rem 0.7rem 0.7rem;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: center;
+  min-width: 0;
+}
+
+.ap-wall__shot {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  padding: 4px;
+  margin-bottom: 0.15rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--ground-deep);
+  overflow: hidden;
+}
+
+.ap-wall__shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* The absence of a preview, rendered as a statement rather than a blank. The
+   hatch is what tells a glancing eye this tile is not the artwork. */
+.ap-wall__none {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 5px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.032) 0 5px,
+    transparent 5px 10px
+  );
+}
+
+.ap-wall__none-kind {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1.1;
+}
+
+.ap-wall__none-say {
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Fixed heights on the two variable-length fields, so every card in the band
+   is the same height and the rows stay level. Names are short by curation;
+   the clamp is the safety net, not the plan. */
+.ap-wall__name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  height: 2.5em;
+  overflow: hidden;
+}
+
+.ap-wall__kind {
+  font-size: 0.56rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--blue-soft);
+}
+
+.ap-wall__pack {
+  font-size: 0.67rem;
+  line-height: 1.3;
+  color: var(--ink-2);
+  height: 2.6em;
+  overflow: hidden;
+}
+
+/* The licence and the author, under a rule, because they are the part of the
+   card that is the argument. */
+.ap-wall__prov {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+}
+
+.ap-wall__lic {
+  font-size: 0.58rem;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.ap-wall__by {
+  font-size: 0.67rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The global reduced-motion block collapses .ap-in entrances to an instant. An
+   infinite marquee needs the opposite treatment: not shortened, stopped. The
+   row parks at translate 0, which is a full frame of real cards. */
+@media (prefers-reduced-motion: reduce) {
+  .ap-wall__row {
+    animation: none;
+  }
+}
