@@ -91,10 +91,16 @@ let memberRows = [];
 let doCalls = [];
 /** What the DO answers for a `/collab` delegation, so a route's plumbing can be observed. */
 let doCollabReply = { status: 200, body: { ok: true } };
+/** What the DO answers when a membership route pushes a change into the open sockets. */
+let doAccessChangeReply = { status: 200, body: { matched: 1, closed: 1, demoted: 0 } };
 const kv = new Map();
 /** Every KV key the worker ASKED FOR. A Map's `get` records nothing, so without this an
  *  assertion about "nothing was read under a forged key" cannot fail — see the redeem test. */
 let kvReads = [];
+/** The OPTIONS each key was written with. A link that expires must stop occupying the store, and
+ *  `expirationTtl` is the only observable difference between a link that will be forgotten and one
+ *  that will sit there forever — invisible to an assertion that only looks at the value. */
+const kvOpts = new Map();
 
 function parseQuery(url) {
   const u = new URL(url);
@@ -161,6 +167,9 @@ function sessionNamespace() {
         if (u.pathname === '/collab') {
           return new Response(JSON.stringify(doCollabReply.body), { status: doCollabReply.status });
         }
+        if (u.pathname === '/collab/access-changed') {
+          return new Response(JSON.stringify(doAccessChangeReply.body), { status: doAccessChangeReply.status });
+        }
         // The session DO's own reads. `{ok:true}` for everything made a 200 the only observable
         // fact about /messages and /checkpoints, which is why nothing could tell "the member
         // reached the transcript" from "the member reached a stub". These answer with CONTENT.
@@ -178,9 +187,15 @@ const env = () => ({
   ENVIRONMENT: 'test',
   KV: {
     get: async (k) => { kvReads.push(k); return kv.get(k) ?? null; },
-    put: async (k, v) => void kv.set(k, v),
-    delete: async (k) => void kv.delete(k),
-    list: async () => ({ keys: [] }),
+    put: async (k, v, opts) => { kv.set(k, v); kvOpts.set(k, opts ?? null); },
+    delete: async (k) => { kv.delete(k); kvOpts.delete(k); },
+    // A REAL PREFIX LIST. `{ keys: [] }` made every listing route answer "nothing here", which is
+    // indistinguishable from a route that lists nothing — the shape that lets a missing feature
+    // pass for an empty one.
+    list: async ({ prefix = '', limit = 1000 } = {}) => ({
+      keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).slice(0, limit).map((name) => ({ name })),
+      list_complete: true,
+    }),
   },
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
   CORPUS: { exec: async () => ({}), prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }), first: async () => null, run: async () => ({}) }) }), batch: async () => [] },
@@ -222,7 +237,9 @@ function reset({ members = [] } = {}) {
   }));
   doCalls = [];
   doCollabReply = { status: 200, body: { ok: true } };
+  doAccessChangeReply = { status: 200, body: { matched: 1, closed: 1, demoted: 0 } };
   kv.clear();
+  kvOpts.clear();
 }
 
 /** Every route on the shared surface, with the least privileged role that should reach it. */
@@ -243,6 +260,7 @@ const SHARED_ROUTES = [
   { method: 'GET', path: `/api/shared/${PROJECT_ID}/presence` },
   { method: 'POST', path: `/api/shared/${PROJECT_ID}/members`, body: { userId: STRANGER_ID, role: 'viewer' } },
   { method: 'POST', path: `/api/shared/${PROJECT_ID}/links`, body: { scope: 'project', role: 'viewer' } },
+  { method: 'GET', path: `/api/shared/${PROJECT_ID}/links` },
 ];
 
 // ===========================================================================================
@@ -605,4 +623,247 @@ test('THE BROWSER ASKS THE SHARED ROUTE — the owner-only one showed a collabor
   assert.doesNotMatch(fetchMessages, /\/api\/projects\//, 'the owner-only route answers a member 404');
   assert.match(fetchCheckpoints, /\/api\/shared\//, 'fetchCheckpoints must ask the shared route');
   assert.doesNotMatch(fetchCheckpoints, /\/api\/projects\//, 'the owner-only route answers a member 404');
+});
+
+test('a CHAT link opens the chat and nothing else, once it has been redeemed', async () => {
+  //[[ THE REFUSAL USED TO LAST EXACTLY ONE REQUEST.
+  //
+  //   `redeemShareLink` refuses a chat link presented at a build, and every one of those refusals
+  //   is driven in collab-membership.test.mjs. Then the redemption wrote a grant with no scope on
+  //   it, so the person who redeemed a link to ONE CONVERSATION became an ordinary project member:
+  //   the roster, the version list, every artifact. Nothing tested it because nothing did it.
+  //
+  //   Asked over HTTP, as the person the link was sent to. ]]
+  reset();
+  const minted = await call(`/api/shared/${PROJECT_ID}/links`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { scope: 'chat', resourceId: 'c-1', role: 'commenter' },
+  });
+  assert.equal(minted.status, 201);
+  const redeemed = await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: minted.json.token } });
+  assert.equal(redeemed.status, 201, 'the link is still redeemable');
+  assert.equal(redeemed.json.scope, 'chat');
+
+  // THE CHAT OPENS. This is what the link is for, and a guard that closed it too would be a
+  // different bug wearing the same green.
+  const transcript = await call(`/api/shared/${PROJECT_ID}/messages`, { jwt: STRANGER_JWT });
+  assert.equal(transcript.status, 200, 'the conversation the link names must still be readable');
+  assert.deepEqual(
+    transcript.json.messages.map((m) => m.id),
+    ['m-1', 'm-2'],
+    'and it is the real transcript, not a stub',
+  );
+
+  // THE PROJECT AROUND IT DOES NOT. Each of these is a project-wide surface, and 403 rather than
+  // 404 because this person can already prove the project exists.
+  for (const path of [
+    `/api/shared/${PROJECT_ID}/members`,
+    `/api/shared/${PROJECT_ID}/versions`,
+    `/api/shared/${PROJECT_ID}/checkpoints`,
+    `/api/shared/${PROJECT_ID}/reviews`,
+    `/api/shared/${PROJECT_ID}/permissions`,
+  ]) {
+    const res = await call(path, { jwt: STRANGER_JWT });
+    assert.equal(res.status, 403, `${path} must refuse a chat-scoped guest`);
+    assert.equal(res.json.detail, 'scoped_grant', `${path} must say WHY it refused`);
+  }
+
+  // The "what am I here" route answers, and WITHHOLDS the directory rather than returning an
+  // empty one that would read as "nobody else is on this project".
+  const who = await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT });
+  assert.equal(who.status, 200);
+  assert.equal(who.json.role, 'commenter');
+  assert.equal(who.json.scope, 'chat');
+  assert.equal(who.json.resourceId, 'c-1');
+  assert.equal(who.json.directoryWithheld, true);
+  assert.deepEqual(who.json.members, []);
+  // The project's OWNER id stays — a chat link was sent by someone on this project and "whose
+  // project is this" is not the roster. What must not appear is anybody's handle, which is the
+  // thing @-mentions are made of and the thing the directory exists to supply.
+  assert.equal(who.text.includes('maya'), false, 'the member directory is not handed to a scoped guest');
+
+  // A comment on a MESSAGE is on the chat surface and is allowed; the same route reaching the
+  // PROJECT is not. One route, two surfaces, and the scope decides.
+  doCollabReply = { status: 201, body: { id: 'cmt-1' } };
+  const onMessage = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: STRANGER_JWT,
+    body: { targetKind: 'message', targetId: 'm-2', body: 'nice' },
+  });
+  assert.equal(onMessage.status, 201, 'a chat guest may comment on the conversation they were given');
+  const onProject = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: STRANGER_JWT,
+    body: { targetKind: 'project', targetId: PROJECT_ID, body: 'nice' },
+  });
+  assert.equal(onProject.status, 403, 'and not on the project around it');
+
+  // THE CONTROL: a PROJECT link redeemed by the same stranger reaches all of it. Without this the
+  // assertions above would pass on a build that refused every link-derived grant there is.
+  reset();
+  const wide = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'commenter' } });
+  await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: wide.json.token } });
+  assert.equal((await call(`/api/shared/${PROJECT_ID}/members`, { jwt: STRANGER_JWT })).status, 200);
+  const wideWho = await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT });
+  assert.equal(wideWho.json.directoryWithheld, false);
+  assert.ok(wideWho.json.members.some((m) => m.userId === OWNER_ID), 'a project guest sees the directory');
+});
+
+test('A MEMBERSHIP CHANGE IS PUSHED INTO THE ROOM, not left for the next request that never comes', async () => {
+  //[[ THE HALF THAT WAS MISSING.
+  //
+  //   "a REVOKED member is a stranger again, on the next request" is true and is asserted above.
+  //   A WebSocket makes no next request: the role is decided at the handshake and frozen onto the
+  //   socket, and `grep ws.close` across do/session.ts found exactly one call, for a deleted
+  //   project. So the membership routes wrote Postgres and KV and returned, and the removed
+  //   member kept their capabilities on an open tab for as long as the tab stayed open.
+  //
+  //   What the socket then DOES with the push is driven in collab-access-change.test.mjs against
+  //   the Durable Object itself. This asserts the routes make it. ]]
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  const gone = await call(`/api/shared/${PROJECT_ID}/members/${MEMBER_ID}`, { method: 'DELETE', jwt: OWNER_JWT });
+  assert.equal(gone.status, 200);
+  const removal = doCalls.find((d) => d.path === '/collab/access-changed');
+  assert.ok(removal, 'a removal must reach the session Durable Object');
+  assert.equal(removal.body.userId, MEMBER_ID);
+  assert.equal(removal.body.role, null, 'a removal has no lesser role to demote to');
+  assert.deepEqual(gone.json.liveSockets, { matched: 1, closed: 1, demoted: 0 }, 'and the route REPORTS what the push did');
+
+  // A DEMOTION carries the new role, so the socket is rewritten rather than closed.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'admin' }] });
+  await call(`/api/shared/${PROJECT_ID}/members`, { method: 'POST', jwt: OWNER_JWT, body: { userId: MEMBER_ID, role: 'viewer' } });
+  const demotion = doCalls.find((d) => d.path === '/collab/access-changed');
+  assert.ok(demotion, 'a role change must reach the session Durable Object');
+  assert.equal(demotion.body.role, 'viewer');
+
+  // A SUSPENSION closes, because a suspended grant is dead while it lasts.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  await call(`/api/shared/${PROJECT_ID}/members/${MEMBER_ID}/suspend`, { method: 'POST', jwt: OWNER_JWT, body: { reason: 'talking about it' } });
+  const suspension = doCalls.find((d) => d.path === '/collab/access-changed');
+  assert.ok(suspension, 'a suspension must reach the session Durable Object');
+  assert.equal(suspension.body.role, null);
+
+  // A DURABLE OBJECT THAT CANNOT BE REACHED DOES NOT UNDO THE CHANGE — it has already landed in
+  // both stores — and must not be reported as a push that happened.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  doAccessChangeReply = { status: 500, body: { error: 'unreachable' } };
+  const still = await call(`/api/shared/${PROJECT_ID}/members/${MEMBER_ID}`, { method: 'DELETE', jwt: OWNER_JWT });
+  assert.equal(still.status, 200, 'the membership revocation already succeeded');
+  assert.equal(still.json.revoked, true);
+  assert.equal(still.json.liveSockets, null, 'and the answer says the push did not happen rather than implying it did');
+});
+
+test('THE LINKS A PROJECT HAS HANDED OUT CAN BE LISTED, which is the only way one can be revoked', async () => {
+  //[[ REVOCATION WORKED AND COULD NOT BE REACHED.
+  //
+  //   POST /links/revoke takes the exact token, and the token was unrecoverable the moment the
+  //   mint response scrolled away: the link is keyed BY the secret and `shareGrantPrefix` indexes
+  //   the redeemed grants rather than the links. So a link already sent to somebody could never be
+  //   listed and therefore never revoked — by UI or by curl. ]]
+  reset();
+  const a = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  const b = await call(`/api/shared/${PROJECT_ID}/links`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { scope: 'chat', resourceId: 'c-1', role: 'commenter', expiresAt: '2099-01-01T00:00:00.000Z' },
+  });
+  assert.equal(a.status, 201);
+  assert.equal(b.status, 201);
+
+  const listed = await call(`/api/shared/${PROJECT_ID}/links`, { jwt: OWNER_JWT });
+  assert.equal(listed.status, 200);
+  assert.equal(listed.json.partial, false, 'the whole list was readable');
+  const byToken = new Map(listed.json.links.map((l) => [l.token, l]));
+  assert.equal(byToken.size, 2, 'both minted links are listed');
+
+  const chat = byToken.get(b.json.token);
+  assert.equal(chat.scope, 'chat');
+  assert.equal(chat.resourceId, 'c-1');
+  assert.equal(chat.role, 'commenter');
+  assert.equal(chat.expiresAt, '2099-01-01T00:00:00.000Z', 'the expiry is shown, not just stored');
+  assert.equal(chat.createdBy, OWNER_ID);
+  assert.equal(chat.state, 'live');
+
+  // …and the token that came back is the one revoke takes. That round trip IS the feature.
+  const revoked = await call(`/api/shared/${PROJECT_ID}/links/revoke`, { method: 'POST', jwt: OWNER_JWT, body: { token: chat.token } });
+  assert.equal(revoked.status, 200);
+  const after = await call(`/api/shared/${PROJECT_ID}/links`, { jwt: OWNER_JWT });
+  const again = after.json.links.find((l) => l.token === chat.token);
+  assert.equal(again.state, 'revoked', 'the list reports the state the door will actually apply');
+  assert.ok(again.revokedAt, 'and when');
+  assert.equal(after.json.links.find((l) => l.token === a.json.token).state, 'live', 'the other link is untouched');
+});
+
+test('the link list is gated on `share`, so an editor and a stranger see different refusals', async () => {
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  const asEditor = await call(`/api/shared/${PROJECT_ID}/links`, { jwt: MEMBER_JWT });
+  assert.equal(asEditor.status, 403, 'a member is told it is their role in the way');
+  assert.equal(asEditor.text.includes('share:link:'), false, 'and no token leaks in the refusal');
+  assert.equal((await call(`/api/shared/${PROJECT_ID}/links`, { jwt: STRANGER_JWT })).status, 404);
+});
+
+test('A LIST THAT COULD NOT BE READ WHOLE SAYS SO, rather than looking like a shorter list', async () => {
+  reset();
+  const minted = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  // A link we know exists and cannot describe: the index entry is there, the row is gone. An
+  // admin looking for a link that is not on screen must be able to tell "it was revoked" from
+  // "we could not read it".
+  kv.delete(`share:link:${minted.json.token}`);
+  const listed = await call(`/api/shared/${PROJECT_ID}/links`, { jwt: OWNER_JWT });
+  assert.equal(listed.status, 200);
+  assert.deepEqual(listed.json.links, []);
+  assert.equal(listed.json.partial, true, 'an unreadable link must not render as no link');
+});
+
+test('A LINK WITH AN EXPIRY IS STORED WITH A TTL, so a dead link stops occupying the store', async () => {
+  //[[ Links were written with no expirationTtl at all, so every expired link this product ever
+  //   minted is still in KV: read on every redemption attempt, listed on every listing, paid for
+  //   forever. The expiry was enforced and the storage never heard about it. ]]
+  reset();
+  const forever = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer' } });
+  assert.equal(kvOpts.get(`share:link:${forever.json.token}`), null, 'a link with no expiry is kept');
+
+  const week = new Date(Date.now() + 7 * 864e5).toISOString();
+  const dated = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer', expiresAt: week } });
+  const ttl = kvOpts.get(`share:link:${dated.json.token}`)?.expirationTtl;
+  assert.ok(Math.abs(ttl - 7 * 86400) <= 5, `the TTL must be the life of the link, got ${ttl}`);
+  // The INDEX expires with it, or the listing would keep offering a link that is no longer there.
+  assert.ok(kvOpts.get(`share:link:by-project:${PROJECT_ID}:${dated.json.token}`)?.expirationTtl > 0);
+
+  // KV's minimum is 60s, and a link with seconds left is still one somebody may be clicking.
+  const soon = new Date(Date.now() + 1000).toISOString();
+  const brief = await call(`/api/shared/${PROJECT_ID}/links`, { method: 'POST', jwt: OWNER_JWT, body: { scope: 'project', role: 'viewer', expiresAt: soon } });
+  assert.equal(kvOpts.get(`share:link:${brief.json.token}`).expirationTtl, 60);
+});
+
+test('AN EXPIRED LINK IS DEAD AT THE DOOR, over HTTP, and cannot be minted expired in the first place', async () => {
+  reset();
+  const past = await call(`/api/shared/${PROJECT_ID}/links`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { scope: 'project', role: 'viewer', expiresAt: '2020-01-01T00:00:00.000Z' },
+  });
+  assert.equal(past.status, 400, 'a link that is already dead is not a link');
+  assert.equal(past.json.error, 'expired');
+
+  // Minted alive, then time passes — rewritten here, because a test cannot wait a week.
+  const live = await call(`/api/shared/${PROJECT_ID}/links`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { scope: 'project', role: 'viewer', expiresAt: '2099-01-01T00:00:00.000Z' },
+  });
+  const key = `share:link:${live.json.token}`;
+  kv.set(key, JSON.stringify({ ...JSON.parse(kv.get(key)), expires_at: '2021-06-01T00:00:00.000Z' }));
+
+  const redeemed = await call('/api/shared/links/redeem', { method: 'POST', jwt: STRANGER_JWT, body: { token: live.json.token } });
+  assert.equal(redeemed.status, 403);
+  assert.equal(redeemed.json.error, 'expired');
+  // and the stranger is still a stranger
+  assert.equal((await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT })).status, 404);
+
+  // The listing agrees with the door rather than reading the column a second way.
+  const listed = await call(`/api/shared/${PROJECT_ID}/links`, { jwt: OWNER_JWT });
+  assert.equal(listed.json.links.find((l) => l.token === live.json.token).state, 'expired');
 });

@@ -66,8 +66,99 @@ export interface StoredShareLink {
   created_at: string;
 }
 
-export async function putShareLink(env: Env, link: StoredShareLink): Promise<void> {
-  await env.KV.put(shareLinkKey(link.token), JSON.stringify(link));
+/**
+ * EVERY SHARE LINK ON ONE PROJECT, AS AN INDEX AND NOT A SECOND COPY.
+ *
+ * Until this existed the token was unrecoverable the moment the mint response scrolled off the
+ * screen: `shareLinkKey` is keyed by the secret, `shareGrantPrefix` indexes the redeemed GRANTS
+ * rather than the links, and revoking needs the exact token — so a link that had been sent to
+ * somebody could never be listed and therefore never be revoked, by UI or by API.
+ *
+ * The value under this key is EMPTY. The token is already in the key and the link is read back
+ * through `readShareLink`, so there is no second copy of the row to fall out of step with the
+ * first — the same reasoning `shareGrantPrefix` is written under. A token cannot contain `:`
+ * (see TOKEN_RE), so no token can collide with this namespace.
+ */
+export function shareLinkProjectPrefix(projectId: string): string {
+  return `share:link:by-project:${projectId}:`;
+}
+
+export function shareLinkProjectKey(projectId: string, token: string): string {
+  return `${shareLinkProjectPrefix(projectId)}${token}`;
+}
+
+/**
+ * How long KV should keep this link, in seconds, or null for one that never expires.
+ *
+ * A DEAD LINK MUST NOT OCCUPY THE STORE FOREVER. Links were written with no TTL at all, so every
+ * expired link this product ever minted was still sitting there being read, listed and paid for.
+ *
+ * Floored at 60s because that is KV's minimum, and because a link with seconds left is still a
+ * link somebody may be in the middle of clicking — expiry is enforced by `redeemShareLink` on
+ * every redemption, so the TTL is housekeeping and never the thing that decides access.
+ *
+ * AN UNREADABLE EXPIRY GETS NO TTL. `redeemShareLink` already treats one as dead; inventing a
+ * lifetime here would be a second opinion about a value we have agreed we cannot read.
+ */
+export function shareLinkTtl(expiresAt: string | null | undefined, nowMs: number): number | null {
+  if (expiresAt === null || expiresAt === undefined) return null;
+  const at = Date.parse(expiresAt);
+  if (!Number.isFinite(at) || !Number.isFinite(nowMs)) return null;
+  return Math.max(60, Math.ceil((at - nowMs) / 1000));
+}
+
+export async function putShareLink(env: Env, link: StoredShareLink, nowMs: number = Date.now()): Promise<void> {
+  const ttl = shareLinkTtl(link.expires_at, nowMs);
+  const opts = ttl === null ? undefined : { expirationTtl: ttl };
+  //[[ THE INDEX IS WRITTEN FIRST, AND THAT ORDER IS THE SAFE ONE.
+  //
+  //   If the second write fails, the project lists a token it cannot describe — which
+  //   `listShareLinks` reports as an incomplete list, loudly. The other order would leave a LIVE
+  //   link that no listing can see and that therefore nobody can revoke, which is the exact
+  //   failure this index was added to end. ]]
+  await env.KV.put(shareLinkProjectKey(link.project_id, link.token), '', opts);
+  await env.KV.put(shareLinkKey(link.token), JSON.stringify(link), opts);
+}
+
+/**
+ * Every share link on a project, and WHETHER THE LIST IS COMPLETE.
+ *
+ * Same rule as `listKvGrants`: a key that lists but cannot be read is a link we know exists and
+ * cannot describe, and saying the list is short is the only honest answer. An empty array from a
+ * failed read would read as "this project has no links" — the failure to observe rendering as an
+ * observation that this repository keeps finding.
+ */
+export async function listShareLinks(
+  env: Env,
+  projectId: string,
+  limit = 200,
+): Promise<{ links: StoredShareLink[]; complete: boolean }> {
+  const prefix = shareLinkProjectPrefix(projectId);
+  let listed: { keys: { name: string }[]; list_complete?: boolean };
+  try {
+    listed = (await env.KV.list({ prefix, limit })) as { keys: { name: string }[]; list_complete?: boolean };
+  } catch {
+    return { links: [], complete: false };
+  }
+  const keys = Array.isArray(listed?.keys) ? listed.keys : null;
+  if (keys === null) return { links: [], complete: false };
+
+  const links: StoredShareLink[] = [];
+  let complete = listed.list_complete !== false;
+  for (const key of keys) {
+    if (typeof key?.name !== 'string' || !key.name.startsWith(prefix)) continue;
+    const token = key.name.slice(prefix.length);
+    if (token.length === 0) continue;
+    const link = await readShareLink(env, token);
+    // A link whose stored row says it belongs elsewhere is not this project's to list or revoke —
+    // the revoke route already refuses one, and listing it here would offer a button that 404s.
+    if (link === null || link.project_id !== projectId) {
+      complete = false;
+      continue;
+    }
+    links.push(link);
+  }
+  return { links, complete };
 }
 
 /** The stored row, or null. An unreadable value is null, never a partially-trusted object. */
@@ -94,6 +185,17 @@ export async function revokeShareLink(env: Env, token: string, nowIso: string): 
 export interface KvGrant {
   user_id: string;
   role: CollabRole;
+  /**
+   * THE SCOPE THE LINK WAS MINTED WITH, CARRIED ONTO THE GRANT IT MINTS.
+   *
+   * `redeemShareLink` refuses a chat link presented at a build — and then the grant it produced
+   * had no scope on it at all, so the refusal lasted exactly one request: from the moment the
+   * link was accepted the holder was an ordinary project member with the roster, every version
+   * and every artifact. `classifyGrant` reads these two fields off any row shape, so the
+   * confinement is applied by the same function that applies revocation and expiry.
+   */
+  scope?: ShareScope;
+  resource_id?: string | null;
   expires_at: string | null;
   revoked_at: string | null;
   display_name: string | null;

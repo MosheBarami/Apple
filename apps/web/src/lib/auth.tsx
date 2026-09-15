@@ -142,7 +142,15 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
   const location = useLocation();
   if (loading) return <AuthSplash />;
-  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  //[[ THE QUERY STRING TRAVELS WITH THE PATH.
+  //
+  //   `location.pathname` alone was enough while every guarded route was addressed by its path.
+  //   /join is not: the whole content of a share link is `?token=…`, so stashing the path by
+  //   itself sent someone who clicked a link to /login and then to a /join with nothing in it —
+  //   the link silently losing its payload at the one moment the person is least able to tell
+  //   what went wrong. `safeInternalPath` at the sink already admits a query and refuses an
+  //   off-origin target, so this widens what is remembered and not what is trusted. ]]
+  if (!session) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   return <>{children}</>;
 }
 

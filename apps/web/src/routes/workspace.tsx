@@ -183,6 +183,7 @@ export function WorkspacePage() {
     playtest,
     presence,
     sendChat,
+    signalPresence,
     editAndResend,
     stop,
     createCheckpoint,
@@ -907,6 +908,9 @@ export function WorkspacePage() {
           onModeChange={setMode}
           seed={seed}
           selection={studio.selection}
+          // The other faces in this project read "is typing" off this. The frame has been in the
+          // protocol and handled by the worker since presence shipped, and nothing ever sent one.
+          onPresence={signalPresence}
         />
       </div>
 

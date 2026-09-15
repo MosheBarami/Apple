@@ -853,6 +853,63 @@ export const reactivateMember = (projectId: string, userId: string): Promise<Mem
     method: 'POST',
   });
 
+// ---------------------------------------------------------------- share links
+//
+// Minting, listing, revoking and redeeming a link by URL. The worker has had all four for a while
+// and none of them had a caller: there was no share-link function in this file at all, so a link
+// could only be created with curl and — until GET /links existed — could never be revoked at all,
+// because the token was unrecoverable the moment the mint response scrolled away.
+
+/** One link, exactly as GET /api/shared/:id/links reports it. */
+export interface ShareLinkRow {
+  /** The secret itself. It IS the link: revoking takes it, and re-sending needs it. */
+  token: string;
+  scope: 'project' | 'chat' | 'build';
+  resourceId: string | null;
+  role: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  /**
+   * Computed by the worker THROUGH `redeemShareLink` — the function that actually decides — rather
+   * than by reading the columns a second way, so this can never say live about a link the door
+   * will refuse.
+   */
+  state: string;
+}
+
+export interface ShareLinksResponse {
+  links: ShareLinkRow[];
+  /** True when KV could not be read whole: a short list, said out loud rather than shown short. */
+  partial: boolean;
+}
+
+export const fetchShareLinks = (projectId: string): Promise<ShareLinksResponse> =>
+  request<ShareLinksResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`);
+
+export const createShareLink = (
+  projectId: string,
+  body: { scope: 'project' | 'chat' | 'build'; role: string; resourceId?: string | null; expiresAt?: string | null },
+): Promise<{ token: string; scope: string; role: string; resourceId: string | null; expiresAt: string | null }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links`, { method: 'POST', body: JSON.stringify(body) });
+
+/** Stops the NEXT person. Grants already minted from the link are a membership revocation. */
+export const revokeShareLink = (projectId: string, token: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/links/revoke`, { method: 'POST', body: JSON.stringify({ token }) });
+
+/**
+ * Present a link and become a member, or be told exactly why not.
+ *
+ * The project id is NOT sent: the token is looked up by itself, and the answer carries the project
+ * it belongs to. A caller that had to name the project would have to learn it from somewhere, and
+ * the only place to learn it is the link.
+ */
+export const redeemShareLinkToken = (
+  token: string,
+): Promise<{ ok: boolean; projectId: string; role: string; scope: string; resourceId?: string | null }> =>
+  request('/api/shared/links/redeem', { method: 'POST', body: JSON.stringify({ token }) });
+
 /**
  * MANY INVITATIONS, ONE REQUEST — and a per-row answer for every one of them.
  *

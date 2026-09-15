@@ -22,11 +22,12 @@ import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from 
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
-import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type Membership } from './collab';
+import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type ShareResource } from './collab';
 import {
   isShareToken,
   kvGrantBarred,
   listKvGrants,
+  listShareLinks,
   newShareToken,
   patchKvGrant,
   putKvGrant,
@@ -530,16 +531,20 @@ async function withOwnedProject(
   c: { env: Env; get: (k: 'user') => AuthedUser },
   projectId: string,
   action?: CollabAction,
+  /** What this route is reaching for, so a scoped grant opens its own resource and nothing else. */
+  resource?: ShareResource,
 ) {
   const user = c.get('user');
   if (!UUID_RE.test(projectId)) return null;
   const project = await getOwnedProject(c.env, user.jwt, projectId);
-  let membership: Membership | null = project ? { userId: user.userId, role: 'owner', via: 'owner' } : null;
+  let membership: Membership | null = project
+    ? { userId: user.userId, role: 'owner', via: 'owner', scope: 'project', resourceId: null }
+    : null;
   let shared: ProjectRow | null = null;
   if (!project) {
     // No action named ⇒ owner-only, and the owner path just said no.
     if (action === undefined) return null;
-    const access = await getProjectAccess(c.env, user, projectId, action);
+    const access = await getProjectAccess(c.env, user, projectId, action, Date.now(), resource);
     if (access.project === null) return null;
     shared = access.project;
     membership = access.membership;
@@ -1357,7 +1362,7 @@ app.post('/api/projects/:id/files/op', async (c) => {
   // may not change it is told 403 — they already know the project exists, and a 404 would send them
   // looking for a missing file instead of at their own role.
   const access = await sharedAccess(c, c.req.param('id'), 'build');
-  if (!access.ctx) return collabRefusal(c, access.status);
+  if (!access.ctx) return collabRefusal(c, access.status, access.detail);
   const ctx = access.ctx;
   if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
   const store = kvWorkspace(c.env.KV, ctx.project.id);
@@ -3693,16 +3698,51 @@ async function sharedAccess(
   c: Context,
   projectId: string,
   action: CollabAction,
-): Promise<{ ctx: NonNullable<Awaited<ReturnType<typeof withOwnedProject>>>; status: 200 } | { ctx: null; status: 403 | 404 }> {
-  const ctx = await withOwnedProject(c, projectId, action);
+  /**
+   * What this route touches. Omitted means PROJECT-WIDE, which is the safe default: a route that
+   * forgets to name its surface refuses every scoped grant rather than admitting one. See
+   * ShareResource in collab.ts for why `'any'` exists and who is allowed to pass it.
+   */
+  resource?: ShareResource,
+): Promise<
+  | { ctx: NonNullable<Awaited<ReturnType<typeof withOwnedProject>>>; status: 200 }
+  | { ctx: null; status: 403 | 404; detail?: string }
+> {
+  const ctx = await withOwnedProject(c, projectId, action, resource);
   if (ctx) return { ctx, status: 200 };
   if (!UUID_RE.test(projectId)) return { ctx: null, status: 404 };
-  const probe = await getProjectAccess(c.env, c.get('user'), projectId, 'read');
-  return { ctx: null, status: probe.project === null ? 404 : 403 };
+  const probe = await getProjectAccess(c.env, c.get('user'), projectId, 'read', Date.now(), resource);
+  if (probe.project !== null) return { ctx: null, status: 403 };
+  // A LIVE GRANT THAT DOES NOT REACH THIS ROUTE IS NOT "NO SUCH PROJECT". Someone holding a
+  // chat link can already prove the project exists; 404 would hide the only fact they can act
+  // on — that their link opens the conversation and not the project around it.
+  return probe.decision.reason === 'scoped_grant'
+    ? { ctx: null, status: 403, detail: 'scoped_grant' }
+    : { ctx: null, status: 404 };
 }
 
-const collabRefusal = (c: Context, status: 403 | 404) =>
-  c.json({ error: status === 403 ? 'forbidden' : 'not found' }, status);
+const collabRefusal = (c: Context, status: 403 | 404, detail?: string) =>
+  c.json({ error: status === 403 ? 'forbidden' : 'not found', ...(detail === undefined ? {} : { detail }) }, status);
+
+/**
+ * WHICH SURFACE A COLLAB ROUTE TOUCHES, read from the target it names.
+ *
+ * A comment on a MESSAGE is on the chat surface; a comment on a BUILD or a VERSION is on that
+ * build. Anything else — a comment on the project, a target this function does not recognise, a
+ * build named with no id — is project-wide, which is the refusing answer for a scoped grant. The
+ * default direction matters more than the mapping: an unrecognised target must narrow the caller's
+ * access, never widen it.
+ */
+function targetResource(body: Record<string, unknown>): ShareResource | undefined {
+  const kind = typeof body.targetKind === 'string' ? body.targetKind : null;
+  const id = typeof body.targetId === 'string' && body.targetId.length > 0 ? body.targetId : null;
+  if (kind === 'message') return { kind: 'chat', id: null };
+  if ((kind === 'build' || kind === 'version') && id !== null) return { kind: 'build', id };
+  return undefined;
+}
+
+/** The project's one conversation. `id: null` because there cannot be a different one. */
+const CHAT_SURFACE: ShareResource = { kind: 'chat', id: null };
 
 /** The member directory the store needs, built from the project's LIVE grants only. */
 async function collabDirectory(c: Context, ctx: { user: AuthedUser; project: ProjectRow }) {
@@ -3785,6 +3825,41 @@ async function recordMembershipEvents(
   return { ok: ok && rows.length === inputs.length, written: ok ? rows.length : 0, requested: inputs.length };
 }
 
+/**
+ * PUSH A MEMBERSHIP CHANGE INTO THE SOCKETS THAT ARE ALREADY OPEN.
+ *
+ * The HTTP half of this was already right and is tested: every shared route re-resolves membership
+ * through `sharedAccess` on every request, so a removed member is a stranger on their next call.
+ * A WEBSOCKET MAKES NO FURTHER CALLS. The role is decided once at the handshake, frozen onto the
+ * socket, and every later frame is gated against that frozen value — so a member who was removed,
+ * suspended or demoted kept every capability they had for as long as the tab stayed open, and a
+ * workspace tab stays open for days.
+ *
+ * Best effort by design: the membership change has ALREADY LANDED by the time this runs, and a
+ * Durable Object that cannot be reached must not undo it. What this must not do is let the route
+ * claim it happened — the counts come back on the response, so `{ matched: 0 }` is a fact the
+ * caller can read and `null` says the push could not be made at all.
+ */
+async function pushAccessChange(
+  stub: DurableObjectStub,
+  userId: string,
+  role: CollabRole | null,
+): Promise<{ matched: number; closed: number; demoted: number } | null> {
+  try {
+    const res = await stub.fetch('https://do/collab/access-changed', {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    });
+    if (!res.ok) return null;
+    const out = (await res.json()) as { matched?: unknown; closed?: unknown; demoted?: unknown };
+    return typeof out?.matched === 'number'
+      ? { matched: out.matched, closed: Number(out.closed) || 0, demoted: Number(out.demoted) || 0 }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** One door to the Durable Object's collaboration store, so identity crosses exactly once. */
 async function collabCall(
   stub: DurableObjectStub,
@@ -3801,15 +3876,24 @@ async function collabCall(
 }
 
 app.get('/api/shared/:id', async (c) => {
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  // THE ONE ROUTE THAT TAKES `'any'`, and it earns it by narrowing its own answer. Someone who
+  // redeemed a chat link needs to be told what they hold — a role and a scope — and must not be
+  // handed the member directory along with it.
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read', 'any');
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
-  const members = await collabDirectory(c, ctx);
+  const projectWide = ctx.membership.scope === 'project';
+  const members = projectWide ? await collabDirectory(c, ctx) : [];
   return c.json({
     project: { id: ctx.project.id, name: ctx.project.name, ownerId: ctx.project.owner_id },
     role: ctx.role,
+    scope: ctx.membership.scope,
+    resourceId: ctx.membership.resourceId,
     capabilities: capabilitiesFor(ctx.role),
     members: members.map((m) => ({ userId: m.userId, handle: m.handle, role: m.role, displayName: m.displayName })),
+    // NOT AN EMPTY LIST PRESENTED AS A LIST. `members: []` alone reads as "nobody else is here",
+    // which is a failure to observe rendering as an observation. The flag says which it is.
+    directoryWithheld: !projectWide,
   });
 });
 
@@ -3818,8 +3902,8 @@ app.get('/api/shared/:id/ws', async (c) => {
   // `read` opens the socket; every WRITE the socket attempts is gated again inside the Durable
   // Object against the role sent below. Opening at `chat` instead would mean a viewer could not
   // watch a build at all, which is most of what being a viewer is for.
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read', CHAT_SURFACE);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   void count(c.env, 'ws_connect');
   const headers = new Headers(c.req.raw.headers);
@@ -3833,8 +3917,9 @@ app.get('/api/shared/:id/ws', async (c) => {
 });
 
 app.get('/api/shared/:id/messages', async (c) => {
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  // The transcript IS the chat surface: this is the one route a chat-scoped link exists to open.
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read', CHAT_SURFACE);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const url = new URL(c.req.url);
   return gate.ctx.stub.fetch(`https://do/messages?${url.searchParams}`);
 });
@@ -3849,14 +3934,14 @@ app.get('/api/shared/:id/checkpoints', async (c) => {
   // -> session mirror was missing, and it is deliberately NOT in COLLAB_ROUTES because that loop
   // rewrites `/collab/*` onto a collab endpoint, which is the wrong DO for this.
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const url = new URL(c.req.url);
   return gate.ctx.stub.fetch(`https://do/checkpoints?${url.searchParams}`);
 });
 
 app.get('/api/shared/:id/members', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
 
   // A FILTER THIS ROUTE CANNOT READ IS A 400, NEVER AN IGNORED FILTER. `?status=revokd` answered
@@ -3902,7 +3987,7 @@ app.get('/api/shared/:id/members', async (c) => {
  */
 app.get('/api/shared/:id/members/events', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const url = new URL(c.req.url);
   const subject = url.searchParams.get('userId');
@@ -3999,7 +4084,7 @@ app.get('/api/shared/:id/members/events', async (c) => {
  */
 app.get('/api/shared/:id/members/:userId/impact', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4031,7 +4116,7 @@ app.get('/api/shared/:id/members/:userId/impact', async (c) => {
 
 app.post('/api/shared/:id/members', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const body = (await c.req.json().catch(() => null)) as { userId?: unknown; role?: unknown; expiresAt?: unknown } | null;
   const role = asCollabRole(body?.role);
@@ -4084,6 +4169,8 @@ app.post('/api/shared/:id/members', async (c) => {
   if (!ok) return c.json({ error: 'invite_failed', status }, 502);
 
   const kind = inviteEventKind(before, { role });
+  // A DEMOTION MUST REACH THE TAB, not wait for a reload. See `pushAccessChange`.
+  const live = await pushAccessChange(ctx.stub, userId, role);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind, subjectId: userId, fromRole: before?.role ?? null, toRole: role },
   ]);
@@ -4097,7 +4184,7 @@ app.post('/api/shared/:id/members', async (c) => {
     `Someone was given access to ${ctx.project.name}`,
     `A member was ${before ? 'changed to' : 'added as'} ${role}.`,
   );
-  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok }, 201);
+  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok, liveSockets: live }, 201);
 });
 
 /**
@@ -4114,7 +4201,7 @@ app.post('/api/shared/:id/members', async (c) => {
  */
 app.post('/api/shared/:id/members/bulk', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const body = await c.req.json().catch(() => null);
   const plan = planBulkInvite(body, { ownerId: ctx.project.owner_id, actorId: ctx.user.userId });
@@ -4125,6 +4212,8 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
 
   const before = new Map<string, MemberRow | null>();
   for (const row of plan.accepted) before.set(row.userId, await membershipRow(c, ctx, row.userId));
+  // Every accepted row is a role change for somebody, and a bulk demotion must reach their tabs by
+  // the same route a single one does — see `pushAccessChange`. Applied after the insert below.
 
   const { ok, status } = await supaRest(c.env, ctx.user.jwt, '/project_members', {
     method: 'POST',
@@ -4143,6 +4232,17 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
       })),
     ),
   });
+
+  // The demotions in this batch reach the open tabs, one push each, for the reason a single
+  // invite does. Only when the insert landed: pushing a role nobody was actually given would be
+  // the claim outliving the fact in the other direction.
+  let liveSockets = 0;
+  if (ok) {
+    for (const row of plan.accepted) {
+      const live = await pushAccessChange(ctx.stub, row.userId, row.role);
+      liveSockets += live?.matched ?? 0;
+    }
+  }
 
   const invited = plan.accepted.map((row) => ({
     userId: row.userId,
@@ -4171,6 +4271,7 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
       invited,
       rejected: plan.rejected,
       audited: audit.ok,
+      liveSockets,
       counts: { invited: ok ? invited.length : 0, rejected: plan.rejected.length },
     },
     ok ? 201 : 502,
@@ -4179,7 +4280,7 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
 
 app.delete('/api/shared/:id/members/:userId', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4214,6 +4315,9 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   //   route below — not a second click on a URL the person still has in their inbox. ]]
   const linkGrantRevoked = await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
 
+  // The open tab is closed here, not left holding the capabilities it had at handshake.
+  const live = await pushAccessChange(ctx.stub, userId, null);
+
   //[[ AND THE STANDING ACTORS THEY LEFT BEHIND.
   //
   //   A removed member's automations already cannot FIRE — `authorizeFire` re-asks about the
@@ -4234,7 +4338,7 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
     `Someone lost access to ${ctx.project.name}`,
     `A ${before?.role ?? 'member'} was removed from the project.`,
   );
-  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, automationsStopped, audited: audit.ok });
+  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, automationsStopped, audited: audit.ok, liveSockets: live });
 });
 
 /**
@@ -4251,7 +4355,7 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
  */
 app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4292,10 +4396,13 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
           suspended_by: ctx.user.userId,
         });
 
+  // A SUSPENDED GRANT IS DEAD WHILE IT LASTS, which is why this closes rather than demotes: there
+  // is no role a suspension leaves behind, and `classifyGrant` already refuses the row at the door.
+  const live = await pushAccessChange(ctx.stub, userId, null);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind: 'suspended', subjectId: userId, fromRole: before?.role ?? null, reason: reason.length === 0 ? null : reason },
   ]);
-  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok });
+  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok, liveSockets: live });
 });
 
 /**
@@ -4311,7 +4418,7 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
  */
 app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4346,9 +4453,53 @@ app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok });
 });
 
+/**
+ * THE LINKS THIS PROJECT HAS HANDED OUT.
+ *
+ * Revocation has worked from the day it was written and is driven over HTTP — and the token it
+ * takes was unrecoverable the instant the mint response scrolled away. `shareLinkKey` is keyed by
+ * the secret and `shareGrantPrefix` indexes the redeemed GRANTS, not the links, so there was no
+ * way to ask "what links exist on this project": a link already sent to somebody could never be
+ * listed and therefore never revoked, by UI or by curl.
+ *
+ * THE TOKEN COMES BACK, and that is a decision. The token IS the link — an admin who cannot see it
+ * cannot re-send it and, before this route, could not revoke it either. It is gated on `share`,
+ * which is admin and owner only.
+ *
+ * `state` is computed by `redeemShareLink` — the function that actually decides — rather than by
+ * a second reading of the same columns here, so this list can never call a link live that the
+ * door will refuse.
+ *
+ * `partial` mirrors the roster's flag: KV is a separate store that can be unreachable, and a short
+ * list presented as a whole one is how an admin concludes a link was already revoked.
+ */
+app.get('/api/shared/:id/links', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
+  const { links, complete } = await listShareLinks(c.env, gate.ctx.project.id);
+  const now = Date.now();
+  return c.json({
+    links: links.map((l) => {
+      const probe = redeemShareLink(l, { projectId: l.project_id, scope: l.scope, resourceId: l.resource_id }, now);
+      return {
+        token: l.token,
+        scope: l.scope,
+        resourceId: l.resource_id,
+        role: l.role,
+        expiresAt: l.expires_at,
+        revokedAt: l.revoked_at,
+        createdBy: l.created_by,
+        createdAt: l.created_at,
+        state: probe.ok ? 'live' : probe.reason,
+      };
+    }),
+    partial: !complete,
+  });
+});
+
 app.post('/api/shared/:id/links', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const body = (await c.req.json().catch(() => null)) as { scope?: unknown; resourceId?: unknown; role?: unknown; expiresAt?: unknown } | null;
   const scope = asShareScope(body?.scope);
@@ -4376,7 +4527,7 @@ app.post('/api/shared/:id/links', async (c) => {
   const check = redeemShareLink(link, { projectId: ctx.project.id, scope, resourceId }, Date.now());
   if (!check.ok) return c.json({ error: check.reason }, 400);
   await putShareLink(c.env, link);
-  return c.json({ token, scope, role, resourceId, projectId: ctx.project.id }, 201);
+  return c.json({ token, scope, role, resourceId, expiresAt: link.expires_at, projectId: ctx.project.id }, 201);
 });
 
 app.post('/api/shared/links/redeem', async (c) => {
@@ -4403,6 +4554,12 @@ app.post('/api/shared/links/redeem', async (c) => {
   await putKvGrant(c.env, link.project_id, {
     user_id: user.userId,
     role: out.grant.role,
+    // THE SCOPE SURVIVES REDEMPTION. `out.grant` is what `redeemShareLink` decided this link
+    // opens, and writing it here is what stops a chat link from becoming an ordinary project
+    // membership the instant it is accepted. Taken from the redemption, never from the request
+    // body, for the same reason the role is.
+    scope: out.grant.scope,
+    resource_id: out.grant.resourceId,
     expires_at: link.expires_at,
     revoked_at: null,
     display_name: null,
@@ -4418,7 +4575,7 @@ app.post('/api/shared/links/redeem', async (c) => {
 
 app.post('/api/shared/:id/links/revoke', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const body = (await c.req.json().catch(() => null)) as { token?: unknown } | null;
   if (!isShareToken(body?.token)) return c.json({ error: 'bad_token' }, 400);
   const link = await readShareLink(c.env, body.token);
@@ -4431,9 +4588,16 @@ app.post('/api/shared/:id/links/revoke', async (c) => {
 
 // ----------------------------------------------------------- comments, reviews, versions, presence
 /** Each entry names the ACTION its route performs. A path missing from here has no route at all. */
-const COLLAB_ROUTES: { method: 'GET' | 'POST'; path: string; action: CollabAction; needsDirectory?: boolean }[] = [
-  { method: 'GET', path: '/collab/comments', action: 'read' },
-  { method: 'POST', path: '/collab/comments', action: 'comment', needsDirectory: true },
+const COLLAB_ROUTES: {
+  method: 'GET' | 'POST';
+  path: string;
+  action: CollabAction;
+  needsDirectory?: boolean;
+  /** The surface this route touches, from its body. Absent ⇒ project-wide ⇒ no scoped grant. */
+  resource?: (body: Record<string, unknown>) => ShareResource | undefined;
+}[] = [
+  { method: 'GET', path: '/collab/comments', action: 'read', resource: targetResource },
+  { method: 'POST', path: '/collab/comments', action: 'comment', needsDirectory: true, resource: targetResource },
   { method: 'POST', path: '/collab/comments/resolve', action: 'comment' },
   { method: 'POST', path: '/collab/reactions', action: 'react' },
   { method: 'GET', path: '/collab/reviews', action: 'read' },
@@ -4459,13 +4623,17 @@ const COLLAB_ROUTES: { method: 'GET' | 'POST'; path: string; action: CollabActio
  * The factory keeps the table as the single source of behaviour; only the PATH is written out.
  */
 const collabHandler = (route: (typeof COLLAB_ROUTES)[number]) => async (c: Context) => {
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', route.action);
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
-  const ctx = gate.ctx;
+  // THE BODY IS READ BEFORE THE GATE, because the gate needs it: a comment on a message and a
+  // comment on the project are the same route reaching two different surfaces, and a chat-scoped
+  // guest may have the first and not the second. Reading it changes nothing — no write happens
+  // until the gate says yes.
   const body =
     route.method === 'GET'
       ? (Object.fromEntries(new URL(c.req.url).searchParams.entries()) as Record<string, unknown>)
       : ((await c.req.json().catch(() => ({}))) as Record<string, unknown>);
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', route.action, route.resource?.(body));
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
+  const ctx = gate.ctx;
   const directory = route.needsDirectory ? await collabDirectory(c, ctx) : undefined;
   const res = await collabCall(ctx.stub, route.method, route.path, body, ctx, directory);
   //[[ THE MENTION AND THE REVIEW REQUEST WERE ALREADY RECORDS. NOW SOMEBODY IS TOLD.
@@ -4540,7 +4708,7 @@ app.post('/api/shared/:id/versions/restore', collabRoute('/collab/versions/resto
  */
 app.get('/api/shared/:id/permissions', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   // Only the caller's own rows are consulted. The effective role is already decided — this is the
   // provenance for it, not a second decision.
@@ -4550,7 +4718,7 @@ app.get('/api/shared/:id/permissions', async (c) => {
 
 app.get('/api/shared/:id/presence', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   return gate.ctx.stub.fetch('https://do/collab/presence');
 });
 
