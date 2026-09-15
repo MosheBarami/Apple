@@ -18,9 +18,26 @@ import type { Env } from './env';
 import type { AssetProvenance, AssetStatus } from './asset-library';
 import { ensureAssetTables, upsertAssets } from './asset-library';
 
-/** Bounded so one request cannot exceed the Workers subrequest budget: each row costs 2 FTS
- *  writes plus a share of one chunked insert, so 50 rows is ~115 D1 queries. */
-export const INGEST_MAX_BATCH = 50;
+/**
+ * Bounded so one request stays inside the Workers subrequest budget.
+ *
+ * It was 50, chosen when every statement was its own awaited round trip: 50 rows cost ~115 of
+ * them. `upsertAssets` now sends the whole chunk through `env.CORPUS.batch()`, which is ONE
+ * subrequest however many statements it carries, so the old number was budgeting for a cost that
+ * no longer exists — and at 50 a 450,000-row harvest is five and a half hours of HTTP overhead.
+ *
+ * MEASURED against the live remote D1, same rows, same worker:
+ *     50 rows -> 22 rows/sec   (the old constant: ~5.5 hours for the 447,000-row harvest)
+ *    200 rows -> 41 rows/sec
+ *    500 rows -> 53 rows/sec   (~2.3 hours)
+ *
+ * The curve flattens because the bottleneck stops being HTTP round trips and becomes D1's own
+ * single-threaded write throughput, which is a reason to stop raising it rather than a reason to
+ * keep going. 500 rows is 125 chunked inserts plus 1,000 FTS statements in one batch; the ceiling
+ * that matters is now D1's statement limit per batch, and a caller who sends more gets `truncated`
+ * back rather than a silently short ingest.
+ */
+export const INGEST_MAX_BATCH = 500;
 
 export interface IngestRequest {
   assets: unknown[];

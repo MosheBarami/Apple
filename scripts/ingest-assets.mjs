@@ -16,7 +16,7 @@ const arg = (n, d) => { const i = process.argv.indexOf(n); return i > 0 ? proces
 const BASE = arg('--base', process.env.APPLE_BASE ?? 'https://golem.moshe-barami111.workers.dev');
 const LIMIT = Number(arg('--limit', '0')) || Infinity;
 const DRY = process.argv.includes('--dry');
-const BATCH = 50; // must not exceed INGEST_MAX_BATCH in apps/worker/src/asset-ingest.ts
+const BATCH = 500; // must not exceed INGEST_MAX_BATCH in apps/worker/src/asset-ingest.ts
 const KEY = process.env.ADMIN_KEY;
 
 if (!KEY && !DRY) {
