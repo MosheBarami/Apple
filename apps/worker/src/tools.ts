@@ -60,6 +60,8 @@ import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, typ
 import { AUDIO_TOOLS } from './audio-tools';
 import { admitProgram, isRefusal, capPrints, type SandboxJob } from './sandbox';
 import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
+import { MECHANIC_PATTERNS, MECHANIC_MENU, rankMechanics, answerFor } from './mechanics';
+import { MECHANIC_CITATIONS } from './mechanic-citations';
 import { runWebTool, webToolDef, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
@@ -2186,6 +2188,58 @@ export const TOOLS: Record<string, ToolImpl> = {
             ? ` It has to be wired to ${prefab.needs.map((n) => PREFABS[n]?.moduleName ?? n).join(' and ')} — see its configure line in the API above, and install ${prefab.needs.length > 1 ? 'those' : 'that'} first if not already present.`
             : ''),
       };
+    },
+  },
+  /**
+   * READ HOW IT HAS ALREADY BEEN BUILT, THEN BUILD IT.
+   *
+   * The owner's rule is "never build from scratch — find what communities have already assembled".
+   * The harvest that answers it is 3,017 GitHub repositories, and its own first page holds a Rust
+   * CSV tool, a Lua formatter and a Bee Swarm Simulator macro. A search result is not a library, so
+   * nothing here searches it: `mechanic-citations.ts` is the 131 rows that survived a curator which
+   * read each repository's file TREE, and the exclusions are named rules rather than a low rank.
+   *
+   * WHAT COMES BACK IS THE PATTERN, NOT THE CODE. The mechanic, where its authority has to live,
+   * the calls that are current, the specific ways it breaks — then the repositories that
+   * demonstrably implement it, each with its author and its licence. Apple vendors nothing: six of
+   * the surviving repositories are GPL and one is AGPL, and a customer's game must never carry
+   * someone else's licence. The citation is there to be read, and the licence travels with it so
+   * the agent cannot forget which one it is reading.
+   */
+  find_mechanic: {
+    def: {
+      name: 'find_mechanic',
+      description:
+        'Before writing a game system from scratch, ask here. Give the mechanic in the builder\'s own words — "a shop that sells pets for coins", "save progress between sessions", "a round-based lobby" — and get back what the pattern IS: where authority has to live, the Roblox calls that are current, the specific ways it breaks, and real repositories that implement it with their author and licence. READ those to understand the approach and then write the mechanic for THIS game; never copy their code. Known mechanics: '
+        + MECHANIC_MENU,
+      parameters: S(
+        {
+          mechanic: {
+            type: 'string',
+            description: 'What the user asked for, in their words. Several mechanics in one sentence is fine — each is answered.',
+          },
+          limit: { type: 'number', description: 'Implementations to cite per mechanic, default 4.' },
+        },
+        ['mechanic'],
+      ),
+    },
+    studio: false,
+    run: async (_ctx, a) => {
+      const query = String(a.mechanic ?? '').trim();
+      if (!query) return { error: `say which mechanic. One of: ${MECHANIC_MENU}` };
+      const limit = Math.max(1, Math.min(8, Number(a.limit ?? 4) || 4));
+      const ranked = rankMechanics(query);
+      // NO MATCH IS AN ANSWER WITH A MENU ATTACHED. An empty list reads as "there is nothing
+      // written about this", which is a claim about Roblox rather than about a lookup table, and
+      // the agent's next move after it is to invent one unaided.
+      if (!ranked.length) {
+        return {
+          noMatch: `"${query}" does not name a mechanic this library has a pattern for. That is a gap in the library, not a statement about the game — write it from the Roblox documentation, and prefer a mechanic below if one is close.`,
+          known: MECHANIC_PATTERNS.map((p) => ({ id: p.id, is: p.label })),
+          searchedRepositories: MECHANIC_CITATIONS.length,
+        };
+      }
+      return { mechanics: ranked.slice(0, 3).map((r) => answerFor(r.pattern, limit)) };
     },
   },
   /**
