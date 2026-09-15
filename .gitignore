@@ -18,6 +18,10 @@ secrets/
 # what makes the exception reachable.
 packages/corpus/data/*
 packages/corpus/raw/*
+# ...except the two HARVEST artefacts. These are not re-fetchable cache: a provenance row
+# records what a source page said on a date, and the upstream API will not say it again.
+!packages/corpus/data/asset-seeds.json
+!packages/corpus/data/template-seeds.json
 # ...except the CHECKOUT LOCK. The comment above has always said the corpus is
 # "re-fetchable from raw/manifest.json" — but `packages/corpus/raw/` (with the
 # trailing slash this file's own note warns against, four lines up) ignored the
