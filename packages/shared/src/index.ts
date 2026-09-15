@@ -1073,3 +1073,39 @@ export function buildsPerMonth(plan: PlanId): number {
 export function buildsPerDay(plan: PlanId): number {
   return Math.floor(PLAN_LIMITS[plan].sparksPerDay / SPARKS_PER_BUILD);
 }
+
+/* ---------------------------------------------------------------- run failures --- */
+
+/**
+ * Why a run ended badly, as a closed set the worker and the app both read.
+ *
+ * WHAT THIS REPLACES. `finishRun`'s `error` argument is broadcast to the browser on the `msg_end`
+ * frame, and the workspace rendered it as the outcome sentence. The values being passed were
+ * 'run interrupted', 'rate_limited', and — on two paths — whatever the inference provider had
+ * thrown, unredacted. A person whose build died read a note one server wrote to another, which is
+ * exactly the failure apps/web/src/lib/error-taxonomy.ts exists to prevent, one process upstream
+ * of where it can act.
+ *
+ * SO THE WIRE CARRIES A CODE AND THE APP OWNS THE SENTENCE. The provider's words stay on the
+ * server, logged, where support can read them; they never reach a screen. An app that meets a code
+ * it does not know falls back to the generic sentence rather than printing the code — a worker
+ * deployed ahead of the app must degrade, not leak.
+ *
+ * The values below are descriptions for whoever reads this file. Nothing renders them.
+ */
+export const RUN_FAILURES = {
+  /** The model was rate-limited upstream. Everything finished before that step is saved. */
+  busy: 'upstream rate limit',
+  /** No step completed inside the stale window — usually an instance evicted mid-run. */
+  interrupted: 'run went stale between steps',
+  /** Inference failed after the run had already done real work. */
+  dropped_step: 'inference failed past step 1',
+  /** Anything else thrown out of a step. The provider's message is logged, never sent. */
+  model_failed: 'unclassified step failure',
+} as const;
+
+export type RunFailure = keyof typeof RUN_FAILURES;
+
+export function isRunFailure(v: unknown): v is RunFailure {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(RUN_FAILURES, v);
+}

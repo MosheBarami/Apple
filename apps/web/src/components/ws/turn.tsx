@@ -20,21 +20,8 @@ import type { AgentStatus, ChatItem } from '../../lib/use-project-socket';
 import { useNow } from './activity';
 import { eventsFromTurn, reduceActivity, type PhaseMark } from './activity-model';
 import { buildEvidence } from './evidence-model';
+import { outcomeLine } from './outcome-model';
 import { Thinking } from './thinking';
-
-/** Copy for a run that ended without doing the work, or failed. */
-const OUTCOME: Record<string, { tone: 'note' | 'bad'; text: string }> = {
-  incomplete: {
-    tone: 'note',
-    text: 'That run finished without changing anything. Try telling me more specifically what to build.',
-  },
-  stopped: { tone: 'note', text: 'Stopped.' },
-  quota: {
-    tone: 'note',
-    text: 'That used the last of today’s Sparks. They reset tomorrow.',
-  },
-  error: { tone: 'bad', text: 'Something went wrong partway through.' },
-};
 
 function Stamp({ at, align }: { at: number; align: 'start' | 'end' }) {
   const label = clockTime(at);
@@ -170,7 +157,10 @@ export function Turn({
     );
   }
 
-  const outcome = item.stopReason && item.stopReason !== 'done' ? OUTCOME[item.stopReason] : undefined;
+  // The worker's `error` field is a CODE, not a sentence — outcome-model.ts turns it into one and
+  // drops anything it does not recognise. It used to be rendered verbatim, which put
+  // 'rate_limited' and raw provider messages in front of users.
+  const outcome = outcomeLine(item.stopReason, item.error);
 
   return (
     <div className="gx-turn gx-turn--agent gx-msg-in">
@@ -204,7 +194,7 @@ export function Turn({
 
         {outcome && (
           <div className={`gx-outcome${outcome.tone === 'bad' ? ' is-bad' : ''}`}>
-            <p className="gx-outcome__text">{item.error ? item.error : outcome.text}</p>
+            <p className="gx-outcome__text">{outcome.text}</p>
             {/* No retry on a quota stop: the run did not fail, the account ran out, and a button
                 that re-runs into the same wall teaches the user the product is broken rather than
                 that they are out of Sparks. The outcome text already says when they come back. */}

@@ -40,11 +40,15 @@ test('a failed run offers to run again', () => {
 });
 
 test('retry is offered only when the run did not succeed', () => {
-  // `outcome` is undefined for a clean run, and the button lives inside that block — a "Try again"
+  // `outcome` is absent for a clean run, and the button lives inside that block — a "Try again"
   // under a successful run invites the user to spend a Spark undoing work that went fine.
   const block = TURN.slice(TURN.indexOf('{outcome && ('), TURN.indexOf('<Stamp at={item.createdAt} align="start"'));
   assert.match(block, /Try again/);
-  assert.match(TURN, /const outcome = item\.stopReason && item\.stopReason !== 'done'/);
+  // The "was this a clean run" decision moved into ws/outcome-model.ts, where it is asserted by
+  // EXECUTING it (run-outcome.test.mjs: `outcomeLine('done', undefined)` is null) rather than by
+  // matching an expression. What is checked here is that turn.tsx still asks that question
+  // through the model instead of deciding for itself.
+  assert.match(TURN, /const outcome = outcomeLine\(item\.stopReason, item\.error\)/);
 });
 
 test('a quota stop offers no retry', () => {
