@@ -340,8 +340,16 @@ export interface AbuseNotice {
  * The message deliberately does not name the credential or echo any part of it. It is already in
  * the transcript once; repeating it into a toast puts it somewhere else too.
  */
-export function advisory(verdict: AbuseVerdict): AbuseNotice | null {
-  const secret = verdict.signals.find((s) => s.code === 'secret_in_prompt');
+export function advisory(verdict: { signals?: readonly AbuseSignal[] }): AbuseNotice | null {
+  // Tolerant of a verdict that has no `signals` at all. The caller is a Durable Object and may
+  // hold an object persisted under an older shape; that must read as "nothing observed" and return
+  // null, not throw partway through ingress.
+  //
+  // Gated on the SIGNAL, deliberately, and not on the `disclosures` array beside it. Both are
+  // written by the same branch of `scoreSubmission`, but `disclosures` is the optional one — and a
+  // real detection that goes silent because an optional field did not survive a round trip is the
+  // discarded-observation bug this function was written to end, reintroduced one level down.
+  const secret = verdict?.signals?.find((s) => s.code === 'secret_in_prompt');
   if (!secret) return null;
   return {
     code: 'secret_in_prompt',

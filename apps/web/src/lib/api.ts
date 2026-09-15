@@ -2,6 +2,8 @@
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
 import type { CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
+import type { ApiKeyMode, ApiScope } from '@golem/shared';
+import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
@@ -331,6 +333,15 @@ export const searchProject = (projectId: string, params: URLSearchParams): Promi
 export interface Memory {
   summary: string | null;
   facts: string[];
+  /**
+   * What Apple has ASKED to remember but has not been allowed to yet.
+   *
+   * Only ever populated under the `review` memory setting, which is what puts anything in the
+   * queue. Optional because this is also the shape sent BACK on a save, and the editor deliberately
+   * does not answer the review queue — the worker ignores a `suggested` it is handed, so a client
+   * that could write one would be able to approve a proposal without a decision being recorded.
+   */
+  suggested?: { summary: string | null; facts: string[] };
 }
 
 export interface MemoryResponse {
@@ -368,6 +379,21 @@ export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryRes
         method: 'PUT',
         body: JSON.stringify({ memory }),
       });
+
+/**
+ * Answer one thing Apple asked to remember.
+ *
+ * `body` names what it is about — the fact's own text, or `target: 'summary'` for the proposed
+ * summary, which is the one proposal with no text to match on. A 404 here is an ANSWER: the worker
+ * returns it on purpose when the proposal is no longer pending, so a panel left open in a second
+ * tab cannot report a decision the user never made. Callers route it through
+ * `isAlreadyAnswered` in lib/memory-approvals.ts and refetch instead of showing an error.
+ */
+export const decideSuggestion = (projectId: string, body: { decision: 'accept' | 'discard'; fact?: string; target?: 'summary' }) =>
+  request<MemoryResponse>(`/api/projects/${encodeURIComponent(projectId)}/memory/suggestions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 
 // -------------------------------------------------------- scoped memory & preferences
 
@@ -1633,6 +1659,13 @@ export interface StoredRobloxKey {
   hint: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /**
+   * When Roblox will stop accepting the key, as the customer copied it off the Open Cloud page.
+   *
+   * Optional, and null when they did not say — which is a different fact from "it does not
+   * expire". Roblox shows the date once, at creation, and has no way to be asked afterwards.
+   */
+  expiresAt?: string | null;
 }
 
 /**
@@ -1650,6 +1683,8 @@ export const putRobloxKey = (body: {
   robloxCreatorId: string;
   creatorType: 'user' | 'group';
   scopes: RobloxScope[];
+  /** `YYYY-MM-DD` from the date field, or omitted. The worker refuses a date already past. */
+  expiresAt?: string | null;
 }): Promise<{ credential: StoredRobloxKey }> =>
   request('/api/me/roblox-key', { method: 'PUT', body: JSON.stringify(body) });
 
@@ -1677,6 +1712,63 @@ export interface RobloxWrite {
  */
 export const fetchRobloxWrites = (limit = 25): Promise<{ writes: RobloxWrite[] }> =>
   request(`/api/me/roblox/writes?limit=${encodeURIComponent(String(limit))}`);
+
+/**
+ * What Roblox says about the stored key RIGHT NOW. Four answers, and `unknown` is not a soft `ok`.
+ *
+ * Never on a timer and never prefetched: it spends a real call on somebody's Open Cloud key, so it
+ * happens when a person asks. It is also why the panel's button is "Test connection" rather than a
+ * status dot that would have to be kept fresh — a dot implies continuous knowledge nobody has.
+ */
+export type RobloxKeyHealth =
+  | { status: 'none' }
+  | { status: 'ok'; accountName: string | null; checkedAt?: string }
+  | { status: 'rejected'; reason: string; checkedAt?: string }
+  | { status: 'unknown'; reason: string; checkedAt?: string };
+
+export const checkRobloxKey = (): Promise<RobloxKeyHealth> => request('/api/me/roblox-key/check');
+
+// ------------------------------------------------------- Apple's own public-API keys
+//
+// Four routes that have existed since the public API shipped and that nothing in this app called.
+// The lifecycle is entirely the server's: it mints, it hashes, it authorizes, it retires. What was
+// missing was a way for the person who owns them to SEE them — so a leaked key could only be
+// revoked with curl, and the expiry on every row reached nobody.
+//
+// THERE IS DELIBERATELY NO `fetchApiKey`. The plaintext key exists in exactly two responses, the
+// mint and the rotate, and the server keeps only a hash. A helper that appeared to read one back
+// would be a helper somebody writes a screen around.
+
+export const fetchApiKeys = (): Promise<{ keys: ApiKeyView[] }> => request('/api/keys');
+
+/** The mint. `key` is the plaintext, and this is the only response that will ever contain it. */
+export const createApiKey = (body: {
+  name: string;
+  mode: ApiKeyMode;
+  scopes: ApiScope[];
+  projectIds: string[];
+  expiresInDays?: number | null;
+}): Promise<ApiKeyView & { key: string }> =>
+  request('/api/keys', { method: 'POST', body: JSON.stringify(body) });
+
+/**
+ * Replace a key, inheriting its scopes and projects exactly, and retire the old one after a grace.
+ *
+ * `warning` is present when the replacement was stored and the old key could NOT be retired. That
+ * is two live keys, and the server reports it rather than swallowing it — so this type carries it
+ * and the panel shows it, or the honesty stops one layer short of the person it is for.
+ */
+export const rotateApiKey = (
+  id: string,
+  graceHours?: number,
+): Promise<ApiKeyView & { key: string; replaces: string; retiresAtIso: string; warning?: string }> =>
+  request(`/api/keys/${encodeURIComponent(id)}/rotate`, {
+    method: 'POST',
+    body: JSON.stringify(graceHours === undefined ? {} : { graceHours }),
+  });
+
+export const revokeApiKey = (id: string): Promise<{ ok: boolean }> =>
+  request(`/api/keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 // ---------------------------------------------------------------- the inbox / security history
 //

@@ -16,6 +16,7 @@
 //   * WHAT THE PANEL MAY SHOW AFTERWARDS. Never the key. The server will not return it, and this
 //     file does not ask.
 import { type RobloxScope, ROBLOX_SCOPES } from '@golem/shared';
+import { explainFailure, type Explained } from './error-taxonomy.ts';
 
 export interface StoredCredentialView {
   robloxCreatorId: string;
@@ -25,6 +26,8 @@ export interface StoredCredentialView {
   hint: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /** The expiry the customer copied off Roblox, or null when they did not say. Optional on the wire. */
+  expiresAt?: string | null;
 }
 
 /**
@@ -41,6 +44,20 @@ export interface ScopeExplanation {
   does: string;
   undoable: boolean;
   caution?: string;
+  /**
+   * Whether anything in the product uses a key granted this.
+   *
+   * FIVE OF THE SIX WERE FALSE when this field was added, and that is what it is for. The panel
+   * offered "Publish to your places" and "Send messages to a running game" as things Apple may do,
+   * and no code anywhere asked for either scope — `useRobloxCredential` had exactly one caller.
+   * So a person could hand over publishing authority over their real Roblox account in exchange
+   * for a feature that does not exist, which is a permission taken for nothing: the feature is
+   * absent either way, and now the key can do it.
+   *
+   * It is a field rather than a comment because it is rendered. A tickbox that says "not used yet"
+   * is an honest offer; the same tickbox without it is a quiet over-ask.
+   */
+  implemented: boolean;
 }
 
 export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
@@ -49,6 +66,8 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     title: 'Read your assets',
     does: 'Apple can look up things you already own — names, ids and whether an upload finished.',
     undoable: true,
+    // Called: creator-dashboard.ts getAsset() and getUploadStatus(), on every upload.
+    implemented: true,
   },
   {
     scope: 'asset:write',
@@ -58,48 +77,61 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     caution:
       'Roblox does not let anyone delete an uploaded image or decal — not you, not us, not through '
       + 'the API. Anything created this way stays in your account for good.',
+    implemented: true,
   },
   {
     scope: 'universe.place:write',
     title: 'Publish to your places',
     does: 'Apple can save and publish a place you own.',
     undoable: true,
+    implemented: false,
   },
   {
     scope: 'universe-messaging-service:publish',
     title: 'Send messages to a running game',
     does: 'Apple can push a message into a live server, which is how a running game is told to reload something.',
     undoable: true,
+    implemented: false,
   },
   {
     scope: 'creator-store-product:read',
     title: 'Read the Creator Store',
     does: 'Apple can search free Creator Store assets. It needs no key for this — the store is public — so this one is optional.',
     undoable: true,
+    implemented: false,
   },
   {
     scope: 'user.social:read',
     title: 'Read your public profile',
     does: 'Apple can read your display name and public profile fields.',
     undoable: true,
+    // The one read the connection check makes. Without it "is this key still alive?" cannot be
+    // answered at all, which is why the check says so rather than guessing — see roblox-check.ts.
+    implemented: true,
   },
   {
     scope: 'universe:read',
     title: 'Read your experiences',
     does: 'Apple can look up an experience you name — its title, description and whether it is public.',
     undoable: true,
+    // Called: creator-dashboard.ts getExperience().
+    implemented: true,
   },
   {
     scope: 'user.inventory-item:read',
     title: 'See what you own',
     does: 'Apple can list the assets already in your Roblox account, so it can reuse them instead of making new ones.',
     undoable: true,
+    // Called: creator-dashboard.ts listOwnedAssets().
+    implemented: true,
   },
   {
     scope: 'game-pass:read',
     title: 'Read your game passes',
     does: 'Apple can list the game passes on your experience and what they cost.',
     undoable: true,
+    // Called: creator-dashboard.ts listGamePasses().
+    implemented: true,
   },
   {
     scope: 'game-pass:write',
@@ -111,6 +143,8 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     caution:
       'Roblox has no way to delete a game pass — not you, not us. It can be taken off sale, and it '
       + 'stays on your experience for good.',
+    // Called: creator-dashboard.ts createGamePass().
+    implemented: true,
   },
   {
     scope: 'asset-permissions:write',
@@ -121,11 +155,24 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     caution:
       'Roblox\'s API can grant this permission and cannot take it back. Undoing it means asking '
       + 'Roblox support, so only tick this if you know who you are sharing with.',
+    // Called: creator-dashboard.ts grantAssetPermission().
+    implemented: true,
   },
 ];
 
 export function explain(scope: RobloxScope): ScopeExplanation | null {
   return SCOPE_EXPLANATIONS.find((e) => e.scope === scope) ?? null;
+}
+
+/**
+ * The scopes something in the product actually asks for.
+ *
+ * Two today: `asset:write` (asset-import.ts, when a build uploads into the customer's account) and
+ * `user.social:read` (roblox-check.ts, the connection check). The list is derived rather than
+ * written out twice so that adding a consumer and telling the truth about it are the same edit.
+ */
+export function implementedScopes(): RobloxScope[] {
+  return SCOPE_EXPLANATIONS.filter((e) => e.implemented).map((e) => e.scope);
 }
 
 /** The scopes whose effects cannot be reversed. Used to decide what needs a second confirmation. */
@@ -192,12 +239,34 @@ export function problemsWith(input: { apiKey: string; robloxCreatorId: string; s
  * recognises, the same trick a card form uses and for the same reason. The full key is never
  * returned by the server, so there is nothing here to accidentally render.
  */
-export type KeyState = 'loading' | 'failed' | 'none' | 'connected';
+export type KeyState = 'loading' | 'failed' | 'none' | 'connected' | 'rejected';
 
-export function stateOf(input: { isPending: boolean; isError: boolean; credential: StoredCredentialView | null }): KeyState {
+/**
+ * What the worker's connection check answered. The same four shapes `roblox-check.ts` returns.
+ *
+ * `unknown` IS NOT A SOFT `ok`. Roblox being unreachable, a 403, or a key that never declared the
+ * scope the probe needs all land there, and every one of them means the check did not happen. The
+ * rule this file obeys: a verdict of unknown may change what is SAID, never what is CLAIMED about
+ * the key — the stored state stays exactly as it was.
+ */
+export type KeyHealth =
+  | { status: 'none' }
+  | { status: 'ok'; accountName: string | null; checkedAt?: string }
+  | { status: 'rejected'; reason: string; checkedAt?: string }
+  | { status: 'unknown'; reason: string; checkedAt?: string };
+
+export function stateOf(input: {
+  isPending: boolean;
+  isError: boolean;
+  credential: StoredCredentialView | null;
+  health?: KeyHealth | null;
+}): KeyState {
   if (input.isPending) return 'loading';
   if (input.isError) return 'failed';
-  return input.credential ? 'connected' : 'none';
+  if (!input.credential) return 'none';
+  // A 'rejected' verdict with no stored credential is a stale answer about a key that has since
+  // been disconnected, not a fifth state — hence the credential test above it.
+  return input.health?.status === 'rejected' ? 'rejected' : 'connected';
 }
 
 export function describeStored(c: StoredCredentialView | null, state: KeyState = c ? 'connected' : 'none'): string {
@@ -208,6 +277,15 @@ export function describeStored(c: StoredCredentialView | null, state: KeyState =
   }
   if (!c) return 'No Roblox account is connected.';
   const who = c.creatorType === 'group' ? 'group' : 'account';
+  if (state === 'rejected') {
+    // THE STATE THIS FILE WAS WRITTEN WITHOUT. Roblox expires keys and a person can revoke one
+    // without Apple being told, and until this branch existed that key rendered as "Connected …
+    // last used 2026-09-14" — confident, dated, and wrong. The three things this has to say are
+    // what happened, what it costs (nothing), and the exact path to a new key.
+    return `Roblox is refusing the key for ${who} ${c.robloxCreatorId} — it was revoked or it expired. `
+      + 'Create a new one at create.roblox.com → Open Cloud → API Keys and paste it below. '
+      + 'Nothing already built is affected, and nothing in your Roblox account changes.';
+  }
   const used = c.lastUsedAt ? `last used ${c.lastUsedAt.slice(0, 10)}` : 'not used yet';
   return `Connected to Roblox ${who} ${c.robloxCreatorId}, key ending ${c.hint} — ${used}.`;
 }
@@ -316,4 +394,157 @@ export function describeWrite(row: WriteTrailRow): string {
  */
 export function isPermanentWrite(row: WriteTrailRow): boolean {
   return row.ok === true;
+}
+
+/**
+ * The one line under the connection sentence after a check — or null when there is nothing to say.
+ *
+ * `null` for a check that never ran and for `none`: silence is the honest rendering of an
+ * unasked question, and a grey "unknown" sitting under every unconnected account would train
+ * people to ignore the line on the day it matters.
+ */
+export function describeHealth(health: KeyHealth | null | undefined): string | null {
+  if (!health || health.status === 'none') return null;
+  if (health.status === 'ok') {
+    // THE NAME IS THE ACCOUNT THE KEY IS POINTED AT, NOT PROOF OF WHO OWNS THE KEY. Open Cloud
+    // API keys have no whoami, so the check reads the profile of the id that was typed in — which
+    // would answer identically for a key belonging to somebody else. "Accepted this key as
+    // Builderman" would be the sentence that quietly claims otherwise, so it is not that sentence.
+    return health.accountName
+      ? `Roblox accepted this key just now. The account it is pointed at is ${health.accountName}.`
+      : 'Roblox accepted this key just now.';
+  }
+  // Both remaining verdicts carry the worker's own sentence, which already names the cause. It is
+  // not re-worded here: two places writing the same explanation is how they come to disagree.
+  return health.reason;
+}
+
+/**
+ * When the key dies, said before it does — and never guessed.
+ *
+ * THREE ANSWERS AND NOT TWO, and the third is the one the field was added for. Roblox shows an
+ * Open Cloud key's expiry once, on the screen where it is created, and offers no way to ask
+ * afterwards; so a key whose expiry nobody recorded is UNKNOWN, which is not "permanent". Printing
+ * "never expires" over a key that dies in a fortnight is the confident sentence this file exists
+ * to prevent, and the person would find out when a build failed.
+ *
+ * `soon` drives the warning styling and is true for expired as well as expiring: a key that died
+ * yesterday is at least as urgent as one dying on Friday.
+ */
+export function expiryNote(c: StoredCredentialView, now: number): { text: string; soon: boolean } {
+  const raw = typeof c.expiresAt === 'string' ? c.expiresAt.trim() : '';
+  const ms = raw ? Date.parse(raw) : NaN;
+  if (!Number.isFinite(ms)) {
+    return {
+      text: 'No expiry date was recorded for this key. Roblox shows it when the key is created — '
+        + 'add it by replacing the key below, and Apple will warn you before it runs out.',
+      soon: false,
+    };
+  }
+  if (ms <= now) {
+    return {
+      text: 'This key has expired — the date recorded for it has passed, so Roblox will be refusing '
+        + 'it. Create a new key at create.roblox.com \u2192 Open Cloud \u2192 API Keys and paste it below.',
+      soon: true,
+    };
+  }
+  const days = Math.floor((ms - now) / 86_400_000);
+  const when = days <= 0 ? 'today' : `${days} day${days === 1 ? '' : 's'}`;
+  if (days <= 7) {
+    return {
+      text: `This key expires in ${when}. Create a new one at create.roblox.com \u2192 Open Cloud \u2192 `
+        + 'API Keys and paste it below before it runs out — nothing already built is affected.',
+      soon: true,
+    };
+  }
+  return { text: `This key expires in ${when}.`, soon: false };
+}
+
+// ---------------------------------------------------------------------------------------------
+// what went wrong, said as something to do
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The failures this panel can produce, mapped to an answer instead of a toast.
+ *
+ * WHAT WAS THERE BEFORE: `onError: (e) => toast(e.message)`. The worker distinguishes three
+ * credential refusals from each other on purpose — no key, a scope that was never declared, a row
+ * that will not decrypt — and Roblox distinguishes a revoked key from a rejected file. All of it
+ * arrived as one grey line with no next action, and the worst of them ("the stored key could not
+ * be decrypted — CREDENTIAL_KEY may have been rotated or lost") is an OPERATOR's sentence shown to
+ * a customer, who would answer it by pasting their key again into a store that cannot read it.
+ *
+ * WHY IT DOES NOT JUST CALL `explainFailure`: that classifies a 401 as "your session has expired —
+ * sign in again", which for a dead Roblox key sends somebody to re-authenticate the wrong account
+ * entirely. `lib/error-taxonomy.ts` carries an `integration` kind for exactly this, and this
+ * function is what fills it in for Roblox; anything unrecognised still falls through to the shared
+ * taxonomy rather than being invented twice.
+ */
+const HOW_TO_MAKE_A_KEY = 'Create a new key at create.roblox.com → Open Cloud → API Keys, then paste it below.';
+
+export function explainKeyFailure(err: unknown, opts: { integration?: boolean } = {}): Explained {
+  const raw = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  const status = typeof (err as { status?: unknown })?.status === 'number' ? (err as { status: number }).status : null;
+  const lower = raw.toLowerCase();
+  const base = { kind: 'integration' as const, detail: raw || null, retryable: false };
+
+  if (lower.includes('no roblox key is connected')) {
+    return {
+      ...base,
+      title: 'No Roblox account is connected',
+      safety: 'Nothing was created and nothing was changed in any Roblox account.',
+      next: 'Connect a key below first — Apple cannot act on an account it has no key for.',
+    };
+  }
+
+  if (lower.includes('was not declared with')) {
+    // The one failure that is a CONSENT boundary rather than a fault: the key works, and it was
+    // connected for something narrower than what was just attempted. Saying "permission" rather
+    // than "scope" keeps it in the words that are on the tickbox.
+    const scope = /with the (\S+) scope/.exec(raw)?.[1] ?? '';
+    const named = scope ? explain(scope as RobloxScope)?.title : null;
+    return {
+      ...base,
+      title: 'This key was not connected for that',
+      safety: 'Apple refused before doing anything, so nothing was created.',
+      next: named
+        ? `Re-connect the key with "${named}" ticked, or leave it — Apple will keep refusing rather than using a permission you did not give.`
+        : 'Re-connect the key with that permission ticked, or leave it as it is.',
+    };
+  }
+
+  if (lower.includes('could not be decrypted') || lower.includes('credential_key')) {
+    return {
+      ...base,
+      title: 'Apple cannot read the key it stored for you',
+      // Pasting it again is the obvious move and it is the wrong one: the fault is on this side,
+      // and a second paste fails identically while looking like the customer's problem.
+      safety: 'Nothing was sent to Roblox. Your key still works on Roblox — this is a fault on our side.',
+      next: 'Contact support with this message rather than pasting the key again; a re-paste will fail the same way.',
+    };
+  }
+
+  if (opts.integration || lower.includes('roblox') || lower.includes('open cloud') || lower.includes('api key')) {
+    if (status === 401 || lower.includes('invalid api key') || lower.includes('unauthorized')) {
+      return {
+        ...base,
+        title: 'Roblox refused this key',
+        safety: 'It was revoked or it expired. Nothing already built is affected.',
+        next: HOW_TO_MAKE_A_KEY,
+      };
+    }
+    if (status === 403 || lower.includes('forbidden')) {
+      return {
+        ...base,
+        title: 'Roblox would not allow that with this key',
+        safety: 'The key is alive; Roblox refused this particular action.',
+        next: 'Check the key’s permissions and any IP restriction on it at create.roblox.com.',
+      };
+    }
+  }
+
+  // Anything else is a failure like any other, explained by the shared taxonomy — with one
+  // addition: this panel has no Try-again button of its own, so `next` is never left null here.
+  const fallback = explainFailure(err);
+  return { ...fallback, next: fallback.next ?? 'Try connecting again; if it keeps happening, the detail below is worth reporting.' };
 }

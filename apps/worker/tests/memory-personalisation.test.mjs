@@ -173,11 +173,24 @@ test('what the person asked for reaches the prompt', () => {
 test('tool permissions NARROW the mode toolset, they do not replace it', () => {
   //[[ toolsForMode is what enforces Plan mode's read-only promise. If a preference replaced it
   //   rather than narrowing it, a user setting could hand run_luau to the one mode whose entire
-  //   purpose is that it cannot touch the project. ]]
-  const line = SESSION.slice(SESSION.indexOf('const allowed = '), SESSION.indexOf('\n', SESSION.indexOf('const allowed = ')));
-  assert.match(line, /applyToolPermissions\(toolsForMode\(agent\.mode, studioConnected, toolNames\(\)\), agent\.toolPermissions\)/);
-  // The mode's set is the INNER call: the outer function can only remove from what it is given.
-  assert.ok(line.indexOf('applyToolPermissions(') < line.indexOf('toolsForMode('));
+  //   purpose is that it cannot touch the project.
+  //
+  //   This used to assert one nested expression, literally. The nesting was then split so the
+  //   mode's own set could be named and diffed against the narrowed one (`deniedTools`) — the
+  //   claim was untouched and the assertion could no longer see it. Rewritten to check the
+  //   PROPERTY instead of the spelling: every first argument applyToolPermissions is ever given in
+  //   this file must be a binding that came from toolsForMode. That is strictly stronger, because
+  //   the old regex only ever looked at the ONE call it found first. ]]
+  const bases = [...SESSION.matchAll(/applyToolPermissions\(\s*([A-Za-z_$][\w$]*)\s*,/g)].map((m) => m[1]);
+  assert.ok(bases.length > 0, 'the run loop no longer applies tool permissions at all');
+  for (const name of bases) {
+    const decl = new RegExp(`const ${name} = toolsForMode\\(agent\\.mode, studioConnected, toolNames\\(\\)\\);`);
+    assert.match(SESSION, decl, `applyToolPermissions was handed "${name}", which is not the mode's own toolset`);
+  }
+  // And the narrowed set is what the step actually uses — a second binding nobody reads would
+  // satisfy everything above while the run was assembled from the unnarrowed one.
+  assert.match(SESSION, /const allowed = applyToolPermissions\(/);
+  assert.match(SESSION, /toolDefs\(studioConnected, allowed/);
 });
 
 test('the permissions are pinned to the run, so a mid-build edit cannot change what a run may do', () => {

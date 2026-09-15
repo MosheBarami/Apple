@@ -57,10 +57,10 @@ let doBilling = { plan: 'free', customerId: null, subscription: null, events: []
 let doCalls = [];
 /** Every request that left for Stripe. */
 let stripeCalls = [];
-/** Per-test Stripe response, or null to use the default checkout-session reply. */
-let stripeReply = null;
 /** Every prepared D1 statement, so a notification can be observed rather than assumed. */
 let d1Calls = [];
+/** Per-test Stripe response, or null to use the default checkout-session reply. */
+let stripeReply = null;
 /** Set to make Stripe refuse, so a route's behaviour when it cannot see can be asserted. */
 let stripeDown = false;
 
@@ -174,8 +174,8 @@ const reset = (billing) => {
   doBilling = { plan: 'free', customerId: null, subscription: null, events: [], ...billing };
   doCalls = [];
   stripeCalls = [];
-  stripeReply = null;
   d1Calls = [];
+  stripeReply = null;
   stripeDown = false;
 };
 

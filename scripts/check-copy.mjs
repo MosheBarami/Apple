@@ -133,7 +133,20 @@ function prose(src) {
   return src
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')  // JSX comments
     .replace(/\/\*[\s\S]*?\*\//g, ' ')       // block comments
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');     // line comments
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')      // line comments
+    //[[ AND THEN THE TAGS, BECAUSE A READER DOES NOT SEE THEM.
+    //
+    //   The login page's H1 was `Describe it.<br />Apple builds it.` — revix.tech's headline, the
+    //   phrase this file names in its own SHAPES table, sitting in production while the check
+    //   printed CLEAN over 93 pages. Every rule here is anchored on a sentence boundary followed
+    //   by the next few words, and a `<br />` between the two halves put eleven characters of
+    //   markup where the regex expected whitespace. The check was reading source; the customer was
+    //   reading rendered text; the two disagreed and only one of them was in production.
+    //
+    //   Collapsing every tag to a single space makes the two agree. It can join the tail of one
+    //   element to the head of the next, which is exactly what a rendered page does too — so a
+    //   match that only appears after collapsing is still a phrase somebody can read off a screen.
+    .replace(/<[^<>]{0,400}>/g, ' ');
   // ASTRO FRONTMATTER IS NOT STRIPPED, and an earlier version stripped it. Copy genuinely lives
   // there — the landing page's proof figures and its prompt chips are both `const` arrays in the
   // frontmatter — so skipping it meant a third of the page's words were never read. The comment

@@ -78,7 +78,7 @@ test('THE TWO 429s NEVER GIVE EACH OTHER\'S ADVICE', () => {
   // does nothing, and the thing that helps is on a page they are not being sent to.
   const spent = T.explainFailure(api(429, 'Daily Credits used up'));
   assert.equal(spent.kind, 'out_of_credits');
-  assert.equal(spent.href, '/app/usage', 'it must point at where the answer is');
+  assert.equal(spent.href, '/usage', 'it must point at where the answer is');
   assert.doesNotMatch(spent.next, /few seconds|slow down/i);
   assert.equal(spent.retryable, false, 'repeating it now cannot work');
 
@@ -103,7 +103,7 @@ test('RETRY IS OFFERED ONLY WHERE REPEATING COULD WORK', () => {
 test('a session that expired sends them to sign in, and says the work survived', () => {
   const e = T.explainFailure(api(401, 'invalid token'));
   assert.equal(e.kind, 'signed_out');
-  assert.equal(e.href, '/app/sign-in');
+  assert.equal(e.href, '/login');
   assert.match(e.safety, /saved/i, 'the question they have is whether they lost anything');
 });
 
@@ -197,4 +197,37 @@ test('a retryable failure with nothing else to do offers only the button', () =>
   assert.equal(ours.retryable, true);
   // and the toast, which has no button, still tells them what to do
   assert.match(T.briefFailure(api(500)), /try again/i);
+});
+
+test('EVERY LINK A FAILURE OFFERS LANDS ON A ROUTE THAT EXISTS', () => {
+  // These hrefs are handed to a react-router <Link> (components/failure.tsx) inside
+  // <BrowserRouter basename="/app">, and the router prepends the basename itself. Writing the
+  // prefix into the href therefore produced /app/app/usage — a link that cannot resolve — and
+  // '/app/sign-in' named a route this app has never had; it is called /login. Both were pinned
+  // by this file, so the assertions agreed with the bug.
+  //
+  // Checked against the router's own path list rather than a copy of it, because a copy drifts.
+  const app = readFileSync(join(WEB, 'src', 'app.tsx'), 'utf8');
+  const paths = new Set(['/', ...[...app.matchAll(/path="([^"]+)"/g)].map((m) => m[1])]);
+
+  const offered = [
+    T.explainFailure(api(401)),
+    T.explainFailure(api(403)),
+    T.explainFailure(api(404)),
+    T.explainFailure(api(429, 'Daily Credits used up')),
+    T.explainFailure(api(429, 'slow down')),
+    T.explainFailure(api(500)),
+    T.explainFailure(api(503)),
+    T.explainFailure(api(0)),
+  ].filter((e) => e.href);
+  assert.ok(offered.length >= 3, 'the taxonomy stopped offering links — that is a different bug');
+
+  for (const e of offered) {
+    assert.doesNotMatch(
+      e.href,
+      /^\/app(\/|$)/,
+      `${e.kind} writes the basename into its own href, so the router doubles it: ${e.href}`,
+    );
+    assert.ok(paths.has(e.href), `${e.kind} points at ${e.href}, which is not a route in app.tsx`);
+  }
 });

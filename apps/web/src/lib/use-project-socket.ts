@@ -45,6 +45,8 @@ export interface ToolEvent {
   toolId: string;
   tool: string;
   summary: string;
+  /** Which resource this step is about — see `ToolStartEvent.target` in ws/activity-model.ts. */
+  target?: string;
   ok?: boolean;
   startedAt: number;
   durationMs?: number;
@@ -95,6 +97,14 @@ export interface ChatItem {
    * reloaded conversation is correctly silent about it.
    */
   intent?: RunIntent;
+  /**
+   * Tools this run was NOT given, because a tool permission removed them — from `tools_denied`.
+   *
+   * Absent until the worker sends one, which is the whole contract: no message means nothing was
+   * withheld, and a conversation loaded from history is correctly silent rather than claiming a
+   * check it never made.
+   */
+  deniedTools?: string[];
   /**
    * What this run cost, settled, from `msg_end`.
    *
@@ -315,7 +325,16 @@ function mockHistory(): ChatItem[] {
   return base;
 }
 
-export function useProjectSocket(projectId: string, onServerError: (code: string, message: string) => void): ProjectSocket {
+export function useProjectSocket(
+  projectId: string,
+  onServerError: (code: string, message: string) => void,
+  /**
+   * Something worth knowing that did not stop anything — today, a credential spotted in the user's
+   * own prompt. Optional so the hook keeps working for a caller that has nowhere to put it; the
+   * workspace does, and a notice with no renderer would be the detection thrown away a second time.
+   */
+  onNotice?: (code: string, message: string) => void,
+): ProjectSocket {
   const [conn, setConn] = useState<ConnState>('connecting');
   const [messages, setMessages] = useState<ChatItem[]>([]);
   const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -351,6 +370,8 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const pingTimer = useRef<number | null>(null);
   const errorCbRef = useRef(onServerError);
   errorCbRef.current = onServerError;
+  const noticeCbRef = useRef(onNotice);
+  noticeCbRef.current = onNotice;
 
   // ---------------------------------------------------------------- history
   const loadHistory = useCallback(() => {
@@ -538,6 +559,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
                 toolId: msg.toolId,
                 tool: msg.tool,
                 summary: msg.summary,
+                // Which thing this step is about. `summary` here is only the tool's name; the
+                // sentence naming the resource arrives with tool_end, after the work is done.
+                target: msg.target,
                 startedAt: Date.now(),
                 // The one path where the start really is our own clock.
                 startObserved: true,
@@ -703,6 +727,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
             createdAt: run.startedAt,
             // Replayed only when the snapshot genuinely carries one.
             intent: run.intent,
+            // Same: `tools_denied` is broadcast once at the first step, so without this a refresh
+            // at step nine leaves the run looking as though nothing had been withheld from it.
+            deniedTools: run.deniedTools,
           };
           const idx = list.findIndex((m) => m.id === run.msgId);
           if (idx === -1) return [...list, restored];
@@ -712,6 +739,18 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         });
         break;
       }
+      case 'tools_denied':
+        // Kept on the MESSAGE rather than on `agentStatus`, for the reason `creditsSpent` is:
+        // `msg_end` clears the status, and this is a fact about the run that is most worth reading
+        // AFTER it, by someone asking why the agent did not do the thing they expected.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) return list;
+          const next = [...list];
+          next[idx] = { ...list[idx]!, deniedTools: msg.tools };
+          return next;
+        });
+        break;
       case 'context_budget':
         // Kept on the MESSAGE, not on `agentStatus`, for the same reason `creditsSpent` is: the
         // status is cleared by `msg_end`, so a figure stored there would be correct for one frame
@@ -776,6 +815,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         break;
       case 'error':
         errorCbRef.current(msg.code, msg.message);
+        break;
+      case 'notice':
+        // NOT routed to the error callback. The run is still going, and a failure-shaped warning
+        // about a run that did not fail teaches people to distrust both.
+        noticeCbRef.current?.(msg.code, msg.message);
         break;
       case 'presence':
         //[[ WHO ELSE IS IN THIS PROJECT.

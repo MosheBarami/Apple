@@ -12,7 +12,7 @@ import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@go
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
-import { useShell, useProvideCheckpoints } from '../lib/shell';
+import { useProvideCheckpoints } from '../lib/shell';
 import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
@@ -62,7 +62,7 @@ import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { StudioActivity } from '../components/ws/studio-activity';
 import { PlaytestCard } from '../components/ws/playtest-card';
-import { ConnectStudio } from '../components/ws/connect-studio';
+import { ConnectStudio, StudioLink } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
 
@@ -102,7 +102,6 @@ export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
   const { toast } = useToast();
-  const { openRail } = useShell();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -192,6 +191,27 @@ export function WorkspacePage() {
     [toast],
   );
 
+  /**
+   * Something the server noticed that did not stop anything.
+   *
+   * Today there is exactly one: a credential spotted in the message that was just sent. It is an
+   * `info` rather than an `error` because the run is still going and nothing failed — but it
+   * carries the action, because "rotate that key" is only useful next to the place keys live. The
+   * detection existed for months and was discarded at the call site; a toast nobody wired would
+   * have discarded it again one layer higher.
+   */
+  const onNotice = useCallback(
+    (code: string, message: string) => {
+      toast(message || `Heads up (${code})`, 'info', {
+        key: `notice:${code}`,
+        ...(code === 'secret_in_prompt'
+          ? { action: { label: 'Open Settings', run: () => navigate('/app/settings') } }
+          : {}),
+      });
+    },
+    [toast, navigate],
+  );
+
   const {
     conn,
     messages,
@@ -213,7 +233,7 @@ export function WorkspacePage() {
     restoreCheckpoint,
     restoreStatus,
     reloadHistory,
-  } = useProjectSocket(projectId, onServerError);
+  } = useProjectSocket(projectId, onServerError, onNotice);
 
   // A second Restore while the first is still clearing the place would race the plugin against
   // itself. The worker's own phases decide this, not a flag set by the click: a click that never
@@ -349,22 +369,56 @@ export function WorkspacePage() {
    * complete answer; until that exists, saying so plainly beats scrolling to nothing and looking
    * broken.
    */
+  //[[ A MESSAGE IS A PLACE, SO IT GETS AN ADDRESS.
+  //
+  //   The scroll used to be the whole of it: the URL was /projects/:id before the jump and
+  //   /projects/:id after, so the found message could not be sent to anybody and a reload put you
+  //   back at the bottom of the thread. The hash is the id the turn already renders — one naming
+  //   scheme, not two — and it is written with `replace` because a jump is not a page anyone
+  //   should have to press Back through, and search produces them in bursts.
+  //
+  //   `anchored` is what stops the loop: this writes the hash, and the effect below reads the
+  //   hash and calls this. It records the anchor it has satisfied, so the second pass is a no-op. ]]
+  const anchored = useRef<string | null>(null);
   const jumpToMessage = useCallback(
-    (messageId: string) => {
+    (messageId: string, origin: 'search' | 'link' = 'search') => {
+      anchored.current = messageId;
       const el = document.getElementById(`msg-${messageId}`);
       if (!el) {
-        toast('That message is further back than the loaded history — load more and search again.', 'info');
+        // The two callers need different advice. "Search again" is right beside an open search
+        // panel and nonsense to someone who followed a link and has no search open.
+        toast(
+          origin === 'link'
+            ? 'That message is further back than the loaded history — open the project and load more to reach it.'
+            : 'That message is further back than the loaded history — load more and search again.',
+          'info',
+        );
         return;
       }
       setDrawer(null);
+      navigate({ hash: `#msg-${messageId}` }, { replace: true });
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       // A flash rather than a persistent highlight: it answers "which one?" and then gets out of
       // the way, so the next jump is just as legible as the first.
       el.classList.add('is-found');
       setTimeout(() => el.classList.remove('is-found'), 1600);
     },
-    [toast],
+    [navigate, toast],
   );
+
+  //[[ AND AN ADDRESS THAT IS PASTED BACK IN IS HONOURED.
+  //
+  //   Deliberately gated on `historyState === 'ready'`. The workspace pages backwards from the
+  //   newest hundred, so at first paint the message a link names is usually not in the DOM yet;
+  //   jumping straight away would tell someone their message is "further back than the loaded
+  //   history" while it is still on its way — a wrong explanation, which sends them looking for
+  //   history that was never missing. ]]
+  useEffect(() => {
+    if (historyState !== 'ready') return;
+    const id = location.hash.startsWith('#msg-') ? location.hash.slice('#msg-'.length) : '';
+    if (!id || anchored.current === id) return;
+    jumpToMessage(id, 'link');
+  }, [historyState, location.hash, jumpToMessage]);
 
   //[[ A RESULT OPENS THE THING IT FOUND.
   //
@@ -708,14 +762,11 @@ export function WorkspacePage() {
     <div className="gx-ws">
       {/* ------------------------------------------------------- topbar -- */}
       <header className="gx-top">
-        <button
-          type="button"
-          className="gx-icon-btn gx-rail-toggle"
-          onClick={openRail}
-          aria-label="Open navigation"
-        >
-          <Icon d={PATH.menu} />
-        </button>
+        {/* The rail opener used to be here. It is now drawn by the shell (components/layout.tsx)
+            so that it exists on every route rather than only inside a conversation; at narrow
+            width it lands in this bar's reserved leading space, so the topbar is unchanged to
+            look at. Do not add a second one here — two buttons at the same coordinates is a
+            stacking-order question, not a cosmetic one. */}
 
         {/* Renamable in place: this is where you notice a bad name, so this is where fixing it
             belongs. Falls back to a plain heading until the project has loaded — an editable
@@ -960,6 +1011,13 @@ export function WorkspacePage() {
               Studio attaches. It is a pure function of studioStatus, so there
               is no dismissal state to get stuck. */}
           <ConnectStudio status={studioStatus} onPair={() => setShowPairing(true)} />
+
+          {/* The measured detail under the connection: when the plugin last polled, how much work
+              is queued, the round trip, and — loudest — a place mismatch, which is the only state
+              where the pill is green and nothing will ever build. Rendered for EVERY state,
+              including connected, which is why it is not inside the card above. It draws nothing
+              when there is nothing measured to say. */}
+          <StudioLink status={studioStatus} facts={studio.link} />
 
           {/* The playtest viewport. Renders only while the worker says a
               playtest exists — it is a pure function of `playtest`, so it

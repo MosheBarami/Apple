@@ -141,6 +141,23 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     </p>
   </div>
 
+  <h2 id="roblox-key-refused">“Roblox is refusing this key”</h2>
+  <p>
+    This is about the Open Cloud key you connected under
+    <strong>Settings → Connections</strong>, not about your Apple account. Roblox expires API keys,
+    and a key can be deleted from create.roblox.com at any time — neither of those tells Apple, so
+    the first sign is usually an upload that fails.
+  </p>
+  <ol>
+    <li>Press <strong>Test connection</strong> in Settings → Connections. It says which of the three it is: accepted, refused, or not checkable right now.</li>
+    <li>If it was refused, make a new key at create.roblox.com → <strong>Open Cloud</strong> → <strong>API Keys</strong>, tick the same permissions, and paste it in. It replaces the old one.</li>
+    <li>Nothing already built is affected, and nothing in your Roblox account changes. Assets Apple created stay where they are.</li>
+  </ol>
+  <p>
+    If the answer is neither — “Apple could not reach Roblox”, or a 403 — the check did not happen.
+    That is not a verdict on the key, and making a new one will not help.
+  </p>
+
   <h2>Apple changed something I didn't want</h2>
   <p>Three exits, smallest first:</p>
   <ol>

@@ -41,8 +41,12 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../pack
  * could not have caught an anchor pointing at an id that had been renamed.
  */
 
-/** Every section the nav and the design promise, by id. */
-const SECTIONS = ['top', 'product', 'modes', 'how', 'pricing'];
+/** Every section the nav and the design promise, by id.
+ *
+ *  `library` is the one the design does NOT promise — it answers the separate complaint that the
+ *  site claims a library and never shows one — but the nav promises it, which is what this list is
+ *  really about. A nav entry whose section is listed nowhere here is an anchor nothing watches. */
+const SECTIONS = ['top', 'product', 'library', 'modes', 'how', 'pricing'];
 
 test('renders the proposition', async ({ page }) => {
   await page.goto('/');
@@ -118,7 +122,7 @@ test('never scrolls horizontally at any supported size', async ({ page }) => {
 test('holds the approved composition', async ({ page }) => {
   await page.goto('/');
 
-  // Five sections, each with an id the nav can reach.
+  // Six sections, each with an id the nav can reach.
   for (const id of SECTIONS) {
     await expect(page.locator(`#${id}`), `#${id} is missing`).toHaveCount(1);
   }

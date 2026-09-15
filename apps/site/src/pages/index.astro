@@ -30,14 +30,20 @@ const proof = [
 ];
 
 /**
- * The landing page. Five sections, ZERO JavaScript on the route.
+ * The landing page. Six sections, ZERO JavaScript on the route.
  *
  * SUPERSEDES "one viewport, no scroll". This page used to hold the whole
  * proposition in a single frame, with how-it-works and pricing deliberately
  * moved off it onto real routes. The owner's design brings them back as
- * sections — hero, product, modes, how it works, pricing — and
+ * sections — hero, product, library, modes, how it works, pricing — and
  * docs/DECISIONS.md ADR-020 records that call with the artifact it came from.
  * docs/DESIGN-SPEC.md §0–§1 is updated to match.
+ *
+ * THE LIBRARY SECTION IS NOT IN THAT DESIGN. It answers a separate complaint —
+ * that the site claims a library and never shows one. It is in the nav because
+ * a section a reader cannot navigate to is a section most readers never reach,
+ * and it costs the payload budget nothing that scripts/check-landing-budget.mjs
+ * does not still hold at 12,000 B gzip.
  *
  * WHAT DID NOT CHANGE, and is the reason this file still exists apart from
  * Base.astro: the route ships no JavaScript. Every animation is CSS, every
@@ -77,6 +83,7 @@ const proof = [
  */
 import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
+import SectionFigure from '../components/SectionFigure.astro';
 import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, CREDITS_PER_BUILD, buildsPerMonth, formatMoney } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 //[[ THE WALL IS BAKED IN AT BUILD TIME, NOT QUERIED.
@@ -91,9 +98,10 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/stu
 //   literals: a landing page that queries a database is a landing page that can fail to render.
 import assetWall from '../data/asset-wall.json';
 
-/** Nav. Four anchors at sections that exist on this page, and one real route. */
+/** Nav. Five anchors at sections that exist on this page, and one real route. */
 const navLinks = [
   { href: '#product', label: 'Product' },
+  { href: '#library', label: 'Library' },
   { href: '#modes', label: 'Modes' },
   { href: '#how', label: 'How it works' },
   { href: '#pricing', label: 'Pricing' },
@@ -155,6 +163,17 @@ const runSteps = [
  *      untouched: packages/shared still defines the mode and router.ts still
  *      routes it.
  */
+/*
+ * THE HEADING COUNTS THIS ARRAY RATHER THAN REMEMBERING IT.
+ *
+ * It read "Three modes, one price list." over a list of two. Super Agent was removed from what
+ * the product offers and the sentence above the cards was not, so the landing page advertised a
+ * mode nobody could pick — and the discrepancy was visible to any reader who counted the cards,
+ * which is the first thing a sceptical visitor does. A number typed into a heading is a claim
+ * about a list somewhere else in the file; deriving it makes the two impossible to disagree.
+ */
+const MODE_WORDS = ['no', 'One', 'Two', 'Three', 'Four', 'Five'] as const;
+
 const modes = [
   {
     name: 'Plan',
@@ -174,6 +193,8 @@ const modes = [
     featured: true,
   },
 ];
+
+const MODE_COUNT_WORD = MODE_WORDS[modes.length] ?? String(modes.length);
 
 /**
  * How it works.
@@ -344,13 +365,18 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     {/* ------------------------------------------------------- product -- */}
     <section class="ap-section ap-section--seam" id="product" aria-labelledby="product-title">
       <div class="ap-section__inner">
-        <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>The product</p>
-        <h2 class="ap-display" id="product-title">Every step named, and a stop button.</h2>
-        <p class="ap-lede">
-          Apple reads your place before it touches it, takes a checkpoint, then works. Every step
-          is named while it happens, and you can stop it mid-run. Below is one finished run,
-          shown exactly as the transcript leaves it.
-        </p>
+        <div class="ap-head">
+          <div>
+            <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>The product</p>
+          <h2 class="ap-display" id="product-title">Every step named, and a stop button.</h2>
+          <p class="ap-lede">
+            Apple reads your place before it touches it, takes a checkpoint, then works. Every step
+            is named while it happens, and you can stop it mid-run. Below is one finished run,
+            shown exactly as the transcript leaves it.
+          </p>
+          </div>
+          <SectionFigure src="build-in-progress" width={1152} height={864} />
+        </div>
 
         <div class="ap-demo">
           <div class="ap-panel" role="group" aria-label="Example run — not your data">
@@ -427,14 +453,19 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     {/* ---------------------------------------------------- the library -- */}
     <section class="ap-section ap-section--seam" id="library" aria-labelledby="library-title">
       <div class="ap-section__inner">
-        <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>The library</p>
-        <h2 class="ap-display" id="library-title">Every asset says where it came from.</h2>
-        <p class="ap-lede">
-          Apple does not invent art. It reaches into packs that people made and released — and each
-          one arrives carrying its pack, its author and its licence, so a credit line can be written
-          without anybody reconstructing it later. {assetWall.count} of them below, picked across
-          three packs.
-        </p>
+        <div class="ap-head">
+          <div>
+            <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>The library</p>
+          <h2 class="ap-display" id="library-title">Every asset says where it came from.</h2>
+          <p class="ap-lede">
+            Apple does not invent art. It reaches into packs that people made and released — and each
+            one arrives carrying its pack, its author and its licence, so a credit line can be written
+            without anybody reconstructing it later. {assetWall.count} of them below, picked across
+            three packs.
+          </p>
+          </div>
+          <SectionFigure src="labelled-assets" width={1152} height={864} />
+        </div>
 
         <div class="ap-wall" role="list">
           {assetWall.assets.map((a) => (
@@ -460,12 +491,17 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     {/* --------------------------------------------------------- modes -- */}
     <section class="ap-section ap-section--seam" id="modes" aria-labelledby="modes-title">
       <div class="ap-section__inner">
-        <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>Modes</p>
-        <h2 class="ap-display" id="modes-title">Three modes, one price list.</h2>
-        <p class="ap-lede">
-          Same builder, different settings. Switch mid-conversation; the run keeps its
-          checkpoints either way.
-        </p>
+        <div class="ap-head">
+          <div>
+            <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>Modes</p>
+          <h2 class="ap-display" id="modes-title">{MODE_COUNT_WORD} modes, one price list.</h2>
+          <p class="ap-lede">
+            Same builder, different settings. Switch mid-conversation; the run keeps its
+            checkpoints either way.
+          </p>
+          </div>
+          <SectionFigure src="two-modes" width={1152} height={864} />
+        </div>
 
         <div class="ap-grid">
           {
@@ -499,12 +535,17 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
     {/* ----------------------------------------------------- how it works -- */}
     <section class="ap-section ap-section--seam" id="how" aria-labelledby="how-title">
       <div class="ap-section__inner">
-        <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>How it works</p>
-        <h2 class="ap-display" id="how-title">Set up in three steps.</h2>
-        <p class="ap-lede">
-          Nothing to configure and no export step. Apple works in the project you already have
-          open, through the same undo stack you already use.
-        </p>
+        <div class="ap-head">
+          <div>
+            <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>How it works</p>
+          <h2 class="ap-display" id="how-title">Set up in three steps.</h2>
+          <p class="ap-lede">
+            Nothing to configure and no export step. Apple works in the project you already have
+            open, through the same undo stack you already use.
+          </p>
+          </div>
+          <SectionFigure src="plug-in" width={1152} height={864} />
+        </div>
 
         {/* An ordered list, because the numerals encode a real sequence: you
             cannot say what you want before Studio is connected. Numbered

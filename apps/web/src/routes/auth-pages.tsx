@@ -66,14 +66,21 @@ function AuthHero() {
           <AppleGlyph size={38} />
           <span className="wordmark wordmark-lg">Apple</span>
         </div>
+        {/*
+          * NOT "Describe it. Apple builds it." That is revix.tech's headline, it is banned by name
+          * in scripts/check-copy.mjs, and it sat here in production anyway — the `<br />` between
+          * the two sentences was enough to hide it from a checker reading source instead of
+          * rendered text. The checker now collapses tags; this says what the product does.
+          */}
         <h1 className="auth-hero-title carved">
-          Describe it.
+          It builds in the place
           <br />
-          Apple builds it.
+          you already have open.
         </h1>
         <p className="auth-hero-sub">
-          Tell Apple what your Roblox game should do. It writes the scripts, places the parts and wires it all up —
-          live in Studio, while you watch.
+          Apple reads your project in Studio and takes a checkpoint before it touches anything, then
+          writes the scripts and places the parts. Every step is named while it happens, and you can
+          stop it mid-run.
         </p>
         <ul className="auth-hero-points">
           {MODES.map((m) => (

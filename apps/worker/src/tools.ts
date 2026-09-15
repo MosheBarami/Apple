@@ -63,6 +63,8 @@ import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, typ
 import { AUDIO_TOOLS } from './audio-tools';
 import { admitProgram, isRefusal, capPrints, type SandboxJob } from './sandbox';
 import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
+import { MECHANIC_PATTERNS, MECHANIC_MENU, rankMechanics, answerFor } from './mechanics';
+import { MECHANIC_CITATIONS } from './mechanic-citations';
 import { runWebTool, webToolDef, type WebToolCtx, type WorkspaceStore } from './webtools';
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
@@ -2349,6 +2351,58 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
   },
   /**
+   * READ HOW IT HAS ALREADY BEEN BUILT, THEN BUILD IT.
+   *
+   * The owner's rule is "never build from scratch — find what communities have already assembled".
+   * The harvest that answers it is 3,017 GitHub repositories, and its own first page holds a Rust
+   * CSV tool, a Lua formatter and a Bee Swarm Simulator macro. A search result is not a library, so
+   * nothing here searches it: `mechanic-citations.ts` is the 131 rows that survived a curator which
+   * read each repository's file TREE, and the exclusions are named rules rather than a low rank.
+   *
+   * WHAT COMES BACK IS THE PATTERN, NOT THE CODE. The mechanic, where its authority has to live,
+   * the calls that are current, the specific ways it breaks — then the repositories that
+   * demonstrably implement it, each with its author and its licence. Apple vendors nothing: six of
+   * the surviving repositories are GPL and one is AGPL, and a customer's game must never carry
+   * someone else's licence. The citation is there to be read, and the licence travels with it so
+   * the agent cannot forget which one it is reading.
+   */
+  find_mechanic: {
+    def: {
+      name: 'find_mechanic',
+      description:
+        'Before writing a game system from scratch, ask here. Give the mechanic in the builder\'s own words — "a shop that sells pets for coins", "save progress between sessions", "a round-based lobby" — and get back what the pattern IS: where authority has to live, the Roblox calls that are current, the specific ways it breaks, and real repositories that implement it with their author and licence. READ those to understand the approach and then write the mechanic for THIS game; never copy their code. Known mechanics: '
+        + MECHANIC_MENU,
+      parameters: S(
+        {
+          mechanic: {
+            type: 'string',
+            description: 'What the user asked for, in their words. Several mechanics in one sentence is fine — each is answered.',
+          },
+          limit: { type: 'number', description: 'Implementations to cite per mechanic, default 4.' },
+        },
+        ['mechanic'],
+      ),
+    },
+    studio: false,
+    run: async (_ctx, a) => {
+      const query = String(a.mechanic ?? '').trim();
+      if (!query) return { error: `say which mechanic. One of: ${MECHANIC_MENU}` };
+      const limit = Math.max(1, Math.min(8, Number(a.limit ?? 4) || 4));
+      const ranked = rankMechanics(query);
+      // NO MATCH IS AN ANSWER WITH A MENU ATTACHED. An empty list reads as "there is nothing
+      // written about this", which is a claim about Roblox rather than about a lookup table, and
+      // the agent's next move after it is to invent one unaided.
+      if (!ranked.length) {
+        return {
+          noMatch: `"${query}" does not name a mechanic this library has a pattern for. That is a gap in the library, not a statement about the game — write it from the Roblox documentation, and prefer a mechanic below if one is close.`,
+          known: MECHANIC_PATTERNS.map((p) => ({ id: p.id, is: p.label })),
+          searchedRepositories: MECHANIC_CITATIONS.length,
+        };
+      }
+      return { mechanics: ranked.slice(0, 3).map((r) => answerFor(r.pattern, limit)) };
+    },
+  },
+  /**
    * The other half of add_effect.
    *
    * Shipping the add without the remove leaves "take the fire off" with no path, and the agent's
@@ -3218,6 +3272,86 @@ export const TOOLS: Record<string, ToolImpl> = {
 
 export function toolNames(): string[] {
   return Object.keys(TOOLS);
+}
+
+/* ------------------------------------------------------------ which thing, though --- */
+
+/** One line beside an activity label, not a paragraph. Long enough for a real Roblox path. */
+const TARGET_MAX = 120;
+
+/**
+ * Where in the arguments each tool's SUBJECT is. A tool absent from this table has no resource
+ * worth naming, and gets none — a guess is worse than silence here, because this string is what a
+ * person reads to decide whether the step about to run is the one they meant.
+ */
+const TARGET_ARG: Readonly<Record<string, { key: string; kind: 'string' | 'list' | 'number' | 'items' }>> = {
+  read_script: { key: 'path', kind: 'string' },
+  edit_script: { key: 'path', kind: 'string' },
+  format_script: { key: 'path', kind: 'string' },
+  set_properties: { key: 'path', kind: 'string' },
+  get_instance: { key: 'path', kind: 'string' },
+  delete_instances: { key: 'paths', kind: 'list' },
+  select_instances: { key: 'paths', kind: 'list' },
+  create_instances: { key: 'items', kind: 'items' },
+  install_module: { key: 'name', kind: 'string' },
+  insert_asset: { key: 'assetId', kind: 'number' },
+  web_fetch: { key: 'url', kind: 'string' },
+  browse_page: { key: 'url', kind: 'string' },
+  screenshot_page: { key: 'url', kind: 'string' },
+  workspace_read: { key: 'path', kind: 'string' },
+  workspace_write: { key: 'path', kind: 'string' },
+  run_spec: { key: 'path', kind: 'string' },
+};
+
+/** Collapse to one line and cap. The target sits beside a label; it may not push the layout. */
+function oneLine(v: string): string | undefined {
+  const s = v.replace(/\s+/g, ' ').trim();
+  if (!s) return undefined;
+  return s.length > TARGET_MAX ? `${s.slice(0, TARGET_MAX - 1)}…` : s;
+}
+
+/**
+ * WHICH THING THIS CALL IS ABOUT, read from the arguments BEFORE it runs.
+ *
+ * `tool_start` used to broadcast the bare tool name, and the sentence naming the script or the
+ * instances only arrived at `tool_end` — after the write. For the whole time a step was running,
+ * the one question a person has about it had no answer on screen, and by the time it did the thing
+ * was already changed.
+ *
+ * ARGUMENTS ARE MODEL-AUTHORED. Malformed JSON, a missing key, a wrong type and a 40KB string are
+ * all reachable, and this runs inside the step loop: a throw here ends a paid run at the moment it
+ * was about to do the work. So every path returns `undefined` rather than raising, and the result
+ * is collapsed to one capped line before anything renders it.
+ */
+export function targetOf(tool: string, argsJson: unknown): string | undefined {
+  const spec = TARGET_ARG[tool];
+  if (!spec) return undefined;
+  let args: unknown;
+  try {
+    args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
+  } catch {
+    return undefined;
+  }
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined;
+  const raw = (args as Record<string, unknown>)[spec.key];
+
+  if (spec.kind === 'string') return typeof raw === 'string' ? oneLine(raw) : undefined;
+  if (spec.kind === 'number') return typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : typeof raw === 'string' ? oneLine(raw) : undefined;
+
+  const names: string[] =
+    spec.kind === 'list'
+      ? (Array.isArray(raw) ? raw : []).filter((v): v is string => typeof v === 'string')
+      : (Array.isArray(raw) ? raw : [])
+          .map((it) => (it && typeof it === 'object' ? (it as { name?: unknown }).name : null))
+          .filter((v): v is string => typeof v === 'string');
+
+  const cleaned = names.map((n) => n.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (!cleaned.length) return undefined;
+  // Three, then a count. Twelve paths on one line is noise; "+9 more" is the honest summary of the
+  // rest, and it keeps the number visible — which is the part that says how big this step is.
+  const shown = cleaned.slice(0, 3).join(', ');
+  const rest = cleaned.length - 3;
+  return oneLine(rest > 0 ? `${shown} +${rest} more` : shown);
 }
 
 /**

@@ -254,7 +254,10 @@ test('the ingress RECORDS a zero-weight finding instead of returning past it', (
   assert.ok(allowAt >= 0, 'the positive control: the allow path must still exist');
   assert.ok(recordAt < allowAt, 'recording must happen BEFORE the allow return, or allowed findings are lost');
   assert.match(helper, /advisory\(verdict\)/, 'and the notice must be the shared decision, not a second opinion');
-  assert.match(helper, /this\.broadcast\(\{\s*type: 'error',\s*code: notice\.code/, 'the notice must reach the client');
+  // `notice`, not `error`. This assertion pinned `error` when `error` was the only channel the
+  // wire had; ServerMsg now carries a non-failure one and the browser renders it. The thing
+  // being pinned is unchanged: the finding must leave the worker and reach a person.
+  assert.match(helper, /this\.broadcast\(\{ type: 'notice', code: notice\.code/, 'the notice must reach the client');
 });
 
 /* ------------------------------------------- the clock, and failures to observe --- */

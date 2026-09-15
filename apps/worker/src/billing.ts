@@ -655,24 +655,6 @@ export function buildCheckoutRequest(
   p.set('subscription_data[metadata][plan]', opts.plan);
   if (opts.email) p.set('customer_email', opts.email);
   /*
-   * WHAT HAS TO BE ON THE INVOICE, COLLECTED AT THE ONE MOMENT THE BUYER IS WILLING TO TYPE IT.
-   *
-   * `billing_address_collection` defaults to 'auto', which collects only what the payment method
-   * itself demands — for a card that is often a postal code and nothing else. The invoice Stripe
-   * then prints carries no address, and an invoice with no address is not a document a finance
-   * department can accept or a tax authority can read. Required, so it is there from the first
-   * charge rather than chased afterwards — and it is the address `automatic_tax` below is
-   * calculated against, so the two lines stand or fall together.
-   *
-   * EDITING IT AFTERWARDS BELONGS TO THE PORTAL. Do not build a second address form in this
-   * product: it would be a copy that drifts from the one Stripe actually prints on invoices, and
-   * the two would disagree in front of a customer disputing a charge.
-   *
-   * The VAT/GST/ABN field is `tax_id_collection`, and `customer_update` is deliberately absent;
-   * both are set out with the tax parameters below, where they belong, rather than twice.
-   */
-  p.set('billing_address_collection', 'required');
-  /*
    * THE PROMOTION-CODE FIELD, AND THE COMMENT THAT USED TO SIT HERE.
    *
    * This line switches on the code box on Stripe's hosted page; Stripe validates what is typed into
@@ -703,6 +685,21 @@ export function buildCheckoutRequest(
    * here would make Stripe reject every session, which is the shape of "the feature is enabled and
    * nothing works".
    */
+  /*
+   * THE ADDRESS THE TAX IS CALCULATED AGAINST, AND THE ONE THE INVOICE PRINTS.
+   *
+   * `billing_address_collection` defaults to 'auto', which collects only what the payment method
+   * itself demands — for a card that is often a postal code and nothing else. Two things break on
+   * that: `automatic_tax` below has less to work from than the buyer could have given it, and the
+   * invoice Stripe prints carries no address, which is not a document a finance department can
+   * accept or a tax authority can read. Required, so it is there from the first charge rather than
+   * chased afterwards.
+   *
+   * EDITING IT AFTERWARDS BELONGS TO THE PORTAL. Do not build a second address form in this
+   * product: it would be a copy that drifts from the one Stripe actually prints on invoices, and
+   * the two would disagree in front of a customer disputing a charge.
+   */
+  p.set('billing_address_collection', 'required');
   p.set('automatic_tax[enabled]', 'true');
   // So a business can put its VAT/GST number on the invoice, and reverse-charge applies where it
   // should. Without it every EU business buyer is charged consumer VAT they cannot reclaim.

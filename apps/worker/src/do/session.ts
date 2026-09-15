@@ -57,7 +57,7 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { toolDefs, toolNames, targetOf, runTool, type AgentCtx, type PlaytestBus } from '../tools';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
@@ -108,7 +108,7 @@ import {
   type MemoryMode,
 } from '../memory';
 import { memoryAccessFor } from '../memory-store';
-import { EMPTY_PERSONALISATION, applyToolPermissions, memoryModeOf, personalisationForProject } from '../preferences';
+import { EMPTY_PERSONALISATION, applyToolPermissions, deniedTools, memoryModeOf, personalisationForProject } from '../preferences';
 import { allModels } from '../providers/registry';
 import { recordEvent } from '../analytics';
 import { flushEvents } from '../analytics-sink';
@@ -185,6 +185,15 @@ interface AgentState {
    * an older deployment deserialises unchanged and simply narrows nothing.
    */
   toolPermissions?: Record<string, 'allow' | 'ask' | 'deny'>;
+  /**
+   * Which tools the permissions above actually REMOVED from this run, computed once at the first
+   * step and kept so the announcement is made once and survives a reload.
+   *
+   * `undefined` means nobody has looked yet — an older run deserialises into it and is checked on
+   * its next step. An empty array means somebody looked and there was nothing to report, which is
+   * a different fact and the reason this is not just a truthiness check.
+   */
+  deniedTools?: string[];
   /**
    * Whether this run may write to memory, and whether it has to ask first.
    *
@@ -1679,6 +1688,10 @@ export class SessionDO extends DurableObject<Env> {
       // Optional on the wire, and optional here: a run persisted by an older deployment simply
       // replays without the Intent and Plan rows rather than failing to replay at all.
       intent: agent.intent,
+      // `tools_denied` is broadcast once, at the first step. Without this a refresh at step nine
+      // would leave the run looking as though nothing had been withheld from it. Only sent when
+      // something WAS withheld — an empty array here would claim a check the older runs never made.
+      ...(agent.deniedTools?.length ? { deniedTools: agent.deniedTools } : {}),
     };
   }
 
@@ -2336,7 +2349,34 @@ export class SessionDO extends DurableObject<Env> {
     //   guarantee, not a token optimisation. Preferences are applied ON TOP of it and can only
     //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
     //   it cannot touch the project. See applyToolPermissions. ]]
-    const allowed = applyToolPermissions(toolsForMode(agent.mode, studioConnected, toolNames()), agent.toolPermissions);
+    const base = toolsForMode(agent.mode, studioConnected, toolNames());
+    const allowed = applyToolPermissions(base, agent.toolPermissions);
+
+    //[[ AND SAY WHAT WAS TAKEN.
+    //
+    //   Until now the narrowing was invisible from every side: the tool was removed from the set,
+    //   nothing was logged, nothing was broadcast, and "why did Apple not use run_luau on that
+    //   run" had no answer anywhere in the product. A capability that is silently missing reads,
+    //   from the user's side, exactly like a broken one.
+    //
+    //   ONCE PER RUN, because the permissions are PINNED to the run (see AgentState.toolPermissions)
+    //   — so this cannot change between step 4 and step 5, and repeating it every step would be the
+    //   same sentence eleven times. `agent.deniedTools` being set is what marks it as said; an
+    //   empty array is stored when nothing was removed, so "already checked" and "nothing to say"
+    //   stay distinguishable from "an older run that never looked".
+    //
+    //   The audit event is per TOOL rather than per run: `subject` is one name in analytics.ts, and
+    //   a comma-joined list in that field would be a record nothing can query by tool. ]]
+    if (agent.deniedTools === undefined) {
+      const denied = deniedTools(base, agent.toolPermissions);
+      agent.deniedTools = denied;
+      if (denied.length) {
+        for (const tool of denied) {
+          recordEvent({ kind: 'audit', action: 'tool_denied', actorKind: 'user', subject: tool, allowed: false });
+        }
+        this.broadcast({ type: 'tools_denied', msgId: agent.msgId, tools: denied });
+      }
+    }
 
     // Decide how hard to think about THIS step. Cheap by default, expensive where it changes the
     // outcome — visual design, recovery from failure, anything irreversible.
@@ -2541,7 +2581,7 @@ export class SessionDO extends DurableObject<Env> {
       const sig = `${call.name}:${call.arguments}`;
       if (agent.seenCalls.includes(sig)) {
         // the model is looping — refuse the duplicate and steer it back to building
-        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
+        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `↺ ${call.name} (already done)` });
         agent.llm.push({
           role: 'tool',
@@ -2570,7 +2610,7 @@ export class SessionDO extends DurableObject<Env> {
         totalSteps: agent.maxSteps,
         tool: call.name,
       });
-      this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name });
+      this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
       const out = await runTool(ctx, call.name, call.arguments);
       const entry: ToolTraceEntry = { tool: call.name, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0 };
       agent.trace.push(entry);
@@ -2692,20 +2732,36 @@ export class SessionDO extends DurableObject<Env> {
     // be noted on submissions that are otherwise fine, and those were the submissions whose
     // findings were discarded. Nothing fires on a clean verdict: `signals` is empty and there is
     // nothing to say.
+    //
+    // A pasted credential gets its OWN `errorKind` rather than the generic `abuse_noted`. It is
+    // the one finding here that is about the user's own property rather than their conduct, and
+    // an operator reading the trace for leaked keys should not have to grep message bodies.
     if (verdict.signals.length > 0) {
+      const secret = verdict.signals.some((s) => s.code === 'secret_in_prompt');
       recordEvent({
         kind: 'error',
         scope: 'chat:ingress',
         errorKind:
-          verdict.action === 'refuse' ? 'abuse_refused' : verdict.action === 'throttle' ? 'abuse_throttled' : 'abuse_noted',
+          verdict.action === 'refuse'
+            ? 'abuse_refused'
+            : verdict.action === 'throttle'
+              ? 'abuse_throttled'
+              : secret
+                ? 'secret_in_prompt'
+                : 'abuse_noted',
         message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
       });
     }
     // And told to the person it is about. A credential in a transcript is theirs to rotate whether
     // or not this particular run starts, so this is sent on both paths — see `advisory` for why it
     // covers the pasted key and not the injection pattern.
+    //
+    // SENT AS `notice`, NOT AS `error`. This was an `error` only because the wire had no other
+    // channel; it now has one. The run is still going and nothing failed, and a failure-shaped
+    // banner over a build that is happily building teaches people to distrust both the banner and
+    // the build. The browser renders it as an info toast with a link to where keys live.
     const notice = advisory(verdict);
-    if (notice) this.broadcast({ type: 'error', code: notice.code, message: notice.message });
+    if (notice) this.broadcast({ type: 'notice', code: notice.code, message: notice.message });
     if (verdict.action === 'allow') return false;
     if (verdict.action !== 'refuse') return false;
     this.broadcast({

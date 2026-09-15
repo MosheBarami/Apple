@@ -65,6 +65,15 @@ export interface StoredCredential {
   hint: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /**
+   * When Roblox will stop accepting this key, as the customer told us, or null if they did not say.
+   *
+   * RECORDED, NOT PROBED, like the scopes beside it: Roblox shows the expiry on the screen where a
+   * key is created and Open Cloud offers no way to ask about a key afterwards. Null therefore means
+   * "nobody said", which is a different fact from "it does not expire" — and the panel says so in
+   * those words rather than describing an unknown as permanence.
+   */
+  expiresAt: string | null;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -165,9 +174,22 @@ async function createCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promis
        hint text not null,
        created_at text not null,
        last_used_at text,
+       expires_at text,
        primary key (user_id, provider)
      )`,
   ).run();
+  //[[ AND THE SAME COLUMN FOR THE DATABASE THAT ALREADY EXISTS.
+  //
+  //   `create table if not exists` does exactly nothing to a live table, so a column added only
+  //   above is a column production never gets — and then every insert naming it fails there and
+  //   nowhere else, which is a defect that cannot be reproduced locally. D1 has no
+  //   `add column if not exists`, so the failure is caught: on an already-migrated database this
+  //   is a duplicate-column error and nothing else, exactly as asset-library.ts does it. ]]
+  try {
+    await env.CORPUS.prepare('alter table user_credentials add column expires_at text').run();
+  } catch {
+    // already present
+  }
 }
 
 export interface PutCredentialInput {
@@ -176,6 +198,8 @@ export interface PutCredentialInput {
   robloxCreatorId: string;
   creatorType: 'user' | 'group';
   scopes: unknown;
+  /** The expiry Roblox showed when the key was created. `YYYY-MM-DD` or a full ISO stamp. */
+  expiresAt?: unknown;
 }
 
 export interface PutResult {
@@ -198,6 +222,18 @@ export async function putRobloxCredential(env: CredentialEnv, input: PutCredenti
     return { ok: false, error: `scopes must be from: ${ROBLOX_SCOPES.join(', ')}` };
   }
 
+  // THE EXPIRY IS CHECKED BEFORE ANYTHING IS SEALED. Storing a key that is already dead produces
+  // a credential whose first use fails for a reason the row itself knew, and a date that does not
+  // parse is how "Invalid Date" reaches a customer's settings page months later.
+  let expiresAt: string | null = null;
+  if (input.expiresAt !== undefined && input.expiresAt !== null && String(input.expiresAt).trim() !== '') {
+    const raw = String(input.expiresAt).trim();
+    const ms = Date.parse(raw);
+    if (!Number.isFinite(ms)) return { ok: false, error: `"${raw.slice(0, 40)}" is not a date Apple can read — use the date Roblox showed, as YYYY-MM-DD` };
+    if (ms <= Date.now()) return { ok: false, error: 'that expiry date has already passed — a key Roblox has expired cannot be connected' };
+    expiresAt = new Date(ms).toISOString();
+  }
+
   let sealed: string;
   try {
     sealed = await sealSecret(env, apiKey);
@@ -210,14 +246,16 @@ export async function putRobloxCredential(env: CredentialEnv, input: PutCredenti
   const fingerprint = await sha256hex(apiKey);
   const hint = apiKey.slice(-4);
   await env.CORPUS.prepare(
-    `insert into user_credentials (user_id, provider, sealed, roblox_creator_id, creator_type, scopes, fingerprint, hint, created_at, last_used_at)
-     values (?, 'roblox', ?, ?, ?, ?, ?, ?, ?, null)
+    // `expires_at` is bound LAST on purpose: every other position is unchanged, so a reader
+    // diffing this against the version before it can see that nothing else moved.
+    `insert into user_credentials (user_id, provider, sealed, roblox_creator_id, creator_type, scopes, fingerprint, hint, created_at, last_used_at, expires_at)
+     values (?, 'roblox', ?, ?, ?, ?, ?, ?, ?, null, ?)
      on conflict(user_id, provider) do update set
        sealed=excluded.sealed, roblox_creator_id=excluded.roblox_creator_id,
        creator_type=excluded.creator_type, scopes=excluded.scopes,
        fingerprint=excluded.fingerprint, hint=excluded.hint, created_at=excluded.created_at,
-       last_used_at=null`,
-  ).bind(input.userId, sealed, String(input.robloxCreatorId), input.creatorType, JSON.stringify(scopes), fingerprint, hint, now).run();
+       last_used_at=null, expires_at=excluded.expires_at`,
+  ).bind(input.userId, sealed, String(input.robloxCreatorId), input.creatorType, JSON.stringify(scopes), fingerprint, hint, now, expiresAt).run();
 
   return {
     ok: true,
@@ -230,6 +268,7 @@ export async function putRobloxCredential(env: CredentialEnv, input: PutCredenti
       hint,
       createdAt: now,
       lastUsedAt: null,
+      expiresAt,
     },
   };
 }
@@ -238,7 +277,7 @@ export async function putRobloxCredential(env: CredentialEnv, input: PutCredenti
 export async function describeRobloxCredential(env: Pick<CredentialEnv, 'CORPUS'>, userId: string): Promise<StoredCredential | null> {
   await ensureCredentialTable(env);
   const row = await env.CORPUS.prepare(
-    `select roblox_creator_id, creator_type, scopes, fingerprint, hint, created_at, last_used_at
+    `select roblox_creator_id, creator_type, scopes, fingerprint, hint, created_at, last_used_at, expires_at
      from user_credentials where user_id = ? and provider = 'roblox'`,
   ).bind(userId).first<Record<string, unknown>>();
   if (!row) return null;
@@ -256,6 +295,7 @@ export async function describeRobloxCredential(env: Pick<CredentialEnv, 'CORPUS'
     hint: String(row.hint),
     createdAt: String(row.created_at),
     lastUsedAt: (row.last_used_at as string | null) ?? null,
+    expiresAt: (row.expires_at as string | null) ?? null,
   };
 }
 
