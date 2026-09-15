@@ -240,7 +240,7 @@ export function Composer({
     <div className="gx-composer">
       <form className="gx-composer__inner" onSubmit={submit}>
         <label className="gx-sr" htmlFor="gx-composer-input">
-          Describe what you want Golem to build
+          What should Apple build in your place?
         </label>
         <textarea
           id="gx-composer-input"
@@ -363,7 +363,7 @@ export function Composer({
       </form>
 
       <p className="gx-composer__note">
-        {sendHint(prefs.sendKey)} Golem can make mistakes. Always review important information.
+        {sendHint(prefs.sendKey)} Apple can get things wrong. Check what it changed before you publish.
       </p>
     </div>
   );

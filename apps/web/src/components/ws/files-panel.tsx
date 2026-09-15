@@ -281,7 +281,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
       {data.fileCount === 0 && (
         <p className="gx-empty">
           Apple has not written any files in this project yet. It keeps notes, plans and generated data here —
-          they are Golem’s own storage, not your Roblox place.
+          they are Apple’s own storage, not your Roblox place.
         </p>
       )}
 

@@ -127,6 +127,13 @@ const parts = [
   //   column the client asks for that no migration creates. It cannot tell whether a migration has
   //   been APPLIED, and says so.
   { label: 'check-schema-drift', ...run('node', ['scripts/check-schema-drift.mjs']) },
+  //[[ FOUR PANELS SHIPPED WITH NO STYLESHEET AT ALL.
+  //
+  //   `grep -c 'rk__' styles.css` returned 0, and so did `gx-ev`. Both are built from <span>s, so
+  //   with no rules every span stayed inline and the owner read
+  //   "Read your assetsApple can look up things you already own" on his own settings page. A
+  //   selector that matches nothing fails no typecheck, no test and no build.
+  { label: 'check-unstyled-classes', ...run('node', ['scripts/check-unstyled-classes.mjs']) },
   //[[ THE BUILD IS A CHECK, AND NOTHING HERE WAS RUNNING IT.
   //
   //   `tsc --noEmit` passed over a settings.tsx carrying a JSX comment in expression position —

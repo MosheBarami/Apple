@@ -1466,7 +1466,7 @@ export function SettingsPage() {
         <Row id="appearance" visible={shows('appearance')}>
           <h3 className="settings-sub">Appearance</h3>
           <Choice
-            label="Appearance"
+            label="Theme"
             value={prefs.appearance}
             options={APPEARANCES}
             names={APPEARANCE_NAMES}
