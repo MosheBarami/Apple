@@ -134,18 +134,24 @@ test('it distinguishes "no importer" from "reached only by a test"', () => {
   assert.match(r.out, /module\(s\) reached only from a test or eval harness/);
 });
 
-test('a planted dead end is found', () => {
-  // Proof it is looking rather than reciting: a new unreferenced module must appear.
-  const planted = join(ROOT, 'apps/web/src/lib/planted-dead-end.ts');
-  writeFileSync(planted, 'export const nothingImportsThis = 1;\n');
-  execFileSync('git', ['add', planted], { cwd: ROOT });
-  try {
-    const r = run();
-    assert.match(r.out, /planted-dead-end\.ts/);
-  } finally {
-    execFileSync('git', ['rm', '-f', '-q', planted], { cwd: ROOT });
-  }
-});
+/* THE TEST THAT USED TO SIT HERE WROTE INTO THE REAL REPOSITORY AND THE REAL GIT INDEX.
+ *
+ * It wrote apps/web/src/lib/planted-dead-end.ts into the working tree, `git add`ed it so
+ * `git ls-files` would see it, and removed it with `git rm -f` in a finally. In a checkout shared
+ * by several live sessions that is not a test, it is a race: between the add and the rm, whichever
+ * session commits next takes the file — because `git commit` writes the whole index, not the paths
+ * that session staged. It happened twice on 2026-09-15. One commit shipped the fixture; a later one
+ * shipped its deletion; neither author had touched the file, and the second author spent real time
+ * working out whose uncommitted work they had just destroyed.
+ *
+ * It was also redundant. 'it finds a module nothing imports' above plants the same orphan into a
+ * temp clone via --root, asserts it is named AND counted, and carries the control this one lacked:
+ * a module that DOES have an importer and must not be reported. That control is the difference
+ * between proving the checker looks and proving it can produce output.
+ *
+ * --root exists for exactly this, and its own comment in the checker says so. One test was moved
+ * over and this one was left behind.
+ */
 
 /* ------------------------------------------------------- the disposition gate --- */
 

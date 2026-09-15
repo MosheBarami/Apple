@@ -329,3 +329,26 @@ removed an hour ago.
 **Outstanding:** the push from the route that ends a membership, and a check in the alarm path.
 This is the one of the six whose absence is a security hole rather than a missing feature, and its
 passing test suite is exactly the reason it could sit here unnoticed.
+
+## apps/web/src/lib/planted-dead-end.ts — DELETE, 2026-09-15
+
+**Found:** imported by nothing in the tree. One line.
+
+**What it is:** not product source at all. It is the fixture a test in `tests/check-deadends.test.mjs`
+used to write into the REAL working tree and `git add` into the REAL index, so that
+`git ls-files` would see it, before removing it with `git rm -f` in a finally block.
+
+**Why it is being deleted rather than wired or blocked:** there is nothing to wire. It exists only
+because a test left it behind — and in a checkout shared by several live sessions, that test was a
+race rather than a test. Twice on 2026-09-15 a session's `git commit` swept the file in or its
+deletion out, under an author who had never touched it, because `git commit` writes the whole index
+and not the paths that session staged.
+
+The test has been removed. `it finds a module nothing imports` already plants the same orphan into
+a temporary clone through `--root`, counts it, AND carries the control the deleted test had no
+version of: a module that DOES have an importer and must not be reported. The checker's `--root`
+flag was added for precisely this, and its own comment says so; one test was moved across and this
+one was left behind.
+
+Recorded here rather than removed quietly, per the rule at the head of `scripts/check-deadends.mjs`:
+the disposition for a module that should not exist is DELETE with a dated statement.
