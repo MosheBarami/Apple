@@ -1,0 +1,61 @@
+{
+  "why": "The page these sit on is about assets that say where they came from. It would be a poor joke for the page's own illustrations to be the only things on it that do not, so each one records the model, the seed and the exact prompt that produced it. Regenerating any of them is a copy-paste, and nobody has to guess later whether a picture was licensed, bought, traced or made.",
+  "generatedBy": {
+    "model": "Tongyi Z-Image-Turbo",
+    "via": "Hugging Face Space mcp-tools/Z-Image-Turbo",
+    "account": "moshebarami",
+    "generatedOn": "2026-09-15"
+  },
+  "licence": "Original output generated for this project. No third-party asset, photograph or traced artwork is included in any of them.",
+  "sharedPromptStem": "Isometric 3D product illustration on a plain off-white studio background. Matte plastic materials, soft daylight, gentle contact shadows, cool mint and sky blue with one warm orange accent, no text, no letters, no logos, generous empty space, crisp minimal professional product render, slightly cartoony",
+  "files": [
+    {
+      "file": "build-in-progress.webp",
+      "section": "The product",
+      "seed": 7311,
+      "steps": 14,
+      "intrinsic": {
+        "width": 1152,
+        "height": 864
+      },
+      "bytes": 17236,
+      "subject": "A flat pale-green baseplate with low round studs, and hovering just above it a translucent pale-blue holographic outline of a tower being placed, with a thin bright orange progress ring beside it. Low-profile matte plastic shapes only, no tall bricks, no studs on the shapes themselves."
+    },
+    {
+      "file": "labelled-assets.webp",
+      "section": "The library",
+      "seed": 7312,
+      "steps": 14,
+      "intrinsic": {
+        "width": 1152,
+        "height": 864
+      },
+      "bytes": 18214,
+      "subject": "Three small matte plastic objects arranged in a row — a mint crate, a sky-blue barrel, a pale coral lamp — each with a small blank paper label tag on a thin string attached to it, tags blank with no writing."
+    },
+    {
+      "file": "two-modes.webp",
+      "section": "Modes",
+      "seed": 7313,
+      "steps": 14,
+      "intrinsic": {
+        "width": 1152,
+        "height": 864
+      },
+      "bytes": 12914,
+      "subject": "A short pale-grey path splitting into two: the left branch ends in a small mint magnifying glass resting flat, the right branch ends in a small warm-orange hammer resting flat."
+    },
+    {
+      "file": "plug-in.webp",
+      "section": "How it works",
+      "seed": 7314,
+      "steps": 14,
+      "intrinsic": {
+        "width": 1152,
+        "height": 864
+      },
+      "bytes": 12698,
+      "subject": "A small sky-blue plug on a short soft cable just about to slot into a mint socket block, a tiny warm-orange spark dot in the gap between them."
+    }
+  ]
+}

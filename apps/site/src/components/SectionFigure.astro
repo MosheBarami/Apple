@@ -1,0 +1,80 @@
+---
+/**
+ * The one original illustration a section is allowed.
+ *
+ * WHY A COMPONENT AND NOT FOUR <img> TAGS. Every one of these has to carry the same four things or
+ * it costs more than it gives: intrinsic width and height (or the section reflows when the file
+ * arrives, which is the jank a minimal page cannot afford), `loading` and `decoding` hints,
+ * `alt=""` with `aria-hidden` because the sentence beside it already says what it says, and a
+ * fixed aspect box so the reserved space is right before the bytes land. Four tags is four chances
+ * to forget one.
+ *
+ * THESE ARE OURS. Generated for this product, in the palette the stylesheet already defines, and
+ * recorded in public/assets/sections/PROVENANCE.json with the model, seed and prompt that made
+ * each one — so "where did this come from" has the same answer here as it does for every asset in
+ * the library the page is about.
+ *
+ * DECORATIVE BY CONSTRUCTION. Nothing here may carry information the text does not: a reader with
+ * images off, or a screen reader, must lose nothing. That is why `alt` is empty rather than a
+ * description — a description would be the page admitting the picture said something.
+ */
+interface Props {
+  /** Basename in public/assets/sections, without extension. */
+  src: string;
+  /** The intrinsic size of the file, read from its own header — not assumed. */
+  width?: number;
+  height?: number;
+}
+const { src, width = 1152, height = 864 } = Astro.props;
+---
+
+<div class="ap-fig" aria-hidden="true">
+  <img
+    src={`/assets/sections/${src}.webp`}
+    alt=""
+    width={width}
+    height={height}
+    loading="lazy"
+    decoding="async"
+  />
+</div>
+
+<style>
+  .ap-fig {
+    /* The box exists before the image does. `aspect-ratio` with a width cap holds the exact space
+       the file will occupy, so nothing under it moves when it arrives. */
+    aspect-ratio: 4 / 3;
+    width: min(100%, 22rem);
+    justify-self: end;
+    align-self: start;
+    /* No border, no card, no shadow. The illustrations already sit on the page's own paper colour,
+       so a frame around them would draw a box that is not there in the artwork. */
+    margin: 0;
+  }
+
+  .ap-fig img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* The render's own ground is the page's paper. Blending it means the edge of the file is never
+       visible as a rectangle, at either theme's background. */
+    mix-blend-mode: multiply;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .ap-fig img {
+      /* multiply over a dark ground would erase the artwork. On dark the render keeps its own
+         light ground, softened rather than blended, which is legible instead of invisible. */
+      mix-blend-mode: normal;
+      opacity: 0.92;
+      border-radius: 0.9rem;
+    }
+  }
+
+  :global(:root[data-theme='dark']) .ap-fig img {
+    mix-blend-mode: normal;
+    opacity: 0.92;
+    border-radius: 0.9rem;
+  }
+</style>
