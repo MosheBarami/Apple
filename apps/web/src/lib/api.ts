@@ -6,7 +6,8 @@ import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../component
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
+import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
 import type { BillingChange, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
@@ -54,6 +55,34 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   }
   return body as T;
 }
+
+// ---------------------------------------------------------------- notifications
+//
+// The worker has served an inbox, an unread count, a collapsed view and a mark-read write for a
+// while, and nothing in this app ever called any of it — so a person who closed the tab never
+// learned their build had failed, which is the hole the whole subsystem was written to close.
+//
+// `items`, `unread` and `groups` arrive on ONE response deliberately. The worker's own comment on
+// the route explains why: two requests would be two reads at two instants, and the number under
+// the heading would disagree with the list under it. So there is no separate groups fetcher here,
+// and tests/notification-inbox.test.mjs fails if the component grows one.
+
+export const fetchNotifications = (unreadOnly = false): Promise<InboxResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockNotifications())
+    : request<InboxResponse>(unreadOnly ? '/api/notifications?unread=true' : '/api/notifications');
+
+/**
+ * Mark rows read — specific ids, or everything that has been delivered.
+ *
+ * The response carries `unread` as well as `marked` precisely so the badge can be updated from the
+ * write instead of a refetch. Use the number it returns: `all: true` does NOT mark a row that
+ * quiet hours is still holding, so the answer to "mark everything" is often not zero.
+ */
+export const markNotificationsRead = (body: { ids?: string[]; all?: boolean }): Promise<MarkReadResult> =>
+  MOCK_MODE
+    ? Promise.resolve({ marked: body.all ? 2 : (body.ids?.length ?? 0), unread: 0 })
+    : request<MarkReadResult>('/api/notifications/read', { method: 'POST', body: JSON.stringify(body) });
 
 // ---------------------------------------------------------------- me / usage
 
