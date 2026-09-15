@@ -250,9 +250,14 @@ export function WorkspacePage() {
   //   toasted "further back than the loaded history" about a checkpoint — a wrong explanation,
   //   which is worse than none, because the user goes looking for the history that is not missing.
   //
-  //   Activity is the one kind with nowhere to go: the oplog row carries no anchor to a message,
-  //   and the result line already shows the whole record. It says that rather than scrolling
-  //   nowhere and leaving the user to wonder what they missed. ]]
+  //   Activity USED to be the kind with nowhere to go — the oplog row carried no anchor to a
+  //   message. It carries one now (session.ts writes the op's `run_id`), so an activity hit from a
+  //   run opens that run through the `messageId` branch above like any other record.
+  //
+  //   The branch below survives for the ops that genuinely belong to NO run: a manual checkpoint,
+  //   a snapshot taken between builds. Those must keep saying so rather than scrolling nowhere —
+  //   and the wording no longer claims that ALL activity is anchorless, which would be a wrong
+  //   explanation for the common case now that most of it is not. ]]
   const openHit = useCallback(
     (hit: SearchHit) => {
       if (hit.messageId) {
@@ -267,7 +272,7 @@ export function WorkspacePage() {
         setDrawer('memory');
         return;
       }
-      toast('That is an activity record — the result line is the whole of it.', 'info');
+      toast('That happened outside a run, so there is no conversation to open — the result line is the whole of it.', 'info');
     },
     [jumpToMessage, setDrawer, toast],
   );

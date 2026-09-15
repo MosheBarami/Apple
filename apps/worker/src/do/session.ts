@@ -521,6 +521,22 @@ export class SessionDO extends DurableObject<Env> {
       } catch {
         /* already added on an earlier boot */
       }
+      //[[ WHICH RUN DID THIS. The record's anchor back into the conversation.
+      //
+      //   `PendingOp.runId` already tags every queued op — op-attribution.ts depends on it to stop
+      //   a cancelled run's mutations reaching the place. The oplog threw it away, so no history
+      //   row could name the run that made the change, and the workspace's own search handler had
+      //   to say so: "the oplog row carries no anchor to a message". A user who finds the change
+      //   could not get to the conversation that caused it.
+      //
+      //   Nullable on purpose. An op taken between runs — a manual checkpoint, a snapshot —
+      //   belongs to NO run, and inheriting the previous one would send that user into a
+      //   conversation that did not cause what they are looking at. ]]
+      try {
+        this.sql.exec(`alter table oplog add column run_id text`);
+      } catch {
+        /* already added on an earlier boot */
+      }
       const q = await this.ctx.storage.get<PendingOp[]>('opQueue');
       if (q) this.opQueue = q;
       const seq = await this.ctx.storage.get<number>('seq');
@@ -1242,9 +1258,24 @@ export class SessionDO extends DurableObject<Env> {
       const issuedAt = (await this.ctx.storage.get<number>('pluginTokenIssuedAt')) ?? null;
       // The same window /info reports, and the same ordering, so an operator and a user are
       // looking at one record rather than two that can disagree.
-      const recentOps = this.sql
-        .exec(`select op_id, kind, ok, summary, created_at, failure from oplog order by id desc limit 25`)
-        .toArray();
+      //
+      // `runId` is renamed out of the column name here rather than left as `run_id`, because this
+      // payload is read by the browser and every other field on it is already camelCase. A caller
+      // that has to know the storage spelling of one field is a caller that will get it wrong.
+      const recentOps = (
+        this.sql
+          .exec(`select op_id, kind, ok, summary, created_at, failure, run_id from oplog order by id desc limit 25`)
+          .toArray() as { op_id: string; kind: string; ok: number; summary: string; created_at: number; failure: string | null; run_id: string | null }[]
+      ).map((r) => ({
+        op_id: r.op_id,
+        kind: r.kind,
+        ok: r.ok,
+        summary: r.summary,
+        created_at: r.created_at,
+        failure: r.failure,
+        /** The run that asked for this op, or null for one taken outside a run. */
+        runId: r.run_id,
+      }));
       return json({
         link: await this.linkSummary(),
         agentStatus: agent?.status ?? 'idle',
@@ -2692,12 +2723,13 @@ export class SessionDO extends DurableObject<Env> {
     const verdict = admitFrame(raw, { recompress: opts.recompress });
     if (!verdict.ok) {
       this.sql.exec(
-        `insert into oplog(op_id, kind, ok, summary, created_at) values(?,?,?,?,?)`,
+        `insert into oplog(op_id, kind, ok, summary, created_at, run_id) values(?,?,?,?,?,?)`,
         'frame',
         'frame_rejected',
         0,
         `${verdict.reason}: ${verdict.detail}`.slice(0, 200),
         Date.now(),
+        this.currentMsgId ?? null,
       );
       return false;
     }
@@ -2880,13 +2912,16 @@ export class SessionDO extends DurableObject<Env> {
       });
     });
     this.sql.exec(
-      `insert into oplog(op_id, kind, ok, summary, created_at, failure) values(?,?,?,?,?,?)`,
+      `insert into oplog(op_id, kind, ok, summary, created_at, failure, run_id) values(?,?,?,?,?,?,?)`,
       op.id,
       studioOp.op,
       result.ok ? 1 : 0,
       result.error?.slice(0, 200) ?? '',
       Date.now(),
       result.ok ? null : (asFailureKind(result.failure) ?? null),
+      // The op's OWN attribution, not `this.currentMsgId` read a second time: the run can have
+      // ended while this op sat in the queue, and the row must name the run that asked for it.
+      op.runId ?? null,
     );
     return result;
   }
@@ -3255,11 +3290,11 @@ export class SessionDO extends DurableObject<Env> {
       const n = narrowing(filter, { columns: ['summary', 'kind'] });
       const rows = this.sql
         .exec(
-          `select id, kind, ok, summary, created_at from oplog ${n.where} order by created_at desc limit ?`,
+          `select id, kind, ok, summary, created_at, run_id from oplog ${n.where} order by created_at desc limit ?`,
           ...n.args,
           SCAN_ROWS + 1,
         )
-        .toArray() as { id: number; kind: string | null; ok: number | null; summary: string | null; created_at: number }[];
+        .toArray() as { id: number; kind: string | null; ok: number | null; summary: string | null; created_at: number; run_id: string | null }[];
       if (rows.length > SCAN_ROWS) truncated = true;
       for (const r of rows.slice(0, SCAN_ROWS)) {
         scanned += 1;
@@ -3270,6 +3305,10 @@ export class SessionDO extends DurableObject<Env> {
           title: r.kind ?? null,
           body: r.summary ?? '',
           createdAt: r.created_at,
+          // The anchor back into the conversation. OMITTED, not nulled, for an op taken outside a
+          // run: `messageId` present is what tells the workspace it has somewhere to go, and a
+          // record that claims an anchor it does not have scrolls the user to nothing.
+          ...(r.run_id ? { messageId: r.run_id } : {}),
         });
       }
     }
