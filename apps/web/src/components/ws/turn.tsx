@@ -54,6 +54,7 @@ export function Turn({
   onEdit,
   editable,
   onRetry,
+  onShowRevisions,
 }: {
   item: ChatItem;
   status: AgentStatus | null;
@@ -68,6 +69,14 @@ export function Turn({
    * path, and it has a dialog for exactly that reason.
    */
   onRetry?: () => void;
+  /**
+   * Open the earlier versions of this user message.
+   *
+   * Offered only when the transcript says there ARE earlier versions — the count rides on the
+   * message so the conversation does not need a request per turn to find out whether to draw the
+   * mark.
+   */
+  onShowRevisions?: (messageId: string) => void;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
    * flight. Undefined for every other turn, because `agent_status` carries no
@@ -165,6 +174,22 @@ export function Turn({
               title="Edit this message and run again from here"
             >
               Edit
+            </button>
+          )}
+          {/* WHAT YOU WROTE BEFORE. Beside Edit because Edit is what made it, and always visible
+              rather than revealed on hover: it is a fact about this message, not a tool.
+
+              `(item.revisions ?? 0) > 0` and not a falsy check, because undefined and 0 are
+              different facts here — a worker that predates message_revisions sends no field at
+              all, and drawing "no earlier versions" from that would be an answer nobody checked. */}
+          {onShowRevisions && (item.revisions ?? 0) > 0 && (
+            <button
+              type="button"
+              className="gx-user__edited"
+              onClick={() => onShowRevisions(item.id)}
+              title={`You edited this message. See ${item.revisions === 1 ? 'the earlier version' : `all ${item.revisions} earlier versions`}.`}
+            >
+              Edited
             </button>
           )}
           <Stamp at={item.createdAt} align="end" />

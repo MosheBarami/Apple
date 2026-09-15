@@ -3839,6 +3839,21 @@ app.get('/api/shared/:id/messages', async (c) => {
   return gate.ctx.stub.fetch(`https://do/messages?${url.searchParams}`);
 });
 
+/**
+ * What the user wrote before they edited a message.
+ *
+ * Beside /messages and gated the same way, not on a separate owner-only path, for the reason
+ * stated where the client reads the transcript: there is exactly one way the app reads a
+ * conversation, and the earlier versions of a message are part of that conversation. `read` is
+ * what the owner passes too, so a second route would only be a second thing to keep in step.
+ */
+app.get('/api/shared/:id/messages/:messageId/revisions', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const params = new URLSearchParams({ id: c.req.param('messageId') ?? '' });
+  return gate.ctx.stub.fetch(`https://do/message-revisions?${params}`);
+});
+
 app.get('/api/shared/:id/checkpoints', async (c) => {
   // Checkpoints are the history of the build a viewer is watching, so they sit with the other
   // reads rather than behind a write capability: a viewer who can see /messages and /versions but

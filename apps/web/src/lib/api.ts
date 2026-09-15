@@ -1,7 +1,7 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
@@ -204,6 +204,20 @@ export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
  */
 export const fetchMessages = (projectId: string, limit = 100) =>
   request<{ messages: MessageDto[] }>(`/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
+
+/**
+ * The earlier versions of one message the user edited.
+ *
+ * Fetched on demand rather than with the transcript: a long conversation of rewritten prompts would
+ * otherwise carry every draft of every message on every load, to draw a panel almost nobody opens.
+ * The COUNT comes with the transcript, which is all the conversation needs to know whether to offer
+ * the panel at all. Same shared path as the transcript itself, gated on `read`, so a collaborator
+ * who can see a message can see how it got there.
+ */
+export const fetchMessageRevisions = (projectId: string, messageId: string) =>
+  request<{ revisions: MessageRevisionDto[] }>(
+    `/api/shared/${encodeURIComponent(projectId)}/messages/${encodeURIComponent(messageId)}/revisions`,
+  );
 
 export interface SearchHit {
   id: string;

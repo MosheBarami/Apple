@@ -1038,6 +1038,23 @@ export interface MessageDto {
   content: string;
   toolTrace: ToolTraceEntry[] | null;
   createdAt: string;
+  /**
+   * How many earlier versions of this message the user wrote before editing it.
+   *
+   * Counted by the DO and sent with the list so the conversation can decide whether to draw an
+   * "edited" mark without one request per turn. The TEXT is fetched only when someone asks to read
+   * it. Optional: a worker that predates message_revisions sends no field, and the absence means
+   * "none known", never "none".
+   */
+  revisions?: number;
+}
+
+/** One earlier version of a user's message, as served by .../messages/:messageId/revisions. */
+export interface MessageRevisionDto {
+  /** Position in the chain, oldest first. */
+  seq: number;
+  content: string;
+  createdAt: string;
 }
 
 export interface ToolTraceEntry {
@@ -1659,3 +1676,29 @@ export interface AssetSourcePolicy {
 }
 
 export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+
+/* --------------------------------------------------------------- message revisions --- */
+
+/**
+ * Does replacing `previous` with `next` produce an earlier version worth keeping?
+ *
+ * Shared because BOTH sides answer it and they must answer it the same way: the DO decides whether
+ * to write a `message_revisions` row, and the web app decides whether to increment the count it is
+ * showing optimistically before the server has said anything. If they disagreed, the conversation
+ * would offer to show earlier versions that do not exist, or hide ones that do.
+ *
+ * NO for an unchanged resend, which is not a hypothetical: "Try again" and "Regenerate" both go
+ * through `edit_resend` with the text untouched, on purpose, so that running again has exactly one
+ * definition. Recording those would tell a user who regenerated four times that their message has
+ * four earlier versions, every one of them identical to the one on screen.
+ *
+ * Compared trimmed, because the client trims before sending and the DO trims on arrival — a rule
+ * that counted whitespace would record a revision nobody can see a difference in.
+ *
+ * NO for an empty previous message: there is no version of nothing.
+ */
+export function recordsRevision(previous: string, next: string): boolean {
+  const before = previous.trim();
+  if (!before) return false;
+  return before !== next.trim();
+}

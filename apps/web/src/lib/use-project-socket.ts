@@ -16,6 +16,9 @@ import type {
   StudioEventSelection,
   StudioEventState,
 } from '@golem/shared';
+// The rule for what counts as a new version of a message, shared with the DO so the count this
+// client shows before the round trip and the rows the server writes cannot disagree.
+import { recordsRevision } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
 import { fetchCheckpoints, fetchMessages } from './api';
 // One definition of what a client-minted id looks like, and one place that reconciles it with the
@@ -71,6 +74,16 @@ export interface ChatItem {
   stopReason?: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
   error?: string;
   createdAt: number;
+  /**
+   * How many earlier versions of this message the user wrote before editing it.
+   *
+   * Comes with the transcript so the "edited" mark can be drawn without one request per turn, and
+   * is incremented optimistically when an edit is sent — the server applies the same rule (see
+   * `recordsRevision` in @golem/shared), so the two agree, and a reload corrects them if they ever
+   * do not. Undefined means "nothing known", never "none": a worker that predates the feature
+   * sends no field, and drawing "no earlier versions" from that would be an answer nobody checked.
+   */
+  revisions?: number;
   /**
    * What the worker announced it understood the request to be, from the
    * `run_intent` message (and replayed on `run_state`). UNDEFINED UNTIL THE
@@ -339,6 +352,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           })),
           streaming: false,
           createdAt: new Date(m.createdAt).getTime(),
+          revisions: m.revisions,
         }));
         setMessages((live) => {
           // keep any items that arrived over the socket while history loaded
@@ -872,9 +886,17 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         setMessages((list) => {
           const idx = list.findIndex((m) => m.id === messageId);
           const kept = idx === -1 ? list : list.slice(0, idx);
+          // The message that replaces an edited one is the SAME message, one version later, so its
+          // history comes with it. `recordsRevision` is the server's own rule, imported rather than
+          // restated: a retry resends the text unchanged on purpose, and counting that would tell
+          // someone who regenerated four times that they had rewritten their prompt four times.
+          const edited = idx === -1 ? undefined : list[idx];
+          const carried = edited?.revisions;
+          const revisions =
+            edited && recordsRevision(edited.content, text) ? (carried ?? 0) + 1 : carried;
           return [
             ...kept,
-            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now() },
+            { id: localId(), role: 'user', mode, content: text, tools: [], streaming: false, createdAt: Date.now(), revisions },
           ];
         });
       }
