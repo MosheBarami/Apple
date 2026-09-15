@@ -349,8 +349,12 @@ const MUTATIONS = [
     name: "the transform identity stops being the identity",
     claim: "the identity elements are EXACT, so an unasked-for axis changes nothing",
     module: "Companion",
-    find: "\tlocal scale = 1\n\tlocal scaled = false",
-    replace: "\tlocal scale = 0\n\tlocal scaled = false",
+    // The declaration grew an explicit `: boolean` when the analyzer was cleared — Luau infers a
+    // table literal's boolean field as the singleton `false | true`, which is not exactly
+    // TransformPlan. The mutation targets the number, not the annotation, so it now matches the
+    // line as written rather than the line as it was.
+    find: "\tlocal scale = 1\n\tlocal scaled: boolean = false",
+    replace: "\tlocal scale = 0\n\tlocal scaled: boolean = false",
   },
   {
     name: "the selection reports how many fitted rather than how many there were",
