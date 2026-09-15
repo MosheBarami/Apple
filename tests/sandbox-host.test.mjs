@@ -230,11 +230,24 @@ test('END TO END: a program that reads the environment finds none of this machin
     assert.ok(Object.keys(process.env).length > 10,
       `the parent process has ${Object.keys(process.env).length} variables; this comparison would prove nothing`);
 
-    // The four the host passes, plus what the OPERATING SYSTEM adds to every process it starts —
-    // on darwin, CoreFoundation injects __CF_USER_TEXT_ENCODING whatever environment is supplied.
-    // It is named here rather than the assertion being loosened to "contains the four", so a
-    // genuinely new variable — a leak — still fails.
+    // The four the host passes, plus what the PLATFORM adds to every process it starts whatever
+    // environment is supplied. Named individually rather than loosening the assertion to "contains
+    // the four", so a genuinely new variable — a leak — still fails.
+    //
+    //   __CF_USER_TEXT_ENCODING   CoreFoundation injects it on darwin.
+    //   NODE_V8_COVERAGE          node propagates it into every child when the parent is running
+    //                             under coverage, so that subprocess coverage is collected. The
+    //                             host cannot suppress it by supplying an env: the injection
+    //                             happens after. ONLY tolerated when the parent has it — on an
+    //                             ordinary run the expected set is still exactly five, and a child
+    //                             that produced this name out of nowhere would still fail.
+    //
+    // THIS IS WHY IT MATTERS RATHER THAN BEING TIDINESS. scripts/gate-check.mjs runs every CHECK
+    // under NODE_V8_COVERAGE. So this test passed standalone and failed only when run by the gate
+    // that asserts the suite is green — which is the shape of failure the comment at the head of
+    // tests/check-escape-hatches.test.mjs describes, hit a second time in a different file.
     const expected = new Set(['HOME', 'LANG', 'PATH', 'TMPDIR', '__CF_USER_TEXT_ENCODING']);
+    if (process.env.NODE_V8_COVERAGE) expected.add('NODE_V8_COVERAGE');
     for (const k of ['HOME', 'LANG', 'PATH', 'TMPDIR']) {
       assert.ok(keys.includes(k), `the program did not receive ${k}`);
     }
