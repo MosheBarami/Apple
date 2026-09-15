@@ -257,6 +257,13 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'd1', binding: 'CORPUS', name: 'creator_write_log', personal: true, holds: 'every write this product made to a person\'s own Roblox account on their behalf' },
   { store: 'd1', binding: 'CORPUS', name: 'project_asset_use', personal: true, holds: 'which library assets a project placed — tied to a person through the project' },
   { store: 'd1', binding: 'CORPUS', name: 'account_deletions', personal: true, holds: 'that this account asked to be deleted, when, and what the erasure could not reach' },
+  // A row here is ABOUT a person and cannot be tied to one BY THIS PRODUCT: recovery-requests.ts
+  // stores the SHA-256 of the normalised address and never the address, precisely so the queue is
+  // not a curated list of people currently locked out. That is why it is `personal: true` with an
+  // answer saying no download exists — an export is keyed on a user id, and there is no user id in
+  // the row to key on. Marking it `personal: false` would have satisfied the guard and been a lie
+  // about what the table is for.
+  { store: 'd1', binding: 'CORPUS', name: 'recovery_requests', personal: true, holds: 'that somebody who could not sign in asked for help, as a hash of the address and the note they wrote' },
   { store: 'd1', binding: 'CORPUS', name: 'asset_library', personal: false, holds: 'the shared asset catalogue; nothing in a row is about a customer' },
   { store: 'd1', binding: 'CORPUS', name: 'asset_verification_log', personal: false, holds: 'catalogue verification history' },
   { store: 'd1', binding: 'CORPUS', name: 'chunks', personal: false, holds: 'the documentation corpus the agent retrieves from' },

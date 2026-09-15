@@ -86,6 +86,76 @@ export function mockSpend() {
   };
 }
 
+/**
+ * One account as the admin lookup returns it, so the panel can be READ before it is trusted.
+ *
+ * The lookup is behind an admin key and a real user id, which means the one surface in this product
+ * whose whole job is to be read under pressure — a customer on the phone, an operator trying to see
+ * what happened — could not be looked at during design at all.
+ *
+ * `profile.known: false` is the REAL shape, not a mock convenience: the worker genuinely cannot
+ * read the profile row, and a fixture that quietly supplied one would let the panel be designed
+ * around a field that never arrives.
+ */
+export function mockAccount(userId: string) {
+  const now = Date.now();
+  return {
+    userId,
+    profile: {
+      known: false as const,
+      why: 'profiles is own-row-only under RLS and this worker holds no service key — display name, admin flag and signup date are not readable from here',
+    },
+    quota: { plan: 'builder', allowanceRemaining: 148, credits: 60 },
+    billing: {
+      plan: 'builder',
+      customerId: 'cus_QmockCustomer',
+      subscription: {
+        plan: 'builder',
+        customerId: 'cus_QmockCustomer',
+        subscriptionId: 'sub_Qmock1',
+        status: 'active',
+        currentPeriodEnd: Math.floor(now / 1000) + 12 * 86_400,
+        cancelAtPeriodEnd: false,
+      },
+      events: [
+        { at: now - 26 * 864e5, kind: 'plan' as const, fromPlan: 'free', toPlan: 'builder', status: 'active', eventId: 'evt_mock_1', cancelAtPeriodEnd: null },
+        { at: now - 4 * 864e5, kind: 'credits' as const, fromPlan: null, toPlan: null, status: null, eventId: 'evt_mock_2', cancelAtPeriodEnd: null },
+      ],
+    },
+    credits: {
+      entries: [
+        { id: 4, day: new Date(now).toISOString().slice(0, 10), kind: 'build', credits: 9, at: now - 42 * 60_000 },
+        { id: 3, day: new Date(now).toISOString().slice(0, 10), kind: 'chat', credits: 1, at: now - 55 * 60_000 },
+        { id: 2, day: new Date(now - 864e5).toISOString().slice(0, 10), kind: 'build', credits: 11, at: now - 26 * 3600_000 },
+        { id: 1, day: new Date(now - 864e5).toISOString().slice(0, 10), kind: 'critique', credits: 2, at: now - 27 * 3600_000 },
+      ],
+      total: 4,
+      truncated: false,
+      retentionDays: 35,
+    },
+    usage: {
+      days: 7,
+      window: { truncated: false, retained: 412 },
+      modelCalls: {
+        key: userId,
+        calls: 38,
+        success: { known: true as const, value: 0.92, samples: 38, unreadable: 0, complete: true },
+        latencyP50: { known: true as const, value: 1840, samples: 38, unreadable: 0, complete: true },
+        neurons: { known: true as const, value: 41_300, samples: 38, unreadable: 0, complete: true },
+        usd: { known: true as const, value: 0.45, samples: 38, unreadable: 0, complete: true },
+        tokens: { known: true as const, value: 96_400, samples: 38, unreadable: 0, complete: true },
+      },
+      builds: [
+        { at: now - 42 * 60_000, projectId: 'mock-project', runId: 'run_9', outcome: 'done', steps: 11, opsApplied: 34, opsFailed: 0, durationMs: 128_000 },
+        { at: now - 26 * 3600_000, projectId: 'mock-project', runId: 'run_8', outcome: 'failed', steps: 6, opsApplied: 12, opsFailed: 3, durationMs: 74_000 },
+      ],
+      errors: [
+        { at: now - 26 * 3600_000, scope: 'chat:ingress', errorKind: 'abuse_noted', message: 'near_duplicate: 0.91 overlap with a submission 40s earlier', fatal: false },
+      ],
+    },
+  };
+}
+
 export function mockCounters() {
   const day = new Date().toISOString().slice(0, 10);
   return [

@@ -116,6 +116,7 @@ import {
   EVENT_KINDS,
   breakdownBy,
   logStats,
+  pathSubject,
   readEnum,
   recordEvent,
   routeLabel,
@@ -317,6 +318,12 @@ type Vars = {
   requestId: string;
   apiVersion: ApiVersion;
   rate: RateLimitVerdict;
+  /**
+   * The signed-in operator behind an `/api/admin/*` call, or null when the caller presented the
+   * shared key with no session. Set by the admin gate so a handler filing its own audit row names
+   * the same person the gate did, rather than re-deriving it and drifting.
+   */
+  adminActorId: string | null;
 };
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 /** A request that has already passed the `/v1/*` middleware chain, so `apiKey` and friends are set. */
@@ -564,6 +571,27 @@ function secretEquals(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * The signed-in operator behind an admin call, or null — never an exception, and never a verdict.
+ *
+ * The admin console attaches the Supabase bearer to every request it makes (lib/api.ts), so a call
+ * from a person usually carries one and a call from a deploy script does not. Null is the honest
+ * answer for the second: a shared static key has nobody to name, and putting a fabricated actor in
+ * a security record is worse than an absent one.
+ *
+ * Everything that can fail is contained here so the gate stays a decision about the key alone.
+ */
+async function adminActorOf(c: Context<{ Bindings: Env; Variables: Vars }>): Promise<string | null> {
+  const token = bearerToken(c.req.raw);
+  // No identity provider configured means no name available. Asking anyway throws on `new URL`.
+  if (!token || !c.env.SUPABASE_URL) return null;
+  try {
+    return (await verifyJwt(c.env, token))?.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 app.use('/api/admin/*', async (c, next) => {
   // The admin key was the one credential in the system with no rate limit: the
   // auth middleware above returns early for /api/admin/*, so an attacker could
@@ -582,21 +610,67 @@ app.use('/api/admin/*', async (c, next) => {
   // no difference at all — both leave time-to-break effectively infinite. What
   // matters is that unbounded guessing becomes bounded.
   const key = c.req.header('X-Admin-Key');
-  const action = routeLabel(new URL(c.req.url).pathname);
+  const path = new URL(c.req.url).pathname;
+  // The METHOD belongs on `action`, beside the route it was sent to. It used to occupy `subject`,
+  // which meant the operator's audit stream was a column of the word "GET" where the name of the
+  // account each call touched should have been.
+  const action = `${c.req.method} ${routeLabel(path)}`;
+  // WHO WAS ACTED UPON. `pathSubject` is the twin of `routeLabel` — see analytics.ts. Null when the
+  // path addresses nobody, which is the truth for /stats and /model-test; the two routes that
+  // address a user through the BODY file their own row, because a middleware that consumed the body
+  // to find out would break every handler downstream of it.
+  const subject = pathSubject(path);
+  // WHO ACTED. There is exactly one ADMIN_KEY and it carries no identity of its own, so the only
+  // identity available is the session the caller happened to be holding — which the admin console
+  // always sends, because lib/api.ts attaches the Supabase bearer to every request it makes. A
+  // deploy script holding the key alone gets null, and null is the honest answer: an unsigned call
+  // has nobody to name, and naming one anyway would put a fabricated actor in a security record.
+  //
+  // Verified, not decoded. An unverified `sub` is a string the caller chose, and an audit log that
+  // accepts one can be written to by anyone who can reach the route.
+  //
+  // BEST EFFORT, ALWAYS, AND THAT IS THE WHOLE POINT. This surface is what the owner reaches for
+  // when spend is running away — /api/admin/kill-switch is the fire alarm — and identification runs
+  // through Supabase's JWKS endpoint. `verifyJwt` swallows a failed verification, but it builds a
+  // `new URL` from SUPABASE_URL BEFORE its own try/catch, so an unset or malformed value throws and
+  // would have turned "we could not name you" into a 500 on the emergency stop. A failure to
+  // identify costs a NAME in the log; it may never cost the call, and it may never decide access —
+  // the key is the authority, here and nowhere else.
+  const actorId = await adminActorOf(c).catch(() => null);
   if (!c.env.ADMIN_KEY || !key || !secretEquals(key, c.env.ADMIN_KEY)) {
     // AUDIT LOG. A refused admin call is the event worth keeping: it is the only externally visible
     // signature of someone working through the key space. `allowed` is written from the branch that
     // decided, not inferred later from a status code.
-    recordEvent({ kind: 'audit', action, actorKind: 'unknown', allowed: false, subject: c.req.method });
+    recordEvent({ kind: 'audit', action, actorKind: 'unknown', allowed: false, subject, actorId });
     const adminIp = c.req.header('CF-Connecting-IP') ?? 'unknown';
     if (ipLimited(`admin-fail:${adminIp}`, 120)) {
       return c.json({ error: 'Too many requests — slow down.' }, 429);
     }
     return c.json({ error: 'forbidden' }, 403);
   }
-  recordEvent({ kind: 'audit', action, actorKind: 'admin', allowed: true, subject: c.req.method });
+  recordEvent({ kind: 'audit', action, actorKind: 'admin', allowed: true, subject, actorId });
+  c.set('adminActorId', actorId);
   return next();
 });
+
+/**
+ * File an audit row for an admin action whose SUBJECT is in the request body.
+ *
+ * The gate above cannot read a body — consuming it there would empty it for the handler — so a
+ * route that changes one named account's plan, quota or credits records the fact itself. The gate's
+ * row says the door opened; this one says what was done and to whom, which is the half an operator
+ * actually has to answer for.
+ */
+function auditAdminAction(c: Context<{ Bindings: Env; Variables: Vars }>, action: string, subject: string | null): void {
+  recordEvent({
+    kind: 'audit',
+    action,
+    actorKind: 'admin',
+    allowed: true,
+    subject: typeof subject === 'string' && subject.length > 0 ? subject : null,
+    actorId: c.get('adminActorId') ?? null,
+  });
+}
 
 // ---------------------------------------------------------------- public
 app.get('/api/health', async (c) => {
@@ -2205,7 +2279,29 @@ app.post('/api/billing/webhook', async (c) => {
     Math.floor(Date.now() / 1000),
   );
   if (!verdict.ok) {
-    console.warn('billing webhook rejected:', verdict.reason);
+    /*
+     * THE ERROR LOG, NOT `console.warn`.
+     *
+     * A console line in a Worker goes to `wrangler tail` — live only, watched by nobody, and gone
+     * when the session closes. This endpoint is the SOURCE OF TRUTH for entitlement: rotate the
+     * signing secret in the Stripe dashboard without rotating it here and every webhook is refused
+     * from that instant, so nobody is upgraded, nobody is downgraded, and paying customers sit on
+     * free. The only trace of that was in a stream the owner of this business cannot read.
+     *
+     * NOT FATAL. Anyone on the internet can POST a forgery to this URL; flagging each one as fatal
+     * would bury the case that matters under noise anybody can generate. The value is the COUNT and
+     * the reason: a handful is the internet, a steady stream of `stripe_signature` is a rotated key.
+     *
+     * The reason is logged and still NOT returned — see the route header. A prober must not learn
+     * which half of their forgery was wrong.
+     */
+    recordEvent({
+      kind: 'error',
+      scope: '/api/billing/webhook',
+      errorKind: 'stripe_signature',
+      message: verdict.reason,
+      fatal: false,
+    });
     return c.json({ error: 'invalid signature' }, 400);
   }
 
@@ -3156,6 +3252,104 @@ app.get('/api/admin/stats', async (c) => {
   return c.json(await res.json());
 });
 
+/**
+ * ONE ACCOUNT, EVERYTHING THIS WORKER CAN SEE ABOUT IT.
+ *
+ * The parts have existed for a long time and none of them had a door. QuotaDO serves the whole
+ * subscription at `GET /billing`, the credit ledger records every charge with what it was for, and
+ * the event log carries every model call, build and error with an actor on it. What did not exist
+ * was a route that took a user id — so answering "what is happening with this customer" meant a
+ * wrangler session and a SQL console, which for the person who runs this business means the
+ * capability was not built at all.
+ *
+ * FOUR THINGS THIS ROUTE REFUSES TO DO, each of which is the normal way a lookup like this lies.
+ *
+ * IT WILL NOT INVENT AN ACCOUNT. `QUOTA_DO.idFromName(x)` mints a Durable Object for any string,
+ * and a fresh one answers exactly like a real customer on the free plan who has never spent: plan
+ * free, no credits, no history. So a mistyped id would render as a plausible customer rather than
+ * as a mistake. The id must be a user id before anything is touched.
+ *
+ * IT WILL NOT PRESENT A PARTIAL RECORD AS A WHOLE ONE. `public.profiles` has an own-row-only RLS
+ * policy (infra/supabase/migrations/0001_init.sql) and this worker holds the ANON key, not a
+ * service key — so display name, admin flag and signup date genuinely cannot be read from here.
+ * `profile: {known:false, why}` says that out loud rather than omitting the field, because a record
+ * with the profile quietly missing reads as the whole account.
+ *
+ * IT WILL NOT SHOW ONE CUSTOMER ANOTHER'S USAGE. The event window is filtered on `actorId` and an
+ * account with nothing in it gets `null`, not a row of zeroes — "no calls of theirs in this window"
+ * and "they made calls that all cost nothing" are different sentences.
+ *
+ * IT WILL NOT PRESENT A CUT WINDOW AS A MEASUREMENT. The event table keeps 5,000 rows and 30 days;
+ * a busy week evicts the start of the window and every total computed over what survived is a
+ * floor. `usage.window.truncated` carries that through.
+ */
+app.get('/api/admin/account/:userId', async (c) => {
+  const userId = c.req.param('userId');
+  if (!UUID_RE.test(userId)) return c.json({ error: 'not_a_user_id', userId }, 400);
+
+  const askedDays = Number(c.req.query('days') ?? 7);
+  const days = Number.isFinite(askedDays) ? Math.max(1, Math.min(30, Math.floor(askedDays))) : 7;
+
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId));
+  const readDo = async (path: string): Promise<Record<string, unknown>> => {
+    const res = await quota.fetch(`https://do${path}`);
+    if (!res.ok) return {};
+    return (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  };
+  const [state, billing, ledger] = await Promise.all([
+    readDo('/state'),
+    readDo('/billing'),
+    readDo('/ledger?limit=200'),
+  ]);
+
+  await flushEvents(c.env);
+  const stored = await fetchStoredEvents(c.env, { sinceMs: Date.now() - days * 864e5, limit: 5000 });
+  const mine = stored.events.filter((e) => e.actorId === userId);
+  // `breakdownBy` over one actor's events yields at most one row, and it is the same row the
+  // cross-tenant analytics table would show for them — one implementation of "what did this cost",
+  // so the two surfaces cannot disagree.
+  const grouped = breakdownBy(mine, 'actorId');
+  const modelCalls = grouped.known ? (grouped.rows[0] ?? null) : null;
+
+  return c.json({
+    userId,
+    // NOT a missing field. See the header: this is the half of the account record the worker cannot
+    // reach, named so that what IS below is not mistaken for all of it.
+    profile: {
+      known: false,
+      why: 'profiles is own-row-only under RLS and this worker holds no service key — display name, admin flag and signup date are not readable from here',
+    },
+    quota: state,
+    billing: {
+      plan: (billing['plan'] as string | undefined) ?? 'free',
+      customerId: (billing['customerId'] as string | null | undefined) ?? null,
+      subscription: (billing['subscription'] as unknown) ?? null,
+      events: Array.isArray(billing['events']) ? billing['events'] : [],
+    },
+    credits: {
+      entries: Array.isArray(ledger['entries']) ? ledger['entries'] : [],
+      total: typeof ledger['total'] === 'number' ? ledger['total'] : 0,
+      truncated: ledger['truncated'] === true,
+      retentionDays: typeof ledger['retentionDays'] === 'number' ? ledger['retentionDays'] : null,
+    },
+    usage: {
+      days,
+      window: { truncated: stored.truncated, retained: stored.retained },
+      modelCalls,
+      builds: mine
+        .filter((e): e is Extract<typeof e, { kind: 'build' }> => e.kind === 'build')
+        .slice(-20)
+        .reverse()
+        .map((e) => ({ at: e.at, projectId: e.projectId, runId: e.runId, outcome: e.outcome, steps: e.steps, opsApplied: e.opsApplied, opsFailed: e.opsFailed, durationMs: e.durationMs })),
+      errors: mine
+        .filter((e): e is Extract<typeof e, { kind: 'error' }> => e.kind === 'error')
+        .slice(-20)
+        .reverse()
+        .map((e) => ({ at: e.at, scope: e.scope, errorKind: e.errorKind, message: e.message, fatal: e.fatal })),
+    },
+  });
+});
+
 app.post('/api/admin/model-test', async (c) => {
   const body = await c.req.json<{ model: string; prompt: string; tools?: boolean; system?: string; rag?: boolean; maxTokens?: number }>();
   const t0 = Date.now();
@@ -3871,6 +4065,8 @@ app.post('/api/admin/rag-test', async (c) => {
 /** Clear a user's Credit usage for a day, so the visual benchmark can be run more than once daily. */
 app.post('/api/admin/quota-reset', async (c) => {
   const { userId, day } = await c.req.json<{ userId: string; day?: string }>();
+  // The account is in the BODY, so the gate's own row could not name it — see auditAdminAction.
+  auditAdminAction(c, 'admin.quota-reset', userId);
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId)).fetch('https://do/reset', {
     method: 'POST',
     body: JSON.stringify({ day }),
@@ -3880,6 +4076,10 @@ app.post('/api/admin/quota-reset', async (c) => {
 
 app.post('/api/admin/set-plan', async (c) => {
   const { userId, plan } = await c.req.json<{ userId: string; plan: 'free' | 'builder' }>();
+  // Recorded BEFORE the write, and recorded whether or not the write succeeds. An audit row that
+  // is only filed on success cannot show the attempt that failed halfway, which is the one an
+  // operator is asked about.
+  auditAdminAction(c, 'admin.set-plan', userId);
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(userId)).fetch('https://do/set-plan', {
     method: 'POST',
     body: JSON.stringify({ plan }),

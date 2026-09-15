@@ -2,8 +2,11 @@
 // Rendered only for is_admin profiles; admin key kept in sessionStorage.
 import { useState, type FormEvent } from 'react';
 import { Failure } from '../components/failure';
+import { ConfirmDialog } from '../components/confirm-dialog';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  adminAccount,
+  adminAnalytics,
   adminKillSwitch,
   adminModelTest,
   adminRagTest,
@@ -12,9 +15,12 @@ import {
   adminSpendLimits,
   adminStats,
   fetchMe,
+  type AdminAccount,
+  type Metric,
   type ModelTestResponse,
   type RagHit,
 } from '../lib/api';
+import { adminSpendCeremony, type AdminSpendAction } from '../lib/admin-actions';
 import { formatNumber } from '../lib/format';
 import { MOCK_MODE } from '../lib/mock';
 
@@ -41,29 +47,40 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
     refetchInterval: 30_000,
   });
   const [busy, setBusy] = useState(false);
+  /*
+   * THE ACTION WAITING ON A CONFIRMATION, and the reason this page has one at all.
+   *
+   * lib/confirm-model.ts has graded ceremony from consequence since it landed and NO administrative
+   * action used it. Two of the four controls below are worth stopping for — see lib/admin-actions.ts
+   * for which and why — and the other two deliberately are not, because a dialog in front of a
+   * reversible, free action is how an operator learns to click through the expensive one.
+   */
+  const [pending, setPending] = useState<AdminSpendAction | null>(null);
 
-  const toggleKill = async (killed: boolean) => {
+  const perform = async (action: AdminSpendAction) => {
     setBusy(true);
     try {
-      await adminKillSwitch(adminKey, killed, killed ? 'Paused from the admin console.' : undefined);
+      if (action === 'kill' || action === 'resume') {
+        const killed = action === 'kill';
+        await adminKillSwitch(adminKey, killed, killed ? 'Paused from the admin console.' : undefined);
+      } else if (spend.data) {
+        const factor = action === 'raise' ? 2 : 0.5;
+        await adminSpendLimits(adminKey, {
+          billableNeuronsPerDay: Math.round(spend.data.limits.billableNeuronsPerDay * factor),
+          billableNeuronsPerMonth: Math.round(spend.data.limits.billableNeuronsPerMonth * factor),
+        });
+      }
       await spend.refetch();
     } finally {
       setBusy(false);
+      setPending(null);
     }
   };
 
-  const tighten = async (factor: number) => {
-    if (!spend.data) return;
-    setBusy(true);
-    try {
-      await adminSpendLimits(adminKey, {
-        billableNeuronsPerDay: Math.round(spend.data.limits.billableNeuronsPerDay * factor),
-        billableNeuronsPerMonth: Math.round(spend.data.limits.billableNeuronsPerMonth * factor),
-      });
-      await spend.refetch();
-    } finally {
-      setBusy(false);
-    }
+  /** Route a click through the ceremony the action earned, rather than straight at the mutation. */
+  const ask = (action: AdminSpendAction) => {
+    if (adminSpendCeremony(action) === 'dialog') setPending(action);
+    else void perform(action);
   };
 
   const d = spend.data;
@@ -122,18 +139,63 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
             <button
               type="button"
               className={d.state.killed ? 'btn btn-primary btn-sm' : 'btn btn-danger btn-sm'}
-              onClick={() => void toggleKill(!d.state.killed)}
+              onClick={() => ask(d.state.killed ? 'resume' : 'kill')}
               disabled={busy}
             >
               {d.state.killed ? 'Resume AI generation' : 'Stop all AI generation'}
             </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void tighten(0.5)} disabled={busy}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => ask('tighten')} disabled={busy}>
               Halve the caps
             </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void tighten(2)} disabled={busy}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => ask('raise')} disabled={busy}>
               Double the caps
             </button>
           </div>
+
+          {pending === 'kill' && (
+            <ConfirmDialog
+              title="Stop all AI generation?"
+              ceremony="dialog"
+              confirmLabel="Stop everything"
+              busyLabel="Stopping…"
+              busy={busy}
+              onConfirm={() => void perform('kill')}
+              onClose={() => setPending(null)}
+            >
+              Every build running right now stops where it is. Resuming later does not resume them — anyone mid-build
+              loses the steps they were on and the Credits those steps cost, and nothing is refunded automatically.
+            </ConfirmDialog>
+          )}
+
+          {pending === 'raise' && (
+            <ConfirmDialog
+              title="Double the spend caps?"
+              ceremony="dialog"
+              tone="primary"
+              confirmLabel="Double the caps"
+              busyLabel="Raising…"
+              busy={busy}
+              onConfirm={() => void perform('raise')}
+              details={
+                <dl className="spend-grid">
+                  <div>
+                    <dt>Worst case now</dt>
+                    <dd>{usd(d.maxMonthlyUsd + 5)}</dd>
+                  </div>
+                  <div>
+                    <dt>Worst case after</dt>
+                    <dd>
+                      <strong>{usd(d.maxMonthlyUsd * 2 + 5)}</strong>
+                    </dd>
+                  </div>
+                </dl>
+              }
+              onClose={() => setPending(null)}
+            >
+              This raises the ceiling on what this business can spend on AI in a month before the budget guard starts
+              refusing work. It is reversible — but the consequence arrives as an invoice, not as a screen.
+            </ConfirmDialog>
+          )}
 
           <h4 className="admin-subhead">Last 30 days</h4>
           <table className="admin-table">
@@ -168,6 +230,321 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
                 </tr>
               ))}
               {d.breakdown.length === 0 && <tr><td colSpan={4} className="muted">Nothing yet.</td></tr>}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** A metric the worker could not compute prints WHY, never a zero. See lib/api.ts. */
+function metric(m: Metric | undefined, fmt: (n: number) => string): string {
+  if (!m) return '—';
+  if (!m.known) return `unknown (${m.why})`;
+  return m.complete ? fmt(m.value) : `at least ${fmt(m.value)}`;
+}
+
+const when = (ms: number) => new Date(ms).toLocaleString();
+const onDate = (unixSeconds: number | null) =>
+  typeof unixSeconds === 'number' && Number.isFinite(unixSeconds) ? new Date(unixSeconds * 1000).toLocaleDateString() : '—';
+
+/**
+ * ONE ACCOUNT, LOOKED UP BY ID.
+ *
+ * Everything here already existed behind the worker and none of it had a door: the plan, the Stripe
+ * subscription, every individual credit charge, and this account's own slice of the event log. The
+ * person who runs this business does not use curl, so until this panel existed the answer to "what
+ * is going on with this customer" was a wrangler session he was never going to open.
+ *
+ * TWO THINGS IT REFUSES TO IMPLY. The profile row — display name, admin flag, signup date — is not
+ * readable from the worker, and the panel says so rather than leaving a gap that reads like a whole
+ * record. And the two windows behind these figures are finite: the ledger keeps 35 days and the
+ * event log is capped, so an empty table is stated as "nothing in the window", never as "nothing".
+ */
+function AccountPanel({ adminKey }: { adminKey: string }) {
+  const [typedId, setTypedId] = useState('');
+  const [lookingUp, setLookingUp] = useState('');
+  const [days, setDays] = useState(7);
+
+  const account = useQuery<AdminAccount>({
+    queryKey: ['admin-account', adminKey, lookingUp, days],
+    queryFn: () => adminAccount(adminKey, lookingUp, days),
+    enabled: lookingUp.length > 0 && (MOCK_MODE || adminKey.length > 0),
+    retry: false,
+  });
+
+  /*
+   * WHO TO LOOK UP, for an operator who does not already have an id in front of him.
+   *
+   * The worker has ranked accounts by spend since analytics landed and nothing ever asked for it,
+   * so a lookup that only takes a pasted id is only usable when a customer has already written in.
+   * This is the other direction: the heaviest accounts this window, one click from the full record.
+   */
+  const top = useQuery({
+    queryKey: ['admin-top-actors', adminKey, days],
+    queryFn: () => adminAnalytics(adminKey, { days, by: 'actorId' }),
+    enabled: !MOCK_MODE && adminKey.length > 0,
+    retry: false,
+  });
+  const ranked = top.data?.requested?.known === true ? top.data.requested : null;
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const id = typedId.trim();
+    if (!id) return;
+    setLookingUp(id);
+  };
+
+  const a = account.data;
+  const sub = a?.billing.subscription ?? null;
+
+  return (
+    <section className="card admin-panel">
+      <h2>Account lookup</h2>
+      <p className="muted">
+        Plan, subscription, every Credit charge and this account&rsquo;s own usage. Paste the user id from a support
+        email or from the usage breakdown below.
+      </p>
+      <form onSubmit={submit} className="settings-inline">
+        <label className="field settings-grow">
+          <span className="field-label">User id</span>
+          <input
+            value={typedId}
+            onChange={(e) => setTypedId(e.target.value)}
+            name="accountUserId"
+            id="admin-account-id"
+            placeholder="00000000-0000-0000-0000-000000000000"
+            autoComplete="off"
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">Window</span>
+          <select value={days} onChange={(e) => setDays(Number(e.target.value))} name="accountDays" id="admin-account-days">
+            <option value={1}>1 day</option>
+            <option value={7}>7 days</option>
+            <option value={30}>30 days</option>
+          </select>
+        </label>
+        <button type="submit" className="btn btn-primary" disabled={account.isFetching || (!MOCK_MODE && !adminKey) || !typedId.trim()}>
+          {account.isFetching ? 'Looking up…' : 'Look up'}
+        </button>
+      </form>
+
+      {!MOCK_MODE && !adminKey && <p className="muted">Enter the admin key above.</p>}
+      {account.isError && <Failure error={account.error} onRetry={() => void account.refetch()} compact />}
+
+      {ranked && (
+        <>
+          <h4 className="admin-subhead">Heaviest accounts — last {days} day{days === 1 ? '' : 's'}</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>Account</th><th className="num">Calls</th><th className="num">Cost</th><th /></tr>
+            </thead>
+            <tbody>
+              {ranked.rows.slice(0, 8).map((row) => (
+                <tr key={row.key}>
+                  <td className="mono-cell">{row.key}</td>
+                  <td className="num">{row.calls}</td>
+                  <td className="num">{metric(row.usd, usd)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => {
+                        setTypedId(row.key);
+                        setLookingUp(row.key);
+                      }}
+                    >
+                      Look up
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {ranked.rows.length === 0 && <tr><td colSpan={4} className="muted">No attributable AI calls in this window.</td></tr>}
+            </tbody>
+          </table>
+          {/*
+            COUNTED, NOT BUCKETED. A call with no actor — an anonymous or system path — is reported
+            as a number rather than given a key in the table above, because a key that looks like a
+            user id gets read as one and sends an operator after an account that does not exist.
+          */}
+          {ranked.unattributed > 0 && (
+            <p className="muted">
+              {ranked.unattributed} call{ranked.unattributed === 1 ? '' : 's'} in this window carried no account and
+              are not in the table.
+            </p>
+          )}
+        </>
+      )}
+
+      {a && (
+        <>
+          {/*
+            NOT A COSMETIC DISCLAIMER. profiles is own-row-only under RLS and the worker holds the
+            anon key, so this record is genuinely missing its name, its admin flag and its signup
+            date. Showing the rest without saying that invites the reader to treat it as complete.
+          */}
+          {!a.profile.known && <p className="muted">Profile not readable from here — {a.profile.why}.</p>}
+
+          <dl className="spend-grid">
+            <div>
+              <dt>Plan</dt>
+              <dd><strong>{a.billing.plan}</strong></dd>
+            </div>
+            <div>
+              <dt>Allowance left today</dt>
+              <dd>{typeof a.quota.allowanceRemaining === 'number' ? formatNumber(a.quota.allowanceRemaining) : '—'} Credits</dd>
+            </div>
+            <div>
+              <dt>Purchased balance</dt>
+              <dd>{typeof a.quota.credits === 'number' ? formatNumber(a.quota.credits) : '—'} Credits</dd>
+            </div>
+            <div>
+              <dt>Stripe customer</dt>
+              <dd className="mono-cell">{a.billing.customerId ?? 'none'}</dd>
+            </div>
+          </dl>
+
+          <h4 className="admin-subhead">Subscription</h4>
+          {sub === null ? (
+            <p className="muted">No subscription has ever been recorded for this account.</p>
+          ) : (
+            <dl className="spend-grid">
+              <div>
+                <dt>Status</dt>
+                <dd>{sub.status ?? 'unknown'}</dd>
+              </div>
+              <div>
+                <dt>{sub.cancelAtPeriodEnd ? 'Access ends' : 'Renews'}</dt>
+                <dd>{onDate(sub.currentPeriodEnd)}</dd>
+              </div>
+              <div>
+                <dt>Cancelling at period end</dt>
+                <dd>{sub.cancelAtPeriodEnd ? 'Yes' : 'No'}</dd>
+              </div>
+              <div>
+                <dt>Subscription id</dt>
+                <dd className="mono-cell">{sub.subscriptionId ?? '—'}</dd>
+              </div>
+            </dl>
+          )}
+
+          <h4 className="admin-subhead">Billing changes</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>When</th><th>Change</th><th>Status</th><th>Stripe event</th></tr>
+            </thead>
+            <tbody>
+              {a.billing.events.map((e, i) => (
+                <tr key={`${e.at}-${i}`}>
+                  <td>{when(e.at)}</td>
+                  <td>{e.kind === 'credits' ? 'Credits granted' : `${e.fromPlan ?? '—'} → ${e.toPlan ?? '—'}`}</td>
+                  <td>{e.status ?? '—'}</td>
+                  <td className="mono-cell">{e.eventId ?? '—'}</td>
+                </tr>
+              ))}
+              {a.billing.events.length === 0 && <tr><td colSpan={4} className="muted">No billing change has ever been recorded.</td></tr>}
+            </tbody>
+          </table>
+
+          <h4 className="admin-subhead">Credit charges</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>When</th><th>What for</th><th className="num">Credits</th></tr>
+            </thead>
+            <tbody>
+              {a.credits.entries.map((e) => (
+                <tr key={e.id}>
+                  <td>{when(e.at)}</td>
+                  <td>{e.kind}</td>
+                  <td className="num">{e.credits}</td>
+                </tr>
+              ))}
+              {a.credits.entries.length === 0 && (
+                <tr><td colSpan={3} className="muted">No charge in the last {a.credits.retentionDays ?? '—'} days.</td></tr>
+              )}
+            </tbody>
+          </table>
+          {/*
+            THE WINDOW TRAVELS WITH THE TABLE. Rows are deleted past the retention horizon, so an
+            empty list means "nothing recently", not "never" — and those send an operator to two
+            completely different places.
+          */}
+          <p className="muted">
+            {a.credits.total} charge{a.credits.total === 1 ? '' : 's'} kept, covering the last{' '}
+            {a.credits.retentionDays ?? '—'} days; older rows are deleted.
+            {a.credits.truncated ? ' This list is capped and does not show all of them.' : ''}
+          </p>
+
+          <h4 className="admin-subhead">Usage — last {a.usage.days} day{a.usage.days === 1 ? '' : 's'}</h4>
+          {a.usage.modelCalls === null ? (
+            <p className="muted">No AI calls by this account in the window.</p>
+          ) : (
+            <dl className="spend-grid">
+              <div>
+                <dt>Calls</dt>
+                <dd>{a.usage.modelCalls.calls}</dd>
+              </div>
+              <div>
+                <dt>Cost</dt>
+                <dd>{metric(a.usage.modelCalls.usd, usd)}</dd>
+              </div>
+              <div>
+                <dt>Neurons</dt>
+                <dd>{metric(a.usage.modelCalls.neurons, formatNumber)}</dd>
+              </div>
+              <div>
+                <dt>Succeeded</dt>
+                <dd>{metric(a.usage.modelCalls.success, (n) => `${Math.round(n * 100)}%`)}</dd>
+              </div>
+            </dl>
+          )}
+          {/*
+            The event log keeps a bounded number of rows. When the start of the window was evicted
+            before anyone asked, every figure above is a floor — and saying so is the difference
+            between a measurement and a guess wearing one's clothes.
+          */}
+          {a.usage.window.truncated && (
+            <p className="muted">
+              The event log was cut inside this window, so the figures above are floors rather than totals.
+            </p>
+          )}
+
+          <h4 className="admin-subhead">Runs</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>When</th><th>Outcome</th><th className="num">Steps</th><th className="num">Applied</th><th className="num">Failed</th></tr>
+            </thead>
+            <tbody>
+              {a.usage.builds.map((b, i) => (
+                <tr key={`${b.at}-${i}`}>
+                  <td>{when(b.at)}</td>
+                  <td>{b.outcome}</td>
+                  <td className="num">{b.steps ?? '—'}</td>
+                  <td className="num">{b.opsApplied ?? '—'}</td>
+                  <td className="num">{b.opsFailed ?? '—'}</td>
+                </tr>
+              ))}
+              {a.usage.builds.length === 0 && <tr><td colSpan={5} className="muted">No run by this account in the window.</td></tr>}
+            </tbody>
+          </table>
+
+          <h4 className="admin-subhead">Errors</h4>
+          <table className="admin-table">
+            <thead>
+              <tr><th>When</th><th>Where</th><th>Kind</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+              {a.usage.errors.map((e, i) => (
+                <tr key={`${e.at}-${i}`}>
+                  <td>{when(e.at)}</td>
+                  <td className="mono-cell">{e.scope}</td>
+                  <td>{e.errorKind}</td>
+                  <td>{e.message}</td>
+                </tr>
+              ))}
+              {a.usage.errors.length === 0 && <tr><td colSpan={4} className="muted">No error recorded against this account in the window.</td></tr>}
             </tbody>
           </table>
         </>
@@ -461,6 +838,7 @@ export function AdminPage() {
       </section>
 
       <SpendPanel adminKey={adminKey} />
+      <AccountPanel adminKey={adminKey} />
       <StatsPanel adminKey={adminKey} />
       <ModelTester adminKey={adminKey} />
       <RagTester adminKey={adminKey} />

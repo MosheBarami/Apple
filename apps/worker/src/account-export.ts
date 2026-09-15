@@ -81,6 +81,7 @@ const WHERE_ELSE: Readonly<Record<string, string>> = {
   creator_write_log: 'GET /api/me/roblox/writes',
   project_asset_use: 'GET /api/projects/{projectId}/attribution',
   account_deletions: 'GET /api/me/delete — the record of your own deletion request and what it left behind',
+  recovery_requests: 'not offered as a download — the row holds a hash of the address rather than the address, so this product cannot tell which account it belongs to; an operator finds it by being GIVEN the address through another channel',
   ledger: 'GET /api/me/usage',
   month_totals: 'GET /api/me/usage',
   billing_events: 'GET /api/billing/history',

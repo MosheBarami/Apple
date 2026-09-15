@@ -313,7 +313,11 @@ test('the chat ingress consults the scorer before the run starts, and passes a r
   // Anchored to the ingress, not to a match anywhere in the file (F-58).
   const chat = SESSION.slice(SESSION.indexOf("case 'chat':"), SESSION.indexOf("case 'edit_resend':"));
   assert.ok(chat.length > 0, 'the chat case must still exist');
-  const guardAt = chat.indexOf('this.refuseAbusive(text)');
+  // Anchored on the CALL, not on its full argument list. The property here is the ordering — the
+  // scorer is consulted before the run starts — and pinning the arity made it go red the day the
+  // ingress started passing the sender's identity through, which is a change the ordering claim has
+  // no opinion about. What the identity must contain is asserted in abuse-attribution.test.mjs.
+  const guardAt = chat.indexOf('this.refuseAbusive(text');
   const runAt = chat.indexOf('await this.startRun(');
   assert.ok(guardAt >= 0, 'the ingress must consult the scorer');
   assert.ok(runAt >= 0, 'the positive control: the run must still be started');

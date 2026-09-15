@@ -1773,7 +1773,12 @@ export class SessionDO extends DurableObject<Env> {
           //
           //   The history is this project's own user messages, read here rather than kept in
           //   memory so a reconnect, a new isolate or a second tab does not reset the count. ]]
-          if (this.refuseAbusive(text)) return;
+          // WHO sent it and WHICH project it was sent to. Without those two fields the abuse
+          // findings below are a stream of anonymous complaints: an operator can see that somebody
+          // pasted a credential or was refused for flooding and cannot see who, so nothing can be
+          // followed up and no account can be looked at. `me` is the socket's verified identity —
+          // not the project owner, who is frequently not the person typing.
+          if (this.refuseAbusive(text, { actorId: me?.userId ?? null, projectId: bind.projectId })) return;
           //[[ THE FILES THE PERSON ATTACHED BECOME PART OF THE MESSAGE.
           //
           //   `attachments` has been on this frame since the protocol was written and this handler
@@ -1783,7 +1788,8 @@ export class SessionDO extends DurableObject<Env> {
           //
           //   AFTER the abuse check on purpose: scoring a 24,000-character fold as a submission
           //   would flag every attachment as spam, and the duplicate detector would stop reading
-          //   the prompt the person actually wrote.
+          //   the prompt the person actually wrote. The check is also fed the raw `text` rather
+          //   than the folded prompt for exactly that reason.
           //
           //   The project comes from `bind`, never from the frame — that is what stops an id from
           //   somebody else's project resolving here. ]]
@@ -2721,7 +2727,7 @@ export class SessionDO extends DurableObject<Env> {
    * `historyReadable: false` rather than as an empty list — an empty list means "this user has sent
    * nothing", which is an observation, and a failed query is the absence of one.
    */
-  private refuseAbusive(text: string): boolean {
+  private refuseAbusive(text: string, who: { actorId: string | null; projectId: string | null }): boolean {
     let recent: Submission[] = [];
     let historyReadable = true;
     try {
@@ -2766,6 +2772,14 @@ export class SessionDO extends DurableObject<Env> {
                 ? 'secret_in_prompt'
                 : 'abuse_noted',
         message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
+        // ATTRIBUTED, or the whole stream is unreviewable. Every one of these rows used to land
+        // with a null actor, so an operator could read that somebody had been refused for flooding
+        // or had pasted a live credential into a transcript, and could not find out who — which
+        // makes the detection a counter rather than something anyone can act on. Null when the
+        // socket carried no readable identity, never a placeholder: `breakdownBy` counts
+        // unattributed events instead of inventing a tenant to hang them on.
+        actorId: who.actorId,
+        projectId: who.projectId,
       });
     }
     // And told to the person it is about. A credential in a transcript is theirs to rotate whether
