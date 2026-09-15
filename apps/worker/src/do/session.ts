@@ -36,6 +36,7 @@ import { chat as llmChat, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
 import { toolDefs, toolNames, runTool, type AgentCtx, type PlaytestBus } from '../tools';
+import { planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { critiqueToText } from '../vision';
 import { toolsForMode } from '../router';
 import { assetLibraryAvailable } from '../asset-library';
@@ -137,6 +138,14 @@ interface AgentState {
    * message sent while nobody is listening, and `run_intent` is emitted exactly once per run.
    */
   intent?: RunIntent;
+  /**
+   * The plan `propose_plan` announced, and the tool row it was announced on.
+   *
+   * Kept so `settlePlan` can re-state it at the end of the run against what actually ran. Bounded
+   * by the tool's own 12-step cap and its 200/800-character clips, so it cannot be the thing that
+   * pushes the persisted AgentState past the Durable Object's value limit.
+   */
+  plan?: RunPlan;
 }
 
 // step limits are a direct cost multiplier: every step is a full priced inference call
@@ -1446,6 +1455,11 @@ export class SessionDO extends DurableObject<Env> {
       // means the next step should think harder rather than repeat the same cheap attempt.
       if (!out.ok) agent.priorStepFailed = true;
       if (out.ok && MUTATING_TOOLS.has(call.name)) agent.mutated = true;
+      // The plan is read back out of the panel the tool emitted rather than handed over through a
+      // second channel: one mechanism, and the thing settled at the end is by construction the
+      // thing the user was shown. A second propose_plan is ignored — the prompt says call it once,
+      // and letting a later plan replace the one the user already read would rewrite history.
+      if (call.name === 'propose_plan' && out.ok && !agent.plan) agent.plan = planFromDetail(toolId, out.detail);
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
       // Keep the live trace the reconnect snapshot replays from.
@@ -1547,6 +1561,7 @@ export class SessionDO extends DurableObject<Env> {
     error?: string,
   ) {
     agent.status = 'idle';
+
     // The signal belongs to the run it was pressed during. Leaving it set would stop the
     // user's NEXT message before its first step.
     await clearStop(this.ctx.storage);
@@ -1571,6 +1586,36 @@ export class SessionDO extends DurableObject<Env> {
     this.currentMsgId = undefined;
     if (abandoned > 0) {
       console.warn(`[session] discarded ${abandoned} queued op(s) from a run that ended`);
+    }
+
+    // THE PLAN STOPS BEING A FORECAST HERE.
+    //
+    // propose_plan emitted every step as `pending`, which was true when the user read it and is
+    // false now. gates.ts lifts pending steps into the Thinking card as work still to come, so a
+    // plan nobody re-states leaves a finished run claiming it is about to do things it already did
+    // — and, worse, hides the steps it promised and never reached. Both halves matter, which is
+    // why the settled plan keeps the unticked ones rather than dropping them.
+    //
+    // It goes out on the SAME toolId, so the browser replaces that row's panel instead of drawing a
+    // second, contradictory card; `uiTools` is updated in step so a reconnecting browser replays
+    // the settled plan and not the proposal. See run-plan.ts for what `done` is allowed to mean.
+    //
+    // Placed AFTER the currentMsgId clear above on purpose: op-attribution.test.mjs reads the head
+    // of this method for that line, and burying it under a block this long made the guard go red.
+    if (agent.plan) {
+      const settled = settlePlan(agent.plan, agent.trace);
+      agent.plan = settled;
+      const detail = planDetail(settled);
+      const row = (agent.uiTools ?? []).find((t) => t.toolId === settled.toolId);
+      if (row) row.detail = detail;
+      this.broadcast({
+        type: 'tool_end',
+        msgId: agent.msgId,
+        toolId: settled.toolId,
+        ok: true,
+        summary: `plan: ${settled.steps.filter((s) => s.status === 'done').length}/${settled.steps.length} done`,
+        detail,
+      });
     }
 
     // A playtest cannot outlive the run that started it.

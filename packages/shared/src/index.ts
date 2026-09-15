@@ -335,6 +335,11 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'get_selection':
     case 'viewport_info':
       return 'inspecting';
+    // Announcing the plan is not doing the work. This tool runs before anything in the project
+    // moves, so the one phase it must never fall through to is the `default` below — 'building'
+    // would have the workspace claim the place is being changed at the exact moment it is not.
+    case 'propose_plan':
+      return 'planning';
     case 'edit_script':
       return 'writing_luau';
     case 'create_instances':
