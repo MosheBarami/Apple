@@ -80,10 +80,31 @@ if (DRY) { console.error('--dry: nothing sent'); process.exit(0); }
 let written = 0;
 const rejected = [];
 const failedBatches = [];
-const queue = [
-  ...ready.map((a, i) => ({ a, seed: false, status: 'active', k: i })),
-  ...pending.map((a, i) => ({ a, seed: true, status: 'pending_ingest', k: i })),
-];
+//[[ THE CURATED PACKS GO FIRST, AND THE ORDER USED TO BE THE OTHER WAY ROUND.
+//
+//   `ready` is every row carrying a Roblox asset id, which in practice means the Creator Store
+//   scrape — and the scrape is 2008-era user uploads: "Bakiiiiiiiiiiiiiiii", "Part2",
+//   "diediedieDIELess", "Potato breaking through wall! o_0", anime rips. `pending` is Kenney,
+//   Poly Haven, ambientCG, Quaternius, OpenGameArt and game-icons: CC0 packs with clean names,
+//   assembled and maintained by people who make game art.
+//
+//   Sending `ready` first meant that an ingest interrupted half way — which is what happened,
+//   twice — left the database holding the scrape and none of the library. The owner's rule is
+//   "nothing outdated", and the first 80,000 rows were the only outdated ones we have.
+//
+//   `--scrape-first` restores the old order for anybody who wants it. The default is the packs.
+const scrapeFirst = process.argv.includes('--scrape-first');
+const readyQ = ready.map((a, i) => ({ a, seed: false, status: 'active', k: i }));
+const pendingQ = pending.map((a, i) => ({ a, seed: true, status: 'pending_ingest', k: i }));
+const queue = scrapeFirst ? [...readyQ, ...pendingQ] : [...pendingQ, ...readyQ];
+
+//[[ AND IT PACES ITSELF, BECAUSE IT SHARES D1 WITH THE WEBSITE.
+//
+//   The asset store, the static site and every session live in ONE D1 database. A full-speed
+//   ingest at ~320 rows/sec drove D1 to "is overloaded. Requests queued for too long." and the
+//   site deploy could not write a single byte — a background data job taking down the product.
+//   A pause between batches costs minutes and buys a database that still answers everything else.
+const PACE_MS = Number(arg('--pace', '400'));
 for (let i = 0; i < queue.length; i += BATCH) {
   const group = queue.slice(i, i + BATCH);
   // A batch never mixes the two: they are validated differently and stored differently.
@@ -117,6 +138,7 @@ for (let i = 0; i < queue.length; i += BATCH) {
   for (const r of body.rejected ?? []) rejected.push(r);
   if (body.truncated) console.error(`batch ${i}: SERVER TRUNCATED — batch size exceeds INGEST_MAX_BATCH`);
   console.error(`${written}/${queue.length}`);
+  if (PACE_MS > 0) await new Promise((r) => setTimeout(r, PACE_MS));
 }
 
 console.error(`\nwritten ${written} · rejected ${rejected.length} · failed batches ${failedBatches.length}`);
