@@ -183,6 +183,33 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
     : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
 
 /**
+ * CONNECTING DISCORD, FROM THE SIDE THAT CAN PROVE WHO YOU ARE.
+ *
+ * The code is minted here — signed in, on a project this account owns — and typed into Discord.
+ * That direction is the proof: only somebody signed in to this account can produce a code, so
+ * presenting one in Discord is evidence of having been signed in. Doing it the other way round
+ * would prove nothing about the Discord user at all.
+ */
+export interface DiscordLink {
+  discordUserId: string;
+  appleUserId: string;
+  projectId: string;
+  projectName: string;
+  linkedAt: number;
+}
+
+export const createDiscordCode = (projectId: string): Promise<PairingCodeDto> =>
+  MOCK_MODE
+    ? Promise.resolve({ code: 'K7MQ2XRB', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
+    : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/discord-code`, { method: 'POST' });
+
+export const fetchDiscordLink = (): Promise<{ link: DiscordLink | null }> =>
+  MOCK_MODE ? Promise.resolve({ link: null }) : request<{ link: DiscordLink | null }>('/api/discord/link');
+
+export const disconnectDiscord = (): Promise<{ removed: boolean }> =>
+  MOCK_MODE ? Promise.resolve({ removed: true }) : request<{ removed: boolean }>('/api/discord/link', { method: 'DELETE' });
+
+/**
  * Download the whole conversation as a file.
  *
  * Not `request<T>` because that parses JSON and throws away the response — and the FILENAME lives
@@ -415,3 +442,15 @@ export interface RagHit {
 
 export const adminRagTest = (adminKey: string, query: string) =>
   request<{ hits: RagHit[] }>('/api/admin/rag-test', { method: 'POST', body: JSON.stringify({ query }) }, { 'X-Admin-Key': adminKey });
+
+/**
+ * Publish the Discord slash-command list. Idempotent — the PUT replaces the whole list — and the
+ * only place the bot token is used. It has to be run once after the Discord application exists,
+ * and again whenever the command list changes, or Discord keeps offering commands that are gone.
+ */
+export const adminRegisterDiscordCommands = (adminKey: string) =>
+  request<{ ok: boolean; registered: string[] }>(
+    '/api/admin/discord/register-commands',
+    { method: 'POST' },
+    { 'X-Admin-Key': adminKey },
+  );

@@ -9,12 +9,14 @@
       { "name": "QUOTA_DO", "class_name": "QuotaDO" },
       { "name": "PAIRING_DO", "class_name": "PairingDO" },
       { "name": "ADMIN_DO", "class_name": "AdminDO" },
-      { "name": "BUDGET_DO", "class_name": "BudgetDO" }
+      { "name": "BUDGET_DO", "class_name": "BudgetDO" },
+      { "name": "DISCORD_DO", "class_name": "DiscordDO" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["SessionDO", "QuotaDO", "PairingDO", "AdminDO"] },
-    { "tag": "v2", "new_sqlite_classes": ["BudgetDO"] }
+    { "tag": "v2", "new_sqlite_classes": ["BudgetDO"] },
+    { "tag": "v3", "new_sqlite_classes": ["DiscordDO"] }
   ],
   "ai": { "binding": "AI" },
   "d1_databases": [{ "binding": "CORPUS", "database_name": "golem-corpus", "database_id": "32c9471e-a7d7-49ee-a8fe-0a7def2c68bd" }],

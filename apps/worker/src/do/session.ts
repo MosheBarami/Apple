@@ -751,6 +751,17 @@ export class SessionDO extends DurableObject<Env> {
       return json(await this.execStudioOp(op, Math.min(timeoutMs ?? 45_000, 120_000)));
     }
 
+    /**
+     * The same picture a reconnecting browser gets, over HTTP.
+     *
+     * Read by DiscordDO's progress pusher: a Discord reply has no socket to broadcast onto, so the
+     * only way to say "step 4 of 12, critiquing" is to ask. Deliberately the SAME snapshot the web
+     * client sees, so the two surfaces can never disagree about what the run is doing.
+     */
+    if (path === '/run-state') {
+      return json({ run: await this.runSnapshot() });
+    }
+
     if (path === '/info') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
       const msgs = this.sql.exec(`select count(*) as c from messages`).one() as { c: number };

@@ -7,6 +7,7 @@ import {
   adminKillSwitch,
   adminModelTest,
   adminRagTest,
+  adminRegisterDiscordCommands,
   adminSpend,
   adminSpendLimits,
   adminStats,
@@ -339,6 +340,48 @@ function RagTester({ adminKey }: { adminKey: string }) {
   );
 }
 
+/**
+ * Publishing the slash commands is the one step that needs the bot token, and it is a button
+ * rather than a shell command because the person who has to press it does not use a terminal.
+ * Idempotent: the list is replaced wholesale, so pressing it twice changes nothing.
+ */
+function DiscordCommands({ adminKey }: { adminKey: string }) {
+  const [names, setNames] = useState<string[] | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const run = useMutation({
+    mutationFn: () => adminRegisterDiscordCommands(adminKey),
+    onSuccess: (res) => {
+      setNames(res.registered);
+      setErrorMsg('');
+    },
+    onError: (e: Error) => {
+      setNames(null);
+      setErrorMsg(e.message);
+    },
+  });
+
+  return (
+    <section className="card admin-panel">
+      <h2>Discord commands</h2>
+      <p className="muted">
+        Publishes the slash commands to Discord. Press it after creating the Discord app, and again after any change to
+        the command list. Nothing happens to anyone&rsquo;s account.
+      </p>
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={() => run.mutate()}
+        disabled={run.isPending || (!MOCK_MODE && !adminKey)}
+      >
+        {run.isPending ? 'Publishing…' : 'Publish commands'}
+      </button>
+      {errorMsg && <p className="form-error">{errorMsg}</p>}
+      {names && <p className="muted">Discord now offers: {names.map((n) => `/${n}`).join(', ')}</p>}
+    </section>
+  );
+}
+
 export function AdminPage() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const [adminKey, setAdminKey] = useState(readAdminKey);
@@ -399,6 +442,7 @@ export function AdminPage() {
       <StatsPanel adminKey={adminKey} />
       <ModelTester adminKey={adminKey} />
       <RagTester adminKey={adminKey} />
+      <DiscordCommands adminKey={adminKey} />
     </div>
   );
 }

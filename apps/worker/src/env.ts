@@ -10,6 +10,7 @@ export interface Env {
   PAIRING_DO: DurableObjectNamespace;
   ADMIN_DO: DurableObjectNamespace;
   BUDGET_DO: DurableObjectNamespace;
+  DISCORD_DO: DurableObjectNamespace;
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
@@ -36,6 +37,20 @@ export interface Env {
    */
   STRIPE_PRICE_BUILDER?: string;
   STRIPE_PRICE_STUDIO?: string;
+  /**
+   * The Discord application's PUBLIC KEY, from the developer portal's General Information page.
+   * It is what proves an interaction really came from Discord. Absent everywhere until the owner
+   * creates the application, and `/api/discord/interactions` REFUSES with 503 rather than
+   * degrading to trusting an unsigned body — unverified, that endpoint is a public button that
+   * spends other people's credits.
+   */
+  DISCORD_PUBLIC_KEY?: string;
+  /**
+   * The bot token. Used for exactly one thing: registering the slash commands. Replying to an
+   * interaction and editing that reply are authenticated by the interaction's own token, so
+   * nothing on the hot path needs this and nothing on the hot path is given it.
+   */
+  DISCORD_BOT_TOKEN?: string;
   /**
    * Open Cloud key, scope `creator-store-product:read`, free from
    * https://create.roblox.com/dashboard/credentials. When unset, Creator Store search degrades to
