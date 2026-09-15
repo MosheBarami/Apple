@@ -203,3 +203,52 @@ test('the parsed value carries no owner, because the body is never asked who it 
 test('a body that is not an object at all is refused rather than thrown at', () => {
   for (const bad of [null, undefined, 'a string', 42, []]) refused(bad);
 });
+
+/* --------------------------------------------- what the export owes the submitter --- */
+/**
+ * IF THE PRODUCT TELLS YOU SOMETHING ABOUT YOURSELF, YOUR EXPORT HAS TO CONTAIN IT.
+ *
+ * `feedback.status` was excluded from the user export with the reason "our triage state for the
+ * report, not a fact about the person who filed it", and while nothing anywhere showed a status to
+ * anybody, that was a defensible line: it really was an internal note.
+ *
+ * It stopped being true the moment a person could read it. The support dialog now renders "Waiting
+ * on us" or "Answered and closed" against each of their own requests, and GET /api/feedback serves
+ * that value to the account that filed it. A value the product states to you is, by construction,
+ * something you have been told — so an export that leaves it out is no longer a copy of what this
+ * product says about you, it is a copy minus the one field you would go looking for.
+ *
+ * The rule this encodes, and the reason it is a test rather than a note: an exclusion carries a
+ * REASON, and a reason can go stale without the line that states it ever being reread. The
+ * assertion below fails the moment the two halves disagree.
+ */
+const USER_EXPORT_TS = readFileSync(join(WORKER, 'src', 'user-export.ts'), 'utf8');
+
+test('a field the product reads back to the submitter is in the submitter\'s export', () => {
+  const spec = USER_EXPORT_TS.slice(USER_EXPORT_TS.indexOf("table: 'feedback'"));
+  const block = spec.slice(0, spec.indexOf('},\n  {'));
+  assert.ok(block.includes('fields:'), 'could not find the feedback export spec — this test measures nothing');
+  const fields = /fields:\s*\[([^\]]*)\]/.exec(block);
+  assert.ok(fields, 'the feedback export spec has no field list');
+  const names = fields[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
+  assert.ok(names.length >= 5, `parsed ${names.length} exported fields — a broken parse, not a thin export`);
+
+  // GET /api/feedback serves `status` to the account that filed the row, and the dialog renders it.
+  assert.ok(
+    names.includes('status'),
+    'the product shows a submitter the status of their own request and then withholds it from their export',
+  );
+  // And the stale reason must be gone rather than left sitting under a field that now leaves.
+  assert.equal(
+    /status:\s*'our triage state/.test(block),
+    false,
+    'status is exported AND still listed as excluded — the spec contradicts itself',
+  );
+});
+
+test('the route that shows a status is the reason the export owes one', () => {
+  // Names the dependency out loud: if the route stops serving `status`, the export rule above is
+  // a rule about nothing and should be revisited rather than silently kept.
+  const INDEX_TS = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8');
+  assert.match(INDEX_TS, /FEEDBACK_SELECT = '[^']*status/, 'the feedback routes no longer read status at all');
+});
