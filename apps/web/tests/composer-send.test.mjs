@@ -164,21 +164,21 @@ test('the dialog offers the choice and writes it to the shared preference store'
 test('onSend reports whether the message left', () => {
   // The type is the fix: with `void` there was nothing for submit() to check, so the guard could
   // not have been written even by someone who wanted it.
-  assert.match(COMPOSER, /onSend: \(text: string\) => boolean/);
+  assert.match(COMPOSER, /onSend: \(text: string, attachments: ChatAttachment\[\]\) => boolean/);
 });
 
 test('a refused send returns before the box or the draft is cleared', () => {
   const submit = COMPOSER.slice(COMPOSER.indexOf('const submit ='), COMPOSER.indexOf('const onKeyDown'));
-  assert.match(submit, /if \(!onSend\(value\)\) return;/, 'the refusal must short-circuit');
-  const guard = submit.indexOf('if (!onSend(value)) return;');
+  assert.match(submit, /if \(!onSend\(value, readyAttachments\(staged\)\)\) return;/, 'the refusal must short-circuit');
+  const guard = submit.indexOf('if (!onSend(value, readyAttachments(staged))) return;');
   assert.ok(guard !== -1);
   assert.ok(guard < submit.indexOf("setText('')"), 'the guard must precede emptying the box');
   assert.ok(guard < submit.indexOf('clearDraft(draftKey)'), 'the guard must precede clearing the draft');
 });
 
 test('the workspace returns false when the socket refused the message', () => {
-  const fn = WS.slice(WS.indexOf('const send = (text: string)'), WS.indexOf('const lastAssistantId'));
-  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\]\)\) \{/);
+  const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
+  assert.match(fn, /if \(!sendChat\(text, PRODUCT_MODE_TO_SPECIALIST\[mode\], attachments\)\) \{/);
   assert.match(fn, /return false;/);
   assert.match(fn, /return true;/);
 });
@@ -186,7 +186,7 @@ test('the workspace returns false when the socket refused the message', () => {
 test('and it says the message is still there, because it is', () => {
   // The old copy — "Not connected yet — hang on a moment." — was true and useless: by the time it
   // was read the words it referred to had been deleted.
-  const fn = WS.slice(WS.indexOf('const send = (text: string)'), WS.indexOf('const lastAssistantId'));
+  const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
   assert.match(fn, /still in the box/);
 });
 

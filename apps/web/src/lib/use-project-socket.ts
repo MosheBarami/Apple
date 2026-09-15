@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AgentPhase,
+  ChatAttachment,
   CheckpointMeta,
   ClientMsg,
   StudioFrame,
@@ -236,7 +237,7 @@ export interface ProjectSocket {
    * that never received the frame.
    */
   restoreStatus: RestoreStatus | null;
-  sendChat: (text: string, mode: GolemMode) => boolean;
+  sendChat: (text: string, mode: GolemMode, attachments?: ChatAttachment[]) => boolean;
   /**
    * "I am still here, and this is what I am doing."
    *
@@ -1011,8 +1012,11 @@ export function useProjectSocket(
   );
 
   const sendChat = useCallback(
-    (text: string, mode: GolemMode): boolean => {
-      const ok = sendRaw({ type: 'chat', text, mode });
+    (text: string, mode: GolemMode, attachments: ChatAttachment[] = []): boolean => {
+      // The field has been on this frame since the protocol was written and nothing ever set it.
+      // Omitted entirely when there are none, so a message with no files is byte-identical on the
+      // wire to every message this product has ever sent.
+      const ok = sendRaw({ type: 'chat', text, mode, ...(attachments.length ? { attachments } : {}) });
       if (ok) {
         setRunning(true);
         setMessages((list) => [

@@ -112,7 +112,7 @@ test('jumping scrolls to the end AND re-arms following', () => {
 });
 
 test('sending re-arms following too', () => {
-  const fn = WS.slice(WS.indexOf('const send = (text: string)'), WS.indexOf('const lastAssistantId'));
+  const fn = WS.slice(WS.indexOf('const send = (text: string'), WS.indexOf('const lastAssistantId'));
   assert.match(fn, /setFollowing\(true\)/);
 });
 

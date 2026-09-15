@@ -27,10 +27,16 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
 const { imageKvKey, IMAGE_TTL_SECONDS, storeImage } = await import(`file://${out}`);
 process.on('exit', () => rmSync(out, { force: true }));
 
-const route = INDEX.slice(
-  INDEX.indexOf("app.get('/api/projects/:id/images/:imageId'"),
-  INDEX.indexOf("app.get('/api/projects/:id/memory'"),
-);
+// THE SLICE ENDS AT THE NEXT ROUTE, not at a named one several routes further down.
+//
+// It used to run from the image route to `app.get('/api/projects/:id/memory')`, which swept up
+// every registration in between — the audio route already, and then the attachment routes when
+// they landed. The "every failure is the same 404" assertion below then read OTHER routes' status
+// codes and failed on a 413 that has nothing to do with this one. A fixture whose boundary is a
+// distant landmark measures whatever happens to be parked between here and there.
+const ROUTE_START = INDEX.indexOf("app.get('/api/projects/:id/images/:imageId'");
+const NEXT_ROUTE = INDEX.indexOf('\napp.', ROUTE_START + 1);
+const route = INDEX.slice(ROUTE_START, NEXT_ROUTE === -1 ? INDEX.length : NEXT_ROUTE);
 
 /* ------------------------------------------------- the route exists at all --- */
 

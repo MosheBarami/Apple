@@ -5640,3 +5640,110 @@
   text-align: start;
   cursor: pointer;
 }
+
+/* ------------------------------------------------------------------ attachments --
+   The files riding on this message, between the text and the tool row.
+
+   A BORDER CHANGE, NOT A DASHED OVERLAY, for the drop state. The composer already signals focus
+   by moving its border colour; a drop target that grows a dashed box shifts every control below
+   it by two pixels at the exact moment the person is aiming at it. */
+.gx-composer__inner.is-dropping {
+  border-color: var(--gx-accent, rgba(245, 242, 236, 0.45));
+  background: color-mix(in srgb, var(--gx-raise) 92%, var(--gx-ink) 8%);
+}
+
+.gx-attach {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0.15rem 0.85rem 0.35rem;
+  list-style: none;
+}
+
+.gx-attach__row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-block-size: 1.5rem;
+  color: var(--gx-ink-2);
+  font-size: 0.78rem;
+}
+
+/* The name never pushes the controls off the end of a narrow composer: it is the only part that
+   may shrink, and it ellipsises rather than wrapping the row to two lines. */
+.gx-attach__name {
+  overflow: hidden;
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DETERMINATE, and the width comes from the byte count in composer.tsx. A bar that animates on a
+   timer says "this is going well" about something nobody measured. */
+.gx-attach__bar {
+  display: block;
+  overflow: hidden;
+  flex: 1 1 4rem;
+  max-inline-size: 8rem;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--gx-line);
+}
+
+.gx-attach__fill {
+  display: block;
+  block-size: 100%;
+  border-radius: 2px;
+  background: var(--gx-ink-3);
+  transition: inline-size var(--gx-t-hover) var(--gx-ease);
+}
+
+/* Amber rather than red, and the same choice the character counter makes: nothing was lost and
+   nothing is broken — one file did not go up, and the row beside this says what to do. */
+.gx-attach__row.is-failed .gx-attach__name,
+.gx-attach__error {
+  color: var(--gx-amber);
+}
+
+.gx-attach__error {
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-attach__act {
+  flex: none;
+  padding: 0.1rem 0.35rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.gx-attach__act:hover {
+  background: var(--gx-line);
+  color: var(--gx-ink);
+}
+
+.gx-attach__x {
+  margin-inline-start: auto;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* The sentence that says why Send is off. Same size and colour as the character count, because it
+   is the same kind of thing: a property of the message, not an error about it. */
+.gx-attach__block {
+  margin: 0;
+  padding: 0 0.85rem 0.3rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}

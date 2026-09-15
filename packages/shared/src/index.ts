@@ -457,10 +457,23 @@ export const MESSAGE_MAX_CHARS = 8000;
  */
 export const MESSAGE_WARN_CHARS = MESSAGE_MAX_CHARS - 800;
 
+/**
+ * A file riding on one message.
+ *
+ * The rules about what may be one of these — size, type, and what the model is told when the
+ * bytes cannot be read back — are in ./attachments, re-exported at the bottom of this file so
+ * both ends import the same numbers.
+ *
+ * `attachmentId` replaced a field called `r2Key`, which named a store this product does not have:
+ * there is no R2 bucket in apps/worker/wrangler.jsonc and nothing had ever written the field. The
+ * bytes live in KV beside the generated images, and the id is all a client needs — the routes are
+ * GET and DELETE /api/projects/:id/attachments/:attachmentId, and the project half of the key is
+ * taken from the authenticated path, never from the client.
+ */
 export interface ChatAttachment {
   kind: 'image' | 'file';
   name: string;
-  r2Key: string;
+  attachmentId: string;
   mime: string;
   size: number;
 }
@@ -2149,3 +2162,13 @@ export type RunFailure = keyof typeof RUN_FAILURES;
 export function isRunFailure(v: unknown): v is RunFailure {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(RUN_FAILURES, v);
 }
+
+// ---------------------------------------------------------------------------
+// Attachment policy.
+//
+// Re-exported rather than defined here so the rules sit in one file with their reasons, and so
+// `import { MAX_ATTACHMENT_BYTES } from '@golem/shared'` reads the same in the browser, in the
+// worker and in the Durable Object. A second copy of a ceiling is how a picker comes to accept a
+// file the server refuses.
+// ---------------------------------------------------------------------------
+export * from './attachments.ts';

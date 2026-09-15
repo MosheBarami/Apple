@@ -1,1 +1,11 @@
-{ "extends": "../../tsconfig.base.json", "include": ["src"] }
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The relative import of ./attachments.ts carries its extension so `node --test` can load
+    // packages/shared/src/index.ts directly through native type stripping — there is no build
+    // step between this package and the tests that import it. Legal because nothing here emits.
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src"]
+}

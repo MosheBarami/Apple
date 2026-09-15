@@ -62,6 +62,7 @@ import { companionOpAccess, companionRefusal, sanitizeCompanionOp } from './comp
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
 import { capabilityTable, providerHealth, selectProvider } from './providers';
 import { imageKvKey, type ImageMeta } from './imagegen';
+import { ATTACHMENT_TTL_SECONDS, deleteAttachment, putAttachment, readAttachment } from './attachments';
 import { audioKvKey, servableAudioType, type AudioMeta } from './audio-store';
 import { kvWorkspace } from './webtools';
 import {
@@ -260,6 +261,21 @@ import {
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
+import { MAX_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
+
+/**
+ * The refusals that mean "this kind of file will never work here", as opposed to "this particular
+ * file is too big" (413) or "the client sent something malformed" (400).
+ *
+ * A set rather than a list of `||`s so a refusal added to the shared policy and forgotten here
+ * falls to 400 — a visible wrong answer — rather than silently joining the 415 bucket.
+ */
+const TYPE_REFUSALS: ReadonlySet<AttachmentRefusal> = new Set<AttachmentRefusal>([
+  'image_unsupported',
+  'audio_unsupported',
+  'type_not_allowed',
+  'not_text',
+]);
 import { withSchema } from './schema-once';
 
 export { SessionDO } from './do/session';
@@ -730,6 +746,104 @@ app.get('/api/projects/:id/images/:imageId', async (c) => {
       'Content-Security-Policy': "default-src 'none'; sandbox",
     },
   });
+});
+
+/**
+ * ATTACH A FILE TO THE CONVERSATION.
+ *
+ * This route is the reason the composer's paperclip was `disabled` with the title "Attachments
+ * aren’t supported yet": there was nothing to post to. `ChatAttachment` had been declared in
+ * @golem/shared since the protocol was written, and no code anywhere had ever set one of its
+ * fields.
+ *
+ * `'build'` rather than `'read'`. Reading an attachment is part of reading the conversation, and
+ * the route below allows that at `'read'` for exactly the reason the image route does. PUTTING a
+ * file into somebody's project is not a reading act: it spends their storage and it steers the run
+ * that quotes it, so it takes the same permission as sending a message.
+ *
+ * THE VERDICT IS REACHED FROM THE BYTES. The name and the Content-Type are both values the
+ * uploader chose — curl is not a browser, and the browser is not a security boundary — so the size
+ * is measured on what arrived rather than on Content-Length, and the type is sniffed from the
+ * leading bytes.
+ *
+ * Three distinct refusal codes, because the browser has to tell them apart to say anything useful:
+ * 413 "trim this file", 415 "this kind of file will never work", 400 "that was our bug".
+ */
+app.post('/api/projects/:id/attachments', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'build');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+
+  // Checked first only to avoid buffering a body that has already announced itself as too big. The
+  // real check is on the bytes below, and a request that lies about its length meets that one.
+  const declaredLength = Number(c.req.header('Content-Length') ?? '');
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_ATTACHMENT_BYTES) {
+    return c.json({ error: attachmentRefusalMessage('too_large'), reason: 'too_large' }, 413);
+  }
+
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const stored = await putAttachment(c.env, ctx.project.id, {
+    name: c.req.query('name') ?? 'attachment',
+    declaredMime: c.req.header('Content-Type') ?? '',
+    bytes,
+  });
+  if (!stored.ok) {
+    const reason = stored.verdict.reason;
+    const status = reason === 'too_large' ? 413 : TYPE_REFUSALS.has(reason) ? 415 : 400;
+    return c.json({ error: stored.verdict.message, reason }, status);
+  }
+  void count(c.env, 'attachment_upload');
+  return c.json({ attachment: stored.attachment }, 201);
+});
+
+/**
+ * Serve an attachment back.
+ *
+ * `'read'`, for the reason the generated-image route states at length: a collaborator who can open
+ * the conversation can see the message that says "here is the log", and must not get a 404 for the
+ * log. A stranger gets the same 404 as a project that does not exist.
+ *
+ * ALWAYS A DOWNLOAD, ALWAYS nosniff. These are bytes a user uploaded, served from our own origin.
+ * The allowlist keeps HTML and SVG out; these headers keep a browser from deciding otherwise.
+ */
+app.get('/api/projects/:id/attachments/:attachmentId', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+
+  const found = await readAttachment(c.env, ctx.project.id, c.req.param('attachmentId'));
+  // Expiry is a NORMAL outcome here, not an edge case: ATTACHMENT_TTL_SECONDS is seven days and a
+  // conversation lives as long as the person keeps it. The body is byte-identical to the refusal
+  // above, so the pair cannot tell a prober which of the two cases they hit.
+  if (!found) return c.json({ error: 'not found' }, 404);
+
+  const life = Math.max(0, Math.min(ATTACHMENT_TTL_SECONDS, found.meta.expiresAt - Math.floor(Date.now() / 1000)));
+  return new Response(found.bytes, {
+    headers: {
+      'Content-Type': `${found.meta.mime}; charset=utf-8`,
+      'Content-Length': String(found.bytes.byteLength),
+      'Content-Disposition': `attachment; filename="${found.meta.name.replace(/[^A-Za-z0-9._-]/g, '_')}"`,
+      // Bounded by the object's REMAINING life, for the reason the image route records: a cached
+      // copy must never outlive the object it is a copy of.
+      'Cache-Control': `private, max-age=${life}`,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+    },
+  });
+});
+
+/**
+ * Drop an attachment.
+ *
+ * Reached when somebody removes a staged chip before sending, and when they cancel an upload whose
+ * bytes had already landed. Without it every abandoned attachment sits in KV for a week: a file the
+ * person watched themselves take off the screen, still stored.
+ */
+app.delete('/api/projects/:id/attachments/:attachmentId', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'build');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const found = await readAttachment(c.env, ctx.project.id, c.req.param('attachmentId'));
+  if (!found) return c.json({ error: 'not found' }, 404);
+  await deleteAttachment(c.env, ctx.project.id, c.req.param('attachmentId'));
+  return c.json({ ok: true });
 });
 
 /**

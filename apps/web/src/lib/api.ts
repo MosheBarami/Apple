@@ -1,7 +1,7 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
+import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
 import type { ApiKeyMode, ApiScope } from '@golem/shared';
 import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
@@ -1805,3 +1805,123 @@ export const reportPasswordChanged = (): Promise<{ recorded: boolean; reason?: s
   MOCK_MODE
     ? Promise.resolve({ recorded: true })
     : request<{ recorded: boolean; reason?: string }>('/api/security/password-changed', { method: 'POST' });
+
+// ---------------------------------------------------------------- attachments
+//
+// XMLHttpRequest, not fetch, and the reason is the whole feature: `fetch` cannot report REQUEST
+// progress. There is no upload-side counterpart to a streaming response body in any shipping
+// browser, so a determinate bar over an upload is only possible through `xhr.upload.onprogress`.
+// Everything else in this file stays on fetch.
+//
+// The two things this must not do:
+//
+//   IT MUST NOT INVENT PROGRESS. `lengthComputable` is false when the browser cannot know the
+//   total, and a bar that animates to 90% and waits is a failure to observe rendered as an
+//   observation. The callback simply is not fired, and the row reads as uploading with no
+//   percentage.
+//
+//   IT MUST NOT TURN AN ABORT INTO AN ERROR. A cancel is something the person did; surfacing it as
+//   a failed upload asks them to react to their own decision.
+
+/** Thrown when the caller aborted. Distinct from a failure, because it is not one. */
+export class UploadAborted extends Error {
+  constructor() {
+    super('upload cancelled');
+    this.name = 'UploadAborted';
+  }
+}
+
+/**
+ * Put one file on a project, reporting how much of it has left the machine.
+ *
+ * The refusal path is deliberately identical in shape to `request` above: an `ApiError` carrying
+ * the server's own sentence and its status, so `attachmentFailure` can tell a 413 from a dropped
+ * connection and the row can decide whether to offer Retry at all.
+ */
+export async function uploadAttachment(
+  projectId: string,
+  file: File,
+  opts: { onProgress?: (sentBytes: number) => void; signal?: AbortSignal } = {},
+): Promise<ChatAttachment> {
+  if (MOCK_MODE) {
+    opts.onProgress?.(file.size);
+    return { kind: 'file', name: file.name, attachmentId: `mock-${file.name}`, mime: file.type || 'text/plain', size: file.size };
+  }
+  const token = await getAccessToken();
+  const url = `/api/projects/${encodeURIComponent(projectId)}/attachments?name=${encodeURIComponent(file.name)}`;
+
+  return new Promise<ChatAttachment>((resolve, reject) => {
+    if (opts.signal?.aborted) {
+      reject(new UploadAborted());
+      return;
+    }
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    // The browser's own guess when it has one. The server sniffs the bytes regardless.
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+    const onAbort = () => xhr.abort();
+    opts.signal?.addEventListener('abort', onAbort);
+    const done = () => opts.signal?.removeEventListener('abort', onAbort);
+
+    xhr.upload.onprogress = (e) => {
+      // Only when the browser actually knows. See the note above about inventing progress.
+      if (e.lengthComputable) opts.onProgress?.(e.loaded);
+    };
+    xhr.onabort = () => {
+      done();
+      reject(new UploadAborted());
+    };
+    xhr.onerror = () => {
+      done();
+      // The same sentence and the same status 0 the fetch path uses for a request that never left,
+      // so connectivity and the taxonomy behave identically whichever transport carried it.
+      noteReachability(false);
+      reject(new ApiError('Network error — check your connection.', 0));
+    };
+    xhr.onload = () => {
+      done();
+      noteReachability(true);
+      let body: unknown = null;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        /* empty body */
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const msg =
+          body && typeof body === 'object' && 'error' in body && typeof (body as { error: unknown }).error === 'string'
+            ? (body as { error: string }).error
+            : `Upload failed (${xhr.status})`;
+        reject(new ApiError(msg, xhr.status, body));
+        return;
+      }
+      const att = (body as { attachment?: ChatAttachment } | null)?.attachment;
+      // A 201 with no attachment on it is a server that did not do what it said. Refused rather
+      // than resolved with an undefined the composer would then hang on a message.
+      if (!att) {
+        reject(new ApiError('The upload finished but the file was not returned.', xhr.status, body));
+        return;
+      }
+      resolve(att);
+    };
+    xhr.send(file);
+  });
+}
+
+/**
+ * Forget an attachment the person removed before sending, or cancelled after its bytes had landed.
+ *
+ * Best-effort by design: the row is already gone from their screen, and a failure here must not put
+ * an error in front of them about a file they have finished with. The orphan expires on its own.
+ */
+export const dropAttachment = (projectId: string, attachmentId: string): Promise<void> =>
+  MOCK_MODE
+    ? Promise.resolve()
+    : request<unknown>(`/api/projects/${encodeURIComponent(projectId)}/attachments/${encodeURIComponent(attachmentId)}`, {
+        method: 'DELETE',
+      }).then(
+        () => undefined,
+        () => undefined,
+      );
