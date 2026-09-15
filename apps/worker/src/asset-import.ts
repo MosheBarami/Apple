@@ -19,6 +19,7 @@ import type { AssetProvenance } from './asset-library';
 import { ingestAssets } from './asset-ingest';
 import { uploadTypeFor, uploadAsset, pollOperation, archiveAsset, type UploadEnv, type UploadResult } from './roblox-upload';
 import { useRobloxCredential } from './user-credentials';
+import { rasteriseSvg, DEFAULT_RASTER_PX } from './rasterise';
 
 export interface ImportEnv extends UploadEnv {
   CORPUS: Env['CORPUS'];
@@ -45,7 +46,7 @@ export interface ImportOutcome {
  * different piece of work with its own failure modes. So ambientCG returns null WITH A REASON
  * rather than being quietly skipped, and the reason travels all the way back to the caller.
  */
-export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind'>):
+export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source' | 'kind' | 'name'>):
   Promise<{ url: string; contentType: string } | { error: string }> {
   if (rec.source === 'poly_haven') {
     // id shape: poly_haven/<type>/<slug>. The slug is not the Poly Haven key — the key uses
@@ -66,8 +67,35 @@ export async function resolveDownload(rec: Pick<AssetProvenance, 'id' | 'source'
     // a wrench and resolves to a picture of one. Refused with the reason rather than half-done.
     return { error: `no Open Use path for ${key}: geometry must go through the Studio importer, and an HDRI is not an image asset` };
   }
-  if (rec.source === 'ambientcg') {
-    return { error: 'ambientCG publishes ZIP archives; Roblox does not accept a zip and no unpacking step exists yet' };
+  if (rec.source === 'iconify') {
+    // id shape: iconify/<prefix>/<name>. The API serves SVG only — `.png` is a 404, verified — so
+    // this is the source the rasteriser exists for.
+    const [, prefix, name] = rec.id.split('/');
+    if (!prefix || !name) return { error: `malformed iconify id "${rec.id}"` };
+    return { url: `https://api.iconify.design/${encodeURIComponent(prefix)}/${encodeURIComponent(name)}.svg`, contentType: 'image/svg+xml' };
+  }
+  if (rec.source === 'game_icons') {
+    // The one icon set with a real PNG endpoint, so it needs no rendering at all. White on
+    // transparent-ish black, which is what the set's own site serves.
+    const [, author, name] = rec.id.split('/');
+    if (!author || !name) return { error: `malformed game-icons id "${rec.id}"` };
+    return { url: `https://game-icons.net/icons/ffffff/000000/1x1/${author}/${name}.png`, contentType: 'image/png' };
+  }
+  if (rec.source === 'cgbookcase') {
+    const name = (rec.name ?? '').replace(/\s+/g, '');
+    if (!name) return { error: 'the cgbookcase row has no name to build a file path from' };
+    return { url: `https://cgbookcase.b-cdn.net/textures/thumbnails/${name}_1K/${name}_1K_BaseColor.png`, contentType: 'image/png' };
+  }
+  if (rec.source === 'creator_store' || rec.source === 'roblox_official') {
+    // Not an error and not a gap: these rows already carry a Roblox asset id. Reaching here means
+    // a caller asked to import something that needs no importing.
+    return { error: 'this row is already a Roblox asset — it needs no import' };
+  }
+  if (rec.source === 'ambientcg' || rec.source === 'opengameart' || rec.source === 'kenney') {
+    // All three publish ZIP archives. Roblox will not take a zip, and unpacking one inside a
+    // Worker to find the single map or sprite that matters is a different piece of work with its
+    // own failure modes — so it is named as absent rather than attempted badly.
+    return { error: `${rec.source} publishes ZIP archives; Roblox does not accept a zip and no unpacking step exists yet` };
   }
   return { error: `no download resolver for source "${rec.source}"` };
 }
@@ -122,18 +150,30 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance, userId?:
 
   const file = await fetch(resolved.url);
   if (!file.ok) return { id: rec.id, ok: false, error: `download answered ${file.status}: ${resolved.url}` };
-  const bytes = await file.arrayBuffer();
+  let bytes = await file.arrayBuffer();
   if (bytes.byteLength === 0) return { id: rec.id, ok: false, error: 'the download was empty' };
 
-  const type = uploadTypeFor(rec.kind, resolved.contentType);
-  if (!type) return { id: rec.id, ok: false, error: `no Open Use upload type for ${resolved.contentType}` };
+  // A VECTOR BECOMES A RASTER HERE, and the content type changes with it. Roblox takes png, jpeg,
+  // bmp and tga; 78% of the library is SVG. Doing the conversion at import time rather than at
+  // harvest time is what keeps the library's own rule intact — no bytes are stored anywhere, the
+  // PNG exists for the length of one upload.
+  let contentType = resolved.contentType;
+  if (contentType === 'image/svg+xml') {
+    const raster = await rasteriseSvg(new TextDecoder().decode(bytes), { size: DEFAULT_RASTER_PX });
+    if (!raster.ok || !raster.png) return { id: rec.id, ok: false, error: `could not rasterise: ${raster.error}` };
+    bytes = raster.png;
+    contentType = 'image/png';
+  }
+
+  const type = uploadTypeFor(rec.kind, contentType);
+  if (!type) return { id: rec.id, ok: false, error: `no Open Use upload type for ${contentType}` };
 
   const account = await accountFor(env, userId);
   if (!account.ok) return { id: rec.id, ok: false, error: account.error };
 
   const up = await uploadAsset(account.env, {
     file: bytes,
-    contentType: resolved.contentType,
+    contentType,
     displayName: rec.name,
     // The credit line travels WITH the asset onto Roblox, not only in Apple's own database. If
     // Apple ever disappears, the attribution the licence asked for is still attached to the thing.
