@@ -24,8 +24,9 @@ const year = new Date().getFullYear();
           <li><a href="/docs/modes">Modes</a></li>
           <li><a href="/changelog">Changelog</a></li>
           <li><a href="/pricing">Pricing</a></li>
-          <li><a href="/changelog">Changelog</a></li>
-          <li><a href="/status">Status</a></li>
+          {/* One entry, not two. "Changelog" was listed twice here — the second was a paste, and a
+              duplicated nav item reads as a broken page. */}
+          <li><a href="/status">Status &amp; known issues</a></li>
         </ul>
       </nav>
 
