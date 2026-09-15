@@ -150,3 +150,58 @@ test('A MISMATCH OFFERS THE ONE BUTTON THAT ENDS IT', () => {
   assert.match(workspace, /rebindStudioPlace/, 'the rebind call must be wired');
   assert.ok(/studio\.link\.placeMismatch/.test(workspace), 'and shown only while there IS a mismatch');
 });
+
+// ------------------------------------------------------------------ the panel behind the pill
+
+const panel = code(readFileSync(join(WEB, 'src', 'components', 'ws', 'studio-link-panel.tsx'), 'utf8'));
+const api = code(readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8'));
+const DOCS = join(WEB, '..', 'site', 'src', 'pages', 'docs');
+
+test('THE DIAGNOSTICS ENDPOINT HAS A CALLER AT LAST', () => {
+  // Owner-authorized, rich, tested on the worker, and reachable only by curl: grepping apps/web/src
+  // for "diagnostics" returned two unrelated comments, and lib/api.ts had no Studio functions.
+  assert.match(api, /studio\/diagnostics/, 'api.ts must call the route');
+  assert.match(panel, /studioDiagnostics\(projectId\)/, 'and the panel must be what calls it');
+});
+
+test('the panel is MOUNTED and reachable, not another finished component with no importer', () => {
+  assert.match(workspace, /import \{ StudioLinkPanel \}/);
+  assert.match(workspace, /drawer === 'studio' && <StudioLinkPanel/, 'rendered only while its drawer is open');
+  assert.match(workspace, /<Drawer open=\{drawer === 'studio'\}/, 'and given a Drawer to live in');
+  // A drawer name missing from DRAWERS restores as closed for ever — see the comment on the union.
+  assert.match(workspace, /const DRAWERS = \[[^\]]*'studio'[^\]]*\]/, "DRAWERS must accept 'studio'");
+  assert.match(workspace, /id: 'ws-studio'/, 'and it needs a palette command like every other drawer here');
+});
+
+test('THE PILL IS THE WAY IN — it was a dead span', () => {
+  // The one thing on screen that names the Studio link, with nothing behind it.
+  assert.match(
+    workspace,
+    /className="gx-pill is-live"[\s\S]{0,300}?onClick=\{\(\) => setDrawer\('studio'\)\}/,
+    'the connected pill must open the panel',
+  );
+});
+
+test('DISCONNECT EXISTS, because three shipped docs pages say it does', () => {
+  // docs/connect, docs/plugin and docs/troubleshooting have all been telling users to "disconnect
+  // from the web workspace". This asserts the instruction and the control together, so removing
+  // either one without the other fails here.
+  const promises = ['connect.astro', 'plugin.astro', 'troubleshooting.astro']
+    .map((f) => readFileSync(join(DOCS, f), 'utf8'))
+    .filter((t) => /disconnect from the web/i.test(t));
+  assert.equal(promises.length, 3, 'the docs pages that make the promise moved or changed wording');
+  assert.match(api, /studio\/disconnect/, 'api.ts must have the call');
+  assert.match(panel, /disconnectStudio\(projectId\)/, 'the panel must make it');
+  assert.match(panel, /Disconnect Studio/, 'and label it the way the docs name it');
+});
+
+test('and it is behind a confirmation, because it revokes a credential', () => {
+  // The Studio on the other end finds out on its next poll, in another window, as a status going
+  // grey, and the way back is a fresh pairing code typed into the plugin.
+  assert.match(panel, /<ConfirmDialog/, 'a revoke with no ceremony is a mis-click away');
+  assert.match(panel, /confirmLabel="Disconnect"/);
+});
+
+test('the panel says WHEN a pairing lapses — nothing read `pairingExpiresAt` before', () => {
+  assert.match(panel, /pairingNote\(d\.pairingExpiresAt/, 'the 30-day clock must be read');
+});

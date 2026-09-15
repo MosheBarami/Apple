@@ -23,6 +23,7 @@ import type {
   PlaytestRun,
   RenderViewResult,
   StudioPlace,
+  StudioDiagnostics,
   StudioLinkSummary,
 } from '@golem/shared';
 import { MESSAGE_MAX_CHARS, type AssetSourcePolicy } from '@golem/shared';
@@ -1242,7 +1243,11 @@ export class SessionDO extends DurableObject<Env> {
             }
           : null,
         recentOps,
-      });
+        // Typed against the shared shape the browser panel reads, so a renamed field here fails the
+        // build rather than emptying a row on somebody's screen. This route was tested and had no
+        // caller in apps/web for a long time, which is precisely the arrangement in which that
+        // happens quietly.
+      } satisfies StudioDiagnostics);
     }
 
     //[[ DISCONNECT THIS STUDIO. The route the documentation has been promising.

@@ -5021,3 +5021,70 @@
   padding: 0 0.6rem;
   font-size: 0.75rem;
 }
+
+/* THE STUDIO CONNECTION PANEL (components/ws/studio-link-panel.tsx).
+   Borrows the credits drawer's shape on purpose: both are reading surfaces with a
+   verdict at the top and a few grouped facts below, and inventing a second panel
+   language for the second panel is how a product stops looking like one product. */
+.sl { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.sl-head {
+  display: flex; gap: 0.7rem; align-items: flex-start;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface-2);
+}
+.sl-head__title { margin: 0 0 0.2rem; font-size: 0.95rem; font-weight: 600; color: var(--ink-1); }
+.sl-head__body { margin: 0; font-size: 0.82rem; line-height: 1.5; color: var(--ink-2); }
+
+.sl-note { margin: 0; font-size: 0.79rem; line-height: 1.5; color: var(--ink-3); }
+/* Only the pairing that is genuinely about to lapse gets the warning colour. A month
+   of runway tinted amber teaches the reader that amber means nothing here. */
+.sl-note--warn {
+  padding: 0.5rem 0.65rem;
+  border-inline-start: 2px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--ink-1);
+}
+
+/* A definition list, because these rows genuinely are term/description pairs — and a
+   screen reader then reads "Place: bound to …" rather than two unrelated fragments. */
+.sl-facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 0.9rem; margin: 0; }
+.sl-facts dt {
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-3); padding-top: 0.1rem;
+}
+.sl-facts dd { margin: 0; font-size: 0.82rem; line-height: 1.5; color: var(--ink-2); }
+/* Below the drawer's narrow width the two columns squeeze the sentence into a ribbon,
+   so the label goes above its value rather than beside it. */
+@media (max-width: 520px) {
+  .sl-facts { grid-template-columns: 1fr; gap: 0.15rem; }
+  .sl-facts dd { margin-bottom: 0.5rem; }
+}
+
+.sl-group { display: flex; flex-direction: column; gap: 0.55rem; align-items: flex-start; }
+.sl-group__head {
+  margin: 0; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.sl-group--warn {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--warn) 34%, var(--line));
+  border-radius: 10px;
+}
+.sl-mismatch { margin: 0; font-size: 0.82rem; line-height: 1.5; color: var(--ink-1); }
+.sl-empty { margin: 0; font-size: 0.79rem; line-height: 1.5; color: var(--ink-3); }
+
+.sl-ops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
+.sl-op { display: grid; grid-template-columns: max-content 1fr; gap: 0.1rem 0.6rem; font-size: 0.79rem; }
+.sl-op__kind { color: var(--ink-3); font-size: 0.74rem; }
+.sl-op__what { color: var(--ink-1); line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
+/* The outcome sits under the summary, spanning both columns, because it is a clause
+   about the line above it rather than a third parallel field. */
+.sl-op__outcome { grid-column: 2; color: var(--ink-3); line-height: 1.4; }
+/* A failed op is marked on its edge rather than by colouring the text: the summary has
+   to stay at 4.5:1, and `--bad` on body copy does not clear it. */
+.sl-op.is-failed { border-inline-start: 2px solid var(--bad); padding-inline-start: 0.5rem; }
+.sl-op.is-failed .sl-op__outcome { color: var(--bad); }
+
+.sl-disconnect { align-self: flex-start; }

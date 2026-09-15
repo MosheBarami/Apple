@@ -18,6 +18,7 @@ import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
 import { StudioLinkNote } from '../components/ws/studio-link-note';
+import { StudioLinkPanel } from '../components/ws/studio-link-panel';
 import { useToast } from '../components/toast';
 import { EditableProjectTitle } from '../components/editable-title';
 import { PresenceBar } from '../components/presence-bar';
@@ -77,9 +78,9 @@ const SUGGESTIONS = [
 // literal list are kept in step deliberately: search-panel.test.mjs asserts every name the union
 // can hold is a name DRAWERS accepts, because a drawer missing from the list restores as closed
 // for ever and looks like a user who simply never opened it.
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'studio';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'studio';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'studio'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -416,6 +417,13 @@ export function WorkspacePage() {
       run: () => setDrawer('members'),
     },
     {
+      id: 'ws-studio',
+      title: 'Studio connection',
+      section: 'Project',
+      keywords: ['studio', 'connection', 'plugin', 'pairing', 'disconnect', 'diagnostics', 'place'],
+      run: () => setDrawer('studio'),
+    },
+    {
       id: 'ws-files',
       title: 'Project files',
       section: 'Project',
@@ -674,7 +682,18 @@ export function WorkspacePage() {
               components/presence-model.ts. */}
           <PresenceBar present={presence} selfUserId={selfUserId} />
           {studioStatus === 'connected' ? (
-            <span className="gx-pill is-live" title={studio.state?.placeName ?? studio.link.place?.placeName ?? 'Connected to Studio'}>
+            // A BUTTON, because the pill now leads somewhere. It was a dead <span>: the one thing
+            // on screen that names the Studio link, with nothing behind it, while the diagnostics
+            // the worker serves had no way in at all. Connected opens the panel; not-connected
+            // (below) still opens pairing, because the right action in that state is to make a
+            // connection rather than to inspect one that is not there.
+            <button
+              type="button"
+              className="gx-pill is-live"
+              onClick={() => setDrawer('studio')}
+              title={studio.state?.placeName ?? studio.link.place?.placeName ?? 'Connected to Studio'}
+              aria-label="Studio connection"
+            >
               <span className="gx-dot" aria-hidden="true" />
               {/* The PLACE name, which is worth showing: it says which place is paired,
                   and that is not always the project you are looking at. Below 860px it
@@ -689,7 +708,7 @@ export function WorkspacePage() {
                   open this second), then the binding, then the generic word. */}
               <span className="gx-pill__place">{studio.state?.placeName ?? studio.link.place?.placeName ?? 'Studio'}</span>
               <span className="gx-pill__short">Studio</span>
-            </span>
+            </button>
           ) : studioStatus === 'connecting' ? (
             // No answer from the worker yet. Not a claim either way.
             <span className="gx-pill" title="Waiting for the workspace connection">
@@ -1030,6 +1049,13 @@ export function WorkspacePage() {
         {/* Mounted only while open, like the others: the roster is a live read and a search box
             whose text belongs to the moment it was typed in. */}
         {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
+      </Drawer>
+
+      {/* WHY THIS IS A DRAWER AND NOT A DIALOG: it is a reading surface with two actions, like
+          Files and Credits beside it, and it is opened from the pill in the topbar — the place a
+          user is already looking when they want to know why nothing is happening. */}
+      <Drawer open={drawer === 'studio'} onClose={() => setDrawer(null)} title="Studio connection">
+        {drawer === 'studio' && <StudioLinkPanel projectId={projectId} />}
       </Drawer>
 
       <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="Files">

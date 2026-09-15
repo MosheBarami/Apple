@@ -1,7 +1,7 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
 import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
+import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId, StudioDiagnostics } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
@@ -504,6 +504,24 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
  */
 export const rebindStudioPlace = (projectId: string): Promise<{ ok: boolean }> =>
   request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
+
+/**
+ * Everything the owner may know about this project's Studio link.
+ *
+ * `StudioDiagnostics` is declared in @golem/shared and the DO's response is checked against it with
+ * `satisfies`, so this is not a second description of the payload that can drift from the first.
+ */
+export const studioDiagnostics = (projectId: string): Promise<StudioDiagnostics> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics`);
+
+/**
+ * Revoke this project's pairing.
+ *
+ * The plugin's next poll is answered 401 and it clears its own saved session — the same path it
+ * already takes for an expired token, so this works against the plugin builds already installed.
+ */
+export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revoked: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/disconnect`, { method: 'POST' });
 
 /**
  * Download the whole conversation as a file.

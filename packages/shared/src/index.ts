@@ -319,6 +319,51 @@ export interface StudioLinkSummary {
   place: StudioPlace | null;
 }
 
+/**
+ * ONE ROW OF THE PROJECT'S OP LOG, as /studio/diagnostics serves it.
+ *
+ * The column names are the STORAGE spellings for everything the oplog table already had, and
+ * camelCase for `runId`, which the DO renames on the way out. That inconsistency is deliberate and
+ * is recorded here rather than tidied: renaming the rest would be a schema change dressed as a
+ * readability improvement, and the browser reading a shape that does not match the table is how a
+ * migration silently breaks a panel.
+ */
+export interface StudioOpLogRow {
+  op_id: string;
+  kind: string;
+  /** SQLite has no boolean; 1 is applied and 0 is not. */
+  ok: number;
+  summary: string;
+  created_at: number;
+  /** The failure KIND, or null — never a sentence. See apps/worker/src/op-failure.ts. */
+  failure: string | null;
+  /** The run that asked for this op, or null for one taken outside a run. */
+  runId: string | null;
+}
+
+/**
+ * EVERYTHING THE OWNER MAY KNOW ABOUT THEIR STUDIO LINK.
+ *
+ * Declared here rather than inside the worker so the DO that produces it and the panel that reads
+ * it are checked against ONE shape. The route existed and was tested for a long while with no
+ * caller in the web app at all, which is exactly the arrangement in which a field gets renamed and
+ * nothing notices.
+ *
+ * Every optional-looking value is `| null` rather than absent: "we do not know when this pairing
+ * lapses" and "it lapses at 0" must not be the same thing to a reader.
+ */
+export interface StudioDiagnostics {
+  link: StudioLinkSummary;
+  agentStatus: string;
+  /** When the pairing token was issued, and when it lapses. The 30-day clock, made visible. */
+  pairedAt: number | null;
+  pairingExpiresAt: number | null;
+  /** What Studio last said about itself. Null when it has never reported — NOT the same as no match. */
+  openPlace: { placeName: string; placeId: number; gameId: number; isRunMode: boolean } | null;
+  placeMismatch: { expectedPlaceName: string; openPlaceName: string; openPlaceId: number; message: string } | null;
+  recentOps: StudioOpLogRow[];
+}
+
 export interface StudioEventLog {
   kind: 'log';
   message: string;
