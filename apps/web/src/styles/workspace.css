@@ -4727,3 +4727,77 @@
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
+
+/* --- members: the link, shown once ---------------------------------------------------------- */
+/*
+   The one place in this product where a secret appears on screen. Nothing stores it — not the
+   roster, not the membership history, and there is no route that lists a project's issued links —
+   so the warning is part of the control rather than a line under it.
+*/
+
+.mb__link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--gx-line-2);
+  border-radius: 8px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.mb__link .cs__input {
+  font-size: 0.76rem;
+}
+
+/* --- joining a project by link --------------------------------------------------------------- */
+/*
+   Its own page rather than a dialog: somebody arriving here has usually just followed a link from
+   a chat client, may not be signed in yet, and needs a screen that explains what pressing the
+   button will do to their account. Narrow and centred, like the auth pages it sits beside in the
+   flow.
+*/
+
+.join {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding-block: 8vh;
+}
+
+.join__head {
+  margin: 0;
+  color: var(--gx-ink);
+  font-size: 1.4rem;
+}
+
+.join__lede {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.join__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.join__refusal {
+  margin: 0;
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--gx-bad, #f0776a);
+  border-radius: 0 8px 8px 0;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+  color: var(--gx-ink-2);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.join__back {
+  color: var(--gx-ink-3);
+  font-size: 0.82rem;
+}

@@ -29,6 +29,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
   bulkInviteMembers,
+  createShareLink,
   fetchMemberEvents,
   fetchMemberImpact,
   fetchMembers,
@@ -40,6 +41,7 @@ import {
 } from '../../lib/api';
 import {
   GRANTABLE_ROLES,
+  LINKABLE_ROLES,
   ROLE_BLURBS,
   ROLE_LABELS,
   allows,
@@ -48,11 +50,13 @@ import {
   whyNot,
   type AccessState,
   type GrantableRole,
+  type LinkableRole,
 } from '../../lib/capabilities';
 import { rankMembers } from '../../lib/member-match';
 import { BULK_INVITE_MAX, bulkRefusal, explainRejections, parseBulkIds, type BulkProblem } from '../../lib/bulk-invite';
 import { MEMBER_REASON_MAX, describeEvent, historyGap, unauditedNote } from '../../lib/member-history';
 import { readImpact } from '../../lib/member-impact';
+import { shareLinkUrl } from '../../lib/share-link';
 import { relativeTime } from '../../lib/format';
 import { useToast } from '../toast';
 import { createUndoable } from '../../lib/undo';
@@ -412,6 +416,9 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
 
       <InviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
       <BulkInviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
+      {/* Gated on `share` rather than `manage_members`: they are separate capabilities in
+          COLLAB_ACTIONS and the mint route asks for the first one. */}
+      <ShareLinkForm projectId={projectId} access={access} />
     </div>
   );
 }
@@ -927,5 +934,120 @@ function MemberHistory({ projectId, member }: { projectId: string; member: Membe
         </ol>
       )}
     </div>
+  );
+}
+
+/**
+ * Sharing the project by link — the only way to make a GUEST.
+ *
+ * `origin: 'link'` has been a first-class member class since the roster was built: named, filtered,
+ * suspended and revoked on the same terms as an invited member, and tested at every layer. It could
+ * only be created by curl, because nothing in the app posted to POST /api/shared/:id/links — and
+ * nothing could have opened the result either, which is why routes/join.tsx lands in the same
+ * change. Half of this feature is worse than none of it.
+ *
+ * THE TOKEN IS SHOWN ONCE AND CANNOT BE ASKED FOR AGAIN. It is not on the roster, the membership
+ * history deliberately never echoes it, and there is no route that lists a project's issued links.
+ * So the panel says so plainly instead of letting somebody close the drawer and find out. It is
+ * held in component state and not in the query cache, for the same reason.
+ *
+ * WHAT IT DOES NOT OFFER. No Admin in the role picker: the mint route redeems the link it is about
+ * to hand out and refuses `role_too_strong` above editor, so that option would fail every time —
+ * see LINKABLE_ROLES. And no scope picker: the narrower scopes need a `resourceId` naming the thing
+ * the link opens, and this panel has nothing to name, so two of the three options would be dead.
+ */
+function ShareLinkForm({ projectId, access }: { projectId: string; access: AccessState }) {
+  const { toast } = useToast();
+  const mayShare = allows(access, 'share');
+  const cannotShare = whyNot(access, 'share');
+  const [role, setRole] = useState<LinkableRole>('viewer');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [link, setLink] = useState<string | null>(null);
+
+  const mint = useMutation({
+    mutationFn: () =>
+      createShareLink(projectId, {
+        role,
+        // A date is a day, and the link should last to the end of it rather than expiring at the
+        // midnight that opens it — the same reading the invite form gives the same control.
+        expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59.999Z`).toISOString() : null,
+      }),
+    onSuccess: (res) => setLink(shareLinkUrl(res.token, window.location.origin)),
+    onError: (e: Error) => toast(`Could not make a link: ${e.message}`, 'error'),
+  });
+
+  const copy = () => {
+    if (!link) return;
+    // Clipboard access can be refused, and a Copy button that silently did nothing would send
+    // somebody away believing they had the link.
+    navigator.clipboard?.writeText(link).then(
+      () => toast('Link copied.', 'success'),
+      () => toast('Could not copy it — select the link and copy it by hand.', 'error'),
+    );
+  };
+
+  return (
+    <details className="mb__bulk">
+      <summary className="mb__bulk-summary">Share by link</summary>
+      <form
+        className="mb__bulk-body"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (mayShare && !mint.isPending) mint.mutate();
+        }}
+      >
+        <p className="cs__note">
+          Anyone who opens the link joins this project at the role you choose. A link can never make
+          somebody an administrator or an owner.
+        </p>
+
+        <div className="mb__invite-row">
+          <label className="field">
+            <span className="field-label">Role</span>
+            <select
+              className="cs__select"
+              value={role}
+              onChange={(e) => setRole(e.target.value as LinkableRole)}
+              disabled={!mayShare}
+            >
+              {LINKABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Until (optional)</span>
+            <input
+              className="cs__date"
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              disabled={!mayShare}
+            />
+          </label>
+        </div>
+        <p className="cs__note">{ROLE_BLURBS[role]}</p>
+
+        <button type="submit" className="btn btn-primary" disabled={!mayShare || mint.isPending} title={cannotShare ?? undefined}>
+          {mint.isPending ? 'Making a link…' : 'Make a link'}
+        </button>
+        {cannotShare && <p className="cs__note cs__note--warn">{cannotShare}</p>}
+
+        {link && (
+          <div className="mb__link" role="status">
+            <p className="cs__note cs__note--warn">
+              Copy it now. We cannot show it again — nothing stores it, not the member list and not
+              the history. If you lose it, make another and turn this one off.
+            </p>
+            <input className="cs__input mono" value={link} readOnly onFocus={(e) => e.currentTarget.select()} aria-label="Share link" />
+            <button type="button" className="btn btn-quiet" onClick={copy}>
+              Copy link
+            </button>
+          </div>
+        )}
+      </form>
+    </details>
   );
 }

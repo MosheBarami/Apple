@@ -142,7 +142,12 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
   const location = useLocation();
   if (loading) return <AuthSplash />;
-  if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // PATHNAME AND SEARCH, not pathname alone. A share link is `/app/join?token=…` and the token is
+  // the entire content of it: stashing only the path sent a signed-out recipient back to an empty
+  // Join box after logging in, with nothing on screen explaining where their invitation went.
+  // `safeInternalPath` at the other end already accepts a query string and rejects anything that
+  // is not a rooted same-origin path.
+  if (!session) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   return <>{children}</>;
 }
 

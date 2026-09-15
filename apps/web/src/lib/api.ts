@@ -752,6 +752,48 @@ export const fetchMemberEvents = (projectId: string, userId?: string, limit?: nu
   );
 };
 
+/**
+ * MINTING A SHARE LINK — the only way to create a guest.
+ *
+ * Scope is fixed at 'project' here on purpose. The route also takes 'chat' and 'build', and both
+ * require a `resourceId` naming the thing the link opens; this panel has no such thing to name, and
+ * a scope picker offering two options that cannot be satisfied is three dead branches wearing one
+ * control. When there is a place to share a single conversation from, that is where the narrower
+ * scopes belong.
+ *
+ * THE TOKEN COMES BACK ONCE AND IS NEVER STORED. It is not in the roster, it is not in the
+ * membership history — the events route deliberately never echoes it — and there is no route that
+ * lists issued links. A caller that loses it cannot ask for it again; it can only mint another and
+ * revoke this one.
+ */
+export interface ShareLinkResponse {
+  token: string;
+  scope: string;
+  role: string;
+  resourceId: string | null;
+  projectId: string;
+}
+
+export const createShareLink = (
+  projectId: string,
+  body: { role: string; expiresAt?: string | null },
+): Promise<ShareLinkResponse> =>
+  request<ShareLinkResponse>(`/api/shared/${encodeURIComponent(projectId)}/links`, {
+    method: 'POST',
+    body: JSON.stringify({ scope: 'project', ...body }),
+  });
+
+/**
+ * Presenting one. The project id is NOT in this request: it is on the link, server-side, so a probe
+ * with a guessed token learns nothing about what exists — which is why the refusal comes back as a
+ * reason and not as a project.
+ *
+ * 200 rather than 201 when the caller minted the link themselves: they already had access and
+ * nothing was granted.
+ */
+export const redeemShareLink = (token: string): Promise<{ ok: boolean; projectId: string; role: string; scope: string }> =>
+  request(`/api/shared/links/redeem`, { method: 'POST', body: JSON.stringify({ token }) });
+
 // ---------------------------------------------------------------- roadmap
 
 // The wire shapes live in components/roadmap/model.ts and are imported here as
