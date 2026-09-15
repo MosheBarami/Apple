@@ -224,12 +224,28 @@ test('the save carries the preferences already stored, because the route deletes
   // which is how "unset" is reachable at all. A save that sent only the two notification keys would
   // silently wipe this person's language, response length, coding style and Roblox conventions,
   // and nothing would say so. The whole object goes, every time.
+  //[[ EVERY SAVER ON THIS PAGE, NOT THE FIRST ONE THE REGEX HAPPENS TO FIND.
+  //
+  //   This matched one `savePreferences(` and asserted the notification keys were in it. A second
+  //   panel landed — asset sources — above the first, so the regex found ITS call and the test
+  //   failed about a save that was correct. Worse in the other direction: had the new panel landed
+  //   BELOW, the test would have passed while a saver that wipes every other preference sat on the
+  //   page unexamined, which is the exact defect it exists to catch.
+  //
+  //   The property belongs to all of them: the route REPLACES the scope, so any save that does not
+  //   carry the stored base deletes this person's language, response length, coding style and
+  //   Roblox conventions, silently.
   const body = code(page);
-  const call = /savePreferences\(\s*'user',\s*userId,\s*\{([\s\S]{0,400}?)\}\s*\)/.exec(body);
-  assert.ok(call, 'could not find the save call — this test is measuring nothing');
-  assert.match(call[1], /\.\.\./, 'the stored preferences are not carried into the save');
-  assert.match(call[1], /notify_delivery/);
-  assert.match(call[1], /notify_events/);
+  const calls = [...body.matchAll(/savePreferences\(\s*'user',\s*userId,\s*\{([\s\S]{0,500}?)\}\s*\)/g)];
+  assert.ok(calls.length >= 1, 'could not find a save call — this test is measuring nothing');
+  for (const [i, call] of calls.entries()) {
+    assert.match(call[1], /\.\.\.base/,
+      `saver ${i + 1} of ${calls.length} does not carry the stored preferences, so it deletes every key it omits`);
+  }
+  // And the notification panel's own save carries the two keys it owns.
+  const notify = calls.find((c) => /notify_delivery/.test(c[1]));
+  assert.ok(notify, 'no saver writes notify_delivery');
+  assert.match(notify[1], /notify_events/);
   assert.match(body, /preferences\.prefs/, 'the base has to be what the server says is stored');
 });
 
