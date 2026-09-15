@@ -255,9 +255,11 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=0cf10d874d5ebd238d449f54; at=2026-09-15T00:25:13.163Z
 
-- [ ] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
+- [x] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-ORACLE-7 -- node --test tests/check-pixels.test.mjs
     EXPECT: G-ORACLE-7 OK
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-7; path=6765c31f4f12/53 entries; git-sha=5f442e6; tree-clean=yes; deps-clean=yes; break-sha=5f442e6; EXPECT=unmatched; output-sha256=c3d757b007c971317e5b6b0140dd0e1a279623f2a0de80e8f44d0d1e012e18fb; output-bytes=9553; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=cb8399b8db51ac3c8b15ae72; at=2026-09-15T01:34:12.926Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=a72bf17; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=7a26e1723861dd916466b527b560012e48d1ce9823bf082d0c61c3f31cbc356e; output-bytes=1168; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=b1f9e9c1cd1404f3341228aa; at=2026-09-15T01:45:31.788Z
 
 - [x] G-COST-1: The settled run cost is wired from the last charge through to the rendered turn
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 12 --label G-COST-1 -- node --test tests/run-meters.test.mjs

@@ -1,0 +1,6 @@
+[
+  "packages/design/src/tokens.mjs",
+  "scripts/assert-tests.mjs",
+  "scripts/check-pixels.mjs",
+  "tests/check-pixels.test.mjs"
+]
