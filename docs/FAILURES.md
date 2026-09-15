@@ -62,6 +62,27 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-64 · A falsification parser that matched nothing, and reported that as zero failures
+**Believed:** three deliberate breaks to `apps/worker/src/tools.ts` had each been checked and each
+left the suite green, so the repaired oracle was unfalsifiable and the breaks were mis-aimed.
+**True:** the counter was `grep -cE "^not ok .*park pixels"`, and `node --test` prints `✖ name`,
+not `not ok`. The pattern matched nothing on every run, including the healthy one. All three
+"0 red" results were the parser failing to see a failure it was never able to see. Re-measured
+against `ℹ fail N`: guard removed → 1, literal key → 1, third unguarded call site → 1, control → 0.
+**Cost of the error:** nearly recorded a security oracle as verified on the strength of three
+measurements that never happened. The commit message was already drafted.
+**Caught by:** the healthy-tree run ALSO printing nothing where a `# pass` line was expected. Zero
+red on three independent breaks is implausible; zero output from the summary line is impossible.
+**The rule:** **a parser that matches nothing reports the same value as a healthy tree.** Zero is
+the signal we treat as meaningful, and a broken instrument produces it for free. So the control
+must run FIRST and must be shown to MATCH — not merely to return 0. "It printed 0" and "it found
+zero" are different findings that look identical.
+**This is meaning 3 (dead harness) one level out:** not the test that never ran, but the reader
+that never read. It happened twice in one night, to two different sessions, in two different
+shells — rbxai-04 lost the same hour to shell quoting eating a `(!ctx` needle and getting -1 for
+both `indexOf` searches, briefly concluding a guard did not exist. Two accidents with one shape is
+a pattern, and it argues the control belongs in the harness rather than in anyone's habits.
+
 ### F-63 · A safety flag that was never parsed, in a command §10 tells us to run every pass
 **Believed:** `node infra/smoke.mjs --no-model` runs the deployed smoke checks without spending
 neurons. It is written that way in FINISH-THE-PRODUCT.md:164, MISSION-PROMPT.md:164,
