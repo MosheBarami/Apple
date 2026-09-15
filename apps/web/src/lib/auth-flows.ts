@@ -383,6 +383,13 @@ export const SENSITIVE_ACTIONS = [
   'remove-two-step',
   'sign-out-everywhere',
   'reset-settings',
+  // THE WHOLE ACCOUNT IN ONE FILE. Everything RLS protects, everything the conversation contains,
+  // in a download anyone at an unlocked screen could take away with them and keep. The file is the
+  // point of the feature and is exactly why the gesture that produces it has to ask who is asking.
+  'export-data',
+  // Irreversible, and it reaches every store this product has. It takes the typed confirmation as
+  // well — the two questions are different, and neither substitutes for the other.
+  'delete-account',
 ] as const;
 export type SensitiveAction = (typeof SENSITIVE_ACTIONS)[number];
 

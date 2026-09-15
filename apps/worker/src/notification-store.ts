@@ -16,6 +16,7 @@
 // directory of everyone's activity behind one bad `if`.
 import type { Env } from './env';
 import { oncePerIsolate } from './schema-once';
+import { RETENTION, days } from './retention';
 import {
   NOTIFICATION_KINDS,
   isNotificationKind,
@@ -36,9 +37,9 @@ type Corpus = Pick<Env, 'CORPUS'>;
 export const DEDUPE_WINDOW_MS = 24 * 3_600_000;
 
 /** Read rows are kept this long so "what was I told last month" stays answerable, then dropped. */
-export const RETAIN_READ_MS = 30 * 86_400_000;
+export const RETAIN_READ_MS = days(RETENTION.notificationReadDays);
 /** Unread rows live longer, because nobody has seen them yet. */
-export const RETAIN_UNREAD_MS = 90 * 86_400_000;
+export const RETAIN_UNREAD_MS = days(RETENTION.notificationUnreadDays);
 
 /**
  * The schema, asserted once per isolate rather than once per request.

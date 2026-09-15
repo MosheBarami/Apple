@@ -17,6 +17,7 @@
 // SAME neuron unit the rest of the product uses, reserved and settled against the SAME BudgetDO
 // singleton. There is no second ledger and no second unit.
 import type { Env } from './env';
+import { RETENTION } from './retention';
 import { BudgetError } from './gateway';
 import { gatewayOpts } from './providers/workers-ai';
 import { MAX_NEURONS_PER_REQUEST, usdFor } from './pricing';
@@ -678,7 +679,7 @@ function extractImageBase64(raw: unknown): string | null {
 // ---------------------------------------------------------------------------
 
 /** How long a generated image stays retrievable. Long enough to place it, short enough not to accrete. */
-export const IMAGE_TTL_SECONDS = 3600;
+export const IMAGE_TTL_SECONDS = RETENTION.generatedImageSeconds;
 
 /** What is stored beside the pixels: the unix second at which KV drops them. */
 export interface ImageMeta {

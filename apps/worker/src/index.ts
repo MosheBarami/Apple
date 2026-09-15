@@ -34,6 +34,17 @@ import {
   type Subscription,
 } from './billing';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
+import { accountExportFilename, collectAccountExport } from './account-export';
+import { describeSweep, runRetentionSweeps } from './retention-sweep';
+import { analyticsActorId, consentIsStale, forgetAnalyticsConsent, refreshAnalyticsConsent } from './analytics-consent';
+import {
+  ERASURE_CONFIRMATION,
+  eraseAccountData,
+  eraseProjectData,
+  ownedProjectIds,
+  readDeletionStatus,
+  recordDeletion,
+} from './erasure';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
@@ -465,6 +476,18 @@ app.use('/api/*', async (c, next) => {
     throw e;
   } finally {
     const status = threw ? 500 : (c.res?.status ?? null);
+    const userId = c.get('user')?.userId ?? null;
+    //[[ WHOSE NAME MAY BE ON THIS ROW.
+    //
+    //   This used to be `c.get('user')?.userId ?? null` — the raw account id of whoever made the
+    //   call, on every /api/* request, kept for thirty days, with no way for that person to say no.
+    //
+    //   `analyticsActorId` answers from an isolate-local cache and withholds the id when the answer
+    //   is not known yet, which costs one unattributed event per person per isolate and never
+    //   attributes anybody on the way to finding out whether they agreed. The refresh is queued
+    //   after the response, so the read stays off the latency path of the request that triggered
+    //   it. See analytics-consent.ts. ]]
+    const actorId = analyticsActorId(userId);
     recordEvent({
       kind: 'request',
       route,
@@ -473,7 +496,7 @@ app.use('/api/*', async (c, next) => {
       // could not be read is not a success; `successRollup` counts it as unclassified.
       status,
       durationMs: Date.now() - started,
-      actorId: c.get('user')?.userId ?? null,
+      actorId,
     });
     if (threw || (typeof status === 'number' && status >= 500)) {
       recordEvent({
@@ -482,11 +505,13 @@ app.use('/api/*', async (c, next) => {
         errorKind: threw ? 'unhandled' : 'server_error',
         message: threw instanceof Error ? threw.message : String(threw ?? `status ${status}`),
         fatal: true,
-        actorId: c.get('user')?.userId ?? null,
+        actorId,
       });
     }
     try {
-      maybeFlush(c.env, c.executionCtx.waitUntil.bind(c.executionCtx));
+      const after = c.executionCtx.waitUntil.bind(c.executionCtx);
+      if (userId && consentIsStale(userId)) after(refreshAnalyticsConsent(c.env, userId));
+      maybeFlush(c.env, after);
     } catch {
       // no execution context (a synthetic request in a test harness): flush on the next one
     }
@@ -1273,6 +1298,12 @@ app.put('/api/memory/:scope/:scopeId/preferences', async (c) => {
   }
   for (const w of wanted) await putMemoryEntry(c.env, proven.access, { ...w, source: 'user' });
 
+  // THE ANALYTICS OPT-OUT IS CACHED PER ISOLATE, so the isolate that took the write drops its own
+  // answer rather than serving a minute of the old one back to the person who just changed it.
+  // Every other isolate picks it up within CONSENT_CACHE_TTL_MS — which is what the settings copy
+  // means by "within a minute", and is stated there rather than left for somebody to discover.
+  if (proven.scope === 'user') forgetAnalyticsConsent(scopeId);
+
   const after = await listMemoryEntries(c.env, proven.access, proven.scope, scopeId);
   return c.json({ preferences: preferencesFromEntries(after, MEMORY_VOCAB()).prefs, rejected });
 });
@@ -1713,10 +1744,34 @@ app.post('/api/projects/:id/restore', async (c) => {
   return ctx.stub.fetch('https://do/restore', { method: 'POST', body: JSON.stringify(body) });
 });
 
+/**
+ * DELETE A PROJECT'S DATA — all of it, not the part that happened to be in one Durable Object.
+ *
+ * This route used to be one line: purge the SessionDO and return whatever it said. That deleted the
+ * conversation, the checkpoints and the op log, and left behind the project's memory entries and
+ * their audit trail, its notifications, its automations and their run history, its asset-use
+ * record, every workspace file with its version history and its trash, every generated image and
+ * sound, every redeemed share grant — AND EVERY LIVE SHARE LINK, which is a working credential to a
+ * project the person believes they deleted.
+ *
+ * The fan-out lives in erasure.ts and is shared with the account deletion, so the two cannot
+ * disagree about what "delete this project" reaches. The receipt comes back with the response: a
+ * caller that sees `steps` can tell a sweep that removed nothing from a sweep that never ran.
+ */
 app.post('/api/projects/:id/purge', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  return ctx.stub.fetch('https://do/purge', { method: 'POST' });
+  const res = await ctx.stub.fetch('https://do/purge', { method: 'POST' });
+  const steps = await eraseProjectData(c.env, ctx.project.id);
+  const failed = steps.filter((s) => s.status === 'failed');
+  return c.json({
+    ok: res.ok && failed.length === 0,
+    // The Durable Object's own answer, kept separate: "the conversation went and the files did not"
+    // is a state a caller has to be able to see.
+    conversation: res.ok ? 'purged' : `purge returned ${res.status}`,
+    steps,
+    ...(failed.length ? { failed: failed.map((s) => s.target) } : {}),
+  });
 });
 
 app.post('/api/projects/:id/pairing', async (c) => {
@@ -2767,6 +2822,110 @@ app.get('/api/me/usage', async (c) => {
   const user = c.get('user');
   const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/history');
   return c.json(await res.json());
+});
+
+/**
+ * EVERYTHING WE HOLD ABOUT YOU, AS ONE FILE.
+ *
+ * `/api/projects/:id/export` gives one project's transcript and `/api/memory/:scope/:id/export`
+ * gives one memory scope. Neither is the thing the privacy page promises, and until this route
+ * existed the only honest answer to "send me my data" was an email to a human — which is the answer
+ * a paid product cannot give twice.
+ *
+ * The bundle is built in account-export.ts and driven by `USER_EXPORT`, so what leaves is an
+ * allowlist with a stated reason beside every column that stays. Read that file before changing
+ * this one; the two rules that matter (a table nobody could read is not an empty table, and the
+ * stores that are NOT in the file are named in the file) live there.
+ *
+ * NOT A JOB, NOT A LINK. The bytes are streamed in this response with `Content-Disposition:
+ * attachment`, exactly as the transcript export is. An asynchronous bundle parked in KV would need
+ * an expiry, a status route and a signed URL — three things to get wrong for a file that is a
+ * handful of queries — and it would put a copy of every person's data in a second store. The
+ * checklist item "export availability expiration" is answered by there being nothing to expire.
+ */
+app.get('/api/me/export', async (c) => {
+  const user = c.get('user');
+  const doc = await collectAccountExport(c.env, user);
+  // The digest travels INSIDE the file, over the data, for the reason the transcript export gives:
+  // a header exists during the download and the file is what gets kept, and a transfer cut in half
+  // is a file that still parses as far as it got.
+  const body = JSON.stringify({ ...doc, sha256: await sha256hex(JSON.stringify(doc.tables)) }, null, 2);
+  const bytes = new TextEncoder().encode(body);
+  return new Response(bytes, {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${accountExportFilename(doc.exportedAt)}"`,
+      'Content-Length': String(bytes.byteLength),
+      // Nothing caches a person's own data, anywhere, for any length of time.
+      'Cache-Control': 'no-store',
+      'X-Golem-Export-SHA256': await sha256hex(body),
+    },
+  });
+});
+
+/**
+ * DELETE MY ACCOUNT.
+ *
+ * Three published pages promised this and no route existed; the honest answer to a person who asked
+ * was an email address. What it does, and what it refuses to claim, is in erasure.ts — read the
+ * header there before changing anything here.
+ *
+ * FOUR DECISIONS THIS ROUTE MAKES:
+ *
+ *   1. A TYPED CONFIRMATION. Not a query parameter, not a bare POST: the body must carry the exact
+ *      phrase. This is irreversible and reachable from any page with the person's token, and the
+ *      cost of the friction is one sentence against the cost of a mis-click being everything.
+ *   2. IT REFUSES RATHER THAN HALF-RUNS. The owned projects are enumerated FIRST, and if that query
+ *      cannot be answered the route stops before deleting anything — a sweep that skipped every
+ *      project-scoped store would hand back a receipt that looks finished.
+ *   3. THE RECEIPT IS THE PRODUCT. Counts per store, from the stores; the Postgres step re-reads to
+ *      confirm; and everything that survives is listed with the reason.
+ *   4. IT DOES NOT SAY THE ACCOUNT IS GONE. The sign-in identity lives in `auth.users` and removing
+ *      it needs a service-role credential this worker deliberately does not hold. `accountRemoved`
+ *      is false and the residue says so in words, because "your account has been deleted" beside a
+ *      login that still works is the lie this whole file exists to avoid.
+ *
+ * GET on the same path is the status: what was requested, when, how much succeeded, and what is
+ * still outstanding.
+ */
+app.get('/api/me/delete', async (c) => {
+  const user = c.get('user');
+  return c.json(await readDeletionStatus(c.env, user.userId));
+});
+
+app.post('/api/me/delete', async (c) => {
+  const user = c.get('user');
+  const body = (await c.req.json<{ confirm?: unknown }>().catch(() => null)) ?? {};
+  if (body.confirm !== ERASURE_CONFIRMATION) {
+    return c.json(
+      {
+        error: `This cannot be undone. To confirm, send { "confirm": "${ERASURE_CONFIRMATION}" }.`,
+        confirmationPhrase: ERASURE_CONFIRMATION,
+      },
+      400,
+    );
+  }
+  const projectIds = await ownedProjectIds(c.env, user);
+  if (projectIds === null) {
+    return c.json(
+      {
+        error:
+          'Your projects could not be listed just now, and a deletion that cannot see them would ' +
+          'leave every one of them behind while reporting success. Nothing has been deleted. Try again.',
+      },
+      503,
+    );
+  }
+  const receipt = await eraseAccountData(c.env, user, projectIds);
+  // The record is written AFTER the sweep and carries the receipt, so the status route reports what
+  // happened rather than what was asked for.
+  await recordDeletion(c.env, receipt).catch(() => {});
+  // The analytics consent cache holds this account's answer for up to a minute, and the rows it
+  // was read from have just been deleted. Drop it here rather than letting it expire: the next
+  // request in this isolate would otherwise be attributed to an account that no longer exists.
+  forgetAnalyticsConsent(user.userId);
+  recordEvent({ kind: 'audit', action: 'account_delete', actorKind: 'user', allowed: true, subject: user.userId });
+  return c.json(receipt, receipt.complete ? 200 : 207);
 });
 
 /**
@@ -6282,4 +6441,56 @@ app.notFound(async (c) => {
   return serveStatic(c.env, c.req.raw);
 });
 
-export default app;
+/**
+ * THE CRON. Three retention sweeps existed and nothing called any of them.
+ *
+ * `purgeExpired`, `pruneNotifications` and `pruneExecutions` were written, exported and tested, and
+ * the only other mention of each in this tree was its own test file. Three published retention
+ * windows, no mechanism — an expired memory entry a person had deliberately given a TTL to stayed
+ * forever, and the docs page said thirty days.
+ *
+ * WHY THE DEFAULT EXPORT IS ASSEMBLED RATHER THAN REPLACED. The runtime looks up `scheduled` on the
+ * module's default export, and every route suite in tests/ drives that same object through
+ * `app.request(...)`. Replacing it with `{ fetch, scheduled }` would satisfy the runtime and break
+ * a dozen suites that have nothing to do with cron; `Object.assign` gives the platform the handler
+ * it looks for and leaves the Hono app exactly as it was.
+ *
+ * IT AWAITS THE SWEEP. Cloudflare keeps the invocation alive for the promise a scheduled handler
+ * returns, so there is no `waitUntil` here and no fire-and-forget: a sweep that is still running
+ * when the handler resolves is a sweep that gets cancelled halfway, and it would be cancelled at a
+ * different halfway point every night.
+ */
+async function runScheduled(env: Env): Promise<void> {
+  const report = await runRetentionSweeps(env);
+  // ONE AUDIT LINE PER NIGHT, carrying the counts. The point is not the tidy log: a night the cron
+  // did not fire looks identical to a night with nothing to delete unless the run itself is
+  // recorded, and "retention is running" is exactly the kind of claim this product will not make
+  // without something that would notice its absence.
+  recordEvent({
+    kind: 'audit',
+    action: 'retention_sweep',
+    actorKind: 'system',
+    allowed: true,
+    subject: describeSweep(report),
+  });
+  for (const failure of report.failures) {
+    recordEvent({
+      kind: 'error',
+      scope: `retention:${failure.store}`,
+      errorKind: 'sweep_failed',
+      message: failure.error ?? 'the sweep did not run and gave no reason',
+      // Not fatal to the request — there is no request — but it IS the retention policy not
+      // happening, which is the thing somebody has to see.
+      fatal: false,
+      actorId: null,
+    });
+  }
+  // Flushed here rather than left to `maybeFlush`: a scheduled invocation makes a handful of events
+  // and then the isolate goes away, so a threshold-based flush would drop exactly the record that
+  // says the sweep happened.
+  await flushEvents(env);
+}
+
+export default Object.assign(app, {
+  scheduled: (_event: unknown, env: Env, _ctx: unknown) => runScheduled(env),
+});

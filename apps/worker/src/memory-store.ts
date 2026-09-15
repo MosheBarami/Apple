@@ -27,6 +27,7 @@
 import type { Env } from './env';
 import { scanText, type Disclosure, type DisclosureKind } from './redaction';
 import { oncePerIsolate } from './schema-once';
+import { RETENTION } from './retention';
 
 // ---------------------------------------------------------------------------------------------
 // the vocabulary — validated at runtime, because a union is a compile-time promise
@@ -98,7 +99,7 @@ function hasReservedSegment(key: string): boolean {
 }
 export const VALUE_MAX = 4000;
 /** Two years. Long enough for "remember this about me", short enough that nothing is truly forever. */
-export const MAX_TTL_DAYS = 730;
+export const MAX_TTL_DAYS = RETENTION.memoryMaxTtlDays;
 /** One scope's rows. Bounds the prompt, the viewer and one import bundle with the same number. */
 export const ENTRIES_PER_SCOPE_MAX = 200;
 

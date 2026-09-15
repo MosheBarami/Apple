@@ -58,11 +58,16 @@ import {
 import { fullStamp, formatNumber, relativeTime } from '../lib/format.ts';
 import { matchSettings } from '../lib/settings-search.ts';
 import {
+  DELETE_ACCOUNT_PHRASE,
+  deleteAccount,
+  downloadAccountExport,
+  fetchDeletionStatus,
   fetchNotifications,
   fetchScopeMemory,
   markNotificationsRead,
   reportPasswordChanged,
   savePreferences,
+  type ErasureReceipt,
 } from '../lib/api';
 import { historyState, occurrenceNote, unreadSecurityIds } from '../lib/security-history';
 import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../lib/notification-inbox.ts';
@@ -1213,6 +1218,66 @@ export function SettingsPage() {
     if (!saveName.isPending) saveName.mutate();
   };
 
+  /* --- your data, and your account ---------------------------------------
+   *
+   * Both of these are worker routes (apps/worker/src/account-export.ts and erasure.ts) and the
+   * client is deliberately thin. In particular the DELETION RECEIPT IS RENDERED AS THE SERVER WROTE
+   * IT: it is the only thing that knows which stores were actually cleared and which survived, and
+   * a success line composed here would be this page claiming something nothing measured.
+   */
+
+  // The same query key the notifications section uses, so the two cannot disagree about one stored
+  // preference. React Query serves both from one fetch.
+  const storedPrefs = useQuery({
+    queryKey: ['scope-memory', 'user', userId],
+    queryFn: () => fetchScopeMemory('user', userId),
+    enabled: userId.length > 0,
+  });
+
+  const setAnalyticsOptOut = useMutation({
+    mutationFn: async (optOut: boolean) => {
+      // Everything already stored plus the one key this row owns: what is not sent is deleted.
+      const base = storedPrefs.data?.preferences.prefs ?? {};
+      return savePreferences('user', userId, { ...base, analytics_opt_out: optOut });
+    },
+    onSuccess: (out) => {
+      void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
+      // What came back, not what was sent — a value the server refused is not a value that is set.
+      toast(
+        out.preferences.analytics_opt_out
+          ? 'Your account id will be left off analytics, within a minute.'
+          : 'Analytics will be attributed to your account again.',
+        'success',
+      );
+    },
+    onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
+  });
+
+  const exportData = useMutation({
+    mutationFn: () => downloadAccountExport(),
+    onSuccess: () => toast('Your data is downloading.', 'success'),
+    onError: (e: Error) => toast(`Couldn't export your data: ${e.message}`, 'error'),
+  });
+
+  const deletion = useQuery({
+    queryKey: ['deletion-status', userId],
+    queryFn: () => fetchDeletionStatus(),
+    enabled: userId.length > 0,
+  });
+
+  const [receipt, setReceipt] = useState<ErasureReceipt | null>(null);
+  const runDelete = useMutation({
+    mutationFn: () => deleteAccount(),
+    onSuccess: (r) => {
+      setReceipt(r);
+      void qc.invalidateQueries({ queryKey: ['deletion-status', userId] });
+      // NOT "your account has been deleted". `r.summary` is the server's own sentence and it says
+      // what actually happened, including the stores it could not reach.
+      toast(r.complete ? 'Your data has been deleted.' : 'Some stores could not be cleared — see the receipt.', r.complete ? 'success' : 'error');
+    },
+    onError: (e: Error) => toast(`Couldn't delete your account: ${e.message}`, 'error'),
+  });
+
   /** What a gated action actually does once identity has been established. */
   const RUN: Record<SensitiveAction, () => void> = {
     'change-email': () => changeEmail.mutate(newEmail.trim()),
@@ -1237,6 +1302,8 @@ export function SettingsPage() {
       resetPrefs();
       toast('Settings are back to their defaults.', 'success');
     },
+    'export-data': () => exportData.mutate(),
+    'delete-account': () => runDelete.mutate(),
   };
 
   /**
@@ -1256,9 +1323,36 @@ export function SettingsPage() {
   const CEREMONY: Partial<Record<SensitiveAction, 'dialog' | 'typed'>> = {
     'sign-out-everywhere': 'dialog',
     'reset-settings': confirmationFor({ reversible: false, destroysUserContent: false }) as 'dialog',
+    // DERIVED, not asserted: irreversible AND it destroys user content, which is the exact input
+    // the model answers 'typed' to. The phrase typed is the one the worker demands in the request
+    // body, so the ceremony and the API are the same sentence rather than two similar ones.
+    'delete-account': confirmationFor({ reversible: false, destroysUserContent: true }) as 'typed',
   };
 
   const changed = changedPrefs(prefs);
+
+  /** The dialogs, as data. Three actions with three different sentences is not three if-ladders. */
+  const DIALOG: Partial<Record<SensitiveAction, { title: string; confirmLabel: string; subject?: string; body: string }>> = {
+    'sign-out-everywhere': {
+      title: 'Sign out everywhere?',
+      confirmLabel: 'Sign out everywhere',
+      body: 'Every device signed in to this account will be signed out, including this one. You will need to sign in again.',
+    },
+    'reset-settings': {
+      title: 'Reset every setting?',
+      confirmLabel: 'Reset settings',
+      body: `${changed.length === 0 ? 'Nothing' : changed.map((k) => PREF_LABELS[k]).join(', ')} will go back to the default. This cannot be undone.`,
+    },
+    'delete-account': {
+      title: 'Delete your account?',
+      confirmLabel: 'Delete everything',
+      subject: DELETE_ACCOUNT_PHRASE,
+      body:
+        'Your projects, conversations, checkpoints, workspace files, memory, notifications, automations, ' +
+        'API keys and your stored Roblox key are deleted from every store Apple can reach. None of it can be ' +
+        'brought back. Your sign-in itself is not removed by this — the receipt afterwards names everything that survives, and why.',
+    },
+  };
 
   return (
     <div className="page page-narrow">
@@ -1563,7 +1657,7 @@ export function SettingsPage() {
       </Section>
 
 
-      <Section title="Privacy" visible={sectionShows('training-opt-in')}>
+      <Section title="Privacy" visible={sectionShows('training-opt-in', 'analytics-opt-out', 'download-my-data')}>
         <Row id="training-opt-in" visible={shows('training-opt-in')}>
           <p>
             <strong>Your projects are private. Apple never trains on your work.</strong>
@@ -1583,9 +1677,55 @@ export function SettingsPage() {
             </span>
           </label>
         </Row>
+
+        {/* THE REQUEST LOG CARRIED EVERY ACCOUNT ID AND NOTHING COULD TURN IT OFF.
+            The number below is the real retention window from apps/worker/src/retention.ts, and
+            tests/account-data.test.mjs compares the two — a privacy page quoting a window the code
+            does not keep is the drift this product has already had once. */}
+        <Row id="analytics-opt-out" visible={shows('analytics-opt-out')}>
+          <h3 className="settings-sub">Analytics</h3>
+          <p className="muted">
+            Apple records which requests were made and how long they took, so a broken feature can be told from a slow
+            one. That record carries your account id for 30 days unless you turn it off here. The requests are still
+            counted either way — an opt-out removes your name from the row, not the row.
+          </p>
+          <label className="switch-row">
+            <input
+              type="checkbox"
+              name="analyticsOptOut"
+              id="analytics-opt-out"
+              checked={storedPrefs.data?.preferences.prefs.analytics_opt_out ?? false}
+              onChange={(e) => setAnalyticsOptOut.mutate(e.target.checked)}
+              disabled={storedPrefs.isPending || setAnalyticsOptOut.isPending}
+            />
+            <span>
+              Keep my account id out of analytics
+              <span className="field-hint"> — takes effect within a minute.</span>
+            </span>
+          </label>
+          {/* A FAILED READ IS NOT "OFF". Rendering an unchecked box over a fetch that never
+              answered would show somebody their opt-out had been forgotten. */}
+          {storedPrefs.isError && (
+            <p className="muted" role="alert">
+              This setting could not be read just now, so the switch above may not show what is stored.
+            </p>
+          )}
+        </Row>
+
+        <Row id="download-my-data" visible={shows('download-my-data')}>
+          <h3 className="settings-sub">Download my data</h3>
+          <p className="muted">
+            One file with everything Apple holds about you in its database — your profile, your projects, every message,
+            your checkpoints, what you have spent, and the keys you have issued. It also names what it does NOT contain
+            and where to get that instead, so the file is honest about being one part of the answer.
+          </p>
+          <button type="button" className="btn" onClick={() => guard('export-data')} disabled={exportData.isPending}>
+            {exportData.isPending ? 'Preparing your file…' : 'Download my data'}
+          </button>
+        </Row>
       </Section>
 
-      <Section title="Danger zone" visible={sectionShows('reset-settings')} danger>
+      <Section title="Danger zone" visible={sectionShows('reset-settings', 'delete-account')} danger>
         <Row id="reset-settings" visible={shows('reset-settings')}>
           <h3 className="settings-sub">Reset settings</h3>
           <p className="muted">
@@ -1603,6 +1743,50 @@ export function SettingsPage() {
           in each <Link to="/">project card&rsquo;s menu</Link> — it asks you to type the project&rsquo;s name to
           confirm.
         </p>
+
+        <Row id="delete-account" visible={shows('delete-account')}>
+          <h3 className="settings-sub">Delete my account</h3>
+          <p className="muted">
+            Deletes your projects, conversations, checkpoints, workspace files, memory, notifications, automations, API
+            keys and your stored Roblox key from every store Apple can reach. It cannot be undone.
+          </p>
+          <p className="muted">
+            It does not remove your sign-in. That needs an operator, and the receipt afterwards names it along with
+            everything else that survives and why — rather than telling you the account is gone while you can still log
+            in to it.
+          </p>
+          {deletion.data?.requested && !receipt && (
+            <p className="muted" role="status">
+              Already requested {relativeTime(deletion.data.requestedAt ?? '')} — {deletion.data.stepsDone} stores cleared
+              {deletion.data.stepsFailed > 0 ? `, ${deletion.data.stepsFailed} could not be` : ''}.
+            </p>
+          )}
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => guard('delete-account')}
+            disabled={runDelete.isPending}
+          >
+            {runDelete.isPending ? 'Deleting…' : 'Delete my account'}
+          </button>
+
+          {/* THE SERVER'S RECEIPT, AS THE SERVER WROTE IT. It is the only thing that knows which
+              stores were actually cleared; a sentence composed here would be this page claiming
+              something nothing measured. */}
+          {receipt && (
+            <div role="status">
+              <p>{receipt.summary}</p>
+              <h4 className="settings-sub">What is left, and why</h4>
+              <ul className="muted">
+                {receipt.residue.map((r) => (
+                  <li key={r.target}>
+                    <strong>{r.target}</strong> — {r.why}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </Row>
       </Section>
 
       {reauthFor && (
@@ -1618,11 +1802,12 @@ export function SettingsPage() {
         />
       )}
 
-      {pending && CEREMONY[pending] && (
+      {pending && CEREMONY[pending] && DIALOG[pending] && (
         <ConfirmDialog
-          title={pending === 'sign-out-everywhere' ? 'Sign out everywhere?' : 'Reset every setting?'}
+          title={DIALOG[pending]!.title}
           ceremony={CEREMONY[pending]!}
-          confirmLabel={pending === 'sign-out-everywhere' ? 'Sign out everywhere' : 'Reset settings'}
+          confirmLabel={DIALOG[pending]!.confirmLabel}
+          subject={DIALOG[pending]!.subject}
           onClose={() => setPending(null)}
           onConfirm={() => {
             const action = pending;
@@ -1630,9 +1815,7 @@ export function SettingsPage() {
             RUN[action]();
           }}
         >
-          {pending === 'sign-out-everywhere'
-            ? 'Every device signed in to this account will be signed out, including this one. You will need to sign in again.'
-            : `${changed.length === 0 ? 'Nothing' : changed.map((k) => PREF_LABELS[k]).join(', ')} will go back to the default. This cannot be undone.`}
+          {DIALOG[pending]!.body}
         </ConfirmDialog>
       )}
 

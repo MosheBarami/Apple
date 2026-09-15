@@ -9,11 +9,12 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import { normalizeEvent, windowTruncated, type RejectReason } from '../analytics';
+import { RETENTION } from '../retention';
 
 /** Rows retained. Beyond this the OLDEST are evicted and the eviction is recorded, not hidden. */
-export const EVENT_TABLE_LIMIT = 5000;
+export const EVENT_TABLE_LIMIT = RETENTION.analyticsEventRows;
 /** Age beyond which an event is dropped regardless of the row count. */
-export const EVENT_RETENTION_DAYS = 30;
+export const EVENT_RETENTION_DAYS = RETENTION.analyticsEventDays;
 
 export class AdminDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;

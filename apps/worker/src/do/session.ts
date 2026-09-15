@@ -3,6 +3,7 @@
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
+import { RETENTION } from '../retention';
 import type {
   ClientMsg,
   ServerMsg,
@@ -3915,11 +3916,17 @@ export class SessionDO extends DurableObject<Env> {
       authorId,
       description,
     );
-    // retention: keep last 25
+    // RETENTION, ENFORCED IN THE SAME WRITE that adds the new one — so the cap is a fact about the
+    // table rather than a job that might not have run. By age alone: `kind` is not in either clause,
+    // and apps/site/tests/workspace-limits.test.mjs fails the docs page if it claims otherwise.
     this.sql.exec(
-      `delete from checkpoint_chunks where checkpoint_id in (select id from checkpoints order by created_at desc limit -1 offset 25)`,
+      `delete from checkpoint_chunks where checkpoint_id in (select id from checkpoints order by created_at desc limit -1 offset ?)`,
+      RETENTION.checkpointsKept,
     );
-    this.sql.exec(`delete from checkpoints where id in (select id from checkpoints order by created_at desc limit -1 offset 25)`);
+    this.sql.exec(
+      `delete from checkpoints where id in (select id from checkpoints order by created_at desc limit -1 offset ?)`,
+      RETENTION.checkpointsKept,
+    );
     const cp: CheckpointMeta = {
       id,
       label,

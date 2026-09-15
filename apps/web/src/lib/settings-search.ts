@@ -110,7 +110,31 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['notification', 'alerts', 'mentions', 'build failed', 'email me', 'unsubscribe', 'turn off'],
   },
   { id: 'training-opt-in', title: 'Contribute anonymised snippets', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out'] },
+  {
+    id: 'analytics-opt-out',
+    title: 'Analytics',
+    section: 'Privacy',
+    // Nobody types "actor attribution in the request log". They type the thing they are uneasy
+    // about, and half the time they type the word from somebody else's product.
+    keywords: ['analytics', 'tracking', 'telemetry', 'usage data', 'logs', 'request log', 'anonymous', 'do not track'],
+  },
+  {
+    id: 'download-my-data',
+    title: 'Download my data',
+    section: 'Privacy',
+    // The words somebody types when they are leaving, or when a lawyer asked them to.
+    keywords: ['export', 'download', 'my data', 'gdpr', 'subject access', 'takeout', 'copy', 'backup', 'everything you have'],
+  },
   { id: 'reset-settings', title: 'Reset settings', section: 'Privacy', keywords: ['default', 'defaults', 'restore', 'undo', 'clear'] },
+  {
+    id: 'delete-account',
+    title: 'Delete my account',
+    section: 'Danger zone',
+    // "Close my account" and "cancel" are what people actually type, and somebody typing "cancel"
+    // usually wants the subscription — which is why `close my account` and `cancel account` are
+    // here and a bare `cancel` is not.
+    keywords: ['delete account', 'close my account', 'cancel account', 'erase', 'remove me', 'right to be forgotten', 'gdpr', 'leave'],
+  },
 ];
 
 const NOOP = () => {};
