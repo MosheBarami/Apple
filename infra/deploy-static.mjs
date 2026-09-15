@@ -34,15 +34,49 @@ const CHUNK = 700_000; // bytes per request (D1 row limit headroom + request siz
 const IMMUTABLE = /\.(js|css|woff2|png|jpg|webp|svg|glb)$/;
 const HASHED = /(\/_astro\/|\/assets\/.*-[A-Za-z0-9_-]{8,}\.)/;
 
+// THE UPLOADER KNOWS THE FILE'S TYPE; THE SERVER SHOULD NOT HAVE TO GUESS IT FROM A URL.
+//
+// `serveStatic` uses `row.content_type ?? contentTypeFor(row.path)`, and this script never sent a
+// content type, so every object in the store fell through to the guess. `contentTypeFor` derives
+// the extension with `path.split('.').pop()`, which for an extensionless key like `/pricing`
+// returns the whole string `/pricing`, matches no MIME entry, and yields
+// `application/octet-stream`. A browser asked to open the canonical pricing URL DOWNLOADED it.
+//
+// The key has no extension; the local file does — apps/site/dist/pricing/index.html. Deriving the
+// type where that information exists fixes the class rather than the instance, and needs no worker
+// deploy because the admin route has always accepted and stored the field.
+//
+// Found by rbxai-a3 while re-baselining: check-pixels failed 4 of 72 frames with
+// `page.goto: Download is starting`. A real browser refusing to render the page, caught by a
+// checker looking at pixels, after curl and grep had both passed it — neither of them cares what
+// the content type is.
+const MIME = {
+  html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8',
+  json: 'application/json; charset=utf-8', webmanifest: 'application/manifest+json',
+  svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+  ico: 'image/x-icon', woff2: 'font/woff2', txt: 'text/plain; charset=utf-8',
+  xml: 'application/xml; charset=utf-8', glb: 'model/gltf-binary', map: 'application/json; charset=utf-8',
+};
+
+function contentTypeOf(localPath) {
+  const name = localPath.split('/').pop() ?? '';
+  // Only a real extension counts: a dot must appear in the FILE NAME, not merely somewhere in the
+  // path, which is the exact confusion that produced octet-stream on /pricing.
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0) return null;
+  return MIME[name.slice(dot + 1).toLowerCase()] ?? null;
+}
+
 async function upload(localPath, remotePath) {
   const data = readFileSync(localPath);
+  const contentType = contentTypeOf(localPath);
   const immutable = IMMUTABLE.test(remotePath) && HASHED.test(remotePath);
   for (let i = 0; i * CHUNK < data.length || i === 0; i++) {
     const slice = data.subarray(i * CHUNK, (i + 1) * CHUNK);
     const res = await fetch(`${BASE}/api/admin/static-upload`, {
       method: 'POST',
       headers: { 'X-Admin-Key': KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: remotePath, b64: slice.toString('base64'), immutable, append: i > 0 }),
+      body: JSON.stringify({ path: remotePath, contentType, b64: slice.toString('base64'), immutable, append: i > 0 }),
     });
     if (!res.ok) throw new Error(`${remotePath} chunk ${i}: HTTP ${res.status} ${await res.text()}`);
     if ((i + 1) * CHUNK >= data.length) break;

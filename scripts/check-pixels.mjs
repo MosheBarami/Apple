@@ -342,8 +342,34 @@ if (flags.writeBaseline) {
   // for frames it never captured.
   let sha = 'unknown';
   try { sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(); } catch { /* not a repo */ }
+
+  //[[ AND IT REFUSES TO CLAIM AN ORIGIN FOR FRAMES IT DID NOT TAKE.
+  //
+  //   A re-baseline against the deployed origin captured 68 of 72 frames — the other four failed
+  //   with `page.goto: Download is starting`, because /pricing was serving octet-stream — and then
+  //   wrote PROVENANCE saying 68 while leaving the four OLD frames from the previous, LOCAL build
+  //   sitting in the directory. Seventy-two files, provenance asserting a single origin, four of
+  //   them from a different build.
+  //
+  //   That is a cross-build comparison smuggled inside the baseline, which is the exact thing the
+  //   provenance field was added to prevent — so the field would have been certifying the mixture
+  //   it exists to detect. Found by rbxai-a3, who noticed the count on disk disagreed with the
+  //   count in the file and moved the four out by hand.
+  //
+  //   Refusing is the right direction rather than pruning: deleting frames a partial run did not
+  //   replace would silently shrink the baseline, and a baseline that quietly covers fewer routes
+  //   is the same failure wearing the opposite mask. ]]
+  const onDisk = readdirSync(BASELINE).filter((f) => f.endsWith('.png')).length;
+  if (onDisk !== captured) {
+    console.error(`  ${onDisk} frame(s) on disk but ${captured} captured this run — ${onDisk - captured} are left over from an earlier baseline`);
+    console.error('  A partial re-baseline leaves frames from a DIFFERENT build in place, and provenance naming one');
+    console.error('  origin would certify exactly the mixture it exists to detect. Remove the stale frames, or re-run');
+    console.error('  until every route captures.');
+    console.log('BASELINE NOT WRITTEN — the directory and this run disagree about how many frames there are');
+    process.exit(1);
+  }
   writeFileSync(PROVENANCE, `${JSON.stringify({ origin: BASE, sha, frames: captured }, null, 2)}\n`);
-  console.log(`BASELINE PROVENANCE written — origin ${BASE}, sha ${sha.slice(0, 7)}`);
+  console.log(`BASELINE PROVENANCE written — origin ${BASE}, sha ${sha.slice(0, 7)}, ${captured} frame(s)`);
 }
 
 if (crossBuild.length) {
