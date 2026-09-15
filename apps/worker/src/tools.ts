@@ -2,10 +2,11 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import type { Env } from './env';
 import { rgbBase64ToDataUrl } from './png';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
+import { allowedSources, sourceRefusal } from './asset-policy';
 import {
   chooseAssetSource,
   verifyCreatorStoreAsset,
@@ -74,6 +75,15 @@ export interface AgentCtx {
    * nothing to attribute it to, which is different from failing to record it.
    */
   projectId?: string;
+  /**
+   * Which asset sources this build may use, already layered across org, user and project.
+   *
+   * Resolved ONCE in the session DO, where the user is known, and carried as a value so a tool
+   * reads a field instead of querying per call. Optional because the eval harness and the admin
+   * /run-tool route build an AgentCtx directly — and `allowedSources(undefined)` is `[]`, so those
+   * callers get the safe answer rather than a permissive one.
+   */
+  assetSources?: AssetSourcePolicy;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
@@ -2406,7 +2416,23 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: false,
-    run: async (_ctx, a) => chooseAssetSource(String(a.need ?? 'prop') as AssetNeed),
+    run: async (ctx, a) => {
+      const need = String(a.need ?? 'prop') as AssetNeed;
+      const chosen = chooseAssetSource(need);
+      const allowed = allowedSources(ctx.assetSources);
+      // The ordered list is the product's own recommendation; the policy is the customer's
+      // permission. Returning the full list and letting the model pick a forbidden entry would
+      // mean discovering the refusal one tool call later, with a plan already built around it.
+      const usable = chosen.filter((c) => allowed.includes(c.source));
+      if (usable.length) return usable;
+      return {
+        error: sourceRefusal(ctx.assetSources, chosen[0]?.source ?? 'library')
+          ?? 'no asset source is available for this need',
+        // The unusable list is returned too: a model told only "no" cannot explain to the person
+        // what it would have done, and that explanation is what makes the setting make sense.
+        wouldHaveUsed: chosen.map((c) => c.source),
+      };
+    },
   },
   search_asset_library: {
     def: {
@@ -2424,6 +2450,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const refused = sourceRefusal(ctx.assetSources, 'library');
+      // BEFORE the query, not after. Filtering afterwards spends a D1 read, and an empty result
+      // would read as "the curated library has nothing like that" — a claim about a table this
+      // caller was never allowed to look in.
+      if (refused) return { error: refused };
       let hits;
       try {
         hits = await searchAssetLibrary(ctx.env, String(a.query ?? ''), {
