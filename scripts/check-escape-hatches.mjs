@@ -157,11 +157,21 @@ for (const rel of manifests) {
   //   This asks whether something in the package actually runs tsc, not whether it does so under a
   //   particular script name — the difference between the mechanism and the thing the mechanism is
   //   for. A package with neither is still caught, which is what the control in the tests pins.
+  //   COMMENTS ARE STRIPPED FIRST, and that is not tidiness. apps/worker/src/index.ts carries a
+  //   line of PROSE about three migrations that "sat unapplied while tsc, the tests and the builds
+  //   all passed" — and that one word made this rule believe the package compiles itself, so
+  //   deleting apps/worker's typecheck script stopped being a finding. The control test caught it:
+  //   it plants exactly that deletion and expects the rule to fire. A checker that reads
+  //   commentary as behaviour is the failure this repository keeps finding in its own guards, and
+  //   here a comment ABOUT a near-miss was what disabled the check against it.
   const compilesItself = !isRoot && examined.some((f) => {
     if (!f.startsWith(`${dir}/`) || !/\.(mjs|js|cjs|ts)$/.test(f)) return false;
     let src;
     try { src = readFileSync(join(ROOT, f), 'utf8'); } catch { return false; }
-    return /\btsc\b|typescript\/bin|'typescript'/.test(src);
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    return /\btsc\b|typescript\/bin|'typescript'/.test(code);
   });
   if (!isRoot && hasSources && !scripts.typecheck && !compilesItself) {
     fail('a package with TypeScript sources that nothing compiles', rel, 'no typecheck script, and no tracked file in the package invokes tsc — the typecheck gate recurses over scripts, so this package is never checked');

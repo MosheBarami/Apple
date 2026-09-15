@@ -325,9 +325,17 @@ like it covers it.
 
 ## Whole-product gates
 
-- [x] G90: The full suite passes
+- [ ] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
+    NOT TICKED, AND THE TICK IS WHAT WAS WRONG. This gate carried a hand-written EVIDENCE line
+    with no git-sha= and no tree-clean= — the two fields a person typing a line cannot produce and
+    a recorded run always does. check-escape-hatches said so, correctly, and the suite it belongs
+    to therefore failed on this gate's own record, which made the tick unremovable by running
+    anything: the suite could not go green while the line claiming it was green was malformed.
+    Unticking is the honest state. `node scripts/gate-suite.mjs` reports SUITE RED today on
+    check-escape-hatches, check-proof-figures (a gitignored corpus file is absent from this
+    checkout) and the root tests. Re-tick it by running gate-check, which writes the real line.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=376fee90deee/55 entries; EXPECT=matched; output-sha256=35181ed01f9275d0e17030aee8053c28de14bf8d35ed8be366ca4c1b38d7f2b4; output-bytes=45
 
