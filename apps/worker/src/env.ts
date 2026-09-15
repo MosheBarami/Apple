@@ -16,6 +16,8 @@ export interface Env {
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
+  /** 32 bytes, base64. Wraps customers' own third-party credentials; without it they are refused. */
+  CREDENTIAL_KEY?: string;
   /** The Roblox account library assets are created under. Public id, not a credential;
    *  the credential is ROBLOX_API_KEY, declared further down beside the other asset fields. */
   ROBLOX_CREATOR_USER_ID?: string;

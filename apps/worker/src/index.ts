@@ -1,6 +1,7 @@
 // Golem worker entry: API routes + static serving + DO exports.
 import { ingestAssets, type IngestRequest } from './asset-ingest';
 import { importPending, unimportAssets } from './asset-import';
+import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -2361,6 +2362,42 @@ app.post('/api/admin/assets/unimport', async (c) => {
   const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
   // `force` unlinks a row whose Roblox asset cannot be archived — Images and Decals cannot be.
   return c.json(await unimportAssets(c.env as never, limit, body?.force === true));
+});
+
+/**
+ * The customer's OWN Roblox key: connect, inspect, disconnect.
+ *
+ * Under `/api/me/` rather than `/api/admin/` because the credential belongs to the person, not to
+ * the deployment — and because an admin route that could reach a customer's Roblox key would be a
+ * cross-tenant hole with a friendly name. Every handler takes the user id off the verified JWT and
+ * never off the body.
+ */
+app.put('/api/me/roblox-key', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  const body = await c.req.json<{ apiKey?: string; robloxCreatorId?: string; creatorType?: string; scopes?: unknown }>().catch(() => null);
+  if (!body) return c.json({ error: 'a JSON body is required' }, 400);
+  const res = await putRobloxCredential(c.env as never, {
+    userId: user.userId,
+    apiKey: String(body.apiKey ?? ''),
+    robloxCreatorId: String(body.robloxCreatorId ?? ''),
+    creatorType: body.creatorType === 'group' ? 'group' : 'user',
+    scopes: body.scopes,
+  });
+  // The response carries the DESCRIPTION, never the key — see user-credentials.ts rule 1.
+  return res.ok ? c.json({ credential: res.credential }) : c.json({ error: res.error }, 400);
+});
+
+app.get('/api/me/roblox-key', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  return c.json({ credential: await describeRobloxCredential(c.env as never, user.userId) });
+});
+
+app.delete('/api/me/roblox-key', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'not signed in' }, 401);
+  return c.json({ removed: await deleteRobloxCredential(c.env as never, user.userId) });
 });
 
 app.post('/api/admin/kill-switch', async (c) => {

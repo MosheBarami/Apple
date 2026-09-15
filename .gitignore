@@ -22,8 +22,23 @@ packages/corpus/raw/*
 # records what a source page said on a date, and the upstream API will not say it again.
 !packages/corpus/data/asset-seeds.json
 !packages/corpus/data/template-seeds.json
+# The harvest artefacts, and the split between them is about REPRODUCIBILITY, not size.
+#
+# Tracked: the sources that are scraped or that publish no versioned index. cgbookcase reads a
+# per-asset meta tag off a page with no licence page at all; kenney is HTML with content-hashed
+# zip URLs that change on every republish; game-icons reads its CC0 contributor list out of a
+# license.txt. Re-running those harvests next year will not reproduce today's rows, so the rows
+# are the record.
+#
+# Not tracked: iconify (286 MB) and creator_store (79 MB). Iconify IS a git repository with a
+# commit history — its provenance is better preserved upstream than by a copy here — and the
+# Creator Store is Roblox's own live catalogue, which we do not own and cannot pin. Both are
+# regenerable by scripts/harvest-library.mjs, and the authoritative copy of every row is in D1.
+# NOTE the order: un-ignoring the DIRECTORY is what makes anything inside it reachable at all,
+# and a LATER pattern wins — so the two exclusions have to come after it, not before.
 !packages/corpus/data/library/
-!packages/corpus/data/library/*.json
+packages/corpus/data/library/iconify.json
+packages/corpus/data/library/creator_store.json
 # ...except the CHECKOUT LOCK. The comment above has always said the corpus is
 # "re-fetchable from raw/manifest.json" — but `packages/corpus/raw/` (with the
 # trailing slash this file's own note warns against, four lines up) ignored the
