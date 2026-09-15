@@ -199,3 +199,15 @@ test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
     );
   }
 });
+
+test('THE BILLING HISTORY CAN BE TAKEN AWAY, and the formatter that does it has a caller', () => {
+  // billingHistoryCsv is tested on its own in billing-status.test.mjs. A tested pure function
+  // nobody calls is the dead branch this codebase keeps finding: it reads like a shipped feature in
+  // every review it survives. This is the half that says a person can actually reach it.
+  assert.match(usageCode, /billingHistoryCsv/, 'the page must use the formatter');
+  assert.match(usageCode, /Download billing history/, 'and there must be a control that says so');
+  assert.match(usageCode, /createObjectURL/, 'built in the browser from rows it already has');
+  assert.match(usageCode, /revokeObjectURL/, 'and the object URL is released rather than leaked');
+  assert.doesNotMatch(usageCode, /api\/billing\/history\/export|billing\/export/,
+    'there is deliberately no new worker route for this — the rows are already on the page');
+});

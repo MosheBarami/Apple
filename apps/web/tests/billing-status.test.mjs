@@ -29,7 +29,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'billing-copy-')), 'copy.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'lib', 'billing-copy.ts'), '--bundle', '--format=esm', '--platform=neutral',
    '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { billingNotice, billingChangeLine, BILLING_STATES } = await import(`file://${out}`);
+const { billingNotice, billingChangeLine, billingHistoryCsv, BILLING_STATES } = await import(`file://${out}`);
 
 const DATE = '3 October 2026';
 const opts = { planName: 'Builder', formatDate: () => DATE };
@@ -265,6 +265,50 @@ test('neither cancellation sentence renders a missing date as "undefined"', () =
     assert.doesNotMatch(line, /undefined|NaN|NEVER-CALLED|Invalid Date/, line);
     assert.ok(line.length > 0, 'and still says what happened');
   }
+});
+
+// --------------------------------------------------------------- taking the record away with you
+
+test('THE BILLING HISTORY CAN LEAVE AS A FILE, with a header and one row per change', () => {
+  // A ledger that can only be read inside a disclosure triangle is not a record somebody can put
+  // in front of an accountant, attach to a dispute, or keep after they cancel.
+  const csv = billingHistoryCsv([
+    change({ at: 1_700_000_000_000, kind: 'plan', fromPlan: 'free', toPlan: 'builder', status: 'active', eventId: 'evt_1' }),
+    change({ at: 1_700_100_000_000, kind: 'credits', fromPlan: null, toPlan: null, status: null, eventId: 'evt_2' }),
+  ]);
+  const rows = csv.trim().split('\n');
+  assert.equal(rows.length, 3, 'a header and two rows');
+  assert.match(rows[0], /^date,/i, 'the first column is the date, because that is what it is sorted by');
+  assert.match(rows[0], /kind/i);
+  assert.ok(rows[1].includes('2023-11-14'), `the date must be a date: ${rows[1]}`);
+  assert.ok(rows[1].includes('free') && rows[1].includes('builder'), rows[1]);
+  assert.ok(rows[2].includes('credits'), rows[2]);
+});
+
+test('AN EMPTY HISTORY IS A HEADER, never an empty file', () => {
+  // A zero-byte download reads as a broken button. A header with no rows says "nothing happened".
+  const csv = billingHistoryCsv([]);
+  assert.equal(csv.trim().split('\n').length, 1);
+  assert.match(csv, /^date,/i);
+});
+
+test('A FIELD THAT COULD BREAK THE FILE IS QUOTED, and one that could RUN is defused', () => {
+  // Two different hazards. A comma or a quote in a field corrupts every column after it. A leading
+  // =, +, - or @ is executed as a formula the moment the file is opened in a spreadsheet, and the
+  // event id comes from Stripe rather than from us.
+  const csv = billingHistoryCsv([
+    change({ at: 1_700_000_000_000, kind: 'plan', fromPlan: 'a,b', toPlan: 'c"d', status: 'e\nf', eventId: '=cmd|calc' }),
+  ]);
+  const row = csv.trim().split('\n').slice(1).join('\n');
+  assert.ok(row.includes('"a,b"'), `a comma must be quoted: ${row}`);
+  assert.ok(row.includes('"c""d"'), `a quote must be doubled: ${row}`);
+  assert.doesNotMatch(row, /(^|,)=cmd/, `a formula must not start a cell: ${row}`);
+  assert.ok(row.includes('cmd|calc'), 'and the value is still legible, not stripped');
+});
+
+test('an unreadable timestamp is blank, not "Invalid Date"', () => {
+  const csv = billingHistoryCsv([change({ at: NaN, kind: 'plan', fromPlan: 'free', toPlan: 'builder' })]);
+  assert.doesNotMatch(csv, /Invalid Date|NaN|undefined|null/, csv);
 });
 
 test("THE CLIENT'S HISTORY ROW IS THE SERVER'S", () => {

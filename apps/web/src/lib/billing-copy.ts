@@ -219,6 +219,61 @@ export function billingChangeLine(change: BillingChange, opts: ChangeLineOptions
 }
 
 // ---------------------------------------------------------------------------
+// TAKING THE RECORD AWAY WITH YOU
+// ---------------------------------------------------------------------------
+
+/** The columns, named once. The header and every row are built from this list. */
+const CSV_COLUMNS = ['date', 'kind', 'from_plan', 'to_plan', 'status', 'cancel_at_period_end', 'stripe_event'] as const;
+
+/**
+ * One CSV cell: quoted when it has to be, and never executable.
+ *
+ * TWO DIFFERENT HAZARDS, and only one of them is about the file format.
+ *   - A comma, a quote or a newline inside a value corrupts every column after it. RFC 4180 says
+ *     wrap in quotes and double the quotes, so that is what this does.
+ *   - A value beginning `=`, `+`, `-`, `@`, tab or CR is run as a FORMULA the moment the file is
+ *     opened in a spreadsheet. The Stripe event id is the one field here we did not write
+ *     ourselves. A leading apostrophe defuses it while leaving the value legible — stripping the
+ *     character would quietly change a record somebody is about to rely on.
+ */
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  let s = String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * This account's billing history as a file it can keep.
+ *
+ * A ledger readable only inside a disclosure triangle on one page is not a record somebody can put
+ * in front of an accountant, attach to a dispute, or keep after they cancel — and a cancelled
+ * account is exactly when it is most wanted. Built from the rows the page already holds, so this
+ * needs no route of its own and cannot disagree with what is on screen.
+ *
+ * ISO dates, not the viewer's locale: this file is read by a spreadsheet and by a person in another
+ * timezone, and "3/10/2026" means two different days depending on who opens it.
+ */
+export function billingHistoryCsv(events: readonly BillingChange[]): string {
+  const rows = events.map((e) => {
+    // An unreadable instant is BLANK. "Invalid Date" in a date column is a value that looks like
+    // data and is not.
+    const at = Number.isFinite(e.at) ? new Date(e.at) : null;
+    const date = at && !Number.isNaN(at.getTime()) ? at.toISOString() : '';
+    return [
+      date,
+      e.kind,
+      e.fromPlan,
+      e.toPlan,
+      e.status,
+      e.cancelAtPeriodEnd === null || e.cancelAtPeriodEnd === undefined ? '' : String(e.cancelAtPeriodEnd),
+      e.eventId,
+    ].map(csvCell).join(',');
+  });
+  return [CSV_COLUMNS.join(','), ...rows].join('\n') + '\n';
+}
+
+// ---------------------------------------------------------------------------
 // INVOICES
 // ---------------------------------------------------------------------------
 //

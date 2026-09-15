@@ -12,6 +12,7 @@ import { Failure } from '../components/failure';
 import { PLAN_COPY, PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
 import {
   billingChangeLine,
+  billingHistoryCsv,
   billingNotice,
   formatMoney,
   invoiceAmountMinor,
@@ -135,6 +136,28 @@ function BillingHistory() {
   // Nothing recorded is not the same as a history that failed to load, and neither is worth an
   // empty disclosure triangle on a page that is mostly about Credits.
   if (history.isPending || history.isError || lines.length === 0) return null;
+
+  /**
+   * THE RECORD, AS A FILE THE PERSON KEEPS.
+   *
+   * Built from the rows already on screen, so there is no second route to disagree with what is
+   * rendered, and nothing here can ask the server for somebody else's history. An object URL
+   * rather than a data: URI because the file carries the account's own billing record and a data:
+   * URI would put the whole of it in the address bar and in browser history.
+   */
+  const download = () => {
+    const url = URL.createObjectURL(
+      new Blob([billingHistoryCsv(history.data?.events ?? [])], { type: 'text/csv;charset=utf-8' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `billing-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    // Freed on the next tick rather than immediately: revoking synchronously races the download in
+    // Safari and the file arrives empty.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
   return (
     <details className="billing-history">
       <summary>Billing history</summary>
@@ -143,6 +166,11 @@ function BillingHistory() {
           <li key={l.key}>{l.text}</li>
         ))}
       </ul>
+      <p className="billing-history__export">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={download}>
+          Download billing history (CSV)
+        </button>
+      </p>
     </details>
   );
 }

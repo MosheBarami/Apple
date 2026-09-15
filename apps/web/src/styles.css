@@ -4748,6 +4748,14 @@ samp {
   color: var(--muted);
 }
 
+/* The way the ledger leaves. Right-aligned under the list so it reads as an action on
+   the thing above it rather than as another history line. */
+.billing-history__export {
+  margin: 0.6rem 0 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* ---- INVOICES ------------------------------------------------------------
    What the account was actually charged, on our own page rather than only inside
    Stripe's portal. A quiet ledger, not a feature: it is read on the one day somebody
