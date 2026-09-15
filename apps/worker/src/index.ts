@@ -9,10 +9,12 @@ import {
   interpretStripeEvent,
   entitlementFor,
   buildCheckoutRequest,
+  buildInvoicePreviewRequest,
   buildPortalRequest,
   checkoutConfigured,
   checkoutGuard,
   priceIdFor,
+  readInvoicePreview,
   subscriptionView,
   type Subscription,
 } from './billing';
@@ -63,6 +65,7 @@ import {
   restoreWorkspaceFile,
   revertWorkspaceFile,
   trashOf,
+  writeWorkspaceFile,
   WORKSPACE_OP_STATUS,
   type WorkspaceOpCode,
 } from './workspace-files';
@@ -88,6 +91,31 @@ import {
   unreadCount,
 } from './notification-store';
 import { notify, notifyMany } from './notify';
+import {
+  authorizeFire,
+  describeSchedule,
+  manualFireKey,
+  nextFireAfter,
+  normaliseAutomation,
+  startVerdict,
+  type AutomationInput,
+} from './automations';
+import {
+  automationSpend,
+  claimFire,
+  deleteAutomation,
+  ensureAutomationTables,
+  finishFire,
+  firesSince,
+  getAutomation,
+  listAutomations,
+  listExecutions,
+  saveAutomation,
+  setAutomationEnabled,
+  transferAutomation,
+  type StoredAutomation,
+} from './automation-store';
+import { dstDisclosure, instantForWall, wallPartsAt } from './zoned-time';
 import { dunningCopy, interpretDunningEvent } from './dunning';
 import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
@@ -1177,11 +1205,27 @@ app.get('/api/projects/:id/export', async (c) => {
   const data = (await res.json()) as TranscriptExport;
 
   const md = c.req.query('format') === 'md';
-  const body = md ? renderTranscriptMarkdown(data) : JSON.stringify(data, null, 2);
-  return new Response(body, {
+  // THE JSON FILE CARRIES ITS OWN CHECK. `truncated` and `messageCount` already say whether the
+  // transcript is COMPLETE; neither says whether the bytes arrived intact, and a transfer cut in
+  // half is a file that ends mid-sentence. The digest is over `data.messages` — the part that can
+  // be clipped — and it travels inside the file because a header only exists during the download.
+  // Markdown gets no such line: a hex string in the prose would be part of the transcript.
+  const body = md
+    ? renderTranscriptMarkdown(data)
+    : JSON.stringify({ ...data, sha256: await sha256hex(JSON.stringify(data.messages)) }, null, 2);
+  const bytes = new TextEncoder().encode(body);
+  return new Response(bytes, {
     headers: {
       'Content-Type': md ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8',
       'Content-Disposition': `attachment; filename="${exportFilename(data.project.name, data.exportedAt, md ? 'md' : 'json')}"`,
+      // BYTES, NOT CHARACTERS, and that is the whole reason the body is encoded here rather than
+      // handed over as a string: a transcript is full of em dashes and emoji, and a length in
+      // characters is a progress meter that reaches 100% with bytes still arriving.
+      'Content-Length': String(bytes.byteLength),
+      // The digest of what was ACTUALLY SENT, so the client can tell a short file from a short
+      // conversation. Nothing else on the wire can: JSON that will not parse and Markdown that
+      // stops mid-sentence both save without complaint.
+      'X-Golem-Export-SHA256': await sha256hex(body),
     },
   });
 });
@@ -1269,6 +1313,34 @@ app.get('/api/projects/:id/files/content', async (c) => {
     });
   }
   return c.json({ path: got.path, version: got.version, bytes: got.bytes, savedAt: got.savedAt, content: got.content });
+});
+
+/**
+ * PUT A FILE IN, WITHOUT ASKING APPLE TO TYPE IT OUT.
+ *
+ * Every file in a workspace arrived through `workspace_write`, which is a TOOL: to get a design
+ * brief or a CSV of level data where Apple can read it, a user had to paste the whole thing into
+ * the chat and ask for it to be saved — a turn, the credits for that turn, and a model in the
+ * middle that may reword it.
+ *
+ * TEXT ONLY, and that is not a limitation to apologise for: the workspace is a text store with a
+ * declared extension list and a per-file ceiling, and `checkWorkspacePath` already enforces both.
+ * There is no object store behind this worker and this route does not pretend otherwise.
+ *
+ * `sharedAccess(…, 'build')` rather than owner-only, exactly as /files/op is gated, so a viewer is
+ * told 403 and looks at their role rather than at a missing file.
+ */
+app.post('/api/projects/:id/files/content', async (c) => {
+  const access = await sharedAccess(c, c.req.param('id'), 'build');
+  if (!access.ctx) return collabRefusal(c, access.status);
+  const ctx = access.ctx;
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const body = (await c.req.json().catch(() => null)) as { path?: unknown; content?: unknown; overwrite?: unknown } | null;
+  const res = await writeWorkspaceFile(store, typeof body?.path === 'string' ? body.path : '', body?.content, {
+    overwrite: body?.overwrite === true,
+  });
+  return res.ok ? c.json(res) : workspaceRefusal(res);
 });
 
 app.get('/api/projects/:id/files/history', async (c) => {
@@ -1923,7 +1995,16 @@ app.post('/api/billing/portal', async (c) => {
     customerId: string | null;
   };
 
-  const returnTo = new URL('/app/usage', new URL(c.req.url).origin).toString();
+  /*
+   * THE FLAG IS HOW THE PAGE KNOWS THERE IS ANYTHING TO SAY.
+   *
+   * Cancelling happens on Stripe's page, and with a bare return_url the product had no moment at
+   * which to acknowledge it: the user came back to a page identical to the one they left, and it
+   * stayed that way until the webhook landed. It carries no claim about WHAT changed — the page
+   * refetches and reports the server's own state, exactly as the checkout return does, because a
+   * URL parameter is not evidence that a subscription was cancelled.
+   */
+  const returnTo = new URL('/app/usage?billing=returned', new URL(c.req.url).origin).toString();
   const built = buildPortalRequest(c.env, { customerId: customerId ?? '', returnTo });
   if (!built.ok) return c.json({ error: built.error }, built.status);
 
@@ -1942,6 +2023,60 @@ app.post('/api/billing/portal', async (c) => {
   const session = (await res.json()) as { url?: string };
   if (!session.url) return c.json({ error: 'the portal returned no url' }, 502);
   return c.json({ url: session.url });
+});
+
+/**
+ * WHAT A TIER CHANGE WOULD COST THIS ACCOUNT, ASKED BEFORE THE USER COMMITS TO IT.
+ *
+ * The ladder on /app/usage prints every tier's monthly price, and for anyone already paying that is
+ * not the number they will be charged: a mid-period change is prorated, net of a credit for the
+ * time already paid for on the old tier, and applies from a date neither price implies. Until this
+ * route existed the whole of that was first seen on Stripe's own page, AFTER the user had clicked
+ * through to it — nothing in this worker had ever asked Stripe what a change would cost.
+ *
+ * READ-ONLY, AND THAT IS THE POINT. It moves nothing, grants nothing and writes nothing; the change
+ * is still made in the Billing Portal and still lands here as a webhook. GET, so it can be nothing
+ * else. `entitlementFor` remains the only thing that decides what anyone may spend.
+ *
+ * IT REFUSES RATHER THAN GUESSES. No running subscription, a record with no item id, or a Stripe
+ * that will not answer all produce an error status and no amount. A 200 carrying a zero would be a
+ * sentence about money — "this change costs nothing today" — assembled out of a failure to observe.
+ *
+ * Scoped to the caller's own DO by construction: the id comes from the verified JWT subject, and
+ * the only parameter is which tier to price.
+ */
+app.get('/api/billing/preview', async (c) => {
+  const user = c.get('user');
+  const plan: string = String(c.req.query('plan') ?? '');
+  if (!isPlanId(plan)) return c.json({ error: `unknown plan "${plan}"` }, 400);
+
+  const record = await readBillingRecord(c.env, user.userId);
+  const built = buildInvoicePreviewRequest(c.env, {
+    // The subscription's own customer first: it is the one the item belongs to. The DO's stored id
+    // is the fallback, and is the same value in every case where both exist.
+    customerId: record.subscription?.customerId ?? record.customerId,
+    subscriptionId: record.subscription?.subscriptionId ?? null,
+    itemId: record.subscription?.itemId ?? null,
+    plan,
+  });
+  if (!built.ok) return c.json({ error: built.error }, built.status);
+
+  const res = await fetch('https://api.stripe.com/v1/invoices/create_preview', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: built.body,
+  });
+  if (!res.ok) {
+    // Stripe's own message names prices and accounts; it is not for the user.
+    console.warn('stripe invoice preview failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ error: 'could not price this change' }, 502);
+  }
+  const preview = readInvoicePreview(await res.json().catch(() => null));
+  if (!preview) return c.json({ error: 'could not read the price of this change' }, 502);
+  return c.json(preview);
 });
 
 /**
@@ -4079,6 +4214,16 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   //   route below — not a second click on a URL the person still has in their inbox. ]]
   const linkGrantRevoked = await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
 
+  //[[ AND THE STANDING ACTORS THEY LEFT BEHIND.
+  //
+  //   A removed member's automations already cannot FIRE — `authorizeFire` re-asks about the
+  //   owner's access on every attempt and refuses. But nothing switched them off, so they stayed
+  //   listed as running, failing silently at every attempt, forever. Removing somebody has to have
+  //   a visible effect on the thing they left pointed at the project, or the administrator who
+  //   removed them cannot tell that it was dealt with. `-1` means the store could not be read —
+  //   see stopAutomationsFor: "none to stop" and "could not look" are not the same answer. ]]
+  const automationsStopped = await stopAutomationsFor(c.env, userId, ctx.project.id);
+
   const audit = await recordMembershipEvents(c, ctx, [
     { kind: 'removed', subjectId: userId, fromRole: before?.role ?? null, reason: c.req.query('reason') ?? null },
   ]);
@@ -4089,7 +4234,7 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
     `Someone lost access to ${ctx.project.name}`,
     `A ${before?.role ?? 'member'} was removed from the project.`,
   );
-  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, audited: audit.ok });
+  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, automationsStopped, audited: audit.ok });
 });
 
 /**
@@ -4408,6 +4553,366 @@ app.get('/api/shared/:id/presence', async (c) => {
   if (gate.ctx === null) return collabRefusal(c, gate.status);
   return gate.ctx.stub.fetch('https://do/collab/presence');
 });
+
+// ---------------------------------------------------------------- automations
+/*
+ * WORK THAT HAPPENS WITHOUT SOMEBODY SITTING THERE — reachable at last.
+ *
+ * `automations.ts` decided and `automation-store.ts` stored, and for the whole of their existence
+ * neither had a caller outside a test. `grep -ni automation src/index.ts` returned nothing: the
+ * product had automation policy, automation storage, and no automations. These routes are the
+ * request half of that feature — the half where a person with a verified JWT is present, so the
+ * question "does this automation's owner still have access to this project" has a real answer.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: the cron dispatcher. Its every fire must re-authorise against the
+ * owner's project access (decision 4 in automations.ts), and every access lookup in this tree goes
+ * through PostgREST under the USER's own JWT — `getProjectAccess`, `getOwnedProject`, the lot. A
+ * scheduled handler has no user and no token, and this deployment has no service-role credential
+ * to ask on the owner's behalf. A dispatcher written anyway would have to pass
+ * `ownerHasAccess: true` — an answer it did not obtain, presented as one it did, for the exact
+ * decision that keeps a standing actor from outliving its owner's access. That is not a dispatcher
+ * with a small gap in it; it is the security property inverted. So it is absent, and its absence is
+ * stated rather than papered over with a `crons` trigger that fires something dishonest.
+ */
+
+/** The automation as the client sees it: the row, plus the two sentences a person checks it by. */
+function automationView(a: StoredAutomation) {
+  return {
+    ...a,
+    // A schedule a person cannot read back is a schedule they cannot check, and the commonest
+    // automation bug is the one set for the right time in the wrong zone. The zone is in the words.
+    describes: describeSchedule(a),
+    //[[ THE DAYLIGHT-SAVING DISCLOSURE IS COPY, NOT A COMMENT.
+    //
+    //   `zoned-time.ts` makes a deliberate choice about the two mornings a year — a run at a wall
+    //   time that does not exist is moved, not skipped; a wall time that happens twice fires once —
+    //   and a choice the user cannot see is indistinguishable to them from a bug. Only for `day`
+    //   and `week`: an hourly schedule has no wall hour to be moved, so the paragraph would be
+    //   describing something that cannot happen to it. Null rather than '' so "nothing to say" and
+    //   "said nothing" stay different states. ]]
+    dstNote: a.schedule && a.schedule.every !== 'hour' ? dstDisclosure(a.schedule) : null,
+  };
+}
+
+/**
+ * Midnight today, on the automation's own wall clock.
+ *
+ * The daily cap counts fires "today in its own zone" (see FireContext) — counting them from UTC
+ * midnight would reset a Sydney user's allowance in the middle of their working afternoon.
+ */
+function startOfDayInZone(tz: string, now: number): number {
+  const parts = wallPartsAt(tz, now);
+  return instantForWall(tz, { year: parts.year, month: parts.month, day: parts.day, hour: 0, minute: 0 }).instant;
+}
+
+/**
+ * The automation, and the project gate its OWNER passes right now.
+ *
+ * Two lookups in this order, and the order is the whole argument. `getAutomation` binds `owner_id`,
+ * so a caller who gets a row back IS the owner; a collaborator asking about somebody else's
+ * standing actor gets null, a 404, and no confirmation that it exists. That is what makes the
+ * second lookup an answer about the OWNER's access rather than the caller's — they are the same
+ * person, established rather than assumed.
+ *
+ * `ctx === null` with a non-null automation means exactly one thing: the owner has lost access to
+ * the project since. The callers distinguish it, because "your automation is gone" and "your
+ * automation can no longer reach that project" need different next steps from the person.
+ */
+async function automationGate(
+  // The SAME structural parameter `withOwnedProject` takes, not a full `Context`. Spelling a
+  // `Context<{ Variables: { user } }>` here declared a narrower Variables map than the app's own
+  // `Vars`, so every call site failed to typecheck (TS2345, three of them) while the routes
+  // themselves were correct — a signature that described a Hono app this tree does not have.
+  c: { env: Env; get: (k: 'user') => AuthedUser },
+  id: string,
+  action: CollabAction,
+): Promise<{ automation: StoredAutomation; ctx: Awaited<ReturnType<typeof withOwnedProject>> } | null> {
+  const user = c.get('user');
+  await ensureAutomationTables(c.env);
+  const automation = await getAutomation(c.env, user.userId, id);
+  if (!automation) return null;
+  return { automation, ctx: await withOwnedProject(c, automation.projectId, action) };
+}
+
+/** Is a run already in flight on this project? `null` means the question could not be answered. */
+async function projectRunInFlight(stub: { fetch: (url: string) => Promise<Response> }): Promise<boolean | null> {
+  try {
+    const res = await stub.fetch('https://do/info');
+    if (!res.ok) return null;
+    const body = (await res.json()) as { agentStatus?: unknown };
+    if (typeof body?.agentStatus !== 'string') return null;
+    return body.agentStatus !== 'idle';
+  } catch {
+    // A FAILURE TO OBSERVE MUST NOT RENDER AS AN OBSERVATION. Returning `false` here would be this
+    // route inventing the single fact that decides whether a second build starts on a busy project.
+    return null;
+  }
+}
+
+/** The service-wide stop. `null` means the question could not be answered. */
+async function killSwitchOn(env: Env): Promise<boolean | null> {
+  try {
+    const state = (await budgetState(env)) as { killed?: unknown };
+    return typeof state?.killed === 'boolean' ? state.killed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Start the claimed fire, and close its record with what actually happened.
+ *
+ * Run under `waitUntil` rather than awaited: `/agent-run` returns when the BUILD returns, which is
+ * minutes, and an HTTP request held open for a build is a request that times out and leaves a fire
+ * claimed with no outcome. The caller gets the execution id instead and follows it in the history.
+ */
+async function runAutomationFire(
+  env: Env,
+  a: StoredAutomation,
+  projectName: string,
+  stub: { fetch: (url: string, init?: RequestInit) => Promise<Response> },
+  executionId: string,
+): Promise<void> {
+  let outcome: 'ok' | 'busy' | 'failed' | 'error' = 'error';
+  let error: string | null = null;
+  try {
+    const res = await stub.fetch('https://do/agent-run', {
+      method: 'POST',
+      body: JSON.stringify({ text: a.prompt, mode: a.mode }),
+    });
+    const body = (await res.json().catch(() => null)) as { started?: unknown; error?: unknown } | null;
+    if (res.ok && body?.started === true) outcome = 'ok';
+    else if (res.status === 409) outcome = 'busy';
+    else outcome = 'failed';
+    if (outcome !== 'ok') error = typeof body?.error === 'string' ? body.error : `session answered ${res.status}`;
+  } catch (err) {
+    outcome = 'error';
+    error = String((err as Error)?.message ?? err);
+  }
+  //[[ THE CREDITS COLUMN IS LEFT NULL, AND THAT IS THE HONEST VALUE.
+  //
+  //   The run is billed inside the session, against the owner's quota, after this fetch returns.
+  //   This layer never learns the number. `automationSpend` counts a null-cost run as `unreadable`
+  //   rather than as zero for exactly this case — writing 0 here would make a spending report
+  //   understate by the whole cost of every automated build. ]]
+  await finishFire(env, executionId, { outcome, now: Date.now(), error });
+  if (outcome === 'ok') return;
+  //[[ THE SUBJECT IS THE EXECUTION, NOT THE AUTOMATION.
+  //
+  //   `notifications.ts` dedupes by subject. An automation-id subject would collapse every night's
+  //   failure into the one line the owner already read and dismissed, and the second failure — the
+  //   one that means it is not a blip — would never be delivered at all. ]]
+  await notify(env, {
+    kind: 'automation_failed',
+    recipientId: a.ownerId,
+    projectId: a.projectId,
+    projectName,
+    subject: executionId,
+    title: `"${a.name}" did not run in ${projectName}`,
+    body: error ?? 'The run could not be started.',
+    at: Date.now(),
+  });
+}
+
+app.get('/api/projects/:id/automations', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id') ?? '', 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  await ensureAutomationTables(c.env);
+  const rows = await listAutomations(c.env, ctx.user.userId, { projectId: ctx.project.id });
+  return c.json({ automations: rows.map(automationView) });
+});
+
+app.post('/api/projects/:id/automations', async (c) => {
+  // `'build'` rather than `'read'`: an automation is a standing instruction to spend Credits on
+  // this project, so the capability it needs is the capability to start a build.
+  const ctx = await withOwnedProject(c, c.req.param('id') ?? '', 'build');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  await ensureAutomationTables(c.env);
+  const body = (await c.req.json().catch(() => ({}))) as AutomationInput;
+  const now = Date.now();
+  const result = normaliseAutomation(body, { ownerId: ctx.user.userId, projectId: ctx.project.id, now });
+  // The reason travels, because the client has to put the message on the field that caused it. The
+  // server REFUSES an over-long name rather than trimming one, so a client that trimmed first would
+  // be silently storing a different name than the person typed.
+  if (!result.ok) return c.json({ error: result.reason }, 400);
+  const saved = await saveAutomation(c.env, result.automation, nextFireAfter(result.automation, now).at);
+  if (!saved.ok) return c.json({ error: saved.reason }, saved.reason === 'too_many' ? 409 : 500);
+  void count(c.env, 'automation_created');
+  return c.json({ automation: automationView(saved.automation) }, 201);
+});
+
+app.patch('/api/automations/:id', async (c) => {
+  const gate = await automationGate(c, c.req.param('id') ?? '', 'build');
+  if (!gate || !gate.ctx) return c.json({ error: 'not found' }, 404);
+  const body = (await c.req.json().catch(() => ({}))) as AutomationInput;
+  const now = Date.now();
+  // Re-normalised whole, with the identity preserved: an edit that minted a new id would be a
+  // create wearing an edit's clothes, and would orphan the run history keyed to the old one.
+  const result = normaliseAutomation(body, {
+    ownerId: gate.automation.ownerId,
+    projectId: gate.automation.projectId,
+    now,
+    id: gate.automation.id,
+    createdAt: gate.automation.createdAt,
+  });
+  if (!result.ok) return c.json({ error: result.reason }, 400);
+  const saved = await saveAutomation(c.env, result.automation, nextFireAfter(result.automation, now).at);
+  if (!saved.ok) return c.json({ error: saved.reason }, 409);
+  return c.json({ automation: automationView(saved.automation) });
+});
+
+app.delete('/api/automations/:id', async (c) => {
+  const user = c.get('user');
+  await ensureAutomationTables(c.env);
+  // No project gate: deleting your own standing actor must keep working on the day you lost access
+  // to the project it pointed at. That is precisely when you most want it gone.
+  const gone = await deleteAutomation(c.env, user.userId, c.req.param('id') ?? '');
+  return gone ? c.json({ ok: true, deleted: true }) : c.json({ error: 'not found' }, 404);
+});
+
+/**
+ * Pause or resume.
+ *
+ * A dedicated single-column write, and no project gate, for the reason automation-store.ts argues:
+ * the automation somebody urgently needs to stop is the one this version of the code may not be
+ * able to parse, or the one on a project they have just been removed from. A full save round trip
+ * would fail on the first and a gate would refuse the second.
+ */
+app.post('/api/automations/:id/enabled', async (c) => {
+  const user = c.get('user');
+  await ensureAutomationTables(c.env);
+  const body = (await c.req.json().catch(() => ({}))) as { enabled?: unknown };
+  if (typeof body.enabled !== 'boolean') return c.json({ error: 'bad_enabled' }, 400);
+  const ok = await setAutomationEnabled(c.env, user.userId, c.req.param('id') ?? '', body.enabled, Date.now());
+  if (!ok) return c.json({ error: 'not found' }, 404);
+  // The state is returned from the write's own outcome rather than echoed from the request, so a
+  // toggle that did nothing cannot render as a toggle that worked.
+  return c.json({ ok: true, enabled: body.enabled });
+});
+
+/**
+ * Fire it now.
+ *
+ * Every decision below is read from `automations.ts`; nothing here re-decides any of them, and
+ * every input it feeds them is an observation rather than a default. The two it cannot always
+ * obtain — is the project busy, is spending switched off — are refused out loud when unreadable.
+ */
+app.post('/api/automations/:id/run', async (c) => {
+  const gate = await automationGate(c, c.req.param('id') ?? '', 'build');
+  if (!gate) return c.json({ error: 'not found' }, 404);
+  const a = gate.automation;
+  //[[ EVERY FIRE IS RE-AUTHORISED, and `ownerHasAccess` is what the gate just established rather
+  //   than anything the row carries. The automation was created with access its owner may since
+  //   have lost; that is the whole hazard of a standing actor. ]]
+  const auth = authorizeFire(a, { projectId: a.projectId, ownerHasAccess: gate.ctx !== null });
+  if (!auth.ok) return c.json({ error: auth.reason }, 403);
+  const ctx = gate.ctx;
+  if (!ctx) return c.json({ error: 'owner_lost_access' }, 403); // unreachable; narrows the type
+
+  const inFlight = await projectRunInFlight(ctx.stub);
+  if (inFlight === null) return c.json({ error: 'run_state_unreadable' }, 503);
+  const killed = await killSwitchOn(c.env);
+  if (killed === null) return c.json({ error: 'kill_switch_unreadable' }, 503);
+
+  const now = Date.now();
+  const runsToday = await firesSince(c.env, a.id, startOfDayInZone(a.timezone, now));
+  const verdict = startVerdict(a, { inFlight, runsToday, authorized: true, killed });
+  // `requeue` travels so the client can say "it will be retried" rather than "it was dropped" —
+  // the two are different facts and the automation's own overlap policy decides which one it is.
+  if (!verdict.start) return c.json({ error: verdict.reason, requeue: verdict.requeue }, 409);
+
+  //[[ CLAIMED BEFORE STARTED. The unique `fire_key` is only protection while the claim sits on the
+  //   near side of the spend — a claim taken afterwards arbitrates a race whose bill is already
+  //   paid. `dueAt` is null because a manual fire was never due; it happened when somebody asked.
+  //
+  //   `manualFireKey`, NOT `fireKey(a.id, now)`. The scheduled key is the due instant on purpose,
+  //   so two dispatchers waking in one minute compute one key. A press has no due instant, and
+  //   keying it by the clock made the millisecond the identity: two presses inside one were
+  //   answered `already_fired` — a fire that never started, reported as one that already had. ]]
+  const claim = await claimFire(c.env, a, manualFireKey(a.id, crypto.randomUUID()), { dueAt: null, now });
+  if (!claim.claimed) return c.json({ error: claim.reason }, 409);
+
+  c.executionCtx.waitUntil(runAutomationFire(c.env, a, ctx.project.name, ctx.stub, claim.executionId));
+  void count(c.env, 'automation_fired');
+  return c.json({ ok: true, executionId: claim.executionId }, 202);
+});
+
+app.get('/api/automations/:id/runs', async (c) => {
+  const user = c.get('user');
+  await ensureAutomationTables(c.env);
+  const id = c.req.param('id') ?? '';
+  // Owner-bound at the store, so no project gate is needed and none is wanted: the history of what
+  // an automation spent must stay readable to the person it spent it on after the project is gone.
+  if (!(await getAutomation(c.env, user.userId, id))) return c.json({ error: 'not found' }, 404);
+  const limit = Number(c.req.query('limit') ?? 25);
+  return c.json({ runs: await listExecutions(c.env, user.userId, id, limit) });
+});
+
+app.get('/api/automations/:id/spend', async (c) => {
+  const user = c.get('user');
+  await ensureAutomationTables(c.env);
+  const id = c.req.param('id') ?? '';
+  if (!(await getAutomation(c.env, user.userId, id))) return c.json({ error: 'not found' }, 404);
+  const days = Math.min(90, Math.max(1, Number(c.req.query('days') ?? 30) || 30));
+  return c.json(await automationSpend(c.env, user.userId, id, Date.now() - days * 86_400_000));
+});
+
+/**
+ * Hand it to somebody else.
+ *
+ * The new owner's access is resolved here, from the project's live member directory, because
+ * `transferAutomation` refuses to take the caller's word for it. Transferring to somebody who
+ * cannot open the project would create an automation that can never fire — a worse outcome than
+ * refusing, because it looks like it worked.
+ */
+app.post('/api/automations/:id/transfer', async (c) => {
+  const gate = await automationGate(c, c.req.param('id') ?? '', 'manage_members');
+  if (!gate || !gate.ctx) return c.json({ error: 'not found' }, 404);
+  const body = (await c.req.json().catch(() => ({}))) as { toUserId?: unknown };
+  const toUserId = typeof body.toUserId === 'string' ? body.toUserId : '';
+  if (!UUID_RE.test(toUserId)) return c.json({ error: 'bad_user' }, 400);
+  const rows = await listProjectMembers(c.env, gate.ctx.user, gate.ctx.project);
+  // The live directory: the owner plus every grant that is not expired, revoked or suspended.
+  const directory = memberDirectory(gate.ctx.project, rows, null);
+  const newOwnerHasAccess = directory.some((m) => m.userId === toUserId);
+  const res = await transferAutomation(c.env, gate.ctx.user.userId, gate.automation.id, toUserId, {
+    newOwnerHasAccess,
+    now: Date.now(),
+  });
+  if (res.ok) return c.json({ ok: true, ownerId: toUserId });
+  return c.json({ error: res.reason }, res.reason === 'no_access' ? 403 : res.reason === 'same_owner' ? 400 : 404);
+});
+
+/**
+ * Switch off every standing actor a departing member pointed at this project.
+ *
+ * REFUSAL AT FIRE AND DISABLEMENT ARE TWO DIFFERENT BEHAVIOURS and this product needs both.
+ * `authorizeFire` refuses, which keeps the automation from running; without this it would also
+ * stay listed as ON forever, failing silently at every attempt, and the person who removed the
+ * member would have no way to see that the standing actor had been dealt with.
+ *
+ * Best-effort by construction: `setAutomationEnabled` writes one column, so a row this version
+ * cannot parse is still switched off, and a D1 that is unavailable does not fail the revocation
+ * itself — the revocation is the security act and it has already landed.
+ */
+async function stopAutomationsFor(env: Env, userId: string, projectId: string): Promise<number> {
+  try {
+    await ensureAutomationTables(env);
+    const rows = await listAutomations(env, userId, { projectId });
+    const now = Date.now();
+    let stopped = 0;
+    for (const a of rows) {
+      if (!a.enabled) continue;
+      if (await setAutomationEnabled(env, userId, a.id, false, now)) stopped += 1;
+    }
+    return stopped;
+  } catch (err) {
+    console.warn(`[automations] could not stop ${userId}'s automations on ${projectId}: ${String((err as Error)?.message ?? err)}`);
+    // -1, NOT 0. "None to stop" and "could not look" are different answers, and a caller that read
+    // a zero here would report "nothing was left running" having never looked.
+    return -1;
+  }
+}
 
 app.notFound(async (c) => {
   const path = new URL(c.req.url).pathname;

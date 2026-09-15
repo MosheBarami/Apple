@@ -15,9 +15,19 @@ import type { SearchType } from './search-filters';
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /**
+   * The parsed body, when there was one.
+   *
+   * Some refusals are ANSWERS. The bulk-invite route replies 400 with the full per-row `rejected`
+   * list — which index failed and why — and collapsing that to the single word in `error` throws
+   * away the only part the person can act on. Optional, so every existing `new ApiError(msg,
+   * status)` is unchanged and no caller is obliged to look.
+   */
+  body: unknown;
+  constructor(message: string, status: number, body: unknown = null) {
     super(message);
     this.status = status;
+    this.body = body;
     this.name = 'ApiError';
   }
 }
@@ -51,7 +61,10 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
       body && typeof body === 'object' && 'error' in body && typeof (body as { error: unknown }).error === 'string'
         ? (body as { error: string }).error
         : `Request failed (${res.status})`;
-    throw new ApiError(msg, res.status);
+    // The parsed body rides along. Most callers want only `message`; the bulk-invite form needs
+    // the per-row `rejected` list, which arrives on a 400 when every row was refused — and that
+    // list is the only part of the refusal the person can act on.
+    throw new ApiError(msg, res.status, body);
   }
   return body as T;
 }
@@ -139,6 +152,26 @@ export const startCheckout = (plan: PlanId): Promise<{ url: string }> =>
 
 export const openBillingPortal = (): Promise<{ url: string }> =>
   request<{ url: string }>('/api/billing/portal', { method: 'POST' });
+
+/**
+ * What moving to `plan` would cost this account right now.
+ *
+ * READ-ONLY. It asks Stripe a question; it does not buy anything, and the change is still made in
+ * the portal. It REJECTS rather than resolving to a zero when there is nothing to price against or
+ * Stripe cannot answer — the caller has to say the amount is unknown, because it is. A resolved
+ * zero would be the page telling someone a charge costs nothing on the strength of a failed fetch.
+ */
+export interface BillingPreview {
+  /** Major units, already converted by the worker. Negative when the change leaves a credit. */
+  amountDue: number;
+  currency: string;
+  /** Unix SECONDS, Stripe's clock. */
+  prorationDate: number | null;
+  lines: { description: string; amount: number }[];
+}
+
+export const fetchBillingPreview = (plan: PlanId): Promise<BillingPreview> =>
+  request<BillingPreview>(`/api/billing/preview?plan=${encodeURIComponent(plan)}`);
 
 /**
  * What has happened to this account's billing, newest first.
@@ -517,7 +550,116 @@ export function parseImagePath(src: string): { projectId: string; imageId: strin
   return { projectId: m[1], imageId: m[2] };
 }
 
-export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
+/**
+ * The same, for generated sound — and it is not symmetry for its own sake.
+ *
+ * `generate_sound` emits an asset_picker whose link is this path, labelled "Listen". That link was
+ * rendered as a plain anchor, and every /api/* path needs a Bearer JWT an anchor cannot send, so
+ * the click opened a tab holding `{"error":"unauthorized"}` for a sound that existed and worked.
+ * An asset link may legitimately point anywhere — a catalogue page, a fragment — so the player is
+ * offered only for a path this app generated, and everything else stays the link it was.
+ */
+export function parseAudioPath(src: string): { projectId: string; audioId: string } | null {
+  // The UUID shape rather than 36 loose hex-or-dash characters: the worker's route validates the id
+  // with UUID_RE and 404s anything else before it touches KV, so a laxer regex here would only
+  // build players that fail for a reason unrelated to the sound.
+  const m = /^\/api\/projects\/([A-Za-z0-9_-]{1,64})\/audio\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/.exec(src);
+  if (!m || m[1] === undefined || m[2] === undefined) return null;
+  return { projectId: m[1], audioId: m[2] };
+}
+
+/**
+ * Fetch generated audio and hand back an object URL an <audio> element can play.
+ *
+ * fetchImageObjectUrl's reasoning, for the other media type: a bearer credential in a URL is a
+ * credential in logs, referrers and history, so there is one auth mechanism and the cost is that
+ * the bytes do not stream. Generated sounds are seconds long and already bounded by the worker's
+ * one-hour TTL, so that cost is small and the caller owns the revoke.
+ */
+export async function fetchAudioObjectUrl(projectId: string, audioId: string): Promise<string> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}`, { headers });
+  } catch {
+    noteReachability(false);
+    throw new ApiError('Network error — check your connection.', 0);
+  }
+  noteReachability(true);
+  if (!res.ok) {
+    // 404 is a real expiry; 401 is a session that timed out. explainFailure draws that line for the
+    // caller, and it can only draw it if the status arrives intact.
+    throw new ApiError(res.status === 404 ? 'sound expired or not found' : `sound fetch failed (${res.status})`, res.status);
+  }
+  return URL.createObjectURL(await res.blob());
+}
+
+/**
+ * Save a generated sound to disk.
+ *
+ * `?download=1` is the worker's own attachment branch, which builds the filename from the id and
+ * the served content type — never from anything stored. Naming the file here instead would be a
+ * second rule for what a generated sound is called, and the two would disagree the first time
+ * either changed.
+ */
+export async function downloadProjectAudio(projectId: string, audioId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/audio/${encodeURIComponent(audioId)}?download=1`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(`Could not download that sound (${res.status})`, res.status);
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? `sound-${audioId}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Next frame rather than immediately, for downloadExport's reason: a synchronous revoke can race
+  // the browser's own read of the blob and save a zero-byte file.
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
+}
+
+/** What a finished export was, so the caller can name the file rather than guess at it. */
+export interface ExportSaved {
+  filename: string;
+  bytes: number;
+  /** True only when the worker sent a digest AND it matched. False means unchecked, never "bad". */
+  verified: boolean;
+}
+
+/**
+ * Save the conversation, watching it arrive and checking what arrived.
+ *
+ * TWO THINGS THIS DOES THAT `res.blob()` CANNOT.
+ *
+ *   IT CAN BE WATCHED. A single await produces one event — "done" — so the UI's only honest state
+ *   was "Preparing…", indefinitely, whether the transfer was moving or dead. The reader loop
+ *   reports bytes as they land, with the server's declared total when there is one and `null` when
+ *   there is not: a missing Content-Length must reach the caller as an ABSENCE, because the moment
+ *   it becomes 0 somebody divides by it.
+ *
+ *   IT IS CHECKED. The worker sends X-Golem-Export-SHA256 over the bytes it actually wrote, and a
+ *   truncated transfer is otherwise undetectable — a Markdown file that ends mid-sentence and a
+ *   JSON file that will not parse both save silently. The digest is recomputed over what was
+ *   received and the file is saved ONLY if it matches, because a half file on disk under a
+ *   plausible name is worse than no file: it looks like the export, and it gets kept.
+ *
+ * A response with no digest header saves anyway and reports `verified: false`. An older worker is
+ * the normal case during a deploy, and refusing to save then would turn a rollout into an outage.
+ */
+export async function downloadExport(
+  projectId: string,
+  format: 'md' | 'json',
+  onProgress?: (p: { received: number; total: number | null }) => void,
+): Promise<ExportSaved> {
   const token = await getAccessToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -543,19 +685,63 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
     throw new ApiError(msg, res.status);
   }
 
-  const disposition = res.headers.get('Content-Disposition') ?? '';
-  const named = /filename="([^"]+)"/.exec(disposition);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const declaredLength = Number(res.headers.get('Content-Length'));
+  const total = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
+  const declaredDigest = (res.headers.get('X-Golem-Export-SHA256') ?? '').trim().toLowerCase();
+
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  const reader = res.body?.getReader();
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      chunks.push(value);
+      received += value.byteLength;
+      onProgress?.({ received, total });
+    }
+  } else {
+    // No readable body — a response double, or an engine that does not expose one. The file still
+    // has to save; what is lost is the watching, and that is reported as one final event rather
+    // than as silence.
+    const whole = new Uint8Array(await res.arrayBuffer());
+    chunks.push(whole);
+    received = whole.byteLength;
+    onProgress?.({ received, total });
+  }
+
+  const bytes = new Uint8Array(received);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+
+  let verified = false;
+  if (declaredDigest) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hex !== declaredDigest) {
+      // Named as a broken TRANSFER. "Export failed" would send the user to look at their project.
+      throw new ApiError('That export arrived incomplete and was not saved — try again.', 0);
+    }
+    verified = true;
+  }
+
+  const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `project-export.${format}`;
+  const type = format === 'md' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = named?.[1] ?? `project-export.${format}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   // Revoked on the next frame rather than immediately: a synchronous revoke can race the browser's
   // own read of the blob and produce a zero-byte file on some engines.
   requestAnimationFrame(() => URL.revokeObjectURL(url));
+  return { filename, bytes: received, verified };
 }
 
 export const purgeProject = (projectId: string) =>
@@ -624,27 +810,161 @@ export const fetchMembers = (projectId: string, params: URLSearchParams): Promis
  * second call with a different role is the role change. The server names the event it turns out to
  * be — invited, role_changed, renewed, reactivated — and returns it.
  */
+/**
+ * `audited` is on every one of these answers, and it is not decoration.
+ *
+ * The membership change has already happened by the time the history append runs, so a failed
+ * append cannot undo it — the route says `ok: true, audited: false` and means both words. A client
+ * that reads the first and drops the second has turned "we did this and did not record it" into
+ * "we did this". See lib/member-history.ts, which is where that flag becomes a sentence.
+ */
+export interface MemberMutation {
+  ok: boolean;
+  audited?: boolean;
+}
+
 export const inviteMember = (
   projectId: string,
   body: { userId: string; role: string; expiresAt?: string | null },
-): Promise<{ ok: boolean; userId: string; role: string; event: string }> =>
+): Promise<MemberMutation & { userId: string; role: string; event: string }> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members`, { method: 'POST', body: JSON.stringify(body) });
 
 /** Revoked, not deleted: "this access ended" is a fact worth keeping. */
-export const removeMember = (projectId: string, userId: string): Promise<{ ok: boolean }> =>
+export const removeMember = (projectId: string, userId: string): Promise<MemberMutation> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' });
 
-/** Paused, which is a different state from removed — and re-admission is one click rather than a re-invitation. */
-export const suspendMember = (projectId: string, userId: string, reason: string): Promise<{ ok: boolean }> =>
+/**
+ * Paused, which is a different state from removed — and re-admission is one click rather than a
+ * re-invitation.
+ *
+ * THE REASON IS STORED AND AUDITED, so it is worth asking for. This was called with `''` from the
+ * one control that reached it, which meant the row the server takes care to write always said
+ * null: an audit trail of pauses with no reason on any of them.
+ */
+export const suspendMember = (projectId: string, userId: string, reason: string): Promise<MemberMutation> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/suspend`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
   });
 
-export const reactivateMember = (projectId: string, userId: string): Promise<{ ok: boolean }> =>
+/** Restores AT THE ROLE THE GRANT CARRIED — the route refuses to take one, so this cannot promote. */
+export const reactivateMember = (projectId: string, userId: string): Promise<MemberMutation & { role?: string }> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/reactivate`, {
     method: 'POST',
   });
+
+/**
+ * MANY INVITATIONS, ONE REQUEST — and a per-row answer for every one of them.
+ *
+ * The route is refused whole rather than truncated past its cap, and validates every row before it
+ * writes anything, so `applied` is all-or-nothing across the accepted rows. What a caller must not
+ * throw away is `rejected`: it names each refused row BY INDEX with its reason (bad_row, bad_user,
+ * unknown_role, owner_is_not_a_member, duplicate, bad_expiry), which is the half the person needs
+ * in order to correct their list. A UI that shows only "3 of 5 added" has discarded it.
+ */
+export interface BulkInviteRow {
+  userId: string;
+  role: string;
+  expiresAt?: string | null;
+}
+
+export interface BulkInviteResponse {
+  applied: boolean;
+  error?: string;
+  /** The cap, returned with a `too_many` refusal so a client can split the batch. */
+  max?: number;
+  invited: { userId: string; role: string; expiresAt: string | null; ok: boolean; event: string }[];
+  rejected: { index: number; userId: string | null; error: string }[];
+  audited: boolean;
+  counts: { invited: number; rejected: number };
+}
+
+export const bulkInviteMembers = (projectId: string, members: BulkInviteRow[]): Promise<BulkInviteResponse> =>
+  request<BulkInviteResponse>(`/api/shared/${encodeURIComponent(projectId)}/members/bulk`, {
+    method: 'POST',
+    body: JSON.stringify({ members }),
+  });
+
+/**
+ * What removing this person WOULD do, before it is done. A read; nothing on the server changes.
+ *
+ * `footprintAvailable: false` is the field that matters. The counts come from the project's
+ * Durable Object, which can be unreachable — and a preview that renders an unread count as 0 tells
+ * an admin the departing member holds nothing, which is the failure this whole route exists to
+ * avoid. Callers must render that case as "we could not count their work", never as zero.
+ */
+export interface MemberFootprint {
+  comments: number;
+  openComments: number;
+  reviewsRequested: number;
+  reviewsAwaiting: number;
+  /** Open reviews where they are the ONLY reviewer: those can never be approved once they go. */
+  reviewsSoleReviewer: number;
+  approvals: number;
+  versions: number;
+  authorsCurrentHead: boolean;
+  retained: string[];
+  blocked: string[];
+}
+
+export interface MemberImpact {
+  userId: string;
+  /** Null for somebody who was never here — different from a member with nothing to their name. */
+  member: MemberRow | null;
+  footprint: MemberFootprint | null;
+  footprintAvailable: boolean;
+  effects: {
+    accessEndsImmediately: boolean;
+    linkGrantRevoked: boolean;
+    reRedemptionBarred: boolean;
+    ownershipUnchanged: boolean;
+    historyRetained: boolean;
+  };
+  partial?: boolean;
+  incomplete?: string[];
+}
+
+export const fetchMemberImpact = (projectId: string, userId: string): Promise<MemberImpact> =>
+  request<MemberImpact>(
+    `/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/impact`,
+  );
+
+/**
+ * What has happened to a membership: invited, role changed, renewed, suspended, reactivated,
+ * revoked — and the acceptance of a share link, which lives on the KV grant rather than in
+ * Postgres and is merged in by the route.
+ *
+ * `partial` says the link grants could not all be read. A history with a silent hole in it is the
+ * failure the route goes out of its way to avoid, so a caller that drops the flag undoes the care.
+ */
+export interface MemberEvent {
+  kind: string;
+  subjectId: string | null;
+  actorId: string | null;
+  fromRole: string | null;
+  toRole: string | null;
+  reason: string | null;
+  at: string | null;
+  source: 'history' | 'grant';
+}
+
+export interface MemberEventsResponse {
+  events: MemberEvent[];
+  scope: 'project' | 'member';
+  partial?: boolean;
+  incomplete?: string[];
+}
+
+/** Any member may read their own history; reading somebody else's needs manage_members (403). */
+export const fetchMemberEvents = (projectId: string, userId?: string, limit?: number): Promise<MemberEventsResponse> => {
+  const params = new URLSearchParams();
+  if (userId) params.set('userId', userId);
+  if (limit) params.set('limit', String(limit));
+  const qs = params.toString();
+  return request<MemberEventsResponse>(
+    `/api/shared/${encodeURIComponent(projectId)}/members/events${qs ? `?${qs}` : ''}`,
+  );
+};
 
 // ---------------------------------------------------------------- roadmap
 
@@ -827,6 +1147,48 @@ export async function fileOp(projectId: string, body: FileOpRequest): Promise<{ 
   let res: Response;
   try {
     res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/op`, { method: 'POST', headers, body: JSON.stringify(body) });
+  } catch {
+    noteReachability(false);
+    return { ok: false, error: 'Network error — check your connection.' };
+  }
+  noteReachability(true);
+  const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok) {
+    return {
+      ok: false,
+      code: typeof parsed?.code === 'string' ? parsed.code : undefined,
+      error: typeof parsed?.error === 'string' ? parsed.error : `Request failed (${res.status})`,
+    };
+  }
+  return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Put a text file into the project workspace.
+ *
+ * Shaped like `fileOp` rather than like `request<T>`, and for the same reason: the worker sends a
+ * machine-readable `code` with every refusal and `request` drops it, so the panel would be left
+ * matching on prose to tell "that name is taken" from "that is not a workspace file type".
+ *
+ * `overwrite` is never sent on the first attempt. An occupied path comes back as a refusal the user
+ * answers, so replacing the plan Apple wrote is always something they chose.
+ */
+export async function uploadProjectFile(
+  projectId: string,
+  path: string,
+  content: string,
+  opts: { overwrite?: boolean } = {},
+): Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; code?: string; error: string }> {
+  const token = await getAccessToken();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/content`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ path, content, ...(opts.overwrite ? { overwrite: true } : {}) }),
+    });
   } catch {
     noteReachability(false);
     return { ok: false, error: 'Network error — check your connection.' };

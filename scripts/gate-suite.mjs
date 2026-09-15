@@ -95,6 +95,16 @@ const run = (cmd, args, opts = {}) => {
 //   The labels are printed on failure with a tail of the offending output, which is the smallest
 //   thing that turns "the suite is red" into somewhere to look. ]]
 const parts = [
+  //[[ FIRST, BECAUSE EVERYTHING AFTER IT IS A CLAIM ABOUT WHICHEVER TREE THE LINKS POINT AT.
+  //
+  //   F-68 happened a second time today: fourteen agents worked in `.claude/worktrees/` and this
+  //   checkout's `@golem/shared` came back pointing at one of them. tsc then reported a missing
+  //   export for a function on line 1164 of the real file and eighteen worker tests failed — every
+  //   message true about the package it was reading and false about this repository. An hour went
+  //   into reading correct code looking for a defect that was not in it.
+  //
+  //   It is the cheapest check here and it gates the meaning of every other one.
+  { label: 'check-module-resolution', ...run('node', ['scripts/check-module-resolution.mjs']) },
   { label: 'check-workspace-coverage', ...run('node', ['scripts/check-workspace-coverage.mjs']) },
   { label: 'check-escape-hatches', ...run('node', ['scripts/check-escape-hatches.mjs']) },
   { label: 'check-deadends', ...run('node', ['scripts/check-deadends.mjs', '--gate']) },
