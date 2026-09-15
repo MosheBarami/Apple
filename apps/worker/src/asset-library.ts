@@ -229,6 +229,27 @@ export const LICENCES: Readonly<Record<string, LicenceRule>> = {
     allowedInLibrary: false,
     why: 'non-commercial and share-alike — both obligations are undischargeable in a customer place',
   },
+  // NoDerivs is here for the same reason the NC family is, and it is the trap of the set: its
+  // Sketchfab label is "CC Attribution-NoDerivs", so anything matching on the word *attribution*
+  // reads it as plain CC-BY and admits it. It cannot be admitted. Every route an external mesh
+  // takes into a Roblox place is a derivative work — decimating to a triangle budget, rescaling to
+  // studs, re-baking a 4K texture down to 1024 — so ND forbids the only thing we would ever do
+  // with it. Recognised and refused beats unrecognised: an unknown string is a shrug, and this is
+  // a decision.
+  'CC-BY-ND-4.0': {
+    commercialUse: true,
+    attributionRequired: true,
+    shareAlike: false,
+    allowedInLibrary: false,
+    why: 'no-derivatives: importing to Roblox means decimating, rescaling and re-baking, which is exactly the derivative work this licence forbids',
+  },
+  'CC-BY-NC-ND-4.0': {
+    commercialUse: false,
+    attributionRequired: true,
+    shareAlike: false,
+    allowedInLibrary: false,
+    why: 'non-commercial and no-derivatives — neither obligation survives an import into a customer place',
+  },
   // Permissive code-style licences, which is what the icon sets ship under. They require the
   // notice to travel, not the source — dischargeable by a credits list, unlike share-alike.
   'MIT': { commercialUse: true, attributionRequired: true, shareAlike: false, allowedInLibrary: true, why: 'permissive; the notice must travel with the work' },
@@ -271,9 +292,15 @@ export function normaliseLicence(verbatim: string): string | null {
   const isCc = /\bcc\b|creative commons/.test(t);
   const nc = /\bnc\b|non[- ]?commercial/.test(t);
   const sa = /\bsa\b|share[- ]?alike/.test(t);
+  const nd = /\bnd\b|no[- ]?derivs?\b|no[- ]?derivatives\b/.test(t);
   if (isCc && nc && sa) return 'CC-BY-NC-SA-4.0';
+  if (isCc && nc && nd) return 'CC-BY-NC-ND-4.0';
   if (isCc && nc) return 'CC-BY-NC-4.0';
   if (isCc && sa) return 'CC-BY-SA-4.0';
+  // BEFORE the plain-attribution branch below, and the ordering is the whole safety property:
+  // "CC Attribution-NoDerivs" satisfies that branch's wording too, and reaching it first would
+  // return an ALLOWED id for a licence that forbids every use this library puts an asset to.
+  if (isCc && nd) return 'CC-BY-ND-4.0';
   if (/\bgpl\b|general public license/.test(t)) return /\b2(\.0)?\b/.test(t) ? 'GPL-2.0' : 'GPL-3.0';
   // Checked BEFORE the CC family: "MIT License" contains no CC marker, but ordering these together
   // keeps the whole permissive block in one place and makes the precedence readable.
@@ -288,7 +315,10 @@ export function normaliseLicence(verbatim: string): string | null {
   // CC0 is a deliberate waiver by a rights-holder, PD is the absence of rights — and Wikimedia
   // prints them as different strings on different files. Recording them as one would lose that.
   if (/^pd$|public domain/.test(t)) return 'PD';
-  if (/\bcc[- ]?by\b|creative commons attribution/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
+  // `cc attribution` is Sketchfab's own wording for plain CC-BY — it writes neither "CC BY" nor
+  // "Creative Commons Attribution", so without this alternative every CC-BY model it publishes
+  // came back null and was refused as an unrecognised string.
+  if (/\bcc[- ]?by\b|creative commons attribution|\bcc attribution\b/.test(t)) return /3\.0/.test(t) ? 'CC-BY-3.0' : 'CC-BY-4.0';
   if (/roblox terms of use|roblox-tou/.test(t)) return 'ROBLOX-TOU';
   if (/roblox-generated|generationservice/.test(t)) return 'ROBLOX-GENERATED';
   if (/none-procedural|no third[- ]party/.test(t)) return 'NONE-PROCEDURAL';
