@@ -86,8 +86,18 @@ test('the pictures are sized in the markup', () => {
   // Without width/height every card is zero-height until its image arrives and the whole section
   // reflows under someone who is reading it.
   const wallBlock = PAGE.slice(PAGE.indexOf('class="ap-wall"'), PAGE.indexOf('</section>', PAGE.indexOf('class="ap-wall"')));
-  assert.match(wallBlock, /width="256"/);
-  assert.match(wallBlock, /height="256"/);
+  //[[ AND THE SIZE MUST BE THE PICTURE'S OWN, NOT A CONSTANT.
+  //
+  //   It was width="256" height="256" on every card, because that is what the CDN query string
+  //   asked for. The files that came back are 193x255, 512x512, 137x256 and seven other shapes.
+  //   An attribute whose entire job is to reserve the right box was reserving the wrong one — a
+  //   guess dressed as a measurement, doing the opposite of what it is for.
+  assert.match(wallBlock, /width=\{a\.w\}/, 'the width must come from the file, not a literal');
+  assert.match(wallBlock, /height=\{a\.h\}/, 'the height must come from the file, not a literal');
+  for (const a of wall.assets) {
+    assert.ok(Number.isInteger(a.w) && a.w > 0, `${a.id} has no real width`);
+    assert.ok(Number.isInteger(a.h) && a.h > 0, `${a.id} has no real height`);
+  }
   assert.match(wallBlock, /loading="lazy"/, '24 off-screen images must not be fetched eagerly');
   assert.match(wallBlock, /alt=""/, 'the name is in the card text; an alt repeating it is noise to a screen reader');
 });

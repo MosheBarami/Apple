@@ -63,8 +63,49 @@ async function keepImage(url, id) {
     const file = `${id.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.${ext}`;
     mkdirSync(IMGDIR, { recursive: true });
     writeFileSync(join(IMGDIR, file), bytes);
-    return { path: `/assets/wall/${file}`, bytes: bytes.length };
+    //[[ THE REAL PIXEL SIZE, READ OUT OF THE FILE.
+    //
+    //   The markup carried width="256" height="256" on every card because that is what the CDN
+    //   query string asked for. The files that came back are 193x255, 512x512 and 1024x1024 — so
+    //   the attribute was a guess dressed as a measurement, and its whole job is to stop the page
+    //   reflowing when the picture arrives. A wrong one does the opposite of what it is for.
+    return { path: `/assets/wall/${file}`, bytes: bytes.length, ...dimensions(bytes, ext) };
   } catch { return null; }
+}
+
+/**
+ * Width and height straight out of the file header. Three formats, three headers, no dependency.
+ * Returns nulls rather than guessing — a card whose size cannot be read renders from CSS alone,
+ * which is correct, just without the reflow protection.
+ */
+function dimensions(b, ext) {
+  try {
+    const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    if (ext === 'png') return { w: dv.getUint32(16), h: dv.getUint32(20) };
+    if (ext === 'webp') {
+      // VP8X has it at 24 (24-bit, minus one); lossy VP8 at 26; lossless VP8L packs 14 bits each.
+      const fourcc = String.fromCharCode(b[12], b[13], b[14], b[15]);
+      if (fourcc === 'VP8X') return { w: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1, h: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1 };
+      if (fourcc === 'VP8 ') return { w: dv.getUint16(26, true) & 0x3fff, h: dv.getUint16(28, true) & 0x3fff };
+      if (fourcc === 'VP8L') {
+        const n = dv.getUint32(21, true);
+        return { w: (n & 0x3fff) + 1, h: ((n >> 14) & 0x3fff) + 1 };
+      }
+      return { w: null, h: null };
+    }
+    if (ext === 'jpg') {
+      let i = 2;
+      while (i < b.length - 9) {
+        if (b[i] !== 0xff) { i++; continue; }
+        const m = b[i + 1];
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+          return { h: dv.getUint16(i + 5), w: dv.getUint16(i + 7) };
+        }
+        i += 2 + dv.getUint16(i + 2);
+      }
+    }
+  } catch { /* fall through */ }
+  return { w: null, h: null };
 }
 
 const sources = [];
@@ -156,7 +197,7 @@ for (const row of picked) {
   bytes += got.bytes;
   // `remote` is kept as provenance — where the picture came from — while `img` is what the page
   // actually loads. Conflating the two is how a local copy quietly becomes a hot-link again.
-  kept.push({ ...row, remote: row.img, img: got.path });
+  kept.push({ ...row, remote: row.img, img: got.path, w: got.w, h: got.h });
 }
 
 const byPack = {};

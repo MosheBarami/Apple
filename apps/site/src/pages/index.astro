@@ -440,9 +440,11 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
           {assetWall.assets.map((a) => (
             <a class="ap-wall__card" role="listitem" href={a.source} rel="noopener nofollow" target="_blank">
               <span class="ap-wall__shot">
-                {/* Sized in the markup as well as in CSS: without it every card is zero-height
-                    until its picture arrives and the section reflows under the reader. */}
-                <img src={a.img} alt="" width="256" height="256" loading="lazy" decoding="async" />
+                {/* The picture's REAL pixel size, read out of the file by the picker. It was
+                    hardcoded 256x256 because that is what the CDN query string asked for, and the
+                    files that came back are 193x255, 512x512 and 1024x1024 — a guess dressed as a
+                    measurement, doing the opposite of the job the attribute exists for. */}
+                <img src={a.img} alt="" width={a.w} height={a.h} loading="lazy" decoding="async" />
               </span>
               <span class="ap-wall__meta">
                 <span class="ap-wall__name">{a.name}</span>

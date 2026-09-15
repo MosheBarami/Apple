@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-15T15:36:41.561Z",
+ "generatedAt": "2026-09-15T15:38:08.814Z",
  "count": 24,
  "byPack": {
   "Poly Haven": 8,
@@ -17,7 +17,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/ArmChair_01",
    "img": "/assets/wall/poly-haven-models-armchair-01.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/ArmChair_01.png?width=256&height=256&v=abbc4732"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/ArmChair_01.png?width=256&height=256&v=abbc4732",
+   "w": 193,
+   "h": 255
   },
   {
    "id": "ambientcg/material/ground111",
@@ -29,7 +31,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Ground111",
    "img": "/assets/wall/ambientcg-material-ground111.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground111.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground111.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/andymeneely/police-badge",
@@ -41,7 +45,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/andymeneely/police-badge.html",
    "img": "/assets/wall/game-icons-andymeneely-police-badge.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/andymeneely/police-badge.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/andymeneely/police-badge.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/barbershopchair_01",
@@ -53,7 +59,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/BarberShopChair_01",
    "img": "/assets/wall/poly-haven-models-barbershopchair-01.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/BarberShopChair_01.png?width=256&height=256&v=5ed6c0ec"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/BarberShopChair_01.png?width=256&height=256&v=5ed6c0ec",
+   "w": 137,
+   "h": 256
   },
   {
    "id": "ambientcg/material/ground110",
@@ -65,7 +73,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Ground110",
    "img": "/assets/wall/ambientcg-material-ground110.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground110.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground110.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/andymeneely/riposte",
@@ -77,7 +87,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/andymeneely/riposte.html",
    "img": "/assets/wall/game-icons-andymeneely-riposte.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/andymeneely/riposte.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/andymeneely/riposte.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/barrel_01",
@@ -89,7 +101,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/Barrel_01",
    "img": "/assets/wall/poly-haven-models-barrel-01.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Barrel_01.png?width=256&height=256&v=29e315a9"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Barrel_01.png?width=256&height=256&v=29e315a9",
+   "w": 148,
+   "h": 256
   },
   {
    "id": "ambientcg/material/ground108",
@@ -101,7 +115,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Ground108",
    "img": "/assets/wall/ambientcg-material-ground108.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground108.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground108.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/aussiesim/card-10-clubs",
@@ -113,7 +129,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/aussiesim/card-10-clubs.html",
    "img": "/assets/wall/game-icons-aussiesim-card-10-clubs.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-clubs.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-clubs.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/barrel_02",
@@ -125,7 +143,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/Barrel_02",
    "img": "/assets/wall/poly-haven-models-barrel-02.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Barrel_02.png?width=256&height=256&v=d5a1c3f6"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Barrel_02.png?width=256&height=256&v=d5a1c3f6",
+   "w": 133,
+   "h": 256
   },
   {
    "id": "ambientcg/material/wood095",
@@ -137,7 +157,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Wood095",
    "img": "/assets/wall/ambientcg-material-wood095.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Wood095.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Wood095.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/aussiesim/card-10-diamonds",
@@ -149,7 +171,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/aussiesim/card-10-diamonds.html",
    "img": "/assets/wall/game-icons-aussiesim-card-10-diamonds.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-diamonds.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-diamonds.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/camera_01",
@@ -161,7 +185,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/Camera_01",
    "img": "/assets/wall/poly-haven-models-camera-01.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Camera_01.png?width=256&height=256&v=534c7d69"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Camera_01.png?width=256&height=256&v=534c7d69",
+   "w": 256,
+   "h": 210
   },
   {
    "id": "ambientcg/material/tiles141",
@@ -173,7 +199,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Tiles141",
    "img": "/assets/wall/ambientcg-material-tiles141.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Tiles141.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Tiles141.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/aussiesim/card-10-hearts",
@@ -185,7 +213,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/aussiesim/card-10-hearts.html",
    "img": "/assets/wall/game-icons-aussiesim-card-10-hearts.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-hearts.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-hearts.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/cashregister_01",
@@ -197,7 +227,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/CashRegister_01",
    "img": "/assets/wall/poly-haven-models-cashregister-01.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/CashRegister_01.png?width=256&height=256&v=ce53a8fc"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/CashRegister_01.png?width=256&height=256&v=ce53a8fc",
+   "w": 199,
+   "h": 255
   },
   {
    "id": "ambientcg/material/asphalt033",
@@ -209,7 +241,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Asphalt033",
    "img": "/assets/wall/ambientcg-material-asphalt033.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Asphalt033.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Asphalt033.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/aussiesim/card-10-spades",
@@ -221,7 +255,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/aussiesim/card-10-spades.html",
    "img": "/assets/wall/game-icons-aussiesim-card-10-spades.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-spades.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-10-spades.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/chandelier_01",
@@ -233,7 +269,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/Chandelier_01",
    "img": "/assets/wall/poly-haven-models-chandelier-01.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Chandelier_01.png?width=256&height=256&v=6f35a661"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Chandelier_01.png?width=256&height=256&v=6f35a661",
+   "w": 226,
+   "h": 256
   },
   {
    "id": "ambientcg/material/ground109",
@@ -245,7 +283,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=Ground109",
    "img": "/assets/wall/ambientcg-material-ground109.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground109.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/Ground109.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/aussiesim/card-2-clubs",
@@ -257,7 +297,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/aussiesim/card-2-clubs.html",
    "img": "/assets/wall/game-icons-aussiesim-card-2-clubs.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-2-clubs.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-2-clubs.png",
+   "w": 512,
+   "h": 512
   },
   {
    "id": "poly_haven/models/chandelier_02",
@@ -269,7 +311,9 @@
    "licenceUrl": "https://polyhaven.com/license",
    "source": "https://polyhaven.com/a/Chandelier_02",
    "img": "/assets/wall/poly-haven-models-chandelier-02.webp",
-   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Chandelier_02.png?width=256&height=256&v=11d6c83e"
+   "remote": "https://cdn.polyhaven.com/asset_img/thumbs/Chandelier_02.png?width=256&height=256&v=11d6c83e",
+   "w": 189,
+   "h": 256
   },
   {
    "id": "ambientcg/material/pavingstones151",
@@ -281,7 +325,9 @@
    "licenceUrl": "https://docs.ambientcg.com/books/website/page/licensing",
    "source": "https://ambientcg.com/view?id=PavingStones151",
    "img": "/assets/wall/ambientcg-material-pavingstones151.png",
-   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/PavingStones151.png"
+   "remote": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/PavingStones151.png",
+   "w": 256,
+   "h": 256
   },
   {
    "id": "game_icons/aussiesim/card-2-diamonds",
@@ -293,7 +339,9 @@
    "licenceUrl": "https://github.com/game-icons/icons/blob/master/license.txt",
    "source": "https://game-icons.net/1x1/aussiesim/card-2-diamonds.html",
    "img": "/assets/wall/game-icons-aussiesim-card-2-diamonds.png",
-   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-2-diamonds.png"
+   "remote": "https://game-icons.net/icons/ffffff/000000/1x1/aussiesim/card-2-diamonds.png",
+   "w": 512,
+   "h": 512
   }
  ]
 }
