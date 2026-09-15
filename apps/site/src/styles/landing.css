@@ -53,11 +53,20 @@
    and --field-bound is COMPUTED from it — the worst pixel the animation can
    produce under the headline:
      light: --sky-high #c3d8f2 under --stud-edge a.07                -> #b6cbe4
-     dark : --sky-low  #262e40 under --stud-top a.045, --catch a.04  -> #383e4e
+     dark : --sky-low  #262e40 under --stud-top a.07,  --catch a.05  -> #3f4552
    Change either alpha and recompute the bound. It is arithmetic, not taste.
    Contrast on that worst pixel, light: ink 10.75, ink-2 6.91, link 5.25,
    muted 4.94, accent-ink 4.81, good 4.64. Dark: ink 8.60, ink-2 6.05,
-   link 5.74, accent 5.44, good 6.21, muted 5.17. All clear 4.5:1. */
+   link 4.68, accent 4.90, good 6.31, muted 4.65. All clear 4.5:1.
+
+   THE DARK PLATE WAS SEVEN TIMES FAINTER THAN THE LIGHT ONE and it showed: at
+   --stud-top a.045 the studs are barely a texture, so a visitor whose system is
+   dark got a page that reads as flat — which is the "too dark and static"
+   complaint this whole design answers, surviving in the half of it nobody had
+   measured. a.07 is the widest value that still clears 4.5:1 with headroom;
+   a.08 clears at 4.51, which is the line rather than a margin. --stud-edge went
+   0.3 -> 0.42 for free: in dark it may only DARKEN, so it deepens the bevel
+   without entering the bound arithmetic at all. */
 :root {
   color-scheme: light dark;
 
@@ -167,12 +176,12 @@
     --sky-mid: #16243b;
     --sky-low: #262e40;
     --sky-0: rgba(38, 46, 64, 0);
-    --field-bound: #383e4e;
-    --stud-top: rgba(255, 255, 255, 0.045);
-    --stud-edge: rgba(0, 0, 0, 0.3);
+    --field-bound: #3f4552;
+    --stud-top: rgba(255, 255, 255, 0.07);
+    --stud-edge: rgba(0, 0, 0, 0.42);
     --stud-seam: rgba(198, 212, 240, 0.03);
     --bloom: rgba(42, 28, 16, 0.5);
-    --catch: rgba(255, 226, 180, 0.04);
+    --catch: rgba(255, 226, 180, 0.05);
     --ink: #f1f5fb;
     --ink-2: #c6d0e0;
     --muted: #aab5c9;
@@ -204,12 +213,12 @@
   --sky-mid: #16243b;
   --sky-low: #262e40;
   --sky-0: rgba(38, 46, 64, 0);
-  --field-bound: #383e4e;
-  --stud-top: rgba(255, 255, 255, 0.045);
-  --stud-edge: rgba(0, 0, 0, 0.3);
+  --field-bound: #3f4552;
+  --stud-top: rgba(255, 255, 255, 0.07);
+  --stud-edge: rgba(0, 0, 0, 0.42);
   --stud-seam: rgba(198, 212, 240, 0.03);
   --bloom: rgba(42, 28, 16, 0.5);
-  --catch: rgba(255, 226, 180, 0.04);
+  --catch: rgba(255, 226, 180, 0.05);
   --ink: #f1f5fb;
   --ink-2: #c6d0e0;
   --muted: #aab5c9;
