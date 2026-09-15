@@ -1,6 +1,12 @@
 # COMPLETE AI ROBLOX SAAS SHELL — 1,200-ITEM CHECKLIST
 
-**✓ 356 done · ~ 543 partly built · ☐ 301 not found — weighted 52.3%**
+**✓ 390 done · ~ 535 partly built · ☐ 275 not found — weighted 54.8%**
+
+*Counted from the marks in this file, not carried forward. The previous header said ✓356 ~543
+☐301 / 52.3% and was written before six sections were reworked in parallel — account security
+and recovery, the composer, invoices, privacy and data lifecycle, support, and owner
+operations. A total typed at the top of a 3,440-line file is a number that will disagree with
+the lines below it; this one is recomputed from them.*
 
 Owner-authored list of record. 60 sections, 1,200 items.
 
