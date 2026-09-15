@@ -14,6 +14,7 @@ import type {
   StudioEventState,
   StudioEventSelection,
   CheckpointMeta,
+  RestoreFidelity,
   GolemMode,
   GatewayRequest,
   ToolTraceEntry,
@@ -3391,20 +3392,36 @@ export class SessionDO extends DurableObject<Env> {
     ok: boolean;
     error?: string;
     /** What the plugin reports it actually put back. Absent when the op never reached Studio. */
-    fidelity?: {
-      instancesCreated: number;
-      scriptsRestored: number;
-      scriptsExpected: number;
-      failedInstances: number;
-      failedScripts: number;
-      failedProperties: number;
-    };
+    fidelity?: RestoreFidelity;
     /** A caveat worth showing the user even though the restore succeeded. */
     note?: string;
   }> {
-    if (!(await this.pluginConnected())) return { ok: false, error: 'Studio is not connected' };
+    //[[ THE PERSON WHO PRESSED RESTORE IS WATCHING A BLANK DRAWER.
+    //
+    //   Everything below used to happen in silence: one op with a 120s ceiling, nothing broadcast
+    //   while it ran, and — on the ws path — a broadcast only when it FAILED. So the interface had
+    //   nothing to say for up to two minutes about the operation that was at that moment clearing
+    //   and rebuilding the user's place, and on success it had nothing to say at all.
+    //
+    //   Every exit from this method now reports itself, including the two refusals above the work,
+    //   because a restore that never starts is exactly the case where a silent UI leaves someone
+    //   waiting on something that is not coming.
+    //
+    //   `broadcast` and not a return value: the HTTP caller and the SDK already get the result,
+    //   and a second tab watching the same project has to see this too. ]]
+    const say = (phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed', rest: { fidelity?: RestoreFidelity; note?: string; error?: string } = {}) =>
+      this.broadcast({ type: 'restore_status', checkpointId: id, phase, ...rest });
+
+    if (!(await this.pluginConnected())) {
+      say('failed', { error: 'Studio is not connected' });
+      return { ok: false, error: 'Studio is not connected' };
+    }
     const chunks = this.sql.exec(`select data from checkpoint_chunks where checkpoint_id = ? order by idx`, id).toArray() as { data: ArrayBuffer }[];
-    if (!chunks.length) return { ok: false, error: 'checkpoint not found' };
+    if (!chunks.length) {
+      say('failed', { error: 'checkpoint not found' });
+      return { ok: false, error: 'checkpoint not found' };
+    }
+    say('reading');
     const total = chunks.reduce((n, c) => n + c.data.byteLength, 0);
     const buf = new Uint8Array(total);
     let off = 0;
@@ -3413,8 +3430,13 @@ export class SessionDO extends DurableObject<Env> {
       off += c.data.byteLength;
     }
     const jsonStr = await gunzip(buf);
+    say('applying');
     const applied = await this.execStudioOp({ op: 'restore', root: 'game', snapshot: JSON.parse(jsonStr) }, 120_000);
-    if (!applied.ok) return { ok: false, error: applied.error };
+    if (!applied.ok) {
+      say('failed', { error: applied.error });
+      return { ok: false, error: applied.error };
+    }
+    say('verifying');
 
     // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —
     // instancesCreated, scriptsRestored against scriptsExpected, and counts of instances, scripts
@@ -3447,23 +3469,26 @@ export class SessionDO extends DurableObject<Env> {
     // A pre-0.2.0 plugin returns no report at all. Absent evidence is reported as absent rather
     // than as success: `restored === undefined` must not read as "restored fine".
     if (d.restored === undefined) {
-      return { ok: true, fidelity, note: 'This Studio plugin is too old to report what it restored, so the result could not be verified.' };
+      const note = 'This Studio plugin is too old to report what it restored, so the result could not be verified.';
+      say('done', { fidelity, note });
+      return { ok: true, fidelity, note };
     }
 
     if (!d.restored) {
-      return { ok: false, error: d.error ?? 'restore incomplete', fidelity };
+      const error = d.error ?? 'restore incomplete';
+      say('failed', { fidelity, error });
+      return { ok: false, error, fidelity };
     }
 
     // Every instance and script came back, but properties can still have failed — and a part with
     // the wrong Size and CFrame is not the part the user checkpointed. Successful, with a caveat
     // the UI is expected to show.
     if (fidelity.failedProperties > 0) {
-      return {
-        ok: true,
-        fidelity,
-        note: `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`,
-      };
+      const note = `Restored, but ${fidelity.failedProperties} propert${fidelity.failedProperties === 1 ? 'y' : 'ies'} could not be set — some objects may differ from the checkpoint.`;
+      say('done', { fidelity, note });
+      return { ok: true, fidelity, note };
     }
+    say('done', { fidelity });
     return { ok: true, fidelity };
   }
 

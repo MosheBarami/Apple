@@ -908,6 +908,33 @@ export type ServerMsg =
     }
   | { type: 'quota'; quota: QuotaState }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
+  /**
+   * A RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+   *
+   * There was no restore counterpart to `checkpoint` above. The worker issued one opaque op with a
+   * 120s ceiling, broadcast nothing while it ran, and broadcast only on failure when it ended — so
+   * the person who pressed Restore watched the drawer close and then had no signal at all, for up
+   * to two minutes, about the operation that was at that moment deleting and rebuilding their
+   * place. Modelled on `playtest_state`, which already streams its phases for the same reason.
+   *
+   * `fidelity` is the plugin's own count of what it put back, and it travels on the DONE frame as
+   * well as the FAILED one: a restore that recreated every instance but could not set 40
+   * properties is a success the user has to be told about, and that report reached the HTTP caller
+   * and the SDK while the browser — the only caller with a human attached — got nothing.
+   *
+   * `note` is a caveat on a SUCCEEDED restore (properties failed, or the plugin is too old to
+   * report and the result is therefore unverified); `error` is why a restore did not succeed. They
+   * are separate fields because "it worked, with a caveat" and "it did not work" must never render
+   * as the same sentence.
+   */
+  | {
+      type: 'restore_status';
+      checkpointId: string;
+      phase: 'reading' | 'applying' | 'verifying' | 'done' | 'failed';
+      fidelity?: RestoreFidelity;
+      note?: string;
+      error?: string;
+    }
   | { type: 'studio_log'; entries: StudioEventLog[] }
   // Sent in reply to `resume`, and unprompted on connect when a run is live.
   | { type: 'run_state'; run: RunSnapshot | null }
@@ -969,6 +996,21 @@ export interface CheckpointMeta {
   scriptCount: number;
   instanceCount: number;
   sizeBytes: number;
+}
+
+/**
+ * What the plugin reports it ACTUALLY put back, counted inside Studio.
+ *
+ * Absent — not zeroed — when the op never reached Studio at all: zeros would say "it restored
+ * nothing", which is a claim about the place, and we would not have looked.
+ */
+export interface RestoreFidelity {
+  instancesCreated: number;
+  scriptsRestored: number;
+  scriptsExpected: number;
+  failedInstances: number;
+  failedScripts: number;
+  failedProperties: number;
 }
 
 // ---------------------------------------------------------------------------

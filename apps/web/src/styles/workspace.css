@@ -4371,3 +4371,31 @@
 .tour-skip:hover {
   color: var(--gx-ink);
 }
+
+/* --------------------------------------------------------------------------
+   The restore, while it is happening.
+
+   A restore clears the place before it rebuilds it, so the one state that must
+   never read as settled is the one in flight: `is-working` stays in the muted
+   ink the rest of the row uses and the sentence itself carries the ellipsis.
+   `is-caveat` is warn and not good on purpose — a restore nobody could verify,
+   or one that dropped properties, is not a success.
+   -------------------------------------------------------------------------- */
+
+.gx-restore {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--gx-ink-3);
+}
+
+.gx-restore.is-good { color: var(--gx-good); }
+.gx-restore.is-caveat { color: var(--gx-warn); }
+.gx-restore.is-bad { color: var(--gx-bad); }
+
+.gx-restore__counts {
+  display: block;
+  color: var(--gx-ink-3);
+  font-variant-numeric: tabular-nums;
+}

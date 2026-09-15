@@ -34,6 +34,7 @@ import { AssetSourceDialog } from '../components/asset-source-dialog';
 import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
+import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
@@ -141,8 +142,14 @@ export function WorkspacePage() {
     stop,
     createCheckpoint,
     restoreCheckpoint,
+    restoreStatus,
     reloadHistory,
   } = useProjectSocket(projectId, onServerError);
+
+  // A second Restore while the first is still clearing the place would race the plugin against
+  // itself. The worker's own phases decide this, not a flag set by the click: a click that never
+  // reached the worker must not leave every button dead.
+  const restoreBusy = restoreInFlight(restoreStatus);
 
   /**
    * The one place Studio's state is named. Four values, each backed by a real
@@ -851,18 +858,37 @@ export function WorkspacePage() {
               <span className="gx-row__meta">
                 {new Date(c.createdAt).toLocaleString()} · {c.instanceCount} objects · {c.scriptCount} scripts
               </span>
+              {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+
+                  This drawer used to close on the click, and the worker used to broadcast nothing
+                  until something went wrong — so the user watched the panel shut and then had no
+                  signal at all, for up to two minutes, about the operation that was at that moment
+                  clearing and rebuilding their place. On success they were told nothing ever.
+
+                  Anchored under the checkpoint it belongs to rather than floating at the top of the
+                  drawer: a list of twenty rows and one status line elsewhere makes the reader
+                  work out which one it is about. */}
+              {restoreStatus?.checkpointId === c.id && (
+                <span className={`gx-restore is-${restoreTone(restoreStatus)}`} role="status">
+                  {restoreSentence(restoreStatus)}
+                  {fidelityLine(restoreStatus.fidelity) && (
+                    <span className="gx-restore__counts">{fidelityLine(restoreStatus.fidelity)}</span>
+                  )}
+                </span>
+              )}
             </span>
             <button
               type="button"
               className="gx-btn gx-btn--outline"
-              disabled={!studio.connected}
+              disabled={!studio.connected || restoreBusy}
               onClick={() => {
                 if (!window.confirm(`Restore "${c.label}"? This replaces what is in your place now.`)) return;
                 restoreCheckpoint(c.id);
-                setDrawer(null);
+                // The drawer STAYS OPEN. It is the only surface that shows what the restore is
+                // doing and what came back, and closing it is what made both invisible.
               }}
             >
-              Restore
+              {restoreBusy && restoreStatus?.checkpointId === c.id ? 'Restoring…' : 'Restore'}
             </button>
           </div>
         ))}

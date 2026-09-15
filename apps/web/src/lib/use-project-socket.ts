@@ -17,6 +17,7 @@ import type {
   StudioEventState,
 } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
+import type { RestoreStatus } from './restore-status';
 import { fetchCheckpoints, fetchMessages } from './api';
 import {
   MOCK_MODE,
@@ -191,6 +192,15 @@ export interface ProjectSocket {
   playtest: PlaytestRun | null;
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
+  /**
+   * The restore this project is doing, or the last one it did, or null.
+   *
+   * NEVER synthesised here, for the same reason as `playtest` above: if the worker has not sent a
+   * `restore_status`, this app knows nothing about any restore and the drawer says nothing. A
+   * spinner started by the click rather than by the server would keep spinning through a worker
+   * that never received the frame.
+   */
+  restoreStatus: RestoreStatus | null;
   sendChat: (text: string, mode: GolemMode) => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
   editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
@@ -296,6 +306,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const [frames, setFrames] = useState<StudioFrame[]>([]);
   const [playtest, setPlaytest] = useState<PlaytestRun | null>(null);
   const [checkpoints, setCheckpoints] = useState<CheckpointMeta[]>([]);
+  const [restoreStatus, setRestoreStatus] = useState<RestoreStatus | null>(null);
   const [checkpointsState, setCheckpointsState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -698,6 +709,12 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           return [msg.checkpoint, ...without].sort((a, b) => b.createdAt - a.createdAt);
         });
         break;
+      case 'restore_status':
+        // Straight through, latest wins. The worker owns the whole record — which phase, the
+        // plugin's counts, the caveat — precisely so the drawer cannot drift from what actually
+        // happened to the place.
+        setRestoreStatus(msg);
+        break;
       case 'studio_frame':
         // Uncompressed RGB is heavy, so only the most recent handful are kept
         // in memory. They are never persisted.
@@ -931,6 +948,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     playtest,
     checkpoints,
     checkpointsState,
+    restoreStatus,
     sendChat,
     editAndResend,
     stop,
