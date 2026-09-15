@@ -118,6 +118,15 @@ const parts = [
   // 57,049 rows were refused by an ingest that ran for half an hour before saying so, and the
   // rejects print at the end. This predicts the run in seconds, per source, before it starts.
   { label: 'check-harvest-licences', ...run('node', ['scripts/check-harvest-licences.mjs']) },
+  //[[ THE CODE AND THE DATABASE SCHEMA, COMPARED.
+  //
+  //   Three migrations were written, committed, reviewed and shipped without ever being applied,
+  //   and the owner's dashboard said "column projects.archived_at does not exist". tsc passed,
+  //   1,306 web tests passed, both builds passed — every one of them a statement about the code
+  //   rather than the database it talks to. This catches the half that is reachable offline: a
+  //   column the client asks for that no migration creates. It cannot tell whether a migration has
+  //   been APPLIED, and says so.
+  { label: 'check-schema-drift', ...run('node', ['scripts/check-schema-drift.mjs']) },
   //[[ THE BUILD IS A CHECK, AND NOTHING HERE WAS RUNNING IT.
   //
   //   `tsc --noEmit` passed over a settings.tsx carrying a JSX comment in expression position —

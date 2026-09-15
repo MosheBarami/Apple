@@ -307,4 +307,14 @@ test('“closed” and “a name this build does not know” are different store
   // Set equality, not containment: it catches the drawer that can be stored but not restored AND
   // the name that restores to nothing, which is the pair of failures this guard exists for.
   assert.deepEqual([...names].sort(), [...declared].sort(), 'DRAWERS and DrawerName disagree');
+
+  // Three declarations have to agree, not two. DrawerName is what gets STORED; Drawer is what the
+  // component actually switches on, and it is the one a new drawer gets added to first. A name in
+  // Drawer that never reached DRAWERS is validated away on restore, so that drawer comes back
+  // closed for ever and looks like a user who simply never opened it.
+  const type = WSCODE.match(/type Drawer = null \| ([^;]+);/);
+  assert.ok(type, 'the drawer union must still be spelled out');
+  for (const d of [...type[1].matchAll(/'([^']+)'/g)].map((m) => m[1])) {
+    assert.ok(names.includes(d), `'${d}' is a drawer this build has and the validator would reject`);
+  }
 });

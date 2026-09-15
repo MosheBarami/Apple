@@ -60,7 +60,60 @@ function templateTotals() {
   return t.counts ?? {};
 }
 
+/**
+ * Which harvest parts the index says exist, and which are actually on disk.
+ *
+ * `packages/corpus/data/library/*` is gitignored except four small parts (see .gitignore), because
+ * the corpus is ~49MB and re-fetchable. So in any fresh clone, and in every git worktree, most of
+ * it is simply absent — and `libraryTotals` skips a missing file and carries on, producing a
+ * smaller total that this script then reported as "the landing page states things the data does
+ * not say". It had not read the data. It had read a fraction of it.
+ *
+ * A FAILURE TO OBSERVE MUST NOT RENDER AS AN OBSERVATION: "the number is wrong" and "the corpus is
+ * not here" are different findings with different next steps, and only one of them is about the
+ * page. The index names every source the harvest wrote, so the absence is nameable.
+ */
+function harvestShortfall(counted) {
+  const indexPath = join(DATA, 'library', 'index.json');
+  if (!existsSync(indexPath)) return ['library/index.json is not there, so there is nothing to check the harvest against'];
+  const index = JSON.parse(readFileSync(indexPath, 'utf8'));
+  const gaps = Object.keys(index.perSource ?? {})
+    .filter((s) => !existsSync(join(DATA, 'library', `${s}.json`)))
+    .map((s) => `library/${s}.json is missing`);
+  // The per-source check alone is not enough: the harvest also writes parts the index does not
+  // name one-for-one (`kenney-expanded.json` and friends), so a checkout can have every named file
+  // and still be short. The index records what the harvest KEPT, and a recount below that number
+  // means rows are not here — whichever file they were in.
+  const recorded = Number(index.total ?? 0);
+  if (recorded > 0 && counted < recorded) {
+    gaps.push(`the harvest recorded ${recorded.toLocaleString()} rows and only ${counted.toLocaleString()} are on disk`);
+  }
+  return gaps;
+}
+
 const lib = libraryTotals();
+
+//[[ A FAILURE TO OBSERVE MUST NOT RENDER AS AN OBSERVATION.
+//
+//   `packages/corpus/data/library/*` is gitignored except four small parts (see .gitignore),
+//   because the harvest is ~49MB and re-fetchable. So in a fresh clone — and in every git worktree
+//   — most of it is simply absent, `libraryTotals` skipped each missing file and carried on, and
+//   this script reported the shortfall as "the landing page states things the data does not say".
+//   It had not read the data. It had read a fraction of it, and blamed the page.
+//
+//   "The number is wrong" and "the corpus is not here" are different findings with different next
+//   steps, and only one of them is about the page. Exit 2 rather than 0, because a guard that
+//   cannot see the thing it guards must say so loudly and must never come back clean. ]]
+const gaps = harvestShortfall(lib.total);
+if (gaps.length) {
+  console.error('PROOF FIGURES UNCHECKED — the corpus these numbers are computed from is not all here.\n\n'
+    + gaps.map((g) => `  · ${g}`).join('\n')
+    + '\n\nThis is NOT a clean run and NOT a claim about the landing page: nothing has been verified.\n'
+    + 'The harvest is gitignored and re-fetchable — run `pnpm --filter @golem/corpus bootstrap`\n'
+    + 'and run this again.');
+  process.exit(2);
+}
+
 const tpl = templateTotals();
 
 /**

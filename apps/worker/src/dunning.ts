@@ -1,4 +1,10 @@
-// A FAILED PAYMENT, READ OFF THE EVENT THAT REPORTS IT.
+// THE BILLING EVENTS THE ENTITLEMENT READER THROWS AWAY, READ FOR WHAT THEY MEAN TO A PERSON.
+//
+// It started as one thing — a failed payment — and the shape turned out to be general: every event
+// that changes nothing about what somebody is entitled to, and everything about what they are
+// waiting for. A declined renewal, a bank confirmation, the all-clear, and a checkout page that
+// lapsed before it was finished. None of them moves a tier; all of them are things the product
+// owes somebody a sentence about.
 //
 // `billing.ts` answers one question - what tier does this subscription entitle - and answers it
 // from `customer.subscription.*` and `checkout.session.completed`. It returns `ignored` for every
@@ -18,8 +24,13 @@
 // events, by `entitlementFor`, from status and period - and a dunning path that could also move a
 // tier would be a second, quieter opinion about what somebody has paid for.
 
-/** The dunning events worth telling a person about, and what each one means to them. */
-export const DUNNING_KINDS = ['payment_failed', 'action_required', 'payment_recovered'] as const;
+/** The billing events worth telling a person about, and what each one means to them. */
+export const DUNNING_KINDS = [
+  'payment_failed',
+  'action_required',
+  'payment_recovered',
+  'checkout_expired',
+] as const;
 export type DunningKind = (typeof DUNNING_KINDS)[number];
 
 const EVENT_TO_KIND: Readonly<Record<string, DunningKind>> = {
@@ -28,6 +39,16 @@ const EVENT_TO_KIND: Readonly<Record<string, DunningKind>> = {
   // The all-clear. Sent when a retry succeeds, and a product that announces the problem and never
   // announces the fix has taught the person to distrust the announcement.
   'invoice.payment_succeeded': 'payment_recovered',
+  /*
+   * THE CHECKOUT NOBODY CAME BACK FROM.
+   *
+   * /usage knows two endings — `?checkout=done` and `?checkout=cancelled` — and BOTH require the
+   * person to return through the redirect. Someone who opens Stripe's page, is interrupted, and
+   * closes the tab hits neither: the session simply lapses. Nothing was charged, nothing changed,
+   * and nothing anywhere said so, so the last thing that account heard about the plan it tried to
+   * buy was silence. This is not a payment failure and its copy must not sound like one.
+   */
+  'checkout.session.expired': 'checkout_expired',
 };
 
 export interface DunningNotice {
@@ -35,8 +56,15 @@ export interface DunningNotice {
   userId: string;
   /** Stripe's event id, so a redelivery does not become a second notification. */
   eventId: string | null;
-  /** The invoice. It is the dedupe subject: three retries of ONE invoice are one problem. */
-  invoiceId: string | null;
+  /**
+   * What the notice is ABOUT, and therefore what it deduplicates on: the invoice for a payment
+   * problem, the checkout session for an expiry. Three Stripe retries of one invoice are one
+   * problem and one row with a count, not three alarms about one card.
+   *
+   * Named for the job rather than for the invoice: a field called `invoiceId` holding `cs_…` is the
+   * kind of quiet mislabelling that survives review because it reads correctly.
+   */
+  subjectId: string | null;
   /** Minor units, as Stripe reports them, or null when the field is unreadable. */
   amountDue: number | null;
   currency: string | null;
@@ -77,10 +105,12 @@ function intOrNull(v: unknown): number | null {
 }
 
 /**
- * Is this event a payment problem, and whose?
+ * Is this event one somebody is owed a sentence about, and whose is it?
  *
- * Returns null for everything else, including every event `interpretStripeEvent` handles - the two
- * functions read disjoint event types and neither decides anything the other decides.
+ * Returns null for everything else, including every event `interpretStripeEvent` APPLIES - the two
+ * functions read disjoint event types and neither decides anything the other decides. The one event
+ * both read is `checkout.session.expired`, and they read it for opposite purposes: this one to say
+ * so, the other to say explicitly that nothing is applied.
  */
 export function interpretDunningEvent(event: unknown): DunningNotice | null {
   if (typeof event !== 'object' || event === null) return null;
@@ -107,7 +137,7 @@ export function interpretDunningEvent(event: unknown): DunningNotice | null {
     kind,
     userId,
     eventId: typeof e.id === 'string' && e.id.length > 0 ? e.id : null,
-    invoiceId: typeof obj['id'] === 'string' ? obj['id'] : null,
+    subjectId: typeof obj['id'] === 'string' ? obj['id'] : null,
     amountDue: intOrNull(obj['amount_due']),
     currency: typeof obj['currency'] === 'string' ? obj['currency'] : null,
     attempt,
@@ -154,6 +184,19 @@ export function dunningCopy(n: DunningNotice): DunningCopy {
       return {
         title: 'That payment went through',
         body: `The charge${sum} that failed earlier has now been collected. Nothing more is needed.`,
+      };
+    /*
+     * DELIBERATELY CALM. This is the one kind here that is not a problem with a card: the person
+     * started a purchase and did not finish it, which is an ordinary thing to do. Copy borrowed from
+     * the decline above would tell someone their payment was refused when no payment was attempted,
+     * and the cost of that mistake is a support email and a customer who trusts the next alert less.
+     */
+    case 'checkout_expired':
+      return {
+        title: 'The checkout you started has expired',
+        body:
+          'Nothing was charged and your plan has not changed. Checkout pages are held open for an ' +
+          'hour; choosing the plan again on your Usage page starts a fresh one.',
       };
   }
 }

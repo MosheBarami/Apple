@@ -536,6 +536,76 @@ kbd {
   color: var(--muted);
 }
 
+/* A tag on a card. Quieter than the place pill beside it: the place is a fact about the project,
+   the tag is a label the user put on it, and the card should not read as two competing badges. */
+.pill-tag {
+  background: transparent;
+  border-style: dashed;
+  padding-inline: 0.55rem;
+}
+
+/* ------------------------------------------------------------------- tags --- */
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+/* The filter row sits between the scope tabs and the grid, so it needs to read as a control strip
+   rather than as the first row of content. */
+.tag-row--filter {
+  margin: 0.2rem 0 1.1rem;
+}
+
+.tag-chip {
+  font: inherit;
+  font-size: 0.78rem;
+  border-radius: var(--r-pill);
+  padding: 0.26rem 0.68rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.tag-chip:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.tag-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Pressed state carries colour AND weight, not colour alone: which chip is filtering the page is
+   the one thing this row has to answer at a glance. */
+.tag-chip.is-on {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  font-weight: 600;
+}
+
+.tag-chip[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A tag the project already has: clicking it removes it, so it is drawn as something already on
+   rather than as something to add. */
+.tag-chip--own {
+  color: var(--ink);
+  border-style: dashed;
+}
+
 /* Both of these were being asked for by the settings page with nothing behind them, so a confirmed
    address and an unconfirmed one rendered identically — a status badge that carries no status. */
 .pill-good {
@@ -1375,6 +1445,20 @@ textarea {
   font-size: 1.02rem;
   margin: 0;
   overflow-wrap: anywhere;
+  /* Takes the slack so the menu stays hard right once a pin marker joins the row. `space-between`
+     alone would centre the name between the two of them. */
+  flex: 1;
+  min-width: 0;
+}
+
+/* The pin marker leads the name rather than sitting in a corner of the card: it is a fact about
+   this project's place in the list, and the eye reads it on the way into the title. */
+.project-card-pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.2rem;
+  color: var(--accent);
 }
 
 .project-card-desc {
@@ -4480,6 +4564,19 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+/* The waiting-work line sits ABOVE the action row's rule, not inside it: the two buttons
+   below the rule change the connection, and this one changes what the connection will do
+   next. Keeping them apart is what stops "Discard" reading as a third way to disconnect. */
+.pairing-record__queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
 .pairing-record__acts {
   display: flex;
   flex-wrap: wrap;
@@ -5085,6 +5182,56 @@ samp {
   margin: 0;
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+/* The order a buyer confirms before being sent to a card form. A definition list, because that is
+   what it is: four labelled facts about one purchase. Tabular numerals so the amounts line up with
+   every other figure on this page, and the terms and tax lines are quiet rather than fine print —
+   they are the two sentences the buyer is actually agreeing to. */
+.order-summary {
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.order-summary__row {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.order-summary__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.order-summary__label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.order-summary__value {
+  margin: 0;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-summary__terms {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.order-summary__tax {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 /* Purchased credits, beside the allowance ring and never inside it. */
@@ -5983,4 +6130,20 @@ html.has-cursor .cursor {
   .toast-stack {
     display: none !important;
   }
+}
+
+/* The asset-source choices on the settings page. They borrow the dialog's own `asrc__` classes so
+   the two surfaces cannot drift into two looks for one setting; only the frame differs, because a
+   modal centres itself and a settings row does not. */
+.settings-pair--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.asrc__choice--settings {
+  /* No max-width: inside the dialog the choices sit in a 30rem column, and here they have the
+     settings card's width to use. */
+  max-width: none;
 }

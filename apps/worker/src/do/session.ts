@@ -24,9 +24,26 @@ import type {
   PlaytestRun,
   RenderViewResult,
   StudioPlace,
+  StudioDiagnostics,
   StudioLinkSummary,
 } from '@golem/shared';
-import { MESSAGE_MAX_CHARS, type AssetSourcePolicy } from '@golem/shared';
+import { MESSAGE_MAX_CHARS, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
+
+/**
+ * The edit history being moved onto the message that replaces an edited one.
+ *
+ * `previous` is null when the resend changed nothing — Try again and Regenerate both come through
+ * `edit_resend` with the text untouched — in which case the existing chain is still carried across,
+ * because the message is still the same message; it just gained no new version.
+ */
+interface CarriedRevisions {
+  /** The id of the row being replaced, whose chain moves to the new row. */
+  from: string;
+  /** The text that was there, or null if this resend did not change it. */
+  previous: string | null;
+  /** When the replaced message was written, so the stored version keeps its own timestamp. */
+  at: number;
+}
 import {
   admitFrame,
   FrameRate,
@@ -451,6 +468,9 @@ export class SessionDO extends DurableObject<Env> {
         create table if not exists oplog(
           id integer primary key autoincrement, op_id text, kind text, ok integer,
           summary text, created_at integer not null);
+        create table if not exists message_revisions(
+          message_id text not null, seq integer not null, content text not null,
+          created_at integer not null, primary key(message_id, seq));
       `);
       //[[ WHY a failure is recorded as a KIND and not only as a sentence: see src/op-failure.ts.
       //
@@ -1010,6 +1030,22 @@ export class SessionDO extends DurableObject<Env> {
         }
         return json({ error: 'invalid token' }, 401);
       }
+      //[[ AN ACTIVELY USED PAIRING MUST NOT LAPSE.
+      //
+      //   `pluginTokenIssuedAt` was written once, at pairing, and never again — so the 30-day clock
+      //   ran from the pairing rather than from use, and a Studio that polled every four seconds
+      //   for a month was cut off on the same day as one that was never opened again. There is no
+      //   renewal path anywhere: the only remedy was minting a new pairing code, for a link that
+      //   was working.
+      //
+      //   Slid only past the HALFWAY mark, and only after the token has already been accepted.
+      //   Past halfway because this runs on every poll of every connected Studio and an
+      //   unconditional write would be a storage put every four seconds for nothing. After the
+      //   check because doing it before would resurrect a pairing that had already lapsed —
+      //   the expiry would become unreachable, which is the same defect as no expiry at all. ]]
+      if (Date.now() - issuedAt > PLUGIN_TOKEN_TTL_MS / 2) {
+        await this.ctx.storage.put('pluginTokenIssuedAt', Date.now());
+      }
       const reported = readPluginHeaders(req.headers);
       const body = (await req.json()) as PluginPollRequest;
       return this.handlePluginPoll(body, reported);
@@ -1075,6 +1111,19 @@ export class SessionDO extends DurableObject<Env> {
       const rows = this.sql
         .exec(`select id, role, mode, content, tool_trace, created_at from messages where created_at < ? order by created_at desc limit ?`, before, limit)
         .toArray() as { id: string; role: string; mode: string | null; content: string; tool_trace: string | null; created_at: number }[];
+      //[[ HOW MANY EARLIER VERSIONS EACH MESSAGE HAS, counted here rather than asked for later.
+      //
+      //   The conversation needs this to decide whether to draw an "edited" mark at all. A request
+      //   per turn would be fifty requests on a long conversation, and the marks would appear one
+      //   by one as they landed. One grouped count over a table that is empty for almost every
+      //   project costs nothing. The TEXT is not sent — it is only fetched if someone asks to read
+      //   it, because a long conversation of edited prompts would otherwise double this payload.
+      const counts = new Map<string, number>();
+      for (const c of this.sql
+        .exec(`select message_id, count(*) as n from message_revisions group by message_id`)
+        .toArray() as { message_id: string; n: number }[]) {
+        counts.set(c.message_id, c.n);
+      }
       return json({
         messages: rows.reverse().map((r) => ({
           id: r.id,
@@ -1083,7 +1132,28 @@ export class SessionDO extends DurableObject<Env> {
           content: r.content,
           toolTrace: r.tool_trace ? JSON.parse(r.tool_trace) : null,
           createdAt: new Date(r.created_at).toISOString(),
+          revisions: counts.get(r.id) ?? 0,
         })),
+      });
+    }
+
+    if (path === '/message-revisions' && req.method === 'GET') {
+      //[[ WHAT THE USER WROTE BEFORE THEY EDITED IT.
+      //
+      //   Oldest first, because this is read as a history: "you first asked X, then Y, and now Z"
+      //   only makes sense in the order it happened.
+      //
+      //   No ownership check here — this object is only reachable through the worker route, which
+      //   resolves the caller with `withOwnedProject` first. Said out loud because the absence of a
+      //   check on a route that returns someone's own words should read as a decision, not as an
+      //   omission.
+      const id = url.searchParams.get('id') ?? '';
+      if (!id) return json({ error: 'expected a message id' }, 400);
+      const rows = this.sql
+        .exec(`select seq, content, created_at from message_revisions where message_id = ? order by seq asc`, id)
+        .toArray() as { seq: number; content: string; created_at: number }[];
+      return json({
+        revisions: rows.map((r) => ({ seq: r.seq, content: r.content, createdAt: new Date(r.created_at).toISOString() })),
       });
     }
 
@@ -1468,7 +1538,11 @@ export class SessionDO extends DurableObject<Env> {
             }
           : null,
         recentOps,
-      });
+        // Typed against the shared shape the browser panel reads, so a renamed field here fails the
+        // build rather than emptying a row on somebody's screen. This route was tested and had no
+        // caller in apps/web for a long time, which is precisely the arrangement in which that
+        // happens quietly.
+      } satisfies StudioDiagnostics);
     }
 
     //[[ DISCONNECT THIS STUDIO. The route the documentation has been promising.
@@ -1504,6 +1578,48 @@ export class SessionDO extends DurableObject<Env> {
     //   new id — would otherwise have to re-pair to get out of a permanent refusal. Clearing the
     //   binding is enough: the next identifiable state event binds, which is the same path a
     //   first-time pairing takes. ]]
+    //[[ THROW AWAY THE WORK THAT IS WAITING.
+    //
+    //   Automatic cancellation was already built and proven: finishRun drops every op the ending
+    //   run queued and resolves each dropped waiter with a `transport` failure rather than deleting
+    //   it quietly. There was no EXPLICIT cancellation anywhere — the only queue mutations in this
+    //   object were push, splice-on-poll, and that run-ended purge. So a user watching twelve
+    //   changes stack up behind a Studio that had closed could not say "forget them": Stop reached
+    //   only the ops belonging to a live run, and everything else sat waiting to be applied at
+    //   whatever moment Studio came back, possibly to a place the user had since edited by hand.
+    //
+    //   THE WAITERS ARE RESOLVED, NOT DROPPED, and with `transport` rather than `timeout`. A
+    //   dropped waiter becomes a 30-second timeout, and `timeout` is the one failure kind that is
+    //   not safe to retry, because it means "this may already have been applied". A discarded op
+    //   provably never reached Studio, so saying so is both true and the more useful answer. ]]
+    if (path === '/studio/queue' && req.method === 'DELETE') {
+      const discarded = this.opQueue;
+      this.opQueue = [];
+      await this.ctx.storage.put('opQueue', this.opQueue);
+      for (const op of discarded) {
+        const waiter = this.opWaiters.get(op.id);
+        if (waiter) {
+          this.opWaiters.delete(op.id);
+          waiter({
+            id: op.id,
+            ok: false,
+            error: 'This change was discarded before Studio collected it',
+            failure: WORKER_FAILURES.runEnded,
+          });
+        }
+      }
+      // Every open tab is told the new depth, or the panel keeps offering to discard work that is
+      // already gone.
+      this.broadcast({
+        type: 'studio_status',
+        connected: await this.pluginConnected(),
+        lastSeenAt: await this.pluginLastSeenAt(),
+        queuedOps: 0,
+        place: this.boundPlace,
+      });
+      return json({ ok: true, discarded: discarded.length });
+    }
+
     if (path === '/studio/place/rebind' && req.method === 'POST') {
       await this.ctx.storage.delete('pluginPlace');
       this.boundPlace = null;
@@ -1676,9 +1792,11 @@ export class SessionDO extends DurableObject<Env> {
           return;
         }
 
+        // `content` is selected for one reason: it is the only thing this handler destroys that
+        // cannot be reconstructed from anywhere afterwards. Read here, kept below.
         const row = this.sql
-          .exec(`select id, role, created_at from messages where id = ?`, msg.messageId)
-          .toArray()[0] as { id: string; role: string; created_at: number } | undefined;
+          .exec(`select id, role, content, created_at from messages where id = ?`, msg.messageId)
+          .toArray()[0] as { id: string; role: string; content: string; created_at: number } | undefined;
         if (!row) {
           this.broadcast({ type: 'error', code: 'edit', message: 'That message is no longer in the conversation.' });
           return;
@@ -1712,7 +1830,26 @@ export class SessionDO extends DurableObject<Env> {
             this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
             return;
           }
-          await this.startRun(bind, text, mode, undefined, ws);
+          //[[ WHAT THE USER WROTE BEFORE, KEPT.
+          //
+          //   The dialog in front of this says "That cannot be undone", and for the conversation it
+          //   is still true — the replies are gone. What is no longer true is that the PROMPT is
+          //   gone: the text they typed the first time is the one thing here that cannot be
+          //   reconstructed from anything else, and it is now carried onto the message that
+          //   replaces it (startRunInner does the carrying, because only it knows the new row's
+          //   id).
+          //
+          //   `recordsRevision` and not `old !== new`: this same handler serves Try again and
+          //   Regenerate, which resend the prompt VERBATIM so that re-running has one definition.
+          //   Storing those would tell someone who regenerated four times that their message has
+          //   four earlier versions, all identical to the one in front of them. The rule lives in
+          //   @golem/shared because the web app increments its own count optimistically and the
+          //   two must agree. ]]
+          await this.startRun(bind, text, mode, undefined, ws, {
+            from: row.id,
+            previous: recordsRevision(row.content, text) ? row.content : null,
+            at: row.created_at,
+          });
         }
         return;
       }
@@ -1791,8 +1928,9 @@ export class SessionDO extends DurableObject<Env> {
     forcedEffort?: Effort,
     /** The socket that asked, so the refusal reaches that person and not the room. */
     origin?: WebSocket,
+    carryRevisionsFrom?: CarriedRevisions,
   ) {
-    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort, origin));
+    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom));
     if (!attempt.ran) {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
     }
@@ -1804,6 +1942,7 @@ export class SessionDO extends DurableObject<Env> {
     mode: GolemMode,
     forcedEffort?: Effort,
     origin?: WebSocket,
+    carryRevisionsFrom?: CarriedRevisions,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
@@ -1827,6 +1966,42 @@ export class SessionDO extends DurableObject<Env> {
 
     const userMsgId = crypto.randomUUID();
     this.sql.exec(`insert into messages(id, role, mode, content, created_at) values(?,?,?,?,?)`, userMsgId, 'user', mode, text, Date.now());
+
+    //[[ THE EDIT HISTORY FOLLOWS THE MESSAGE.
+    //
+    //   An edit deletes the old row and this inserts a new one with a new id, so a chain left
+    //   keyed on the old id is unreachable: rows nothing can read, and an "edited" mark that never
+    //   appears on the message that was edited. Doing it here rather than in the `edit_resend`
+    //   handler is not a preference — the new id does not exist until the line above.
+    //
+    //   Copy forward, append, then drop the old chain. The other order loses the history, and
+    //   skipping the drop doubles it on every subsequent edit. `seq` continues from the rows just
+    //   carried in: restarting at 0 collides with them, and the primary key turns a lost revision
+    //   into an exception in the middle of someone's run.
+    if (carryRevisionsFrom) {
+      const { from, previous, at } = carryRevisionsFrom;
+      this.sql.exec(
+        `insert into message_revisions(message_id, seq, content, created_at)
+           select ?, seq, content, created_at from message_revisions where message_id = ?`,
+        userMsgId,
+        from,
+      );
+      if (previous !== null) {
+        const seq = (
+          this.sql
+            .exec(`select coalesce(max(seq), -1) + 1 as next from message_revisions where message_id = ?`, userMsgId)
+            .one() as { next: number }
+        ).next;
+        this.sql.exec(
+          `insert into message_revisions(message_id, seq, content, created_at) values(?,?,?,?)`,
+          userMsgId,
+          seq,
+          previous,
+          at,
+        );
+      }
+      this.sql.exec(`delete from message_revisions where message_id = ?`, from);
+    }
 
     const memory = normaliseMemory(await this.ctx.storage.get<unknown>('memory'));
     const studioConnected = await this.pluginConnected();
@@ -1934,7 +2109,12 @@ export class SessionDO extends DurableObject<Env> {
       intent: intent ?? undefined,
     };
     await this.persistAgent(agent);
-    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode });
+    // `userMsgId` tells the client what the row IT optimistically rendered is actually called here.
+    // Without it every user message sent in the current session carried a client-minted id the
+    // server had never heard of, and Edit / Try again / Regenerate — all of which resolve that id
+    // against the messages table — answered "That message is no longer in the conversation" until
+    // the page was reloaded. See web/src/lib/message-identity.ts.
+    this.broadcast({ type: 'msg_start', msgId, role: 'assistant', mode, userMsgId });
     // Exactly once per run, and only after msg_start so the client has a message to attach it to.
     if (intent) this.broadcast({ type: 'run_intent', msgId, intent });
     this.currentMsgId = agent.msgId;

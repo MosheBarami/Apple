@@ -90,7 +90,7 @@ PROJECTS.set(PROJECT, ALICE);
 /* ------------------------------------------------------------------- the environment ---- */
 
 /** What the session Durable Object reports about the project. Mutable, because the tests move it. */
-const SESSION = { agentStatus: 'idle', runs: [], infoFails: false };
+const SESSION = { agentStatus: 'idle', runs: [], infoFails: false, runFails: false };
 /** What the budget Durable Object reports. The kill switch is a real input to `startVerdict`. */
 const BUDGET = { killed: false, fails: false };
 
@@ -115,6 +115,7 @@ function envFor(db) {
           if (path === '/agent-run') {
             const raw = typeof req === 'string' ? init?.body : await req.text();
             SESSION.runs.push(JSON.parse(raw ?? '{}'));
+            if (SESSION.runFails) return new Response(JSON.stringify({ error: 'the place was locked' }), { status: 500 });
             return new Response(JSON.stringify({ ok: true, started: true }), { status: 200 });
           }
           return new Response('{}', { status: 200 });
@@ -165,6 +166,7 @@ function fresh() {
   SESSION.agentStatus = 'idle';
   SESSION.runs = [];
   SESSION.infoFails = false;
+  SESSION.runFails = false;
   BUDGET.killed = false;
   BUDGET.fails = false;
   MEMBERS.set(PROJECT, []);
@@ -359,6 +361,62 @@ test('two presses of Run now in the same millisecond are two fires, not one sile
   assert.notEqual(secondId, firstId, 'two presses are two executions to follow');
   await settle();
   assert.equal(countRows(db.raw, 'select count(*) as n from automation_runs'), 2);
+  db.close();
+});
+
+test("two failed nights are two notifications, because the subject is the EXECUTION", async () => {
+  const db = fresh();
+  const env = envFor(db);
+  SESSION.runFails = true;
+  const { body } = await create(env, ALICE, { trigger: 'manual' });
+  const id = body.automation.id;
+  const url = `https://x/api/automations/${id}/run`;
+
+  const first = (await (await hit(url, post(ALICE), env)).json()).executionId;
+  const second = (await (await hit(url, post(ALICE), env)).json()).executionId;
+  await settle();
+
+  //[[ THE SUBJECT IS THE EXECUTION, NOT THE AUTOMATION, and this is the assertion that holds it.
+  //
+  //   `notifications.ts` dedupes by subject (`dedupeKeyFor`). An automation-id subject would give
+  //   both nights the same key, the second failure would land on the row the owner already read
+  //   and dismissed as `occurrences: 2`, and the failure that means "this is not a blip" would
+  //   never be delivered as its own line. The emitter chose the execution id; nothing checked. ]]
+  const rows = db.raw
+    .prepare(`select subject, dedupe_key, occurrences, recipient_id from notifications where kind = 'automation_failed' order by created_at asc`)
+    .all();
+  assert.equal(rows.length, 2, 'two failed fires, two notifications');
+  assert.deepEqual(rows.map((r) => r.subject).sort(), [first, second].sort());
+  assert.notEqual(rows[0].dedupe_key, rows[1].dedupe_key, 'one key for both nights is one night the owner never sees');
+  assert.equal(rows[0].occurrences, 1);
+  assert.equal(rows[1].occurrences, 1);
+  // Addressed to the automation's OWNER, who is the person spending the Credits — not to whoever
+  // happened to press the button.
+  assert.equal(rows[0].recipient_id, ALICE);
+
+  // And the history agrees with the notification: the fire is recorded as not having run.
+  const history = (await (await hit(`https://x/api/automations/${id}/runs`, as(ALICE), env)).json()).runs;
+  assert.equal(history.length, 2);
+  assert.ok(history.every((r) => r.outcome !== 'ok'), 'a fire the session refused must not read as ok');
+  db.close();
+});
+
+test('a fire that succeeds notifies nobody', async () => {
+  const db = fresh();
+  const env = envFor(db);
+  const { body } = await create(env, ALICE, { trigger: 'manual' });
+  await hit(`https://x/api/automations/${body.automation.id}/run`, post(ALICE), env);
+  await settle();
+  //[[ "NO ROWS" AND "NO TABLE" ARE BOTH "NOBODY WAS NOTIFIED", AND THEY ARE COUNTED SEPARATELY.
+  //
+  //   `notify` builds the notification schema on its first delivery, so a run that notified nobody
+  //   leaves no table at all and a bare count throws. Swallowing that in a try/catch would also
+  //   swallow the day the table exists and the query is wrong, so the two are distinguished here
+  //   and both are accepted — a warning for every automation that worked is a warning nobody reads
+  //   on the night one does not. ]]
+  const made = db.raw.prepare(`select count(*) as n from sqlite_master where type = 'table' and name = 'notifications'`).get().n;
+  const warned = made === 0 ? 0 : countRows(db.raw, `select count(*) as n from notifications where kind = 'automation_failed'`);
+  assert.equal(warned, 0);
   db.close();
 });
 
