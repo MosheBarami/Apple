@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
-import { meterView } from '../components/usage-meter-model';
+import { meterView, spendByKind } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
 import { PLAN_COPY, PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
@@ -371,6 +371,46 @@ function UsageBars({ days }: { days: UsageDay[] }) {
   );
 }
 
+/**
+ * WHAT THOSE THIRTY BARS WENT ON.
+ *
+ * The chart above says WHEN Credits were spent, which is the half this page already had. The other
+ * half — what they were spent on — was in the ledger the whole time, on a `kind` column the history
+ * query discarded. Underneath rather than beside the chart, because it is the follow-up question:
+ * a person looks at a tall bar first and asks about it second.
+ *
+ * The figures are THIS ACCOUNT'S ACTUAL SPEND, unlike the typical per-mode costs beside the ring,
+ * which are published estimates. That distinction is the reason this is worth building at all.
+ */
+function SpendBreakdown({ days }: { days: UsageDay[] }) {
+  const slices = spendByKind(days);
+  // An older worker sends no breakdown. Nothing is the honest rendering of nothing — a bucket
+  // called "Other" holding the whole total would attribute spend to something nobody spent it on.
+  if (slices.length === 0) return null;
+  const total = slices.reduce((n, s) => n + s.credits, 0);
+  return (
+    <div className="spend-kinds">
+      <h3 className="spend-kinds__head">What those Credits went on</h3>
+      <ul className="spend-kinds__list">
+        {slices.map((s) => (
+          <li key={s.key} className="spend-kind">
+            <span className="spend-kind__name">{s.label}</span>
+            {/* The bar is the share of the thirty days, so the eye can compare rows without
+                reading every number. aria-hidden: the figure beside it is the accessible one. */}
+            <span className="spend-kind__bar" aria-hidden="true">
+              <span
+                className="spend-kind__fill"
+                style={{ width: `${total > 0 ? Math.max(2, (s.credits / total) * 100) : 0}%` }}
+              />
+            </span>
+            <span className="spend-kind__value">{formatNumber(s.credits)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /*
  * THE PRO WAITLIST LIVED HERE.
  *
@@ -512,7 +552,10 @@ export function UsagePage() {
               (usage.data.days.length === 0 ? (
                 <p className="muted">No Credits spent yet — go build something.</p>
               ) : (
-                <UsageBars days={usage.data.days} />
+                <>
+                  <UsageBars days={usage.data.days} />
+                  <SpendBreakdown days={usage.data.days} />
+                </>
               ))}
           </div>
 

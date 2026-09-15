@@ -261,10 +261,36 @@ export class QuotaDO extends DurableObject<Env> {
       return Response.json({ ok: true, cleared: target, state: await this.state() });
     }
     if (url.pathname === '/history') {
+      /*
+       * WHAT THE CREDITS WENT ON, not only which day they went.
+       *
+       * Every spend has carried a `kind` since the ledger existed — it is the second column of the
+       * insert above. This query threw it away, so the usage page could draw a bar per day and had
+       * no answer at all to the one question a person asks about a bill: what was this spent ON.
+       *
+       * TWO QUERIES RATHER THAN ONE GROUPED BY (day, kind). The daily totals are what the 30-day
+       * chart is built from; replacing them with one row per (day, kind) would make every bar
+       * report the last kind of that day as if it were the day — a quiet understatement on every
+       * day that had more than one kind of activity, which is every real day. The breakdown RIDES
+       * ON the day row instead, so the parts always sum to the whole they are shown under.
+       *
+       * Both are over the same pruned 35-day ledger and both are tiny; this is not a page of data.
+       */
       const rows = this.sql
         .exec(`select day, sum(credits) as credits, count(*) as events from ledger group by day order by day desc limit 30`)
-        .toArray();
-      return Response.json({ days: rows });
+        .toArray() as { day: string; credits: number; events: number }[];
+      const byKind = this.sql
+        .exec(`select day, kind, sum(credits) as credits from ledger group by day, kind order by day desc, credits desc`)
+        .toArray() as { day: string; kind: string; credits: number }[];
+      const kindsFor = new Map<string, { kind: string; credits: number }[]>();
+      for (const r of byKind) {
+        const list = kindsFor.get(r.day) ?? [];
+        list.push({ kind: String(r.kind), credits: Number(r.credits) });
+        kindsFor.set(r.day, list);
+      }
+      return Response.json({
+        days: rows.map((r) => ({ ...r, kinds: kindsFor.get(r.day) ?? [] })),
+      });
     }
     return Response.json({ error: 'not found' }, { status: 404 });
   }

@@ -4748,6 +4748,68 @@ samp {
   color: var(--muted);
 }
 
+/* ---- WHAT THE CREDITS WENT ON -------------------------------------------
+   Under the thirty-day chart, because it is the follow-up question: the eye goes to a
+   tall bar first and asks what it was second. A share bar per row rather than a pie —
+   the comparison people make here is "which is the big one", and a horizontal rail
+   reads in one pass where a pie needs a legend. */
+.spend-kinds {
+  margin: 1rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.spend-kinds__head {
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.spend-kinds__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.spend-kind {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 8rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.spend-kind__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spend-kind__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.spend-kind__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.75;
+}
+
+.spend-kind__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
 /* The way the ledger leaves. Right-aligned under the list so it reads as an action on
    the thing above it rather than as another history line. */
 .billing-history__export {

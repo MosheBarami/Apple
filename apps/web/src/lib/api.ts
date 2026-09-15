@@ -106,6 +106,15 @@ export interface UsageDay {
   day: string; // YYYY-MM-DD
   credits: number;
   events: number;
+  /**
+   * WHAT that day's Credits went on.
+   *
+   * QuotaDO has recorded a `kind` on every spend since the ledger existed and the history query
+   * used to discard it, so the page could say when Credits went and never what they went on.
+   * Optional because an older worker does not send it — and absent must render as nothing, not as
+   * an "Other" bucket holding the whole day.
+   */
+  kinds?: { kind: string; credits: number }[];
 }
 
 export const fetchMe = (): Promise<MeResponse> =>

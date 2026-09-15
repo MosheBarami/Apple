@@ -38,7 +38,7 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, isPlanId, type QuotaState } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, PRODUCT_MODE_INFO, isPlanId, type QuotaState } from '@golem/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
@@ -223,4 +223,84 @@ export function meterView(
     resetsIn: period === 'month' ? resetsIn(nextMonthResetIso(now), now) : resetsIn(quota.resetsAtIso, now),
     period,
   };
+}
+
+// ---------------------------------------------------------------------------
+// WHAT THE CREDITS WENT ON
+// ---------------------------------------------------------------------------
+//
+// QuotaDO has recorded a `kind` on every single spend since the ledger existed, and the history
+// query threw it away — so the usage page could draw thirty bars saying WHEN Credits went and had
+// no answer at all to the question a person actually asks about a bill: what were they spent ON.
+// The server now sends the breakdown per day. This is the half that turns raw ledger kinds into a
+// list somebody reads, and it is here rather than in the component for the same reason everything
+// else in this file is: a page that decides what a field means decides it again in every place it
+// prints it.
+
+/** One day of spend as the worker now reports it. `kinds` is absent on an older worker. */
+export interface UsageDayRow {
+  day: string;
+  credits: number;
+  events?: number;
+  kinds?: { kind: string; credits: number }[];
+}
+
+export interface SpendSlice {
+  /** The bucket key, stable across renders — combined kinds share one. */
+  key: string;
+  label: string;
+  credits: number;
+}
+
+/**
+ * The ledger kind a person would recognise.
+ *
+ * `chat_<mode>` and `usage_<mode>` are ONE activity charged in two instalments — one Credit on
+ * admission and the settlement when the run finishes — so they share a bucket. Printing them as two
+ * categories would invite the reader to conclude they had been charged twice for one run.
+ *
+ * AN UNRECOGNISED KIND IS TIDIED, NEVER DROPPED. A new spend kind ships on the server before it is
+ * named here, and dropping it would stop the parts summing to the whole silently, in the direction
+ * that flatters us.
+ */
+export function usageKindLabel(kind: string): string {
+  const mode = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
+  if (mode === 'plan' || mode === 'agent' || mode === 'super') return PRODUCT_MODE_INFO[mode].name;
+  if (kind.startsWith('api_')) return 'API';
+  if (kind === 'docs_search') return 'Search';
+  if (kind === 'roadmap_rank') return 'Roadmap';
+  if (!kind) return 'Other';
+  return kind.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
+
+/** The bucket a kind falls in. Two instalments of one run share it; everything else is itself. */
+function bucketKey(kind: string): string {
+  const mode = /^(?:chat|usage)_(.+)$/.exec(kind)?.[1];
+  if (mode) return `mode:${mode}`;
+  if (kind.startsWith('api_')) return 'api';
+  return `kind:${kind}`;
+}
+
+/**
+ * Every day's breakdown collapsed into one list, biggest first.
+ *
+ * NO "OTHER" BUCKET IS INVENTED. A worker that sends no `kinds` produces an empty list, and the
+ * page renders nothing — right, because nothing is known. Filling the day's total into a category
+ * called "Other" would be a figure attributed to something nobody spent it on.
+ */
+export function spendByKind(days: readonly UsageDayRow[] | null | undefined): SpendSlice[] {
+  if (!Array.isArray(days)) return [];
+  const totals = new Map<string, SpendSlice>();
+  for (const day of days) {
+    if (!day || !Array.isArray(day.kinds)) continue;
+    for (const row of day.kinds) {
+      if (!row || typeof row.kind !== 'string') continue;
+      const credits = typeof row.credits === 'number' && Number.isFinite(row.credits) ? row.credits : 0;
+      const key = bucketKey(row.kind);
+      const cur = totals.get(key);
+      if (cur) cur.credits += credits;
+      else totals.set(key, { key, label: usageKindLabel(row.kind), credits });
+    }
+  }
+  return [...totals.values()].sort((a, b) => b.credits - a.credits || a.label.localeCompare(b.label));
 }

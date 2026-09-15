@@ -37,7 +37,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'usage-')), 'usage.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'components', 'usage-meter-model.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { meterView, resetsIn, nextMonthResetIso } = await import(out);
+const { meterView, resetsIn, nextMonthResetIso, spendByKind, usageKindLabel } = await import(out);
 
 const sharedOut = join(mkdtempSync(join(tmpdir(), 'shared-')), 'shared.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
@@ -270,4 +270,70 @@ test('A CALLER THAT KNOWS THE FETCH FAILED SAYS SO, rather than leaving it to be
 
   // And pending still wins over failed — a request in flight has not failed yet.
   assert.equal(meterView(undefined, NOW, { pending: true, failed: true }).tone, 'pending');
+});
+
+// ------------------------------------------------------- WHAT THE CREDITS WENT ON (the breakdown)
+//
+// The ledger has carried a `kind` on every spend since it existed, and the history query threw it
+// away, so the page could say WHEN Credits went and never WHAT they went on. The server now sends
+// it per day; this is the half that turns raw ledger kinds into a list a person reads.
+
+const DAYS = [
+  { day: '2026-09-10', credits: 10, events: 3, kinds: [
+    { kind: 'usage_agent', credits: 8 }, { kind: 'chat_agent', credits: 1 }, { kind: 'docs_search', credits: 1 }] },
+  { day: '2026-09-09', credits: 20, events: 1, kinds: [{ kind: 'usage_super', credits: 20 }] },
+];
+
+test('THE BREAKDOWN SUMS TO THE TOTAL THE CHART ALREADY SHOWS', () => {
+  // A breakdown that does not add up to the figure printed beside it is worse than no breakdown:
+  // it makes the person distrust both numbers, and they have no way to tell which one is wrong.
+  const rows = spendByKind(DAYS);
+  const total = DAYS.reduce((n, d) => n + d.credits, 0);
+  assert.equal(rows.reduce((n, r) => n + r.credits, 0), total, JSON.stringify(rows));
+});
+
+test('THE TWO LEDGER ROWS FOR ONE ACTIVITY ARE ONE LINE', () => {
+  // A run writes `chat_<mode>` when it is admitted and `usage_<mode>` when it settles. They are one
+  // activity charged in two instalments, and printing them as two categories would invite the
+  // reader to conclude they were charged twice.
+  const rows = spendByKind(DAYS);
+  // Filtered by the bucket key rather than by the label: 'super' renders as "Super Agent", so a
+  // label match on /agent/ would call this green while the two instalments were still apart.
+  const agent = rows.filter((r) => r.key === 'mode:agent');
+  assert.equal(agent.length, 1, `Agent must be one row, got ${JSON.stringify(rows)}`);
+  assert.equal(agent[0].credits, 9, '8 settled plus the 1 charged on admission');
+  assert.equal(rows.length, 3, 'Agent, Super Agent and Search — three buckets, not four rows');
+});
+
+test('THE BIGGEST SPEND IS FIRST, because that is the one worth knowing about', () => {
+  const rows = spendByKind(DAYS);
+  for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].credits >= rows[i].credits, JSON.stringify(rows));
+  assert.equal(rows[0].key, 'mode:super', 'the 20-Credit day leads');
+});
+
+test('A KIND THIS PAGE HAS NEVER SEEN IS SHOWN, not dropped and not guessed at', () => {
+  // A new spend kind ships on the server before it is named here. Dropping it would make the parts
+  // stop summing to the whole — silently, and in the direction that flatters us.
+  const rows = spendByKind([{ day: '2026-09-11', credits: 5, events: 1, kinds: [{ kind: 'weird_new_thing', credits: 5 }] }]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].credits, 5);
+  assert.ok(rows[0].label.length > 0);
+  assert.doesNotMatch(rows[0].label, /undefined|_/, `an unknown kind is tidied, not printed raw: ${rows[0].label}`);
+});
+
+test('an older worker that sends no breakdown produces no breakdown, not a wrong one', () => {
+  // `kinds` is absent on a deployment that has not shipped the new query. An empty list means the
+  // page renders nothing, which is right; inventing an "Other" bucket for the day's whole total
+  // would be a category nobody spent anything on.
+  assert.deepEqual(spendByKind([{ day: '2026-09-10', credits: 10, events: 3 }]), []);
+  assert.deepEqual(spendByKind([]), []);
+  assert.deepEqual(spendByKind(undefined), []);
+});
+
+test('the labels are the product’s own words for the modes', () => {
+  assert.match(usageKindLabel('chat_plan'), /plan/i);
+  assert.match(usageKindLabel('usage_super'), /super/i);
+  assert.match(usageKindLabel('api_chat'), /api/i);
+  assert.match(usageKindLabel('docs_search'), /search/i);
+  assert.ok(usageKindLabel('').length > 0, 'even an empty kind gets a word rather than a blank row');
 });
