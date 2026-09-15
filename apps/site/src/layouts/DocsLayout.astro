@@ -28,6 +28,7 @@ const sections = [
     links: [
       { href: '/docs/modes', label: 'Modes: Plan, Agent, Super Agent' },
       { href: '/docs/credits-and-limits', label: 'Credits & limits' },
+      { href: '/docs/billing', label: 'Billing & payments' },
     ],
   },
   {
@@ -61,7 +62,27 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
           <span>Docs navigation</span>
           <span class="docs__chev" aria-hidden="true"></span>
         </summary>
-        <nav aria-label="Documentation">
+        {/* THE DOCS COULD NOT BE SEARCHED AT ALL until this. The nav below is a hand-written list;
+            finding a sentence meant opening pages one at a time. This reads a static index built
+            from the page sources at deploy time (src/pages/docs-index.json.js) and filters it in
+            the browser — it deliberately does NOT call the worker's /api/docs/search, which
+            indexes Roblox's documentation rather than ours and bills a Credit per query. */}
+        <form class="docs__search" role="search" onsubmit="return false">
+          <label class="visually-hidden" for="docs-search">Search the documentation</label>
+          <input
+            type="search"
+            id="docs-search"
+            name="q"
+            placeholder="Search the docs"
+            autocomplete="off"
+            aria-describedby="docs-search-count"
+            aria-controls="docs-search-results"
+          />
+          <p class="docs__searchcount" id="docs-search-count" role="status" aria-live="polite"></p>
+          <ul class="docs__results" id="docs-search-results" hidden></ul>
+        </form>
+
+        <nav aria-label="Documentation" id="docs-nav-list">
           {
             sections.map((section) => (
               <div class="docs__group">
@@ -120,6 +141,82 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 
   .docs__nav > summary {
     display: none;
+  }
+
+  .docs__search {
+    margin-bottom: 1.4rem;
+  }
+
+  .docs__search input {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    font: inherit;
+    font-size: 0.88rem;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+
+  .docs__search input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .docs__searchcount {
+    margin: 0.45rem 0 0;
+    font-size: 0.75rem;
+    color: var(--faint);
+  }
+
+  .docs__searchcount:empty {
+    display: none;
+  }
+
+  .docs__results {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  /* :global BECAUSE THESE NODES ARE BUILT AT RUNTIME. Astro scopes a component's styles by
+     stamping a data attribute onto the elements in its template; a <li> created by innerHTML never
+     gets one, so a scoped rule silently does not match it. Measured: the snippet rendered
+     unclamped and unstyled until these were globalised. The `.docs__results` ancestor is in the
+     template, so the scoping still confines them to this list. */
+  .docs__results :global(a) {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    text-decoration: none;
+    background: var(--surface);
+  }
+
+  .docs__results :global(a:hover) {
+    border-color: var(--accent);
+    text-decoration: none;
+  }
+
+  .docs__results :global(.docs__resulttitle) {
+    color: var(--ink);
+    font-size: 0.86rem;
+    font-weight: 550;
+  }
+
+  /* Two lines of the matching prose. A result list of bare titles would be the nav again, which is
+     the thing this exists to improve on. */
+  .docs__results :global(.docs__resultsnip) {
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .docs__group {
@@ -316,6 +413,85 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 </style>
 
 <script>
+  import { searchDocs, type DocEntry } from '../data/docs-index';
+
+  // WHY THE INDEX IS FETCHED RATHER THAN INLINED. The prose of every docs page is tens of
+  // kilobytes; inlined into each one it would be paid for by every reader, including those who
+  // never type anything. It is fetched once, on the first keystroke, and reused after that.
+  //
+  // AND A FAILURE TO LOAD IS SAID OUT LOUD. A search box that silently finds nothing because its
+  // index 404'd looks exactly like one working over a corpus that does not cover your question,
+  // and the reader draws the second conclusion. It says which, and leaves the nav in place.
+  const input = document.getElementById('docs-search') as HTMLInputElement | null;
+  const results = document.getElementById('docs-search-results') as HTMLUListElement | null;
+  const count = document.getElementById('docs-search-count');
+  const navList = document.getElementById('docs-nav-list');
+
+  let index: DocEntry[] | null = null;
+  let loading: Promise<DocEntry[] | null> | null = null;
+
+  function loadIndex(): Promise<DocEntry[] | null> {
+    if (index) return Promise.resolve(index);
+    loading ??= fetch('/docs-index.json', { cache: 'force-cache' })
+      .then((r) => (r.ok ? (r.json() as Promise<DocEntry[]>) : null))
+      .then((data) => {
+        index = Array.isArray(data) ? data : null;
+        return index;
+      })
+      .catch(() => null);
+    return loading;
+  }
+
+  function escapeHtml(s: string): string {
+    return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
+  }
+
+  function render(query: string, data: DocEntry[] | null) {
+    if (!results || !count) return;
+    if (!query.trim()) {
+      results.hidden = true;
+      results.innerHTML = '';
+      count.textContent = '';
+      if (navList) navList.hidden = false;
+      return;
+    }
+    if (!data) {
+      results.hidden = true;
+      results.innerHTML = '';
+      count.textContent = 'Search is unavailable — the index did not load. The list below still works.';
+      if (navList) navList.hidden = false;
+      return;
+    }
+    const hits = searchDocs(data, query);
+    if (navList) navList.hidden = hits.length > 0;
+    count.textContent =
+      hits.length === 0 ? `Nothing matches “${query}”.` : `${hits.length} page${hits.length === 1 ? '' : 's'}`;
+    results.hidden = hits.length === 0;
+    results.innerHTML = hits
+      .map(
+        (h) =>
+          `<li><a href="${h.path}"><span class="docs__resulttitle">${escapeHtml(h.title)}</span>`
+          + `<span class="docs__resultsnip">${escapeHtml(h.snippet)}</span></a></li>`,
+      )
+      .join('');
+  }
+
+  input?.addEventListener('input', () => {
+    // Render what is typed NOW, not what was typed when the fetch started: the index arrives once
+    // and later keystrokes must not be answered with an earlier query's results.
+    void loadIndex().then((data) => render(input.value, data));
+  });
+
+  input?.addEventListener('keydown', (e) => {
+    // Escape clears the query. Without this it closes the mobile disclosure the box lives in, which
+    // hides the results the reader was looking at.
+    if (e.key === 'Escape' && input.value) {
+      e.stopPropagation();
+      input.value = '';
+      render('', index);
+    }
+  });
+
   // Desktop keeps the nav permanently expanded; mobile treats it as a disclosure.
   const details = document.getElementById('docs-nav-details') as HTMLDetailsElement | null;
   if (details) {

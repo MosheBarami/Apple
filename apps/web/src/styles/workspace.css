@@ -307,6 +307,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Why a pinned conversation sits above newer ones. Quiet — it marks the row, it does not compete
+   with the name for it. */
+.gx-conv__pin {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--gx-ink-3);
+}
+
+.gx-conv.is-active .gx-conv__pin {
+  color: inherit;
+}
+
 .gx-conv:hover {
   background: rgba(245, 242, 236, 0.04);
   color: var(--gx-ink);
@@ -2604,6 +2617,15 @@
   padding: 0.9rem;
 }
 
+/*
+   THE BACKGROUND IS DECLARED, AND IT WAS NOT. `.gx-row` is used on a <button> for the three prompt
+   suggestions on an empty project. No rule set a background, so Chrome supplied its own —
+   `buttonface`, which in dark mode is #6b6b6b: a flat neutral grey in a product whose every token
+   is warm. The first thing anybody sees in a new project was three grey slabs, and no stylesheet
+   in the repository contains that colour.
+   A button with no background does not inherit the page's. It inherits the BROWSER's, and the
+   browser's changes with the colour scheme — which is why this was invisible in light mode.
+*/
 .gx-row {
   display: flex;
   align-items: center;
@@ -2613,6 +2635,20 @@
   border: 1px solid var(--gx-line);
   margin-bottom: 0.45rem;
   font-size: 0.85rem;
+  /* The four the UA supplies and a <button> must give back. */
+  appearance: none;
+  background: var(--gx-raised, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+}
+
+/* A suggestion is an invitation, so it answers the pointer. */
+.gx-seeds .gx-row:hover,
+.gx-seeds .gx-row:focus-visible {
+  border-color: var(--gx-accent, var(--gx-ink-2));
+  background: var(--gx-panel, var(--gx-raised));
 }
 
 .gx-row__main {
@@ -3452,6 +3488,24 @@
 
 .es__action { margin-top: 0.5rem; }
 
+/* The written answer, a step quieter than the action. An empty state gets ONE action (see
+   empty-state.tsx); this is a second thing to READ, so it is typeset as a footnote rather than
+   competing with the button above it. */
+.es__help {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+}
+
+.es__help a {
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.es__help a:hover {
+  color: var(--ink);
+}
+
 .es--creation { --es-edge: color-mix(in srgb, var(--acc-ember) 30%, var(--line)); --es-tint: var(--acc-ember); }
 .es--studio   { --es-edge: color-mix(in srgb, var(--acc-stone) 30%, var(--line)); --es-tint: var(--acc-stone); }
 .es--proven   { --es-edge: color-mix(in srgb, var(--good) 32%, var(--line));      --es-tint: var(--good); }
@@ -4210,6 +4264,73 @@
   margin: 0;
 }
 
+/* "Edited" sits beside Edit on a user turn. Unlike Edit it is ALWAYS drawn rather than revealed on
+   hover: it is a fact about the message, not a tool, and a fact that only appears when the pointer
+   is over it is a fact nobody knows. */
+.gx-user__edited {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.74rem;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.gx-user__edited:hover {
+  color: var(--gx-ink);
+}
+
+.gx-user__edited:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The earlier-versions list. Each version is a block of the user's own words, so it is set as
+   text and not as a diff: a character-level diff of two freely rewritten prompts is noise. */
+.gx-revs {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Logical, not physical: a Hebrew prompt's history has its rule on the right. */
+.gx-revs__item {
+  border-inline-start: 2px solid var(--gx-line);
+  padding-inline-start: 0.75rem;
+}
+
+/* The version in force reads as current, not as one more draft. */
+.gx-revs__item.is-current {
+  border-inline-start-color: var(--gx-accent, #6aa7ff);
+}
+
+.gx-revs__when {
+  margin: 0 0 0.2rem;
+  color: var(--gx-ink-3);
+  font-size: 0.74rem;
+}
+
+.gx-revs__text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A clean run has no sentence to sit beside — only the Regenerate control. It tucks closer to the
+   reply than an outcome line does, so it reads as an affordance on the turn rather than as a
+   verdict on it. */
+.gx-outcome--bare {
+  margin-top: 0.35rem;
+}
+
 .gx-outcome__retry {
   padding: 0;
   border: none;
@@ -4227,6 +4348,26 @@
 }
 
 .gx-outcome__retry:focus-visible {
+  outline: 2px solid var(--gx-accent, #6aa7ff);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* "Why runs stop" sits beside "Try again" and must not look like a second button competing with
+   it: retrying is the action, reading is the alternative when retrying has already failed. Muted
+   rather than accented for exactly that reason. */
+.gx-outcome__help {
+  color: var(--gx-ink-3);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.gx-outcome__help:hover {
+  color: var(--gx-ink-1, inherit);
+}
+
+.gx-outcome__help:focus-visible {
   outline: 2px solid var(--gx-accent, #6aa7ff);
   outline-offset: 2px;
   border-radius: 3px;
@@ -4379,6 +4520,65 @@
   gap: 6px;
   font-size: 0.82rem;
   color: var(--gx-ink-2, var(--gx-ink));
+}
+
+/* --- the tool block list -------------------------------------------------
+   The conventions fieldset above wraps into a row of short chips. This one cannot: each row
+   carries a reason, and the reason is the part that makes the control usable. So the group is a
+   COLUMN, and the checkbox aligns to the top of its two-line label rather than centring against
+   a block of text. */
+
+.prefs__note {
+  margin: 0 0 0.35rem;
+  flex-basis: 100%;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.prefs__group {
+  display: flex;
+  flex-direction: column;
+  /* Wider than the one-line conventions list below it: each row here is two lines, and at 0.4rem
+     the reason of one row sat as close to the label of the next as to its own. */
+  gap: 0.62rem;
+  flex-basis: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.prefs__group-label {
+  margin-top: 0.15rem;
+  color: var(--gx-ink-3);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prefs__check-why {
+  margin-top: 0.1rem;
+}
+
+.prefs__check--reasoned {
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.45;
+}
+
+.prefs__check--reasoned input {
+  /* Nudged down to sit on the first line of the label rather than between the two lines. */
+  margin-top: 0.18rem;
+  flex: none;
+}
+
+.prefs__check-label {
+  display: block;
+  color: var(--gx-ink-2);
+}
+
+.prefs__check-why {
+  display: block;
+  color: var(--gx-ink-3);
+  font-size: 0.75rem;
 }
 
 .prefs__profile {
@@ -5131,6 +5331,44 @@
   overflow-wrap: anywhere;
 }
 
+/* THE STUDIO LINK NOTE — the sentence under the pill (components/ws/studio-link-note.tsx).
+   A strip directly beneath the topbar rather than text inside it: the topbar is a fixed
+   60px row that already truncates a project title at 860px, and a sentence in there would
+   push the pill off the end. It draws only when there is something true to say, so a
+   healthy link costs zero height. */
+.gx-link-note {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 1.1rem;
+  border-bottom: 1px solid var(--gx-line);
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+}
+
+.gx-link-note__text { min-width: 0; }
+
+/* A place mismatch is the one state where the pill is green and nothing will ever build,
+   so it is the one that gets a colour. Everything else here is a timestamp or a queue
+   depth — information, not a problem — and tinting those would spend the warning colour
+   on the ordinary case and leave nothing louder for the state that actually needs it.
+   The tint is on the LEFT EDGE and the text, never a filled background: the sentence has
+   to stay at 4.5:1 and --gx-warn on a wash does not. */
+.gx-link-note--warn {
+  border-inline-start: 2px solid var(--gx-warn);
+  background: color-mix(in srgb, var(--gx-warn) 7%, transparent);
+  color: var(--gx-ink);
+}
+
+/* Small, because it sits inside a one-line strip and must not set that strip's height. */
+.gx-link-note__act {
+  flex: none;
+  min-height: 28px;
+  padding: 0 0.6rem;
+  font-size: 0.75rem;
+}
+
 /* The checkpoint's own words — the field it takes, and the field it shows.
    Distinct from `gx-row__meta` above it: the metadata is derived and the
    description is authored, and a reader has to be able to tell which is which. */
@@ -5150,4 +5388,203 @@
   font-size: 0.84rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------------
+   Saved instructions (automations)
+
+   A reading surface with an editor folded into it. The list has to stay
+   readable when a row carries three notes — paused, dormant, and a
+   daylight-saving disclosure — because those notes are the whole point of the
+   row: an automation whose state the person cannot see is one they cannot
+   trust with their Credits.
+   -------------------------------------------------------------------------- */
+
+.au {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.au-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 9px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 14%));
+}
+
+.au-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.au-item__name {
+  font-size: 0.92rem;
+  font-weight: 560;
+  color: var(--gx-ink);
+  overflow-wrap: anywhere;
+}
+
+.au-item__meta {
+  font-size: 0.78rem;
+  color: var(--gx-ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* A note is not meta. It says something the person has to act on — that this will not start on
+   its own, or which of two mornings a run landed in — so it reads at the weight of a sentence
+   rather than a timestamp. */
+.au-item__note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--gx-warn, #c2943f);
+}
+
+.au-badge {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  border: 1px solid currentcolor;
+}
+
+.au-badge--off {
+  color: var(--gx-ink-3);
+}
+
+.au-item__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.au-item__acts .btn {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.au-editor {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+/* The counter reports; it never corrects. Over-limit is coloured rather than enforced, because
+   the server refuses an over-long value and does not trim one — a client that cut the text short
+   would store a name nobody typed. */
+.au-count {
+  float: inline-end;
+  font-weight: 440;
+  color: var(--gx-ink-3);
+}
+
+.au-count--over {
+  color: var(--gx-bad, #d27653);
+}
+
+.au-err {
+  margin: -0.6rem 0 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gx-bad, #d27653);
+}
+
+.au-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+}
+
+.au-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.au-run {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.au-run__mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--gx-ink-3);
+}
+
+.au-run__mark--good {
+  background: var(--gx-good, #7dad6e);
+}
+
+.au-run__mark--bad {
+  background: var(--gx-bad, #d27653);
+}
+
+.au-run__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.au-run__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.au-run__what {
+  font-size: 0.85rem;
+  color: var(--gx-ink);
+}
+
+.au-run__when,
+.au-run__meta {
+  font-size: 0.75rem;
+  color: var(--gx-ink-3);
+}
+
+.au-run__err {
+  font-size: 0.78rem;
+  color: var(--gx-bad, #d27653);
+  overflow-wrap: anywhere;
+}
+
+/* A <button> wearing a row's class. The UA reset belongs here rather than as seven inline
+   properties at the call site — where it was, which made it invisible to every check that reads
+   stylesheets and impossible to reuse at the next button that needs it. */
+.gx-row__main--button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
 }

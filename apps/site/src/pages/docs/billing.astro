@@ -1,0 +1,113 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { SUPPORT_EMAIL } from '@golem/shared';
+
+// WHY THIS PAGE EXISTS. Apple can take money — a Stripe checkout, a customer portal, a
+// signature-verified webhook, purchased Credits — and had not one written word about any of it.
+// /docs/credits-and-limits covers the quota and its only money words are "no card". The FAQ has ten
+// questions and none about a failed payment, an invoice or cancelling. So the first time a card was
+// declined, the product's entire published position was an email address.
+//
+// EVERY CLAIM BELOW IS READ OFF apps/worker/src/billing.ts, not imagined, and
+// tests/billing-help.test.mjs checks the two load-bearing ones against that file: that `past_due`
+// still entitles (so "your plan keeps working while the card is retried" stays true), and that a
+// lapsed period still drops to free. If someone tightens either rule, this page goes red naming the
+// sentence that became a lie — which is the failure mode a billing page has, and the reason it is
+// the most dangerous kind of documentation to leave behind.
+---
+
+<DocsLayout
+  title="Billing & payments — Apple Docs"
+  description="What happens when a payment fails, where invoices live, how cancelling works, and what to do when a payment went through but the plan has not changed."
+  heading="Billing & payments"
+>
+  <p>
+    Everything to do with money — cards, invoices, cancelling — lives in the billing portal, which
+    is Stripe's, not ours. You reach it from <strong>Usage</strong> in the app
+    (<a href="/app/usage">/app/usage</a>), from the button that reads
+    <em>Manage billing, invoices and cancellation</em>. It appears once you are on a paid plan.
+  </p>
+
+  <h2 id="failed-payment">A payment failed or the card was declined</h2>
+  <p>
+    <strong>Your plan keeps working.</strong> A failed renewal is usually an expired card, and we do
+    not cut off a paying customer at the first retry. Stripe retries over the following days, and
+    for as long as it is retrying you keep the allowance you are paying for.
+  </p>
+  <p>
+    Update the card in the billing portal — that is the whole fix, and it applies immediately. If
+    Stripe gives up before you do, the subscription ends and the account drops to Free: your
+    projects, checkpoints and conversations are untouched, and the daily allowance becomes the free
+    one. Nothing is deleted for non-payment.
+  </p>
+
+  <h2 id="invoices">Where invoices and receipts are</h2>
+  <p>
+    In the billing portal, under your payment history — every invoice, with a PDF, including ones
+    from a subscription that has since ended. We do not hold a second copy of your billing history;
+    the portal is the record.
+  </p>
+  <p>
+    If you need a company name, address or VAT number on them, set it in the portal before the next
+    invoice is issued. Stripe puts on an invoice what it knows at the moment it issues it.
+  </p>
+
+  <h2 id="cancelling">Cancelling</h2>
+  <p>
+    Cancel in the billing portal. <strong>You keep the plan until the end of the period you have
+    already paid for</strong> — cancelling on day 3 of a month does not take the allowance away on
+    day 3. After that date the account is on Free, with everything still in it.
+  </p>
+  <p>
+    Credits you bought separately are not a subscription and do not expire with one. They stay on
+    the account, and they are spent only after the day's included allowance is gone.
+  </p>
+
+  <h2 id="not-applied">I paid, and the plan still shows the old one</h2>
+  <p>
+    Give it a few seconds and press <em>Check again</em> on the Usage page. Plans are applied from
+    Stripe's own webhook rather than from the page you land on after paying — deliberately, because
+    a person who pays and closes the tab has still bought the thing, and a person who reaches the
+    success page by typing the URL has not. The webhook usually arrives before you get back.
+  </p>
+  <p>
+    If it is still wrong after a minute, that is worth reporting rather than paying again. Nothing
+    you do on this page can double-charge you — but a second checkout could, so do not start one.
+  </p>
+
+  <h2 id="upgrading">Changing plan while already on a paid one</h2>
+  <p>
+    Moving between paid tiers happens in the portal, not through a new checkout, in both directions.
+    A second checkout would <em>add</em> a subscription rather than replace the running one, and you
+    would be billed for both. The app already routes you to the portal for this; it is only worth
+    knowing if you were about to go looking for a purchase button.
+  </p>
+
+  <h2 id="charges">What is charged, and what is not</h2>
+  <ul>
+    <li>
+      <strong>Nothing is charged before checkout completes.</strong> Starting one and closing it
+      costs nothing, and the app says so where it happens.
+    </li>
+    <li>
+      <strong>Running out of Credits is not a charge.</strong> A request refused for lack of
+      allowance is refused before it costs anything — see
+      <a href="/docs/credits-and-limits">Credits &amp; limits</a>.
+    </li>
+    <li>
+      <strong>A step that failed is not charged.</strong> Credits come from the compute a call
+      actually reports, so a call that returned nothing reports nothing —
+      <a href="/docs/troubleshooting#model-failures">Troubleshooting</a> covers what each failure
+      means.
+    </li>
+  </ul>
+
+  <div class="callout">
+    <p>
+      A billing question a page cannot answer is worth an email:
+      <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Include the email address on the
+      account and roughly when the payment was — never a card number, which we neither need nor
+      want, and which nobody at Apple can see.
+    </p>
+  </div>
+</DocsLayout>

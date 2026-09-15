@@ -109,6 +109,10 @@ export const TOOL = {
 
   // C05
   choose_asset_source: { kind: 'searching_assets', label: 'Chose an asset source' },
+  // Named for what the player gets, not for the table it read. "Picked the horror kit" is a
+  // sentence the owner can check against the game on screen; "Got a genre kit" is a sentence about
+  // our own data model, which is not a thing anybody watching a build is trying to find out.
+  get_genre_kit: { kind: 'searching_assets', label: 'Picked the style for this genre' },
   search_asset_library: { kind: 'searching_assets', label: 'Searched the asset library' },
   find_verified_asset: { kind: 'searching_assets', label: 'Looked for a verified asset' },
 

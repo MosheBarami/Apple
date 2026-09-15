@@ -46,10 +46,16 @@ async function fetchRecentProjects(): Promise<ProjectRow[]> {
   // Archived projects are excluded here as well as on the dashboard. An archived project that
   // still sits in the sidebar has not been archived from the user's point of view — the sidebar is
   // the list they actually look at.
+  // Pinned first, then recency — the same order the dashboard uses, because a sidebar that
+  // disagrees with the page it sits beside is worse than one that is merely stale.
+  //
+  // `nullsFirst: false` is the whole feature: Postgres sorts `desc` NULLS FIRST by default, which
+  // would put every UNPINNED project above every pinned one.
   const { data, error } = await supabase
     .from('projects')
     .select(PROJECT_COLUMNS)
     .is('archived_at', null)
+    .order('pinned_at', { ascending: false, nullsFirst: false })
     .order('updated_at', { ascending: false })
     .limit(20);
   if (error) throw new Error(error.message);
@@ -182,7 +188,14 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
 
   const projects = useQuery({ queryKey: ['projects-nav'], queryFn: fetchRecentProjects, staleTime: 30_000, retry: 1 });
   const chats = projects.data ?? [];
-  const shown = chats.slice(0, RAIL_LIMIT);
+  // A PINNED CONVERSATION SURVIVES THE LIMIT.
+  //
+  // Sorting pins to the top of a list that is then cut to eight works right up until someone pins
+  // nine things — and the slice, not the order, is what the user actually sees. So the pinned rows
+  // are kept whole and the limit applies to the recency tail beneath them. The query already caps
+  // the fetch at 20, so this cannot grow without bound either.
+  const pinned = chats.filter((p) => p.pinned_at);
+  const shown = [...pinned, ...chats.filter((p) => !p.pinned_at).slice(0, RAIL_LIMIT)];
 
   return (
     <aside
@@ -239,6 +252,15 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, width, o
                     className={({ isActive }) => `gx-conv${isActive ? ' is-active' : ''}`}
                     title={p.name}
                   >
+                    {/* Same reason as the dashboard card: without a mark, a conversation sitting
+                        above newer ones is just a list in the wrong order. */}
+                    {p.pinned_at && (
+                      <span className="gx-conv__pin" aria-label="Pinned" title="Pinned to the top">
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                          <path d="M9.6 1.2 14.8 6.4l-1.1 1.1-1.2-.3-2.6 2.6.2 2.3-1.1 1.1-3-3-3.3 3.3-.8-.8L5.2 9.4l-3-3L3.3 5.3l2.3.2 2.6-2.6-.3-1.2z" />
+                        </svg>
+                      </span>
+                    )}
                     <span className="gx-conv__name">{p.name}</span>
                     {when && (
                       <span className="gx-conv__time" title={at ? new Date(at).toLocaleString() : undefined}>

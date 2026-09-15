@@ -31,6 +31,10 @@
       {
         "name": "BUDGET_DO",
         "class_name": "BudgetDO"
+      },
+      {
+        "name": "DISCORD_DO",
+        "class_name": "DiscordDO"
       }
     ]
   },
@@ -48,6 +52,12 @@
       "tag": "v2",
       "new_sqlite_classes": [
         "BudgetDO"
+      ]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": [
+        "DiscordDO"
       ]
     }
   ],

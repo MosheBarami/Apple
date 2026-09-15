@@ -207,7 +207,11 @@ async function creatorStore() {
             // Verbatim from the Creator Hub: Images, Decals and Meshes default to Open Use, and a
             // free listing displays "free to all creators". Both strings are the source's own.
             licence: 'Roblox Terms of Use — Open Use, free on the Creator Store',
-            licenceUrl: 'https://create.roblox.com/docs/production/publishing/asset-permissions',
+            // Was .../docs/production/publishing/asset-permissions, which 404s — probed
+            // 2026-09-15. A licenceUrl is the answer to "which page did you read this off", so a
+            // dead one makes the provenance on 102,780 rows unanswerable. This path returns 200
+            // and is titled "Asset privacy".
+            licenceUrl: 'https://create.roblox.com/docs/en-us/projects/assets/privacy',
             author,
             tags: [term, category, name],
             // THE POINT OF THIS SOURCE: the id is already a Roblox asset id, so nothing is
@@ -222,6 +226,114 @@ async function creatorStore() {
     }
   }
   return out;
+}
+
+/* ------------------------------------------------- roblox creator store: audio (SFX) --- */
+
+// THE ONLY SFX SOURCE THAT CAN ACTUALLY SHIP, and the survey that found it also found why the
+// others cannot. Roblox audio is NOT Open Use the way Images, Decals and Meshes are: an audio file
+// uploaded under Apple's account stays private to Apple's account, and a customer's place gets
+// silence unless Apple grants that specific universe permission, asset by asset. So Kenney's ten
+// CC0 audio packs, OpenGameArt's sound_effect split and freesound are all real, all permissively
+// licensed, and all USELESS here — the licence permits it and the platform does not.
+//
+// THE CITATION HERE WAS WRONG BEFORE IT WAS CHECKED, which is the reason it is now spelled out.
+// It pointed at .../projects/assets/privacy — a page that says, in terms, that Asset Privacy
+// controls only Images, Decals and Meshes and that "Asset Privacy does not affect: Audio". It was
+// the right conclusion resting on a page that denies it. The page that actually says it is
+// https://create.roblox.com/docs/en-us/audio/assets (read 2026-09-15): you are initially the only
+// one who can view and use your private audio assets, and permission is granted per friend and
+// per experience. Same fact, and now the row points at the page a reviewer can check it against.
+//
+// Audio already listed free on the Creator Store has no such problem: it is public, moderated, and
+// already carries a Roblox asset id, so a place references it and nothing is uploaded, converted or
+// permissioned. Verified live 2026-09-15: assetTypeId 3, audioType SoundEffect, purchasePrice 0,
+// verified creators only.
+//
+// These rows are deliberately NOT insertable. insert_asset builds geometry and refuses typeId 3 by
+// name; an SFX is used by assigning AudioPlayer.AssetId = "rbxassetid://<id>", which is why a kit
+// hands the agent ids rather than an insertion.
+const SFX_TERMS = [
+  // interface — every genre needs these
+  'ui click', 'button click', 'menu select', 'purchase', 'coin pickup', 'level up', 'error buzzer',
+  'notification', 'whoosh ui', 'unlock',
+  // horror
+  'horror stinger', 'jumpscare', 'creepy ambience', 'heartbeat', 'door creak', 'whisper', 'scary drone',
+  // obby / platformer
+  'jump', 'checkpoint', 'respawn', 'lava sizzle', 'bounce', 'win fanfare',
+  // tycoon
+  'cash register', 'conveyor', 'machine hum', 'upgrade', 'dropper',
+  // simulator
+  'pop', 'sparkle', 'pet squeak', 'orb collect', 'rebirth',
+  // racing
+  'engine rev', 'tire screech', 'car crash', 'nitro boost', 'countdown beep',
+  // roleplay
+  'footsteps wood', 'door open', 'phone ring', 'ambient birds', 'rain ambience',
+  // tower defense
+  'turret shoot', 'wave start', 'enemy death', 'tower place', 'explosion',
+  // fps
+  'gunshot', 'reload', 'bullet impact', 'grenade', 'headshot',
+  // anime battle
+  'energy charge', 'sword slash', 'power up aura', 'impact hit', 'teleport',
+  // survival
+  'campfire', 'chop wood', 'craft item', 'eat food', 'wolf howl',
+];
+
+async function creatorStoreAudio() {
+  const out = [];
+  const emptyTerms = [];
+  const failedTerms = [];
+  for (const term of SFX_TERMS) {
+    let pageToken = '';
+    let got = 0;
+    for (let page = 0; page < 3; page++) {
+      const url = `https://apis.roblox.com/toolbox-service/v2/assets:search?searchCategoryType=Audio`
+        + `&query=${encodeURIComponent(term)}&maxPriceCents=0&maxPageSize=100&includeOnlyVerifiedCreators=true`
+        + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : '');
+      let body;
+      // A term that THREW and a term that legitimately returned nothing are different facts and are
+      // counted separately. Merging them is how a harvest reports success on zero rows.
+      try { body = await get(url); } catch (e) { failedTerms.push({ term, why: String(e.message ?? e).slice(0, 100) }); break; }
+      const items = body?.creatorStoreAssets ?? [];
+      if (!items.length) break;
+      for (const a of items) {
+        const asset = a?.asset ?? {};
+        const assetId = Number(asset.id);
+        if (!Number.isSafeInteger(assetId) || assetId <= 0) continue;
+        // Music is excluded on purpose: a three-minute backing track is a different product
+        // decision from a two-second impact, and a kit that mixed them would hand the agent a song
+        // where it asked for a click. Over 30s is a bed, not an effect.
+        if (asset.audioType !== 'SoundEffect') continue;
+        const seconds = Number(asset.durationSeconds ?? 0);
+        if (!Number.isFinite(seconds) || seconds > 30) continue;
+        // The price in the RESPONSE, not the maxPriceCents filter in the request. The filter is
+        // what we asked for; this is what the store answered.
+        if (a?.creatorStoreProduct?.purchasePrice?.quantity?.significand !== 0) continue;
+        const name = asset.name ?? asset.title ?? `audio ${assetId}`;
+        out.push(row({
+          id: `creator_store/audio/${assetId}`,
+          name,
+          kind: 'sfx',
+          source: 'creator_store',
+          sourceUrl: `https://create.roblox.com/store/asset/${assetId}`,
+          // Verbatim from the listing: free. NOT the "Open Use" string the mesh and decal rows
+          // carry — audio is not Open Use, and recording it as if it were would be exactly the
+          // inferred-licence mistake this file exists to refuse.
+          licence: 'Roblox Terms of Use — free on the Creator Store audio library',
+          licenceUrl: 'https://create.roblox.com/docs/en-us/audio/assets',
+          author: a?.creator?.name ?? asset.artist ?? 'Roblox creator',
+          tags: ['sfx', 'audio', term, name],
+          robloxAssetId: assetId,
+        }));
+        got++;
+      }
+      pageToken = body?.nextPageToken ?? '';
+      if (!pageToken) break;
+    }
+    if (!got) emptyTerms.push(term);
+    await sleep(120);
+  }
+  return { rows: out, emptyTerms, failedTerms, termsTried: SFX_TERMS.length };
 }
 
 /* -------------------------------------------------------------------------- iconify --- */
@@ -716,6 +828,7 @@ export async function sketchfab({ fetchPage = get, sleepMs = 200 } = {}) {
 
 const SOURCES = {
   creator_store: creatorStore,
+  creator_store_audio: creatorStoreAudio,
   iconify,
   game_icons: gameIcons,
   opengameart: openGameArt,
@@ -789,7 +902,7 @@ for (const [name, fn] of run) {
   console.error(`${name}: ${kept.length} kept, ${duplicates} duplicate ids, ${dropped} dropped on licence  ${JSON.stringify(byKind)}`);
 }
 
-// A combined index, so one file answers "how big is the library" without reading six.
+// A combined index, so one file answers "how big is the library" without reading nine.
 //
 // A SOURCE WITH NO PART FILE WAS NOT RUN. It did not return nothing, and the index must not say it
 // did. This rebuild used to be a plain sum over whichever files happened to be on disk, so
@@ -799,8 +912,18 @@ for (const [name, fn] of run) {
 // Nothing was lost from the library; the file describing the library simply started lying about
 // it. So an absent source is carried forward from the previous index and MARKED as not re-run,
 // and the total says how much of itself is fresh.
+//
+// CARRYING FORWARD ONLY WORKS FOR A SOURCE THAT WAS MEASURED ONCE. A source with no part file AND
+// no entry in the previous index has never been measured at all — there is nothing to carry and
+// nothing to sum — and a connector added since the last full sweep is exactly that. So those are
+// named on their own line rather than omitted, because an index that simply left them out would
+// read as a complete count of a library it had not finished looking at. Two different facts, two
+// different lists: `carriedForward` is an old measurement, `neverHarvested` is no measurement.
 const indexPath = join(OUT_DIR, 'index.json');
 const previous = existsSync(indexPath) ? JSON.parse(readFileSync(indexPath, 'utf8')) : null;
+const neverHarvested = Object.keys(SOURCES)
+  .filter((n) => !existsSync(join(OUT_DIR, `${n}.json`)))
+  .filter((n) => !(n in (previous?.perSource ?? {})));
 const parts = Object.keys(SOURCES)
   .map((n) => join(OUT_DIR, `${n}.json`))
   .filter(existsSync)
@@ -821,7 +944,12 @@ writeFileSync(indexPath, JSON.stringify({
   generatedAt: NOW,
   total: freshTotal + carriedTotal,
   freshlyHarvested: freshTotal,
+  freshSources: parts.map((p) => p.source),
   carriedForward: carried.map(([n]) => n),
+  // Never [] silently: an empty array here is the claim that every source in SOURCES is covered by
+  // a measurement — fresh or carried — so it has to be produced by actually checking each one.
+  neverHarvested,
+  totalCoversMeasuredSourcesOnly: neverHarvested.length > 0,
   // Named `…Known`, with its companion list, because the honest value here is a FLOOR and a bare
   // `usableWithoutUpload: 0` would be read as "none" by anyone who did not also read the list.
   usableWithoutUploadKnown: freshWithRobloxId + carriedWithRobloxId,
@@ -838,6 +966,9 @@ console.error(
   `\nTOTAL ${freshTotal + carriedTotal} rows · ${freshWithRobloxId + carriedWithRobloxId} already carry a Roblox asset id`
   + (carried.length ? `\n  (${freshTotal} fresh; ${carriedTotal} carried forward from ${carried.map(([n]) => n).join(', ')}, NOT re-harvested)` : ''),
 );
+if (neverHarvested.length) {
+  console.error(`that total EXCLUDES ${neverHarvested.join(', ')} — no part file and no previous entry, so those sources were not counted, not measured as empty`);
+}
 }
 
 // `process.argv[1]` is the script node was told to run. When this file is imported instead — by a
