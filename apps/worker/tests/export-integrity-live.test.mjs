@@ -56,7 +56,9 @@ PROJECTS.set(PROJECT, ALICE);
 
 const MESSAGES = [
   { id: 'm1', role: 'user', mode: null, content: 'build a lobby with a spinning portal', toolTrace: null, createdAt: '2026-09-14T10:00:00.000Z' },
-  { id: 'm2', role: 'assistant', mode: 'build', content: 'Done — the portal spins and teleports.', toolTrace: null, createdAt: '2026-09-14T10:00:09.000Z' },
+  // Deliberately not ASCII: a Content-Length counted in CHARACTERS passes on a transcript of
+  // plain English and under-declares this one, which is the transfer that then reports 118%.
+  { id: 'm2', role: 'assistant', mode: 'build', content: 'Done — the portal spins 🌀 and teleports to 市场.', toolTrace: null, createdAt: '2026-09-14T10:00:09.000Z' },
 ];
 const PAYLOAD = {
   project: { id: PROJECT, name: 'Tower Defence' },

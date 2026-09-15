@@ -17,6 +17,8 @@ import { useAuth } from '../lib/auth';
 const WHY: Readonly<Record<SensitiveAction, string>> = {
   'change-email': 'Changing the address on an account is how an account gets taken over, so this one asks first.',
   'change-password': 'Anyone sitting at an unlocked screen could otherwise lock you out of your own account.',
+  'remove-two-step':
+    'Removing the second step leaves your password as the only thing protecting this account, so this one asks first.',
   'sign-out-everywhere': 'This ends every session on every device, including ones you are not holding.',
   'reset-settings': 'This puts every personal setting back to its default and cannot be undone.',
 };

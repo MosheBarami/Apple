@@ -17,6 +17,7 @@ import type {
   StudioEventState,
 } from '@golem/shared';
 import type { PhaseMark } from '../components/ws/activity-model';
+import type { RestoreStatus } from './restore-status';
 import { fetchCheckpoints, fetchMessages } from './api';
 import {
   MOCK_MODE,
@@ -200,11 +201,30 @@ export interface ProjectSocket {
   playtest: PlaytestRun | null;
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
+  /**
+   * The restore this project is doing, or the last one it did, or null.
+   *
+   * NEVER synthesised here, for the same reason as `playtest` above: if the worker has not sent a
+   * `restore_status`, this app knows nothing about any restore and the drawer says nothing. A
+   * spinner started by the click rather than by the server would keep spinning through a worker
+   * that never received the frame.
+   */
+  restoreStatus: RestoreStatus | null;
   sendChat: (text: string, mode: GolemMode) => boolean;
+  /**
+   * "I am still here, and this is what I am doing."
+   *
+   * The frame has been in the protocol and handled by the session DO since presence was written,
+   * and nothing in this app ever sent one — so `typing` could not occur and a third of the
+   * vocabulary the other people's faces are rendered from was unreachable. Returns whether it
+   * went, like every other send here: a closed socket is not a presence update.
+   */
+  signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
   editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
   stop: () => void;
-  createCheckpoint: (label: string) => void;
+  /** @param description what the snapshot contains or why it was taken. Optional — see ClientMsg. */
+  createCheckpoint: (label: string, description?: string) => void;
   restoreCheckpoint: (checkpointId: string) => void;
   reloadHistory: () => void;
   reloadCheckpoints: () => void;
@@ -307,6 +327,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const [frames, setFrames] = useState<StudioFrame[]>([]);
   const [playtest, setPlaytest] = useState<PlaytestRun | null>(null);
   const [checkpoints, setCheckpoints] = useState<CheckpointMeta[]>([]);
+  const [restoreStatus, setRestoreStatus] = useState<RestoreStatus | null>(null);
   const [checkpointsState, setCheckpointsState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -711,6 +732,12 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           return [msg.checkpoint, ...without].sort((a, b) => b.createdAt - a.createdAt);
         });
         break;
+      case 'restore_status':
+        // Straight through, latest wins. The worker owns the whole record — which phase, the
+        // plugin's counts, the caveat — precisely so the drawer cannot drift from what actually
+        // happened to the place.
+        setRestoreStatus(msg);
+        break;
       case 'studio_frame':
         // Uncompressed RGB is heavy, so only the most recent handful are kept
         // in memory. They are never persisted.
@@ -932,13 +959,20 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     [sendRaw],
   );
 
+  const signalPresence = useCallback(
+    (activity: 'viewing' | 'typing' | 'building') => sendRaw({ type: 'presence', activity }),
+    [sendRaw],
+  );
+
   const stop = useCallback(() => {
     sendRaw({ type: 'stop' });
   }, [sendRaw]);
 
   const createCheckpoint = useCallback(
-    (label: string) => {
-      sendRaw({ type: 'checkpoint_create', label });
+    (label: string, description?: string) => {
+      // Omitted rather than sent empty: the worker turns blank into null, and a frame that always
+      // carries the field would make "they wrote nothing" indistinguishable from an older client.
+      sendRaw(description ? { type: 'checkpoint_create', label, description } : { type: 'checkpoint_create', label });
     },
     [sendRaw],
   );
@@ -965,7 +999,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     playtest,
     checkpoints,
     checkpointsState,
+    restoreStatus,
     sendChat,
+    signalPresence,
     editAndResend,
     stop,
     createCheckpoint,

@@ -147,74 +147,25 @@ test('the pill names the place even when `state` never arrived', () => {
 test('A MISMATCH OFFERS THE ONE BUTTON THAT ENDS IT', () => {
   // The sentence names the problem; without this the user reads "nothing will build" and has
   // nowhere to click. The route has existed since the place guard shipped.
-  assert.match(workspace, /rebindStudioPlace/, 'the rebind call must be wired');
+  assert.match(workspace, /rebindPlaceRequest\(projectId\)/, 'the rebind call must be wired');
   assert.ok(/studio\.link\.placeMismatch/.test(workspace), 'and shown only while there IS a mismatch');
 });
 
-// ------------------------------------------------------------------ the panel behind the pill
+// ------------------------------------------------------------------ discarding the waiting work
 
-const panel = code(readFileSync(join(WEB, 'src', 'components', 'ws', 'studio-link-panel.tsx'), 'utf8'));
 const api = code(readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8'));
-const DOCS = join(WEB, '..', 'site', 'src', 'pages', 'docs');
-
-test('THE DIAGNOSTICS ENDPOINT HAS A CALLER AT LAST', () => {
-  // Owner-authorized, rich, tested on the worker, and reachable only by curl: grepping apps/web/src
-  // for "diagnostics" returned two unrelated comments, and lib/api.ts had no Studio functions.
-  assert.match(api, /studio\/diagnostics/, 'api.ts must call the route');
-  assert.match(panel, /studioDiagnostics\(projectId\)/, 'and the panel must be what calls it');
-});
-
-test('the panel is MOUNTED and reachable, not another finished component with no importer', () => {
-  assert.match(workspace, /import \{ StudioLinkPanel \}/);
-  assert.match(workspace, /drawer === 'studio' && <StudioLinkPanel/, 'rendered only while its drawer is open');
-  assert.match(workspace, /<Drawer open=\{drawer === 'studio'\}/, 'and given a Drawer to live in');
-  // A drawer name missing from DRAWERS restores as closed for ever — see the comment on the union.
-  assert.match(workspace, /const DRAWERS = \[[^\]]*'studio'[^\]]*\]/, "DRAWERS must accept 'studio'");
-  assert.match(workspace, /id: 'ws-studio'/, 'and it needs a palette command like every other drawer here');
-});
-
-test('THE PILL IS THE WAY IN — it was a dead span', () => {
-  // The one thing on screen that names the Studio link, with nothing behind it.
-  assert.match(
-    workspace,
-    /className="gx-pill is-live"[\s\S]{0,300}?onClick=\{\(\) => setDrawer\('studio'\)\}/,
-    'the connected pill must open the panel',
-  );
-});
-
-test('DISCONNECT EXISTS, because three shipped docs pages say it does', () => {
-  // docs/connect, docs/plugin and docs/troubleshooting have all been telling users to "disconnect
-  // from the web workspace". This asserts the instruction and the control together, so removing
-  // either one without the other fails here.
-  const promises = ['connect.astro', 'plugin.astro', 'troubleshooting.astro']
-    .map((f) => readFileSync(join(DOCS, f), 'utf8'))
-    .filter((t) => /disconnect from the web/i.test(t));
-  assert.equal(promises.length, 3, 'the docs pages that make the promise moved or changed wording');
-  assert.match(api, /studio\/disconnect/, 'api.ts must have the call');
-  assert.match(panel, /disconnectStudio\(projectId\)/, 'the panel must make it');
-  assert.match(panel, /Disconnect Studio/, 'and label it the way the docs name it');
-});
-
-test('and it is behind a confirmation, because it revokes a credential', () => {
-  // The Studio on the other end finds out on its next poll, in another window, as a status going
-  // grey, and the way back is a fresh pairing code typed into the plugin.
-  assert.match(panel, /<ConfirmDialog/, 'a revoke with no ceremony is a mis-click away');
-  assert.match(panel, /confirmLabel="Disconnect"/);
-});
-
-test('the panel says WHEN a pairing lapses — nothing read `pairingExpiresAt` before', () => {
-  assert.match(panel, /pairingNote\(d\.pairingExpiresAt/, 'the 30-day clock must be read');
-});
+const dialog = code(readFileSync(join(WEB, 'src', 'components', 'pairing-dialog.tsx'), 'utf8'));
 
 test('THE WAITING WORK CAN BE DISCARDED, and only while there is any', () => {
   // Automatic cancellation existed — a run that ends takes its queued ops with it — and explicit
-  // cancellation did not: no route and no DO path cleared the queue on request. A user whose
+  // cancellation did not: no route and no DO path cleared the queue on request, so a user whose
   // Studio closed mid-build watched the depth climb with no control over it.
+  //
+  // The control lives on the connection record beside Disconnect and Rebind, which is where the
+  // other three Studio routes are already called from; a second Studio surface would be two ways
+  // into one subject, which is the duplication this repository keeps finding.
   assert.match(api, /studio\/queue/, 'api.ts must have the call');
-  assert.match(api, /method: 'DELETE'/, 'and it is a DELETE, which is what the session listens for');
-  assert.match(panel, /discardStudioQueue\(projectId\)/, 'the panel must make it');
-  assert.match(panel, /d\.link\.queuedOps > 0 &&/, 'offered only when there is something to discard');
-  // The confirmation reports the SERVER's count. The browser's number is one op collection out of
-  // date the moment it is rendered, and "Discarded 3" over a queue that had 2 is a small lie.
-  assert.match(panel, /Discarded \$\{r\.discarded\}/, 'say what was actually discarded');
+  assert.match(api, /discardStudioQueue[\s\S]{0,240}?method: 'DELETE'/, 'and it is a DELETE, which is what the session listens for');
+  assert.match(dialog, /discardStudioQueue\(projectId\)/, 'the record must make it');
+  assert.match(dialog, /link\.queuedOps > 0 &&/, 'offered only when there is something to discard');
 });

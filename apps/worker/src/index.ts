@@ -22,11 +22,12 @@ import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from 
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
-import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type Membership } from './collab';
+import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type ShareResource } from './collab';
 import {
   isShareToken,
   kvGrantBarred,
   listKvGrants,
+  listShareLinks,
   newShareToken,
   patchKvGrant,
   putKvGrant,
@@ -57,10 +58,12 @@ import { kvWorkspace } from './webtools';
 import {
   copyWorkspaceFile,
   deleteWorkspaceFile,
+  deleteWorkspaceFolder,
   freeCopyPath,
   historyOf,
   listWorkspace,
   moveWorkspaceFile,
+  moveWorkspaceFolder,
   readVersionOf,
   restoreWorkspaceFile,
   revertWorkspaceFile,
@@ -69,9 +72,18 @@ import {
   WORKSPACE_OP_STATUS,
   type WorkspaceOpCode,
 } from './workspace-files';
+import { zipStoredStream } from './zip-write';
 import { auditCitations, corpusCensus, renderCitedContext, searchDocsDetailed } from './rag';
 import type { Citation, RetrievalOutcome } from './retrieval';
 import { serveStatic, ensureStaticTables } from './static';
+import {
+  handleDiscordRequest,
+  editOriginal,
+  registerCommands,
+  type DiscordPorts,
+  type LinkRecord,
+  type RedeemResult,
+} from './discord';
 import {
   EVENT_KINDS,
   breakdownBy,
@@ -156,7 +168,25 @@ import {
   PROFILE_FIELDS,
 } from './preferences';
 import { allModels } from './providers/registry';
-import { toolNames } from './tools';
+import { toolNames, toolDefs } from './tools';
+import {
+  MCP_METHOD_HEADER,
+  MCP_NAME_HEADER,
+  MCP_PROTOCOL_HEADER,
+  MCP_TOOL_NAMES,
+  RPC,
+  discoverResult,
+  headerDisagreement,
+  initializeResult,
+  mcpTool,
+  mcpToolList,
+  metaVersion,
+  negotiateVersion,
+  parseRpc,
+  rpcError,
+  rpcResult,
+  toolResult,
+} from './mcp';
 import { creditsForNeurons } from './pricing';
 import {
   API_SCOPES,
@@ -219,7 +249,7 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
+import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
 import { isPlanId, PLAN_IDS, PRICE_CURRENCY, type PlanId } from '@golem/shared';
 import { withSchema } from './schema-once';
 
@@ -228,6 +258,7 @@ export { QuotaDO } from './do/quota';
 export { PairingDO } from './do/pairing';
 export { AdminDO } from './do/admin';
 export { BudgetDO } from './do/budget';
+export { DiscordDO } from './do/discord';
 
 type Vars = {
   user: AuthedUser;
@@ -269,6 +300,24 @@ function grantedStub(c: PublicCtx): { id: string; stub: DurableObjectStub } | nu
   const key = c.get('apiKey');
   const id = c.req.param('id') ?? '';
   if (!key.projects.some((p) => p.id === id)) return null;
+  return grantedProjectStub(c, id);
+}
+
+/**
+ * The same question for a project id that did NOT come out of the path.
+ *
+ * `/v1/mcp` is one path carrying many operations, so the project a call acts on arrives in the
+ * JSON-RPC arguments. That is a more dangerous shape than a path parameter — the middleware's own
+ * grant check keys off `match.params.id` and therefore cannot see it — so the id gets the identical
+ * set-membership test against the grant that was proven under RLS at mint time, and a session is
+ * materialised only after it passes.
+ *
+ * Both callers go through here, so there is one place where an id becomes a SessionDO on this
+ * surface, and `sessionStub` is not reachable from a `/v1` handler at all.
+ */
+function grantedProjectStub(c: PublicCtx, id: string): { id: string; stub: DurableObjectStub } | null {
+  const key = c.get('apiKey');
+  if (!id || !key.projects.some((p) => p.id === id)) return null;
   return { id, stub: sessionStub(c.env, id) };
 }
 
@@ -417,7 +466,7 @@ app.use('/api/*', async (c, next) => {
  * leaving this line in place would turn the endpoint into an open subscription dispenser, which is
  * why billing-route.test.mjs asserts both halves together.
  */
-const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook'];
+const AUTH_EXEMPT = ['/api/health', '/api/studio/claim', '/api/studio/poll', '/api/waitlist', '/api/billing/webhook', '/api/discord/interactions'];
 app.use('/api/*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (AUTH_EXEMPT.includes(path) || path.startsWith('/api/admin/')) return next();
@@ -530,16 +579,20 @@ async function withOwnedProject(
   c: { env: Env; get: (k: 'user') => AuthedUser },
   projectId: string,
   action?: CollabAction,
+  /** What this route is reaching for, so a scoped grant opens its own resource and nothing else. */
+  resource?: ShareResource,
 ) {
   const user = c.get('user');
   if (!UUID_RE.test(projectId)) return null;
   const project = await getOwnedProject(c.env, user.jwt, projectId);
-  let membership: Membership | null = project ? { userId: user.userId, role: 'owner', via: 'owner' } : null;
+  let membership: Membership | null = project
+    ? { userId: user.userId, role: 'owner', via: 'owner', scope: 'project', resourceId: null }
+    : null;
   let shared: ProjectRow | null = null;
   if (!project) {
     // No action named ⇒ owner-only, and the owner path just said no.
     if (action === undefined) return null;
-    const access = await getProjectAccess(c.env, user, projectId, action);
+    const access = await getProjectAccess(c.env, user, projectId, action, Date.now(), resource);
     if (access.project === null) return null;
     shared = access.project;
     membership = access.membership;
@@ -819,7 +872,12 @@ app.get('/api/projects/:id/search', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const url = new URL(c.req.url);
-  return ctx.stub.fetch(`https://do/search?${url.searchParams}`);
+  // WHO IS READING, so a record can be called theirs. SET here, overwriting anything the browser
+  // sent: a viewer taken off the query string would let a caller ask "which of these are mine?"
+  // while naming someone else, and the answer would look authoritative.
+  const params = new URLSearchParams(url.searchParams);
+  params.set('viewer', ctx.user.userId);
+  return ctx.stub.fetch(`https://do/search?${params}`);
 });
 
 
@@ -1330,6 +1388,50 @@ app.get('/api/projects/:id/files/content', async (c) => {
  * `sharedAccess(…, 'build')` rather than owner-only, exactly as /files/op is gated, so a viewer is
  * told 403 and looks at their role rather than at a missing file.
  */
+/**
+ * THE WHOLE WORKSPACE, AS ONE FILE.
+ *
+ * Downloading was one file per request, so thirty notes were thirty clicks and keeping a copy of
+ * the project's own notes meant making all of them.
+ *
+ * STORED, AND STREAMED. zip-write.ts holds one entry at a time, so memory is bounded by the largest
+ * file rather than by the archive — and every workspace file is capped at 48 KB, which is also why
+ * compressing them is not worth the data descriptor a streaming deflate would force into the
+ * format. The listing is taken first and each entry is read as it is written; a file deleted in
+ * between is skipped rather than written empty.
+ *
+ * `'read'` like the listing itself: reading the files and reading them all at once is the same
+ * permission, and a collaborator who can open one can have the set.
+ */
+app.get('/api/projects/:id/files/archive', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'), 'read');
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
+  const store = kvWorkspace(c.env.KV, ctx.project.id);
+  const listing = await listWorkspace(store, '');
+  // An archive of nothing saves as a file that opens as nothing, which reads as a broken download
+  // rather than as an empty project. Said in words instead.
+  if (!listing.files.length) return c.json({ error: 'there are no files in this project to download' }, 404);
+
+  const stream = zipStoredStream(
+    listing.files.map((f) => f.path),
+    async (name) => {
+      const got = await store.read(name);
+      return got ? new TextEncoder().encode(got.content) : null;
+    },
+  );
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/zip',
+      // The same slug helper the transcript export uses, so a user-controlled project name cannot
+      // put a quote or a newline into this header. `.zip` through the same path as `.md`/`.json`.
+      'Content-Disposition': `attachment; filename="${exportFilename(ctx.project.name, new Date().toISOString(), 'md').replace(/\.md$/, '.zip')}"`,
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, no-store',
+    },
+  });
+});
+
 app.post('/api/projects/:id/files/content', async (c) => {
   const access = await sharedAccess(c, c.req.param('id'), 'build');
   if (!access.ctx) return collabRefusal(c, access.status);
@@ -1357,7 +1459,7 @@ app.post('/api/projects/:id/files/op', async (c) => {
   // may not change it is told 403 — they already know the project exists, and a 404 would send them
   // looking for a missing file instead of at their own role.
   const access = await sharedAccess(c, c.req.param('id'), 'build');
-  if (!access.ctx) return collabRefusal(c, access.status);
+  if (!access.ctx) return collabRefusal(c, access.status, access.detail);
   const ctx = access.ctx;
   if (!c.env.KV) return c.json({ error: 'this deployment has no file storage' }, 503);
   const store = kvWorkspace(c.env.KV, ctx.project.id);
@@ -1392,6 +1494,19 @@ app.post('/api/projects/:id/files/op', async (c) => {
     }
     case 'revert': {
       const res = await revertWorkspaceFile(store, path, Number(body?.version));
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    // FOLDERS ARE PREFIXES, so these are batches rather than new kinds of operation: a folder move
+    // is every file's move, a folder delete is every file's recoverable delete. They are named
+    // separately from 'move' and 'delete' because the thing they take is not a file — one op that
+    // guessed from the shape of the string would delete a folder for anyone who typed a path
+    // without an extension.
+    case 'move_folder': {
+      const res = await moveWorkspaceFolder(store, path, to);
+      return res.ok ? c.json(res) : workspaceRefusal(res);
+    }
+    case 'delete_folder': {
+      const res = await deleteWorkspaceFolder(store, path);
       return res.ok ? c.json(res) : workspaceRefusal(res);
     }
     default:
@@ -1438,8 +1553,21 @@ app.get('/api/projects/:id/attribution', async (c) => {
 app.post('/api/projects/:id/checkpoints', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  const body = await c.req.json<{ label?: string }>().catch(() => ({ label: '' }));
-  return ctx.stub.fetch('https://do/checkpoint', { method: 'POST', body: JSON.stringify({ label: body.label ?? 'checkpoint' }) });
+  const body = await c.req
+    .json<{ label?: string; description?: string }>()
+    .catch(() => ({ label: '' }) as { label?: string; description?: string });
+  // The author comes from the AUTHENTICATED caller and nothing else. Reading it out of the request
+  // body would let anyone sign a checkpoint with another member's name, and a checkpoint's author
+  // is the field a restore argument turns on. The description, by contrast, IS the caller's own
+  // text — it is a claim about the snapshot, not about a person.
+  return ctx.stub.fetch('https://do/checkpoint', {
+    method: 'POST',
+    body: JSON.stringify({
+      label: body.label ?? 'checkpoint',
+      authorId: ctx.user.userId,
+      description: body.description ?? null,
+    }),
+  });
 });
 
 app.post('/api/projects/:id/restore', async (c) => {
@@ -1523,7 +1651,11 @@ app.post('/api/projects/:id/pairing/cancel', async (c) => {
 app.get('/api/projects/:id/studio/diagnostics', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
-  return ctx.stub.fetch('https://do/studio/diagnostics');
+  // `limit` and `before` page the op log, and the object owns their bounds. Forwarded rather than
+  // re-parsed here: two places deciding what a cursor means is how the two come to disagree, and
+  // this route is the one that has no rows to check it against.
+  const q = new URL(c.req.url).search;
+  return ctx.stub.fetch(`https://do/studio/diagnostics${q}`);
 });
 
 /**
@@ -2132,6 +2264,154 @@ app.get('/api/providers', async (c) => {
   // the boolean survives.
   const ready = selectProvider(c.env, {}).ok;
   return c.json({ ready, models: [], auto: { model: null, reasoning: '' } });
+});
+
+// ---------------------------------------------------------------- discord
+/**
+ * APPLE ON DISCORD.
+ *
+ * `/api/discord/interactions` is the bot. It is PUBLIC — Discord is not a user and carries no JWT
+ * — and it authenticates by an Ed25519 signature over `timestamp + rawBody`, made with a key only
+ * Discord holds. The refusals have the same shape as the Stripe webhook's, for the same reason:
+ * this endpoint can spend a customer's Credits, so unverified it is a button anyone on the internet
+ * may press on somebody else's account.
+ *
+ *   - no public key configured -> 503. Never "no key, so trust the body".
+ *   - bad, forged or stale signature -> 401 BEFORE parsing and BEFORE dispatch, with the reason
+ *     logged and not returned, so a prober cannot use the answer to improve a forgery.
+ *
+ * The raw body is read with .text() inside the handler and parsed only after verification:
+ * re-serialising parsed JSON changes bytes and the signature could never match again.
+ */
+function discordStub(env: Env) {
+  return env.DISCORD_DO.get(env.DISCORD_DO.idFromName('singleton'));
+}
+
+async function okJson<T>(p: Promise<Response>): Promise<T | null> {
+  const res = await p.catch(() => null);
+  if (!res || !res.ok) return null;
+  return (await res.json().catch(() => null)) as T | null;
+}
+
+function discordPorts(env: Env, origin: string): DiscordPorts {
+  const d = discordStub(env);
+  const projectUrl = (projectId: string) => `${origin}/app/projects/${projectId}`;
+  return {
+    redeemLinkCode: async (discordUserId, code) =>
+      (await okJson<RedeemResult>(
+        d.fetch('https://do/redeem', { method: 'POST', body: JSON.stringify({ discordUserId, code }) }),
+      )) ?? { ok: false, reason: 'invalid' },
+    removeLink: async (discordUserId) =>
+      (await okJson<{ removed: boolean }>(
+        d.fetch('https://do/unlink', { method: 'POST', body: JSON.stringify({ discordUserId }) }),
+      ))?.removed === true,
+    findLink: async (discordUserId) =>
+      (
+        await okJson<{ link: LinkRecord | null }>(
+          d.fetch(`https://do/link?discordUserId=${encodeURIComponent(discordUserId)}`),
+        )
+      )?.link ?? null,
+    quota: async (appleUserId) =>
+      await okJson<QuotaState>(env.QUOTA_DO.get(env.QUOTA_DO.idFromName(appleUserId)).fetch('https://do/state')),
+    projectHealth: async (projectId) =>
+      await okJson<{ agentStatus: string; pluginConnected: boolean }>(sessionStub(env, projectId).fetch('https://do/info')),
+    run: async (projectId) =>
+      (await okJson<{ run: RunSnapshot | null }>(sessionStub(env, projectId).fetch('https://do/run-state')))?.run ?? null,
+    startBuild: async (projectId, prompt) => {
+      // The same door a chat message goes through: same run loop, same tools, same quota, same
+      // budget. A separate "Discord build" path would be a second agent to keep in step.
+      const body = await okJson<{ ok?: boolean; error?: string }>(
+        sessionStub(env, projectId).fetch('https://do/agent-run', {
+          method: 'POST',
+          body: JSON.stringify({ text: prompt, mode: 'stone' }),
+        }),
+      );
+      return body?.ok ? { ok: true } : { ok: false, error: body?.error ?? 'the project would not start a run' };
+    },
+    watchRun: async (link, applicationId, token) => {
+      await d
+        .fetch('https://do/watch', {
+          method: 'POST',
+          body: JSON.stringify({
+            projectId: link.projectId,
+            projectName: link.projectName,
+            projectUrl: projectUrl(link.projectId),
+            applicationId,
+            token,
+          }),
+        })
+        .catch(() => {});
+    },
+    projectUrl,
+  };
+}
+
+app.post('/api/discord/interactions', async (c) => {
+  const out = await handleDiscordRequest(c.req.raw, {
+    publicKeyHex: c.env.DISCORD_PUBLIC_KEY,
+    ports: discordPorts(c.env, new URL(c.req.url).origin),
+  });
+  // Reachable only once the signature verified: every other path returns before dispatch, so
+  // nothing below can run for a request that is not from Discord.
+  if (out.deferred && out.reply) {
+    const { applicationId, token } = out.reply;
+    const work = out.deferred;
+    c.executionCtx.waitUntil(work((content) => editOriginal(applicationId, token, content).then(() => undefined)));
+  }
+  return c.json(out.body as Record<string, unknown>, out.status as 200);
+});
+
+/**
+ * Mint a link code for ONE project the caller owns.
+ *
+ * The authenticated half of the proof. Ownership is checked by `withOwnedProject` with the user's
+ * own Supabase token — exactly as pairing and checkpoints are — so a code can only ever carry a
+ * project this user really owns. Whoever presents it in Discord has thereby demonstrated they
+ * were signed in to this account, which is the whole point of the flow.
+ */
+app.post('/api/projects/:id/discord-code', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  void count(c.env, 'discord_code_create');
+  return discordStub(c.env).fetch('https://do/mint', {
+    method: 'POST',
+    body: JSON.stringify({ appleUserId: ctx.user.userId, projectId: ctx.project.id, projectName: ctx.project.name }),
+  });
+});
+
+/** Which Discord account, if any, may currently spend this user's Credits. */
+app.get('/api/discord/link', async (c) => {
+  const user = c.get('user');
+  const body = await okJson<{ link: LinkRecord | null }>(
+    discordStub(c.env).fetch(`https://do/link-for-owner?appleUserId=${encodeURIComponent(user.userId)}`),
+  );
+  return c.json({ link: body?.link ?? null });
+});
+
+/** Revoke from the Apple side. Discord's own `/unlink` revokes the same link from the other end. */
+app.delete('/api/discord/link', async (c) => {
+  const user = c.get('user');
+  const body = await okJson<{ removed: boolean }>(
+    discordStub(c.env).fetch('https://do/unlink', { method: 'POST', body: JSON.stringify({ appleUserId: user.userId }) }),
+  );
+  return c.json({ removed: body?.removed === true });
+});
+
+/**
+ * Publish the slash commands to Discord. The ONLY use of the bot token.
+ *
+ * Owner-key gated and idempotent — the PUT replaces the whole list, so running it twice changes
+ * nothing. It must be run once after the application exists, and again whenever COMMANDS changes,
+ * or Discord keeps offering commands the worker no longer has.
+ */
+app.post('/api/admin/discord/register-commands', async (c) => {
+  if (!c.env.DISCORD_BOT_TOKEN) return c.json({ error: 'no bot token configured' }, 503);
+  const res = await registerCommands(c.env.DISCORD_BOT_TOKEN);
+  if (!res.ok) {
+    console.warn('discord command registration failed:', res.status, res.detail);
+    return c.json({ error: 'discord refused the command list', status: res.status }, 502);
+  }
+  return c.json({ ok: true, registered: res.names });
 });
 
 app.get('/api/me', async (c) => {
@@ -3684,6 +3964,169 @@ app.get('/v1/projects/:id/events', (c) => {
   });
 });
 
+// ---------------------------------------------------------------- /v1 MCP
+/**
+ * The Model Context Protocol endpoint, over Streamable HTTP.
+ *
+ * WHAT AN MCP CLIENT IS, HERE. Claude, Cursor or any other MCP host points at this URL with an API
+ * key and gets a read-only view of a place the key was granted. It is the same credential, the same
+ * grant and the same rate limit as the rest of `/v1` — an MCP server with a login of its own would
+ * be a second front door to the same house, and the second one is always the weaker one.
+ *
+ * THE TRANSPORT IS THE CURRENT REVISION. 2026-07-28 removed protocol-level sessions and the
+ * standalone GET stream, so there is no `Mcp-Session-Id` to issue and nothing to resume: one POST,
+ * one JSON response. GET and DELETE answer 405 rather than 404 so a client on an older revision
+ * learns "no stream here" instead of "no endpoint here". The `initialize` handshake is still served
+ * because that is what shipping clients send today.
+ *
+ * WHERE THE AUTHORISATION IS. The `/v1/*` middleware has already proven the key is real, unrevoked,
+ * unexpired and inside its rate limit — but it could not check scope or project, because the route
+ * table's scope is per PATH and this path carries every MCP method. So `tools/call` asks
+ * `authorizeKey` itself, with the called tool's own scope and the project id out of the arguments,
+ * and only then resolves a session through `grantedProjectStub`. Removing either half would leave a
+ * key able to read a project it was never granted.
+ */
+app.post('/v1/mcp', async (c) => {
+  const key = c.get('apiKey');
+
+  const raw = await c.req.text();
+  let body: unknown;
+  try {
+    body = JSON.parse(raw || 'null');
+  } catch {
+    return c.json(rpcError(null, RPC.parseError, 'The request body is not valid JSON.'), 400);
+  }
+
+  const parsed = parseRpc(body);
+  if (!parsed.ok) return c.json(rpcError(null, parsed.code, parsed.message), 400);
+  const { id, method, params, isNotification } = parsed.request;
+
+  // ---- the headers must agree with the body ----
+  // Checked BEFORE the version is resolved and long before anything is served, because the whole
+  // point is that nothing acts on the body while something upstream acted on a header saying
+  // otherwise. See `headerDisagreement` in mcp.ts for why a server is required to compare these.
+  const disagreement = headerDisagreement(
+    { method: c.req.header(MCP_METHOD_HEADER) ?? null, name: c.req.header(MCP_NAME_HEADER) ?? null },
+    { method, params },
+  );
+  if (disagreement) return c.json(rpcError(id, RPC.headerMismatch, disagreement), 400);
+
+  // The protocol version is the same rule applied to the third standard header. A server that
+  // quietly preferred one of them would answer in a shape the client did not ask for, and the
+  // mismatch is exactly the signal that a client is half-migrated between revisions.
+  const header = c.req.header(MCP_PROTOCOL_HEADER) ?? null;
+  const inBody = metaVersion(params);
+  if (header && inBody && header !== inBody) {
+    return c.json(
+      rpcError(
+        id,
+        RPC.headerMismatch,
+        `Header mismatch: ${MCP_PROTOCOL_HEADER} header value '${header}' does not match body protocol version '${inBody}'.`,
+      ),
+      400,
+    );
+  }
+  const declared = header ?? inBody ?? (method === 'initialize' ? (params.protocolVersion as unknown) : null);
+  const negotiated = negotiateVersion(declared);
+  if (!negotiated.ok) {
+    return c.json(
+      rpcError(id, negotiated.code, 'Unsupported protocol version', { supported: negotiated.supported, requested: negotiated.requested }),
+      400,
+    );
+  }
+  const version = negotiated.version;
+
+  // A notification has no id and therefore no answer. 202 with an empty body, per the transport.
+  if (isNotification) {
+    if (method.startsWith('notifications/')) return c.body(null, 202);
+    return c.json(rpcError(null, RPC.invalidRequest, `'${method}' is a request, not a notification — it needs an id.`), 400);
+  }
+
+  const ok = (result: Record<string, unknown>) => c.json(rpcResult(id, result, version));
+  const fail = (code: number, message: string, data?: unknown) => c.json(rpcError(id, code, message, data));
+
+  switch (method) {
+    case 'server/discover':
+      void count(c.env, 'mcp_discover');
+      return ok(discoverResult());
+
+    case 'initialize':
+      void count(c.env, 'mcp_initialize');
+      return ok(initializeResult(version));
+
+    case 'ping':
+      return ok({});
+
+    case 'tools/list':
+      // `true` for studioConnected on purpose: the published list is a property of this SERVER, not
+      // of whether one project's Studio happens to be open right now. A client lists tools once, at
+      // connect, across every project the key holds. A call made while Studio is shut comes back as
+      // an honest tool error instead of a tool that vanished.
+      return ok({ tools: mcpToolList(toolDefs(true, new Set(MCP_TOOL_NAMES))) });
+
+    case 'tools/call': {
+      const entry = mcpTool(params.name);
+      if (!entry) {
+        // Deliberately the same answer for "no such tool" and "that tool is not on this surface":
+        // a distinct message would tell a stranger's program which of the agent's tools exist.
+        return fail(RPC.invalidParams, `Unknown tool '${String(params.name ?? '')}'. Call tools/list for what this server exposes.`);
+      }
+      const args = params.arguments && typeof params.arguments === 'object' && !Array.isArray(params.arguments)
+        ? { ...(params.arguments as Record<string, unknown>) }
+        : {};
+      const projectId = typeof args.project_id === 'string' ? args.project_id : '';
+      if (!projectId) return fail(RPC.invalidParams, "'project_id' is required. GET /v1/projects lists the projects this key was granted.");
+      delete args.project_id; // the registry tool takes no such argument; it is addressed by session
+
+      const verdict = authorizeKey(key, { scope: entry.scope, projectId, now: Date.now() });
+      if (!verdict.ok) return fail(RPC.forbidden, verdict.message, { code: verdict.code });
+
+      const g = grantedProjectStub(c, projectId);
+      if (!g) return fail(RPC.forbidden, 'This API key was not granted access to that project.', { code: 'project_not_granted' });
+
+      const res = await g.stub.fetch('https://do/mcp-tool', traced(c, {
+        method: 'POST',
+        body: JSON.stringify({ tool: entry.tool, args }),
+      }));
+      const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
+      // 403 is the session's own allowlist refusing — a boundary, so it goes back as a JSON-RPC
+      // error that a model is not invited to retry around. Any OTHER failure (a project with no
+      // session yet, a session that could not serve the call) is a condition the caller can act on
+      // and is reported as a tool error, because dressing it as a permission refusal would send
+      // somebody looking at their API key for a problem that is about their Studio.
+      if (res.status === 403) {
+        return fail(RPC.forbidden, out.error ?? 'That tool is not on the MCP surface.', { code: 'tool_not_on_surface' });
+      }
+      if (!res.ok) return ok(toolResult(JSON.stringify({ error: out.error ?? 'The session could not serve that call.' }), true));
+      void count(c.env, 'mcp_tool_call');
+      return ok(toolResult(out.resultForLlm ?? '{}', out.ok === false));
+    }
+
+    default:
+      return fail(RPC.methodNotFound, `This server does not implement '${method}'. It offers tools only.`);
+  }
+});
+
+/**
+ * No stream, and no session to end.
+ *
+ * Both answer 405 rather than 404 because 404 means "no endpoint", which would send a client on an
+ * older revision looking for another URL. `Allow: POST` says what this endpoint does take.
+ */
+const mcpMethodNotAllowed = (c: PublicCtx) =>
+  c.json(
+    errorBody(
+      405,
+      'method_not_allowed',
+      'The MCP endpoint takes POST only. This server implements Streamable HTTP without the deprecated server-initiated SSE stream, and issues no session to delete.',
+      c.get('requestId'),
+    ),
+    405,
+    { Allow: 'POST' },
+  );
+app.get('/v1/mcp', mcpMethodNotAllowed);
+app.delete('/v1/mcp', mcpMethodNotAllowed);
+
 // ---------------------------------------------------------------- shared projects (collaboration)
 /**
  * THE SHARED SURFACE.
@@ -3711,16 +4154,51 @@ async function sharedAccess(
   c: Context,
   projectId: string,
   action: CollabAction,
-): Promise<{ ctx: NonNullable<Awaited<ReturnType<typeof withOwnedProject>>>; status: 200 } | { ctx: null; status: 403 | 404 }> {
-  const ctx = await withOwnedProject(c, projectId, action);
+  /**
+   * What this route touches. Omitted means PROJECT-WIDE, which is the safe default: a route that
+   * forgets to name its surface refuses every scoped grant rather than admitting one. See
+   * ShareResource in collab.ts for why `'any'` exists and who is allowed to pass it.
+   */
+  resource?: ShareResource,
+): Promise<
+  | { ctx: NonNullable<Awaited<ReturnType<typeof withOwnedProject>>>; status: 200 }
+  | { ctx: null; status: 403 | 404; detail?: string }
+> {
+  const ctx = await withOwnedProject(c, projectId, action, resource);
   if (ctx) return { ctx, status: 200 };
   if (!UUID_RE.test(projectId)) return { ctx: null, status: 404 };
-  const probe = await getProjectAccess(c.env, c.get('user'), projectId, 'read');
-  return { ctx: null, status: probe.project === null ? 404 : 403 };
+  const probe = await getProjectAccess(c.env, c.get('user'), projectId, 'read', Date.now(), resource);
+  if (probe.project !== null) return { ctx: null, status: 403 };
+  // A LIVE GRANT THAT DOES NOT REACH THIS ROUTE IS NOT "NO SUCH PROJECT". Someone holding a
+  // chat link can already prove the project exists; 404 would hide the only fact they can act
+  // on — that their link opens the conversation and not the project around it.
+  return probe.decision.reason === 'scoped_grant'
+    ? { ctx: null, status: 403, detail: 'scoped_grant' }
+    : { ctx: null, status: 404 };
 }
 
-const collabRefusal = (c: Context, status: 403 | 404) =>
-  c.json({ error: status === 403 ? 'forbidden' : 'not found' }, status);
+const collabRefusal = (c: Context, status: 403 | 404, detail?: string) =>
+  c.json({ error: status === 403 ? 'forbidden' : 'not found', ...(detail === undefined ? {} : { detail }) }, status);
+
+/**
+ * WHICH SURFACE A COLLAB ROUTE TOUCHES, read from the target it names.
+ *
+ * A comment on a MESSAGE is on the chat surface; a comment on a BUILD or a VERSION is on that
+ * build. Anything else — a comment on the project, a target this function does not recognise, a
+ * build named with no id — is project-wide, which is the refusing answer for a scoped grant. The
+ * default direction matters more than the mapping: an unrecognised target must narrow the caller's
+ * access, never widen it.
+ */
+function targetResource(body: Record<string, unknown>): ShareResource | undefined {
+  const kind = typeof body.targetKind === 'string' ? body.targetKind : null;
+  const id = typeof body.targetId === 'string' && body.targetId.length > 0 ? body.targetId : null;
+  if (kind === 'message') return { kind: 'chat', id: null };
+  if ((kind === 'build' || kind === 'version') && id !== null) return { kind: 'build', id };
+  return undefined;
+}
+
+/** The project's one conversation. `id: null` because there cannot be a different one. */
+const CHAT_SURFACE: ShareResource = { kind: 'chat', id: null };
 
 /** The member directory the store needs, built from the project's LIVE grants only. */
 async function collabDirectory(c: Context, ctx: { user: AuthedUser; project: ProjectRow }) {
@@ -3803,6 +4281,41 @@ async function recordMembershipEvents(
   return { ok: ok && rows.length === inputs.length, written: ok ? rows.length : 0, requested: inputs.length };
 }
 
+/**
+ * PUSH A MEMBERSHIP CHANGE INTO THE SOCKETS THAT ARE ALREADY OPEN.
+ *
+ * The HTTP half of this was already right and is tested: every shared route re-resolves membership
+ * through `sharedAccess` on every request, so a removed member is a stranger on their next call.
+ * A WEBSOCKET MAKES NO FURTHER CALLS. The role is decided once at the handshake, frozen onto the
+ * socket, and every later frame is gated against that frozen value — so a member who was removed,
+ * suspended or demoted kept every capability they had for as long as the tab stayed open, and a
+ * workspace tab stays open for days.
+ *
+ * Best effort by design: the membership change has ALREADY LANDED by the time this runs, and a
+ * Durable Object that cannot be reached must not undo it. What this must not do is let the route
+ * claim it happened — the counts come back on the response, so `{ matched: 0 }` is a fact the
+ * caller can read and `null` says the push could not be made at all.
+ */
+async function pushAccessChange(
+  stub: DurableObjectStub,
+  userId: string,
+  role: CollabRole | null,
+): Promise<{ matched: number; closed: number; demoted: number } | null> {
+  try {
+    const res = await stub.fetch('https://do/collab/access-changed', {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    });
+    if (!res.ok) return null;
+    const out = (await res.json()) as { matched?: unknown; closed?: unknown; demoted?: unknown };
+    return typeof out?.matched === 'number'
+      ? { matched: out.matched, closed: Number(out.closed) || 0, demoted: Number(out.demoted) || 0 }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** One door to the Durable Object's collaboration store, so identity crosses exactly once. */
 async function collabCall(
   stub: DurableObjectStub,
@@ -3819,15 +4332,24 @@ async function collabCall(
 }
 
 app.get('/api/shared/:id', async (c) => {
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  // THE ONE ROUTE THAT TAKES `'any'`, and it earns it by narrowing its own answer. Someone who
+  // redeemed a chat link needs to be told what they hold — a role and a scope — and must not be
+  // handed the member directory along with it.
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read', 'any');
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
-  const members = await collabDirectory(c, ctx);
+  const projectWide = ctx.membership.scope === 'project';
+  const members = projectWide ? await collabDirectory(c, ctx) : [];
   return c.json({
     project: { id: ctx.project.id, name: ctx.project.name, ownerId: ctx.project.owner_id },
     role: ctx.role,
+    scope: ctx.membership.scope,
+    resourceId: ctx.membership.resourceId,
     capabilities: capabilitiesFor(ctx.role),
     members: members.map((m) => ({ userId: m.userId, handle: m.handle, role: m.role, displayName: m.displayName })),
+    // NOT AN EMPTY LIST PRESENTED AS A LIST. `members: []` alone reads as "nobody else is here",
+    // which is a failure to observe rendering as an observation. The flag says which it is.
+    directoryWithheld: !projectWide,
   });
 });
 
@@ -3836,8 +4358,8 @@ app.get('/api/shared/:id/ws', async (c) => {
   // `read` opens the socket; every WRITE the socket attempts is gated again inside the Durable
   // Object against the role sent below. Opening at `chat` instead would mean a viewer could not
   // watch a build at all, which is most of what being a viewer is for.
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read', CHAT_SURFACE);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   void count(c.env, 'ws_connect');
   const headers = new Headers(c.req.raw.headers);
@@ -3851,8 +4373,9 @@ app.get('/api/shared/:id/ws', async (c) => {
 });
 
 app.get('/api/shared/:id/messages', async (c) => {
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  // The transcript IS the chat surface: this is the one route a chat-scoped link exists to open.
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read', CHAT_SURFACE);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const url = new URL(c.req.url);
   return gate.ctx.stub.fetch(`https://do/messages?${url.searchParams}`);
 });
@@ -3867,14 +4390,14 @@ app.get('/api/shared/:id/checkpoints', async (c) => {
   // -> session mirror was missing, and it is deliberately NOT in COLLAB_ROUTES because that loop
   // rewrites `/collab/*` onto a collab endpoint, which is the wrong DO for this.
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const url = new URL(c.req.url);
   return gate.ctx.stub.fetch(`https://do/checkpoints?${url.searchParams}`);
 });
 
 app.get('/api/shared/:id/members', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
 
   // A FILTER THIS ROUTE CANNOT READ IS A 400, NEVER AN IGNORED FILTER. `?status=revokd` answered
@@ -3920,7 +4443,7 @@ app.get('/api/shared/:id/members', async (c) => {
  */
 app.get('/api/shared/:id/members/events', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const url = new URL(c.req.url);
   const subject = url.searchParams.get('userId');
@@ -4017,7 +4540,7 @@ app.get('/api/shared/:id/members/events', async (c) => {
  */
 app.get('/api/shared/:id/members/:userId/impact', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4049,7 +4572,7 @@ app.get('/api/shared/:id/members/:userId/impact', async (c) => {
 
 app.post('/api/shared/:id/members', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const body = (await c.req.json().catch(() => null)) as { userId?: unknown; role?: unknown; expiresAt?: unknown } | null;
   const role = asCollabRole(body?.role);
@@ -4102,6 +4625,8 @@ app.post('/api/shared/:id/members', async (c) => {
   if (!ok) return c.json({ error: 'invite_failed', status }, 502);
 
   const kind = inviteEventKind(before, { role });
+  // A DEMOTION MUST REACH THE TAB, not wait for a reload. See `pushAccessChange`.
+  const live = await pushAccessChange(ctx.stub, userId, role);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind, subjectId: userId, fromRole: before?.role ?? null, toRole: role },
   ]);
@@ -4115,7 +4640,7 @@ app.post('/api/shared/:id/members', async (c) => {
     `Someone was given access to ${ctx.project.name}`,
     `A member was ${before ? 'changed to' : 'added as'} ${role}.`,
   );
-  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok }, 201);
+  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok, liveSockets: live }, 201);
 });
 
 /**
@@ -4132,7 +4657,7 @@ app.post('/api/shared/:id/members', async (c) => {
  */
 app.post('/api/shared/:id/members/bulk', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const body = await c.req.json().catch(() => null);
   const plan = planBulkInvite(body, { ownerId: ctx.project.owner_id, actorId: ctx.user.userId });
@@ -4143,6 +4668,8 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
 
   const before = new Map<string, MemberRow | null>();
   for (const row of plan.accepted) before.set(row.userId, await membershipRow(c, ctx, row.userId));
+  // Every accepted row is a role change for somebody, and a bulk demotion must reach their tabs by
+  // the same route a single one does — see `pushAccessChange`. Applied after the insert below.
 
   const { ok, status } = await supaRest(c.env, ctx.user.jwt, '/project_members', {
     method: 'POST',
@@ -4161,6 +4688,17 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
       })),
     ),
   });
+
+  // The demotions in this batch reach the open tabs, one push each, for the reason a single
+  // invite does. Only when the insert landed: pushing a role nobody was actually given would be
+  // the claim outliving the fact in the other direction.
+  let liveSockets = 0;
+  if (ok) {
+    for (const row of plan.accepted) {
+      const live = await pushAccessChange(ctx.stub, row.userId, row.role);
+      liveSockets += live?.matched ?? 0;
+    }
+  }
 
   const invited = plan.accepted.map((row) => ({
     userId: row.userId,
@@ -4189,6 +4727,7 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
       invited,
       rejected: plan.rejected,
       audited: audit.ok,
+      liveSockets,
       counts: { invited: ok ? invited.length : 0, rejected: plan.rejected.length },
     },
     ok ? 201 : 502,
@@ -4197,7 +4736,7 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
 
 app.delete('/api/shared/:id/members/:userId', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4232,6 +4771,9 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   //   route below — not a second click on a URL the person still has in their inbox. ]]
   const linkGrantRevoked = await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
 
+  // The open tab is closed here, not left holding the capabilities it had at handshake.
+  const live = await pushAccessChange(ctx.stub, userId, null);
+
   //[[ AND THE STANDING ACTORS THEY LEFT BEHIND.
   //
   //   A removed member's automations already cannot FIRE — `authorizeFire` re-asks about the
@@ -4252,7 +4794,7 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
     `Someone lost access to ${ctx.project.name}`,
     `A ${before?.role ?? 'member'} was removed from the project.`,
   );
-  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, automationsStopped, audited: audit.ok });
+  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, automationsStopped, audited: audit.ok, liveSockets: live });
 });
 
 /**
@@ -4269,7 +4811,7 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
  */
 app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4310,10 +4852,13 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
           suspended_by: ctx.user.userId,
         });
 
+  // A SUSPENDED GRANT IS DEAD WHILE IT LASTS, which is why this closes rather than demotes: there
+  // is no role a suspension leaves behind, and `classifyGrant` already refuses the row at the door.
+  const live = await pushAccessChange(ctx.stub, userId, null);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind: 'suspended', subjectId: userId, fromRole: before?.role ?? null, reason: reason.length === 0 ? null : reason },
   ]);
-  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok });
+  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok, liveSockets: live });
 });
 
 /**
@@ -4329,7 +4874,7 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
  */
 app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'manage_members');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const userId = c.req.param('userId') ?? '';
   if (!UUID_RE.test(userId)) return c.json({ error: 'bad_user' }, 400);
@@ -4364,9 +4909,53 @@ app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok });
 });
 
+/**
+ * THE LINKS THIS PROJECT HAS HANDED OUT.
+ *
+ * Revocation has worked from the day it was written and is driven over HTTP — and the token it
+ * takes was unrecoverable the instant the mint response scrolled away. `shareLinkKey` is keyed by
+ * the secret and `shareGrantPrefix` indexes the redeemed GRANTS, not the links, so there was no
+ * way to ask "what links exist on this project": a link already sent to somebody could never be
+ * listed and therefore never revoked, by UI or by curl.
+ *
+ * THE TOKEN COMES BACK, and that is a decision. The token IS the link — an admin who cannot see it
+ * cannot re-send it and, before this route, could not revoke it either. It is gated on `share`,
+ * which is admin and owner only.
+ *
+ * `state` is computed by `redeemShareLink` — the function that actually decides — rather than by
+ * a second reading of the same columns here, so this list can never call a link live that the
+ * door will refuse.
+ *
+ * `partial` mirrors the roster's flag: KV is a separate store that can be unreachable, and a short
+ * list presented as a whole one is how an admin concludes a link was already revoked.
+ */
+app.get('/api/shared/:id/links', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
+  const { links, complete } = await listShareLinks(c.env, gate.ctx.project.id);
+  const now = Date.now();
+  return c.json({
+    links: links.map((l) => {
+      const probe = redeemShareLink(l, { projectId: l.project_id, scope: l.scope, resourceId: l.resource_id }, now);
+      return {
+        token: l.token,
+        scope: l.scope,
+        resourceId: l.resource_id,
+        role: l.role,
+        expiresAt: l.expires_at,
+        revokedAt: l.revoked_at,
+        createdBy: l.created_by,
+        createdAt: l.created_at,
+        state: probe.ok ? 'live' : probe.reason,
+      };
+    }),
+    partial: !complete,
+  });
+});
+
 app.post('/api/shared/:id/links', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   const body = (await c.req.json().catch(() => null)) as { scope?: unknown; resourceId?: unknown; role?: unknown; expiresAt?: unknown } | null;
   const scope = asShareScope(body?.scope);
@@ -4394,7 +4983,7 @@ app.post('/api/shared/:id/links', async (c) => {
   const check = redeemShareLink(link, { projectId: ctx.project.id, scope, resourceId }, Date.now());
   if (!check.ok) return c.json({ error: check.reason }, 400);
   await putShareLink(c.env, link);
-  return c.json({ token, scope, role, resourceId, projectId: ctx.project.id }, 201);
+  return c.json({ token, scope, role, resourceId, expiresAt: link.expires_at, projectId: ctx.project.id }, 201);
 });
 
 app.post('/api/shared/links/redeem', async (c) => {
@@ -4421,6 +5010,12 @@ app.post('/api/shared/links/redeem', async (c) => {
   await putKvGrant(c.env, link.project_id, {
     user_id: user.userId,
     role: out.grant.role,
+    // THE SCOPE SURVIVES REDEMPTION. `out.grant` is what `redeemShareLink` decided this link
+    // opens, and writing it here is what stops a chat link from becoming an ordinary project
+    // membership the instant it is accepted. Taken from the redemption, never from the request
+    // body, for the same reason the role is.
+    scope: out.grant.scope,
+    resource_id: out.grant.resourceId,
     expires_at: link.expires_at,
     revoked_at: null,
     display_name: null,
@@ -4436,7 +5031,7 @@ app.post('/api/shared/links/redeem', async (c) => {
 
 app.post('/api/shared/:id/links/revoke', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const body = (await c.req.json().catch(() => null)) as { token?: unknown } | null;
   if (!isShareToken(body?.token)) return c.json({ error: 'bad_token' }, 400);
   const link = await readShareLink(c.env, body.token);
@@ -4449,9 +5044,16 @@ app.post('/api/shared/:id/links/revoke', async (c) => {
 
 // ----------------------------------------------------------- comments, reviews, versions, presence
 /** Each entry names the ACTION its route performs. A path missing from here has no route at all. */
-const COLLAB_ROUTES: { method: 'GET' | 'POST'; path: string; action: CollabAction; needsDirectory?: boolean }[] = [
-  { method: 'GET', path: '/collab/comments', action: 'read' },
-  { method: 'POST', path: '/collab/comments', action: 'comment', needsDirectory: true },
+const COLLAB_ROUTES: {
+  method: 'GET' | 'POST';
+  path: string;
+  action: CollabAction;
+  needsDirectory?: boolean;
+  /** The surface this route touches, from its body. Absent ⇒ project-wide ⇒ no scoped grant. */
+  resource?: (body: Record<string, unknown>) => ShareResource | undefined;
+}[] = [
+  { method: 'GET', path: '/collab/comments', action: 'read', resource: targetResource },
+  { method: 'POST', path: '/collab/comments', action: 'comment', needsDirectory: true, resource: targetResource },
   { method: 'POST', path: '/collab/comments/resolve', action: 'comment' },
   { method: 'POST', path: '/collab/reactions', action: 'react' },
   { method: 'GET', path: '/collab/reviews', action: 'read' },
@@ -4477,13 +5079,17 @@ const COLLAB_ROUTES: { method: 'GET' | 'POST'; path: string; action: CollabActio
  * The factory keeps the table as the single source of behaviour; only the PATH is written out.
  */
 const collabHandler = (route: (typeof COLLAB_ROUTES)[number]) => async (c: Context) => {
-  const gate = await sharedAccess(c, c.req.param('id') ?? '', route.action);
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
-  const ctx = gate.ctx;
+  // THE BODY IS READ BEFORE THE GATE, because the gate needs it: a comment on a message and a
+  // comment on the project are the same route reaching two different surfaces, and a chat-scoped
+  // guest may have the first and not the second. Reading it changes nothing — no write happens
+  // until the gate says yes.
   const body =
     route.method === 'GET'
       ? (Object.fromEntries(new URL(c.req.url).searchParams.entries()) as Record<string, unknown>)
       : ((await c.req.json().catch(() => ({}))) as Record<string, unknown>);
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', route.action, route.resource?.(body));
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
+  const ctx = gate.ctx;
   const directory = route.needsDirectory ? await collabDirectory(c, ctx) : undefined;
   const res = await collabCall(ctx.stub, route.method, route.path, body, ctx, directory);
   //[[ THE MENTION AND THE REVIEW REQUEST WERE ALREADY RECORDS. NOW SOMEBODY IS TOLD.
@@ -4558,7 +5164,7 @@ app.post('/api/shared/:id/versions/restore', collabRoute('/collab/versions/resto
  */
 app.get('/api/shared/:id/permissions', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   const ctx = gate.ctx;
   // Only the caller's own rows are consulted. The effective role is already decided — this is the
   // provenance for it, not a second decision.
@@ -4568,7 +5174,7 @@ app.get('/api/shared/:id/permissions', async (c) => {
 
 app.get('/api/shared/:id/presence', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
-  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
   return gate.ctx.stub.fetch('https://do/collab/presence');
 });
 

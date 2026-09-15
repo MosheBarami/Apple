@@ -112,7 +112,11 @@ export function sessionHarness(opts = {}) {
     },
   };
   const session = new SessionDO(ctx, env);
-  return { session, sql, store, sent, ws, ctx, env };
+  // Which ops a test has already answered, so a helper can find the NEXT one without being told
+  // how many came before it. A method that issues two ops in a row (create then restore) has no
+  // stable queue length to measure against.
+  const answered = new Set();
+  return { session, sql, store, sent, ws, ctx, env, answered };
 }
 
 /**
@@ -125,14 +129,27 @@ export async function runStudioOp(h, studioOp, result = { ok: true }) {
   // Nothing polls in the harness, so answered ops stay in the queue. Waiting for the queue to GROW
   // is what stops the second call in a test answering the first call's op and then sitting through
   // the real timeout — a green test bought with five seconds of nothing happening.
-  const before = h.session.opQueue.length;
   const pending = h.session.execStudioOp(studioOp, 5_000);
+  const queued = await answerNextOp(h, result);
+  return { op: queued, result: await pending };
+}
+
+/**
+ * Answer whatever op the session queues next, whoever queued it.
+ *
+ * This is the half of the plugin a test needs when the op is issued from INSIDE a session method
+ * — `createCheckpoint` and `restoreCheckpoint` both do — because there is no execStudioOp promise
+ * for the test to hold. `answered` rather than a queue length: answered ops are never removed in
+ * the harness (nothing polls), so counting is only correct until the second op.
+ */
+export async function answerNextOp(h, result = { ok: true }) {
   // `execStudioOp` awaits storage before it registers the waiter, so there is no fixed number of
   // microtask turns to wait — poll for the waiter the way the plugin's poll would find the op.
-  const queued = await waitFor(() => (h.session.opQueue.length > before ? h.session.opQueue[h.session.opQueue.length - 1] : null));
+  const queued = await waitFor(() => h.session.opQueue.find((o) => !h.answered.has(o.id)) ?? null);
   const waiter = await waitFor(() => h.session.opWaiters.get(queued.id));
+  h.answered.add(queued.id);
   waiter({ id: queued.id, ...result });
-  return { op: queued, result: await pending };
+  return queued;
 }
 
 async function waitFor(get, tries = 200) {
