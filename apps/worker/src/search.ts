@@ -120,11 +120,20 @@ export type SearchType = (typeof SEARCH_TYPES)[number];
  *
  * Deliberately not the raw message role: the UI has always said "You" and "Apple", and a filter
  * whose values do not match the words on screen is a filter nobody can use.
+ *
+ * `teammate` exists because there WAS no true value for it, and the absence produced a lie rather
+ * than a gap: a checkpoint with no author column was attributed by kind, so on a shared project
+ * every other member's manual checkpoint came back as 'you'. It is not offered as a filter chip —
+ * only checkpoints can carry it today, since messages still store a role and not a user id, and a
+ * chip that matches one record type reads as broken. It is included in the default set, so nothing
+ * carrying it is hidden.
  */
-export const SEARCH_AUTHORS = ['you', 'apple', 'system'] as const;
+export const SEARCH_AUTHORS = ['you', 'apple', 'system', 'teammate'] as const;
 export type SearchAuthor = (typeof SEARCH_AUTHORS)[number];
 
 const AUTHOR_ALIASES: Record<string, SearchAuthor> = {
+  teammate: 'teammate',
+  member: 'teammate',
   you: 'you',
   user: 'you',
   me: 'you',
@@ -132,6 +141,25 @@ const AUTHOR_ALIASES: Record<string, SearchAuthor> = {
   assistant: 'apple',
   system: 'system',
 };
+
+/**
+ * WHO TOOK A CHECKPOINT, on the author dimension.
+ *
+ * Three facts, in this order, because each is stronger than the one after it:
+ *
+ *   an `auto` or `pre_agent` checkpoint was taken BY THE RUN. It has no human author and never
+ *   should be given one, whatever is in the column;
+ *   a recorded author that matches the reader is 'you';
+ *   anything else — another member, or a row from before the column existed — is not the reader.
+ *
+ * Exported so it can be tested as itself, and so the one rule lives in one place: the guess it
+ * replaced (`kind === 'manual' ? 'you' : 'apple'`) was inline, which is how it survived review.
+ */
+export function checkpointAuthor(kind: string, authorId: string | null, viewer: string | null): SearchAuthor {
+  if (kind !== 'manual') return 'apple';
+  if (authorId !== null && viewer !== null && authorId === viewer) return 'you';
+  return 'teammate';
+}
 
 /** A message role as stored, mapped onto the author dimension the UI names. */
 export function authorForRole(role: string): SearchAuthor {

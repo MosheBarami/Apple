@@ -31,6 +31,8 @@ import {
 } from '../../lib/api';
 import { useToast } from '../toast';
 import { useUnsavedGuard } from '../../lib/unsaved';
+import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../../lib/notification-inbox.ts';
+import { MANDATORY_REASON, eventEnabled, toggledEvents } from '../../lib/notification-prefs.ts';
 
 const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
 const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
@@ -314,6 +316,41 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
                 }}
               />
               <span>{c.label}</span>
+            </label>
+          );
+        })}
+      </fieldset>
+
+      {/* THE SAME SWITCHES AS /settings, AT WHICHEVER SCOPE IS SELECTED ABOVE, and that is the
+          whole point of them being here. `notify_events` is the one preference the server merges
+          PER ENTRY rather than wholesale, precisely so that muting one kind on one project does
+          not silently un-mute everything the person turned off account-wide. That layering existed
+          and was tested, and nothing could write the project layer. */}
+      <fieldset className="prefs__set" disabled={!canWrite}>
+        <legend className="field-label">
+          {scope === 'project' ? 'Tell me about, on this project' : 'Tell me about'}
+        </legend>
+        {/* The kinds come from the shared list rather than being typed out here. It is a copy of
+            the worker's allowlist, and tests/notification-inbox.test.mjs fails in BOTH directions
+            if the two ever disagree — a kind added on the server with no row here would be one no
+            project could ever mute. */}
+        {NOTIFICATION_KINDS.map((kind) => {
+          const locked = MANDATORY_KINDS.includes(kind);
+          return (
+            <label key={kind} className="prefs__check">
+              <input
+                type="checkbox"
+                checked={eventEnabled(prefs.notify_events, kind)}
+                disabled={locked}
+                onChange={(e) => setPref('notify_events', toggledEvents(prefs.notify_events, kind, e.target.checked))}
+              />
+              <span>
+                {KIND_LABELS[kind]}
+                {/* Disabled and PRESENT. The server refuses to mute these with the reason
+                    `mandatory`; a row that was simply missing would read as "this product does not
+                    tell me about billing", which is the opposite of true. */}
+                {locked && <span className="field-hint"> — {MANDATORY_REASON}</span>}
+              </span>
             </label>
           );
         })}
