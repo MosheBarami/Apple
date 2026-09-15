@@ -613,9 +613,23 @@ export interface RunIntent {
   summary: string;
   /**
    * The concrete things the request named by hand — "bar counter", "stools",
-   * "warm interior lighting". The build is checked against this list, so it is
-   * the honest content of a "Plan" row: not a predicted sequence of steps, but
-   * the set of things that must exist when the run is done.
+   * "warm interior lighting". It is the honest content of a "Plan" row: not a
+   * predicted sequence of steps, but the set of things the user asked for by
+   * name, extracted from their own words at zero model cost.
+   *
+   * THIS LIST IS DISPLAYED. IT IS NOT VERIFIED. This comment used to assert
+   * the opposite, and nothing backed it: grep the worker and the checklist is
+   * built (semantic.ts), trimmed (run-intent.ts) and broadcast
+   * (do/session.ts), and never read back after the run. The only
+   * post-build check in the loop is `semanticCheck`, which measures geometry
+   * and never looks at this list. It is not even handed to the model.
+   *
+   * Corrected rather than left, because a comment describing a verification
+   * that does not happen is the same failure as a UI string describing one —
+   * it just misleads the next engineer instead of the user.
+   * `apps/worker/tests/intent-checklist-claim.test.mjs` holds the sentence to
+   * the code: implement a consumer that reads the checklist back, and the
+   * guard lets the stronger claim return.
    */
   checklist: string[];
   /** Where the request genuinely did not say. Surfaced rather than assumed. */
