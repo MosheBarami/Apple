@@ -120,11 +120,44 @@ test('storeImage refuses to park pixels anywhere but under a project', () => {
   // call site cannot quietly reintroduce an unscoped key.
   assert.equal(storeImage.length, 3, 'storeImage must take (env, pngBase64, projectId)');
   const TOOLS = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
-  assert.match(TOOLS, /if \(!ctx\.projectId\) return \{ error: 'generate_image needs a project/);
-  assert.ok(
-    TOOLS.indexOf("if (!ctx.projectId) return { error: 'generate_image needs a project") < TOOLS.indexOf('await storeImage('),
-    'the refusal must precede the store',
-  );
+
+  // THIS ORACLE USED TO COMPARE TWO GLOBAL indexOf RESULTS:
+  //
+  //   TOOLS.indexOf("if (!ctx.projectId) return { error: 'generate_image…")
+  //     < TOOLS.indexOf('await storeImage(')
+  //
+  // which pairs the FIRST occurrence of one string with the FIRST occurrence of the other — and
+  // those belong to DIFFERENT CALL SITES the moment there is more than one. It was correct only
+  // while `generate_image` was the sole caller. `screenshot_page` then grew its own storeImage
+  // call, correctly guarded, ABOVE generate_image's guard, and the comparison inverted: the test
+  // went red while every call site was scoped. A guard that gets LESS able to see the truth as the
+  // subject grows is the worst gradient a guard can have, and it cost rbxai-04 a real
+  // investigation before the property was confirmed intact by reading both sites.
+  //
+  // So assert the property PER CALL SITE instead of once globally: every store must pass a project
+  // and must sit behind a refusal, however many callers there turn out to be.
+  const sites = [];
+  for (let i = TOOLS.indexOf('await storeImage('); i !== -1; i = TOOLS.indexOf('await storeImage(', i + 1)) {
+    sites.push(i);
+  }
+  assert.ok(sites.length > 0, 'no storeImage call site found — the oracle is measuring nothing');
+
+  for (const at of sites) {
+    const line = TOOLS.slice(0, at).split('\n').length;
+    const call = TOOLS.slice(at, TOOLS.indexOf(';', at));
+    assert.match(
+      call,
+      /await storeImage\([^)]*,\s*ctx\.projectId\s*\)/,
+      `tools.ts:${line} stores pixels without passing ctx.projectId as the key`,
+    );
+    // The refusal has to be REACHABLE from the call, so look only at the enclosing run of source
+    // rather than anywhere in the file — the whole point of the previous failure.
+    assert.match(
+      TOOLS.slice(Math.max(0, at - 700), at),
+      /if \(!ctx\.projectId\)/,
+      `tools.ts:${line} calls storeImage with no !ctx.projectId refusal above it`,
+    );
+  }
 });
 
 test('the tool still tells the model the pixels are not placed in the game', () => {
