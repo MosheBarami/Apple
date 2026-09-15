@@ -425,12 +425,49 @@ const LUAU_LOCAL_RULES: readonly SourceRule[] = [
   },
 ];
 
+/**
+ * Luau, in STUDIO.
+ *
+ * NETWORK EGRESS, and it is the door net-policy.ts did not cover. Every tool-driven fetch in this
+ * product goes through an allowlist of hosts that refuses `http:`, refuses IP literals, refuses
+ * credentials in the URL and re-checks every redirect hop by hand. None of that applies to a model
+ * that asks for the fetch in Luau instead: measured before this rule existed,
+ * `game:GetService("HttpService"):GetAsync(url)` was ADMITTED, and the plugin does not refuse it
+ * either. An allowlist with a second door is not an allowlist.
+ *
+ * The rule fires on the network METHODS rather than on HttpService, because JSONEncode/JSONDecode
+ * are the ordinary non-network use and refusing the service outright would block them.
+ * `RequestAsync` needs no context — only HttpService has one. `GetAsync`/`PostAsync` require
+ * HttpService to appear as well, because DataStore has its own `GetAsync` and refusing ordinary
+ * persistence would be a false positive an agent cannot work around.
+ *
+ * THIS DOES NOT MAKE STUDIO'S `network` ENFORCED, and BACKEND_ENFORCEMENT still says `unenforced`.
+ * This is a STATIC scan of the source: it refuses what it can read, and a call assembled at runtime
+ * from pieces it cannot follow would still reach the engine. Declaring it enforced on the strength
+ * of a source scan is exactly the "a ceiling that is merely declared is not a ceiling" failure this
+ * file was written to prevent.
+ */
+const LUAU_STUDIO_RULES: readonly SourceRule[] = [
+  {
+    code: 'luau_network_egress',
+    pattern:
+      /\bRequestAsync\s*[({]|HttpService[\s\S]*?\b(?:GetAsync|PostAsync)\s*\(|\b(?:GetAsync|PostAsync)\s*\([\s\S]*?HttpService/,
+    why:
+      'HttpService:GetAsync/PostAsync/RequestAsync reaches any host on the internet from inside the place, ' +
+      'which is what the tool-side host allowlist exists to prevent — use web_fetch, which checks the host and ' +
+      're-checks every redirect hop',
+  },
+];
+
 function rulesFor(runtime: SandboxRuntime, backend: SandboxBackend): readonly SourceRule[] {
   if (runtime === 'python') return PYTHON_RULES;
   if (runtime === 'node') return NODE_RULES;
-  // Luau in Studio is governed by the injected ingress gate; these rules are about the CLI's
-  // stdlib and would be wrong in Studio, where `require(script.Parent.X)` is the normal thing.
-  return backend === 'local-process' ? LUAU_LOCAL_RULES : [];
+  // The two Luau lists are disjoint on purpose. LUAU_LOCAL_RULES is about the CLI's stdlib and
+  // would be wrong in Studio, where `require(script.Parent.X)` is the normal thing; LUAU_STUDIO_RULES
+  // is about reaching the network from inside a place, which the CLI cannot do because there is no
+  // HttpService there. Studio is ALSO governed by the injected ingress gate — that gate and this
+  // list answer different questions and neither replaces the other.
+  return backend === 'local-process' ? LUAU_LOCAL_RULES : LUAU_STUDIO_RULES;
 }
 
 /** Every `import x` / `from x import` module name in a Python source. */
