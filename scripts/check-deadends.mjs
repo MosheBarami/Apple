@@ -233,8 +233,40 @@ console.log(`  GRAPH ${resolvedEdges} import edge(s) resolved, ${unresolvedSpeci
 const findings = [];
 const isTestLike = (rel) => /\.test\.|\/tests?\//.test(rel) || rel.startsWith('packages/evals/');
 
+//[[ A FILE THE COMPILER READS IS REACHED, EVEN THOUGH NOTHING IMPORTS IT.
+//
+//   `packages/sdk/types/fixtures/{bad,ok}.ts` are imported by nothing and never will be. They are
+//   TYPE fixtures: `tests/types.test.mjs` runs `tsc -p types/fixtures/tsconfig.json` and requires
+//   every marked line in bad.ts to ERROR and ok.ts to compile clean. They are exercised on every
+//   suite run, more strictly than most modules here.
+//
+//   The import graph cannot see that, because the edge is a compiler invocation rather than an
+//   `import`. Reporting them as dead ends would push someone to disposition them WIRE, DELETE or
+//   STRUCTURALLY-BLOCKED — and all three would be false. DELETE is the dangerous one: it reads as
+//   permission to remove a file that is doing its job.
+//
+//   So a tracked file that invokes tsc AND names a path lends reachability to what lives under it.
+//   Deliberately narrow: only a file that runs the compiler counts, so merely mentioning a
+//   directory in prose does not launder a real dead end into a live one.
+const compilerReached = (() => {
+  const dirs = new Set();
+  for (const rel of tracked) {
+    if (!/\.(mjs|js|cjs|ts)$/.test(rel)) continue;
+    let src;
+    try { src = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
+    if (!/\btsc\b|typescript\/bin/.test(src)) continue;
+    // Paths this compiler-running file names, resolved against its own package.
+    for (const m of src.matchAll(/['"`]([\w./-]*(?:types|fixtures)[\w./-]*)['"`]/g)) {
+      const seg = m[1].replace(/^\.\//, '');
+      if (seg.length > 3) dirs.add(seg.replace(/\/tsconfig\.json$/, ''));
+    }
+  }
+  return (rel) => [...dirs].some((d) => rel.includes(d));
+})();
+
 for (const rel of examined) {
   if (ENTRYPOINTS.has(rel)) continue;
+  if (/\.tsx?$/.test(rel) && compilerReached(rel)) continue;
   const from = [...(importers.get(rel) ?? [])];
 
   if (from.length === 0) {
