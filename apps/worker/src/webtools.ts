@@ -988,7 +988,15 @@ export async function runWebTool(name: string, ctx: WebToolCtx, rawArgs: unknown
   try {
     size = JSON.stringify(rawArgs ?? {}).length;
   } catch {
-    return { error: `${name}: the arguments could not be read as JSON at all` };
+    // NOT A PARSE FAILURE, and the old wording ("could not be read as JSON at all") said it was.
+    // By the time runWebTool is called, runTool has already parsed the argument string and refused
+    // it by name if it would not parse — see tools.ts. What can still fail HERE is the reverse
+    // direction: stringifying an object that is already in hand, which throws only on a circular
+    // reference or a BigInt. Two different conditions wearing nearly the same sentence is worse
+    // than either bug: the message tells you to go and check the model's JSON, which is fine.
+    return {
+      error: `${name}: the arguments cannot be measured — they contain a circular reference or a value JSON cannot represent`,
+    };
   }
   if (size > MAX_ARGS_CHARS) {
     return { error: `${name}: ${size} characters of arguments is past the ${MAX_ARGS_CHARS}-character limit` };
