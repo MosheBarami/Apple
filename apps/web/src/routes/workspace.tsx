@@ -44,7 +44,7 @@ import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
 import { PlaytestCard } from '../components/ws/playtest-card';
-import { ConnectStudio } from '../components/ws/connect-studio';
+import { ConnectStudio, StudioLink } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
 import { Spinner } from '../components/loading';
 
@@ -843,6 +843,13 @@ export function WorkspacePage() {
               Studio attaches. It is a pure function of studioStatus, so there
               is no dismissal state to get stuck. */}
           <ConnectStudio status={studioStatus} onPair={() => setShowPairing(true)} />
+
+          {/* The measured detail under the connection: when the plugin last polled, how much work
+              is queued, the round trip, and — loudest — a place mismatch, which is the only state
+              where the pill is green and nothing will ever build. Rendered for EVERY state,
+              including connected, which is why it is not inside the card above. It draws nothing
+              when there is nothing measured to say. */}
+          <StudioLink status={studioStatus} facts={studio.link} />
 
           {/* The playtest viewport. Renders only while the worker says a
               playtest exists — it is a pure function of `playtest`, so it

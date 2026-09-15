@@ -31,6 +31,7 @@ import {
   mockSelection,
   mockStudioState,
 } from './mock';
+import { NO_LINK_FACTS, factsFromPong, factsFromStatus, type StudioLinkFacts } from './studio-connection';
 import { getAccessToken, supabase } from './supabase';
 
 export interface ToolEvent {
@@ -156,6 +157,16 @@ export interface ProjectSocket {
      * than empty until then.
      */
     selection: StudioEventSelection | null;
+    /**
+     * The measurable facts about the link, for the sentence under the connection indicator.
+     *
+     * THE WORKER HAS ALWAYS SENT THESE and the browser dropped them: `studio_status` carries when
+     * the plugin last polled, how many ops are waiting, which place it has open and whether that
+     * is the wrong one, and the pong carries the round trip. `connected` alone cannot tell a
+     * Studio that closed ten seconds ago from one that closed in March, and cannot explain a green
+     * pill above a build that will never start. See lib/studio-connection.ts.
+     */
+    link: StudioLinkFacts;
   };
   quota: QuotaState | null;
   /**
@@ -281,11 +292,13 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     state: StudioEventState | null;
     everConnected: boolean;
     selection: StudioEventSelection | null;
+    link: StudioLinkFacts;
   }>({
     connected: false,
     state: null,
     everConnected: false,
     selection: null,
+    link: NO_LINK_FACTS,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [presence, setPresence] = useState<PresenceState[]>([]);
@@ -312,7 +325,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection });
+      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -396,6 +409,13 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           ...s,
           connected: msg.studioConnected,
           everConnected: s.everConnected || msg.studioConnected,
+          // `hello` carries the same three facts under their own names, and it is the only one a
+          // tab opened onto a long-disconnected project ever receives.
+          link: factsFromStatus(s.link, {
+            lastSeenAt: msg.studioLastSeenAt,
+            queuedOps: msg.queuedOps,
+            place: msg.studioPlace,
+          }),
         }));
         break;
       case 'studio_status':
@@ -404,6 +424,8 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           connected: msg.connected,
           state: msg.state ?? null,
           everConnected: s.everConnected || msg.connected,
+          // MERGED, NOT REPLACED. Every field here is optional on the wire; see factsFromStatus.
+          link: factsFromStatus(s.link, msg),
           // A selection belongs to an attached Studio. Keeping the last one after the plugin
           // dropped would offer the user a reference to objects nothing can act on any more.
           selection: msg.connected ? s.selection : null,
@@ -725,6 +747,10 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         setPresence(msg.present);
         return;
       case 'pong':
+        // The round trip, measured from the timestamp this client put on its own ping and the
+        // worker echoed back. It was `break;` — the one measurement in this file that costs
+        // nothing to keep, thrown away for two years.
+        setStudio((s) => ({ ...s, link: factsFromPong(s.link, msg, Date.now()) }));
         break;
     }
   }, []);
@@ -771,7 +797,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setConn('open');
       if (pingTimer.current) window.clearInterval(pingTimer.current);
       pingTimer.current = window.setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' } satisfies ClientMsg));
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping', t: Date.now() } satisfies ClientMsg));
       }, 25_000);
     };
 

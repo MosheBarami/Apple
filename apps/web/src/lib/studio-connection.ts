@@ -95,6 +95,53 @@ export const NO_LINK_FACTS: StudioLinkFacts = {
 };
 
 /**
+ * Fold a `studio_status` into what is already known.
+ *
+ * A MERGE, NOT A REPLACEMENT, and that is the whole decision. Every one of these fields is
+ * optional on the wire, so a status that mentions only `connected` must leave the rest as it was:
+ * spreading an absent `queuedOps` over a known 4 turns "the server did not say this time" into
+ * "nothing is waiting", which is the reassuring reading and the wrong one. The same trick in the
+ * other direction is worse — an omitted `placeMismatch` would silently resolve the one state where
+ * the pill is green and nothing will ever build.
+ *
+ * The timestamp deliberately survives a disconnection. It is the entire reason it is carried: "last
+ * connected 4 minutes ago" and "Studio was never here" are the same boolean and different problems.
+ */
+export function factsFromStatus(
+  prev: StudioLinkFacts,
+  msg: {
+    lastSeenAt?: number | null;
+    queuedOps?: number;
+    place?: StudioPlace | null;
+    placeMismatch?: { expectedPlaceName: string; openPlaceName: string; openPlaceId: number } | null;
+  },
+): StudioLinkFacts {
+  return {
+    ...prev,
+    lastSeenAt: msg.lastSeenAt === undefined ? prev.lastSeenAt : msg.lastSeenAt,
+    queuedOps: msg.queuedOps === undefined ? prev.queuedOps : msg.queuedOps,
+    place: msg.place === undefined ? prev.place : msg.place,
+    placeMismatch: msg.placeMismatch === undefined ? prev.placeMismatch : msg.placeMismatch,
+  };
+}
+
+/**
+ * Time a round trip from the pong's echoed `t`, or change nothing.
+ *
+ * NOTHING IS THE ANSWER MORE OFTEN THAN IT LOOKS. A pong with no echo cannot be timed, and a pong
+ * whose `t` is in the future means the two clocks disagree, not that the network is faster than
+ * causality. Both leave the previous measurement exactly where it was — the alternative is a 0 ms
+ * on screen, which is simultaneously a lie and the most reassuring value this field can hold.
+ */
+export function factsFromPong(prev: StudioLinkFacts, msg: { t?: unknown }, now: number): StudioLinkFacts {
+  const sentAt = typeof msg.t === 'number' && Number.isFinite(msg.t) ? msg.t : null;
+  if (sentAt === null) return prev;
+  const rtt = now - sentAt;
+  if (!Number.isFinite(rtt) || rtt < 0) return prev;
+  return { ...prev, rttMs: rtt };
+}
+
+/**
  * "just now", "4 minutes ago", "3 days ago" — or null when there is nothing to date.
  *
  * A FUTURE TIMESTAMP IS CLAMPED, NOT RENDERED. The server's clock and the browser's are unrelated,
