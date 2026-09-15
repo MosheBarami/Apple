@@ -81,6 +81,26 @@ import {
   type DigestMode,
   type NotificationEventPrefs,
 } from '../lib/notification-prefs.ts';
+import {
+  codeProblem,
+  enrollment,
+  factorsState,
+  normaliseCode,
+  type Enrollment,
+} from '../lib/mfa';
+
+/**
+ * The account's enrolled factors.
+ *
+ * THROWS rather than returning the error, because react-query's `error` is what separates "we asked
+ * and the answer was none" from "we never got an answer" — and this panel prints a different
+ * sentence for each. Swallowing it here would collapse both into an empty list.
+ */
+async function listFactors(): Promise<unknown> {
+  const { data, error } = await supabase.auth.mfa.listFactors();
+  if (error) throw error;
+  return data;
+}
 
 async function fetchProfile(userId: string): Promise<ProfileRow | null> {
   if (MOCK_MODE) return mockProfile;
@@ -561,6 +581,213 @@ function NotificationSettings({
 }
 
 /**
+ * TWO-STEP VERIFICATION — a code from an app, on top of the password.
+ *
+ * The cryptography is Supabase's (`auth.mfa.*`); what is decided here is what the panel is entitled
+ * to SAY, and that lives in lib/mfa.ts because the comfortable wrong answer is dangerous: "Two-step
+ * verification is off" printed because the request failed tells an owner their defence is missing,
+ * under a button offering to enrol a second one. `factorsState` refuses to say `off` unless it read
+ * a well-formed, empty list, and this panel renders whichever of the four states it returns.
+ *
+ * ITS OWN COMPONENT for the same reason SecurityHistory is: the page re-renders on every keystroke
+ * in the search box, and an enrolment half-finished in that body would be rebuilt under the user's
+ * fingers.
+ *
+ * REMOVAL IS NOT HANDLED HERE. Turning the second factor off is exactly the takeover a second
+ * factor exists to stop, so it goes through the page's identity gate like changing a password —
+ * `onRemove` hands the factor id up, the page asks for the password, and the page runs it.
+ */
+function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const factors = useQuery({ queryKey: ['mfa-factors'], queryFn: listFactors });
+  const state = factorsState({ loading: factors.isPending, error: factors.error, data: factors.data });
+
+  /** The enrolment in progress: a factor that exists but has never been challenged. */
+  const [pending, setPending] = useState<Enrollment | null>(null);
+  const [code, setCode] = useState('');
+  const [fault, setFault] = useState<string | null>(null);
+
+  const start = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      if (error) throw error;
+      const e = enrollment(data);
+      // A response we cannot use is a failure, not a blank enrolment screen with a Verify button
+      // that can never succeed.
+      if (!e) throw new Error('The verification setup did not come back in a usable shape.');
+      return e;
+    },
+    onSuccess: (e) => {
+      setPending(e);
+      setCode('');
+      setFault(null);
+    },
+    onError: (e: Error) => toast(authErrorMessage(e), 'error'),
+  });
+
+  const confirm = useMutation({
+    mutationFn: async (factorId: string) => {
+      const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: normaliseCode(code) });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setPending(null);
+      setCode('');
+      void qc.invalidateQueries({ queryKey: ['mfa-factors'] });
+      toast('Two-step verification is on. You will be asked for a code when you sign in.', 'success');
+    },
+    // Stays on the form. A wrong code is the ordinary case — the previous one expired thirty
+    // seconds ago — and a toast that scrolls away leaves the field looking accepted.
+    onError: (e: Error) => setFault(authErrorMessage(e)),
+  });
+
+  const abandon = useMutation({
+    mutationFn: async (factorId: string) => {
+      // The factor row exists from `enroll()` onward, before any code has been checked. Leaving it
+      // behind would show nothing on this panel (it is unverified, so it is not protection) while
+      // counting against the account's factor limit for ever.
+      await supabase.auth.mfa.unenroll({ factorId });
+    },
+    onSettled: () => {
+      setPending(null);
+      setCode('');
+      setFault(null);
+      void qc.invalidateQueries({ queryKey: ['mfa-factors'] });
+    },
+  });
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!pending) return;
+    const problem = codeProblem(code);
+    if (problem) {
+      setFault(problem);
+      return;
+    }
+    setFault(null);
+    confirm.mutate(pending.factorId);
+  };
+
+  return (
+    <>
+      <h3 className="settings-sub">Two-step verification</h3>
+      <p className="muted">
+        A six-digit code from an app on your phone, asked for after your password. It is what keeps a stolen or guessed
+        password from being enough on its own.
+      </p>
+
+      {state.state === 'loading' && (
+        <p className="muted" role="status">
+          Checking this account…
+        </p>
+      )}
+
+      {state.state === 'unavailable' && (
+        <>
+          {/* No wrapping role="alert": <Failure> carries one, and nesting them makes a screen
+              reader announce the same failure twice. */}
+          <Failure error={new Error(state.message)} onRetry={() => void factors.refetch()} compact />
+          {/* The branch one step away says "it is off" and offers to set it up. Someone who has seen
+              that screen before will fill this gap in themselves unless it is said. */}
+          <p className="muted">This does not mean it is off. We could not find out either way.</p>
+        </>
+      )}
+
+      {state.state === 'on' && (
+        <>
+          <p className="settings-current">
+            <strong>On</strong> <span className="pill pill-good">Protected</span>
+          </p>
+          <ul className="sec-log">
+            {state.factors.map((f) => (
+              <li key={f.id} className="sec-event">
+                <p className="sec-event-title">{f.friendlyName ?? 'Authenticator app'}</p>
+                <p className="sec-when">
+                  {f.createdAt === null ? (
+                    'Added at an unknown time'
+                  ) : (
+                    <>
+                      Added <time dateTime={new Date(f.createdAt).toISOString()}>{relativeTime(f.createdAt)}</time>
+                    </>
+                  )}
+                </p>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onRemove(f.id)}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="field-hint">
+            Losing the phone this is on means losing the way in — there is no backup code in this product yet, so keep
+            the account&rsquo;s email reachable.
+          </p>
+        </>
+      )}
+
+      {state.state === 'off' && !pending && (
+        <>
+          <p className="settings-current">
+            <strong>Off</strong>
+          </p>
+          <button type="button" className="btn" onClick={() => start.mutate()} disabled={start.isPending}>
+            {start.isPending ? 'Setting up…' : 'Set up two-step verification'}
+          </button>
+        </>
+      )}
+
+      {pending && (
+        <form onSubmit={submit}>
+          <p>Scan this with an authenticator app, then type the code it shows.</p>
+          {pending.qrCode ? (
+            // White ground on purpose: the provider's QR is black on transparent, which is
+            // unscannable on the dark theme this product defaults to.
+            <img className="mfa-qr" src={pending.qrCode} alt="" width={168} height={168} />
+          ) : (
+            <p className="muted">Your app can take the key below instead of a scan.</p>
+          )}
+          {pending.secret && (
+            <p className="field-hint">
+              Or enter this key by hand: <code>{pending.secret}</code>
+            </p>
+          )}
+          <label className="field">
+            <span className="field-label">Code from your app</span>
+            <input
+              name="totpCode"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={12}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+            />
+          </label>
+          {fault && (
+            <p className="form-error" role="alert">
+              {fault}
+            </p>
+          )}
+          <div className="settings-inline">
+            <button type="submit" className="btn" disabled={confirm.isPending}>
+              {confirm.isPending ? 'Checking…' : 'Turn it on'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => abandon.mutate(pending.factorId)}
+              disabled={abandon.isPending}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </>
+  );
+}
+
+/**
  * WHAT HAS HAPPENED TO THIS ACCOUNT — the consumer that did not exist.
  *
  * The worker has written a `security_event` on every key mint, rotation, revocation and membership
@@ -620,12 +847,12 @@ function SecurityHistory() {
       {/* The wrapper carries NO role: <Failure> already announces itself, and an alert inside an
           alert is read twice by some screen readers and swallowed entirely by others. */}
       {state.state === 'unavailable' && (
-        <div>
+        <>
           <Failure error={new Error(state.message)} onRetry={() => void history.refetch()} compact />
           {/* Said out loud, because the empty state sitting one branch away says the opposite and a
               reader who has seen that one before will otherwise fill in the gap themselves. */}
           <p className="muted">This is not the same as a quiet account. We could not read the history at all.</p>
-        </div>
+        </>
       )}
 
       {state.state === 'empty' && (
@@ -721,6 +948,25 @@ export function SettingsPage() {
     setPending(action);
   };
 
+  /* --- two-step verification --------------------------------------------- */
+
+  // Which factor the Remove button named, held while the password dialog is open. The id is
+  // stashed for the same reason the action is: the dialog is asynchronous, and a closure captured
+  // two renders ago is how the wrong row gets removed.
+  const [factorToRemove, setFactorToRemove] = useState<string | null>(null);
+
+  const removeTwoStep = useMutation({
+    mutationFn: async (factorId: string) => {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['mfa-factors'] });
+      toast('Two-step verification is off. Your password is now the only thing protecting this account.', 'success');
+    },
+    onError: (e: Error) => toast(authErrorMessage(e), 'error'),
+  });
+
   /* --- email -------------------------------------------------------------- */
 
   const verification = emailVerification(session?.user);
@@ -744,9 +990,14 @@ export function SettingsPage() {
       // type covers every auth flow and a cast would be the place this breaks silently if it ever
       // could.
       if (outcome.kind !== 'check-email') return;
-      // Supabase mails BOTH addresses when "secure email change" is on: the old one to authorise
-      // it and the new one to prove it is reachable. Said out loud, because a user who only checks
-      // the new inbox will otherwise conclude the change is stuck.
+      // WHAT THIS PAGE MAY SAY ABOUT IT. Supabase mails BOTH addresses when the project's "secure
+      // email change" setting is on — the old one to authorise the move, the new one to prove it is
+      // reachable — and that is the defence that stops someone at a borrowed screen moving an
+      // account to their own inbox. Nothing in this repository sets that toggle or can read it:
+      // there is no config.toml in the tree, and infra/supabase can see SQL, not auth settings. So
+      // the page states only what is true either way — the address does not move until the new one
+      // is confirmed — and tests/secure-email-change.test.mjs holds it to that until something here
+      // can actually observe the setting.
       setEmailSentTo(outcome.address);
       setNewEmail('');
     },
@@ -849,6 +1100,14 @@ export function SettingsPage() {
   const RUN: Record<SensitiveAction, () => void> = {
     'change-email': () => changeEmail.mutate(newEmail.trim()),
     'change-password': () => changePassword.mutate(),
+    'remove-two-step': () => {
+      const id = factorToRemove;
+      setFactorToRemove(null);
+      // Nothing to remove is not an error to report; it is a stale click on a panel that has since
+      // been refetched. Silently doing nothing is the only honest option, and it is not a lie
+      // because no success is claimed either.
+      if (id) removeTwoStep.mutate(id);
+    },
     'sign-out-everywhere': () => {
       void signOutEverywhere().then((r) => {
         // REPORTED, never assumed. A "signed out everywhere" toast over a request that failed is
@@ -943,7 +1202,10 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Security" visible={sectionShows('email-address', 'password', 'sign-out-everywhere', 'security-history')}>
+      <Section
+        visible={sectionShows('email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history')}
+        title="Security"
+      >
         <Row id="email-address" visible={shows('email-address')}>
           <h3 className="settings-sub">Email address</h3>
           <p className="settings-current">
@@ -969,9 +1231,9 @@ export function SettingsPage() {
           )}
           {emailSentTo ? (
             <p className="muted" role="status">
-              A confirmation link is on its way to <strong>{emailSentTo}</strong>. Your current address gets one too —
-              the change only takes effect once both are confirmed, which is what stops someone who borrows your screen
-              from quietly moving your account to their own inbox.
+              A confirmation link is on its way to <strong>{emailSentTo}</strong>. The address on your account does not
+              change until that link is opened, so if this was not you, doing nothing is enough — and it is worth
+              changing your password, because someone who could reach this page could reach the rest of the account.
             </p>
           ) : (
             <form
@@ -1045,6 +1307,15 @@ export function SettingsPage() {
               {changePassword.isPending ? 'Saving…' : 'Change password'}
             </button>
           </form>
+        </Row>
+
+        <Row id="two-step" visible={shows('two-step')}>
+          <TwoStepPanel
+            onRemove={(factorId) => {
+              setFactorToRemove(factorId);
+              guard('remove-two-step');
+            }}
+          />
         </Row>
 
         <Row id="sign-out-everywhere" visible={shows('sign-out-everywhere')}>

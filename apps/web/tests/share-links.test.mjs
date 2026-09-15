@@ -84,7 +84,25 @@ test('THE SIGNED-OUT VISITOR KEEPS THEIR TOKEN through the login bounce', () => 
   // The whole content of a share link is its query string. AuthGuard stashed `location.pathname`
   // alone, so a signed-out person clicking a link reached /join with nothing in it — the link
   // losing its payload at the moment the person is least able to tell what happened.
-  assert.match(authCode, /from: `\$\{location\.pathname\}\$\{location\.search\}`/, 'AuthGuard must remember the query string');
+  //[[ ASSERTED AS A PROPERTY, because the expression moved and the property did not.
+  //
+  //   This pinned the inline template literal. A second guard landed — the step-up branch, for a
+  //   session that still owes a second factor — and the two redirects were factored into one
+  //   `const from`, so this failed about an expression that had simply been given a name. Worse,
+  //   pinning the literal would have PASSED a version where the first redirect kept the query and
+  //   the second dropped it, which is the same bug with a longer walk to it.
+  //
+  //   What must hold: the stash carries the search, and EVERY redirect to /login uses that stash.
+  assert.match(authCode, /location\.search/, 'AuthGuard must remember the query string');
+  const stash = /(?:const from = |from: )`\$\{location\.pathname\}\$\{location\.search\}`/.exec(authCode);
+  assert.ok(stash, 'the remembered location must be pathname + search');
+  const guardBody = authCode.slice(authCode.indexOf('function AuthGuard'));
+  const bounces = [...guardBody.matchAll(/<Navigate to="\/login"[^>]*state=\{\{\s*from([^}]*)\}\}/g)];
+  assert.ok(bounces.length >= 1, 'AuthGuard must bounce to /login');
+  for (const b of bounces) {
+    assert.match(b[0], /from(\s*\}|:\s*`\$\{location\.pathname\}\$\{location\.search\}`)/,
+      'every bounce to /login must carry the full remembered location, not just the path');
+  }
   // And /join is behind the guard, or an anonymous visitor would redeem as nobody.
   const guarded = appCode.slice(appCode.indexOf('<AuthGuard>'));
   assert.ok(guarded.includes('path="/join"'), '/join must sit inside the AuthGuard');

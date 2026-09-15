@@ -14,7 +14,7 @@
  */
 import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchStudioDiagnostics, type StudioDiagnostics } from '../../lib/api';
+import { fetchStudioOpLog, type StudioOpLog } from '../../lib/api';
 import { relativeTime } from '../../lib/format';
 import { Failure } from '../failure';
 import { activityRows, type ActivityRow, type OpLogRow } from './op-vocabulary';
@@ -30,9 +30,9 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState<string | null>(null);
 
-  const first = useQuery<StudioDiagnostics>({
+  const first = useQuery<StudioOpLog>({
     queryKey: ['studio-activity', projectId],
-    queryFn: () => fetchStudioDiagnostics(projectId, { limit: PAGE }),
+    queryFn: () => fetchStudioOpLog(projectId, { limit: PAGE }),
     enabled: projectId !== '',
     retry: false,
   });
@@ -44,7 +44,7 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
     setLoadingMore(true);
     setMoreError(null);
     try {
-      const page = await fetchStudioDiagnostics(projectId, { limit: PAGE, before: nextBefore });
+      const page = await fetchStudioOpLog(projectId, { limit: PAGE, before: nextBefore });
       setOlder((list) => [...list, ...page.recentOps]);
       setCursor(page.nextBefore);
       // The worker answers `nextBefore: null` for the last page, and that is the ONLY thing that

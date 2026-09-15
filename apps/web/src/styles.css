@@ -5184,7 +5184,7 @@ samp {
 
 /* Unread is carried by the strip AND the badge beside the title: colour alone is not a status. */
 .sec-event-new {
-  border-left-color: var(--warn);
+  border-inline-start-color: var(--warn);
   background: var(--surface-2);
 }
 
@@ -5205,6 +5205,17 @@ samp {
   margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+/* The enrolment QR. WHITE GROUND, NOT DECORATION: the provider sends black-on-transparent SVG, and
+   on the dark theme this product defaults to that renders as a black square on a dark card — a code
+   no camera can read, on the one screen whose whole job is to be photographed. */
+.mfa-qr {
+  display: block;
+  background: #fff;
+  padding: 0.5rem;
+  border-radius: var(--r-xs);
+  margin: 0 0 0.75rem;
 }
 
 /* A 700px-wide box for a display name reads as a mistake; cap the measure. */

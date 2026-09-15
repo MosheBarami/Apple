@@ -7,6 +7,7 @@ import { MOCK_MODE } from './mock';
 import { clearAllDrafts } from './draft';
 import { clearAllSearchHistory } from './search-history';
 import { clearAllViewState } from './view-state';
+import { secondStep, type SignInStep } from './mfa';
 import { supabase } from './supabase';
 
 interface AuthState {
@@ -18,6 +19,14 @@ interface AuthState {
   /** When this tab last watched a password re-entered, as epoch ms. See lib/auth-flows.ts. */
   reauthenticatedAt: number | null;
   markReauthenticated: () => void;
+  /**
+   * Whether this session has finished signing in, or still owes a verification code.
+   *
+   * NULL MEANS NOT YET KNOWN, and that is a third state rather than a convenience: `{step:'in'}`
+   * is a claim that this session is complete, and the moment before the answer arrives is not the
+   * moment to make it. The guards treat null as "wait", never as "yes".
+   */
+  stepOwed: SignInStep | null;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -27,6 +36,7 @@ const AuthContext = createContext<AuthState>({
   signOutEverywhere: async () => ({ ok: false }),
   reauthenticatedAt: null,
   markReauthenticated: () => {},
+  stepOwed: null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -42,6 +52,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * action. See `freshestAuth` in lib/auth-flows.ts.
    */
   const [reauthenticatedAt, setReauthenticatedAt] = useState<number | null>(null);
+
+  /**
+   * TWO-STEP VERIFICATION IS ENFORCED HERE, NOT ONLY ON THE SIGN-IN FORM.
+   *
+   * A password that works produces a session immediately — at assurance level aal1 — and that
+   * session is persisted. So a check that lived only in the sign-in handler would be finished by
+   * closing the tab: reload, and the restored aal1 session walks into the app past a factor its
+   * owner enrolled precisely to stop that. The question therefore belongs to whatever holds the
+   * session, and the guards below ask it on every render.
+   *
+   * The read is local: `getAuthenticatorAssuranceLevel` decodes the access token's `aal` claim and
+   * compares it against the factors on the persisted user. No network, so this costs a tick, not a
+   * round trip — and `secondStep` still treats an unreadable answer as a reason to stop rather than
+   * as permission.
+   *
+   * WHAT THIS IS NOT. It is a gate on this product's own screens. apps/worker verifies the JWT and
+   * does not inspect `aal`, so a stolen aal1 token still opens the API directly; closing that needs
+   * the worker to know which accounts have a factor, which needs an admin key this deployment does
+   * not hold. Said plainly here so the next reader does not mistake the scope.
+   */
+  const [stepOwed, setStepOwed] = useState<SignInStep | null>(null);
+  const token = session?.access_token ?? null;
+  useEffect(() => {
+    if (MOCK_MODE) {
+      setStepOwed({ step: 'in' });
+      return;
+    }
+    if (!token) {
+      setStepOwed(null);
+      return;
+    }
+    let cancelled = false;
+    supabase.auth.mfa
+      .getAuthenticatorAssuranceLevel()
+      .then(({ data, error }) => {
+        if (!cancelled) setStepOwed(secondStep(data, error));
+      })
+      .catch((e: unknown) => {
+        // A throw is an unreadable answer like any other, and `secondStep` fails closed on it.
+        if (!cancelled) setStepOwed(secondStep(null, e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (MOCK_MODE) {
@@ -118,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, loading, signOut, signOutEverywhere, reauthenticatedAt, markReauthenticated }}
+      value={{ session, loading, signOut, signOutEverywhere, reauthenticatedAt, markReauthenticated, stepOwed }}
     >
       {children}
     </AuthContext.Provider>
@@ -139,7 +194,7 @@ function AuthSplash() {
 }
 
 export function AuthGuard({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, stepOwed } = useAuth();
   const location = useLocation();
   if (loading) return <AuthSplash />;
   //[[ THE QUERY STRING TRAVELS WITH THE PATH.
@@ -149,15 +204,28 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   //   itself sent someone who clicked a link to /login and then to a /join with nothing in it —
   //   the link silently losing its payload at the one moment the person is least able to tell
   //   what went wrong. `safeInternalPath` at the sink already admits a query and refuses an
-  //   off-origin target, so this widens what is remembered and not what is trusted. ]]
-  if (!session) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+  //   off-origin target, so this widens what is remembered and not what is trusted.
+  //
+  //   BOTH return paths carry it. The second one is the step-up branch below, and a share link
+  //   that survives the sign-in redirect only to lose its token at the second-factor redirect is
+  //   the same bug with a longer walk to it.
+  const from = `${location.pathname}${location.search}`;
+  if (!session) return <Navigate to="/login" replace state={{ from }} />;
+  // A SESSION IS NOT A FINISHED SIGN-IN. Until the assurance level has been read this waits, and
+  // when it says a code is still owed — or could not be read at all — the person goes back to the
+  // page that can finish it. Rendering the app in either case would be the whole feature undone.
+  if (!stepOwed) return <AuthSplash />;
+  if (stepOwed.step !== 'in') return <Navigate to="/login" replace state={{ from }} />;
   return <>{children}</>;
 }
 
 /** Wraps /login and /signup: bounce authed users back into the app. */
 export function GuestGuard({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, stepOwed } = useAuth();
   if (loading) return <AuthSplash />;
-  if (session) return <Navigate to="/" replace />;
+  // Only a COMPLETE sign-in is bounced. While the level is being read, and while a code is owed,
+  // this IS where the person belongs: /login is the screen that asks for the code. Bouncing them
+  // on the mere existence of a session would unmount that screen mid-challenge.
+  if (session && stepOwed?.step === 'in') return <Navigate to="/" replace />;
   return <>{children}</>;
 }

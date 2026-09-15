@@ -95,7 +95,7 @@ import { allModels } from '../providers/registry';
 import { recordEvent } from '../analytics';
 import { flushEvents } from '../analytics-sink';
 import { fenceToolOutput, describeThreats } from '../injection.ts';
-import { scoreSubmission, type Submission } from '../abuse.ts';
+import { advisory, scoreSubmission, type Submission } from '../abuse.ts';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -2494,13 +2494,28 @@ export class SessionDO extends DurableObject<Env> {
       // output, and a prompt cannot contain an id that was minted for this scan alone.
       fenceId: crypto.randomUUID().slice(0, 8),
     });
+    // RECORDED BEFORE ANYTHING IS DECIDED, and that ordering is the fix rather than a tidy-up.
+    // `recordEvent` used to sit below the `action === 'allow'` return, so the only findings that
+    // were ever written down were the ones already being throttled or refused for something else.
+    // The two zero-weight signals — a pasted credential, an injection pattern — exist precisely to
+    // be noted on submissions that are otherwise fine, and those were the submissions whose
+    // findings were discarded. Nothing fires on a clean verdict: `signals` is empty and there is
+    // nothing to say.
+    if (verdict.signals.length > 0) {
+      recordEvent({
+        kind: 'error',
+        scope: 'chat:ingress',
+        errorKind:
+          verdict.action === 'refuse' ? 'abuse_refused' : verdict.action === 'throttle' ? 'abuse_throttled' : 'abuse_noted',
+        message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
+      });
+    }
+    // And told to the person it is about. A credential in a transcript is theirs to rotate whether
+    // or not this particular run starts, so this is sent on both paths — see `advisory` for why it
+    // covers the pasted key and not the injection pattern.
+    const notice = advisory(verdict);
+    if (notice) this.broadcast({ type: 'error', code: notice.code, message: notice.message });
     if (verdict.action === 'allow') return false;
-    recordEvent({
-      kind: 'error',
-      scope: 'chat:ingress',
-      errorKind: verdict.action === 'refuse' ? 'abuse_refused' : 'abuse_throttled',
-      message: verdict.signals.map((s) => `${s.code}: ${s.detail}`).join(' | '),
-    });
     if (verdict.action !== 'refuse') return false;
     this.broadcast({
       type: 'error',

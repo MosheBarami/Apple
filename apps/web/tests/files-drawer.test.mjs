@@ -61,8 +61,17 @@ test('the panel is mounted only while the drawer is open', () => {
   // A project's whole file listing is not worth a request on every workspace load for everyone who
   // never opens it — the same rule the memory and credits drawers already follow.
   assert.match(WS, /\{drawer === 'files' && <FilesPanel/);
-  // And the access check it needs is asked on the same condition, for the same reason.
-  const q = WS.indexOf("queryKey: ['project-access'");
-  assert.ok(q > 0, 'the access query must exist');
-  assert.match(WS.slice(q, q + 300), /enabled:[^\n]*drawer === 'files'/);
+  //[[ THE PROPERTY, NOT THE KEY'S NAME.
+  //
+  //   This pinned `queryKey: ['project-access'`. Two agents each wrote an access query, with two
+  //   different key names, and when the two were merged into one the surviving name was the other
+  //   one — so this failed with "the access query must exist" about a query sitting ten lines
+  //   above, and members-panel.test.mjs passed on the same line by pinning the name that won.
+  //   Two tests disagreeing about a string is not a finding about the code.
+  //
+  //   What has to hold is that the check is asked ONLY while a drawer that needs it is open.
+  const q = WS.search(/queryKey: \['[a-z-]*access[a-z-]*', projectId\]/);
+  assert.ok(q > 0, 'no access query found under any key name');
+  assert.match(WS.slice(q, q + 400), /enabled:[^\n]*drawer === 'files'/,
+    'the access check must be gated on the files drawer, not bought on every workspace load');
 });

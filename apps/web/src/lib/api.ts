@@ -503,18 +503,27 @@ export const fetchCheckpoints = (projectId: string) =>
  * `limit` and `before` page it; the worker owns their bounds and answers a cursor it cannot parse
  * with a refusal rather than the newest page.
  */
-export interface StudioDiagnostics {
+export interface StudioOpLog {
   recentOps: OpLogRow[];
   limit: number;
   nextBefore: number | null;
 }
 
-export const fetchStudioDiagnostics = (projectId: string, opts: { limit?: number; before?: number | null } = {}) => {
+//[[ TWO AGENTS NAMED TWO DIFFERENT ENDPOINTS `fetchStudioDiagnostics`, AND BOTH ARE REAL.
+//
+//   One returns the connection's state — is Studio paired, when does the token lapse, is the open
+//   place the bound one. The other returns the op LOG: what Studio has been asked to do, paged.
+//   They answer different questions, and the name that fitted both was the reason they collided.
+//
+//   The op log is the one renamed, because "diagnostics" in every message the pairing dialog
+//   prints means the connection, and a rename there would leave the word meaning two things in
+//   one product.
+export const fetchStudioOpLog = (projectId: string, opts: { limit?: number; before?: number | null } = {}) => {
   const q = new URLSearchParams();
   if (opts.limit) q.set('limit', String(opts.limit));
   if (opts.before) q.set('before', String(opts.before));
   const query = q.toString();
-  return request<StudioDiagnostics>(
+  return request<StudioOpLog>(
     `/api/projects/${encodeURIComponent(projectId)}/studio/diagnostics${query ? `?${query}` : ''}`,
   );
 };

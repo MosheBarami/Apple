@@ -32,6 +32,7 @@ import { InstructionsPanel } from '../components/ws/instructions-panel';
 import {
   ApiError,
   downloadExport,
+  fetchMembers,
   fetchPersonalisation,
   fetchProjectAccess,
   savePreferences,
