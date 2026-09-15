@@ -67,9 +67,9 @@ const rootTests = readdirSync(join(ROOT, 'tests'))
 
 const fingerprintBefore = treeFingerprint(ROOT);
 
-const run = (cmd, args) => {
+const run = (cmd, args, opts = {}) => {
   try {
-    return { out: execFileSync(cmd, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }), ok: true };
+    return { out: execFileSync(cmd, args, { cwd: opts.cwd ?? ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }), ok: true };
   } catch (e) {
     return { out: `${e.stdout ?? ''}${e.stderr ?? ''}`, ok: false };
   }
@@ -108,6 +108,19 @@ const parts = [
   // 57,049 rows were refused by an ingest that ran for half an hour before saying so, and the
   // rejects print at the end. This predicts the run in seconds, per source, before it starts.
   { label: 'check-harvest-licences', ...run('node', ['scripts/check-harvest-licences.mjs']) },
+  //[[ THE BUILD IS A CHECK, AND NOTHING HERE WAS RUNNING IT.
+  //
+  //   `tsc --noEmit` passed over a settings.tsx carrying a JSX comment in expression position —
+  //   `{cond && ( {/* … */} <div>` — which is a hard syntax error to esbuild. The typecheck was
+  //   green, the tests were green, the commit landed, and the SPA did not build. The bundle
+  //   deployed to production was the previous one, silently, because the uploader ships whatever
+  //   is in dist/ and dist/ still held the last successful build.
+  //
+  //   That is the worst shape a failure can take here: every gate green, the deploy reporting
+  //   success, and the change simply not present. Typecheck and tests both answer questions about
+  //   the code; only the build answers whether it can be shipped.
+  { label: 'build site', ...run('npx', ['astro', 'build'], { cwd: join(ROOT, 'apps', 'site') }) },
+  { label: 'build web', ...run('npx', ['vite', 'build'], { cwd: join(ROOT, 'apps', 'web') }) },
   { label: 'pnpm -r test', ...run('pnpm', ['-r', 'test']) },
 ];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make

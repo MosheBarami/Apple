@@ -195,9 +195,9 @@ function SecurityHistory() {
         </p>
       )}
 
+      {/* The wrapper carries NO role: <Failure> already announces itself, and an alert inside an
+          alert is read twice by some screen readers and swallowed entirely by others. */}
       {state.state === 'unavailable' && (
-        {/* No role here: <Failure> already announces itself, and an alert inside an alert is
-            read twice by some screen readers and swallowed entirely by others. */}
         <div>
           <Failure error={new Error(state.message)} onRetry={() => void history.refetch()} compact />
           {/* Said out loud, because the empty state sitting one branch away says the opposite and a
