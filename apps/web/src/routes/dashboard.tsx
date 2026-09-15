@@ -8,7 +8,7 @@ import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { downloadExport, purgeProject, ApiError } from '../lib/api';
-import { PROJECT_NAME_MAX, isRenameWorthwhile, useRenameProject } from '../lib/rename-project';
+import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditProject } from '../lib/rename-project';
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { relativeTime, truncate } from '../lib/format';
@@ -41,7 +41,7 @@ async function fetchProjects(scope: ProjectScope = 'active'): Promise<ProjectRow
   return (data ?? []) as ProjectRow[];
 }
 
-function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onRename: () => void; onArchive: () => void; archived: boolean }) {
+function ProjectMenu({ onDelete, onExport, onEdit, onArchive, archived }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; archived: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -91,10 +91,10 @@ function ProjectMenu({ onDelete, onExport, onRename, onArchive, archived }: { on
               e.preventDefault();
               e.stopPropagation();
               setOpen(false);
-              onRename();
+              onEdit();
             }}
           >
-            Rename…
+            Edit…
           </button>
           <button
             type="button"
@@ -234,36 +234,46 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
 }
 
 /**
- * Rename a project.
+ * Edit a project's name and description.
  *
  * The write goes straight to Supabase under RLS, exactly like create and delete do — there is no
  * worker route because there is nothing for one to do. `withOwnedProject` posts the CURRENT name
  * from Supabase to the Durable Object's `/init` on every single request, so the session picks the
  * new name up on its next call without being told. A rename endpoint would exist only to repeat
  * that, and would then be a second place where the name could be wrong.
+ *
+ * THE DESCRIPTION USED TO BE WRITE-ONCE. It was collected at creation, rendered on the card behind
+ * `memory_summary`, and then never writable again — this dialog said so in its own words ("Only the
+ * name changes"), which made a defect read like a policy. What a person is building changes more
+ * often than what they called it.
  */
-function RenameProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
+function EditProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description ?? '');
 
-  const rename = useRenameProject(project.id, project.name, {
+  const edit = useEditProject(project.id, { name: project.name, description: project.description }, {
     onDone: (next) => {
-      toast(`Renamed to "${next}"`, 'success');
+      toast(next.name === project.name ? 'Description saved' : `Renamed to "${next.name}"`, 'success');
       onClose();
     },
-    onFail: (msg) => toast(`Rename failed: ${msg}`, 'error'),
+    onFail: (msg) => toast(`Could not save: ${msg}`, 'error'),
   });
 
-  const canSave = isRenameWorthwhile(name, project.name) && !rename.isPending;
+  // The same rule the write uses, so the button is disabled exactly when the write would do
+  // nothing — rather than enabled on a change the rule will then refuse.
+  const canSave =
+    projectEditPatch({ name, description }, { name: project.name, description: project.description }) !== null &&
+    !edit.isPending;
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
-    rename.mutate(name);
+    edit.mutate({ name, description });
   };
 
   return (
-    <Modal title="Rename project" onClose={onClose} locked={rename.isPending}>
+    <Modal title="Edit project" onClose={onClose} locked={edit.isPending}>
       <form onSubmit={onSubmit}>
         <label className="field">
           <span className="field-label">Name</span>
@@ -272,22 +282,35 @@ function RenameProjectModal({ project, onClose }: { project: ProjectRow; onClose
             onChange={(e) => setName(e.target.value)}
             maxLength={PROJECT_NAME_MAX}
             required
-            name="renameProjectName"
-            id="rename-project-name"
+            name="editProjectName"
+            id="edit-project-name"
             autoFocus
             onFocus={(e) => e.currentTarget.select()}
           />
         </label>
+        <label className="field">
+          <span className="field-label">
+            What are you building? <span className="field-hint">(optional)</span>
+          </span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            maxLength={PROJECT_DESCRIPTION_MAX}
+            name="editProjectDescription"
+            id="edit-project-description"
+            placeholder="A lava-parkour obby with checkpoints, coins and a shop."
+          />
+        </label>
         <p className="field-hint">
-          Only the name changes. The Studio pairing, chat history and everything Apple has built stay
-          where they are.
+          The Studio pairing, chat history and everything Apple has built stay where they are.
         </p>
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose} disabled={rename.isPending}>
+          <button type="button" className="btn" onClick={onClose} disabled={edit.isPending}>
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={!canSave}>
-            {rename.isPending ? 'Renaming…' : 'Rename'}
+            {edit.isPending ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </form>
@@ -343,7 +366,7 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 export function DashboardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
-  const [renaming, setRenaming] = useState<ProjectRow | null>(null);
+  const [editing, setEditing] = useState<ProjectRow | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
   //[[ THE TAB YOU WERE READING.
   //
@@ -546,7 +569,7 @@ export function DashboardPage() {
                 <ProjectMenu
                   onDelete={() => setDeleting(p)}
                   onExport={(f) => void runExport(p, f)}
-                  onRename={() => setRenaming(p)}
+                  onEdit={() => setEditing(p)}
                   onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
                   archived={Boolean(p.archived_at)}
                 />
@@ -599,7 +622,7 @@ export function DashboardPage() {
       )}
 
       {showCreate && <CreateProjectModal onClose={() => setShowCreate(false)} />}
-      {renaming && <RenameProjectModal project={renaming} onClose={() => setRenaming(null)} />}
+      {editing && <EditProjectModal project={editing} onClose={() => setEditing(null)} />}
       {deleting && <DeleteProjectModal project={deleting} onClose={() => setDeleting(null)} />}
     </div>
   );
