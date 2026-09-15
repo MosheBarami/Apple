@@ -107,6 +107,84 @@ test('open questions are surfaced only when the worker actually asked them', () 
   assert.deepEqual(stages.find((s) => s.kind === 'plan').questions, ['Which tile size?']);
 });
 
+// --- what Apple decided for itself -----------------------------------------
+//
+// `questions` and `assumptions` are opposites and the card labels them as such: a question is
+// still open, an assumption has already been acted on. Showing only the first tells the user
+// about the choices Apple declined to make and hides the ones it made.
+
+test('WHAT APPLE ASSUMED IS SHOWN, not just what it left open', () => {
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: 's', checklist: ['a bar'], questions: [], assumptions: ['mood: warm (from "cozy")'] },
+  });
+  assert.deepEqual(stages.find((s) => s.kind === 'plan').assumptions, ['mood: warm (from "cozy")']);
+});
+
+test('assumptions and questions are separate lists, never merged', () => {
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: 's', checklist: ['a'], questions: ['Which tile size?'], assumptions: ['mood: warm'] },
+  });
+  const plan = stages.find((s) => s.kind === 'plan');
+  assert.deepEqual(plan.questions, ['Which tile size?']);
+  assert.deepEqual(plan.assumptions, ['mood: warm']);
+});
+
+test('a worker that assumed nothing renders no assumption block at all', () => {
+  // Never padded. `undefined` is what stops the label appearing over an empty list.
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: 's', checklist: ['a'], questions: [], assumptions: [] },
+  });
+  assert.equal(stages.find((s) => s.kind === 'plan').assumptions, undefined);
+});
+
+test('blank assumption strings are not assumptions', () => {
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: 's', checklist: ['a'], questions: [], assumptions: ['', '   '] },
+  });
+  assert.equal(stages.find((s) => s.kind === 'plan').assumptions, undefined);
+});
+
+test('an older worker that sends no assumptions field breaks nothing', () => {
+  // `assumptions` is optional on the wire: a reconnect can replay a run_intent recorded before
+  // the field existed, and an absent list must read as "said nothing", not as a crash.
+  const stages = buildTimeline({ ...EMPTY, intent: { summary: 's', checklist: ['a'], questions: [] } });
+  assert.equal(stages.find((s) => s.kind === 'plan').assumptions, undefined);
+});
+
+test('the assumptions actually reach the screen, and carry a style of their own', async () => {
+  // A field on a model that no component reads is the dead branch this whole section of the audit
+  // is about — `PlanStep.tool` sat rendered-but-never-produced for months. Both halves are checked:
+  // the JSX reads the field, and the class it renders under is defined rather than unstyled.
+  const { readFileSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const web = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const tsx = readFileSync(join(web, 'src/components/ws/thinking.tsx'), 'utf8');
+  assert.match(tsx, /stage\.assumptions/, 'the Thinking card never reads the assumptions');
+  assert.match(tsx, /Apple assumed/, 'the assumptions render with no label saying they were assumed');
+  const css = readFileSync(join(web, 'src/styles/workspace.css'), 'utf8');
+  assert.match(css, /\.gx-assumed\b/, 'the assumption block renders unstyled');
+});
+
+test('ASSUMPTIONS ALONE ARE ENOUGH TO DRAW THE PLAN ROW', () => {
+  // The checklist used to be the only thing that could open this stage. A request made entirely
+  // of adjectives ("make it cozier") names no object, so it has no checklist — and that is
+  // exactly the request where what Apple assumed is the only thing worth reading. Gating the row
+  // on the checklist would hide the assumption in the one case it matters most.
+  const stages = buildTimeline({
+    ...EMPTY,
+    intent: { summary: 'make it cozier', checklist: [], questions: [], assumptions: ['mood: warm (from "cozier")'] },
+  });
+  const plan = stages.find((s) => s.kind === 'plan');
+  assert.ok(plan, 'the assumption had nowhere to render');
+  assert.equal(plan.items, undefined, 'an empty checklist must not draw an empty list');
+  assert.deepEqual(plan.assumptions, ['mood: warm (from "cozier")']);
+});
+
 // ---------------------------------------------------------------------------
 // 3. Actions come from real tool events and the announced phase
 // ---------------------------------------------------------------------------

@@ -10,16 +10,17 @@ Newest first. Each entry: what was believed, what was true, how it was caught.
 
 ## 2026-09-15
 
-### F-58 · A falsification that turns nothing red usually means the BREAK was mis-aimed
+### F-58 · A falsification that turns nothing red has SIX readings, and most are not defects
 **Believed:** red-first is settled practice here. Break the mechanism, watch the gate go
 red, restore. If the break turns nothing red, the test is vacuous or the mechanism it
 claims to guard is absent — the two readings we had.
-**True:** there are five readings, and the one we were missing is the most common. A
+**True:** there are six readings, and the one we were missing is the most common.
+The sixth was added later and inverts the advice: it means the code is right as it stands. A
 break that reports 0 red most often landed somewhere other than where it was recorded as
 landing, because it was applied by replacing the FIRST OCCURRENCE of a string that
 appears at several call sites.
 
-The five, in descending order of how often they actually occur:
+The six, in descending order of how often they actually occur:
 
 1. **Mis-aimed break.** The edit landed on a different call site than the one named.
 2. **Vacuous test.** The assertion can never fire — `if (over.length)` on an array that
@@ -33,6 +34,43 @@ The five, in descending order of how often they actually occur:
 5. **Unfalsifiable by construction, kept for a stated future.** Correct code no test can
    redden today, load-bearing the day a named condition changes. Legitimate — but it must
    say so in a comment, or it sits there looking tested.
+6. **The break was real and the behaviour is unchanged.** Not a defect in the test, the
+   harness, or the aim — the code you broke was genuinely REDUNDANT, and something else
+   downstream produces the identical outcome. This is what defence in depth looks like from
+   inside a falsifier. Found 2026-09-15 by rbxai-04, auditing the security and spend guards:
+   of seven breaks, three came back uncaught and NONE meant what uncaught usually means.
+   Deleting `gateway.ts:299`'s per-request neuron pre-check changes nothing observable,
+   because `reserve()` throws `BudgetError` with the DO's own reason one network hop later —
+   the same error, the same message, a different line number. Removing `getOwnedProject`'s
+   `if (!ok || !data ...)` is a NO-OP for a subtler reason: `supaRest` parses the body
+   regardless of `ok`, so on failure `data` is PostgREST's error OBJECT and `data[0]` is
+   `undefined` either way.
+   **Why this reading matters more than the others:** readings 1-4 tell you to fix something.
+   This one tells you to LEAVE IT ALONE, and it is the reading most likely to be misfiled as
+   reading 2. A redundant guard and an untested guard produce byte-identical falsification
+   output, and only one of them should be deleted.
+
+   **The discriminator, and it took two attempts.** The first version asked "what happened
+   INSTEAD of the failure you expected?" — a redundant guard's absence covered by a named
+   second mechanism, a vacuous test's by nothing. rbxai-04 broke it with a case from the same
+   night: `budget-admission.test.mjs` asserted `warnings.length >= 1` with a fixture that made
+   two fields unreadable, so the leaked-reservation warning already satisfied the count and
+   deleting the upper-bound warning left it green. Genuinely vacuous — and the substitute WAS
+   nameable and locatable: the other `console.warn`, at the un-released-hold branch. The
+   question as posed says "redundant, leave it alone". It was broken and needed fixing.
+
+   **So ask what covers THE PROPERTY THE TEST NAMES, not what covers the assertion's surface.**
+   That assertion's surface was "a warning exists", which the leak warning satisfied. The
+   property was "charging an upper bound is announced, with the figure" — and nothing in the
+   codebase names the charged ceiling, so nothing covered it. Run the repaired question on the
+   real cases and it separates them cleanly: for `gateway.ts:299` the property is "a request
+   above the per-request cap is refused", and `reserve()` throwing the identical `BudgetError`
+   satisfies it exactly; for `supaRest` the property is "a failed ownership lookup yields no
+   row", and `data[0]` on an error object being `undefined` satisfies it exactly.
+
+   This also explains WHY vacuous tests are vacuous — **an assertion weaker than the property
+   it claims**. The defect and the discriminator have the same root, which is the best evidence
+   available that it is the right question to ask.
 
 **Cost of the error:** three sessions reached a wrong conclusion about their own work in
 one night. Two breaks aimed at `/reserve` landed on `/probe`, because
@@ -61,6 +99,192 @@ that announces a leaked budget reservation.
 **The rule:** generalises past logs to any assertion counting events on one stream. Assert
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
+
+### F-68 · The worktree that fixed F-67 rewired the MAIN checkout's dependencies
+**Believed:** a detached worktree under `.claude/worktrees/` with its own `pnpm install` is an
+isolated place to measure a churning tree. F-67 established that the install is necessary; nothing
+suggested it was not contained.
+**True:** `pnpm install` run inside a worktree that sits INSIDE the repository walks up, finds the
+main `pnpm-workspace.yaml` as its nearest workspace root, and **rewrites the MAIN checkout's
+`node_modules` symlinks to point into the worktree's own store.** Observed in the main tree, by two
+sessions independently:
+
+    apps/worker/node_modules/@golem/shared -> ../../../../.claude/worktrees/probe-9423f2c/packages/shared
+    apps/worker/node_modules/esbuild       -> ../../../.claude/worktrees/probe-9423f2c/node_modules/.pnpm/esbuild@0.25.12/...
+
+Fifteen links across `apps/web`, `apps/site` and `apps/worker`. **Nobody knows whose install did
+it, and that is the point** — three sessions shared the checkout, the worktree was created and
+deleted inside one hour, and by the time the damage was visible its cause was gone. An early
+attribution in this record was wrong and is removed: the only fact worth keeping is that ANY
+install inside ANY in-repo worktree does this, so it is not a habit one session can fix.
+**The workspace globs are not the cause** — `apps/*`, `apps/benchmark/*`, `packages/*` match nothing under `.claude/`. The direction
+is the opposite of the obvious one: not the main workspace reaching into the worktree, but an
+install inside the worktree reaching out to the main workspace root it happens to be nested under.
+**Cost of the error:** every typecheck, test and build in the main checkout resolved `@golem/shared`
+and `@golem/design` from a FROZEN commit rather than the live tree — a right answer about the wrong
+tree, in the checkout where nobody expects an indirection. It surfaced as
+`'@golem/shared' has no exported member 'StudioEventSelection'` against a type that is plainly
+exported on line 271. When the worktree was later deleted the links dangled and
+`node_modules/.bin/esbuild` stopped existing, which takes down every test that bundles through it.
+**Caught by:** the contradiction between what `grep` saw in the source and what `tsc` reported —
+two tools disagreeing about one file is only possible if they are reading two files.
+**A THIRD CHECK, from rbxai-04, and it is the only one that sees this class:** after removing a
+worktree, `readlink` a couple of the main tree's `@golem/*` links before the next measurement. Every
+instinct built today — check the count, prove the parser, capture once — inspects the MEASUREMENT.
+None of them inspects the RESOLUTION. `tsc` read a different file than `grep` did and both were
+correct.
+**The rule:** **put verification worktrees OUTSIDE the repository.** `git worktree add /tmp/verify-x`
+or a sibling directory; never a path under the workspace root. A worktree inside the repo shares the
+workspace root, and pnpm's notion of "the workspace" is ancestral, not configured.
+
+**MEASURED, not reasoned.** The prescription was written from the mechanism and then tested against
+it, because a fix derived from a correct diagnosis can still be wrong:
+
+    git worktree add --detach /tmp/g90-verify HEAD
+    cd /tmp/g90-verify && pnpm install --frozen-lockfile     # 5.9s, 12 packages
+
+    main tree BEFORE   apps/worker/node_modules/@golem/shared -> ../../../../packages/shared
+    main tree AFTER    apps/worker/node_modules/@golem/shared -> ../../../../packages/shared
+    esbuild in main    0.25.12, resolves
+
+Zero effect on the checkout. `/tmp` has no `pnpm-workspace.yaml` above it, so the install resolves
+against the worktree's own root and never reaches the shared tree. The variable is the PATH, not the
+worktree — which means the technique does not have to be abandoned, only relocated.
+**The repair is not obvious and cost three attempts:** `pnpm install --frozen-lockfile` reports
+"Already up to date" and changes nothing, because pnpm's stored state records the bad links as
+correct. Deleting the symlinks and running `pnpm install --force` ALSO reports "Already up to date"
+and additionally leaves `apps/worker/node_modules/typescript` missing, so `tsc` cannot start at all.
+What works is `rm -rf <pkg>/node_modules && pnpm install`.
+**And the alarm that healed itself:** rbxai-04 had a broken snapshot — dangling target, failing
+exec — and was about to report the main checkout broken for everyone. Re-measuring in ONE command
+before writing showed it already repaired. *An alert is a claim about now, written from a reading
+about then.* Capture once, read many times applies to alarms exactly as it applies to greens, and
+the cost of getting it wrong is higher: a false green wastes a check, a false alarm stops four
+sessions.
+
+### F-67 · A verification worktree with symlinked node_modules ran 8% of the suite and called it RED
+**Believed:** running `gate-suite.mjs` in a detached worktree at HEAD answers "does the committed
+tree pass?" while the main checkout churns. The worktree was prepared by symlinking the main tree's
+`node_modules` into it — root and per-package — which is fast, costs no disk, and was sanity-checked
+before use: `packages/design` ran 42/42 there, and `apps/worker/node_modules/.bin/esbuild` resolved.
+**True:** `pnpm` in that worktree could not run at all — `Command failed with exit code 1: pnpm
+install` — and saw **zero** workspace packages against the main tree's twelve. `pnpm -r test`
+therefore recursed over nothing. The run reported **`tests passed: 225 failed: 11 — SUITE RED`**
+against a main-tree suite of **2,935**. Eight per cent of the suite ran, and the verdict was
+presented as a fact about HEAD.
+**Cost of the error:** nearly reported "HEAD is RED" to the owner and to a peer, in a session whose
+entire purpose was landing 16 agents' work. The peer had independently recommended the symlink
+recipe and was using it for their own audits, so the wrong number would have propagated.
+**Caught by:** the test COUNT, not the verdict. 225 against an expected 2,935 is not a failing
+suite, it is a different suite. **The sanity check that passed is what made it dangerous** — one
+package ran and one binary resolved, so the harness looked alive from every angle except the only
+one that mattered, which was how many packages `pnpm` could see.
+**The rule:** **a partial harness reports a verdict, not an error.** Before believing any suite
+result, compare its TEST COUNT to the count you expect; a suite that cannot run most of itself
+fails in exactly the shape of a suite that ran and found problems.
+
+**AND THE EXPECTED COUNT MUST COME FROM OUTSIDE THE INSTRUMENT.** rbxai-04's addition, and it is
+the half that makes the rule usable: they validated their own 790/790 by taking the file count from
+`git ls-tree` (55 tracked test files, 55 present in the worktree, 790 named `✔`/`✖` lines). Asking
+the test runner how many files it found would have returned 55 — about the 55 it could see. An
+instrument cannot report its own blind spot; the baseline has to be drawn from a different tool.
+
+**WHEN THE SYMLINK IS ENOUGH, AND WHEN IT IS NOT** — the line, because the next person will reach
+for it again and it works right up until it silently does not:
+
+- `node` resolves modules by walking parent directories, so a symlink at
+  `apps/worker/node_modules` satisfies it COMPLETELY. A direct `node --test` inside a package is
+  fine, which is exactly why the 42/42 sanity check passed.
+- `pnpm -r` does not resolve modules at all. It reads WORKSPACE STATE — `pnpm-workspace.yaml`, the
+  lockfile, `.pnpm` — from the tree it is invoked in, and a symlink gives it none of that.
+
+So a symlinked `node_modules` satisfies module RESOLUTION and nothing that reads workspace STATE.
+Anything invoked per-package is fine; anything that ENUMERATES packages is not.
+`pnpm install --frozen-lockfile` inside the worktree takes eleven seconds and yields eleven
+packages; the symlinks took none and yielded none.
+**Relation to F-58:** this is reading 3, dead harness, at suite scale rather than test scale — and
+it is the third instance in one night of the same root: *the instrument was broken and returned the
+answer we were emotionally prepared for.* F-64 was a parser matching nothing and reporting zero
+failures. rbxai-04's was a shell eating a needle and reporting a guard absent. This one is a package
+manager finding no packages and reporting a red suite. In all three the broken instrument produced a
+number rather than an error, and a number gets believed.
+
+### F-66 · A negative fixture that violates two conjuncts proves neither
+**Believed:** `secret-redaction.test.mjs` proved a payment card is flagged only when it satisfies
+BOTH halves of the rule its name states — "Luhn AND an issuer prefix". Its two negative fixtures
+were `'order 1234567812345678'` and `'t=1736899200000'`, chosen as the two false positives that
+would actually matter in egress.
+**True:** both fixtures fail BOTH conjuncts. `1234567812345678` is not Luhn-valid *and* `1234` is
+not an issuer prefix; the 13-digit epoch is neither. So the pair could not show which half did the
+excluding. **Measured: forcing `luhnValid` to return `true` was GREEN, and relaxing the issuer
+regex to any four digits was ALSO green.** The test named a conjunction and demonstrated neither
+conjunct.
+**Cost of the error:** the whole reason the prefix check exists is written in a comment three lines
+above the rule — roughly one in ten 13-digit epoch milliseconds passes Luhn, so Luhn alone would
+start refusing ordinary outbound traffic at random and somebody would switch the gate off. That
+reasoning was load-bearing, documented, and untested.
+**Caught by:** the adversarial verification pass, which reported `luhnValid->true` and
+`prefix-relaxed` as two separate zero-red breaks and noticed that only removing BOTH at once
+reddened — the signature of the defect rather than of a mis-aimed break.
+**The rule:** **to prove a conjunction, every negative fixture must violate exactly ONE conjunct.**
+A fixture that fails for several reasons at once demonstrates only that the rule as a whole rejects
+it, which is the weakest possible claim and usually not the one the test's name makes. Repaired by
+adding one fixture per conjunct: `9000000000000001` is Luhn-valid with no issuer prefix, and
+`4111111111111112` carries the Visa prefix and fails Luhn. Each break above now reddens on its own.
+**How to recognise the family without running anything:** the test name contains AND, OR, "only
+when", or "unless", and the negative fixtures are all obviously, grossly invalid. A fixture that
+looks *almost* right is the one doing work. This is the same shape in three other places the same
+pass found — a de-duplication clause with no fixture producing two of a kind, a "short prompts are
+exempt" clause where the fixture was already excluded by a different threshold, and three
+truncate-after-redact assertions whose input never reached the truncation limit.
+
+### F-65 · `join()` renders undefined as "", so a guard scanning for "undefined" saw nothing
+**Believed:** `preferences.test.mjs` proved every allowlisted preference value renders a rule the
+model actually receives. Its guard was `assert.ok(block.length > 0 && !block.includes('undefined'))`,
+applied identically across four loops — language, coding style, response length, Roblox convention.
+**True:** it could only ever work for ONE of the four. `language` reaches the output through a
+template literal — `` `Reply in ${LANGUAGE_NAMES[lang]}` `` — and `${undefined}` really does render
+the six characters `undefined`. The other three reach it through `lines.push(RULE[key])` followed by
+`lines.join('\n- ')`, and **`Array.prototype.join` renders `undefined` and `null` as the empty
+string**. A missing rule did not spell "undefined" in the block. It left a bullet with nothing after
+it — and `block.length > 0` was still true, because the other bullets were fine.
+**Cost of the error:** deleting `CODING_STYLE_RULE.oop`, `RESPONSE_LENGTH_RULE.normal` or
+`CONVENTION_RULE['no-wait-loops']` left the whole suite green. Three of the four allowlists could
+lose entries silently, which is exactly the defect the test's own comment says it exists to catch:
+"a preference the user can set and the model never hears about".
+**Caught by:** the adversarial verification pass, not by reading. The test was readable, commented,
+and wrong.
+**The rule:** **a marker-scanning assertion is only as good as the rendering path that produces the
+marker**, and one codebase routinely has several. Template interpolation stringifies `undefined`;
+`join` and `filter(Boolean)` erase it; `JSON.stringify` drops the key entirely; `String(x)` spells
+it out again. Before asserting "the output does not contain X", establish that the failure you
+fear can produce X *on the path the value actually travels*.
+**The repair, which generalises:** assert the PROPERTY rather than a symptom of its absence.
+"every allowlisted value produces exactly one non-empty bullet" is falsifiable on every path,
+needs no knowledge of how the value is interpolated, and reddens for all three deletions above.
+This is F-58's "an assertion weaker than the property it claims" with a named mechanism for HOW it
+got weaker.
+
+### F-64 · A falsification parser that matched nothing, and reported that as zero failures
+**Believed:** three deliberate breaks to `apps/worker/src/tools.ts` had each been checked and each
+left the suite green, so the repaired oracle was unfalsifiable and the breaks were mis-aimed.
+**True:** the counter was `grep -cE "^not ok .*park pixels"`, and `node --test` prints `✖ name`,
+not `not ok`. The pattern matched nothing on every run, including the healthy one. All three
+"0 red" results were the parser failing to see a failure it was never able to see. Re-measured
+against `ℹ fail N`: guard removed → 1, literal key → 1, third unguarded call site → 1, control → 0.
+**Cost of the error:** nearly recorded a security oracle as verified on the strength of three
+measurements that never happened. The commit message was already drafted.
+**Caught by:** the healthy-tree run ALSO printing nothing where a `# pass` line was expected. Zero
+red on three independent breaks is implausible; zero output from the summary line is impossible.
+**The rule:** **a parser that matches nothing reports the same value as a healthy tree.** Zero is
+the signal we treat as meaningful, and a broken instrument produces it for free. So the control
+must run FIRST and must be shown to MATCH — not merely to return 0. "It printed 0" and "it found
+zero" are different findings that look identical.
+**This is meaning 3 (dead harness) one level out:** not the test that never ran, but the reader
+that never read. It happened twice in one night, to two different sessions, in two different
+shells — rbxai-04 lost the same hour to shell quoting eating a `(!ctx` needle and getting -1 for
+both `indexOf` searches, briefly concluding a guard did not exist. Two accidents with one shape is
+a pattern, and it argues the control belongs in the harness rather than in anyone's habits.
 
 ### F-63 · A safety flag that was never parsed, in a command §10 tells us to run every pass
 **Believed:** `node infra/smoke.mjs --no-model` runs the deployed smoke checks without spending

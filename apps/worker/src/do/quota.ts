@@ -1,10 +1,29 @@
-// QuotaDO - one per user. Authoritative Sparks ledger with daily UTC reset.
+// QuotaDO - one per user. Authoritative Credits ledger with daily UTC reset.
 // Keeps worst-case inference spend inside the free neuron allocation.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
 import { isPlanId, type PlanId } from '../pricing';
+import type { Subscription } from '../billing';
 import { dayKey, monthKey, quotaState, splitSpend } from '../quota-math';
+
+/** One line of this account's billing history, as the product reads it back. */
+interface BillingChange {
+  at: number;
+  kind: 'plan' | 'credits';
+  fromPlan: PlanId | null;
+  toPlan: PlanId | null;
+  status: string | null;
+  eventId: string | null;
+  /**
+   * Which way the cancellation flag moved, on the row where it actually moved — and NULL everywhere
+   * else.
+   *
+   * It is not "the flag as it stood": a past_due row that merely carried `false` along would then
+   * read as "cancellation undone" over a failed payment. Non-null means this change WAS the flag.
+   */
+  cancelAtPeriodEnd: boolean | null;
+}
 
 export class QuotaDO extends DurableObject<Env> {
   private sql = this.ctx.storage.sql;
@@ -14,8 +33,21 @@ export class QuotaDO extends DurableObject<Env> {
     ctx.blockConcurrencyWhile(async () => {
       this.sql.exec(`create table if not exists ledger(
         id integer primary key autoincrement, day text not null, kind text not null,
-        sparks integer not null, created_at integer not null);
-        create index if not exists ledger_day on ledger(day);`);
+        credits integer not null, created_at integer not null);
+        create index if not exists ledger_day on ledger(day);
+        create table if not exists billing_events(
+        id integer primary key autoincrement, at integer not null, kind text not null,
+        from_plan text, to_plan text, status text, event_id text);
+        create table if not exists applied_events(event_id text primary key, at integer not null);`);
+      // billing_events gained a column after rows already existed in every deployed DO, and
+      // `create table if not exists` does not add one to a table that is already there. SQLite has
+      // no `add column if not exists`, so the alter is attempted on every start and throws
+      // harmlessly once it has been applied. Swallowing it here is the migration.
+      try {
+        this.sql.exec(`alter table billing_events add column cancel_at_period_end integer`);
+      } catch {
+        /* already migrated */
+      }
     });
   }
 
@@ -39,13 +71,55 @@ export class QuotaDO extends DurableObject<Env> {
     return (await this.ctx.storage.get<number>('credits')) ?? 0;
   }
 
+  /** The full Stripe subscription as last seen, or null for an account that never bought one. */
+  private async subscription(): Promise<Subscription | null> {
+    return (await this.ctx.storage.get<Subscription>('subscription')) ?? null;
+  }
+
+  /**
+   * Claim a Stripe event id, returning false if it has already been applied here.
+   *
+   * WHY THE SIGNATURE WINDOW IS NOT ENOUGH. `verifyStripeSignature` bounds replays to 300 seconds;
+   * it does not make a second delivery inside that window a no-op, and Stripe genuinely redelivers
+   * an event whose response it did not receive. An additive grant applied twice is money.
+   *
+   * An event with NO id is applied. Deduplication must never become a reason to lose a purchase.
+   */
+  private claimEvent(eventId: string | null | undefined): boolean {
+    if (typeof eventId !== 'string' || eventId.length === 0) return true;
+    const key = eventId.slice(0, 120);
+    const seen = this.sql.exec(`select event_id from applied_events where event_id = ?`, key).toArray();
+    if (seen.length > 0) return false;
+    this.sql.exec(`insert into applied_events(event_id, at) values(?,?)`, key, Date.now());
+    // Far outside any redelivery window Stripe uses, and the same horizon the ledger is pruned on.
+    this.sql.exec(`delete from applied_events where at < ?`, Date.now() - 35 * 864e5);
+    return true;
+  }
+
+  private record(
+    kind: 'plan' | 'credits',
+    from: PlanId | null,
+    to: PlanId | null,
+    status: string | null,
+    eventId: string | null,
+    // Null unless this change WAS the cancellation flag moving. Stored as 0/1 because SQLite has no
+    // boolean, and read back through a null check so "no opinion" survives the round trip.
+    cancelAtPeriodEnd: boolean | null = null,
+  ): void {
+    this.sql.exec(
+      `insert into billing_events(at, kind, from_plan, to_plan, status, event_id, cancel_at_period_end) values(?,?,?,?,?,?,?)`,
+      Date.now(), kind, from, to, status, eventId,
+      cancelAtPeriodEnd === null ? null : cancelAtPeriodEnd ? 1 : 0,
+    );
+  }
+
   private async state(): Promise<QuotaState> {
     // This method now does exactly two things a test cannot do for itself: read storage, and read
     // the clock. Everything decided from those values lives in quota-math, where a day boundary is
     // an argument rather than a thing to wait for.
-    const dayRow = this.sql.exec(`select coalesce(sum(sparks),0) as s from ledger where day = ?`, this.today()).one() as { s: number };
+    const dayRow = this.sql.exec(`select coalesce(sum(credits),0) as s from ledger where day = ?`, this.today()).one() as { s: number };
     const monthRow = this.sql
-      .exec(`select coalesce(sum(sparks),0) as s from ledger where day like ?`, `${this.thisMonth()}%`)
+      .exec(`select coalesce(sum(credits),0) as s from ledger where day like ?`, `${this.thisMonth()}%`)
       .one() as { s: number };
     return quotaState({
       plan: await this.plan(),
@@ -62,26 +136,46 @@ export class QuotaDO extends DurableObject<Env> {
       return Response.json(await this.state());
     }
     if (url.pathname === '/spend' && req.method === 'POST') {
-      const { sparks, kind } = (await req.json()) as { sparks: number; kind: string };
+      const { credits, kind } = (await req.json()) as { credits: number; kind: string };
       const st = await this.state();
       // Allowance first, credits only for the remainder. Spending a purchased balance while a free
       // allowance is still available would quietly charge the user for something they already had.
-      const split = splitSpend(sparks, st.allowanceRemaining, st.credits);
+      const split = splitSpend(credits, st.allowanceRemaining, st.credits);
       if (!split.affordable) return Response.json({ ok: false, state: st });
       const { fromAllowance, fromCredits } = split;
       if (fromCredits > 0) await this.ctx.storage.put('credits', Math.max(0, st.credits - fromCredits));
       if (fromAllowance > 0) {
-        this.sql.exec(`insert into ledger(day, kind, sparks, created_at) values(?,?,?,?)`, this.today(), kind.slice(0, 40), fromAllowance, Date.now());
+        this.sql.exec(`insert into ledger(day, kind, credits, created_at) values(?,?,?,?)`, this.today(), kind.slice(0, 40), fromAllowance, Date.now());
       }
       this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - 35 * 864e5));
       const after = await this.state();
       return Response.json({ ok: true, state: after });
     }
     if (url.pathname === '/set-plan' && req.method === 'POST') {
-      const { plan, customerId } = (await req.json()) as { plan: string; customerId?: string | null };
+      const { plan, customerId, subscription, eventId } = (await req.json()) as {
+        plan: string;
+        customerId?: string | null;
+        subscription?: Subscription | null;
+        eventId?: string | null;
+      };
+      if (!this.claimEvent(eventId)) {
+        // Stripe redelivers an event it did not hear back about. Applying it again would move the
+        // plan a second time from a state that has since changed.
+        return Response.json({ ok: true, replayed: true, state: await this.state() });
+      }
+      const before = await this.plan();
+      const beforeSub = await this.subscription();
       // An unrecognised plan id becomes free rather than throwing: this is driven by a webhook, and
       // a Stripe product renamed upstream must degrade to the safe tier, not wedge the route.
-      await this.ctx.storage.put('plan', isPlanId(plan) ? plan : 'free');
+      const next: PlanId = isPlanId(plan) ? plan : 'free';
+      await this.ctx.storage.put('plan', next);
+      // THE WHOLE SUBSCRIPTION, not only the tier it entitles. status, currentPeriodEnd and
+      // cancelAtPeriodEnd were parsed from the event and then discarded here, which left the
+      // product unable to tell a subscription that renews from one that cancels at the period end
+      // — two opposite sentences printed from the same field.
+      if (subscription && typeof subscription === 'object') {
+        await this.ctx.storage.put('subscription', subscription);
+      }
       // The Stripe customer, kept so the billing portal has something to open. It is written only
       // when the webhook actually carries one, and never cleared by a plan change: a cancelled
       // subscription still belongs to a customer whose invoices and card the user can manage, and
@@ -89,20 +183,73 @@ export class QuotaDO extends DurableObject<Env> {
       if (typeof customerId === 'string' && customerId.length > 0) {
         await this.ctx.storage.put('stripeCustomerId', customerId);
       }
+      const status = subscription?.status ?? null;
+      /*
+       * A ROW PER CHANGE, NOT A ROW PER DELIVERY. Stripe sends subscription.updated for things this
+       * product does not model at all; logging those would bury the changes that matter.
+       *
+       * THE CANCELLATION IS A CHANGE. It arrives as customer.subscription.updated with the status
+       * still 'active' and only cancel_at_period_end flipped — so a condition of "plan moved or
+       * status moved" wrote no row for it, nor for undoing it. Those are the two changes a customer
+       * is most likely to ring up about, and they were the two the history could not show.
+       */
+      const cancelNow = subscription?.cancelAtPeriodEnd ?? false;
+      const cancelMoved = cancelNow !== (beforeSub?.cancelAtPeriodEnd ?? false);
+      if (next !== before || status !== (beforeSub?.status ?? null) || cancelMoved) {
+        this.record('plan', before, next, status, eventId ?? null, cancelMoved ? cancelNow : null);
+      }
       return Response.json({ ok: true, state: await this.state() });
     }
     if (url.pathname === '/billing-customer' && req.method === 'GET') {
       return Response.json({ customerId: (await this.ctx.storage.get<string>('stripeCustomerId')) ?? null });
     }
+    /**
+     * Everything this account's billing surfaces need, in one read: the enforced plan, the Stripe
+     * customer the portal opens, the full subscription record, and the change history.
+     */
+    if (url.pathname === '/billing' && req.method === 'GET') {
+      const sub = await this.subscription();
+      const events = this.sql
+        .exec(`select at, kind, from_plan, to_plan, status, event_id, cancel_at_period_end from billing_events order by at desc, id desc limit 50`)
+        .toArray() as Record<string, unknown>[];
+      return Response.json({
+        plan: await this.plan(),
+        customerId: (await this.ctx.storage.get<string>('stripeCustomerId')) ?? null,
+        subscription: sub,
+        // Renamed on the way out rather than leaking column spellings into the API.
+        events: events.map((r): BillingChange => ({
+          at: Number(r['at']),
+          kind: r['kind'] === 'credits' ? 'credits' : 'plan',
+          fromPlan: (r['from_plan'] as PlanId | null) ?? null,
+          toPlan: (r['to_plan'] as PlanId | null) ?? null,
+          status: (r['status'] as string | null) ?? null,
+          eventId: (r['event_id'] as string | null) ?? null,
+          // Rows written before the column existed read back null, which is exactly right: they
+          // are not rows about the cancellation flag, and must not be described as if they were.
+          cancelAtPeriodEnd:
+            r['cancel_at_period_end'] === null || r['cancel_at_period_end'] === undefined
+              ? null
+              : Number(r['cancel_at_period_end']) === 1,
+        })),
+      });
+    }
     if (url.pathname === '/grant-credits' && req.method === 'POST') {
-      const { credits } = (await req.json()) as { credits: number };
+      const { credits, eventId } = (await req.json()) as { credits: number; eventId?: string | null };
+      if (!this.claimEvent(eventId)) {
+        // The defect this closes: /grant-credits is additive, so a redelivery inside the signature
+        // tolerance granted a second balance for one purchase.
+        return Response.json({ ok: true, replayed: true, granted: 0, state: await this.state() });
+      }
       // Additive only, and never negative. The same rule as /simulate-usage: a billing path that
       // can subtract is a billing path that can erase evidence of spend.
       const add = Math.max(0, Math.floor(Number(credits) || 0));
       await this.ctx.storage.put('credits', (await this.credits()) + add);
+      // Nothing granted is not a change, and a history of changes that did not happen is worse
+      // than no history.
+      if (add > 0) this.record('credits', null, null, null, eventId ?? null);
       return Response.json({ ok: true, granted: add, state: await this.state() });
     }
-    // Clear a day's Spark usage for THIS user. Owner-key gated at the edge, and it only ever
+    // Clear a day's Credit usage for THIS user. Owner-key gated at the edge, and it only ever
     // touches the quota DO it is addressed to — no other user, no project data, and not the global
     // neuron ledger or its caps. It exists so the visual benchmark can run on demand: one
     // quality-gated build now costs more than a whole day's free allowance, so without this the
@@ -115,7 +262,7 @@ export class QuotaDO extends DurableObject<Env> {
     }
     if (url.pathname === '/history') {
       const rows = this.sql
-        .exec(`select day, sum(sparks) as sparks, count(*) as events from ledger group by day order by day desc limit 30`)
+        .exec(`select day, sum(credits) as credits, count(*) as events from ledger group by day order by day desc limit 30`)
         .toArray();
       return Response.json({ days: rows });
     }

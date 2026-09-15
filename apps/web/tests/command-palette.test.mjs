@@ -185,11 +185,18 @@ test('every signed-in route is a child of the shell, so every one of them has th
     `found ${inside.length + outside.length} paths across ${totalRoutes} Route tags — the sweep is missing routes`,
   );
 
-  // The only routes that legitimately live outside the shell are the guest pages: someone who is
-  // not signed in has no projects to command.
+  // The only routes that legitimately live outside the shell are the ones reached without a usable
+  // session: someone who is not signed in has no projects to command.
+  //
+  // /forgot is a guest page like the other two. /reset and /confirm are NOT — they are where an
+  // emailed link lands, and a link carrying a token establishes a session before the route renders,
+  // so a visitor there may well be "signed in". They still belong outside the shell: a password
+  // recovery screen wrapped in the rail, the project list and ⌘K invites someone mid-recovery to go
+  // and do something else, and the shell's queries would fire against a session that exists only to
+  // authorise one password change. See the comment on those routes in app.tsx.
   assert.deepEqual(
     outside.sort(),
-    ['/login', '/signup'],
+    ['/confirm', '/forgot', '/login', '/reset', '/signup'],
     `these routes are outside the shell and therefore have no command palette: ${outside.join(', ')}`,
   );
   // And the signed-in surfaces really are in there, so the assertion above cannot pass by the
@@ -305,4 +312,51 @@ test('the mouse path does not race the blur that closes the palette', () => {
   // pointer — so the row commits on mousedown.
   const palette = read('components', 'command-palette.tsx');
   assert.match(palette, /onMouseDown=\{\(e\) => \{\s*e\.preventDefault\(\);\s*runAt\(i\);/);
+});
+
+/* ------------------------------------------------------- the render storm --- */
+
+/**
+ * THE REGISTRY MUST HAND OUT THE SAME `register` AND `unregister` ON EVERY RENDER.
+ *
+ * Found by opening the app rather than by reading it: the dashboard logged "Maximum update depth
+ * exceeded" on a loop, hundreds of times a second, from the moment it mounted. Nothing looked
+ * wrong on screen — the page rendered, the palette worked — and the only visible symptom was the
+ * fan.
+ *
+ * The cycle, which is unconditional and fires for EVERY contributor:
+ *
+ *   1. `useCommands` lists `register` and `unregister` in its effect's dependency array.
+ *   2. Both were rebuilt inside the `useMemo` whose deps include `groups`.
+ *   3. So registering changed `groups`, which changed their identity, which re-ran the effect,
+ *      which unregistered and registered again, which changed `groups`…
+ *
+ * This is a source assertion, and it is worth stating why it can only be one: the defect is a
+ * property of two identities across renders, which needs React's scheduler to observe. What can be
+ * checked is the shape that guarantees it — the callbacks are built once, outside the memo, with
+ * nothing in their dependency list that a registration can change.
+ */
+test('the registry hands out stable callbacks, or every contributor loops forever', () => {
+  const src = read('lib', 'commands.tsx');
+
+  // The dependency array that makes identity matter. If this line changes, the reasoning above
+  // has to be redone rather than silently passed.
+  assert.match(src, /\}, \[shape, key, register, unregister\]\)/,
+    'useCommands no longer depends on the callbacks — re-check this test before deleting it');
+
+  // Built once. `useCallback` with an empty dependency list is the only shape that survives a
+  // `groups` change, because `setGroups` takes an updater and needs nothing from the closure.
+  assert.match(src, /const register = useCallback\(\s*\([^)]*\) =>[\s\S]*?\n {2}\}, \[\]\);/,
+    'register must be a useCallback with an empty dependency list');
+  assert.match(src, /const unregister = useCallback\(\s*\([^)]*\) =>[\s\S]*?\n {2}\}, \[\]\);/,
+    'unregister must be a useCallback with an empty dependency list');
+
+  // And the memo must REFERENCE them rather than rebuild them, which is the exact line that was
+  // wrong. Anchored to the memo body so a `register:` somewhere else in the file cannot satisfy it.
+  const from = src.indexOf('useMemo<Registry>');
+  const to = src.indexOf('return <CommandContext');
+  assert.ok(from > 0 && to > from, 'the provider no longer has the shape this test reads');
+  const memo = src.slice(from, to);
+  assert.doesNotMatch(memo, /register:\s*\(/, 'register is being rebuilt on every groups change');
+  assert.doesNotMatch(memo, /unregister:\s*\(/, 'unregister is being rebuilt on every groups change');
 });

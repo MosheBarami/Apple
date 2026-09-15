@@ -807,11 +807,23 @@ const TAVERN_BRIEF =
 function sessionHarness(store = new Map()) {
   const sent = [];
   const alarms = [];
-  const ws = { send: (d) => sent.push(JSON.parse(d)) };
+  //[[ THE SOCKET CARRIES AN IDENTITY NOW, AND THE HARNESS HAS TO MODEL IT.
+  //
+  //   webSocketMessage asks what the socket's holder MAY DO before it acts on what they sent — a
+  //   viewer on a shared project can watch a build and must not stop one. A socket with no
+  //   attachment is refused by design, so a fixture without one would make every frame in this
+  //   file a silent no-op, and `stopRequested` would simply never appear. This is the owner's own
+  //   socket, which is what these tests have always been about. ]]
+  let attachment = { userId: 'u1', role: 'owner', connectionId: 'c1', activity: 'viewing', lastSeenMs: Date.now() };
+  const ws = {
+    send: (d) => sent.push(JSON.parse(d)),
+    deserializeAttachment: () => attachment,
+    serializeAttachment: (v) => { attachment = v; },
+  };
   store.set('bind', { projectId: 'p1', projectName: 'Preserved Place', ownerId: 'u1' });
   const quota = {
-    sparksRemaining: 99, sparksDaily: 100, sparksMonthly: 1000,
-    sparksUsedToday: 1, sparksUsedThisMonth: 1, resetsAtIso: '', plan: 'free',
+    creditsRemaining: 99, creditsDaily: 100, creditsMonthly: 1000,
+    creditsUsedToday: 1, creditsUsedThisMonth: 1, resetsAtIso: '', plan: 'free',
   };
   const ctx = {
     storage: {
@@ -1077,7 +1089,7 @@ const errorsIn = (sent, code) => sent.filter((m) => m.type === 'error' && m.code
 
 test('A3 two runs started together produce ONE run, not two', async () => {
   // Both frames used to read an idle agent from storage — because reading storage is one of
-  // the things startRun awaits — so both spent a Spark, both inserted a user row, and one of
+  // the things startRun awaits — so both spent a Credit, both inserted a user row, and one of
   // the two msg_start broadcasts never got its msg_end.
   const h = sessionHarness();
 

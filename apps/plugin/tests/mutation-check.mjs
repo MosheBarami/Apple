@@ -301,7 +301,127 @@ const MUTATIONS = [
     module: "Render",
     find: "\tif #picked == 0 then table.insert(picked, all[1]) end",
     replace: "\t",
-  }
+  },
+
+  // ---------------------------------------------------------------- the companion --
+  //
+  // These ops are driven by a PERSON, with no model in the loop to notice that the
+  // wrong thing happened. Each mutation below is the shape the code had, or the shape
+  // it would plausibly be "simplified" into, and each destroys something the user
+  // cannot get back: a playtest stopped by a typo, a level flattened by a NaN, a
+  // translucent window turned to plastic, a copy that cannot be addressed.
+  {
+    name: "an unknown test-control action falls through to stop again",
+    claim: "an unknown action is refused by name rather than treated as stop",
+    module: "Companion",
+    find: "\tif not TEST_ACTIONS[wanted] then",
+    replace: "\tif false then",
+  },
+  {
+    name: "restart runs before it stops",
+    claim: "restart stops BEFORE it runs, in that order",
+    module: "Companion",
+    find: '\t\treturn { calls = { "Stop", "Run" }, note = "restarted", noop = false }, nil',
+    replace: '\t\treturn { calls = { "Run", "Stop" }, note = "restarted", noop = false }, nil',
+  },
+  {
+    name: "finite stops testing for NaN",
+    claim: "finite rejects the three values a range check cannot catch",
+    module: "Companion",
+    find: "\tif v ~= v then return nil end",
+    replace: "\tif false then return nil end",
+  },
+  {
+    name: "the range check stops going through finite",
+    claim: "a NaN scale is refused — the value every > comparison waves through",
+    module: "Companion",
+    find: "\tlocal n = Companion.finite(v)",
+    replace: "\tlocal n = if type(v) == \"number\" then v else nil",
+  },
+  {
+    name: "a scale of zero becomes legal",
+    claim: "a zero scale is refused rather than clamped, because zero is not reversible",
+    module: "Companion",
+    find: "local MIN_SCALE = 0.001",
+    replace: "local MIN_SCALE = 0",
+  },
+  {
+    name: "the transform identity stops being the identity",
+    claim: "the identity elements are EXACT, so an unasked-for axis changes nothing",
+    module: "Companion",
+    find: "\tlocal scale = 1\n\tlocal scaled = false",
+    replace: "\tlocal scale = 0\n\tlocal scaled = false",
+  },
+  {
+    name: "the selection reports how many fitted rather than how many there were",
+    claim: "a capped selection still reports the REAL size",
+    module: "Companion",
+    find: "\t\tcount = #entries,",
+    replace: "\t\tcount = #items,",
+  },
+  {
+    name: "a rotation turns parts about the world origin instead of about the target",
+    claim: "a rotation turns a model's parts ABOUT THE MODEL, not about the world origin",
+    module: "Ops",
+    find: "\t\t\tlocal newPos = t.origin + p.rotate:VectorToWorldSpace(cf.Position - t.origin) * p.scale + p.move",
+    replace: "\t\t\tlocal newPos = p.rotate:VectorToWorldSpace(cf.Position) * p.scale + p.move",
+  },
+  {
+    name: "a non-spatial transform target stops being refused by name",
+    claim: "a non-spatial target is refused by name, not silently skipped",
+    module: "Ops",
+    find: "\t\tif not origin then\n\t\t\treturn error(",
+    replace: "\t\tif false then\n\t\t\treturn error(",
+  },
+  {
+    name: "hiding an already-hidden part overwrites what it looked like",
+    claim: "hiding twice does not overwrite the remembered value with 1",
+    module: "Ops",
+    find: "\t\tif remembered == nil then",
+    replace: "\t\tif true then",
+  },
+  {
+    name: "showing a part snaps it to fully opaque instead of restoring it",
+    claim: "hiding a translucent part remembers what it looked like, and showing it puts it back",
+    module: "Ops",
+    find: "\t\tpart.Transparency = remembered",
+    replace: "\t\tpart.Transparency = 0",
+  },
+  {
+    name: "a clone keeps its source's name, so both share one path",
+    claim: "two clones of one part get two DIFFERENT paths, each resolving to itself",
+    module: "Ops",
+    find: "\t\tcopy.Name = uniqueName(s.parent, s.inst.Name)",
+    replace: "\t\tcopy.Name = s.inst.Name",
+  },
+  {
+    name: "a rename onto a sibling's name is allowed",
+    claim: "a rename onto a sibling's name is refused, and the instance keeps its old name",
+    module: "Ops",
+    find: "\t\tif clash and clash ~= inst then",
+    replace: "\t\tif false then",
+  },
+  {
+    name: "a target with no parts stops being reported",
+    claim: "a target with no parts is REPORTED as skipped, not counted as locked",
+    module: "Ops",
+    find: "\t\tif #parts == 0 then\n\t\t\ttable.insert(skipped, path)",
+    replace: "\t\tif false then\n\t\t\ttable.insert(skipped, path)",
+  },
+  {
+    name: "the path-list cap is removed",
+    claim: "a path list longer than the cap is refused with its own length",
+    module: "Ops",
+    find: "\tif #list > 200 then",
+    replace: "\tif #list > 100000 then",
+  },
+  {
+    name: "grouping across parents stops saying so",
+    claim: "grouping across parents says how many came from elsewhere",
+    module: "Ops",
+    find: "\t\tif inst.Parent ~= home then",
+    replace: "\t\tif false then",
+  },
 ];
 
 if (luauMissing()) {

@@ -15,7 +15,7 @@
 // 2. ALLOWANCE AND CREDITS ARE TWO NUMBERS, NEVER ONE. `QuotaState` reports `allowanceRemaining`
 //    (renewable, resets, does not accumulate) and `credits` (purchased, non-expiring, spent only
 //    once the allowance is gone) separately, and its own comment says why: "you have 0 left today"
-//    and "you have 0 left at all" are different sentences. `sparksRemaining` is their sum and is
+//    and "you have 0 left at all" are different sentences. `creditsRemaining` is their sum and is
 //    deliberately not what this renders as the headline — a single figure hides which kind of zero
 //    you are looking at, and the two have different next actions.
 //
@@ -38,12 +38,16 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, SPARKS_PER_BUILD, isPlanId, type QuotaState } from '@golem/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, isPlanId, type QuotaState } from '@golem/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
 /** Which limit is currently the binding one. The copy and the reset both hang off this. */
 export type MeterPeriod = 'day' | 'month';
+// Numbers go through the shared formatter so the reader's region decides the separators.
+// `formatNumber` with the default settings is character-for-character what `toLocaleString()`
+// produced, so nothing about this line changed for anyone who has not chosen a region.
+import { formatNumber } from '../lib/format.ts';
 
 export interface MeterView {
   tone: MeterTone;
@@ -152,18 +156,18 @@ export function meterView(
   // WHICH LIMIT IS BITING. allowanceRemaining is already the smaller of the two, so this only
   // decides what to CALL it. The month wins ties: at the moment they are equal, the day is about to
   // renew into a month that will not, and naming the month is the more useful of the two truths.
-  const dayLeft = finite(quota.sparksDaily) && finite(quota.sparksUsedToday)
-    ? Math.max(0, quota.sparksDaily - quota.sparksUsedToday)
+  const dayLeft = finite(quota.creditsDaily) && finite(quota.creditsUsedToday)
+    ? Math.max(0, quota.creditsDaily - quota.creditsUsedToday)
     : null;
-  const monthLeft = finite(quota.sparksMonthly) && finite(quota.sparksUsedThisMonth)
-    ? Math.max(0, quota.sparksMonthly - quota.sparksUsedThisMonth)
+  const monthLeft = finite(quota.creditsMonthly) && finite(quota.creditsUsedThisMonth)
+    ? Math.max(0, quota.creditsMonthly - quota.creditsUsedThisMonth)
     : null;
   const period: MeterPeriod = dayLeft !== null && monthLeft !== null && monthLeft <= dayLeft ? 'month' : 'day';
 
   // The enforced table first; the wire's own figure only as a fallback for a plan we do not know.
-  const wireTotal = period === 'month' ? quota.sparksMonthly : quota.sparksDaily;
+  const wireTotal = period === 'month' ? quota.creditsMonthly : quota.creditsDaily;
   const allowanceTotal = plan
-    ? (period === 'month' ? PLAN_LIMITS[plan].sparksPerMonth : PLAN_LIMITS[plan].sparksPerDay)
+    ? (period === 'month' ? PLAN_LIMITS[plan].creditsPerMonth : PLAN_LIMITS[plan].creditsPerDay)
     : finite(wireTotal) ? Math.max(0, Math.floor(wireTotal)) : 0;
 
   const per = period === 'month' ? 'a month' : 'a day';
@@ -171,7 +175,7 @@ export function meterView(
 
   const allowanceFraction = allowanceTotal > 0 ? Math.min(1, allowanceRemaining / allowanceTotal) : 0;
   const spendable = allowanceRemaining + credits;
-  const builds = Math.floor(spendable / SPARKS_PER_BUILD);
+  const builds = Math.floor(spendable / CREDITS_PER_BUILD);
 
   let tone: MeterTone;
   let headline: string;
@@ -180,19 +184,19 @@ export function meterView(
 
   if (allowanceRemaining > 0) {
     tone = allowanceFraction <= 0.15 ? 'warn' : 'good';
-    headline = `${allowanceRemaining.toLocaleString()} Sparks left ${window}`;
+    headline = `${formatNumber(allowanceRemaining)} Credits left ${window}`;
     detail = credits > 0
-      ? `of ${allowanceTotal.toLocaleString()} ${per}, plus ${credits.toLocaleString()} purchased`
-      : `of ${allowanceTotal.toLocaleString()} ${per}`;
+      ? `of ${formatNumber(allowanceTotal)} ${per}, plus ${formatNumber(credits)} purchased`
+      : `of ${formatNumber(allowanceTotal)} ${per}`;
   } else if (credits > 0) {
     // A real distinction: the day's allowance is gone but the account is not empty, and nothing
     // the user does next is blocked.
     tone = 'warn';
     headline = period === 'month' ? "This month's allowance is used up" : "Today's allowance is used up";
-    detail = `Running on ${credits.toLocaleString()} purchased credit${credits === 1 ? '' : 's'}, which do not expire.`;
+    detail = `Running on ${formatNumber(credits)} purchased credit${credits === 1 ? '' : 's'}, which do not expire.`;
   } else {
     tone = 'bad';
-    headline = 'No Sparks left';
+    headline = 'No Credits left';
     detail = period === 'month'
       ? "This month's allowance is spent and there are no purchased credits. The daily limit is not what stopped this."
       : 'The daily allowance is spent and there are no purchased credits.';

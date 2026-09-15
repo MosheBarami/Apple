@@ -3,7 +3,7 @@
 // THE BUG THIS PINS. `classifyRequest` had one short-text signal — `ambiguousRequest`, which fires
 // on any text under 25 characters — and no notion of conversation. So "hi" was classified as an
 // under-specified BUILD request. In Agent mode with Studio connected that escalated the step to
-// `high` effort, spent a Spark, took a full snapshot of the user's place, fired the "You have not
+// `high` effort, spent a Credit, took a full snapshot of the user's place, fired the "You have not
 // changed the project yet" nudge twice (two more paid calls), and finished the run as `incomplete`,
 // telling the user: "I did not change anything in your project... which is a fault on my side."
 //

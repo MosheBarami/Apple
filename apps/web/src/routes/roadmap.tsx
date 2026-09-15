@@ -16,7 +16,7 @@ import type { ProductMode } from '@golem/shared';
 import { EmptyState } from '../components/empty-state';
 import { ApiError, fetchMilestoneBrief, fetchNextMilestones, fetchRoadmap } from '../lib/api';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
-import { relativeTime } from '../lib/format';
+import { formatNumber, relativeTime } from '../lib/format';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useToast } from '../components/toast';
 import { Icon, PATH } from '../components/ws/primitives';
@@ -26,9 +26,11 @@ import type { BriefIntent } from '../components/roadmap/milestone-card';
 import {
   buildRoadmapLayout,
   genreConfidenceLabel,
+  placeInventory,
   progressLabel,
   type Milestone,
   type MilestoneBrief,
+  type PlaceInventory,
 } from '../components/roadmap/model';
 import { RoadmapSpine } from '../components/roadmap/spine';
 import { SuggestionPanel } from '../components/roadmap/suggestions';
@@ -73,6 +75,15 @@ export function RoadmapPage() {
 
   const layout = useMemo(() => buildRoadmapLayout(roadmap.data?.milestones), [roadmap.data]);
   const current = layout.current;
+  //[[ WHAT IS IN THIS PLACE.
+  //
+  //   The worker has been sending this on every roadmap answer and the client type dropped it,
+  //   with a comment saying the view had no use for it. It had: the product could show
+  //   per-checkpoint counts, the agent's file store and the third-party asset credits — three
+  //   partial views of a project's contents and no whole.
+  //
+  //   Null when the answer carried no shape, which is a different thing from an empty place. ]]
+  const inventory = useMemo(() => placeInventory(roadmap.data?.shape), [roadmap.data]);
 
   const titleOf = useCallback(
     (id: string): string | null => roadmap.data?.milestones.find((m) => m.id === id)?.title ?? null,
@@ -139,7 +150,7 @@ export function RoadmapPage() {
       disabled={suggest.isPending || projectId === ''}
       title="Reads your place and picks the next few things worth doing."
     >
-      <Icon d={PATH.sparkle} size={15} />
+      <Icon d={PATH.creditle} size={15} />
       {suggest.isPending ? 'Reading your place…' : 'Suggest next milestone'}
     </button>
   );
@@ -291,6 +302,8 @@ export function RoadmapPage() {
             </p>
           )}
 
+          {inventory && <PlaceContents inventory={inventory} />}
+
           <RoadmapSpine
             stages={layout.stages}
             onJumpTo={jumpTo}
@@ -325,5 +338,91 @@ export function RoadmapPage() {
         />
       )}
     </div>
+  );
+}
+
+
+/**
+ * What the scan found in the place, above the plan for changing it.
+ *
+ * EVERY COUNT IS HEDGED WHEN THE SCAN WAS CAPPED. apps/worker/src/roadmap.ts states the rule and
+ * this is where a port loses it: "1,204 parts" is a claim the scan did not make when it stopped
+ * early, and "at least 1,204 parts" is the one it did. The scan's own sentences about what it could
+ * not see are NOT repeated here — they are already the notes above, because the worker builds
+ * `notes` from `shape.limits`, and printing them twice teaches a reader to skip both.
+ */
+function PlaceContents({ inventory }: { inventory: PlaceInventory }) {
+  const n = (value: number) => (inventory.capped ? `at least ${formatNumber(value)}` : formatNumber(value));
+  const scripts = [
+    inventory.serverScripts > 0 ? `${formatNumber(inventory.serverScripts)} server` : null,
+    inventory.clientScripts > 0 ? `${formatNumber(inventory.clientScripts)} client` : null,
+    inventory.moduleScripts > 0 ? `${formatNumber(inventory.moduleScripts)} module` : null,
+  ].filter((part): part is string => part !== null);
+
+  if (inventory.empty) {
+    return (
+      <section className="rm-contents" aria-label="What is in this place">
+        <h2 className="rm-contents__title">What is in this place</h2>
+        <p className="rm-contents__none">The scan ran and found nothing built yet — no parts, no scripts, no spawn.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rm-contents" aria-label="What is in this place">
+      <h2 className="rm-contents__title">What is in this place</h2>
+      <dl className="rm-contents__counts">
+        <div>
+          <dt>Instances</dt>
+          <dd>{n(inventory.instances)}</dd>
+        </div>
+        <div>
+          <dt>Parts</dt>
+          <dd>{n(inventory.parts)}</dd>
+        </div>
+        <div>
+          <dt>Scripts</dt>
+          <dd>
+            {n(inventory.scripts)}
+            {/* How many were READ, whenever that is fewer than exist. It is the difference between
+                "this project has no shop script" and "28 of its scripts were never opened". */}
+            {inventory.scriptsPartial && (
+              <span className="rm-contents__partial"> · {formatNumber(inventory.scriptsRead)} read</span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Spawns</dt>
+          <dd>{n(inventory.spawns)}</dd>
+        </div>
+      </dl>
+
+      {scripts.length > 0 && (
+        <p className="rm-contents__line">
+          <span className="eyebrow">Scripts</span> {scripts.join(' · ')}
+        </p>
+      )}
+      {inventory.zones.length > 0 && (
+        <p className="rm-contents__line">
+          <span className="eyebrow">Zones</span> {inventory.zones.join(' · ')}
+        </p>
+      )}
+      {inventory.currencies.length > 0 && (
+        <p className="rm-contents__line">
+          <span className="eyebrow">Currencies</span> {inventory.currencies.join(' · ')}
+        </p>
+      )}
+      {inventory.guis.length > 0 && (
+        <p className="rm-contents__line">
+          <span className="eyebrow">Interface</span> {inventory.guis.map((g) => g.split('.').pop()).join(' · ')}
+        </p>
+      )}
+      {inventory.capped && (
+        <p className="rm-contents__hedge">
+          The scan stopped before it reached the end of this place, so these are floors rather than
+          totals — what it could not read is in the notes above.
+        </p>
+      )}
+    </section>
   );
 }

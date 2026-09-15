@@ -17,6 +17,8 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { callModel, TransportError } from './transport.mjs';
 import { gradeTask } from './grade.mjs';
+import { gradeToolCalls } from './tool-grader.mjs';
+import { classifyRecord, scoreRun, formatScorecard } from './metrics.mjs';
 import { loadTasks } from './tasks.mjs';
 import { resolveLuauChecker } from './luau.mjs';
 
@@ -54,18 +56,38 @@ function parseArgs(argv) {
 async function runJob(job, cfg) {
   const { model, task } = job;
   let lastErr;
+  let attempts = 0;
   for (let attempt = 0; attempt < 2; attempt++) {
+    attempts += 1;
     try {
-      const res = await callModel({ rag: cfg.rag, apiBase: cfg.apiBase, adminKey: cfg.adminKey, model, prompt: task.prompt, system: task.system });
+      const res = await callModel({
+        rag: cfg.rag,
+        apiBase: cfg.apiBase,
+        adminKey: cfg.adminKey,
+        model,
+        prompt: task.prompt,
+        system: task.system,
+        tools: Array.isArray(task.expectTools) && task.expectTools.length > 0,
+      });
       const graded = gradeTask(task, res.text);
+      // `null` means the harness never looked at tool calls for this task; `[]` means it looked
+      // and the model made none. gradeToolCalls treats those as opposite facts.
+      const toolGrade = Array.isArray(task.expectTools) ? gradeToolCalls(task.expectTools, res.toolCalls) : null;
       return {
         taskId: task.id,
         category: task.category,
         model,
+        modelId: res.modelId,
         ok: true,
+        attempts,
         ms: res.ms,
         usage: res.usage ?? null,
+        neurons: res.neurons,
         score: graded.score,
+        scored: graded.scored,
+        ungradedReason: graded.scored ? null : 'grader_unavailable',
+        ungradedChecks: graded.ungraded,
+        toolGrade,
         checks: graded.checks,
         responsePreview: res.text.slice(0, 600),
       };
@@ -79,16 +101,25 @@ async function runJob(job, cfg) {
       break;
     }
   }
+  const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
   return {
     taskId: task.id,
     category: task.category,
     model,
+    modelId: null,
     ok: false,
+    attempts,
     ms: 0,
     usage: null,
-    score: 0,
+    neurons: null,
+    // NOT 0. A job that never got a response made no observation about this model's answer, and
+    // `aggregate` below now excludes it from the mean instead of averaging in a fabricated zero.
+    score: null,
+    scored: false,
+    ungradedReason: /timeout|timed out|abort/i.test(message) ? 'timeout' : 'transport_error',
+    toolGrade: null,
     checks: [],
-    error: lastErr instanceof Error ? lastErr.message : String(lastErr),
+    error: message,
   };
 }
 
@@ -105,39 +136,56 @@ async function pool(jobs, worker, size) {
   return out;
 }
 
+/**
+ * Task-weighted mean score per (model, category) and per model.
+ *
+ * UNGRADED RECORDS ARE NOT AVERAGED IN AS ZEROS. This used to read
+ * `cur.weighted += w * r.score` over every record, with `score: 0` written for any job whose
+ * transport failed -- so a gateway outage on a quarter of the suite printed as that model
+ * scoring 25% worse, indistinguishable from it having answered badly. The two are different
+ * facts and only one of them is about the model.
+ *
+ * The ungraded now leave the mean and appear as counts beside it: `ungraded`, `transportErrors`
+ * (kept under its old name for compare.mjs and report.mjs), and `gradedTasks`. A cell where
+ * NOTHING could be graded reports `score: null` rather than 0 -- the table prints a dash for it.
+ */
 export function aggregate(perTask) {
-  // per (model, category): weighted mean of task scores (task.weight via check-level? task weight carried on job)
   const byKey = new Map();
   const overallByModel = new Map();
+  const blank = (extra) => ({ weight: 0, weighted: 0, tasks: 0, gradedTasks: 0, transportErrors: 0, ungraded: 0, ...extra });
   for (const r of perTask) {
-    const w = r.taskWeight ?? 1;
+    const wRaw = r.taskWeight ?? 1;
+    const w = Number.isFinite(wRaw) && wRaw > 0 ? wRaw : 1;
+    const { graded } = classifyRecord(r);
     const key = `${r.model}\0${r.category}`;
-    const cur = byKey.get(key) ?? { model: r.model, category: r.category, weight: 0, weighted: 0, tasks: 0, transportErrors: 0 };
-    cur.weight += w;
-    cur.weighted += w * r.score;
-    cur.tasks += 1;
-    if (!r.ok) cur.transportErrors += 1;
+    const cur = byKey.get(key) ?? blank({ model: r.model, category: r.category });
+    const o = overallByModel.get(r.model) ?? blank({ model: r.model });
+    for (const acc of [cur, o]) {
+      acc.tasks += 1;
+      if (graded) {
+        acc.gradedTasks += 1;
+        acc.weight += w;
+        acc.weighted += w * r.score;
+      } else {
+        acc.ungraded += 1;
+        if (r.ok === false) acc.transportErrors += 1;
+      }
+    }
     byKey.set(key, cur);
-    const o = overallByModel.get(r.model) ?? { model: r.model, weight: 0, weighted: 0, tasks: 0, transportErrors: 0 };
-    o.weight += w;
-    o.weighted += w * r.score;
-    o.tasks += 1;
-    if (!r.ok) o.transportErrors += 1;
     overallByModel.set(r.model, o);
   }
-  const perCategory = [...byKey.values()].map((c) => ({
-    model: c.model,
-    category: c.category,
-    score: c.weight ? c.weighted / c.weight : 0,
-    tasks: c.tasks,
-    transportErrors: c.transportErrors,
-  }));
-  const overall = [...overallByModel.values()].map((o) => ({
-    model: o.model,
-    score: o.weight ? o.weighted / o.weight : 0,
-    tasks: o.tasks,
-    transportErrors: o.transportErrors,
-  }));
+  const shape = (c) => ({
+    ...c,
+    score: c.weight > 0 ? c.weighted / c.weight : null,
+  });
+  const perCategory = [...byKey.values()].map((c) => {
+    const { weight, weighted, ...rest } = shape(c);
+    return { model: rest.model, category: rest.category, score: rest.score, tasks: rest.tasks, gradedTasks: rest.gradedTasks, ungraded: rest.ungraded, transportErrors: rest.transportErrors };
+  });
+  const overall = [...overallByModel.values()].map((o) => {
+    const { weight, weighted, ...rest } = shape(o);
+    return { model: rest.model, score: rest.score, tasks: rest.tasks, gradedTasks: rest.gradedTasks, ungraded: rest.ungraded, transportErrors: rest.transportErrors };
+  });
   return { perCategory, overall };
 }
 
@@ -145,7 +193,9 @@ export function formatTable(models, perCategory, overall) {
   const categories = [...new Set(perCategory.map((c) => c.category))].sort();
   const cell = (model, category) => {
     const hit = perCategory.find((c) => c.model === model && c.category === category);
-    return hit ? (hit.score * 100).toFixed(1) : '—';
+    // A dash means "nothing here was graded", and it has to stay distinguishable from "0.0".
+    if (!hit || hit.score == null) return '—';
+    return (hit.score * 100).toFixed(1);
   };
   const w0 = Math.max(12, ...categories.map((c) => c.length)) + 2;
   const wc = Math.max(8, ...models.map((m) => m.length)) + 2;
@@ -157,7 +207,14 @@ export function formatTable(models, perCategory, overall) {
   lines.push('-'.repeat(w0 + wc * models.length));
   lines.push(
     pad('OVERALL', w0) +
-      models.map((m) => pad(((overall.find((o) => o.model === m)?.score ?? 0) * 100).toFixed(1), wc)).join(''),
+      models
+        .map((m) => {
+          const s = overall.find((o) => o.model === m)?.score;
+          // `?? 0` here would print 0.0 for a model whose every job failed, which is the same
+          // lie one layer up from the mean.
+          return pad(s == null ? '—' : (s * 100).toFixed(1), wc);
+        })
+        .join(''),
   );
   return lines.join('\n');
 }
@@ -197,7 +254,9 @@ async function main() {
       const r = await runJob(job, cfg);
       r.taskWeight = job.task.weight ?? 1;
       done += 1;
-      const status = r.ok ? `${(r.score * 100).toFixed(0).padStart(3)}%` : 'ERR ';
+      // `r.score` is null when every check for this task was unavailable (no Luau checker, a
+      // rule set that did not apply). "0%" would be a verdict on the answer; "----" is not.
+      const status = !r.ok ? 'ERR ' : r.score == null ? '----' : `${(r.score * 100).toFixed(0).padStart(3)}%`;
       console.log(`[${String(done).padStart(3)}/${jobs.length}] ${status} ${job.model.padEnd(6)} ${job.task.id}${r.ok ? '' : `  (${r.error})`}`);
       return r;
     },
@@ -223,8 +282,11 @@ async function main() {
   writeFileSync(outFile, JSON.stringify({ runMeta, perTask, perCategory, overall }, null, 2));
 
   console.log('\n' + formatTable(cfg.models, perCategory, overall));
+  const scored = scoreRun({ runMeta, perTask });
+  console.log('\n' + formatScorecard(scored.overall, { title: `run scorecard [${cfg.tag}]` }));
+  for (const model of scored.models) console.log('\n' + formatScorecard(scored.byModel[model], { title: `scorecard [${model}]` }));
   const errCount = perTask.filter((r) => !r.ok).length;
-  if (errCount) console.log(`\n${errCount} job(s) had transport errors (scored 0).`);
+  if (errCount) console.log(`\n${errCount} job(s) had transport errors (EXCLUDED from the mean, not scored 0).`);
   console.log(`\nresults written to ${outFile}`);
 }
 

@@ -1,7 +1,7 @@
 /**
  * ONE RUN AT A TIME, AND THE GAP THAT MADE TWO.
  *
- * A3 from the independent review: concurrent `startRun` double-charges a Spark, inserts two
+ * A3 from the independent review: concurrent `startRun` double-charges a Credit, inserts two
  * user rows, and orphans a message that never gets `msg_end`.
  *
  * The trap is that Durable Objects are single-threaded, which reads as "cannot race". It
@@ -47,7 +47,7 @@ test('sequential calls all run', async () => {
 
 test('a second call started before the first finishes does not run', async () => {
   // THE test. Both calls are started without awaiting, which is how two websocket frames
-  // arrive. Against an unguarded startRun, `runs` reaches 2 — two Sparks, two user rows,
+  // arrive. Against an unguarded startRun, `runs` reaches 2 — two Credits, two user rows,
   // and one message that never ends.
   const guard = singleFlight();
   const gate = deferred();

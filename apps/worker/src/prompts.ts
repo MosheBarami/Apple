@@ -89,7 +89,9 @@ Analysing a project (be precise, not exhaustive):
 - If you are unsure whether something is affected, say so explicitly rather than including it.
 
 Answering style (this model thinks before it replies — keep that thinking short):
-- Do not narrate your plan at length before acting. Decide, then call the tool.
+- Do not narrate your plan at length before acting. Decide, then call the tool. In Agent and Super
+  Agent the plan is announced with propose_plan, which the user sees as a checklist — prose about
+  what you are about to do is a second, worse copy of it.
 - Never restate the user's request back to them. Never write "Let me..." or "I will now...".
 - Your visible reply is a report of what you DID, not a description of what you intend to do.
 - When you call a tool, say nothing else in that turn; the user already sees the tool activity.
@@ -147,11 +149,21 @@ Tone: a senior engineer giving a recommendation. Do not apologise for not buildi
 permission to have an opinion. Be confident about the proposal and honest about the unknowns.`,
   stone: `Mode: Stone (builder). Implement the requested feature end to end: inspect the project, make the
 edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
-output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.`,
+output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.
+
+Your FIRST call is propose_plan. The user is watching a checklist appear before anything in their
+project moves, and that checklist is the only thing that tells them what is about to happen. Name
+the tool each step will use, and include at least one verification step — a build nobody checked is
+not a finished build. Then carry the plan out; do not call propose_plan again.`,
   rune: `Mode: Rune (deep builder). Work autonomously: plan briefly, create a checkpoint before changes,
 build step by step, then VERIFY: use run_and_check to run the game simulation and read logs; if there are
 errors, fix them and re-verify (up to 3 fix cycles). Prefer small verifiable increments. Finish with a
-summary of what you built, what you verified, and anything the user should playtest manually.`,
+summary of what you built, what you verified, and anything the user should playtest manually.
+
+Your FIRST call is propose_plan. A long autonomous run is exactly the case where the user cannot
+tell whether you understood them until it is over, so say what you are going to do while they can
+still stop you. Name the tool each step will use, and plan the verification steps as steps — the
+checks are part of the work, not something you get to afterwards. Do not call propose_plan twice.`,
 };
 
 /**
@@ -278,6 +290,16 @@ export function systemPrompt(opts: {
    * that omits it, so the burden of proof is on the library existing.
    */
   assetLibraryAvailable?: boolean;
+  /**
+   * The user's own settings, profile and project/team instructions, already layered and already
+   * fenced by `preferencesPrompt`. Optional and empty by default: a deployment with no scoped
+   * memory spends no tokens saying so.
+   *
+   * It sits AFTER project memory and BEFORE the date, which is deliberate. Project memory is what
+   * Apple worked out for itself; this is what the person asked for, and where the two conflict the
+   * instruction the user actually wrote is the one the model reads last.
+   */
+  personalisation?: string | null;
 }): string {
   const assetSources = opts.assetLibraryAvailable
     ? 'Ids come from search_asset_library (curated, licence-cleared, try this\n  first) or from find_verified_asset (the Creator Store, last resort), or from the user.'
@@ -318,6 +340,7 @@ export function systemPrompt(opts: {
     opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,
     memory,
+    opts.personalisation ?? '',
     `Today: ${new Date().toISOString().slice(0, 10)}.`,
   ]
     .filter(Boolean)

@@ -1,0 +1,147 @@
+// Where a build may take its assets from, and who gets to decide.
+//
+// The owner's rule: before Apple builds, ask whether it may use the curated library, the Creator
+// Store, or invent geometry — and let that answer be settled once in settings instead of being
+// asked forever. That makes it a preference, so it inherits the layering every other preference
+// here has: set it for one project, for yourself, or for a whole organisation.
+//
+// THE ASSERTION THAT MATTERS IS THE DIRECTION OF THE LAYERING. Most preferences are taste and the
+// closest layer wins. This one is not: it decides what gets bought, what gets licensed and what
+// gets generated at cost. So it NARROWS — a project may drop a source its organisation allowed and
+// may never add one it did not. A test that only checked "the value round-trips" would pass just
+// as happily with the arrow pointing the wrong way, which is the failure worth catching.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+
+const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
+const out = join(mkdtempSync(join(tmpdir(), 'assetsrc-')), 'prefs.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'preferences.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
+  { cwd: WORKER, stdio: 'pipe' });
+const P = await import(`file://${out}`);
+
+const pol = (mode, allow) => ({ mode, allow });
+
+/* ------------------------------------------------------------------------- the vocabulary --- */
+
+test('the three sources are exactly the three the owner named, and nothing else validates', () => {
+  assert.deepEqual([...P.ASSET_SOURCE_CHOICES], ['apple_library', 'creator_store', 'from_scratch']);
+  for (const c of P.ASSET_SOURCE_CHOICES) assert.ok(P.isAssetSourcePolicy(pol('ask', [c])), c);
+  for (const bad of ['marketplace', 'toolbox', 'ANY', '', 'apple-library']) {
+    assert.equal(P.isAssetSourcePolicy(pol('ask', [bad])), false, `"${bad}" is not a source`);
+  }
+});
+
+test('a malformed policy is refused rather than repaired', () => {
+  for (const bad of [
+    null, undefined, 'ask', 42, [],
+    { mode: 'ask' },                                   // no list at all
+    { allow: ['apple_library'] },                      // no mode
+    { mode: 'sometimes', allow: [] },                  // not a mode
+    { mode: 'ask', allow: 'apple_library' },           // a string is not a list
+    { mode: 'ask', allow: ['apple_library', 'apple_library'] }, // a duplicate is a client bug
+  ]) {
+    assert.equal(P.isAssetSourcePolicy(bad), false, JSON.stringify(bad));
+  }
+});
+
+test('THE DEFAULT ASKS AND ALLOWS NOTHING — the pop-up is not there to be dismissed', () => {
+  // If the default allowed everything, the dialog would be a formality: the build would already
+  // have permission before the person saw the question. Nothing is permitted until answered.
+  assert.equal(P.ASSET_SOURCE_DEFAULT.mode, 'ask');
+  assert.deepEqual(P.ASSET_SOURCE_DEFAULT.allow, []);
+  assert.equal(P.narrowAssetSources(undefined, undefined).allow.length, 0);
+  assert.equal(P.narrowAssetSources(undefined, undefined).mode, 'ask');
+});
+
+/* ---------------------------------------------------------------------------- normalising --- */
+
+test('the preference survives a round trip through normalisePreferences', () => {
+  const { prefs, rejected } = P.normalisePreferences({ asset_sources: pol('remember', ['apple_library', 'creator_store']) });
+  assert.deepEqual(rejected, []);
+  assert.deepEqual(prefs.asset_sources, pol('remember', ['apple_library', 'creator_store']));
+});
+
+test('and a bad one is REPORTED, not dropped in silence', () => {
+  // The settings page shows rejections. A preference that vanished without a word would leave a
+  // person looking at a control they set and a build that ignores it.
+  const { prefs, rejected } = P.normalisePreferences({ asset_sources: { mode: 'ask', allow: ['toolbox'] } });
+  assert.equal(prefs.asset_sources, undefined);
+  assert.deepEqual(rejected, [{ key: 'asset_sources', reason: 'bad_value' }]);
+});
+
+/* ------------------------------------------------------------------------------ narrowing --- */
+
+test('NARROWING: a project may drop a source the organisation allowed', () => {
+  const merged = P.mergePreferences({
+    org: { asset_sources: pol('remember', ['apple_library', 'creator_store', 'from_scratch']) },
+    project: { asset_sources: pol('remember', ['apple_library']) },
+  });
+  assert.deepEqual(merged.prefs.asset_sources.allow, ['apple_library']);
+});
+
+test('AND MAY NEVER ADD ONE IT DID NOT — this is the whole point of the direction', () => {
+  // Reverse the arrow and this is the assertion that goes red: last-layer-wins would hand the
+  // project `creator_store`, which is a spending decision the organisation declined.
+  const merged = P.mergePreferences({
+    org: { asset_sources: pol('remember', ['apple_library']) },
+    project: { asset_sources: pol('remember', ['apple_library', 'creator_store', 'from_scratch']) },
+  });
+  assert.deepEqual(merged.prefs.asset_sources.allow, ['apple_library']);
+  assert.ok(!merged.prefs.asset_sources.allow.includes('creator_store'));
+});
+
+test('an organisation that allows nothing leaves nothing for any layer below it', () => {
+  const merged = P.mergePreferences({
+    org: { asset_sources: pol('remember', []) },
+    user: { asset_sources: pol('remember', ['apple_library', 'creator_store']) },
+    project: { asset_sources: pol('remember', ['from_scratch']) },
+  });
+  assert.deepEqual(merged.prefs.asset_sources.allow, []);
+});
+
+test('ASK BEATS REMEMBER, because being asked is the state where nothing happens by default', () => {
+  const merged = P.mergePreferences({
+    org: { asset_sources: pol('ask', ['apple_library']) },
+    user: { asset_sources: pol('remember', ['apple_library']) },
+  });
+  assert.equal(merged.prefs.asset_sources.mode, 'ask');
+});
+
+test('remember only survives when every layer that spoke said remember', () => {
+  const merged = P.mergePreferences({
+    org: { asset_sources: pol('remember', ['apple_library', 'creator_store']) },
+    user: { asset_sources: pol('remember', ['apple_library']) },
+  });
+  assert.equal(merged.prefs.asset_sources.mode, 'remember');
+  assert.deepEqual(merged.prefs.asset_sources.allow, ['apple_library']);
+});
+
+test('the panel is told WHICH layer decided, so it can say so instead of showing a dead control', () => {
+  // The same reason memory_mode records its source: a control that silently does nothing because
+  // a layer above already refused is worse than one that explains itself.
+  const merged = P.mergePreferences({
+    org: { asset_sources: pol('ask', []) },
+    project: { asset_sources: pol('remember', ['from_scratch']) },
+  });
+  assert.equal(merged.sources.asset_sources, 'org', 'the org is what actually decided here');
+});
+
+test('a single layer passes through unchanged, so narrowing costs nothing when nobody disagrees', () => {
+  const only = pol('remember', ['apple_library', 'from_scratch']);
+  assert.deepEqual(P.mergePreferences({ user: { asset_sources: only } }).prefs.asset_sources, only);
+});
+
+test('and a layer that never set it does not overwrite one that did', () => {
+  const merged = P.mergePreferences({
+    user: { asset_sources: pol('remember', ['creator_store']) },
+    project: { coding_style: 'minimal' },
+  });
+  assert.deepEqual(merged.prefs.asset_sources, pol('remember', ['creator_store']));
+  assert.equal(merged.sources.asset_sources, 'user');
+});

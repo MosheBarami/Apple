@@ -63,6 +63,83 @@ scripting task. `src/scripting-curriculum.test.mjs` grades each one and requires
 a score of exactly 1.0, so a check that no correct answer can satisfy fails the
 test suite instead of quietly costing every model a point on every paid run.
 
+## Scoring, ranking and gates
+
+`src/metrics.mjs` turns a run's `perTask` records into the numbers the run is allowed to claim.
+`src/score.mjs` is the CLI over it, and everything it does is offline and free:
+
+```sh
+node src/score.mjs scorecard [<run>]                  # every metric for one run
+node src/score.mjs leaderboard [--metric passRate]    # models ranked on one metric
+node src/score.mjs elo [<run>]                        # pairwise records + Elo across a run's models
+node src/score.mjs history [--metric passRate] [--model M]
+node src/score.mjs diff <runA> <runB>
+node src/score.mjs gate promote  <runA> <runB> [--policy p.json]   # exit 0 promote / 1 blocked
+node src/score.mjs gate rollback <runA> <runB> [--policy p.json]   # exit 0 healthy / 1 rollback / 2 undecided
+```
+
+`<run>` is a tag, a results filename, or `latest`.
+
+Twelve metrics, each with a direction so gates and leaderboards do not have to guess:
+
+| family | metrics | denominator |
+|---|---|---|
+| quality | passRate, buildValidity, toolCallAccuracy, meanLatencyMs, p95LatencyMs, meanCostUsd, tokenEfficiency | records that were **graded** |
+| throughput | successRate, firstAttemptSuccess, completionRate, errorRate, retryRate | every record **attempted** |
+
+and the identity that binds them, asserted in `metrics.test.mjs`:
+`successRate === passRate × completionRate`.
+
+### A grader that cannot grade says so
+
+Every measurement is `{available: true, value}` or `{available: false, value: null, reason}`.
+Never a zero, because a zero is a claim about the model and "no response arrived", "no Luau
+checker is installed" and "this run never recorded tool calls" are claims about the harness.
+
+The rule is enforced at every layer, and each layer had a live instance of the defect:
+
+- **`checkLuauSyntax`** returned `passed: false` when no checker was installed, so a machine
+  without luau-lsp reported every model as writing unparseable Luau. Now `unavailable`.
+- **`checkNoAntipattern`** returned `passed: true, "0 rule(s) run"` when every requested rule was
+  skipped as context-inapplicable — `analyzeLuau` skips those deliberately and says on line 785
+  that reporting them as clean would be a false claim, and the check threw that away. Now
+  `unavailable`. Same for an analyzer that throws.
+- **`gradeTask`** excludes unavailable checks from *both* sides of the fraction, and returns
+  `score: null` when nothing could be graded.
+- **`run.mjs`** writes `score: null` + an `ungradedReason` for a failed job, and `aggregate()`
+  leaves it out of the mean instead of averaging in a 0.
+- **`report.mjs`** recomputes whether a cell had anything behind it, so a run with nothing graded
+  prints a dash.
+- **`leaderboard`** leaves an unmeasurable model *unranked*; **`eloRatings`** leaves a model with
+  no comparable games *unrated* rather than seeded at 1500; **`pairwise`** calls a task that was
+  ungraded on either side *indeterminate* rather than a loss.
+- **`promotionGate` fails closed** — an unmeasured requirement blocks. **`rollbackGate`** does not
+  fire on nothing, and does not report `healthy` either: unmeasurable is its own verdict.
+
+`results/baseline-20260830-200846.json` is why. All 168 of its jobs died on one ReferenceError
+(`useRag is not defined`), its stored block records clay 0 / stone 0 / coder 0, and
+`docs/evals/RESULTS.md` published three models as failing every task in eight categories they
+were never asked. That file is the fixture for several of the tests.
+
+### Tool-argument grading
+
+A task may declare `expectTools`, validated at load time by `tasks.mjs`:
+
+```json
+{ "expectTools": [{ "name": "create_instance",
+                    "args": { "className": "Part", "name": { "type": "string" } },
+                    "required": ["parent"] }] }
+```
+
+Matchers: a literal, or `{equals|matches|type|oneOf|present}` (+`flags` for `matches`). A
+misspelled matcher is a load error, because it is otherwise the cheapest way to write a check
+that can never fail. An unexpected extra call enters the denominator, so a model that sprays
+every tool it can think of does not score 1.0 for including the right one somewhere in the pile.
+
+`gradeToolCalls(expect, null)` is **unavailable** — the run never captured tool calls.
+`gradeToolCalls(expect, [])` is **0** — it captured them and there were none. Those are one JSON
+field apart and they mean opposite things.
+
 ## Other commands
 
 ```sh

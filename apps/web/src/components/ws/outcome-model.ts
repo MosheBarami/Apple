@@ -35,7 +35,7 @@ const BY_STOP: Record<string, OutcomeLine> = {
   stopped: { tone: 'note', text: 'Stopped.' },
   quota: {
     tone: 'note',
-    text: 'That used the last of today’s Sparks. They reset tomorrow.',
+    text: 'That used the last of today’s Credits. They reset tomorrow.',
   },
   error: { tone: 'bad', text: 'Something went wrong partway through.' },
 };
@@ -65,7 +65,7 @@ export function outcomeLine(stopReason: string | undefined, code: string | undef
   if (!stopReason || stopReason === 'done') return null;
   const base = BY_STOP[stopReason];
   if (!base) return null;
-  // A code only ever refines a FAILURE. Running out of Sparks is not a failure, and a stray code
+  // A code only ever refines a FAILURE. Running out of Credits is not a failure, and a stray code
   // on that stop must not turn it into one.
   if (stopReason === 'error' && isRunFailure(code)) return { tone: 'bad', text: BY_FAILURE[code] };
   return base;

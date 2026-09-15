@@ -33,7 +33,7 @@ Enumerated this pass from what this session can actually reach:
 |---|---|---|
 | repository working tree | YES | filesystem |
 | deployed worker `golem.moshe-barami111.workers.dev` | PROBED pass 12 | `/api/health` 200, no buildSha — the worker predates that change, so it is STALE against HEAD. `/api/version` returns unauthorized, which is why the drift probe reads health instead. |
-| deployed site | PROBED pass 12 | `/` and `/pricing` 200. 58 user-visible "Golem", "No card required, ever" x3, "never be charged" x1, free quota published as 60 Sparks/day against PLAN_LIMITS 231. All four absent from the built artifact. |
+| deployed site | PROBED pass 12 | `/` and `/pricing` 200. 58 user-visible "Golem", "No card required, ever" x3, "never be charged" x1, free quota published as 60 Credits/day against PLAN_LIMITS 231. All four absent from the built artifact. |
 | Supabase `npqvyijsvzkuwddyhtpm` | anon key only | no service-role key by design (§1.1) |
 | Roblox Studio + sideloaded .rbxm | NO | needs a human at a Studio install |
 | Stripe test mode | NO | no keys in this session |

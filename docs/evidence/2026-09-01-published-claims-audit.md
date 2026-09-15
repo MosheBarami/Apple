@@ -11,10 +11,10 @@ them.
 
 ## What was wrong
 
-### A Plan request costs 2 sparks, not 1
+### A Plan request costs 2 credits, not 1
 
-The worker charges `sparksForNeurons(n) = max(1, ceil(n / 30))`. `docs/COST-MODEL.md`
-measures a Plan question at 37–43 neurons, so `ceil(43/30) = 2`, and 60 free sparks buys
+The worker charges `creditsForNeurons(n) = max(1, ceil(n / 30))`. `docs/COST-MODEL.md`
+measures a Plan question at 37–43 neurons, so `ceil(43/30) = 2`, and 60 free credits buys
 **30** a day rather than 60. Agent (111 → 4) and Super Agent (297 → 10) were both exactly
 right, which is what makes this an arithmetic slip and not a different model of pricing.
 
@@ -42,11 +42,11 @@ reader learned "Clay", opened the app, and found no such thing.
 ### The quota does not reset on a rolling clock
 
 `QuotaDO` does `setUTCHours(24, 0, 0, 0)` — one fixed instant shared by every account.
-The pricing FAQ said "daily, on a rolling 24-hour clock per account" and the sparks docs
+The pricing FAQ said "daily, on a rolling 24-hour clock per account" and the credits docs
 said "every 24 hours per account, on a rolling clock". The worker's own error strings
 already said the true thing: "It resets at midnight UTC."
 
-Not academic. Under a rolling window, sparks spent now return in 24 hours. Under a fixed
+Not academic. Under a rolling window, credits spent now return in 24 hours. Under a fixed
 midnight, someone building at 23:00 UTC gets them back in an hour and someone starting at
 00:30 waits nearly a full day.
 
@@ -103,7 +103,7 @@ Reporting only the failures would misrepresent the audit, so:
 
 ## Guards
 
-`scripts/check-spark-figures.mjs` walks the whole chain in CI — COST-MODEL neurons, the
+`scripts/check-credit-figures.mjs` walks the whole chain in CI — COST-MODEL neurons, the
 worker's own constants, the page's stated cost, the slider attribute, requests per day,
 every prose page that states a cost, and the reset wording against `QuotaDO`. It names
 which COST-MODEL row each published figure derives from, because "Stone" has four rows and
@@ -114,7 +114,7 @@ checking the published figure by the public one.
 a built page, with script and style contents stripped first so a CSS class like `is-clay`
 is not mistaken for something a reader is told.
 
-Both mutation-proved in both directions. One lookbehind in the spark guard is
+Both mutation-proved in both directions. One lookbehind in the credit guard is
 load-bearing: "Agent" is a substring of "Super Agent", and without it every
-"Super Agent — 10 sparks" was reported as Agent costing 10 — five false positives against
+"Super Agent — 10 credits" was reported as Agent costing 10 — five false positives against
 a correct file.

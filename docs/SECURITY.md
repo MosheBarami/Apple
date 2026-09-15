@@ -25,13 +25,13 @@ rendered, and the confirmed ones were fixed and re-tested against the live deplo
 | 3 | **Clients could choose a project's primary key** (RLS insert). A released project UUID could be re-registered by a different user and inherit that project's Durable Object. | cross-tenant session hijack | `force_project_id` BEFORE INSERT trigger overrides `id` with `gen_random_uuid()` and pins `owner_id` to `auth.uid()`. |
 | 4 | **Durable Objects addressed by the raw path parameter.** Casing/encoding variants of one UUID mapped to unbounded distinct DOs. | quota exhaustion, split state | DOs are addressed by the canonical row id from the database; the path parameter is UUID-validated first, and a failed `/init` owner check now refuses the request. |
 | 5 | **`/api/studio/poll` was unauthenticated at the edge** and materialized a Durable Object for any attacker-chosen id. | free-tier exhaustion | Token shape (UUID + 48-hex secret) is validated before any storage is touched, plus per-IP rate limiting. Verified: malformed → 401. |
-| 6 | **`/api/docs/search` ran unmetered Workers AI embeddings** for any signed-in user. | unbounded inference spend | Now costs 1 Spark and is served from the same per-user quota ledger as chat. |
+| 6 | **`/api/docs/search` ran unmetered Workers AI embeddings** for any signed-in user. | unbounded inference spend | Now costs 1 Credit and is served from the same per-user quota ledger as chat. |
 | 7 | **Edge-cache poisoning** via tab/CR/LF in the request path (`static.ts`), and an uncaught `URIError` on malformed `%`-encoding returning 500. | cache poisoning of the SPA bundle; error amplification | Control characters, `..`, and over-long paths are rejected with 400; decoding is wrapped. Verified live. |
 | 8 | **Anonymous writes to `feedback`** were accepted with only the public anon key. | spam into the tenant database | Policy scoped `to authenticated` with `auth.uid() = owner_id`. Verified: anon insert → 401. |
 | 9 | **Plugin tokens never expired**, and comparison was not constant-time. | stolen token usable forever | 30-day TTL with re-pair required, and a constant-time hash comparison. A new pairing supersedes the old token. |
 | 10 | **The user's raw JWT was persisted in DO storage.** | blast radius on any future storage-exposure bug | Kept in memory for the DO instance's lifetime only; never written to durable storage. |
 | 11 | **Unbounded agent transcript and checkpoint size.** | runaway token cost; DO write failures | Transcript trimmed to 120k chars (system prompt preserved); snapshots over 12 MB refused with a clear message. |
-| 12 | **Memory distillation ran an unmetered extra model call** after every run. | quota bypass | Metered at 1 Spark and only runs after substantive runs. |
+| 12 | **Memory distillation ran an unmetered extra model call** after every run. | quota bypass | Metered at 1 Credit and only runs after substantive runs. |
 
 ## Accepted risks (documented, not fixed)
 
@@ -43,7 +43,7 @@ rendered, and the confirmed ones were fixed and re-tested against the live deplo
   infinite loop would hang the user's Studio until they restart it. Mitigated by removing the
   injection path (finding 1); a real fix needs an engine capability that does not exist today.
 - **Free accounts are unlimited.** Signup is email+password with no card. The spend ceiling is
-  enforced per user by the Sparks ledger, and globally by Cloudflare's own daily neuron allocation,
+  enforced per user by the Credits ledger, and globally by Cloudflare's own daily neuron allocation,
   which fails closed rather than billing. Turnstile is the next lever if abuse appears.
 
 ## Abuse boundaries on the agent itself

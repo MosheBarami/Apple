@@ -107,7 +107,7 @@ These were requested but contradict a decision made on 2026-09-14. They are reco
 - [ ] Developer prompt editor
 - [ ] Context window indicator
 - [~] Token counter — usage tracked server-side; not surfaced per message
-- [~] Cost counter — Sparks ledger exists; per-message display unverified
+- [~] Cost counter — Credits ledger exists; per-message display unverified
 - [ ] Latency indicator
 - [x] Model selector — gateway DEFAULT_MODELS + /api/admin/models (verified live)
 - [ ] Fast / Balanced / Max modes

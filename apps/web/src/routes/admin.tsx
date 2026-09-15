@@ -7,6 +7,7 @@ import {
   adminKillSwitch,
   adminModelTest,
   adminRagTest,
+  adminRegisterDiscordCommands,
   adminSpend,
   adminSpendLimits,
   adminStats,
@@ -14,6 +15,7 @@ import {
   type ModelTestResponse,
   type RagHit,
 } from '../lib/api';
+import { formatNumber } from '../lib/format';
 import { MOCK_MODE } from '../lib/mock';
 
 const ADMIN_KEY_STORAGE = 'apple-admin-key';
@@ -98,7 +100,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
             <div>
               <dt>Today</dt>
               <dd>
-                {d.state.dayNeurons.toLocaleString()} neurons ({dayUsedPct}% of today&rsquo;s ceiling)
+                {formatNumber(d.state.dayNeurons)} neurons ({dayUsedPct}% of today&rsquo;s ceiling)
                 <div className="meter" aria-hidden="true">
                   <span style={{ width: `${dayUsedPct}%` }} />
                 </div>
@@ -106,7 +108,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
             </div>
             <div>
               <dt>Free allowance left today</dt>
-              <dd>{d.state.freeRemainingToday.toLocaleString()} neurons</dd>
+              <dd>{formatNumber(d.state.freeRemainingToday)} neurons</dd>
             </div>
             <div>
               <dt>Worst case this month</dt>
@@ -143,7 +145,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
                 <tr key={row.day}>
                   <td>{row.day}</td>
                   <td>{row.calls}</td>
-                  <td>{row.neurons.toLocaleString()}</td>
+                  <td>{formatNumber(row.neurons)}</td>
                   <td>{row.billableUsd > 0 ? usd(row.billableUsd) : '—'}</td>
                 </tr>
               ))}
@@ -162,7 +164,7 @@ function SpendPanel({ adminKey }: { adminKey: string }) {
                   <td>{row.kind}</td>
                   <td className="mono-cell">{row.model.split('/').pop()}</td>
                   <td>{row.calls}</td>
-                  <td>{row.neurons.toLocaleString()}</td>
+                  <td>{formatNumber(row.neurons)}</td>
                 </tr>
               ))}
               {d.breakdown.length === 0 && <tr><td colSpan={4} className="muted">Nothing yet.</td></tr>}
@@ -339,6 +341,48 @@ function RagTester({ adminKey }: { adminKey: string }) {
   );
 }
 
+/**
+ * Publishing the slash commands is the one step that needs the bot token, and it is a button
+ * rather than a shell command because the person who has to press it does not use a terminal.
+ * Idempotent: the list is replaced wholesale, so pressing it twice changes nothing.
+ */
+function DiscordCommands({ adminKey }: { adminKey: string }) {
+  const [names, setNames] = useState<string[] | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const run = useMutation({
+    mutationFn: () => adminRegisterDiscordCommands(adminKey),
+    onSuccess: (res) => {
+      setNames(res.registered);
+      setErrorMsg('');
+    },
+    onError: (e: Error) => {
+      setNames(null);
+      setErrorMsg(e.message);
+    },
+  });
+
+  return (
+    <section className="card admin-panel">
+      <h2>Discord commands</h2>
+      <p className="muted">
+        Publishes the slash commands to Discord. Press it after creating the Discord app, and again after any change to
+        the command list. Nothing happens to anyone&rsquo;s account.
+      </p>
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={() => run.mutate()}
+        disabled={run.isPending || (!MOCK_MODE && !adminKey)}
+      >
+        {run.isPending ? 'Publishing…' : 'Publish commands'}
+      </button>
+      {errorMsg && <p className="form-error">{errorMsg}</p>}
+      {names && <p className="muted">Discord now offers: {names.map((n) => `/${n}`).join(', ')}</p>}
+    </section>
+  );
+}
+
 export function AdminPage() {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const [adminKey, setAdminKey] = useState(readAdminKey);
@@ -399,6 +443,7 @@ export function AdminPage() {
       <StatsPanel adminKey={adminKey} />
       <ModelTester adminKey={adminKey} />
       <RagTester adminKey={adminKey} />
+      <DiscordCommands adminKey={adminKey} />
     </div>
   );
 }

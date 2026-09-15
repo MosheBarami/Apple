@@ -135,7 +135,10 @@ export function Turn({
   if (item.role === 'user') {
     return (
       <div className="gx-turn gx-turn--user gx-msg-in">
-        <div className="gx-user">{item.content}</div>
+        {/* dir="auto" — the direction of a message belongs to the message. A Hebrew sentence
+            typed in an English session (or the reverse) otherwise inherits the page and puts its
+            own trailing punctuation at the wrong end. */}
+        <div className="gx-user" dir="auto">{item.content}</div>
         <div className="gx-user__foot">
           {/* Revealed on hover or focus rather than always drawn: a control on every one of your
               own messages competes with the messages themselves, and this is a repair tool, not
@@ -181,7 +184,8 @@ export function Turn({
         />
 
         {item.content && (
-          <div className="gx-prose">
+          // The reply answers in the user's language, so it takes its direction from itself too.
+          <div className="gx-prose" dir="auto">
             <Markdown source={parsed.rest} />
           </div>
         )}
@@ -197,7 +201,7 @@ export function Turn({
             <p className="gx-outcome__text">{outcome.text}</p>
             {/* No retry on a quota stop: the run did not fail, the account ran out, and a button
                 that re-runs into the same wall teaches the user the product is broken rather than
-                that they are out of Sparks. The outcome text already says when they come back. */}
+                that they are out of Credits. The outcome text already says when they come back. */}
             {onRetry && item.stopReason !== 'quota' && (
               <button type="button" className="gx-outcome__retry" onClick={onRetry}>
                 Try again
@@ -205,7 +209,7 @@ export function Turn({
             )}
             {/* A failed run had exactly one affordance — Try again — and pressing it is the right
                 first move only when the cause was transient. /docs/troubleshooting has a section
-                per cause (Studio closed, a place too large to read, Sparks gone) and nothing in
+                per cause (Studio closed, a place too large to read, Credits gone) and nothing in
                 the product pointed at it, so the second attempt was the user's only diagnostic.
                 New tab: reading it must not discard the conversation it happened in. */}
             {item.stopReason === 'error' && (
@@ -230,9 +234,9 @@ export function Turn({
             history or an older worker, and neither should be drawn as a confident zero. */}
         <p className="gx-turn__foot">
           <Stamp at={item.createdAt} align="start" />
-          {item.sparksSpent != null && item.sparksSpent > 0 && (
+          {item.creditsSpent != null && item.creditsSpent > 0 && (
             <span className="gx-turn__cost">
-              <strong>{item.sparksSpent}</strong> {item.sparksSpent === 1 ? 'Spark' : 'Sparks'}
+              <strong>{item.creditsSpent}</strong> {item.creditsSpent === 1 ? 'Credit' : 'Credits'}
             </span>
           )}
         </p>

@@ -1,5 +1,15 @@
 ---
-import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PLAN_SUPPORT, buildsPerMonth, SPARKS_PER_BUILD } from '@golem/shared';
+import {
+  PLAN_COPY,
+  PLAN_FEATURES,
+  PLAN_IDS,
+  PLAN_LIMITS,
+  PLAN_SUPPORT,
+  PRICE_CURRENCY,
+  buildsPerMonth,
+  formatMoney,
+  CREDITS_PER_BUILD,
+} from '@golem/shared';
 
 // THE NUMBERS ON THIS PAGE ARE READ, NOT WRITTEN. They used to be typed in prose and in the plan
 // cards, so the marketing site and the thing enforcing the quota could drift apart — and they had:
@@ -9,28 +19,28 @@ import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PLAN_SUPPORT, buildsPerMonth, SPARKS_
 const free = PLAN_LIMITS.free;
 const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 import Base from '../layouts/Base.astro';
-import SparkMeter from '../components/SparkMeter.astro';
+import CreditMeter from '../components/CreditMeter.astro';
 import FAQ from '../components/FAQ.astro';
 
 // Figures come from docs/COST-MODEL.md through the SAME arithmetic the worker uses,
-// `sparksForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
+// `creditsForNeurons(n) = max(1, ceil(n / 30))`, and are not invented here:
 // Allowances themselves are read from PLAN_LIMITS above, never restated here.
 //
-//   Plan         37-43 neurons -> ceil(43/30)  =  2 sparks
-//   Agent        111 neurons   -> ceil(111/30) =  4 sparks  (targeted edit + read-back verify)
-//   Super Agent  297 neurons   -> ceil(297/30) = 10 sparks  (+1 per extra step)
+//   Plan         37-43 neurons -> ceil(43/30)  =  2 credits
+//   Agent        111 neurons   -> ceil(111/30) =  4 credits  (targeted edit + read-back verify)
+//   Super Agent  297 neurons   -> ceil(297/30) = 10 credits  (+1 per extra step)
 //
 // COST-MODEL.md names these by their INTERNAL specialist identities — Clay, Stone, Rune
 // — which is correct there and wrong here: packages/shared says those "are internal
 // specialist identities, not user-facing brands: nothing in normal product UI should
 // name them", and §15.3 gives the public modes as Plan / Agent / Super Agent.
 //
-// Plan was published as 1 spark and a request count computed from it. It is 2. Agent and
+// Plan was published as 1 credit and a request count computed from it. It is 2. Agent and
 // Super Agent were both right, which is what makes the Plan figure an arithmetic slip
 // rather than a different model of pricing: whoever wrote them divided correctly.
 // "≈ requests / free day" is the free daily allowance divided by cost, and it is now
 // COMPUTED rather than typed. It was typed — 30 / 15 / up to 6 — against a free tier that
-// granted 60 Sparks a day. The repricing took free to 231 and those three numbers stayed
+// granted 60 Credits a day. The repricing took free to 231 and those three numbers stayed
 // exactly where they were, so this page understated its own free allowance almost
 // fourfold for as long as that was live. Nobody typed a wrong number; three right ones
 // were left behind by a change somewhere else, which is the failure mode a literal always
@@ -40,15 +50,15 @@ import FAQ from '../components/FAQ.astro';
 // can disagree with each other.
 const perFreeDay = (cost: string, prefix = ''): string => {
   const n = Number(/^\d+/.exec(cost)?.[0]);
-  if (!n) throw new Error(`pricing.astro: "${cost}" does not start with a Spark count`);
-  return `${prefix}${Math.floor(free.sparksPerDay / n)}`;
+  if (!n) throw new Error(`pricing.astro: "${cost}" does not start with a Credit count`);
+  return `${prefix}${Math.floor(free.creditsPerDay / n)}`;
 };
 
 const modeRows = [
   {
     mode: 'Plan',
     cls: 'is-clay',
-    cost: '2 sparks',
+    cost: '2 credits',
     extra: '',
     does: 'Fast answers and small edits',
     perDayPrefix: '',
@@ -56,7 +66,7 @@ const modeRows = [
   {
     mode: 'Agent',
     cls: 'is-stone',
-    cost: '4 sparks',
+    cost: '4 credits',
     extra: '',
     does: 'Builds features across your project',
     perDayPrefix: '',
@@ -64,7 +74,7 @@ const modeRows = [
   {
     mode: 'Super Agent',
     cls: 'is-rune',
-    cost: '10 sparks',
+    cost: '10 credits',
     extra: '+1 per extra step',
     does: 'Plans, builds, tests and fixes autonomously',
     perDayPrefix: 'up to ',
@@ -73,7 +83,7 @@ const modeRows = [
 
 const limitFaq = [
   {
-    q: 'What happens when I run out of Sparks?',
+    q: 'What happens when I run out of Credits?',
     a: `<p>Apple tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
   },
   {
@@ -81,16 +91,16 @@ const limitFaq = [
     a: `<p>Apple runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest daily allowance than an unlimited plan with an asterisk.</p>`,
   },
   {
-    q: 'Do unused Sparks roll over?',
-    a: `<p>No. Sparks reset to your full daily amount every day. Rollover sounds nice but pushes people to hoard; a fresh daily allowance keeps the math simple and the queue fair.</p>`,
+    q: 'Do unused Credits roll over?',
+    a: `<p>No. Credits reset to your full daily amount every day. Rollover sounds nice but pushes people to hoard; a fresh daily allowance keeps the math simple and the queue fair.</p>`,
   },
   {
-    q: 'Can one Super Agent request cost more than 10 Sparks?',
-    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Sparks and add 1 Spark per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Apple warns before starting work it estimates will be expensive.</p>`,
+    q: 'Can one Super Agent request cost more than 10 Credits?',
+    a: `<p>Yes, and it is metered transparently. Super Agent requests start at 10 Credits and add 1 Credit per extra step beyond the ones included. You see the running total live in the workspace, and a request never silently drains your day — Apple warns before starting work it estimates will be expensive.</p>`,
   },
   {
-    q: 'What is a Spark, underneath?',
-    a: `<p>A unit of real compute. One Spark is 30 neurons of real compute, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A full Agent build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
+    q: 'What is a Credit, underneath?',
+    a: `<p>A unit of real compute. One Credit is 30 neurons of real compute, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A full Agent build — read the tree, edit scripts, create instances, verify — measured 511 neurons, about $0.0056. That is why the free tier can exist at all.</p>`,
   },
   {
     q: 'When does Pro launch, and what will it cost?',
@@ -101,7 +111,7 @@ const limitFaq = [
 
 <Base
   title="Pricing — Apple"
-  description={`Apple is free: ${free.sparksPerDay} Sparks a day, all three modes, unlimited projects, checkpoints included. Builder and Studio add more. No card is needed to start.`}
+  description={`Apple is free: ${free.creditsPerDay} Credits a day, all three modes, unlimited projects, checkpoints included. Builder and Studio add more. No card is needed to start.`}
 >
   <!-- ==================================================== head -->
   <section class="section phead is-ember" aria-labelledby="pricing-title">
@@ -119,10 +129,10 @@ const limitFaq = [
         <article class="plan slab slab--seam" aria-labelledby="plan-free" data-reveal>
           <header class="plan__head">
             <h2 id="plan-free">Free</h2>
-            <p class="plan__price"><span>$0</span> forever</p>
+            <p class="plan__price"><span>{formatMoney(0, { currency: PRICE_CURRENCY })}</span> forever</p>
           </header>
           <ul class="plan__list">
-            <li><strong>{free.sparksPerDay.toLocaleString()} Sparks</strong> per day · {free.sparksPerMonth.toLocaleString()} a month</li>
+            <li><strong>{free.creditsPerDay.toLocaleString()} Credits</strong> per day · {free.creditsPerMonth.toLocaleString()} a month</li>
             <li>About {buildsPerMonth('free')} quality-gated builds a month</li>
             <li>All three modes — Plan, Agent, Super Agent</li>
             <li>Unlimited projects</li>
@@ -132,7 +142,7 @@ const limitFaq = [
                 about support anywhere, and a buyer cannot tell silence from "there is none". */}
             <li>{PLAN_SUPPORT.free.channel}</li>
           </ul>
-          <a href="/app" class="btn btn-primary plan__cta">Start building — free</a>
+          <a href="/app/signup" class="btn btn-primary plan__cta">Start building — free</a>
           <p class="plan__note">
             Nothing to cancel, because there is nothing to start.
           </p>
@@ -149,13 +159,13 @@ const limitFaq = [
               <header class="plan__head">
                 <h2 id={`plan-${id}`}>{PLAN_COPY[id].name}</h2>
                 <p class="plan__price">
-                  <span>${PLAN_COPY[id].priceUsdMonthly}</span> a month
+                  <span>{formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY })}</span> a month
                 </p>
               </header>
               <ul class="plan__list">
                 <li>
-                  <strong>{PLAN_LIMITS[id].sparksPerDay.toLocaleString()} Sparks</strong> per day ·{' '}
-                  {PLAN_LIMITS[id].sparksPerMonth.toLocaleString()} a month
+                  <strong>{PLAN_LIMITS[id].creditsPerDay.toLocaleString()} Credits</strong> per day ·{' '}
+                  {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month
                 </li>
                 <li>About {buildsPerMonth(id)} quality-gated builds a month</li>
                 {PLAN_COPY[id].highlights.map((h) => (
@@ -169,7 +179,7 @@ const limitFaq = [
         }
 
         <p class="plan__note" style="grid-column:1/-1;max-width:62ch">
-          One build costs about {SPARKS_PER_BUILD} Sparks, so every figure above is also a number of
+          One build costs about {CREDITS_PER_BUILD} Credits, so every figure above is also a number of
           builds — which is the only form of it anyone can act on. These are the same limits the
           service enforces; this page reads them rather than restating them.
         </p>
@@ -179,6 +189,77 @@ const limitFaq = [
           accounts are answered first. Enterprise is different — {PLAN_SUPPORT.enterprise.promise.toLowerCase()}
         </p>
       </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== comparison -->
+  <section class="section" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="sechead">
+        <p class="eyebrow" data-reveal>Side by side</p>
+        <h2 id="compare-title" data-reveal class="carved">What each plan includes</h2>
+        <p class="lede lede-wide" data-reveal>
+          The cards above say what each tier <em>adds</em>. This says what each tier
+          <em>has</em> — including the rows where the answer is the same for everyone,
+          because a capability missing from a list of bullets is indistinguishable from
+          one nobody mentioned.
+        </p>
+      </header>
+
+      <div class="table-scroll" data-reveal>
+        <table class="compare">
+          <caption class="visually-hidden">
+            Every capability by plan. Rows are capabilities; columns are plans.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Capability</th>
+              {PLAN_IDS.map((id) => <th scope="col">{PLAN_COPY[id].name}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {
+              PLAN_FEATURES.map((feature) => (
+                <tr>
+                  <th scope="row">
+                    {feature.label}
+                    {feature.note && <span class="tx">{feature.note}</span>}
+                  </th>
+                  {PLAN_IDS.map((id) => {
+                    const value = feature.values[id];
+                    if (value === true) {
+                      return (
+                        <td class="compare__yes">
+                          {/* The glyph is decoration; the word is the answer. A table whose
+                              cells are bare ticks and blanks is unreadable aloud, and "blank"
+                              is exactly the ambiguity this table exists to remove. */}
+                          <span aria-hidden="true">&#10003;</span>
+                          <span class="visually-hidden">Included</span>
+                        </td>
+                      );
+                    }
+                    if (value === false) {
+                      return (
+                        <td class="compare__no">
+                          <span aria-hidden="true">&#8212;</span>
+                          <span class="visually-hidden">Not included</span>
+                        </td>
+                      );
+                    }
+                    return <td>{value}</td>;
+                  })}
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="plan__note" style="max-width:62ch">
+        Read from the same tables the service enforces, so this cannot drift from what you
+        actually get. Worth saying plainly: apart from the allowance and the commercial
+        terms, nothing here is held back for a paid tier.
+      </p>
     </div>
   </section>
 
@@ -198,17 +279,17 @@ const limitFaq = [
       </header>
 
       <div data-reveal data-reveal-delay="100">
-        <SparkMeter />
+        <CreditMeter />
       </div>
     </div>
   </section>
 
   <!-- ==================================================== per-mode -->
-  <section class="section" aria-labelledby="sparks-title">
+  <section class="section" aria-labelledby="credits-title">
     <div class="wrap">
       <header class="sechead">
         <p class="eyebrow" data-reveal>Per request</p>
-        <h2 id="sparks-title" data-reveal class="carved">What a Spark buys</h2>
+        <h2 id="credits-title" data-reveal class="carved">What a Credit buys</h2>
         <p class="lede lede-wide" data-reveal>
           Bigger apples burn more, because they do more work per request. The
           craft is picking the smallest one that can carry the job.
@@ -217,7 +298,7 @@ const limitFaq = [
 
       <div class="table-scroll" data-reveal>
         <table>
-          <caption class="visually-hidden">Spark cost per request by mode</caption>
+          <caption class="visually-hidden">Credit cost per request by mode</caption>
           <thead>
             <tr>
               <th scope="col">Mode</th>
@@ -248,7 +329,7 @@ const limitFaq = [
 
       <p class="tfoot" data-reveal>
         A Super Agent request includes its base steps; each additional step beyond
-        them costs 1 extra Spark, metered live so you always see where you
+        them costs 1 extra Credit, metered live so you always see where you
         stand. Apple's own housekeeping does not count against your quota.
       </p>
     </div>

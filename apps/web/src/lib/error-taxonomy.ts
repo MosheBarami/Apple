@@ -30,7 +30,7 @@ export type FailureKind =
   | 'not_permitted'
   | 'missing'
   | 'rate_limited'
-  | 'out_of_sparks'
+  | 'out_of_credits'
   | 'not_configured'
   | 'upstream'
   | 'ours'
@@ -56,7 +56,7 @@ export interface HelpLink {
 
 /** Where the long answers live. Named once so a renamed page is one edit, not a search. */
 const DOC_TROUBLESHOOTING: HelpLink = { href: '/docs/troubleshooting', label: 'Troubleshooting' };
-const DOC_SPARKS: HelpLink = { href: '/docs/sparks-and-limits', label: 'How Sparks work' };
+const DOC_CREDITS: HelpLink = { href: '/docs/credits-and-limits', label: 'How Credits work' };
 
 export interface Explained {
   kind: FailureKind;
@@ -161,17 +161,17 @@ export function explainFailure(err: unknown): Explained {
 
   if (status === 429) {
     // Two different 429s, and they need opposite advice: one clears by waiting a moment, the other
-    // does not clear until midnight or until credits are added. Telling a user out of Sparks to
+    // does not clear until midnight or until credits are added. Telling a user out of Credits to
     // "slow down" is the kind of wrong answer that reads as a brush-off.
-    const spent = /spark|quota|allowance|used up|limit reached/.test(lower);
+    const spent = /credit|quota|allowance|used up|limit reached/.test(lower);
     if (spent) {
       return {
-        kind: 'out_of_sparks',
-        title: 'You are out of Sparks',
+        kind: 'out_of_credits',
+        title: 'You are out of Credits',
         safety: REFUSED + ' Nothing was charged for it.',
         next: 'See what is left and when it renews.',
         href: '/app/usage',
-        help: DOC_SPARKS,
+        help: DOC_CREDITS,
         retryable: false,
         detail,
       };

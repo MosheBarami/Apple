@@ -610,7 +610,7 @@ export interface GeneratedImage {
  * accounting failure has to land on the side of over-billing our own ledger, never on the side of
  * spend the caps cannot see. There are no retries, for the same reason: a retry is a second bill.
  *
- * NOT CHARGED TO USER SPARKS. Like `embed()`, this settles against the global ledger only; QuotaDO
+ * NOT CHARGED TO USER CREDITS. Like `embed()`, this settles against the global ledger only; QuotaDO
  * is untouched. The agent step that invoked it is metered on its own.
  */
 export async function generateImage(env: Env, req: ImageRequest, kind = 'imagegen'): Promise<GeneratedImage | Refusal> {

@@ -97,8 +97,8 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
       noticeably longer than the rest. Give it a moment before retrying.
     </li>
     <li>
-      <strong>Sparks ran out.</strong> The chat says so explicitly. See
-      <a href="/docs/sparks-and-limits">Sparks &amp; limits</a>.
+      <strong>Credits ran out.</strong> The chat says so explicitly. See
+      <a href="/docs/credits-and-limits">Credits &amp; limits</a>.
     </li>
   </ul>
 
@@ -111,7 +111,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
   <h3>“The model dropped that step”</h3>
   <p>
     A single inference call failed after Apple had already done real work. Everything up to that
-    step is saved in your place, and the dropped step is <strong>not</strong> charged — Sparks are
+    step is saved in your place, and the dropped step is <strong>not</strong> charged — Credits are
     billed from the compute a call actually reports, and a call that returned nothing reports
     nothing. Send another message and Apple continues from where it stopped; you do not need to
     repeat the whole instruction.
@@ -126,11 +126,11 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 
   <h3>“Apple has reached today's shared building capacity”</h3>
   <p>
-    Different from running out of your own Sparks: this is a ceiling on what the whole service will
+    Different from running out of your own Credits: this is a ceiling on what the whole service will
     spend in a day, and it protects the free tier from a single runaway build. The message says when
-    it resets — midnight UTC, the same instant for everyone. Your Sparks are not consumed by a run
+    it resets — midnight UTC, the same instant for everyone. Your Credits are not consumed by a run
     that stops here, and your project and checkpoints are exactly where you left them. See
-    <a href="/docs/sparks-and-limits">Sparks &amp; limits</a> for the difference between the two.
+    <a href="/docs/credits-and-limits">Credits &amp; limits</a> for the difference between the two.
   </p>
 
   <div class="callout">

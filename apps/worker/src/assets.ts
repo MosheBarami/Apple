@@ -81,8 +81,21 @@ export interface SourceChoice {
 
 const V = {
   none: 'none — nothing is fetched and no asset id is involved',
+  //[[ THIS SENTENCE WAS THE INVERTED LIBRARY, STATED A SECOND TIME.
+  //
+  //   It used to require `status=active, health_ok=1`, and `choose_asset_source` is documented
+  //   "call this BEFORE building anything you might be tempted to search for" — so this is the rule
+  //   the model is holding when the search results land. `status` is an import lifecycle
+  //   (asset-library.ts): the rows that are 'active' are the Creator Store scrape, and Kenney,
+  //   Poly Haven, ambientCG and Quaternius sit at 'pending_ingest' until somebody imports them.
+  //   Search was fixed to return both; this string still told the model to discard the curated half
+  //   of what it was being handed, which is worse than the original bug because it arrives first.
+  //
+  //   So it names the two facts separately, in the words the hits actually carry. What makes a row
+  //   dead is `quarantined`/`retired` (markHealth writes the first when an id stops resolving —
+  //   that is what "health" meant). What makes a row usable TODAY is having a Roblox id at all. ]]
   library:
-    'library gate: the row must exist in asset_library with status=active, health_ok=1 and a licence permitting commercial use; the plugin inserts roblox_asset_id and nothing else',
+    'library gate: the row must carry a recorded licence permitting commercial use and must not be quarantined or retired; the plugin inserts roblox_asset_id and nothing else. Being in the library is not the same as being insertable today: every hit says availability=insertable, meaning a Roblox id exists and you can pass it to insert_asset now, or availability=needs_import, meaning the library holds this asset but its bytes have never been uploaded to Roblox, so assetId is null — say that plainly and build the thing another way for now, never invent an id for it. Either way the id is still resolved and security-gated by insert_asset like any other',
   generated:
     'QC gate: Generation.inspect() must return verdict=pass in Studio, then a human accepts the preview, then the mesh is persisted via AssetService:CreateAssetAsync — GenerateModelAsync output is session-scoped and does not survive save/publish',
   creatorStore:
@@ -2898,7 +2911,7 @@ const NEED_WORDS: readonly (readonly [RegExp, AssetNeed])[] = [
   [/\b(icon|button|badge|ui)\b/i, 'ui_icon'],
   [/\b(texture|material|surface)\b/i, 'texture'],
   [/\b(ground|terrain|floor|path)\b/i, 'ground'],
-  [/\b(particle|smoke|fire|spark)\b/i, 'particle'],
+  [/\b(particle|smoke|fire|credit)\b/i, 'particle'],
 ];
 
 export interface AssetDescription {

@@ -78,7 +78,45 @@ export function turnGroups(llm: GatewayMessage[]): { head: GatewayMessage[]; gro
  * expensive step is a much cheaper failure than an agent that has forgotten its instructions.
  */
 export function trimTranscript(llm: GatewayMessage[], maxChars: number): GatewayMessage[] {
-  if (transcriptChars(llm) <= maxChars) return llm;
+  return trimTranscriptReport(llm, maxChars).llm;
+}
+
+/**
+ * What a run's context costs, and what the trim took to make it fit.
+ *
+ * THE TRIM WAS SILENT, and that is the defect this exists to close. Whole turn groups were dropped
+ * from the oldest end with nothing said to anyone: the user asked a follow-up question about
+ * something they could still see on screen, the agent had no record of it, and the only signal was
+ * an answer that read as forgetfulness. There is no way to tell that apart from a bad model.
+ *
+ * Two honesty rules decide the shape of this record, and both are about what a report may claim:
+ *
+ *   * `droppedGroups` counts TURN GROUPS, which is what is actually removed — an assistant turn
+ *     plus the tool messages answering it. Counting messages would report "9 dropped" for three
+ *     exchanges and make a normal trim look catastrophic.
+ *   * `droppedChars` is measured as `before - after`, not summed from the groups as they are
+ *     removed. A pinned message inside a dropped group is MOVED INTO THE HEAD rather than lost
+ *     (see below), so summing the groups would report characters as gone that are still in the
+ *     prompt. The difference of two measurements cannot disagree with the thing it measures.
+ */
+export interface TrimReport {
+  llm: GatewayMessage[];
+  /** Size before the trim ran. */
+  before: number;
+  /** Size of what will actually be sent — over `maxChars` when the budget could not be met. */
+  after: number;
+  maxChars: number;
+  /** Turn groups removed from the oldest end. Zero when the transcript already fitted. */
+  droppedGroups: number;
+  /** Characters the trim actually removed — `before - after`, never a sum over the groups. */
+  droppedChars: number;
+}
+
+export function trimTranscriptReport(llm: GatewayMessage[], maxChars: number): TrimReport {
+  const before = transcriptChars(llm);
+  if (before <= maxChars) {
+    return { llm, before, after: before, maxChars, droppedGroups: 0, droppedChars: 0 };
+  }
 
   const { head, groups } = turnGroups(llm);
   let first = 0; // oldest group still kept
@@ -90,7 +128,9 @@ export function trimTranscript(llm: GatewayMessage[], maxChars: number): Gateway
     if (groups[first]!.some((m) => m.pinned)) head.push(...groups[first]!);
     first++;
   }
-  return [...head, ...groups.slice(first).flat()];
+  const trimmed = [...head, ...groups.slice(first).flat()];
+  const after = transcriptChars(trimmed);
+  return { llm: trimmed, before, after, maxChars, droppedGroups: first, droppedChars: before - after };
 }
 
 /**

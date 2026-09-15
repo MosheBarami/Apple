@@ -56,7 +56,7 @@ create table public.usage_events (
   owner_id uuid not null references public.profiles(id) on delete cascade,
   project_id uuid,
   kind text not null,
-  sparks int not null default 0,
+  credits int not null default 0,
   input_tokens int not null default 0,
   output_tokens int not null default 0,
   model text,

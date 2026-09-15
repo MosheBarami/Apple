@@ -65,7 +65,7 @@ const api = (status, message = 'x') => Object.assign(new ApiError(message, statu
 
 /** The failures that have a page written for them. Each names the page it must reach. */
 const EXPECTED_HELP = [
-  { err: api(429, 'daily spark allowance used up'), kind: 'out_of_sparks', href: '/docs/sparks-and-limits' },
+  { err: api(429, 'daily credit allowance used up'), kind: 'out_of_credits', href: '/docs/credits-and-limits' },
   { err: api(502), kind: 'upstream', href: '/docs/troubleshooting' },
   { err: api(500), kind: 'ours', href: '/docs/troubleshooting' },
   { err: api(400), kind: 'rejected', href: '/docs/troubleshooting' },
@@ -86,7 +86,7 @@ test('every help link in the taxonomy names a docs page that is on disk', () => 
   // covered the day it is added.
   const statuses = [0, 400, 401, 403, 404, 426, 429, 500, 502, 503, 504];
   for (const status of statuses) {
-    for (const msg of ['x', 'daily spark allowance used up']) {
+    for (const msg of ['x', 'daily credit allowance used up']) {
       const e = T.explainFailure(api(status, msg));
       if (!e.help) continue;
       assert.ok(

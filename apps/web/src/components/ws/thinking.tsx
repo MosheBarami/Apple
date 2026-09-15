@@ -1,6 +1,6 @@
 // The Thinking card — the centrepiece of the conversation.
 //
-// A bordered card with an amber sparkle, the word "Thinking" and a chevron;
+// A bordered card with an amber creditle, the word "Thinking" and a chevron;
 // inside, a vertical timeline of ring bullets joined by a hairline:
 // Intent → Plan → Actions → Validation.
 //
@@ -86,6 +86,22 @@ function Stage({
           </div>
         )}
 
+        {/* The other half of the same honesty, and the half that was missing. The block above
+            lists what Apple DECLINED to decide; this lists what it decided anyway and is acting
+            on right now. Shipping only the first told the user about the restraint and hid the
+            choices. The label is an invitation because these are the cheapest possible
+            corrections — a wrong assumption caught here costs a sentence, not a rebuild. */}
+        {stage.assumptions && (
+          <div className="gx-assumed">
+            <span className="gx-assumed__label">Apple assumed — say so if this is wrong:</span>
+            <ul>
+              {stage.assumptions.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* The Actions stage is drawn by <Activity>, which groups the same real
             events into ordered, timed phases and hangs each step's evidence on
             it. `stage.actions` still decides whether this stage EXISTS AT ALL —
@@ -139,8 +155,8 @@ export function Thinking({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="gx-think__spark" aria-hidden="true">
-          <Icon d={PATH.sparkle} size={15} />
+        <span className="gx-think__credit" aria-hidden="true">
+          <Icon d={PATH.creditle} size={15} />
         </span>
         <span className="gx-think__word">Thinking</span>
         <span className="gx-think__hint">{hint}</span>
@@ -166,21 +182,21 @@ export function Thinking({
           {/* The reasoning POLICY's own justification for the effort tier it
               picked. A classification of the request, not the model's private
               reasoning. */}
-          {(status?.effort || status?.sparksSpent != null || status?.step != null) && (
+          {(status?.effort || status?.creditsSpent != null || status?.step != null) && (
             <p className="gx-think__foot">
               {status?.step != null && status?.totalSteps != null && (
                 <>
                   Step <strong>{status.step}</strong> of {status.totalSteps}
-                  {(status.effort || status.sparksSpent != null) ? ' · ' : ''}
+                  {(status.effort || status.creditsSpent != null) ? ' · ' : ''}
                 </>
               )}
               {/* What THIS run has cost, settled by the worker and never estimated here. The
                   account-wide figure lives in the credits panel; this is the one a user watching a
                   build can actually act on. Rendered only once something has been spent, so an
                   opening run does not display a confident "0". */}
-              {status?.sparksSpent != null && status.sparksSpent > 0 && (
+              {status?.creditsSpent != null && status.creditsSpent > 0 && (
                 <>
-                  <strong>{status.sparksSpent}</strong> {status.sparksSpent === 1 ? 'Spark' : 'Sparks'} this run
+                  <strong>{status.creditsSpent}</strong> {status.creditsSpent === 1 ? 'Credit' : 'Credits'} this run
                   {status.effort ? ' · ' : ''}
                 </>
               )}

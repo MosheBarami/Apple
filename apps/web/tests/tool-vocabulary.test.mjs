@@ -134,6 +134,15 @@ test('there is only one tool LABEL/KIND table left in the web app', () => {
       } else if (/\.(ts|tsx)$/.test(e.name)) {
         const p = join(dir, e.name);
         if (p.endsWith('tool-vocabulary.ts')) continue;
+        // op-vocabulary.ts is a table of STUDIO OPS, not of tools. Thirteen names appear in both
+        // sets — edit_script is a tool the agent calls AND the wire op the plugin performs — but
+        // the sets are different (set_props and delete_instances are ops with no tool; search_docs
+        // is a tool that touches no Studio op) and so are the sentences: this table is a past-tense
+        // RECORD of what happened to the place, the one above is the present-tense activity shown
+        // while a run is going. The exemption is earned rather than granted — studio-activity.test
+        // holds that file to the worker's own StudioOp union in both directions, which is the same
+        // discipline this file applies to the tool registry.
+        if (p.endsWith('op-vocabulary.ts')) continue;
         const src = readFileSync(p, 'utf8');
         // LINE BY LINE. A table entry occupies one line, and matching across the whole
         // file let a greedy character class run past a newline — the first version of

@@ -1,10 +1,10 @@
 /**
- * QuotaDO's spend path, EXECUTED — the user-facing Spark ledger.
+ * QuotaDO's spend path, EXECUTED — the user-facing Credit ledger.
  *
  * quota-math.ts is well covered by quota-day-boundary.test.mjs, which tests the ARITHMETIC. This
  * tests the DO that wires it to storage, and the boundary where a caller's number arrives.
  *
- * THE DEFECT. `splitSpend` opens with `const want = Math.max(0, sparks)`, and `Math.max(0, NaN)` is
+ * THE DEFECT. `splitSpend` opens with `const want = Math.max(0, credits)`, and `Math.max(0, NaN)` is
  * NaN. Every comparison after that is false for NaN — `NaN > allowanceRemaining + credits` is
  * false, so it reports AFFORDABLE — and then `fromAllowance` and `fromCredits` are both NaN, so
  * `if (fromAllowance > 0)` and `if (fromCredits > 0)` are both false and nothing is written.
@@ -17,12 +17,12 @@
  *
  * So an unreadable spend is reported OK to the caller and the ledger does not move: the same shape
  * as the BudgetDO defect, one ledger over, and this is the one the USER sees. It is worse than it
- * looks from here, because session.ts:1278 does `agent.sparksSpent += owed` — one NaN makes that
+ * looks from here, because session.ts:1278 does `agent.creditsSpent += owed` — one NaN makes that
  * field NaN for the rest of the run, and msg_end now carries it to the UI.
  *
- * A NEGATIVE MUST STAY A NO-OP, NOT BECOME A REFUSAL. `owed = sparksForNeurons(neuronsUsed) -
- * sparksSpent` is legitimately negative when a previous step overcharged, and refusing there would
- * tell a user with Sparks left that they had run out. Clamping it to zero is correct and is kept.
+ * A NEGATIVE MUST STAY A NO-OP, NOT BECOME A REFUSAL. `owed = creditsForNeurons(neuronsUsed) -
+ * creditsSpent` is legitimately negative when a previous step overcharged, and refusing there would
+ * tell a user with Credits left that they had run out. Clamping it to zero is correct and is kept.
  *
  * Run with:  node --test           (from apps/worker)
  */
@@ -55,11 +55,11 @@ function quota(seed = {}) {
   const sql = {
     exec(q, ...a) {
       if (/^\s*create table/i.test(q)) return { toArray: () => [], one: () => null };
-      if (/insert into ledger/i.test(q)) { rows.push({ day: a[0], kind: a[1], sparks: a[2] }); return { toArray: () => [], one: () => null }; }
+      if (/insert into ledger/i.test(q)) { rows.push({ day: a[0], kind: a[1], credits: a[2] }); return { toArray: () => [], one: () => null }; }
       if (/delete from ledger where day </i.test(q)) { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].day < a[0]) rows.splice(i, 1); return { toArray: () => [], one: () => null }; }
       if (/delete from ledger where day =/i.test(q)) { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].day === a[0]) rows.splice(i, 1); return { toArray: () => [], one: () => null }; }
-      if (/where day = \?/.test(q)) return { one: () => ({ s: rows.filter((r) => r.day === a[0]).reduce((x, r) => x + r.sparks, 0) }), toArray: () => [] };
-      if (/where day like \?/.test(q)) { const p = String(a[0]).replace('%', ''); return { one: () => ({ s: rows.filter((r) => r.day.startsWith(p)).reduce((x, r) => x + r.sparks, 0) }), toArray: () => [] }; }
+      if (/where day = \?/.test(q)) return { one: () => ({ s: rows.filter((r) => r.day === a[0]).reduce((x, r) => x + r.credits, 0) }), toArray: () => [] };
+      if (/where day like \?/.test(q)) { const p = String(a[0]).replace('%', ''); return { one: () => ({ s: rows.filter((r) => r.day.startsWith(p)).reduce((x, r) => x + r.credits, 0) }), toArray: () => [] }; }
       if (/group by day/i.test(q)) return { toArray: () => [], one: () => null };
       return { toArray: () => [], one: () => ({ s: 0 }) };
     },
@@ -74,10 +74,10 @@ function quota(seed = {}) {
     (await o.fetch(new Request('https://do' + p, { method, ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}) }))).json();
   return {
     call, rows,
-    spend: (sparks, kind = 'chat') => call('/spend', { sparks, kind }),
+    spend: (credits, kind = 'chat') => call('/spend', { credits, kind }),
     state: () => call('/state', null, 'GET'),
     /** what the ledger actually recorded, which is the only figure that bills anyone */
-    recorded: () => rows.reduce((x, r) => x + r.sparks, 0),
+    recorded: () => rows.reduce((x, r) => x + r.credits, 0),
   };
 }
 
@@ -110,7 +110,7 @@ const UNREADABLE = [
 for (const [label, value] of UNREADABLE) {
   test(`a spend of ${label} is refused, not reported affordable`, async () => {
     const q = quota();
-    const r = await q.call('/spend', { sparks: value, kind: 'chat' });
+    const r = await q.call('/spend', { credits: value, kind: 'chat' });
     assert.equal(r.ok, false, 'an amount nobody could read must not be reported as an affordable spend');
     assert.equal(q.recorded(), 0, 'and must record nothing');
     assert.equal(Number.isFinite(r.state.allowanceRemaining), true, 'the ledger must not be poisoned');
@@ -119,10 +119,10 @@ for (const [label, value] of UNREADABLE) {
 
 test('a NEGATIVE spend stays a no-op and is still affordable', async () => {
   // Deliberately NOT a refusal: `owed` in session.ts is legitimately negative when an earlier step
-  // overcharged, and refusing would tell a user with Sparks left that they had run out.
+  // overcharged, and refusing would tell a user with Credits left that they had run out.
   const q = quota();
   const r = await q.spend(-5);
-  assert.equal(r.ok, true, 'a negative settle must not be reported as running out of Sparks');
+  assert.equal(r.ok, true, 'a negative settle must not be reported as running out of Credits');
   assert.equal(q.recorded(), 0, 'and must not credit the user either');
 });
 
@@ -132,7 +132,7 @@ test('an unreadable spend cannot be used to buy work for free', async () => {
   const q = quota();
   let allowed = 0;
   for (let i = 0; i < 50; i++) {
-    const r = await q.call('/spend', { sparks: NaN, kind: 'chat' });
+    const r = await q.call('/spend', { credits: NaN, kind: 'chat' });
     if (r.ok) allowed += 1;
   }
   assert.equal(allowed, 0, `${allowed} of 50 unreadable spends were granted, each one free work`);

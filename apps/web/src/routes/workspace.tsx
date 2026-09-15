@@ -7,10 +7,11 @@
 // drawer rather than occupying a third of the screen forever.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
+import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
@@ -18,18 +19,41 @@ import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
 import { useToast } from '../components/toast';
 import { EditableProjectTitle } from '../components/editable-title';
+import { PresenceBar } from '../components/presence-bar';
+import { useAuth } from '../lib/auth';
 import { useCommands } from '../lib/commands';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
-import { ApiError, downloadExport } from '../lib/api';
+import { MembersPanel } from '../components/ws/members-panel';
+import { InstructionsPanel } from '../components/ws/instructions-panel';
+import {
+  ApiError,
+  downloadExport,
+  fetchMembers,
+  fetchPersonalisation,
+  fetchProjectAccess,
+  savePreferences,
+  type SearchHit,
+} from '../lib/api';
+import { FilesPanel } from '../components/ws/files-panel';
+import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
+import type { AssetSourcePolicy } from '@golem/shared';
+import { owesAnswer } from '../lib/asset-sources';
+import { AssetSourceDialog } from '../components/asset-source-dialog';
+import { isNearBottom, jumpLabel, unseenCount } from '../lib/follow-latest';
+import { replyAnnouncement } from '../lib/announce';
+import { readViewChoice, writeViewChoice } from '../lib/view-state';
+import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
+import { checkpointAuthorView, rosterNames } from '../lib/checkpoint-author';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
 import { Turn } from '../components/ws/turn';
 import { StudioView } from '../components/ws/studio-view';
+import { StudioActivity } from '../components/ws/studio-activity';
 import { PlaytestCard } from '../components/ws/playtest-card';
 import { ConnectStudio } from '../components/ws/connect-studio';
 import { EmptyState } from '../components/empty-state';
@@ -52,6 +76,21 @@ const SUGGESTIONS = [
   'Look at the scene and tell me what reads as unfinished.',
 ];
 
+/**
+ * Every drawer this build can show, plus the name 'none' for "closed".
+ *
+ * `null` cannot be stored, and storing the empty string for it would make "closed" and "a value
+ * this build no longer recognises" the same state — which is precisely the distinction the
+ * validation exists to keep.
+ */
+// Three agents added a drawer each, from three checklist sections, and all three belong. The union
+// and the literal list are kept in step deliberately: search-panel.test.mjs asserts every name the
+// union can hold is a name DRAWERS accepts, because a drawer missing from the list restores as
+// closed for ever and looks like a user who simply never opened it.
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history'] as const;
+
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
@@ -61,10 +100,33 @@ export function WorkspacePage() {
   const navigate = useNavigate();
 
   const [showPairing, setShowPairing] = useState(false);
-  const [drawer, setDrawer] = useState<null | 'checkpoints' | 'memory' | 'credits' | 'search'>(null);
+  //[[ THE DRAWER YOU LEFT OPEN IS STILL OPEN.
+  //
+  //   This was plain `useState(null)`, so every navigation closed whatever you were reading and
+  //   coming back was a fresh start. Restored per project, because the drawer you want open in
+  //   one project is not evidence about another.
+  //
+  //   The stored value is CHECKED against the drawers this build actually has. A name left by an
+  //   older version would otherwise set the state open with nothing to render, and an interface
+  //   claiming to show something it is not is worse than one that forgot. ]]
+  const [drawer, setDrawerState] = useState<Drawer>(() => {
+    const stored = readViewChoice<DrawerName>(`drawer.${projectId}`, DRAWERS, 'none');
+    return stored === 'none' ? null : stored;
+  });
+  const setDrawer = useCallback(
+    (next: Drawer) => {
+      setDrawerState(next);
+      writeViewChoice(`drawer.${projectId}`, next ?? 'none');
+    },
+    [projectId],
+  );
   const [mode, setMode] = useState<ProductMode>('agent');
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
+  // Kept beside the label rather than inside the form element so clearing both after a save is one
+  // statement — a description left behind after a save reappears on the NEXT checkpoint and
+  // describes the wrong snapshot.
+  const [note, setNote] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -78,6 +140,45 @@ export function WorkspacePage() {
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
   });
+
+  //[[ WHAT THIS PERSON MAY DO HERE — asked, rather than assumed.
+  //
+  //   `GET /api/shared/:id` resolves the role from `projects.owner_id` and the membership rows and
+  //   answers with the capability set. The owner is a member of their own project through that
+  //   column, so there is no separate owner path: one query serves both.
+  //
+  //   ONE ACCESS QUERY, NOT ONE PER DRAWER. Two drawers need this same answer — Files, to decide
+  //   whether Rename/Delete are offered, and Members, to decide whether the roster's controls are
+  //   live — and each arrived with its own copy. Two `useQuery` calls on one key is not twice the
+  //   cost, but it is two places for `enabled` and the error mapping to drift, and they already
+  //   had. Declared once, here, and gated on either drawer being open, so the check is still not
+  //   bought for a user who opens neither.
+  //
+  //   `retry: false`: a 403 here is the correct answer to a question we asked, not a flake, and
+  //   three silent retries would only delay the panel telling the user what it found out. ]]
+  const accessQuery = useQuery({
+    queryKey: ['access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0 && (drawer === 'files' || drawer === 'members'),
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  //[[ THE THIRD STATE IS THE POINT. `useQuery` is pending before the first answer and errors on a
+  //   refusal, and NEITHER of those is a role. Rendering either as one would hand a stranger a live
+  //   Remove button on an authority nothing established — the failure-to-observe pattern exactly.
+  //   `unavailable` is not `viewer`: a check that did not come back is not a verdict about the
+  //   person. `normaliseAccess` owns the mapping, so a role this build does not know lands as
+  //   `unavailable` rather than as an empty permission set; nothing here reads the payload field by
+  //   field. ]]
+  const access: AccessState = useMemo(() => {
+    if (accessQuery.isError) {
+      const e = accessQuery.error;
+      return { status: 'unavailable', detail: e instanceof ApiError ? e.message : 'the access check failed' };
+    }
+    if (!accessQuery.isSuccess) return ACCESS_LOADING;
+    return normaliseAccess(accessQuery.data);
+  }, [accessQuery.isSuccess, accessQuery.isError, accessQuery.error, accessQuery.data]);
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -96,13 +197,21 @@ export function WorkspacePage() {
     checkpointsState,
     frames,
     playtest,
+    presence,
     sendChat,
+    signalPresence,
     editAndResend,
     stop,
     createCheckpoint,
     restoreCheckpoint,
+    restoreStatus,
     reloadHistory,
   } = useProjectSocket(projectId, onServerError);
+
+  // A second Restore while the first is still clearing the place would race the plugin against
+  // itself. The worker's own phases decide this, not a flag set by the click: a click that never
+  // reached the worker must not leave every button dead.
+  const restoreBusy = restoreInFlight(restoreStatus);
 
   /**
    * The one place Studio's state is named. Four values, each backed by a real
@@ -113,17 +222,63 @@ export function WorkspacePage() {
    */
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
 
+  // Your own id, so the presence row shows the OTHER people. Null until the session loads, and
+  // presenceView is explicit about showing everyone rather than guessing which face is yours.
+  const { session } = useAuth();
+  const qc = useQueryClient();
+
+  // The resolved policy — org, user and project already layered by the server. Re-deriving the
+  // precedence here would be a second implementation of it, and the two would diverge.
+  const userId = session?.user.id ?? '';
+  const personal = useQuery({
+    queryKey: ['personalisation', projectId],
+    queryFn: () => fetchPersonalisation(projectId),
+    enabled: projectId.length > 0,
+  });
+  const sourcePolicy = personal.data?.preferences.asset_sources ?? null;
+
+  //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
+  //
+  //   Asked only while the checkpoints drawer is open. The roster rather than presence: a
+  //   checkpoint taken last week by someone who is not connected right now is exactly the row
+  //   whose author a user wants, and presence only knows who is here at this moment.
+  //
+  //   When it has not loaded, or a member has since left, the row says "Another member" — an
+  //   honest gap. It must never fall back to the reader.
+  //
+  //   The ACCESS check this route also needs is declared once, above, and gated on the drawers
+  //   that need it — see its comment for why two copies of it drifted apart the first time. ]]
+  const roster = useQuery({
+    queryKey: ['members', projectId, 'active', ''],
+    queryFn: () => fetchMembers(projectId, new URLSearchParams({ status: 'active' })),
+    enabled: projectId.length > 0 && drawer === 'checkpoints',
+  });
+  const memberNames = roster.data ? rosterNames(roster.data.members) : {};
+
+  const saveSources = async (policy: AssetSourcePolicy) => {
+    if (!userId) throw new Error('not signed in');
+    await savePreferences('user', userId, { asset_sources: policy });
+    await qc.invalidateQueries({ queryKey: ['personalisation', projectId] });
+  };
+  const selfUserId = session?.user?.id ?? null;
+
   const projectNameRef = useRef('this project');
   projectNameRef.current = project.data?.name ?? 'this project';
 
   // Shared by both export commands so the toast copy and the failure handling cannot diverge.
   const exportConversation = useCallback(
     async (format: 'md' | 'json') => {
-      toast(`Preparing ${projectNameRef.current} as ${format === 'md' ? 'Markdown' : 'JSON'}…`, 'info');
+      // ONE ROW FOR THE WHOLE EXPORT. The key makes the progress line replace itself and the
+      // outcome replace the progress line — before this, the only signal was "Preparing…", which
+      // never changed and never ended, so a finished export and a dead one looked identical.
+      const name = projectNameRef.current;
+      const key = exportToastKey(projectId, format);
+      toast(exportStartLine(name, format), 'info', { key });
       try {
-        await downloadExport(projectId, format);
+        const saved = await downloadExport(projectId, format, (p) => toast(exportProgressLine(name, format, p), 'info', { key }));
+        toast(exportDoneLine(saved.filename), 'success', { key });
       } catch (e) {
-        toast(e instanceof ApiError ? e.message : 'Export failed', 'error');
+        toast(e instanceof ApiError ? e.message : 'Export failed', 'error', { key });
       }
     },
     [projectId, toast],
@@ -181,6 +336,40 @@ export function WorkspacePage() {
     [toast],
   );
 
+  //[[ A RESULT OPENS THE THING IT FOUND.
+  //
+  //   Search now returns five kinds of record, and four of them are not messages. Sending every
+  //   hit through `jumpToMessage` would have looked for a `msg-` element that never existed and
+  //   toasted "further back than the loaded history" about a checkpoint — a wrong explanation,
+  //   which is worse than none, because the user goes looking for the history that is not missing.
+  //
+  //   Activity USED to be the kind with nowhere to go — the oplog row carried no anchor to a
+  //   message. It carries one now (session.ts writes the op's `run_id`), so an activity hit from a
+  //   run opens that run through the `messageId` branch above like any other record.
+  //
+  //   The branch below survives for the ops that genuinely belong to NO run: a manual checkpoint,
+  //   a snapshot taken between builds. Those must keep saying so rather than scrolling nowhere —
+  //   and the wording no longer claims that ALL activity is anchorless, which would be a wrong
+  //   explanation for the common case now that most of it is not. ]]
+  const openHit = useCallback(
+    (hit: SearchHit) => {
+      if (hit.messageId) {
+        jumpToMessage(hit.messageId);
+        return;
+      }
+      if (hit.type === 'checkpoint') {
+        setDrawer('checkpoints');
+        return;
+      }
+      if (hit.type === 'memory') {
+        setDrawer('memory');
+        return;
+      }
+      toast('That happened outside a run, so there is no conversation to open — the result line is the whole of it.', 'info');
+    },
+    [jumpToMessage, setDrawer, toast],
+  );
+
   useGlobalShortcut(SHORTCUTS.search, () => setDrawer('search'));
 
   // What this route contributes to the command palette. These exist ONLY while a workspace is
@@ -216,6 +405,13 @@ export function WorkspacePage() {
       run: () => setDrawer('checkpoints'),
     },
     {
+      id: 'ws-history',
+      title: 'What Apple did in Studio',
+      section: 'Run',
+      keywords: ['history', 'activity', 'log', 'ops', 'timeline', 'changes'],
+      run: () => setDrawer('history'),
+    },
+    {
       id: 'ws-search',
       title: 'Search this conversation',
       section: 'Project',
@@ -229,6 +425,27 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['memory', 'context', 'knows'],
       run: () => setDrawer('memory'),
+    },
+    {
+      // Listed for everybody, including a viewer who cannot manage anyone. The panel shows the
+      // roster to any member and says in a sentence why the controls are off; hiding the command
+      // would teach a viewer the product has no sharing at all.
+      id: 'ws-members',
+      title: 'Who can build here',
+      section: 'Project',
+      keywords: ['members', 'share', 'collaborators', 'invite', 'permissions', 'role', 'roles'],
+      run: () => setDrawer('members'),
+    },
+    {
+      // ONE ENTRY, NOT TWO. Both sides gave Files a command and the ids collided, which
+      // command-palette.test.mjs fails on by name. The keywords are the union of both: the panel
+      // really does own the download and the trash AND the per-version "Put back", so a user who
+      // searches for either word has to land here.
+      id: 'ws-files',
+      title: 'Project files',
+      section: 'Project',
+      keywords: ['files', 'workspace', 'notes', 'download', 'trash', 'versions', 'revert', 'put back', 'history'],
+      run: () => setDrawer('files'),
     },
     {
       id: 'ws-credits',
@@ -299,25 +516,91 @@ export function WorkspacePage() {
     wasConnected.current = studio.connected;
   }, [studio.connected, studio.state, toast]);
 
+  //[[ FOLLOWING THE LIVE EDGE IS A STATE THE USER CAN SEE AND LEAVE.
+  //
+  //   This was a `useRef` written from the scroll handler. As a heuristic it was right and it is
+  //   kept — `isNearBottom` is that same expression, named — but as the whole mechanism it had two
+  //   failures on a long build. It was INVISIBLE: scrolling up to re-read step 3 silently left the
+  //   live edge, and nothing said so or offered a way back. And a ref does not re-render, so no
+  //   control COULD have been offered from it.
+  //
+  //   `seen` is a WATERMARK, not a counter. The transcript can shrink — an edit-and-resend
+  //   truncates it, and `history_truncated` drops rows the server deleted — and an accumulating
+  //   counter would go on announcing turns that no longer exist. ]]
+  const [following, setFollowing] = useState(true);
+  const seen = useRef(0);
+
+  const jumpToLatest = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    stick.current = true;
+    setFollowing(true);
+    seen.current = 0;
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el && stick.current) el.scrollTop = el.scrollHeight;
+    // While following, there is nothing unseen by definition — the watermark tracks the total so
+    // the count starts from zero the moment the reader leaves.
+    if (stick.current) seen.current = messages.length;
   }, [messages]);
 
   const onScroll = () => {
     const el = scrollRef.current;
-    if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 90;
+    if (!el) return;
+    const near = isNearBottom(el);
+    stick.current = near;
+    if (near) seen.current = messages.length;
+    setFollowing(near);
   };
 
-  const send = (text: string) => {
+  const unseen = following ? 0 : unseenCount(messages.length, seen.current);
+
+  //[[ THE SETTLED REPLY, SAID ONCE.
+  //
+  //   The Thinking card already announces the phase while a run is in flight; nothing announced the
+  //   ANSWER, because the reply arrives as text mutated into an existing node and no live region
+  //   reports that. Wrapping the transcript in aria-live with the default `additions text` would
+  //   put every streaming delta into the polite queue — see lib/announce.ts for why that is worse
+  //   than silence. This announces the outcome of the last assistant turn, once it has settled. ]]
+  const lastTurn = messages[messages.length - 1];
+  const announcement = replyAnnouncement(lastTurn);
+
+  // RETURNS WHETHER THE MESSAGE LEFT, and the composer keeps the user's text when it did not.
+  // The toast said the send had been refused while the box had already been emptied, so the one
+  // thing the user needed to recover — what they had typed — was gone by the time they read why.
+  //[[ WHERE MAY APPLE GET ASSETS FROM? Asked before the first build, not during it.
+  //
+  //   The question has to be answered BEFORE the message leaves, because a build that has already
+  //   started has already decided. So a send that owes an answer is held: the text is kept, the
+  //   dialog opens, and the message goes on its own the moment the policy is stored.
+  //
+  //   `send` still returns false in that case, and that is deliberate rather than a compromise —
+  //   false means "not sent", the composer keeps the words, and nothing is lost if the person
+  //   closes the dialog. A true here would clear the box for a message that never left. ]]
+  const [heldMessage, setHeldMessage] = useState<string | null>(null);
+
+  const askFirst = (text: string): boolean => {
+    if (!owesAnswer(sourcePolicy)) return false;
+    setHeldMessage(text);
+    return true;
+  };
+
+  const send = (text: string): boolean => {
+    if (askFirst(text)) return false;
+    // Sending re-arms following: you have just added to the conversation, so you want to watch it.
     stick.current = true;
+    setFollowing(true);
     setSeed(undefined);
     // The product mode the user picked becomes the internal specialist here,
     // at the one point a message is built. Everything downstream — the wire
     // protocol, stored sessions, budget accounting — still speaks GolemMode.
     if (!sendChat(text, PRODUCT_MODE_TO_SPECIALIST[mode])) {
-      toast('Not connected yet — hang on a moment.', 'error');
+      toast('Not connected yet — hang on a moment. Your message is still in the box.', 'error');
+      return false;
     }
+    return true;
   };
 
   const lastAssistantId = useMemo(
@@ -412,6 +695,9 @@ export function WorkspacePage() {
         )}
 
         <div className="gx-top__actions">
+          {/* Who else is in this project. Draws nothing at all when you are alone — see
+              components/presence-model.ts. */}
+          <PresenceBar present={presence} selfUserId={selfUserId} />
           {studioStatus === 'connected' ? (
             <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
@@ -436,6 +722,38 @@ export function WorkspacePage() {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
+
+          {/* Who else is in this project. An icon button beside memory rather than a named
+              control: it is opened when someone wants to add or remove a collaborator, which is
+              rarer than the thing this screen is for. The label says what the drawer answers,
+              because "Members" alone does not tell a viewer they will find their own role there.
+
+              It is NOT hidden from a viewer. The panel answers "who can see this" for anybody who
+              can see the project at all, and turns its own controls off with the reason attached —
+              a control that disappears teaches people the feature does not exist, which is how the
+              roster stayed invisible for as long as it did. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('members')}
+            aria-label="Who can build here"
+            title="Who can build here"
+          >
+            <Icon d={PATH.people} />
+          </button>
+          {/* The way into the files Apple keeps for this project — notes, plans and generated
+              data, which are Golem's own storage and not the Roblox place. Beside memory because
+              it is the same kind of thing: something that persists between turns and is read
+              occasionally rather than worked in. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('files')}
+            aria-label="Files Apple keeps for this project"
+            title="Project files"
+          >
+            <Icon d={PATH.docs} />
+          </button>
 
           <button
             type="button"
@@ -503,7 +821,18 @@ export function WorkspacePage() {
 
       {/* --------------------------------------------------- conversation */}
       <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>
-        <div className="gx-thread">
+        {/* role="log" with `aria-relevant="additions"` — NOT the default "additions text".
+            A whole turn appearing is an addition worth reporting; the characters streaming into a
+            turn already on screen are a text mutation, and reporting those floods the polite queue
+            with fragments of a sentence that is still being written. The settled reply is
+            announced once, by the region at the foot of this view. */}
+        <div
+          className="gx-thread"
+          role="log"
+          aria-label="Conversation"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
           {historyState === 'error' && (
             <EmptyState
               state="connectionFailed"
@@ -578,11 +907,44 @@ export function WorkspacePage() {
 
       {/* ------------------------------------------------------ composer -- */}
       <div>
+        {/* BACK TO THE LIVE EDGE.
+            Shown only while the reader has actually left it, so it is never a control sitting
+            there doing nothing, and it names how much arrived while they were away — counted from
+            a watermark, so a rewound conversation reports zero rather than a stale total. */}
+        {!following && (
+          <button type="button" className="gx-jump" onClick={jumpToLatest}>
+            <Icon d={PATH.chevronDown} size={13} />
+            {jumpLabel(unseen)}
+          </button>
+        )}
+
+        {/* The settled reply, said once. Empty while a run is in flight, which is silence rather
+            than an announcement of silence. */}
+        <span className="gx-sr" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </span>
+
         {connNote && (
           <p className="gx-conn-note" role="status">
             {connNote}
           </p>
         )}
+        {heldMessage !== null && (
+          <AssetSourceDialog
+            policy={sourcePolicy}
+            onSave={saveSources}
+            onDone={() => {
+              // The answer is stored, so the held message goes now — on its own, with no second
+              // click. Making somebody press send twice for a question they just answered is the
+              // kind of small rudeness that reads as the product not listening.
+              const text = heldMessage;
+              setHeldMessage(null);
+              if (text) send(text);
+            }}
+            onCancel={() => setHeldMessage(null)}
+          />
+        )}
+
         <Composer
           onSend={send}
           onStop={stop}
@@ -592,32 +954,55 @@ export function WorkspacePage() {
           mode={mode}
           onModeChange={setMode}
           seed={seed}
+          selection={studio.selection}
+          // The other faces in this project read "is typing" off this. The frame has been in the
+          // protocol and handled by the worker since presence shipped, and nothing ever sent one.
+          onPresence={signalPresence}
         />
       </div>
 
       {/* ------------------------------------------------------- drawers -- */}
       <Drawer open={drawer === 'checkpoints'} onClose={() => setDrawer(null)} title="Checkpoints">
+        {/* A NAME IS NOT A DESCRIPTION.
+
+            The label is capped at 60 characters and everything else the row showed — the time, the
+            object count, the script count — is derived metadata. Nothing said what was IN the
+            snapshot or why it was taken, which is the only thing that makes a list of twenty of
+            them choosable. Optional on purpose: a required field on a save people take
+            mid-thought would be a tax on the habit the whole feature depends on. */}
         <form
-          style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.9rem' }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.9rem' }}
           onSubmit={(e) => {
             e.preventDefault();
             if (!studio.connected) return;
-            createCheckpoint(label.trim() || 'manual checkpoint');
+            createCheckpoint(label.trim() || 'manual checkpoint', note.trim() || undefined);
             setLabel('');
+            setNote('');
           }}
         >
-          <input
-            className="gx-row"
-            style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Name this checkpoint"
-            aria-label="Checkpoint name"
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <input
+              className="gx-row"
+              style={{ flex: 1, margin: 0, background: 'transparent', color: 'inherit' }}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Name this checkpoint"
+              aria-label="Checkpoint name"
+              disabled={!studio.connected}
+            />
+            <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
+              Save
+            </button>
+          </div>
+          <textarea
+            className="gx-row gx-cp__note"
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, 500))}
+            placeholder="What is in it, or why you are taking it (optional)"
+            aria-label="What this checkpoint contains"
+            rows={2}
             disabled={!studio.connected}
           />
-          <button type="submit" className="gx-btn gx-btn--outline" disabled={!studio.connected}>
-            Save
-          </button>
         </form>
 
         {!studio.connected && (
@@ -639,20 +1024,49 @@ export function WorkspacePage() {
             <span className="gx-row__main">
               {c.label}
               <span className="gx-row__meta">
-                {new Date(c.createdAt).toLocaleString()} · {c.instanceCount} objects · {c.scriptCount} scripts
+                {/* WHO, first. The row carried a timestamp and two counts and never said whose
+                    work it was — and the one surface that claimed an author guessed it from the
+                    kind, so on a shared project a teammate's checkpoint read as yours. This says
+                    "Another member" or "Author not recorded" rather than picking the reader, which
+                    is the wrong guess in exactly the argument the field exists for. */}
+                {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString()} ·{' '}
+                {c.instanceCount} objects · {c.scriptCount} scripts
               </span>
+              {/* The authored sentence, under the derived numbers. Shown verbatim and never
+                  truncated in the markup: the worker already caps it at 500 characters, and a
+                  second cap here would hide the end of somebody's own words for no reason. */}
+              {c.description && <span className="gx-cp__desc">{c.description}</span>}
+              {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
+
+                  This drawer used to close on the click, and the worker used to broadcast nothing
+                  until something went wrong — so the user watched the panel shut and then had no
+                  signal at all, for up to two minutes, about the operation that was at that moment
+                  clearing and rebuilding their place. On success they were told nothing ever.
+
+                  Anchored under the checkpoint it belongs to rather than floating at the top of the
+                  drawer: a list of twenty rows and one status line elsewhere makes the reader
+                  work out which one it is about. */}
+              {restoreStatus?.checkpointId === c.id && (
+                <span className={`gx-restore is-${restoreTone(restoreStatus)}`} role="status">
+                  {restoreSentence(restoreStatus)}
+                  {fidelityLine(restoreStatus.fidelity) && (
+                    <span className="gx-restore__counts">{fidelityLine(restoreStatus.fidelity)}</span>
+                  )}
+                </span>
+              )}
             </span>
             <button
               type="button"
               className="gx-btn gx-btn--outline"
-              disabled={!studio.connected}
+              disabled={!studio.connected || restoreBusy}
               onClick={() => {
                 if (!window.confirm(`Restore "${c.label}"? This replaces what is in your place now.`)) return;
                 restoreCheckpoint(c.id);
-                setDrawer(null);
+                // The drawer STAYS OPEN. It is the only surface that shows what the restore is
+                // doing and what came back, and closing it is what made both invisible.
               }}
             >
-              Restore
+              {restoreBusy && restoreStatus?.checkpointId === c.id ? 'Restoring…' : 'Restore'}
             </button>
           </div>
         ))}
@@ -674,7 +1088,32 @@ export function WorkspacePage() {
       )}
 
       <Drawer open={drawer === 'search'} onClose={() => setDrawer(null)} title="Search this conversation">
-        <SearchPanel projectId={projectId} onJump={jumpToMessage} />
+        <SearchPanel projectId={projectId} onOpen={openHit} />
+      </Drawer>
+
+      {/* THE OP LOG, WHICH HAD NO ENTRY POINT.
+
+          Every Studio op has been recorded and served at /studio/diagnostics since the oplog
+          existed, and no part of this app had ever called that route. Mounted only while open, like
+          the panels above: a project's whole history is not worth a request on every workspace load
+          for everyone who never opens it. */}
+      <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What Apple did in Studio">
+        {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">
+        {/* Mounted only while open, like the others: the panel holds a half-typed invitation in
+            local state and runs a live roster query, and neither should outlive the drawer the
+            user closed. */}
+        {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'files'} onClose={() => setDrawer(null)} title="Files">
+        {/* Mounted only while open, for the same reason: the listing, the file body and the
+            version history are three requests, and none of them is worth making for a user who
+            never opens this. `canEdit` is the server's answer about this person, not a guess —
+            see the access query above. */}
+        {drawer === 'files' && <FilesPanel projectId={projectId} canEdit={allows(access, 'build')} />}
       </Drawer>
 
       <Drawer open={drawer === 'credits'} onClose={() => setDrawer(null)} title="Credits and clearance">
@@ -688,6 +1127,10 @@ export function WorkspacePage() {
             gesture people use to abandon them. Keeping it mounted would silently preserve a
             half-finished edit and re-present it later as if it had been saved. */}
         {drawer === 'memory' && <MemoryPanel projectId={projectId} />}
+        {/* The other half of memory: settings, profile, and project/team instructions, which live
+            in the scoped store rather than in this project's Durable Object. Mounted on the same
+            condition and for the same reason — closing the drawer abandons an unsaved edit. */}
+        {drawer === 'memory' && <InstructionsPanel projectId={projectId} />}
       </Drawer>
 
       {showPairing && (
