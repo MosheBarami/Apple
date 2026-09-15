@@ -209,11 +209,16 @@ export function dunningCopy(n: DunningNotice): DunningCopy {
       return {
         title: 'The checkout you started has expired',
         body:
-          (amount
-            ? `The ${amount} you were part-way through paying was never charged, and your plan has not changed. `
-            : 'Nothing was charged and your plan has not changed. ') +
-          'Checkout pages are held open for an hour; choosing the plan again on your Usage page ' +
-          'starts a fresh one.',
+          // THE REASSURANCE LEADS, IN BOTH BRANCHES. An earlier version of the with-amount branch
+          // opened "The 12.00 USD you were part-way through paying was never charged" — which says
+          // the same thing and dropped the words the test pins, and the test went on passing
+          // because its fixture had no amount and the branch never ran. A notice about money that
+          // opens with a figure reads as a bill for a moment, and that moment is the whole problem
+          // this kind exists to avoid.
+          'Nothing was charged' +
+          (amount ? ` — the ${amount} you were part-way through paying was never taken` : '') +
+          ', and your plan has not changed. Checkout pages are held open for an hour; choosing the ' +
+          'plan again on your Usage page starts a fresh one.',
       };
   }
 }

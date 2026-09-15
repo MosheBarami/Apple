@@ -60,10 +60,25 @@ const invoice = (type, obj = {}) => ({
 });
 
 /** A Checkout Session event. It carries `metadata`, and never `subscription_details`. */
+/*
+ * A CHECKOUT SESSION, SHAPED LIKE STRIPE'S OWN.
+ *
+ * `amount_total` is here because Stripe puts it here, and its ABSENCE from this fixture is what
+ * let the expired-checkout notice ship unable to name its own figure. A Checkout Session has
+ * `amount_subtotal`, `amount_total` and `currency`, and NO `amount_due` — that field belongs to an
+ * Invoice. The extractor read only `amount_due`, so the amount was permanently null for this kind,
+ * and every test that touched the copy handed `dunningCopy` a number directly and never went
+ * through the extractor at all. The fixture agreed with the bug.
+ */
 const session = (type, obj = {}) => ({
   id: 'evt_1',
   type,
-  data: { object: { id: 'cs_test_1', currency: 'usd', metadata: { userId: 'u-payer' }, ...obj } },
+  data: {
+    object: {
+      id: 'cs_test_1', currency: 'usd', amount_subtotal: 1200, amount_total: 1200,
+      metadata: { userId: 'u-payer' }, ...obj,
+    },
+  },
 });
 
 /* ------------------------------------------------------------ which events count --- */
@@ -225,38 +240,27 @@ test('an amount that IS readable is minor units turned into money', () => {
 /* ----------------------------------------------------------------------- the words --- */
 
 /**
- * THE KINDS THAT ARE NOT ABOUT A CHARGE, LISTED RATHER THAN SKIPPED.
+ * EVERY KIND NAMES ITS AMOUNT — AND THE FOURTH ONE ONLY CAN BECAUSE THE EXTRACTOR WAS FIXED.
  *
- * "every kind names the amount" was true of the three payment kinds and became false the moment a
- * fourth arrived: `checkout_expired` is a purchase somebody abandoned, nothing was charged, and a
- * figure in that sentence would invent a transaction. The rule below is therefore scoped — but by
- * an EXPLICIT list, not by dropping the assertion, so a new kind still has to be classified on
- * purpose and cannot escape the rule by existing. What this one says instead is pinned by
- * 'an expired checkout is told...' at the foot of this file.
+ * This rule was scoped, correctly, when `checkout_expired` arrived: it read `amount_due`, a
+ * Checkout Session has no such field, so its amount was permanently null and demanding a figure
+ * would have forced the copy to invent one. Two lanes met here — one exempted the kind, the other
+ * made it able to answer, by reading `amount_total` as well (Stripe's expired-session payload
+ * carries `amount_subtotal`, `amount_total` and `currency`, and no `amount_due` anywhere).
+ *
+ * The second is the better outcome and it removes the reason for the exemption, so the rule is
+ * universal again: all four kinds name the figure the reader is trying to match. What the expired
+ * one says about it — that it was never charged — is pinned by 'an expired checkout is told…' at
+ * the foot of this file, because "names the amount" and "does not claim it was taken" are two
+ * different promises and this only checks the first.
  */
-const KINDS_WITHOUT_A_CHARGE = ['checkout_expired'];
-
 test('every dunning kind has a title and a body, and neither is empty', () => {
+  assert.ok(D.DUNNING_KINDS.length >= 4, 'the kind list shrank — check this is deliberate');
   for (const kind of D.DUNNING_KINDS) {
     const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', subjectId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
     assert.ok(copy.title.length > 10, `${kind} has no title`);
     assert.ok(copy.body.length > 20, `${kind} has no body`);
     assert.ok(!/undefined|null|NaN/.test(copy.title + copy.body), `${kind} leaked a placeholder into the copy`);
-  }
-});
-
-test('a kind that IS about a charge names the charge, so the reader can match it to a statement', () => {
-  // Non-vacuity first: the exemption list has to name real kinds, and something has to be left to
-  // check. An exemption that quietly covered the whole set would make this test pass by testing
-  // nothing at all.
-  for (const kind of KINDS_WITHOUT_A_CHARGE) {
-    assert.ok(D.DUNNING_KINDS.includes(kind), `${kind} is exempted from a rule it is not subject to`);
-  }
-  const charged = D.DUNNING_KINDS.filter((k) => !KINDS_WITHOUT_A_CHARGE.includes(k));
-  assert.ok(charged.length > 0, 'every kind is exempt, so this asserts nothing');
-
-  for (const kind of charged) {
-    const copy = D.dunningCopy({ kind, userId: 'u', eventId: 'evt', subjectId: 'in', amountDue: 1200, currency: 'usd', attempt: 2 });
     // A body that dropped the amount would be an alarm the reader cannot match against their
     // statement.
     assert.ok(copy.body.includes('12.00 USD'), `${kind} does not name the amount it is about`);
@@ -307,6 +311,24 @@ test('a bank confirmation request is its own sentence, not a decline', () => {
  * hits neither: the session simply expires. Nothing was charged, and nothing said so, so the next
  * thing that account hears about the plan it tried to buy is silence.
  */
+test('AND THE EXPIRED CHECKOUT CARRIES ITS OWN AMOUNT OUT OF THE EVENT', () => {
+  // Through the extractor, not handed in. Every other assertion about this copy calls dunningCopy
+  // with an amount already in hand, which is why nothing noticed that interpretDunningEvent could
+  // never produce one for this kind: it read `amount_due`, and a Checkout Session does not have
+  // that field. The one notice whose job is "which plan were you part-way through buying" could
+  // not say.
+  const n = D.interpretDunningEvent(session('checkout.session.expired'));
+  assert.equal(n.amountDue, 1200, 'the session\'s amount_total must reach the notice');
+  assert.match(D.dunningCopy(n).body, /12\.00 USD/, 'and be named in what the person reads');
+});
+
+test('an invoice still takes its amount from amount_due, which is where an Invoice keeps it', () => {
+  // The control. A fallback that reached for amount_total FIRST would quietly change what the
+  // three payment kinds report, and an invoice's two fields are not always equal.
+  const n = D.interpretDunningEvent(invoice('invoice.payment_failed', { amount_due: 900, amount_total: 4200 }));
+  assert.equal(n.amountDue, 900);
+});
+
 test('an expired checkout is told, in the same breath, that nothing was charged and where to start again', () => {
   const n = D.interpretDunningEvent(session('checkout.session.expired'));
   const copy = D.dunningCopy(n);
