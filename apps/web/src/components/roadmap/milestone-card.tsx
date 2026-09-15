@@ -8,7 +8,7 @@
 import { useEffect, useId, useState } from 'react';
 import { Icon, PATH } from '../ws/primitives';
 import { COMPLEXITY, ComplexityMark, READINESS_LABEL, ReadinessNode } from './marks';
-import { effortLabel, type MilestoneRef, type PlacedMilestone } from './model';
+import { creditRangeLabel, effortLabel, type MilestoneRef, type PlacedMilestone } from './model';
 
 /** Which run the user is asking for. Both fetch the same brief. */
 export type BriefIntent = 'plan' | 'build';
@@ -92,6 +92,13 @@ export function MilestoneCard({ placed, onJumpTo, onBrief, busy }: Props) {
           </span>
         )}
         {m.effort && <span className="chip">{effortLabel(m.effort)}</span>}
+        {/* The effort chip beside it is in runs, which is not a unit anybody is billed in. This
+            is the same size expressed in the unit the account is actually charged, derived by
+            the worker from the same `runs`. `creditRangeLabel` returns '' rather than a zero
+            when the worker could not derive a figure, so no chip appears at all. */}
+        {creditRangeLabel(m.creditsLow, m.creditsHigh) && (
+          <span className="chip">{creditRangeLabel(m.creditsLow, m.creditsHigh)}</span>
+        )}
         {m.detected === 'present' && readiness !== 'landed' && (
           <span className="rm-card__note">Parts of this may already exist</span>
         )}

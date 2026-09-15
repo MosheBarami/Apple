@@ -1,6 +1,4 @@
 ---
-import BuildStage from '../components/BuildStage.astro';
-
 /**
  * The library, as figures somebody could check rather than adjectives.
  *
@@ -81,6 +79,17 @@ import Landing from '../layouts/Landing.astro';
 import AppleMark from '../components/AppleMark.astro';
 import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, CREDITS_PER_BUILD, buildsPerMonth, formatMoney } from '@golem/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+//[[ THE WALL IS BAKED IN AT BUILD TIME, NOT QUERIED.
+//
+//   Every row was chosen by scripts/pick-asset-wall.mjs, which asks each pack's own API for the
+//   real preview URL and then FETCHES it before writing the row down. A guessed URL is wrong —
+//   Poly Haven's slugs are case-sensitive and the lowercased id in our library 404s — and a card
+//   whose picture fails renders as a hole, which on a page about an asset library says the library
+//   is broken.
+//
+//   Baked rather than fetched at request time for the same reason the three figures above are
+//   literals: a landing page that queries a database is a landing page that can fail to render.
+import assetWall from '../data/asset-wall.json';
 
 /** Nav. Four anchors at sections that exist on this page, and one real route. */
 const navLinks = [
@@ -95,11 +104,15 @@ const navLinks = [
  *  row of chips under a hero reads as "things people are doing" — which would
  *  be an adoption claim, and Apple has no adoption to claim yet. */
 const prompts = [
-  'Build a shop UI',
   'Create claimable plots',
   'Add timed rounds',
   'A teleport portal',
 ];
+
+/** The one already written in the hero's prompt slip, with the caret resting at
+ *  the end of it. Held apart from `prompts` so the same sentence is never both
+ *  the written example and one of the chips beside it. */
+const promptSlip = 'Build a shop UI';
 
 /** The still frame. An EXAMPLE run, named as one in the copy and in the
  *  panel's accessible name: object counts and a place name presented without
@@ -123,6 +136,24 @@ const runSteps = [
  * from docs/COST-MODEL.md through the worker's own arithmetic, and
  * scripts/check-credit-figures.mjs now reads this file too, so they cannot
  * drift from it quietly.
+ *
+ * SUPER AGENT IS NOT LED WITH HERE ANY MORE. The owner does not want it on the
+ * front of the product, so the landing leads with the two modes that answer
+ * what a visitor actually arrives asking: can it tell me about my place, and
+ * can it build. Three deliberate consequences, because the alternative — a
+ * quiet deletion — would be worse than either:
+ *
+ *   1. The LEDE BELOW DOES NOT COUNT. It says "different settings", not "two
+ *      settings". A visitor can still select Super Agent in the app and still
+ *      be charged 10 Credits for it, so a page that counted to two would be
+ *      false about the product rather than merely quiet about part of it.
+ *   2. /pricing AND /docs/modes STILL CARRY IT, on purpose. Removing a
+ *      purchasable mode from the price list while the worker still bills for it
+ *      hides a cost from the person paying it — the same class of error as
+ *      advertising a capability that does not exist, pointing the other way.
+ *   3. Nothing in apps/worker changed. This is copy, and the plumbing is
+ *      untouched: packages/shared still defines the mode and router.ts still
+ *      routes it.
  */
 const modes = [
   {
@@ -141,18 +172,6 @@ const modes = [
       'there — each step named while it happens, and stoppable mid-run.',
     does: ['Builds and edits geometry', 'Single-file scripts', 'Checkpoint before every change'],
     featured: true,
-  },
-  {
-    name: 'Super Agent',
-    tag: '10 credits',
-    body:
-      'For the things that touch everything. It reads more of your place first, weighs ' +
-      'alternatives, and shows you the ones it rejected before it commits.',
-    does: [
-      'Multi-file systems and refactors',
-      'Shows the options it rejected',
-      'Pauses for your call on overwrites',
-    ],
   },
 ];
 
@@ -228,6 +247,30 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
   <main id="main">
     {/* ---------------------------------------------------------- hero -- */}
     <section class="ap-hero" id="top" aria-labelledby="hero-title">
+      {/* THE LIVING BACKGROUND. Five empty elements and not one byte of
+          JavaScript: a static daylight sky, a warm haze that drifts across it
+          on a 31s alternating cycle, a bevelled stud plate drifting one 44px
+          tile diagonally every 43s, and one soft light crossing the plate every
+          79s so the studs brighten as it passes.
+
+          It is `aria-hidden` and `pointer-events: none` because it is material,
+          not content — there is nothing here for a screen reader to be told
+          about, and nothing to click.
+
+          The composition is COMPLETE AT FIRST PAINT. Nothing in it fades in, so
+          the og render, a scroll thumbnail and a reader with
+          prefers-reduced-motion all get the same finished frame — the one the
+          design was drawn as. Every layer's resting state is its own `from`
+          keyframe, which is what makes that true rather than merely intended.
+
+          This occupies the slot the three.js BuildStage used to. */}
+      <div class="ap-field" aria-hidden="true">
+        <span class="ap-field__sky"></span>
+        <span class="ap-field__bloom"></span>
+        <span class="ap-field__plate"><i class="ap-field__studs"></i></span>
+        <span class="ap-field__catch"></span>
+      </div>
+
       <div class="ap-hero__inner">
         <p class="ap-badge ap-in">
           <span class="ap-badge__dot" aria-hidden="true"></span>
@@ -269,15 +312,20 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
           <span aria-hidden="true">·</span> Works in your project
         </p>
 
+        {/* A WRITTEN PROMPT WITH THE CARET AT REST. It does not type itself:
+            a field that types is a claim about a product that is not running on
+            this page, and a self-typing prompt is the first thing a visitor
+            recognises from every rival in this category. Written, with the
+            cursor waiting, is an invitation — and it is true. */}
+        <div class="ap-slip ap-in">
+          <span class="ap-mono">{promptSlip}</span>
+          <span class="ap-caret" aria-hidden="true"></span>
+        </div>
+
         <div class="ap-chips ap-in" role="group" aria-label="Example prompts">
           {prompts.map((p) => <span class="ap-chip">{p}</span>)}
         </div>
 
-        {/* The product, running, rather than a sentence about it. Measured on the leading
-            competitor: zero canvas and zero video elements on every page of their site. */}
-        <div class="ap-hero__stage ap-in">
-          <BuildStage />
-        </div>
 
         {/* PROOF, NOT ADJECTIVES. Every figure here is one a reader could go and check, which is
             the one thing the competitor does better than anyone in this category — real logos,
@@ -346,7 +394,7 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
             </div>
 
             <div class="ap-panel__foot">
-              <span>Super Agent</span>
+              <span>Agent</span>
               <span aria-hidden="true">·</span>
               <span>5 steps</span>
               <span aria-hidden="true">·</span>
@@ -376,14 +424,47 @@ const plans = (['free', 'builder', 'studio'] as const).map((id) => ({
       </div>
     </section>
 
+    {/* ---------------------------------------------------- the library -- */}
+    <section class="ap-section ap-section--seam" id="library" aria-labelledby="library-title">
+      <div class="ap-section__inner">
+        <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>The library</p>
+        <h2 class="ap-display" id="library-title">Every asset says where it came from.</h2>
+        <p class="ap-lede">
+          Apple does not invent art. It reaches into packs that people made and released — and each
+          one arrives carrying its pack, its author and its licence, so a credit line can be written
+          without anybody reconstructing it later. {assetWall.count} of them below, picked across
+          three packs.
+        </p>
+
+        <div class="ap-wall" role="list">
+          {assetWall.assets.map((a) => (
+            <a class="ap-wall__card" role="listitem" href={a.source} rel="noopener nofollow" target="_blank">
+              <span class="ap-wall__shot">
+                {/* The picture's REAL pixel size, read out of the file by the picker. It was
+                    hardcoded 256x256 because that is what the CDN query string asked for, and the
+                    files that came back are 193x255, 512x512 and 1024x1024 — a guess dressed as a
+                    measurement, doing the opposite of the job the attribute exists for. */}
+                <img src={a.img} alt="" width={a.w} height={a.h} loading="lazy" decoding="async" />
+              </span>
+              <span class="ap-wall__meta">
+                <span class="ap-wall__name">{a.name}</span>
+                <span class="ap-wall__by">{a.author}</span>
+                <span class="ap-wall__tag">{a.pack} · {a.licence}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
     {/* --------------------------------------------------------- modes -- */}
     <section class="ap-section ap-section--seam" id="modes" aria-labelledby="modes-title">
       <div class="ap-section__inner">
         <p class="ap-eyebrow"><span class="ap-eyebrow__dot" aria-hidden="true"></span>Modes</p>
         <h2 class="ap-display" id="modes-title">Three modes, one price list.</h2>
         <p class="ap-lede">
-          Same builder, three settings. Switch mid-conversation; the run keeps its checkpoints
-          either way.
+          Same builder, different settings. Switch mid-conversation; the run keeps its
+          checkpoints either way.
         </p>
 
         <div class="ap-grid">

@@ -591,6 +591,46 @@ test('KV UNREACHABLE IS SAID OUT LOUD, not rendered as a project with no guests'
   assert.deepEqual(bad.json.incomplete, ['link_grants'], 'and it says which store it could not read');
 });
 
+// =============================================================== the single invitation
+
+test('AN EXPIRY THE SERVER CANNOT READ IS REFUSED, not stored as a dead-on-arrival membership', async () => {
+  // `planBulkInvite` has always refused this (membership.ts, 'bad_expiry') because classifyGrant
+  // treats an unparseable expires_at as DEAD. The single-invite route passed the string straight
+  // through, so `expiresAt: 'next tuesday'` wrote a member who could never open the project and
+  // whom the roster reports as 'expired' — an invitation that was never going to work, accepted
+  // with a 201. The two routes write the same column and must refuse the same values.
+  reset({ members: [{ user_id: ADMIN_ID, role: 'admin' }] });
+  const bad = await call(M, { method: 'POST', jwt: ADMIN_JWT, body: { userId: MEMBER_ID, role: 'editor', expiresAt: 'next tuesday' } });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.json.error, 'bad_expiry');
+  assert.equal(memberRows.some((r) => r.user_id === MEMBER_ID), false, 'nothing was written');
+  assert.equal(eventRows.length, 0, 'and no history was invented for a write that did not happen');
+  // A non-string is the same refusal: `{expiresAt: 12345}` was silently dropped to null before,
+  // which is a DIFFERENT membership from the one the caller asked for.
+  const alsoBad = await call(M, { method: 'POST', jwt: ADMIN_JWT, body: { userId: MEMBER_ID, role: 'editor', expiresAt: 12345 } });
+  assert.equal(alsoBad.status, 400);
+  assert.equal(alsoBad.json.error, 'bad_expiry');
+});
+
+test('THE CONTROL: a readable expiry still lands, and an absent one is still permanent', async () => {
+  // Without this the refusal above would be satisfied by a route that refuses every expiry.
+  reset({ members: [{ user_id: ADMIN_ID, role: 'admin' }] });
+  const ok = await call(M, { method: 'POST', jwt: ADMIN_JWT, body: { userId: MEMBER_ID, role: 'editor', expiresAt: '2099-01-01T00:00:00.000Z' } });
+  assert.equal(ok.status, 201);
+  assert.equal(memberRows.find((r) => r.user_id === MEMBER_ID).expires_at, '2099-01-01T00:00:00.000Z');
+
+  reset({ members: [{ user_id: ADMIN_ID, role: 'admin' }] });
+  const forever = await call(M, { method: 'POST', jwt: ADMIN_JWT, body: { userId: EXTRA_ID, role: 'viewer' } });
+  assert.equal(forever.status, 201);
+  assert.equal(memberRows.find((r) => r.user_id === EXTRA_ID).expires_at, null);
+
+  // An empty string is "no expiry", the same thing planBulkInvite decided, not a parse failure.
+  reset({ members: [{ user_id: ADMIN_ID, role: 'admin' }] });
+  const blank = await call(M, { method: 'POST', jwt: ADMIN_JWT, body: { userId: EXTRA_ID, role: 'viewer', expiresAt: '' } });
+  assert.equal(blank.status, 201);
+  assert.equal(memberRows.find((r) => r.user_id === EXTRA_ID).expires_at, null);
+});
+
 // =============================================================== bulk invitations
 
 test('a batch invites everybody it accepted and names every row it refused', async () => {

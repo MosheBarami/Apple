@@ -170,6 +170,10 @@ export const TOOL = {
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project' },
 
+  // C03. The past tense is the rule this whole table follows, and it is right here too: by the
+  // time a row is drawn the plan HAS been announced. The panel under the row is the plan itself,
+  // so the label says what happened rather than restating what the panel already shows.
+  propose_plan: { kind: 'planning', label: 'Planned the work' },
   // The web-facing tools. Each label says what was READ and where, because "Working" over ten
   // different substrates is the fallback these entries exist to avoid.
   web_fetch: { kind: 'browsing', label: 'Fetched a page' },

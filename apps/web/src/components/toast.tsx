@@ -27,6 +27,12 @@ export interface ToastOptions {
    * belongs on the surface it concerns, not in a box that is about to disappear.
    */
   action?: ToastAction | null;
+  /**
+   * The identity of an ongoing event, so its row updates in place instead of stacking.
+   *
+   * For the one thing this stack could not previously do: progress. See toast-model's ToastInput.
+   */
+  key?: string | null;
 }
 
 const ToastContext = createContext<{ toast: (message: string, kind?: ToastKind, options?: ToastOptions) => void }>({
@@ -46,7 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const toast = useCallback((message: string, kind: ToastKind = 'info', options?: ToastOptions) => {
     const id = nextId.current++;
-    setToasts((list) => admitToast(list, { id, kind, message, action: options?.action ?? null }, Date.now()));
+    setToasts((list) => admitToast(list, { id, kind, message, action: options?.action ?? null, key: options?.key ?? null }, Date.now()));
   }, []);
 
   // One timer for the whole stack, and none at all while it is empty — an interval ticking four
