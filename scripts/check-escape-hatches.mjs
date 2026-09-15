@@ -145,8 +145,26 @@ for (const rel of manifests) {
   const dir = rel === 'package.json' ? '' : dirname(rel);
   const isRoot = rel === 'package.json';
   const hasSources = examined.some((f) => (isRoot ? false : f.startsWith(`${dir}/`)) && /\.(ts|tsx)$/.test(f));
-  if (!isRoot && hasSources && !scripts.typecheck) {
-    fail('a package with TypeScript sources and no typecheck script', rel, 'the typecheck gate recurses over scripts, so this package is never checked');
+  //[[ ...UNLESS SOMETHING ELSE IN THE PACKAGE COMPILES THEM.
+  //
+  //   The rule's concern is TypeScript that nothing ever compiles. A `typecheck` script is the
+  //   usual way to answer that, but it is not the only one: packages/sdk ships a .d.ts and two
+  //   fixtures, and `tests/types.test.mjs` points the compiler at both — every marked line in
+  //   `bad.ts` must error and `ok.ts` must compile clean. Its types are checked more strictly than
+  //   a bare `tsc` would check them, and the rule called it an escape hatch.
+  //
+  //   So a package that INVOKES the compiler from a tracked file of its own satisfies the concern.
+  //   This asks whether something in the package actually runs tsc, not whether it does so under a
+  //   particular script name — the difference between the mechanism and the thing the mechanism is
+  //   for. A package with neither is still caught, which is what the control in the tests pins.
+  const compilesItself = !isRoot && examined.some((f) => {
+    if (!f.startsWith(`${dir}/`) || !/\.(mjs|js|cjs|ts)$/.test(f)) return false;
+    let src;
+    try { src = readFileSync(join(ROOT, f), 'utf8'); } catch { return false; }
+    return /\btsc\b|typescript\/bin|'typescript'/.test(src);
+  });
+  if (!isRoot && hasSources && !scripts.typecheck && !compilesItself) {
+    fail('a package with TypeScript sources that nothing compiles', rel, 'no typecheck script, and no tracked file in the package invokes tsc — the typecheck gate recurses over scripts, so this package is never checked');
   }
 }
 

@@ -183,6 +183,36 @@ test('it catches a package with TypeScript sources and no typecheck', () => {
   assert.match(r.out, /no typecheck script/);
 });
 
+test('...but NOT a package that compiles its own TypeScript from a test', () => {
+  // packages/sdk has a .d.ts and two fixtures and no `typecheck` script — and
+  // tests/types.test.mjs points the compiler at both, requiring every marked line in bad.ts to
+  // error and ok.ts to compile clean. Its types are checked more strictly than a bare `tsc` would
+  // check them, and the rule called it an escape hatch.
+  //
+  // The rule's concern is TypeScript that NOTHING compiles, not TypeScript compiled under a
+  // particular script name. This asserts the distinction on the live package rather than a
+  // fixture, so if someone deletes that test the finding comes back.
+  const r = run(DIR);
+  assert.equal(
+    /packages\/sdk\/package\.json/.test(r.out), false,
+    `sdk compiles its own types from a test and must not be flagged:\n${r.out}`,
+  );
+});
+
+test('THE CONTROL: a package with neither a typecheck script nor a compiler call IS caught', () => {
+  // Without this, the exemption above could match any package at all and the rule would keep its
+  // name while catching nothing. apps/worker has TypeScript sources; strip its typecheck script
+  // and nothing in it invokes the compiler.
+  const r = withPlant(DIR, 'apps/worker/package.json', (s) => {
+    const pkg = JSON.parse(s);
+    delete pkg.scripts.typecheck;
+    return JSON.stringify(pkg, null, 2);
+  });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /nothing compiles/);
+  assert.match(r.out, /no tracked file in the package invokes tsc/);
+});
+
 test('it catches a gate marked [~]', () => {
   const r = withPlant(DIR, 'GATES.md', (s) => s.replace(/^- \[x\] /m, '- [~] '));
   assert.equal(r.exit, 1, r.out);
