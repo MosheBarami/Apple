@@ -7,14 +7,20 @@
  * one-viewport landing uses. Keeping this separate is what makes the landing's
  * payload small, so resist the urge to "tidy up" by merging them.
  *
- * Fonts: THREE families, each with one job. Archivo carries every piece of display type at
- * `font-stretch: 118%` — the stretch axis is load-bearing, not a flourish, and at the default 100%
- * the design reads as a different one. Figtree is body and UI. Geist Mono is metadata only:
+ * Fonts: TWO families now, not three. Rubik carries display and body — its rounded terminals
+ * rhyme with the stud cylinders behind the type — and Geist Mono stays for metadata only:
  * timestamps, Credit counts, step numerals, file names.
  *
- * All three are variable fonts and all three are requested in ONE stylesheet link, so this is one
- * round trip rather than three. `display=swap` on each: the landing renders in a fallback rather
- * than holding a blank first frame, which matters more here than on any other route because this
+ * ARCHIVO IS GONE, and with it the `wdth,wght` axis PAIR, which is where almost all of the weight
+ * was. Measured from the live Google Fonts latin subsets: Archivo 90,096 + Figtree 20,184 +
+ * Geist Mono 23,108 = 133,388 B in three files; Rubik 35,324 + Geist Mono 23,108 = 58,432 B in
+ * two. That is 74,956 B and one round trip less, and nothing on the page asks for a width axis
+ * any more — landing.css deletes `--stretch` rather than leaving a `font-stretch` pointing at a
+ * family that cannot honour it.
+ *
+ * Both are variable fonts and both are requested in ONE stylesheet link, so this is one round
+ * trip rather than two. `display=swap` on each: the landing renders in a fallback rather than
+ * holding a blank first frame, which matters more here than on any other route because this
  * page IS the first frame.
  *
  * Superseded: the single-family Inter treatment, and the "one viewport, no scroll" constraint this
@@ -69,15 +75,20 @@ const ogImage = new URL('/og.png', site);
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
 
-    {/* This surface is dark-committed, so there is one colour, not a pair. */}
-    <meta name="theme-color" content="#080a0f" />
-    <meta name="color-scheme" content="dark" />
+    {/* THIS SURFACE IS NO LONGER DARK-COMMITTED, so one colour is no longer the honest
+        answer. The landing is light-first with a full dark theme behind
+        prefers-color-scheme, and a single dark `theme-color` would paint a phone's browser
+        chrome charcoal above a pale-blue page. A pair, matching the two grounds
+        landing.css declares. */}
+    <meta name="theme-color" content="#edf1f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1727" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Figtree:wght@300..900&family=Geist+Mono:wght@100..900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Rubik:wght@300..900&family=Geist+Mono:wght@100..900&display=swap"
     />
   </head>
   <body>
