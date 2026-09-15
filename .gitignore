@@ -140,3 +140,9 @@ docs/evidence/pixels/*
 graphify-out/*
 !graphify-out/GRAPH_REPORT.md
 handoff/
+
+# The fix queue: 844 work items with file paths, written by the auditing agents from the code as
+# it stood at one moment. It is scaffolding for a run, not a record — the record is the checklist
+# in docs/backlog and the commits that close its lines. Tracking it would put a stale copy of the
+# codebase's own state under version control, and the next audit rewrites all of it.
+.superpowers/fixq/
