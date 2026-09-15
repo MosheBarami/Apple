@@ -1,0 +1,36 @@
+{
+  "station": "S1",
+  "origin": "https://golem.moshe-barami111.workers.dev",
+  "headSha": "35ce8f7d9edf6ea5f91b43b2b414373800eef544",
+  "clauses": {
+    "status": {
+      "/": 200,
+      "/pricing": 200
+    },
+    "userVisibleGolem": 0,
+    "forbiddenPhrases": 0,
+    "publishedPerDay": [
+      {
+        "day": 231,
+        "month": 2310
+      },
+      {
+        "day": 416,
+        "month": 12600
+      },
+      {
+        "day": 700,
+        "month": 21000
+      }
+    ],
+    "planLimitsFree": {
+      "day": 231,
+      "month": 2310
+    }
+  },
+  "bodySha256": {
+    "/": "18511508cffaffc5739994236838dae3ab9511cc290a54de6dc05776e1d3d2fc",
+    "/pricing": "305e5501b7c775a917d9e098e131efb0b056ad49000f7da6438e38dd638c335a"
+  },
+  "findings": []
+}
