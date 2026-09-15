@@ -15,9 +15,19 @@ import type { SearchType } from './search-filters';
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /**
+   * The parsed body, when there was one.
+   *
+   * Some refusals are ANSWERS. The bulk-invite route replies 400 with the full per-row `rejected`
+   * list — which index failed and why — and collapsing that to the single word in `error` throws
+   * away the only part the person can act on. Optional, so every existing `new ApiError(msg,
+   * status)` is unchanged and no caller is obliged to look.
+   */
+  body: unknown;
+  constructor(message: string, status: number, body: unknown = null) {
     super(message);
     this.status = status;
+    this.body = body;
     this.name = 'ApiError';
   }
 }
@@ -51,7 +61,10 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
       body && typeof body === 'object' && 'error' in body && typeof (body as { error: unknown }).error === 'string'
         ? (body as { error: string }).error
         : `Request failed (${res.status})`;
-    throw new ApiError(msg, res.status);
+    // The parsed body rides along. Most callers want only `message`; the bulk-invite form needs
+    // the per-row `rejected` list, which arrives on a 400 when every row was refused — and that
+    // list is the only part of the refusal the person can act on.
+    throw new ApiError(msg, res.status, body);
   }
   return body as T;
 }
@@ -624,27 +637,161 @@ export const fetchMembers = (projectId: string, params: URLSearchParams): Promis
  * second call with a different role is the role change. The server names the event it turns out to
  * be — invited, role_changed, renewed, reactivated — and returns it.
  */
+/**
+ * `audited` is on every one of these answers, and it is not decoration.
+ *
+ * The membership change has already happened by the time the history append runs, so a failed
+ * append cannot undo it — the route says `ok: true, audited: false` and means both words. A client
+ * that reads the first and drops the second has turned "we did this and did not record it" into
+ * "we did this". See lib/member-history.ts, which is where that flag becomes a sentence.
+ */
+export interface MemberMutation {
+  ok: boolean;
+  audited?: boolean;
+}
+
 export const inviteMember = (
   projectId: string,
   body: { userId: string; role: string; expiresAt?: string | null },
-): Promise<{ ok: boolean; userId: string; role: string; event: string }> =>
+): Promise<MemberMutation & { userId: string; role: string; event: string }> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members`, { method: 'POST', body: JSON.stringify(body) });
 
 /** Revoked, not deleted: "this access ended" is a fact worth keeping. */
-export const removeMember = (projectId: string, userId: string): Promise<{ ok: boolean }> =>
+export const removeMember = (projectId: string, userId: string): Promise<MemberMutation> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' });
 
-/** Paused, which is a different state from removed — and re-admission is one click rather than a re-invitation. */
-export const suspendMember = (projectId: string, userId: string, reason: string): Promise<{ ok: boolean }> =>
+/**
+ * Paused, which is a different state from removed — and re-admission is one click rather than a
+ * re-invitation.
+ *
+ * THE REASON IS STORED AND AUDITED, so it is worth asking for. This was called with `''` from the
+ * one control that reached it, which meant the row the server takes care to write always said
+ * null: an audit trail of pauses with no reason on any of them.
+ */
+export const suspendMember = (projectId: string, userId: string, reason: string): Promise<MemberMutation> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/suspend`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
   });
 
-export const reactivateMember = (projectId: string, userId: string): Promise<{ ok: boolean }> =>
+/** Restores AT THE ROLE THE GRANT CARRIED — the route refuses to take one, so this cannot promote. */
+export const reactivateMember = (projectId: string, userId: string): Promise<MemberMutation & { role?: string }> =>
   request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/reactivate`, {
     method: 'POST',
   });
+
+/**
+ * MANY INVITATIONS, ONE REQUEST — and a per-row answer for every one of them.
+ *
+ * The route is refused whole rather than truncated past its cap, and validates every row before it
+ * writes anything, so `applied` is all-or-nothing across the accepted rows. What a caller must not
+ * throw away is `rejected`: it names each refused row BY INDEX with its reason (bad_row, bad_user,
+ * unknown_role, owner_is_not_a_member, duplicate, bad_expiry), which is the half the person needs
+ * in order to correct their list. A UI that shows only "3 of 5 added" has discarded it.
+ */
+export interface BulkInviteRow {
+  userId: string;
+  role: string;
+  expiresAt?: string | null;
+}
+
+export interface BulkInviteResponse {
+  applied: boolean;
+  error?: string;
+  /** The cap, returned with a `too_many` refusal so a client can split the batch. */
+  max?: number;
+  invited: { userId: string; role: string; expiresAt: string | null; ok: boolean; event: string }[];
+  rejected: { index: number; userId: string | null; error: string }[];
+  audited: boolean;
+  counts: { invited: number; rejected: number };
+}
+
+export const bulkInviteMembers = (projectId: string, members: BulkInviteRow[]): Promise<BulkInviteResponse> =>
+  request<BulkInviteResponse>(`/api/shared/${encodeURIComponent(projectId)}/members/bulk`, {
+    method: 'POST',
+    body: JSON.stringify({ members }),
+  });
+
+/**
+ * What removing this person WOULD do, before it is done. A read; nothing on the server changes.
+ *
+ * `footprintAvailable: false` is the field that matters. The counts come from the project's
+ * Durable Object, which can be unreachable — and a preview that renders an unread count as 0 tells
+ * an admin the departing member holds nothing, which is the failure this whole route exists to
+ * avoid. Callers must render that case as "we could not count their work", never as zero.
+ */
+export interface MemberFootprint {
+  comments: number;
+  openComments: number;
+  reviewsRequested: number;
+  reviewsAwaiting: number;
+  /** Open reviews where they are the ONLY reviewer: those can never be approved once they go. */
+  reviewsSoleReviewer: number;
+  approvals: number;
+  versions: number;
+  authorsCurrentHead: boolean;
+  retained: string[];
+  blocked: string[];
+}
+
+export interface MemberImpact {
+  userId: string;
+  /** Null for somebody who was never here — different from a member with nothing to their name. */
+  member: MemberRow | null;
+  footprint: MemberFootprint | null;
+  footprintAvailable: boolean;
+  effects: {
+    accessEndsImmediately: boolean;
+    linkGrantRevoked: boolean;
+    reRedemptionBarred: boolean;
+    ownershipUnchanged: boolean;
+    historyRetained: boolean;
+  };
+  partial?: boolean;
+  incomplete?: string[];
+}
+
+export const fetchMemberImpact = (projectId: string, userId: string): Promise<MemberImpact> =>
+  request<MemberImpact>(
+    `/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/impact`,
+  );
+
+/**
+ * What has happened to a membership: invited, role changed, renewed, suspended, reactivated,
+ * revoked — and the acceptance of a share link, which lives on the KV grant rather than in
+ * Postgres and is merged in by the route.
+ *
+ * `partial` says the link grants could not all be read. A history with a silent hole in it is the
+ * failure the route goes out of its way to avoid, so a caller that drops the flag undoes the care.
+ */
+export interface MemberEvent {
+  kind: string;
+  subjectId: string | null;
+  actorId: string | null;
+  fromRole: string | null;
+  toRole: string | null;
+  reason: string | null;
+  at: string | null;
+  source: 'history' | 'grant';
+}
+
+export interface MemberEventsResponse {
+  events: MemberEvent[];
+  scope: 'project' | 'member';
+  partial?: boolean;
+  incomplete?: string[];
+}
+
+/** Any member may read their own history; reading somebody else's needs manage_members (403). */
+export const fetchMemberEvents = (projectId: string, userId?: string, limit?: number): Promise<MemberEventsResponse> => {
+  const params = new URLSearchParams();
+  if (userId) params.set('userId', userId);
+  if (limit) params.set('limit', String(limit));
+  const qs = params.toString();
+  return request<MemberEventsResponse>(
+    `/api/shared/${encodeURIComponent(projectId)}/members/events${qs ? `?${qs}` : ''}`,
+  );
+};
 
 // ---------------------------------------------------------------- roadmap
 
