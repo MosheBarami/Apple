@@ -613,18 +613,44 @@ export function sketchfabRows(results) {
   return { rows, refused };
 }
 
-async function sketchfab() {
+/**
+ * The sweep.
+ *
+ * A REQUEST THAT FAILED IS NOT A QUERY THAT FOUND NOTHING, and this function used to write down
+ * the second when the first had happened: `try { … } catch { break; }` swallowed every error, so a
+ * Sketchfab that started demanding a key — 403 on all forty queries — returned `[]` and main()
+ * filed it as `failed: false, kept: 0`, the same words it uses for a source that was read end to
+ * end and genuinely held nothing. Nobody re-runs a source that reported success.
+ *
+ * So failures are COUNTED, named in the artefact, and two of them are fatal: a sweep no query
+ * answered, and a sweep that kept nothing while any query was lost. Both are the same claim — the
+ * zero on that line is a failure to look, and only this function is in a position to know it.
+ *
+ * `fetchPage` and `sleepMs` are injectable for ONE reason: the interesting behaviour here is what
+ * happens when the API stops answering, and that is unreachable from a test that can only harvest
+ * the real internet. The defaults are what the live run uses.
+ */
+export async function sketchfab({ fetchPage = get, sleepMs = 200 } = {}) {
   const rows = [];
   const refused = [];
   const byLicenceSlug = {};
+  const failures = [];
+  let queriesAttempted = 0;
+  let queriesAnswered = 0;
   for (const slug_ of SKETCHFAB_LICENCE_SLUGS) {
     let keptHere = 0;
     for (const term of SKETCHFAB_TERMS) {
       let url = 'https://api.sketchfab.com/v3/search?type=models&downloadable=true'
         + `&license=${encodeURIComponent(slug_)}&count=24&q=${encodeURIComponent(term)}`;
+      queriesAttempted += 1;
+      let answered = false;
       for (let page = 0; page < PAGE_CAP && url; page++) {
         let body;
-        try { body = await get(url); } catch { break; }
+        // A lost page still ends this query — one flaky 500 should not take the harvest down — but
+        // it is written down with the term it lost, so a partial sweep cannot pass for a full one.
+        try { body = await fetchPage(url); }
+        catch (e) { failures.push({ licence: slug_, term, page, error: String(e?.message ?? e) }); break; }
+        answered = true;
         // `results` is the key this endpoint returns. Guessing at alternates is what let the
         // Creator Store report success on zero rows, so an absent array is a SHAPE FAILURE that
         // takes the whole source down rather than a quiet zero.
@@ -637,21 +663,39 @@ async function sketchfab() {
         refused.push(...part.refused);
         keptHere += part.rows.length;
         url = typeof body.next === 'string' ? body.next : null;
-        await sleep(200);
+        await sleep(sleepMs);
       }
+      if (answered) queriesAnswered += 1;
     }
     byLicenceSlug[slug_] = keptHere;
+  }
+  if (queriesAnswered === 0) {
+    throw new Error(
+      `v3/search answered none of the ${queriesAttempted} queries this sweep asked it (first error: `
+      + `${failures[0]?.error ?? 'unknown'}) — a sweep that saw nothing is not a catalogue that holds nothing`,
+    );
+  }
+  if (!rows.length && failures.length) {
+    throw new Error(
+      `v3/search kept 0 rows while ${failures.length} of ${queriesAttempted} queries failed (first: `
+      + `${failures[0].error}) — that zero is a failure to look, not a finding`,
+    );
   }
   // `pageCap` is in the artefact because a capped run and a full one are different claims about
   // how much of Sketchfab was looked at, and a file that does not say which is being read as the
   // stronger of the two. `refused` is truncated but `refusedCount` never is — the sample is for
-  // reading, the count is the fact.
+  // reading, the count is the fact. `queriesAnswered` is the same kind of fact for the sweep
+  // itself: it is how a reader tells 826 rows out of forty queries from 826 out of four.
   return {
     rows,
     byLicenceSlug,
     termsSwept: SKETCHFAB_TERMS.length,
     pageCap: PAGE_CAP,
     licenceSlugsQueried: SKETCHFAB_LICENCE_SLUGS,
+    queriesAttempted,
+    queriesAnswered,
+    requestFailures: failures.length,
+    failures: failures.slice(0, 20),
     refusedCount: refused.length,
     refused: refused.slice(0, 200),
   };
