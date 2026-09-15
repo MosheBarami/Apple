@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
+import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
 import { useShell, useProvideCheckpoints } from '../lib/shell';
 import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
@@ -205,11 +206,17 @@ export function WorkspacePage() {
   // Shared by both export commands so the toast copy and the failure handling cannot diverge.
   const exportConversation = useCallback(
     async (format: 'md' | 'json') => {
-      toast(`Preparing ${projectNameRef.current} as ${format === 'md' ? 'Markdown' : 'JSON'}…`, 'info');
+      // ONE ROW FOR THE WHOLE EXPORT. The key makes the progress line replace itself and the
+      // outcome replace the progress line — before this, the only signal was "Preparing…", which
+      // never changed and never ended, so a finished export and a dead one looked identical.
+      const name = projectNameRef.current;
+      const key = exportToastKey(projectId, format);
+      toast(exportStartLine(name, format), 'info', { key });
       try {
-        await downloadExport(projectId, format);
+        const saved = await downloadExport(projectId, format, (p) => toast(exportProgressLine(name, format, p), 'info', { key }));
+        toast(exportDoneLine(saved.filename), 'success', { key });
       } catch (e) {
-        toast(e instanceof ApiError ? e.message : 'Export failed', 'error');
+        toast(e instanceof ApiError ? e.message : 'Export failed', 'error', { key });
       }
     },
     [projectId, toast],

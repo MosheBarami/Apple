@@ -553,7 +553,39 @@ export async function downloadProjectAudio(projectId: string, audioId: string): 
   requestAnimationFrame(() => URL.revokeObjectURL(url));
 }
 
-export async function downloadExport(projectId: string, format: 'md' | 'json'): Promise<void> {
+/** What a finished export was, so the caller can name the file rather than guess at it. */
+export interface ExportSaved {
+  filename: string;
+  bytes: number;
+  /** True only when the worker sent a digest AND it matched. False means unchecked, never "bad". */
+  verified: boolean;
+}
+
+/**
+ * Save the conversation, watching it arrive and checking what arrived.
+ *
+ * TWO THINGS THIS DOES THAT `res.blob()` CANNOT.
+ *
+ *   IT CAN BE WATCHED. A single await produces one event — "done" — so the UI's only honest state
+ *   was "Preparing…", indefinitely, whether the transfer was moving or dead. The reader loop
+ *   reports bytes as they land, with the server's declared total when there is one and `null` when
+ *   there is not: a missing Content-Length must reach the caller as an ABSENCE, because the moment
+ *   it becomes 0 somebody divides by it.
+ *
+ *   IT IS CHECKED. The worker sends X-Golem-Export-SHA256 over the bytes it actually wrote, and a
+ *   truncated transfer is otherwise undetectable — a Markdown file that ends mid-sentence and a
+ *   JSON file that will not parse both save silently. The digest is recomputed over what was
+ *   received and the file is saved ONLY if it matches, because a half file on disk under a
+ *   plausible name is worse than no file: it looks like the export, and it gets kept.
+ *
+ * A response with no digest header saves anyway and reports `verified: false`. An older worker is
+ * the normal case during a deploy, and refusing to save then would turn a rollout into an outage.
+ */
+export async function downloadExport(
+  projectId: string,
+  format: 'md' | 'json',
+  onProgress?: (p: { received: number; total: number | null }) => void,
+): Promise<ExportSaved> {
   const token = await getAccessToken();
   const headers = new Headers();
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -579,19 +611,63 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
     throw new ApiError(msg, res.status);
   }
 
-  const disposition = res.headers.get('Content-Disposition') ?? '';
-  const named = /filename="([^"]+)"/.exec(disposition);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const declaredLength = Number(res.headers.get('Content-Length'));
+  const total = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
+  const declaredDigest = (res.headers.get('X-Golem-Export-SHA256') ?? '').trim().toLowerCase();
+
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  const reader = res.body?.getReader();
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      chunks.push(value);
+      received += value.byteLength;
+      onProgress?.({ received, total });
+    }
+  } else {
+    // No readable body — a response double, or an engine that does not expose one. The file still
+    // has to save; what is lost is the watching, and that is reported as one final event rather
+    // than as silence.
+    const whole = new Uint8Array(await res.arrayBuffer());
+    chunks.push(whole);
+    received = whole.byteLength;
+    onProgress?.({ received, total });
+  }
+
+  const bytes = new Uint8Array(received);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+
+  let verified = false;
+  if (declaredDigest) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hex !== declaredDigest) {
+      // Named as a broken TRANSFER. "Export failed" would send the user to look at their project.
+      throw new ApiError('That export arrived incomplete and was not saved — try again.', 0);
+    }
+    verified = true;
+  }
+
+  const filename = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? `project-export.${format}`;
+  const type = format === 'md' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = named?.[1] ?? `project-export.${format}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   // Revoked on the next frame rather than immediately: a synchronous revoke can race the browser's
   // own read of the blob and produce a zero-byte file on some engines.
   requestAnimationFrame(() => URL.revokeObjectURL(url));
+  return { filename, bytes: received, verified };
 }
 
 export const purgeProject = (projectId: string) =>

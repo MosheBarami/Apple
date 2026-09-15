@@ -1177,11 +1177,27 @@ app.get('/api/projects/:id/export', async (c) => {
   const data = (await res.json()) as TranscriptExport;
 
   const md = c.req.query('format') === 'md';
-  const body = md ? renderTranscriptMarkdown(data) : JSON.stringify(data, null, 2);
-  return new Response(body, {
+  // THE JSON FILE CARRIES ITS OWN CHECK. `truncated` and `messageCount` already say whether the
+  // transcript is COMPLETE; neither says whether the bytes arrived intact, and a transfer cut in
+  // half is a file that ends mid-sentence. The digest is over `data.messages` — the part that can
+  // be clipped — and it travels inside the file because a header only exists during the download.
+  // Markdown gets no such line: a hex string in the prose would be part of the transcript.
+  const body = md
+    ? renderTranscriptMarkdown(data)
+    : JSON.stringify({ ...data, sha256: await sha256hex(JSON.stringify(data.messages)) }, null, 2);
+  const bytes = new TextEncoder().encode(body);
+  return new Response(bytes, {
     headers: {
       'Content-Type': md ? 'text/markdown; charset=utf-8' : 'application/json; charset=utf-8',
       'Content-Disposition': `attachment; filename="${exportFilename(data.project.name, data.exportedAt, md ? 'md' : 'json')}"`,
+      // BYTES, NOT CHARACTERS, and that is the whole reason the body is encoded here rather than
+      // handed over as a string: a transcript is full of em dashes and emoji, and a length in
+      // characters is a progress meter that reaches 100% with bytes still arriving.
+      'Content-Length': String(bytes.byteLength),
+      // The digest of what was ACTUALLY SENT, so the client can tell a short file from a short
+      // conversation. Nothing else on the wire can: JSON that will not parse and Markdown that
+      // stops mid-sentence both save without complaint.
+      'X-Golem-Export-SHA256': await sha256hex(body),
     },
   });
 });
