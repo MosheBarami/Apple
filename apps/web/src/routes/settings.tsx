@@ -390,11 +390,15 @@ function TwoStepPanel({ onRemove }: { onRemove: (factorId: string) => void }) {
 function SecurityHistory() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const history = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications });
+  // Wrapped rather than passed bare: react-query hands its queryFn a context object, which
+  // fetchNotifications would read as its unreadOnly flag.
+  const history = useQuery({ queryKey: ['notifications'], queryFn: () => fetchNotifications() });
   const state = historyState({ loading: history.isPending, error: history.error, data: history.data });
 
   const markRead = useMutation({
-    mutationFn: (ids: string[]) => markNotificationsRead(ids),
+    // ids only, never `all`: this panel shows security events, and clearing everything from
+    // here would mark run failures read that the person has not seen.
+    mutationFn: (ids: string[]) => markNotificationsRead({ ids }),
     onSuccess: (r) => {
       void qc.invalidateQueries({ queryKey: ['notifications'] });
       // REPORTED FROM THE WRITE. "Marked as read" over a write that matched no rows is the same
@@ -422,10 +426,10 @@ function SecurityHistory() {
         </p>
       )}
 
+      {/* The wrapper carries NO role: <Failure> already announces itself, and an alert inside an
+          alert is read twice by some screen readers and swallowed entirely by others. */}
       {state.state === 'unavailable' && (
         <>
-          {/* <Failure> is already role="alert". The wrapper that used to sit here made every screen
-              reader announce this failure twice — tests/surface-states.test.mjs was red on it. */}
           <Failure error={new Error(state.message)} onRetry={() => void history.refetch()} compact />
           {/* Said out loud, because the empty state sitting one branch away says the opposite and a
               reader who has seen that one before will otherwise fill in the gap themselves. */}

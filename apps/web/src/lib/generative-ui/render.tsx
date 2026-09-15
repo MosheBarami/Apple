@@ -12,7 +12,7 @@
  *      CSS class here. A raw colour or CSS value never reaches the DOM.
  */
 import { useEffect, useId, useMemo, useState } from 'react';
-import { fetchImageObjectUrl, parseImagePath } from '../api';
+import { downloadProjectAudio, fetchAudioObjectUrl, fetchImageObjectUrl, parseAudioPath, parseImagePath } from '../api';
 import { explainFailure } from '../error-taxonomy';
 import type {
   AssetPickerBlock,
@@ -757,6 +757,92 @@ function TestReportView({ block }: { block: TestReportBlock }) {
 // asset_picker
 // ---------------------------------------------------------------------------
 
+/**
+ * A GENERATED SOUND, PLAYED RATHER THAN LINKED TO.
+ *
+ * `generate_sound` hands back an asset whose link is `/api/projects/<id>/audio/<id>` labelled
+ * "Listen", and this panel drew it as `<a href target="_blank">`. Every /api/* path requires a
+ * Bearer JWT, an anchor sends no headers, so the click opened a tab containing an unauthorized
+ * error — for a sound that existed, was seconds old, and played perfectly if you had a token.
+ *
+ * That is SafeImage's defect one media type later, and it gets SafeImage's answer: fetch the bytes
+ * with the token, give the element an object URL, revoke it on unmount. Three states rather than
+ * two for the same reason — "still loading" reported as "gone" is the failure that hid the image
+ * bug for a release.
+ *
+ * The DOWNLOAD is a button, not an anchor, for the identical reason: `?download=1` on the same
+ * authenticated route. The worker names the file from the id and the type it actually served.
+ */
+function SafeAudio({ projectId, audioId, label }: { projectId: string; audioId: string; label: string }) {
+  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failure, setFailure] = useState<unknown>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let created: string | null = null;
+    setState('loading');
+    fetchAudioObjectUrl(projectId, audioId)
+      .then((url) => {
+        created = url;
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setObjectUrl(url);
+        setState('ready');
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setFailure(err);
+        setState('failed');
+      });
+    return () => {
+      cancelled = true;
+      if (created) URL.revokeObjectURL(created);
+    };
+  }, [projectId, audioId]);
+
+  if (state === 'loading') {
+    return (
+      <span className="gu-audio-loading" aria-busy="true">
+        Loading sound…
+      </span>
+    );
+  }
+
+  if (state === 'failed') {
+    // A 404 really is expiry — generated sound is kept for an hour. A 401 is a session that timed
+    // out, and telling that user their sound expired sends them to the wrong problem.
+    const e = explainFailure(failure);
+    return (
+      <span className="gu-audio-gone">
+        {e.kind === 'missing' ? 'No longer available — generated sound is kept for an hour.' : `${e.title}. ${e.safety}`}
+      </span>
+    );
+  }
+
+  return (
+    <div className="gu-audio">
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- a generated sound effect has no
+          transcript to caption; the asset's own name is the label, announced below. */}
+      <audio className="gu-audio__player" controls src={objectUrl ?? undefined} aria-label={label} preload="metadata" />
+      <button
+        type="button"
+        className="gu-audio__save"
+        onClick={() => {
+          setSaveError(null);
+          void downloadProjectAudio(projectId, audioId).catch(() => setSaveError('Could not save that sound.'));
+        }}
+      >
+        Download
+      </button>
+      {saveError && <span className="gu-audio-gone">{saveError}</span>}
+    </div>
+  );
+}
+
 function AssetPickerView({ block }: { block: AssetPickerBlock }) {
   return (
     <section className="gu-panel gu-assets">
@@ -784,12 +870,20 @@ function AssetPickerView({ block }: { block: AssetPickerBlock }) {
               </span>
               {asset.creator && <span className="gu-asset-creator">by {asset.creator}</span>}
               {asset.note && <span className="gu-asset-note">{asset.note}</span>}
-              {asset.link && (
-                <a className="gu-link" href={asset.link.href} target="_blank" rel="noopener noreferrer">
-                  {asset.link.label}
-                  <span aria-hidden="true"> ↗</span>
-                </a>
-              )}
+              {/* One of ours gets a player; anything else stays the link it was, because an asset
+                  link may legitimately point at a catalogue page this app cannot fetch. */}
+              {(() => {
+                const ours = asset.kind === 'sound' && asset.link ? parseAudioPath(asset.link.href) : null;
+                if (ours) return <SafeAudio projectId={ours.projectId} audioId={ours.audioId} label={asset.name} />;
+                return (
+                  asset.link && (
+                    <a className="gu-link" href={asset.link.href} target="_blank" rel="noopener noreferrer">
+                      {asset.link.label}
+                      <span aria-hidden="true"> ↗</span>
+                    </a>
+                  )
+                );
+              })()}
             </div>
           </li>
         ))}

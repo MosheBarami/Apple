@@ -30,12 +30,19 @@ import { tmpdir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(mkdtempSync(join(tmpdir(), 'assetquality-')), 'lib.mjs');
-execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
-  [join(WORKER, 'src', 'asset-library.ts'), '--bundle', '--format=esm', '--target=es2022',
-   '--platform=neutral', '--main-fields=main,module', '--outfile=' + out],
-  { cwd: WORKER, stdio: 'pipe' });
-const L = await import(`file://${out}`);
+const TMP = mkdtempSync(join(tmpdir(), 'assetquality-'));
+const bundle = (src, name) => {
+  const out = join(TMP, name);
+  execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+    [join(WORKER, 'src', src), '--bundle', '--format=esm', '--target=es2022',
+     '--platform=neutral', '--main-fields=main,module', '--outfile=' + out],
+    { cwd: WORKER, stdio: 'pipe' });
+  return import(`file://${out}`);
+};
+const L = await bundle('asset-library.ts', 'lib.mjs');
+// The decision table, because the gate it hands the model is the same fact stated a second time —
+// and a second statement of a fact is a second place it can be wrong.
+const A = await bundle('assets.ts', 'assets.mjs');
 
 /**
  * A D1 binding that RUNS THE SQL, because the defect lives in a WHERE clause.
@@ -187,6 +194,48 @@ test('insertableOnly still means what it says — the caller who needs an id tod
   try {
     const hits = await L.searchAssetLibrary(d1, 'crate', { insertableOnly: true });
     assert.deepEqual(hits.map((h) => h.id), [SCRAPE.id], 'only the row with an id survives that filter');
+  } finally { d1.close(); }
+});
+
+test('the gate the model is handed BEFORE it searches must not exclude the rows search returns', async () => {
+  // `choose_asset_source` is documented "Call this BEFORE building anything you might be tempted to
+  // search for", and it returns `SourceChoice.verification` to the model verbatim. So that string is
+  // the rule the model is holding when the search results arrive. It said the library gate was
+  // `status=active` — which is the discarded half of the defect, stated a second time in prose, in
+  // the one place that reaches the model earliest.
+  //
+  // The assertion is derived from the code rather than from a remembered wording: SEARCHABLE_STATUSES
+  // is the list search actually admits, and naming any single member of it as *the* required status
+  // tells the model to throw away the others.
+  const d1 = await library();
+  try {
+    const hits = await L.searchAssetLibrary(d1, 'crate');
+    const curated = hits.find((h) => h.id === CURATED.id);
+    assert.ok(curated, 'the curated row must be returned at all, or this test measures nothing');
+    assert.equal(curated.status, 'pending_ingest', 'the row the library exists to hold is not "active"');
+    assert.equal(curated.availability, 'needs_import');
+
+    const gate = A.chooseAssetSource('prop').find((c) => c.source === 'library')?.verification;
+    assert.ok(gate, 'the library source must carry a gate description');
+
+    for (const s of L.SEARCHABLE_STATUSES) {
+      assert.doesNotMatch(
+        gate,
+        new RegExp(`status\\s*=\\s*${s}\\b`),
+        `search returns ${L.SEARCHABLE_STATUSES.join(' and ')} rows, so a gate requiring status=${s} `
+          + `tells the model that ${JSON.stringify(curated.name)} — status ${curated.status} — fails it`,
+      );
+    }
+
+    // And it must name the fact that DOES decide it, in the words the search emits, so the model can
+    // match one to the other instead of inferring a rule from a null id.
+    assert.match(gate, /needs_import/, 'the gate must name the state a curated row is actually in');
+    assert.match(gate, /insertable/, 'and the state that means an id exists today');
+
+    // Widening must not drop the real restriction: the dead statuses are still dead.
+    for (const s of L.UNUSABLE_STATUSES) {
+      assert.match(gate, new RegExp(s), `the gate must still refuse ${s} rows`);
+    }
   } finally { d1.close(); }
 });
 
