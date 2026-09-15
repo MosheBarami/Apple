@@ -50,6 +50,11 @@ packages/corpus/raw/*
 # directory is reachable at all.
 packages/corpus/data/library/*
 !packages/corpus/data/library/index.json
+# 19 KB, and it earns its place the same way cgbookcase.json does: it is not a cache of somebody
+# else's catalogue, it is what Roblox's details endpoint SAID about the fifty ids the genre kits
+# pin, on a date. The 10 MB search harvest it replaces as evidence is ignored below, and a guard
+# whose evidence is not in the checkout is a guard that reports clean without looking.
+!packages/corpus/data/library/kit-pins.json
 !packages/corpus/data/library/cgbookcase.json
 !packages/corpus/data/library/game_icons.json
 !packages/corpus/data/library/kenney.json

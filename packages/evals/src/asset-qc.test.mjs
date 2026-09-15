@@ -64,6 +64,7 @@ const {
   searchCreatorStore,
   ACCEPTABLE_ASSET_TYPES,
   REFUSED_ASSET_TYPES,
+  REFUSAL_REASONS,
   checkScale,
   scaleRuleFor,
   SCALE_ENVELOPES,
@@ -251,10 +252,21 @@ test('A MODEL-TYPE ASSET IS REFUSED IN FAVOUR OF THE MESH OR IMAGE IT WRAPS', as
   assert.match(reason, /Image/);
 });
 
-test('the allowlist is Mesh, Image and Decal; Model is the named refusal', () => {
+test('the allowlist is Mesh, Image and Decal; Model and Audio are the named refusals', () => {
   assert.deepEqual(Object.keys(ACCEPTABLE_ASSET_TYPES).map(Number).sort((a, b) => a - b), [1, 13, 40]);
-  assert.deepEqual(REFUSED_ASSET_TYPES, { 10: 'Model' });
+  // Audio (3) joined Model (10) when the genre kits started handing out sound ids. The two are
+  // refused for OPPOSITE reasons — a Model may carry scripts, an Audio has no geometry to place —
+  // and they are named here rather than left to the generic not-on-the-allowlist message so that
+  // adding a third refusal is a decision somebody makes, not a diff nobody notices.
+  assert.deepEqual(REFUSED_ASSET_TYPES, { 3: 'Audio', 10: 'Model' });
   assert.equal(ACCEPTABLE_ASSET_TYPES[10], undefined, 'Model must never be on the allowlist');
+  assert.equal(ACCEPTABLE_ASSET_TYPES[3], undefined, 'Audio must never be on the allowlist — it is referenced, never inserted');
+  // Every refusal says what to do instead. Without this a new entry in the table above inherits the
+  // fallback string and the model is told "no" with no way forward, which is how a capable agent
+  // retries the same refused call until it runs out of turns.
+  for (const id of Object.keys(REFUSED_ASSET_TYPES)) {
+    assert.ok(REFUSAL_REASONS[id] && REFUSAL_REASONS[id].length > 20, `refused type ${id} has no reason telling the caller what to do instead`);
+  }
 });
 
 test('an asset type outside the allowlist is refused rather than assumed harmless', async () => {
