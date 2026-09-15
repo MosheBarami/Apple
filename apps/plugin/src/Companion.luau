@@ -231,7 +231,7 @@ function Companion.planTransform(op: any): (TransformPlan?, string?)
 	end
 
 	local move = Vector3.zero
-	local moved = false
+	local moved: boolean = false
 	if op.move ~= nil then
 		local v, err = triple("move", op.move, MAX_TRANSLATION)
 		if not v then
@@ -243,7 +243,7 @@ function Companion.planTransform(op: any): (TransformPlan?, string?)
 	end
 
 	local rotate = CFrame.new(0, 0, 0)
-	local rotated = false
+	local rotated: boolean = false
 	if op.rotate ~= nil then
 		local v, err = triple("rotate", op.rotate, MAX_DEGREES)
 		if not v then
@@ -255,7 +255,7 @@ function Companion.planTransform(op: any): (TransformPlan?, string?)
 	end
 
 	local scale = 1
-	local scaled = false
+	local scaled: boolean = false
 	if op.scale ~= nil then
 		local s = inRange(op.scale, MIN_SCALE, MAX_SCALE)
 		if not s then
@@ -274,7 +274,14 @@ function Companion.planTransform(op: any): (TransformPlan?, string?)
 		return nil, "transform_instances: nothing to do — pass at least one of move, rotate or scale."
 	end
 
-	return { move = move, rotate = rotate, scale = scale, moved = moved, rotated = rotated, scaled = scaled }, nil
+	-- Built into a NAMED local rather than returned as a bare literal. Luau infers a table
+	-- literal's boolean fields as the singleton `false | true` rather than `boolean`, which is not
+	-- exactly TransformPlan and made the analyzer reject a plan that is perfectly correct. Naming
+	-- the type at construction is the fix; a `::` cast here would have silenced the same complaint
+	-- while also silencing a real mismatch the day this shape changes.
+	local plan: TransformPlan =
+		{ move = move, rotate = rotate, scale = scale, moved = moved, rotated = rotated, scaled = scaled }
+	return plan, nil
 end
 
 -- ------------------------------------------------------------------- names --

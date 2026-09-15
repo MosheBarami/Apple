@@ -416,13 +416,22 @@ local function claimCode(code: string)
 		setStatus(status == 404 and "Invalid or expired code" or "Could not reach Apple — check your internet", COLORS.red)
 		return
 	end
-	session = {
+	--[[ THE NAME IS READ OFF A LOCAL, NOT OFF THE UPVALUE, AND THAT IS NOT A TYPE-CHECKER
+		 FORMALITY. `startPolling()` runs between the assignment below and the label below that,
+		 and the poll loop calls `disconnectSession` — which sets `session = nil` — the moment the
+		 server refuses the token. A 401 arriving inside that window would make the next line index
+		 a nil and throw inside the click handler, leaving the button dead with no message.
+
+		 So the fresh session is held in a local that nothing else can reach, and the upvalue is
+		 assigned from it. The analyzer's complaint here was real. ]]
+	local claimed: Session = {
 		token = data.token,
 		projectId = data.projectId,
 		projectName = data.projectName or "project",
 		apiBase = DEFAULT_API,
 	}
-	plugin:SetSetting("golem_session", HttpService:JSONEncode(session))
+	session = claimed
+	plugin:SetSetting("golem_session", HttpService:JSONEncode(claimed))
 	codeBox.Text = ""
 	startPolling()
 	-- Say WHICH place the project was just bound to, rather than leaving the user to discover it
@@ -430,7 +439,7 @@ local function claimCode(code: string)
 	-- sends null, and there is then nothing honest to print.
 	local bound = if type(data.place) == "table" then data.place else nil
 	if bound and type(bound.placeName) == "string" and bound.placeName ~= "" then
-		projectLabel.Text = "Project: " .. session.projectName .. "  ·  Place: " .. bound.placeName
+		projectLabel.Text = "Project: " .. claimed.projectName .. "  ·  Place: " .. bound.placeName
 	end
 end
 
