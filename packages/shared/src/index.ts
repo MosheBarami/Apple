@@ -1124,6 +1124,41 @@ export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typical
   rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
 };
 
+/**
+ * WHAT A PIECE OF WORK COSTS, WHEN IT TAKES MORE THAN ONE RUN.
+ *
+ * `typicalCredits` above is per RUN. A roadmap milestone is sized in runs — "about two Agent
+ * runs" — so the card said how much work it was in a unit nobody is billed in, while the number
+ * that would answer "what will this cost me" sat two clicks away in the composer, unmultiplied.
+ *
+ * The multiplication is the whole value. With `runs` varying across the catalogue, a two-run
+ * Super Agent milestone is 20-60 Credits where the mode's own line reads 10-30; reprinting the
+ * mode range on the card would have understated half the catalogue by a factor of two.
+ *
+ * It PARSES `typicalCredits` rather than keeping its own table, so there is exactly one place a
+ * price is written down. A second copy of a price is a second copy free to drift, which is the
+ * defect scripts/check-credit-figures.mjs exists because of — that number had drifted in three
+ * places inside one component.
+ *
+ * Returns a RANGE even when the published figure is a single number ("2" -> 2-2). It never
+ * collapses a spread to one number: the measurements behind docs/COST-MODEL.md do not support
+ * that precision, and a single figure would read as a quote.
+ *
+ * `null` for a run count that is not a positive whole number — an unreadable input produces no
+ * figure rather than a wrong one, because a wrong price is worse than a missing one.
+ */
+export function creditRangeForRuns(mode: GolemMode, runs: number): { low: number; high: number } | null {
+  if (!Number.isInteger(runs) || runs < 1) return null;
+  const published = MODE_INFO[mode]?.typicalCredits;
+  if (!published) return null;
+  const parts = published.split('-').map((p) => Number(p.trim()));
+  if (parts.length < 1 || parts.length > 2 || parts.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+  const low = parts[0]!;
+  const high = parts.length === 2 ? parts[1]! : low;
+  if (high < low) return null;
+  return { low: low * runs, high: high * runs };
+}
+
 // ---------------------------------------------------------------------------
 // Product modes — the only mode concept the product surfaces
 //
