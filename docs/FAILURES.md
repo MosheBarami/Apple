@@ -100,6 +100,45 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-68 · The worktree that fixed F-67 rewired the MAIN checkout's dependencies
+**Believed:** a detached worktree under `.claude/worktrees/` with its own `pnpm install` is an
+isolated place to measure a churning tree. F-67 established that the install is necessary; nothing
+suggested it was not contained.
+**True:** `pnpm install` run inside a worktree that sits INSIDE the repository walks up, finds the
+main `pnpm-workspace.yaml` as its nearest workspace root, and **rewrites the MAIN checkout's
+`node_modules` symlinks to point into the worktree's own store.** Observed in the main tree, by two
+sessions independently:
+
+    apps/worker/node_modules/@golem/shared -> ../../../../.claude/worktrees/probe-9423f2c/packages/shared
+    apps/worker/node_modules/esbuild       -> ../../../.claude/worktrees/probe-9423f2c/node_modules/.pnpm/esbuild@0.25.12/...
+
+Fifteen links across `apps/web`, `apps/site` and `apps/worker`. **The workspace globs are not the
+cause** — `apps/*`, `apps/benchmark/*`, `packages/*` match nothing under `.claude/`. The direction
+is the opposite of the obvious one: not the main workspace reaching into the worktree, but an
+install inside the worktree reaching out to the main workspace root it happens to be nested under.
+**Cost of the error:** every typecheck, test and build in the main checkout resolved `@golem/shared`
+and `@golem/design` from a FROZEN commit rather than the live tree — a right answer about the wrong
+tree, in the checkout where nobody expects an indirection. It surfaced as
+`'@golem/shared' has no exported member 'StudioEventSelection'` against a type that is plainly
+exported on line 271. When the worktree was later deleted the links dangled and
+`node_modules/.bin/esbuild` stopped existing, which takes down every test that bundles through it.
+**Caught by:** the contradiction between what `grep` saw in the source and what `tsc` reported —
+two tools disagreeing about one file is only possible if they are reading two files.
+**The rule:** **put verification worktrees OUTSIDE the repository.** `git worktree add /tmp/verify-x`
+or a sibling directory; never a path under the workspace root. A worktree inside the repo shares the
+workspace root, and pnpm's notion of "the workspace" is ancestral, not configured.
+**The repair is not obvious and cost three attempts:** `pnpm install --frozen-lockfile` reports
+"Already up to date" and changes nothing, because pnpm's stored state records the bad links as
+correct. Deleting the symlinks and running `pnpm install --force` ALSO reports "Already up to date"
+and additionally leaves `apps/worker/node_modules/typescript` missing, so `tsc` cannot start at all.
+What works is `rm -rf <pkg>/node_modules && pnpm install`.
+**And the alarm that healed itself:** rbxai-04 had a broken snapshot — dangling target, failing
+exec — and was about to report the main checkout broken for everyone. Re-measuring in ONE command
+before writing showed it already repaired. *An alert is a claim about now, written from a reading
+about then.* Capture once, read many times applies to alarms exactly as it applies to greens, and
+the cost of getting it wrong is higher: a false green wastes a check, a false alarm stops four
+sessions.
+
 ### F-67 · A verification worktree with symlinked node_modules ran 8% of the suite and called it RED
 **Believed:** running `gate-suite.mjs` in a detached worktree at HEAD answers "does the committed
 tree pass?" while the main checkout churns. The worktree was prepared by symlinking the main tree's
