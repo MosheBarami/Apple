@@ -115,6 +115,138 @@ export function mintedByUs(source: AssetSourceSite): boolean {
   return !PRE_EXISTING_ID_SOURCES.includes(source);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Quality
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * HOW THE ROW GOT ITS NAME, which is the whole of the quality signal.
+ *
+ * Not a taste score and not a rating anybody typed. Every input below is a column already written
+ * on all 300,000 rows, so this is derivable for the oldest row in the table and the next one
+ * ingested alike — which is why it is computed on read rather than stored. A stored column would
+ * be its default for every row written before it existed, and a default is not a measurement: it
+ * would report a score for rows nobody has ever scored.
+ *
+ * `curated_pack` — a maintained release. Kenney, Quaternius, Poly Haven, ambientCG, cgbookcase,
+ *   game-icons and Iconify each publish a fixed catalogue with a house naming convention, so the
+ *   `name` column carries a designer's label. OpenGameArt and Poly Pizza are contributor archives
+ *   rather than single-author packs, but every submission is deliberately published art with a
+ *   licence declared at submission, which is the line that matters here.
+ *
+ * `open_upload` — a catalogue of whatever anybody uploaded, harvested in bulk. The Creator Store
+ *   rows come from `scripts/harvest-library.mjs`, which reads `a.asset.name` verbatim: that is
+ *   where "Bakiiiiiiiiiiiiiiii", "Part2" and "diediedieDIELess" come from. Sketchfab and Wikimedia
+ *   Commons are the same shape — a file per uploader, named by the uploader.
+ *
+ * `authored_here` — produced inside the product, so the name is one we generated. Clean by
+ *   construction, but a single generated thing rather than a maintained release.
+ */
+export const ASSET_CURATIONS = ['curated_pack', 'open_upload', 'authored_here'] as const;
+export type AssetCuration = (typeof ASSET_CURATIONS)[number];
+
+/**
+ * Exhaustive by construction, for the same reason ASSET_ORIGINALITY is: adding a source fails the
+ * typecheck until somebody decides, in writing, which kind of catalogue it is. An unclassified
+ * source defaulting to "curated" is precisely the mistake that put the scrape on top.
+ */
+export const SOURCE_CURATION: Readonly<Record<AssetSourceSite, AssetCuration>> = {
+  kenney: 'curated_pack',
+  quaternius: 'curated_pack',
+  ambientcg: 'curated_pack',
+  poly_haven: 'curated_pack',
+  poly_pizza: 'curated_pack',
+  opengameart: 'curated_pack',
+  game_icons: 'curated_pack',
+  iconify: 'curated_pack',
+  cgbookcase: 'curated_pack',
+  roblox_official: 'curated_pack',
+  sketchfab: 'open_upload',
+  wikimedia: 'open_upload',
+  creator_store: 'open_upload',
+  generated_roblox: 'authored_here',
+  procedural: 'authored_here',
+};
+
+export function curationOf(source: AssetSourceSite): AssetCuration {
+  return SOURCE_CURATION[source];
+}
+
+/** The base each tier starts from, before the name is read. */
+const CURATION_BASE: Readonly<Record<AssetCuration, number>> = {
+  curated_pack: 1,
+  // Named by us, so the name is clean — but one generated object, not a maintained catalogue.
+  authored_here: 0.9,
+  // Not a verdict on any individual row: it is the prior that a bulk scrape of user uploads is
+  // mostly not game art. The name check below is what lets a good row climb back out of it.
+  open_upload: 0.35,
+};
+
+/**
+ * What the `name` column says about whether anybody named this thing.
+ *
+ * EVERY RULE IS WRITTEN FROM A NAME THAT IS ACTUALLY IN THE TABLE. None of them guesses at
+ * subject matter or taste — that would be inventing a score. They read shape, and shape is the
+ * only thing a string can honestly tell you about the care that went into it.
+ *
+ * Returns a multiplier in (0, 1].
+ */
+export function nameShapeScore(name: string): number {
+  const n = String(name ?? '').trim();
+  if (!n || !/[a-z]/i.test(n)) return 0.1; // "8" / "" — nothing a person could search for
+  let m = 1;
+
+  // "Bakiiiiiiiiiiiiiiii" — one key held down.
+  if (/(.)\1{3,}/i.test(n)) m *= 0.3;
+
+  // "diediedie…" — a short unit repeated, which is the other shape a mash takes.
+  if (/(.{2,4})\1{2,}/i.test(n)) m *= 0.4;
+
+  // "Part2", "Mesh", "Model 3", "Union" — the Studio default, never renamed. The uploader did not
+  // name this; Roblox did.
+  if (/^(part|meshpart|mesh|model|union|unionoperation|decal|image|texture|baseplate|spawnlocation|script|folder|object|asset|untitled|new\s*\w*)\s*\d*$/i.test(n)) m *= 0.15;
+
+  // "diediedieDIELess" — a capital run inside a lowercase token is shouting, not CamelCase.
+  if (/[a-z][A-Z]{2,}/.test(n)) m *= 0.4;
+
+  // "Potato breaking through wall! o_0" — an uploader's caption, complete with the emoticon.
+  if (/[o0O][._-][o0O]|[:;=][-^]?[)(DPpOo3]|[!?]{2,}|\bxD\b|\^_\^/.test(n)) m *= 0.4;
+  else if (/[!?]/.test(n)) m *= 0.85;
+
+  // SHOUTING THROUGHOUT, on a name long enough that it is not an acronym like "UI" or "PBR".
+  if (n.length > 6 && n === n.toUpperCase() && /[A-Z]{4,}/.test(n)) m *= 0.5;
+
+  // A wall of characters with no separator anywhere. Two words at minimum is what a label looks
+  // like; the threshold is generous so "crate" and "rock01" are untouched.
+  if (n.length > 20 && !/[\s\-_]/.test(n)) m *= 0.5;
+
+  // Punctuation soup — more decoration than letters.
+  const junk = (n.match(/[^\w\s\-'&.()]/g) ?? []).length;
+  if (junk > 2) m *= 0.5;
+
+  return Math.max(0.05, m);
+}
+
+/**
+ * The row's quality, in [0, 1], from two recorded facts and nothing else:
+ *   `source` -> which catalogue it came from, and whether that catalogue is a curated release or
+ *               an open upload pile (SOURCE_CURATION above).
+ *   `name`   -> whether anybody named it (nameShapeScore above).
+ *
+ * Deliberately NOT an input: whether the row has a Roblox id. That is availability, it is reported
+ * separately on every hit, and letting it into the score is exactly how the scrape came to
+ * outrank the library in the first place.
+ */
+export function assetQuality(rec: { source: string; name: string }): number {
+  const base = (ASSET_SOURCE_SITES as readonly string[]).includes(rec.source)
+    ? CURATION_BASE[SOURCE_CURATION[rec.source as AssetSourceSite]]
+    // A source outside the enum is not evidence of anything, so it scores like an unknown pile
+    // rather than like a pack. It cannot be written through upsertAssets — validateProvenance
+    // refuses it — so this only guards rows that predate a source being removed.
+    : CURATION_BASE.open_upload;
+  return Math.round(base * nameShapeScore(rec.name) * 1000) / 1000;
+}
+
 /**
  * The authoritative record for one library asset. Every field is required — a nullable field is
  * explicitly `| null` and its null meaning is documented, so "we do not know" is never confused
@@ -170,6 +302,33 @@ export interface AssetProvenance {
 
 /** Operational state D1 tracks alongside the record. Not part of the provenance itself. */
 export type AssetStatus = 'pending_ingest' | 'active' | 'quarantined' | 'retired';
+
+/**
+ * STATUS IS AN IMPORT LIFECYCLE. IT IS NOT A VERDICT ON THE ROW.
+ *
+ * `pending_ingest` -> `active` is the journey from "catalogued, bytes not uploaded yet" to "there
+ * is a Roblox asset id for this". `quarantined` and `retired` are the two dead ends: a health
+ * check stopped resolving (markHealth), or the row was withdrawn.
+ *
+ * Search used to filter on `status = 'active'` alone, and that single clause is what inverted the
+ * library. `scripts/ingest-assets.mjs` sends a row carrying a robloxAssetId as 'active' and every
+ * other row as 'pending_ingest' — so "we have not imported this yet" was being read as "do not
+ * show this", and the only rows left were the Creator Store scrape. The curated CC0 packs, which
+ * are the whole point of the library, could not be returned by any query.
+ *
+ * Two facts, two places: the lifecycle stays here, and whether a row can be inserted TODAY is
+ * `robloxAssetId !== null`, reported per hit as `insertable` / `availability`.
+ */
+export const SEARCHABLE_STATUSES: readonly AssetStatus[] = ['active', 'pending_ingest'];
+
+/** The rows a search must never return: dead, not merely un-imported. */
+export const UNUSABLE_STATUSES: readonly AssetStatus[] = ['quarantined', 'retired'];
+
+/**
+ * The same list as a SQL literal, built from the array so the two cannot drift apart. The values
+ * are compile-time literals from a union type, never input.
+ */
+const SEARCHABLE_STATUS_SQL = SEARCHABLE_STATUSES.map((s) => `'${s}'`).join(',');
 
 // ---------------------------------------------------------------------------------------------
 // Licences
@@ -822,6 +981,16 @@ export async function recordVerification(
 // Semantic search
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Can a place reference this row right now, or does somebody have to import it first?
+ *
+ * A separate word from `status` on purpose. The two used to be the same column and the conflation
+ * hid the entire curated library; a caller that has to re-derive this from a null id is a caller
+ * that will get it wrong, and the person on the other end of the agent gets told "we have nothing"
+ * when the truth is "we have exactly that, it needs an import".
+ */
+export type AssetAvailability = 'insertable' | 'needs_import';
+
 export interface AssetHit {
   id: string;
   name: string;
@@ -832,6 +1001,16 @@ export interface AssetHit {
   tags: string[];
   licence: string;
   attributionRequired: boolean;
+  /** Which catalogue the row came from — the fact `quality` is mostly derived from. */
+  source: AssetSourceSite;
+  /** Import lifecycle only. See SEARCHABLE_STATUSES. */
+  status: AssetStatus;
+  /** True iff a Roblox asset id is recorded, which is the only thing insertion needs. */
+  insertable: boolean;
+  /** The same fact as a word, for the agent's answer and the UI's label. */
+  availability: AssetAvailability;
+  /** 0..1, from `source` and `name`. See assetQuality. */
+  quality: number;
   score: number;
 }
 
@@ -841,8 +1020,16 @@ export interface AssetSearchOptions {
   maxTriangles?: number;
   /** The project's declared style. Retrieval strongly prefers assets sharing these tags. */
   styleTags?: string[];
-  /** Only return rows that actually have a Roblox id (i.e. are insertable today). */
+  /**
+   * Only return rows that actually have a Roblox id (i.e. are insertable today).
+   *
+   * For a caller that must insert something in this turn and cannot wait for an import. It is NOT
+   * the default: defaulting to it is the same defect as filtering on `status = 'active'`, because
+   * in this library the insertable rows are overwhelmingly the scrape.
+   */
   insertableOnly?: boolean;
+  /** Drop hits scoring below this. See assetQuality — 0..1. */
+  minQuality?: number;
   k?: number;
 }
 
@@ -861,6 +1048,9 @@ interface Row {
   tags: string;
   licence: string;
   attribution_required: number;
+  /** Both columns have existed since the table was created — see createAssetTables. */
+  source: string;
+  status: string;
 }
 
 function toHit(r: Row, score: number): AssetHit {
@@ -878,6 +1068,10 @@ function toHit(r: Row, score: number): AssetHit {
   } catch {
     tags = [];
   }
+  // The one thing insertion actually needs is an id. Nothing else on the row decides this, and in
+  // particular `status` does not: a row can be 'active' with no id only if something wrote it that
+  // way, and it would still be un-insertable.
+  const insertable = r.roblox_asset_id !== null && r.roblox_asset_id !== undefined;
   return {
     id: r.id,
     name: r.name,
@@ -888,11 +1082,16 @@ function toHit(r: Row, score: number): AssetHit {
     tags,
     licence: r.licence,
     attributionRequired: r.attribution_required === 1,
+    source: r.source as AssetSourceSite,
+    status: r.status as AssetStatus,
+    insertable,
+    availability: insertable ? 'insertable' : 'needs_import',
+    quality: assetQuality({ source: r.source, name: r.name }),
     score,
   };
 }
 
-const SELECT_COLS = `id, name, kind, roblox_asset_id, triangles, bounds_studs, tags, licence, attribution_required`;
+const SELECT_COLS = `id, name, kind, roblox_asset_id, triangles, bounds_studs, tags, licence, attribution_required, source, status`;
 
 /**
  * Hybrid retrieval over the library: Vectorize (semantic) + D1 FTS5 (keyword), merged with
@@ -983,12 +1182,24 @@ export function rerankMultiplier(hit: AssetHit, opts: AssetSearchOptions): numbe
     m *= hit.triangles <= opts.maxTriangles * 0.5 ? 1.1 : 1;
   }
   if (hit.attributionRequired) m *= 0.9; // usable, but it costs a credit line
+  //[[ QUALITY OUTWEIGHS EVERY OTHER TERM HERE, AND IT IS MEANT TO.
+  //
+  //   A curated pack row scores 1 and is unchanged; a Creator Store row named "diediedieDIELess"
+  //   lands near 0.14 and is cut to roughly a third. That gap is wider than the style-coherence
+  //   term because it is a wider fact: a mismatched style is a worse-looking build, an unnamed
+  //   2008 upload is not game art at all.
+  //
+  //   It is deliberately NOT a filter. The scrape still comes back, ranked, so a query the library
+  //   genuinely cannot answer still gets an answer — with `availability` and `quality` attached so
+  //   the agent can say what it is offering rather than passing it off as the curated library. ]]
+  m *= 0.25 + 0.75 * hit.quality;
   return m;
 }
 
 function keep(hit: AssetHit, opts: AssetSearchOptions): boolean {
   if (opts.kind && hit.kind !== opts.kind) return false;
-  if (opts.insertableOnly && hit.robloxAssetId === null) return false;
+  if (opts.insertableOnly && !hit.insertable) return false;
+  if (opts.minQuality !== undefined && hit.quality < opts.minQuality) return false;
   if (opts.maxTriangles !== undefined && hit.triangles !== null && hit.triangles > opts.maxTriangles) return false;
   return true;
 }
@@ -997,7 +1208,9 @@ async function vecSearch(env: LibraryEnv, query: string, k: number, opts: AssetS
   const [vector] = await embed(env, [query], 'embed-assets');
   if (!vector) return [];
   const index = env.VEC_ASSETS ?? env.VEC;
-  const filter: Record<string, unknown> = { ns: 'asset', status: 'active' };
+  // `$in`, not `'active'`: a vector for a row still awaiting its import is a vector for a row the
+  // library HAS. Vectorize-style metadata filtering supports $in.
+  const filter: Record<string, unknown> = { ns: 'asset', status: { $in: [...SEARCHABLE_STATUSES] } };
   if (opts.kind) filter.kind = opts.kind;
   const res = await index.query(vector, { topK: k, returnMetadata: 'all', filter: filter as never });
   const ids = res.matches.map((m) => m.id.replace(ASSET_VECTOR_PREFIX, '')).filter((id) => id.length > 0);
@@ -1020,13 +1233,25 @@ async function selectByIds(env: Pick<Env, 'CORPUS'>, ids: string[]): Promise<Row
   for (let i = 0; i < ids.length; i += MAX_BOUND_PARAMS) {
     const page = ids.slice(i, i + MAX_BOUND_PARAMS);
     const placeholders = page.map(() => '?').join(',');
-    const rows = await env.CORPUS.prepare(`select ${SELECT_COLS} from asset_library where id in (${placeholders}) and status = 'active'`)
+    const rows = await env.CORPUS.prepare(`select ${SELECT_COLS} from asset_library where id in (${placeholders}) and status in (${SEARCHABLE_STATUS_SQL})`)
       .bind(...page)
       .all<Row>();
     out.push(...rows.results);
   }
   return out;
 }
+
+/**
+ * The curated tiers as a SQL literal, derived from SOURCE_CURATION so the two cannot drift.
+ *
+ * THIS HAS TO REACH SQL, not just the JS reranker. The reranker can only reorder what the query
+ * already returned, and `limit k` is applied inside D1: with ~100,000 scrape rows against a few
+ * tens of thousands of pack rows, a bm25 top-16 for a common word can be entirely scrape, and no
+ * amount of reranking afterwards can promote a row that was never fetched.
+ */
+const CURATED_SOURCE_SQL = ASSET_SOURCE_SITES.filter((s) => SOURCE_CURATION[s] !== 'open_upload')
+  .map((s) => `'${s}'`)
+  .join(',');
 
 async function ftsSearch(env: Pick<Env, 'CORPUS'>, query: string, k: number, opts: AssetSearchOptions): Promise<AssetHit[]> {
   // sanitize into an fts5 OR query of bare terms, exactly as rag.ts does
@@ -1037,12 +1262,20 @@ async function ftsSearch(env: Pick<Env, 'CORPUS'>, query: string, k: number, opt
     .slice(0, 8);
   if (!terms.length) return [];
   const match = terms.map((t) => `"${t.replaceAll('"', '')}"`).join(' OR ');
-  const where = opts.kind ? `and l.kind = ?` : '';
-  const binds: unknown[] = opts.kind ? [match, opts.kind, k] : [match, k];
+  const binds: unknown[] = [match];
+  let where = '';
+  if (opts.kind) {
+    where += ` and l.kind = ?`;
+    binds.push(opts.kind);
+  }
+  // Applied in SQL rather than after, so a caller who needs an id today spends its k slots on rows
+  // that have one instead of discarding most of them in `keep`.
+  if (opts.insertableOnly) where += ` and l.roblox_asset_id is not null`;
+  binds.push(k);
   const rows = await env.CORPUS.prepare(
     `select ${SELECT_COLS.split(', ')
       .map((c) => `l.${c}`)
-      .join(', ')}, bm25(asset_library_fts) as rank from asset_library_fts join asset_library l on l.id = asset_library_fts.asset_id where asset_library_fts match ? and l.status = 'active' ${where} order by rank limit ?`,
+      .join(', ')}, bm25(asset_library_fts) as rank from asset_library_fts join asset_library l on l.id = asset_library_fts.asset_id where asset_library_fts match ? and l.status in (${SEARCHABLE_STATUS_SQL})${where} order by case when l.source in (${CURATED_SOURCE_SQL}) then 0 else 1 end, rank limit ?`,
   )
     .bind(...binds)
     .all<Row & { rank: number }>();

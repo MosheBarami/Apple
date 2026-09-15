@@ -65,10 +65,13 @@ console.error(`${assets.length} assets -> ${BASE}`);
 //   asset ids, so a game references them with no upload to anybody's account. A row without one is
 //   a catalogue entry waiting for its bytes to be imported.
 //
-//   `ftsSearch` filters on `status = 'active'`, and `seed: true` stores `pending_ingest`. Sending
-//   all 460,000 rows the same way would therefore have hidden every one of the 102,777 immediately
-//   usable assets behind a flag that means "not imported yet" — a library that is full and answers
-//   every search with nothing.
+//   `seed: true` stores `pending_ingest`, so sending all 460,000 rows that way would record every
+//   one of the 102,777 immediately usable assets as "not imported yet", which is false about them.
+//
+//   It used to be worse than a wrong field: `ftsSearch` filtered on `status = 'active'`, so status
+//   decided visibility, and the rows it showed were precisely the Creator Store scrape. Search now
+//   reads the lifecycle as a lifecycle and reports insertability per hit (asset-library.ts), so
+//   this split is a record of what each row IS rather than a lever over what anyone can find.
 //
 //   So the two are sent separately, and `seed` follows the row rather than the run: a row carrying
 //   a Roblox id is not a seed, and the stricter validation applies to it. ]]
