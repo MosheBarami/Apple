@@ -28,13 +28,29 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
+  createShareLink,
   fetchMembers,
+  fetchShareLinks,
   inviteMember,
   reactivateMember,
   removeMember,
+  revokeShareLink,
   suspendMember,
   type MemberRow,
+  type ShareLinkRow,
 } from '../../lib/api';
+import {
+  DEFAULT_EXPIRY,
+  LINKABLE_ROLES,
+  SHARE_LINK_EXPIRIES,
+  describeLinkState,
+  expiryIso,
+  isLiveLink,
+  shareLinkUrl,
+  tokenPreview,
+  type ExpiryChoice,
+  type LinkableRole,
+} from '../../lib/share-links';
 import {
   GRANTABLE_ROLES,
   ROLE_BLURBS,
@@ -312,7 +328,200 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
       )}
 
       <InviteForm projectId={projectId} mayManage={mayManage} cannotManage={cannotManage} onDone={invalidate} />
+      <ShareLinks projectId={projectId} access={access} />
     </div>
+  );
+}
+
+/**
+ * Links this project has handed out — and the only place one can be revoked.
+ *
+ * Revocation has always worked and could never be reached: the route takes the exact token, and
+ * the token was unrecoverable the moment the mint response scrolled away. A link sent to somebody
+ * was therefore permanent, in a product whose whole model is that access can be withdrawn.
+ *
+ * WHAT THIS REFUSES TO DO, and each refusal is the feature:
+ *
+ *   IT DOES NOT PUT THE SECRET ON THE PAGE. The list shows the first characters; the whole link
+ *   goes to the clipboard. A token is a bearer credential and a screenshot of this panel should
+ *   not be one.
+ *
+ *   IT DOES NOT DEFAULT TO "NEVER". A link with no expiry is the one that turns up working two
+ *   years later. Seven days is the default and "Never" is the last option, chosen on purpose.
+ *
+ *   IT DOES NOT OFFER A ROLE THE SERVER WILL REFUSE. A link may carry at most `editor`
+ *   (SHARE_LINK_MAX_RANK), so `admin` is not in the select rather than in the select and rejected.
+ *
+ *   IT DOES NOT PRESENT A SHORT LIST AS A WHOLE ONE. `partial` means KV could not be read whole,
+ *   and an admin looking for a link that is not on screen must be able to tell that from "it was
+ *   already revoked".
+ */
+function ShareLinks({ projectId, access }: { projectId: string; access: AccessState }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const mayShare = allows(access, 'share');
+  const cannotShare = whyNot(access, 'share');
+  const [role, setRole] = useState<LinkableRole>('viewer');
+  const [expiry, setExpiry] = useState<ExpiryChoice>(DEFAULT_EXPIRY);
+
+  // Asked only when the answer is ours to have. The route is gated on `share` and answers 403
+  // otherwise; fetching anyway would render a refusal this panel already knows is coming.
+  const links = useQuery({
+    queryKey: ['share-links', projectId],
+    queryFn: () => fetchShareLinks(projectId),
+    enabled: mayShare,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['share-links', projectId] });
+
+  const mint = useMutation({
+    mutationFn: () =>
+      createShareLink(projectId, { scope: 'project', role, expiresAt: expiryIso(expiry, Date.now()) }),
+    onSuccess: async (made) => {
+      void invalidate();
+      const url = shareLinkUrl(window.location.origin, made.token);
+      // Copying can fail — a browser without clipboard permission, an insecure origin — and a
+      // toast saying "Copied" over a clipboard that did not change is a claim outliving the fact.
+      try {
+        await navigator.clipboard.writeText(url);
+        toast('Link created and copied.', 'success');
+      } catch {
+        toast('Link created. Copy it from the list below.', 'success');
+      }
+    },
+    onError: (e: Error) => toast(`Could not create a link: ${e.message}`, 'error'),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (token: string) => revokeShareLink(projectId, token),
+    onSuccess: () => {
+      // Said plainly, because it is the one thing about revocation people get wrong: it stops the
+      // NEXT person, and whoever already redeemed it is a member until they are removed.
+      toast('Revoked. Anyone who already joined with it is still a member.', 'success');
+      void invalidate();
+    },
+    onError: (e: Error) => toast(`Could not revoke it: ${e.message}`, 'error'),
+  });
+
+  const copy = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(shareLinkUrl(window.location.origin, token));
+      toast('Link copied.', 'success');
+    } catch {
+      toast('Your browser would not let us copy. Select the link and copy it yourself.', 'error');
+    }
+  };
+
+  return (
+    <section className="mb__invite">
+      <h3 className="mb__invite-head">Share links</h3>
+      <p className="cs__note">
+        Anyone with the link joins at the role you choose. They stop working when they expire or
+        when you revoke them.
+      </p>
+
+      {!mayShare && <p className="cs__note cs__note--warn">{cannotShare}</p>}
+
+      <div className="mb__invite-row">
+        <label className="field">
+          <span className="field-label">Role</span>
+          <select
+            className="cs__select"
+            value={role}
+            onChange={(e) => setRole(e.target.value as LinkableRole)}
+            disabled={!mayShare}
+            title={cannotShare ?? undefined}
+          >
+            {LINKABLE_ROLES.map((r) => (
+              <option key={r} value={r} title={ROLE_BLURBS[r]}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span className="field-label">Expires</span>
+          <select
+            className="cs__select"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value as ExpiryChoice)}
+            disabled={!mayShare}
+            title={cannotShare ?? undefined}
+          >
+            {SHARE_LINK_EXPIRIES.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="cs__note">{ROLE_BLURBS[role]}</p>
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={!mayShare || mint.isPending}
+        title={cannotShare ?? undefined}
+        onClick={() => mint.mutate()}
+      >
+        {mint.isPending ? 'Creating…' : 'Create a link'}
+      </button>
+
+      {mayShare && links.isPending && (
+        <p className="cs__note" aria-busy="true">
+          Loading the links…
+        </p>
+      )}
+      {mayShare && links.isError && (
+        <p className="cs__note cs__note--bad" role="alert">
+          {links.error instanceof ApiError ? links.error.message : 'Could not load the links.'}
+        </p>
+      )}
+      {mayShare && links.isSuccess && (
+        <>
+          {links.data.partial && (
+            <p className="cs__note cs__note--warn" role="status">
+              Part of this list could not be read, so a link may be missing from it.
+            </p>
+          )}
+          {links.data.links.length === 0 ? (
+            <p className="cs__note">No links have been made for this project.</p>
+          ) : (
+            <ul className="mb__list">
+              {links.data.links.map((l: ShareLinkRow) => (
+                <li key={l.token} className={`mb__row${isLiveLink(l.state) ? '' : ' is-inactive'}`}>
+                  <div className="mb__who">
+                    <span className="mb__handle mono">{tokenPreview(l.token)}</span>
+                    <span className="mb__sub">
+                      {ROLE_LABELS[l.role as keyof typeof ROLE_LABELS] ?? l.role}
+                      {l.scope === 'project' ? '' : ` · ${l.scope} only`}
+                      {l.expiresAt ? ` · expires ${relativeTime(l.expiresAt)}` : ' · no expiry'}
+                    </span>
+                    {/* The state comes from the server, computed through the same function the
+                        redeem route uses, so this line can never call a link live that the door
+                        will refuse. A state this build does not know prints as itself. */}
+                    <span className="mb__status">{describeLinkState(l.state)}</span>
+                  </div>
+                  <div className="mb__actions">
+                    <button type="button" className="btn btn-quiet" onClick={() => void copy(l.token)}>
+                      Copy link
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-quiet mb__remove"
+                      disabled={!isLiveLink(l.state) || revoke.isPending}
+                      onClick={() => revoke.mutate(l.token)}
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 

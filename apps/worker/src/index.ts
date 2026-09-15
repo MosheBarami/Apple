@@ -25,6 +25,7 @@ import {
   isShareToken,
   kvGrantBarred,
   listKvGrants,
+  listShareLinks,
   newShareToken,
   patchKvGrant,
   putKvGrant,
@@ -4246,6 +4247,50 @@ app.post('/api/shared/:id/members/:userId/reactivate', async (c) => {
   return c.json({ ok: true, userId, reactivated: true, role, linkGrantRestored, audited: audit.ok });
 });
 
+/**
+ * THE LINKS THIS PROJECT HAS HANDED OUT.
+ *
+ * Revocation has worked from the day it was written and is driven over HTTP — and the token it
+ * takes was unrecoverable the instant the mint response scrolled away. `shareLinkKey` is keyed by
+ * the secret and `shareGrantPrefix` indexes the redeemed GRANTS, not the links, so there was no
+ * way to ask "what links exist on this project": a link already sent to somebody could never be
+ * listed and therefore never revoked, by UI or by curl.
+ *
+ * THE TOKEN COMES BACK, and that is a decision. The token IS the link — an admin who cannot see it
+ * cannot re-send it and, before this route, could not revoke it either. It is gated on `share`,
+ * which is admin and owner only.
+ *
+ * `state` is computed by `redeemShareLink` — the function that actually decides — rather than by
+ * a second reading of the same columns here, so this list can never call a link live that the
+ * door will refuse.
+ *
+ * `partial` mirrors the roster's flag: KV is a separate store that can be unreachable, and a short
+ * list presented as a whole one is how an admin concludes a link was already revoked.
+ */
+app.get('/api/shared/:id/links', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
+  if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
+  const { links, complete } = await listShareLinks(c.env, gate.ctx.project.id);
+  const now = Date.now();
+  return c.json({
+    links: links.map((l) => {
+      const probe = redeemShareLink(l, { projectId: l.project_id, scope: l.scope, resourceId: l.resource_id }, now);
+      return {
+        token: l.token,
+        scope: l.scope,
+        resourceId: l.resource_id,
+        role: l.role,
+        expiresAt: l.expires_at,
+        revokedAt: l.revoked_at,
+        createdBy: l.created_by,
+        createdAt: l.created_at,
+        state: probe.ok ? 'live' : probe.reason,
+      };
+    }),
+    partial: !complete,
+  });
+});
+
 app.post('/api/shared/:id/links', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'share');
   if (gate.ctx === null) return collabRefusal(c, gate.status, gate.detail);
@@ -4276,7 +4321,7 @@ app.post('/api/shared/:id/links', async (c) => {
   const check = redeemShareLink(link, { projectId: ctx.project.id, scope, resourceId }, Date.now());
   if (!check.ok) return c.json({ error: check.reason }, 400);
   await putShareLink(c.env, link);
-  return c.json({ token, scope, role, resourceId, projectId: ctx.project.id }, 201);
+  return c.json({ token, scope, role, resourceId, expiresAt: link.expires_at, projectId: ctx.project.id }, 201);
 });
 
 app.post('/api/shared/links/redeem', async (c) => {
