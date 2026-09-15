@@ -483,9 +483,41 @@ export function buildCheckoutRequest(
   // from status and period, so a cancelled subscription naming 'studio' here still grants nothing.
   p.set('subscription_data[metadata][plan]', opts.plan);
   if (opts.email) p.set('customer_email', opts.email);
-  // One subscription per account: without this a second checkout adds a second subscription and the
-  // user is charged twice for tiers that were meant to replace one another.
+  /*
+   * THE PROMOTION-CODE FIELD, AND THE COMMENT THAT USED TO SIT HERE.
+   *
+   * This line switches on the code box on Stripe's hosted page; Stripe validates what is typed into
+   * it against its own promotion codes and applies the discount before the card is charged, which
+   * is why this app has no code-entry box of its own. The comment that stood here described "one
+   * subscription per account" — a different rule, enforced by `checkoutGuard` and the route, not by
+   * this flag — so anyone deleting the line would have read it as removing a stray, and the field
+   * would have silently disappeared from the page. The rule it described lives at its own call site
+   * now; this says what this line does.
+   */
   p.set('allow_promotion_codes', 'true');
+  /*
+   * TAX IS STRIPE'S TO CALCULATE, AND IT IS SHOWN BEFORE THE CARD IS ENTERED.
+   *
+   * With no tax parameter at all Stripe computed none and displayed none, so a VAT-registered buyer
+   * was quoted a bare monthly figure, charged exactly that, and handed an invoice they could not
+   * reclaim against. The listed price stays EXCLUSIVE of tax — the plan ladder and the pricing page
+   * both say so in words — and what is owed on top is worked out on Stripe's page, against the
+   * address it collects, before anything is charged.
+   *
+   * REQUIRES STRIPE TAX TO BE ACTIVE ON THE ACCOUNT. Stripe refuses the whole session otherwise, so
+   * a deployment that has not switched it on fails loudly at the first checkout rather than quietly
+   * selling untaxed. That is the intended failure: the alternative — a flag defaulting to off — is
+   * a page that claims tax is calculated while no tax ever is.
+   *
+   * `customer_update` IS DELIBERATELY ABSENT. Stripe accepts it only alongside `customer`, and this
+   * session names the buyer by `customer_email` and lets Checkout create the customer; sending it
+   * here would make Stripe reject every session, which is the shape of "the feature is enabled and
+   * nothing works".
+   */
+  p.set('automatic_tax[enabled]', 'true');
+  // So a business can put its VAT/GST number on the invoice, and reverse-charge applies where it
+  // should. Without it every EU business buyer is charged consumer VAT they cannot reclaim.
+  p.set('tax_id_collection[enabled]', 'true');
   return { ok: true, body: p.toString() };
 }
 

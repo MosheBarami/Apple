@@ -133,6 +133,40 @@ test('THE METADATA THE WEBHOOK READS IS THE METADATA THE CHECKOUT SETS', () => {
   assert.equal(outcome.subscription.customerId, 'cus_1', 'including the customer the portal needs');
 });
 
+/**
+ * TAX IS CALCULATED BY STRIPE, AND THE PAGES SAY SO.
+ *
+ * Before this the request carried no tax parameter at all, so Stripe computed none and displayed
+ * none: a VAT-registered buyer in the EU was quoted a bare monthly figure and charged it, and the
+ * invoice that followed was one nobody could reclaim against. The price stays exclusive — that is
+ * what the ladder and the pricing page now state in words — and the amount owed on top of it is
+ * worked out on Stripe's own page, before the card is entered.
+ */
+test('THE CHECKOUT ASKS STRIPE TO CALCULATE TAX, and lets a business enter its VAT id', () => {
+  const p = params(build(LIVE));
+  assert.equal(p.get('automatic_tax[enabled]'), 'true', 'without this Stripe shows and charges no tax');
+  assert.equal(p.get('tax_id_collection[enabled]'), 'true',
+    'a business buyer must be able to enter a VAT/GST id, or the invoice is useless to them');
+});
+
+test('and it does NOT send customer_update, which Stripe would refuse here', () => {
+  // `customer_update` is only accepted alongside `customer`. This session identifies the buyer by
+  // `customer_email` and lets Checkout create the customer, so sending it would make Stripe reject
+  // the whole session — the tax feature would read as "enabled" and no checkout would open at all.
+  const p = params(build(LIVE));
+  assert.equal(p.get('customer_update[address]'), null);
+  assert.equal(p.get('customer'), null, 'and there is no customer id here to attach it to');
+  assert.equal(p.get('customer_email'), 'a@b.c');
+});
+
+test('THE PROMOTION-CODE FIELD IS SWITCHED ON, so a discount code can be entered at all', () => {
+  // Stripe validates the code itself, on its own page, against its own list — which is why there is
+  // no code-entry box in this app. The one thing the repo owns is the flag, and nothing asserted it:
+  // the comment above the line described "one subscription per account" instead, so deleting the
+  // line would have read as removing a stray and the field would have vanished from the page.
+  assert.equal(params(build(LIVE)).get('allow_promotion_codes'), 'true');
+});
+
 test('the checkout never carries a plan the webhook would trust', () => {
   // Entitlement is recomputed from subscription status and period. Nothing in this request is an
   // instruction about what the user should end up with.
