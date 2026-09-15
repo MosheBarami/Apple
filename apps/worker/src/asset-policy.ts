@@ -8,7 +8,7 @@
 // handed here as a value, which is what lets the decision be tested without standing up a Durable
 // Object — and what stops a per-call lookup appearing in the hot path of every tool.
 import type { AssetSourceChoice, AssetSourcePolicy } from '@golem/shared';
-import { ASSET_SOURCES, type AssetSource } from './assets';
+import { ASSET_SOURCES, type AssetSource, type AssetProvenanceSource } from './assets';
 
 // Re-exported so a test in this module's own suite can walk the real engine-source list rather
 // than keeping a second, hand-typed copy of it that could drift from `./assets`.
@@ -119,4 +119,49 @@ export function sourceRefusal(
     : 'Nothing else is allowed either.';
   return `${name} is switched off for this project, so it cannot be used. It can be turned back `
     + `on in Settings under Connections. ${rest}`;
+}
+
+/**
+ * Which engine source a tool-recorded PROVENANCE stands for, when the asset-source policy has an
+ * opinion about it at all.
+ *
+ * `Record<AssetProvenanceSource, AssetSource | null>`, exhaustive by construction for the same
+ * reason `SOURCE_CHOICE` above is: adding a new provenance kind to `./assets` fails the typecheck
+ * here until someone writes down, in this file, whether the asset-source policy governs it.
+ *
+ * `library` and `search_result` are real choices APPLE made on the customer's behalf — a curated-
+ * library hit and a Creator Store search result, respectively — so they map onto the engine
+ * sources the dialog can restrict.
+ *
+ * `user_supplied` is `null` DELIBERATELY, and this is a different fact from "not governed yet": the
+ * asset-source policy is about where APPLE may go looking. An id the person pasted into their own
+ * place is that person choosing, not Apple choosing, and refusing it would mean a customer cannot
+ * use an asset they already own. It still faces the full security gate exactly as it does today —
+ * this table changes nothing about verification, only about which SOURCE decision applies.
+ *
+ * `model_output` and `unknown` are `null` for a third reason, not the same as `user_supplied`'s:
+ * `verifyCreatorStoreAsset`'s own provenance gate (`assets.ts`) refuses both unconditionally,
+ * before any source-policy question would matter — an id that only ever appeared in generated
+ * text, or whose origin was never recorded, was never a source Apple picked, so there is nothing
+ * here for this policy to say yes or no to.
+ */
+export const PROVENANCE_SOURCE: Readonly<Record<AssetProvenanceSource, AssetSource | null>> = {
+  library: 'library',
+  search_result: 'creator_store',
+  user_supplied: null,
+  model_output: null,
+  unknown: null,
+};
+
+/**
+ * Why an id with this provenance may not be inserted, or null when it may — including when this
+ * provenance is not a source-policy decision at all (see `PROVENANCE_SOURCE`).
+ */
+export function provenanceRefusal(
+  policy: AssetSourcePolicy | null | undefined,
+  provenance: AssetProvenanceSource,
+): string | null {
+  const source = PROVENANCE_SOURCE[provenance];
+  if (source === null) return null;
+  return sourceRefusal(policy, source);
 }

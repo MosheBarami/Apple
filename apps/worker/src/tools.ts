@@ -6,7 +6,7 @@ import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResu
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
-import { allowedSources, sourceRefusal } from './asset-policy';
+import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
 import {
   chooseAssetSource,
   verifyCreatorStoreAsset,
@@ -79,9 +79,11 @@ export interface AgentCtx {
    * Which asset sources this build may use, already layered across org, user and project.
    *
    * Resolved ONCE in the session DO, where the user is known, and carried as a value so a tool
-   * reads a field instead of querying per call. Optional because the eval harness and the admin
-   * /run-tool route build an AgentCtx directly — and `allowedSources(undefined)` is `[]`, so those
-   * callers get the safe answer rather than a permissive one.
+   * reads a field instead of querying per call. Optional because the eval harness builds an
+   * AgentCtx directly with no policy to hand it — the admin `/run-tool` route goes through
+   * `this.agentCtx()` like every real step and so already carries it — and
+   * `allowedSources(undefined)` is `[]`, so the harness gets the safe answer rather than a
+   * permissive one by omission.
    */
   assetSources?: AssetSourcePolicy;
   studioConnected(): boolean;
@@ -2504,6 +2506,11 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
+      const refused = sourceRefusal(ctx.assetSources, 'creator_store');
+      // BEFORE the search, for the same reason search_asset_library refuses before its query: an
+      // empty result would read as "the Creator Store has nothing like that" — a claim about a
+      // catalogue this caller was never allowed to look in.
+      if (refused) return { error: refused };
       const integrity: DetailsIntegrity = { missing: [] };
       const res = await findVerifiedAssets(ctx.env, String(a.query ?? ''), {
         category: 'mesh',
@@ -2556,6 +2563,16 @@ export const TOOLS: Record<string, ToolImpl> = {
       // nobody searched for is visible in the transcript and in the audit log rather than inferred.
       const fromLibrary = ctx.libraryAssetIds?.has(assetId) === true;
       const provenance: AssetProvenanceSource = fromLibrary ? 'library' : ctx.discoveredAssetIds?.has(assetId) ? 'search_result' : 'user_supplied';
+
+      // BEFORE verification, not after: this is a question about where the id came from, which
+      // `provenance` already answers for free, and it costs nothing to ask now. Verification below
+      // spends a real Creator Store network call — paying for it on an id nobody was allowed to go
+      // looking for through this app in the first place would be the same mistake search_asset_library
+      // and find_verified_asset avoid above. `user_supplied` is never refused here — see
+      // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
+      // Apple's, and still faces the full gate immediately below regardless.
+      const sourceRefused = provenanceRefusal(ctx.assetSources, provenance);
+      if (sourceRefused) return { error: sourceRefused };
 
       const integrity: DetailsIntegrity = { missing: [] };
       const verdict = await verifyCreatorStoreAsset(ctx.env, assetId, { provenance, fetchImpl: strictDetailsFetch(integrity) });

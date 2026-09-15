@@ -28,7 +28,14 @@ test('SEARCHING A FORBIDDEN LIBRARY IS REFUSED BEFORE THE QUERY RUNS', () => {
   // Searching and then filtering would still spend a D1 query, and worse, would let an empty
   // result read as "the library has nothing like that" — a claim about a table the caller was
   // never allowed to look in.
-  const body = tools.slice(tools.indexOf('  search_asset_library: {'), tools.indexOf('  find_verified_asset: {'));
+  const start = tools.indexOf('  search_asset_library: {');
+  const end = tools.indexOf('  find_verified_asset: {');
+  // A failure to find either marker must not silently become "start to end of file" — that would
+  // let this test read as passing (or failing for the wrong reason) while actually observing
+  // nothing. A guard that cannot see the thing it guards must say so loudly.
+  assert.notEqual(start, -1, 'search_asset_library marker moved or was renamed');
+  assert.notEqual(end, -1, 'find_verified_asset marker moved or was renamed');
+  const body = tools.slice(start, end);
   const refusal = body.indexOf('sourceRefusal(');
   const search = body.indexOf('searchAssetLibrary(');
   assert.ok(refusal !== -1, 'it must consult the policy');
