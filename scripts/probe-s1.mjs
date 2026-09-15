@@ -57,7 +57,7 @@ const fail = (what, why) => findings.push({ what, why });
 async function get(path) {
   const url = `${BASE}${path}${path.includes('?') ? '&' : '?'}_probe=${Date.now()}${Math.random().toString(36).slice(2)}`;
   const res = await fetch(url, { redirect: 'follow' });
-  return { status: res.status, body: await res.text() };
+  return { status: res.status, contentType: (res.headers.get('content-type') ?? '').toLowerCase(), body: await res.text() };
 }
 
 /* ------------------------------------------- clause 4's expected value, derived --- */
@@ -84,6 +84,22 @@ for (const path of ['/', '/pricing']) {
   pages[path] = r;
   // CLAUSE 1
   if (r.status !== 200) fail(`${path} returned ${r.status}`, 'clause 1 — the site and /pricing must return 200');
+
+  //[[ AND IT MUST BE A PAGE, NOT A DOWNLOAD. Beyond §3.4's letter, squarely inside its point.
+  //
+  //   /pricing served 200 with 36,951 correct bytes and `content-type: application/octet-stream`,
+  //   so every browser DOWNLOADED the commercial page instead of rendering it. It passed a status
+  //   check, a byte-count check, and every grep over its body, because curl and grep do not care
+  //   what the content type is. §3.2's stranger test is "a person with a fresh browser can ___",
+  //   and the answer for a file that downloads is: not read this page.
+  //
+  //   Checked here rather than in a checker of its own because it is the same question S1 asks. ]]
+  if (r.status === 200 && !r.contentType.includes('text/html')) {
+    fail(
+      `${path} serves ${r.contentType || '(no content-type)'}, not text/html`,
+      'a 200 that a browser downloads instead of rendering is not a page a stranger can read',
+    );
+  }
 }
 
 const both = `${pages['/'].body}\n${pages['/pricing'].body}`;
@@ -127,6 +143,7 @@ const capture = {
   headSha: sha,
   clauses: {
     status: Object.fromEntries(Object.entries(pages).map(([p, r]) => [p, r.status])),
+    contentType: Object.fromEntries(Object.entries(pages).map(([p, r]) => [p, r.contentType])),
     userVisibleGolem: golem.length,
     forbiddenPhrases: forbidden.length,
     publishedPerDay: published,
@@ -140,7 +157,7 @@ const capture = {
 writeFileSync(join(OUT, 'S1.json'), `${JSON.stringify(capture, null, 2)}\n`);
 
 console.log(`S1 probed against ${BASE} at HEAD ${sha.slice(0, 7)}`);
-console.log(`  clause 1  status / ${pages['/'].status}, /pricing ${pages['/pricing'].status}`);
+console.log(`  clause 1  / ${pages['/'].status} ${pages['/'].contentType}, /pricing ${pages['/pricing'].status} ${pages['/pricing'].contentType}`);
 console.log(`  clause 2  user-visible Golem: ${golem.length}`);
 console.log(`  clause 3  forbidden phrases: ${forbidden.length}`);
 console.log(`  clause 4  published ${published.map((p) => p.day).join('/')} per day against PLAN_LIMITS.free ${FREE_PER_DAY}`);

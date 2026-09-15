@@ -1,11 +1,15 @@
 {
   "station": "S1",
   "origin": "https://golem.moshe-barami111.workers.dev",
-  "headSha": "59353008d403cc3453f38bac7d433c3157f9c240",
+  "headSha": "62aa4a938e0eff30c0f010ab734d7278a5694c02",
   "clauses": {
     "status": {
       "/": 200,
       "/pricing": 200
+    },
+    "contentType": {
+      "/": "text/html; charset=utf-8",
+      "/pricing": "text/html; charset=utf-8"
     },
     "userVisibleGolem": 0,
     "forbiddenPhrases": 0,
