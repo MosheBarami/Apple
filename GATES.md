@@ -282,6 +282,13 @@ which may have drifted from them. It exits 2 when no daemon is reachable instead
 pass over nothing, which is why this row can be red for an environment reason and that is the
 correct behaviour. Written by rbxai-04; wired here because GATES.md is mine.
 
+AND IT DOES NOT PROVE THE DEPLOYED DATABASE. Anything configured in the Supabase dashboard rather
+than in a migration is invisible to this, and a production database that has drifted from these
+files would still let this gate go green. There is no probe anywhere in this repository comparing
+the deployed schema against the migrations — G-S1 does that for the site's ORIGIN and nothing does
+it for the DATABASE. Recorded in BLOCKERS.md §D, because the hole is hidden by this gate looking
+like it covers it.
+
 - [x] G-ORACLE-7: Every pixel rule fires, and the drift rule says which build it compared
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-ORACLE-7 -- node --test tests/check-pixels.test.mjs
     EXPECT: G-ORACLE-7 OK

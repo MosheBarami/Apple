@@ -125,6 +125,7 @@ Listed so it is clear what is *not* waiting on you. These are mine to do.
 | `ADMIN_KEY` can raise spend ~22× | `budget.ts:136-137` clamps at 2M neurons/day. Single static secret, exempt from user auth. |
 | Rebrand to Apple | 322 files. Infrastructure identifiers (worker name, D1 name, KV ids, DO classes) must **not** be renamed. |
 | Workspace RTL unverified | Logical properties landed (`2f63cd0`) and the auth screen verifies. The workspace is behind a login. |
+| No probe compares the DEPLOYED database against the migrations | `G-SEC-1` runs `infra/supabase/tests/rls-isolation.mjs`, which applies `infra/supabase/migrations/*.sql` to a fresh Postgres and proves THOSE policies. Anything configured in the Supabase dashboard rather than in a migration is invisible to it, and a production database that has drifted from these files still lets the gate go green. `G-S1` probes the deployed ORIGIN for the site; there is no equivalent probe of the deployed DATABASE. The hole is dangerous precisely because G-SEC-1 looks like it covers it, and "tenant isolation is proven" is the sentence someone will quote from it. Raised by rbxai-04 on the day the gate was wired. |
 
 ---
 
