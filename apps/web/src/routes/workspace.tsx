@@ -17,6 +17,7 @@ import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
+import { StudioLinkNote } from '../components/ws/studio-link-note';
 import { useToast } from '../components/toast';
 import { EditableProjectTitle } from '../components/editable-title';
 import { PresenceBar } from '../components/presence-bar';
@@ -28,7 +29,7 @@ import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
+import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, rebindStudioPlace, savePreferences, type SearchHit } from '../lib/api';
 import { MembersPanel } from '../components/ws/members-panel';
 import { FilesPanel } from '../components/ws/files-panel';
 import { ACCESS_LOADING, allows, normaliseAccess, type AccessState } from '../lib/capabilities';
@@ -198,6 +199,23 @@ export function WorkspacePage() {
    * below cannot linger after Studio attaches or reappear while it is attached.
    */
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
+
+  /**
+   * Bind this project to whatever place Studio has open now.
+   *
+   * Offered ONLY from the mismatch sentence, which is the one state where it is the right answer:
+   * the link is healthy, the pill is green, and every op is being withheld because Studio is
+   * holding a different place. The worker clears the binding and re-binds on the next identifiable
+   * state event — the same path a first pairing takes — so the poll parked in the long hold is
+   * released and the queued work goes through within a round trip. No local state is updated here:
+   * the confirmation is the `studio_status` broadcast that follows, which is the only source this
+   * screen trusts about the link.
+   */
+  const rebindPlace = useCallback(() => {
+    rebindStudioPlace(projectId)
+      .then(() => toast('Bound to the place Studio has open. Your queued changes will go through now.', 'success'))
+      .catch((e) => toast(e instanceof Error ? e.message : 'Could not rebind this project.', 'error'));
+  }, [projectId, toast]);
 
   // Your own id, so the presence row shows the OTHER people. Null until the session loads, and
   // presenceView is explicit about showing everyone rather than guessing which face is yours.
@@ -656,7 +674,7 @@ export function WorkspacePage() {
               components/presence-model.ts. */}
           <PresenceBar present={presence} selfUserId={selfUserId} />
           {studioStatus === 'connected' ? (
-            <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
+            <span className="gx-pill is-live" title={studio.state?.placeName ?? studio.link.place?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
               {/* The PLACE name, which is worth showing: it says which place is paired,
                   and that is not always the project you are looking at. Below 860px it
@@ -664,7 +682,12 @@ export function WorkspacePage() {
                   a project title of the same name and BOTH truncated, so the topbar
                   showed the same name twice and neither legibly. The full name stays in
                   the title attribute at every width. */}
-              <span className="gx-pill__place">{studio.state?.placeName ?? 'Studio'}</span>
+              {/* `studio.state` only arrives on the studio_status the worker sends when a plugin
+                  goes from absent to present. A tab opened or refreshed while Studio was ALREADY
+                  attached never gets one — and fell back to the literal word "Studio" while the
+                  bound place sat unread on `hello`. Reported place first (it is what Studio has
+                  open this second), then the binding, then the generic word. */}
+              <span className="gx-pill__place">{studio.state?.placeName ?? studio.link.place?.placeName ?? 'Studio'}</span>
               <span className="gx-pill__short">Studio</span>
             </span>
           ) : studioStatus === 'connecting' ? (
@@ -770,6 +793,17 @@ export function WorkspacePage() {
           </button>
         </div>
       </header>
+
+      {/* The one sentence under the Studio pill — when it last polled, how much work is waiting,
+          how slow the round trip is, or the fact that Studio is holding the wrong place open. Draws
+          nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
+          button is passed only while a mismatch is actually on the wire; see components/ws/
+          studio-link-note.tsx. */}
+      <StudioLinkNote
+        status={studioStatus}
+        facts={studio.link}
+        onRebind={studio.link.placeMismatch ? rebindPlace : undefined}
+      />
 
       {/* --------------------------------------------------- conversation */}
       <div className="gx-scroll" ref={scrollRef} onScroll={onScroll}>

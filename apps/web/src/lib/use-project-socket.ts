@@ -32,6 +32,7 @@ import {
   mockStudioState,
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
+import { NO_LINK_FACTS, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
 
 export interface ToolEvent {
   toolId: string;
@@ -156,6 +157,14 @@ export interface ProjectSocket {
      * than empty until then.
      */
     selection: StudioEventSelection | null;
+    /**
+     * WHEN it last polled, HOW MUCH is waiting, WHICH place it has open, and HOW SLOW the round
+     * trip is — the four questions a user actually has once `connected` is false, every one of
+     * which the worker already measured and put on the wire, and every one of which this hook used
+     * to drop on the floor. See lib/studio-connection.ts for the rules, and for why an unmeasured
+     * round trip is null here rather than 0.
+     */
+    link: StudioLinkFacts;
   };
   quota: QuotaState | null;
   /**
@@ -281,11 +290,13 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     state: StudioEventState | null;
     everConnected: boolean;
     selection: StudioEventSelection | null;
+    link: StudioLinkFacts;
   }>({
     connected: false,
     state: null,
     everConnected: false,
     selection: null,
+    link: NO_LINK_FACTS,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
   const [presence, setPresence] = useState<PresenceState[]>([]);
@@ -312,7 +323,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection });
+      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -396,6 +407,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           ...s,
           connected: msg.studioConnected,
           everConnected: s.everConnected || msg.studioConnected,
+          link: linkFactsFrom(s.link, msg),
         }));
         break;
       case 'studio_status':
@@ -404,6 +416,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
           connected: msg.connected,
           state: msg.state ?? null,
           everConnected: s.everConnected || msg.connected,
+          link: linkFactsFrom(s.link, msg),
           // A selection belongs to an attached Studio. Keeping the last one after the plugin
           // dropped would offer the user a reference to objects nothing can act on any more.
           selection: msg.connected ? s.selection : null,
@@ -725,6 +738,21 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         setPresence(msg.present);
         return;
       case 'pong':
+        //[[ THE ONLY ROUND TRIP THIS APP CAN HONESTLY TIME, and it was being thrown away.
+        //
+        //   `t` is the browser's own clock at send, echoed back untouched by the worker — so the
+        //   subtraction happens entirely in one clock domain, which is the only arrangement that
+        //   means anything. Comparing a server timestamp with a local one would produce clock skew
+        //   wearing the costume of latency.
+        //
+        //   NOTHING IS SET WHEN `t` IS ABSENT. A tab talking to a worker build that does not echo
+        //   it has not measured the link, and `Date.now() - undefined` is NaN while
+        //   `Date.now() - 0` is a plausible-looking 1.7 trillion. Staying null is the honest state,
+        //   and `latencyLabel` renders null as nothing at all. ]]
+        if (typeof msg.t === 'number') {
+          const rtt = Date.now() - msg.t;
+          setStudio((s) => ({ ...s, link: { ...s.link, rttMs: rtt >= 0 ? rtt : null } }));
+        }
         break;
     }
   }, []);
@@ -771,7 +799,9 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       setConn('open');
       if (pingTimer.current) window.clearInterval(pingTimer.current);
       pingTimer.current = window.setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' } satisfies ClientMsg));
+        // `t` is this browser's clock, echoed back untouched on the pong so the round trip is
+        // measured in one clock domain. See the 'pong' case.
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping', t: Date.now() } satisfies ClientMsg));
       }, 25_000);
     };
 
@@ -795,7 +825,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       }
       if (closedRef.current) return;
       setConn('reconnecting');
-      setStudio((s) => ({ ...s, connected: false }));
+      // The round trip belonged to the socket that just closed. Keeping the last number would
+      // report a link that is measurably fast while nothing can reach it at all; the heartbeat and
+      // the queue depth DO survive, because they are facts about Studio rather than about this
+      // socket, and dating the disconnection is the whole point of keeping them.
+      setStudio((s) => ({ ...s, connected: false, link: { ...s.link, rttMs: null } }));
       const attempt = attemptsRef.current++;
       const delay = Math.min(30_000, 1000 * 2 ** attempt) + Math.random() * 500;
       reconnectTimer.current = window.setTimeout(() => void connect(), delay);

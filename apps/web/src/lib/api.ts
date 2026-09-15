@@ -486,6 +486,25 @@ export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
     ? Promise.resolve({ code: 'GLM-7F3K2Q', expiresAtIso: new Date(Date.now() + 9 * 60_000).toISOString() })
     : request<PairingCodeDto>(`/api/projects/${encodeURIComponent(projectId)}/pairing`, { method: 'POST' });
 
+// ---------------------------------------------------------------- the Studio link
+//
+// Every route below has existed and been tested on the worker for a while, and this file had no
+// Studio functions at all — so the only way a customer could read their own connection diagnostics
+// was curl plus a JWT, and three shipped docs pages (docs/connect, docs/plugin,
+// docs/troubleshooting) told them to "disconnect from the web workspace", a control that was not
+// there. See apps/worker/src/index.ts and apps/worker/tests/studio-link-routes-live.test.mjs.
+
+/**
+ * Bind this project to whatever place Studio has open right now.
+ *
+ * The escape hatch for the place guard. When the paired Studio has a different place open the
+ * worker withholds every op — correctly, because applying this project's changes to whatever
+ * happens to be open is how somebody's other game gets edited — and until now the browser named
+ * that state nowhere and offered no way out of it short of re-pairing.
+ */
+export const rebindStudioPlace = (projectId: string): Promise<{ ok: boolean }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/place/rebind`, { method: 'POST' });
+
 /**
  * Download the whole conversation as a file.
  *
