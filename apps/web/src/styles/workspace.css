@@ -1549,6 +1549,14 @@
   line-height: 1.5;
 }
 
+/* A capability that was withheld is not the same kind of fact as a cost or an effort tier: it
+   explains a step that never happened, so it is the one line here that has to be noticed. Warm,
+   not red — nothing went wrong, the product did what it was told. */
+.gx-think__denied {
+  padding-block-end: 0.5rem;
+  color: var(--gx-warn, #e0b062);
+}
+
 /* --- the vertical timeline: Intent / Plan / Actions / Validation ---------- */
 
 .gx-timeline {
@@ -4412,6 +4420,30 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* A question already asked, set apart from the corrections below it. The left rule is the whole
+   device: it says "these rows are different from the ones underneath" without a second heading
+   weight or a coloured box, which at this size reads as an alert rather than as a queue. */
+.mem__pending {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-block: 10px 12px;
+  padding-inline-start: 12px;
+  /* Logical, not `border-left`: this product is built in Hebrew and the rule has to move to the
+     other side with the text. rtl-workspace.test.mjs is what keeps that true. */
+  border-inline-start: 2px solid var(--gx-accent, #6aa7ff);
+}
+
+.mem__item--pending {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.mem__item--pending .prefs__from {
+  flex: none;
+  align-self: center;
 }
 
 /* The fact is the content; the control beside it is not. The input takes the room and the button

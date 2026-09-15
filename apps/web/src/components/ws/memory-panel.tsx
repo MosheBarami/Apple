@@ -12,7 +12,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../failure';
-import { ApiError, fetchMemory, saveMemory } from '../../lib/api';
+import { ApiError, decideSuggestion, fetchMemory, saveMemory } from '../../lib/api';
+import { decisionBody, isAlreadyAnswered, pendingFrom, type SuggestionDecision } from '../../lib/memory-approvals';
 import { useToast } from '../toast';
 import { useUnsavedGuard } from '../../lib/unsaved';
 
@@ -61,6 +62,34 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
     onError: (e: Error) => toast(e instanceof ApiError ? e.message : 'Could not save memory', 'error'),
   });
 
+  //[[ ANSWERING WHAT APPLE ASKED TO REMEMBER.
+  //
+  //   Under the `review` memory setting nothing the model learns reaches memory until a person
+  //   says so. The queue and both decisions have existed in the worker the whole time; this is the
+  //   door out of it.
+  //
+  //   THE 404 IS THE INTERESTING CASE. The worker answers 404 rather than 200 when the proposal is
+  //   already gone — two tabs, one proposal, and a 200 would tell the second person "discarded"
+  //   about a decision they never made. So it is reported as what it is and the panel refetches;
+  //   only a real failure becomes an error. ]]
+  const decide = useMutation({
+    mutationFn: ({ decision, fact }: { decision: SuggestionDecision; fact: string | null }) =>
+      decideSuggestion(projectId, decisionBody(decision, fact)),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['memory', projectId] });
+      void qc.invalidateQueries({ queryKey: ['project', projectId] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+    onError: (e: Error) => {
+      if (isAlreadyAnswered(e)) {
+        toast('Someone already answered that one', 'info');
+        void qc.invalidateQueries({ queryKey: ['memory', projectId] });
+        return;
+      }
+      toast(e instanceof ApiError ? e.message : 'Could not record that', 'error');
+    },
+  });
+
   if (state.isPending) {
     return (
       <p className="gx-empty" aria-busy="true">
@@ -83,9 +112,73 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
   }
 
   const empty = !summary.trim() && facts.length === 0;
+  const pending = pendingFrom(state.data.memory);
 
   return (
     <div className="mem">
+      {/* ------------------------------------------------- waiting on an answer -- */}
+      {/*
+        Rendered ABOVE the summary and the facts, because it is the only part of this panel that is
+        waiting on the person reading it. Everything below is a correction they may or may not want
+        to make; this is a question already asked.
+      */}
+      {(pending.summary !== null || pending.facts.length > 0) && (
+        <div className="mem__pending">
+          <span className="field-label">Apple asked to remember</span>
+          <p className="mem__note">
+            Your memory setting is “review”, so nothing here is in use yet. Keep it and Apple works
+            from it on the next run; discard it and nothing changes.
+          </p>
+          <ul className="mem__list">
+            {pending.summary !== null && (
+              <li className="mem__item mem__item--pending">
+                <span className="mem__fact prefs__instruction">{pending.summary}</span>
+                <span className="prefs__from">as the summary</span>
+                <button
+                  type="button"
+                  className="mem__addbtn"
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ decision: 'accept', fact: null })}
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  className="mem__drop"
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ decision: 'discard', fact: null })}
+                >
+                  Discard
+                </button>
+              </li>
+            )}
+            {pending.facts.map((fact) => (
+              <li key={fact} className="mem__item mem__item--pending">
+                <span className="mem__fact prefs__instruction">{fact}</span>
+                <button
+                  type="button"
+                  className="mem__addbtn"
+                  aria-label={`Keep: ${fact}`}
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ decision: 'accept', fact })}
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  className="mem__drop"
+                  aria-label={`Discard: ${fact}`}
+                  disabled={decide.isPending}
+                  onClick={() => decide.mutate({ decision: 'discard', fact })}
+                >
+                  Discard
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {empty && !dirty ? (
         <p className="gx-empty">
           Nothing yet. As you build, Apple keeps a short note about how your project is put together

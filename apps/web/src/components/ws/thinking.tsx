@@ -20,6 +20,7 @@
 import { useState } from 'react';
 import type { RunIntent } from '@golem/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
+import { deniedNote } from '../../lib/tool-permissions';
 import { Activity, ActivityTerminal } from './activity';
 import type { ActivityRun } from './activity-model';
 import type { Evidence } from './evidence-model';
@@ -122,6 +123,7 @@ export function Thinking({
   status,
   streaming,
   intent,
+  deniedTools,
   gates,
   plannedSteps,
   activity,
@@ -132,6 +134,12 @@ export function Thinking({
   streaming: boolean;
   /** From the `run_intent` server message. Absent until the worker sends one. */
   intent?: RunIntent;
+  /**
+   * Tools this run was not given, from `tools_denied`. Absent until the worker sends one, so a
+   * reloaded conversation and an older deployment are silent rather than claiming nothing was
+   * withheld — which is a different statement from having checked and found nothing.
+   */
+  deniedTools?: string[];
   gates: GateRow[];
   plannedSteps: PlannedStep[];
   /** The ordered, timed activity — see `activity-model.ts`. */
@@ -178,6 +186,17 @@ export function Thinking({
                 reloaded from message history. */}
             {activity.terminal && <ActivityTerminal terminal={activity.terminal} />}
           </ol>
+
+          {/* WHAT THIS RUN WAS NOT ALLOWED TO DO.
+              Above the effort line and below the timeline, because it explains the timeline: a
+              step that never happened leaves no row, and without this the absence has no cause
+              anywhere on the screen. Drawn only when something really was withheld — `deniedNote`
+              returns null otherwise, and an empty announcement is worse than no announcement. */}
+          {deniedNote(deniedTools) && (
+            <p className="gx-think__foot gx-think__denied" role="note">
+              {deniedNote(deniedTools)}
+            </p>
+          )}
 
           {/* The reasoning POLICY's own justification for the effort tier it
               picked. A classification of the request, not the model's private
