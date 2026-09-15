@@ -2972,13 +2972,16 @@
   /* The space the fixed button occupies, given back to the layout. Without this the project
      title starts underneath it. 60px min-height on .gx-top already clears it vertically. */
   .gx-ws .gx-top {
-    padding-inline-start: 3.15rem;
+    /* 0.72rem offset + the 44px button + a gap. Measured at 375px rather than guessed: the
+       editable title carries a negative inline margin so its hover background sits flush, which
+       put its first letter under the button when this was only 3.15rem. */
+    padding-inline-start: 4rem;
   }
 
   /* The plain routes scroll their own content, so a heading at the top of the scroller would
      pass under the fixed button on the way up. */
   .gx-main > .page {
-    padding-block-start: 3.4rem;
+    padding-block-start: 4.25rem;
   }
 
   .gx-thread,
