@@ -176,6 +176,27 @@ test('a model whose metric is UNMEASURABLE is unranked, not ranked below a model
   assert.equal(rows[2].rank, null, 'an unmeasured model was assigned a rank');
   assert.equal(rows[2].reason, 'all_records_ungraded');
   assert.deepEqual(rows.map((r) => r.rank), [1, 2, null]);
+
+  // THE ORDER ABOVE WAS A COINCIDENCE OF THESE NAMES. With the availability clause
+  // `if (x.available !== y.available) return x.available ? -1 : 1` deleted, the comparator falls
+  // through to `y.value - x.value`, and `null - 0` is 0 — a TIE — so the order is decided by
+  // whatever the sort does with equal keys. 'bad' happens to precede 'unmeasured', so the
+  // assertion passed against a comparator that had stopped separating measured from unmeasured
+  // at all. Measured: removing that clause left the case above green.
+  //
+  // Adversarial names put the tie the other way, which is the whole finding: a model NOBODY COULD
+  // MEASURE is presented above one that was measured and genuinely scored zero. On a leaderboard
+  // that is the worst possible direction for the error — the unmeasured model looks better than
+  // the bad one, and a reader picks it.
+  const adversarial = [rec('good', 't1', 1), deadRec('aaa-unmeasured', 't1'), rec('zzz-scored-zero', 't1', 0)];
+  const worst = leaderboard(scoredByModel(adversarial), { metric: 'passRate' });
+  assert.deepEqual(
+    worst.rows.map((r) => r.model),
+    ['good', 'zzz-scored-zero', 'aaa-unmeasured'],
+    'a model that could not be measured must sort BELOW one that really scored 0, whatever they are called',
+  );
+  assert.equal(worst.rows[2].rank, null);
+  assert.equal(worst.rows[1].rank, 2, 'the genuine zero keeps a real rank');
 });
 
 test('a lower-is-better metric ranks in the other direction', () => {
