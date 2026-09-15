@@ -7335,3 +7335,68 @@ html.has-cursor .cursor {
     grid-row: auto;
   }
 }
+
+/* The consented attachment. The <pre> is the whole point of this block: a checkbox whose
+   contents can only be described in prose is a checkbox nobody can meaningfully tick, so
+   what would be sent is one disclosure away and is the same string that gets sent. */
+.sup__attach {
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2, transparent);
+}
+
+.sup__attachrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+
+.sup__attachrow input {
+  margin-block-start: 0.2rem;
+  flex: none;
+}
+
+.sup__attachlabel {
+  display: block;
+  font-weight: 600;
+}
+
+.sup__attachhint {
+  display: block;
+  margin-block-start: 0.15rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.sup__attachpeek {
+  margin-block-start: 0.55rem;
+}
+
+.sup__attachpeek > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sup__attachpeek > summary:hover {
+  color: var(--ink);
+}
+
+.sup__attachtext {
+  margin-block-start: 0.5rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

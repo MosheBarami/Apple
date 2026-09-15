@@ -35,6 +35,7 @@ import { AppleGlyph } from './glyphs';
 import { Icon, PATH, Popover } from './ws/primitives';
 import { NotificationInbox } from './notification-inbox';
 import { SupportDialog } from './support-dialog';
+import { projectIdFromPath } from './support-model';
 import { OfflineBanner } from './offline-banner';
 import { OnboardingTour } from './onboarding-tour';
 import { restartTour, writeProgress } from '../lib/onboarding';
@@ -185,7 +186,13 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
       {/* The route is passed in rather than read off `window` inside the dialog: this app can be
           sitting on /app#access_token=… after a magic link, and a support widget that reads the
           whole URL files a live session into a table somebody else reads. */}
-      {supportOpen && <SupportDialog onClose={() => setSupportOpen(false)} location={{ pathname: here.pathname }} />}
+      {supportOpen && (
+        <SupportDialog
+          onClose={() => setSupportOpen(false)}
+          location={{ pathname: here.pathname }}
+          projectId={projectIdFromPath(here.pathname)}
+        />
+      )}
     </div>
   );
 }

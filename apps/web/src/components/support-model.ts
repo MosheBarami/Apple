@@ -69,29 +69,152 @@ export interface DraftCheck {
   canSend: boolean;
   /** A sentence only when the user has done something to fix. A blank box is not a mistake. */
   error: string | null;
-  /** Characters left. Goes NEGATIVE past the limit, so the user can see by how much. */
+  /** Characters left, counting the attachment. Goes NEGATIVE, so the user sees by how much. */
   remaining: number;
 }
 
 /**
  * Whether this draft can go, judged before the round trip.
  *
+ * JUDGED ON WHAT WILL BE SENT, attachment included. The column's bound is on the stored string, so
+ * measuring only the typed half accepts a report the server then refuses — and the person is left
+ * with no idea which half was too long, because they can only see one of them.
+ *
  * The blank case returns `canSend: false` with NO error on purpose. A red message under an empty
  * box scolds somebody for not having typed yet; the disabled button already says everything.
  */
-export function checkDraft(raw: unknown): DraftCheck {
+export function checkDraft(raw: unknown, attachment?: string | null): DraftCheck {
   const text = typeof raw === 'string' ? raw : '';
   const trimmed = text.trim();
-  const remaining = SUPPORT_CONTENT_MAX - trimmed.length;
   if (!trimmed) return { canSend: false, error: null, remaining: SUPPORT_CONTENT_MAX };
-  if (trimmed.length > SUPPORT_CONTENT_MAX) {
+  const whole = withAttachment(trimmed, attachment ?? null);
+  const remaining = SUPPORT_CONTENT_MAX - whole.length;
+  if (whole.length > SUPPORT_CONTENT_MAX) {
     return {
       canSend: false,
-      error: `That is ${trimmed.length} characters. Please shorten it to ${SUPPORT_CONTENT_MAX} or fewer.`,
+      error:
+        attachment
+          ? `That is ${whole.length} characters with the connection details attached. Please shorten it to ${SUPPORT_CONTENT_MAX} or fewer, or leave them off.`
+          : `That is ${whole.length} characters. Please shorten it to ${SUPPORT_CONTENT_MAX} or fewer.`,
       remaining,
     };
   }
   return { canSend: true, error: null, remaining };
+}
+
+/* ------------------------------------------------ the consented diagnostic attachment --- */
+
+/**
+ * How much of the report the connection details may take.
+ *
+ * Deliberately well under half the column: the attachment is context for the person's words, and a
+ * bundle that crowds out the report has inverted which of the two matters.
+ */
+export const SUPPORT_ATTACHMENT_MAX = 1400;
+
+/** The header the attachment is joined under. Present only when something is actually attached. */
+const ATTACHMENT_HEADER = '--- Connection details (attached by me) ---';
+
+/** How many operations are worth attaching. The last few are the ones near the failure. */
+const OPS_SHOWN = 6;
+const OP_SUMMARY_MAX = 90;
+
+/** The project this report is about, read off the route. `/projects/:id` — see App.tsx. */
+export function projectIdFromPath(pathname: unknown): string | null {
+  if (typeof pathname !== 'string') return null;
+  const m = /^\/projects\/([^/?#]+)/.exec(pathname);
+  return m && m[1] ? m[1] : null;
+}
+
+/** The shape of what /studio/diagnostics returns, narrowed to what is worth attaching. */
+export interface DiagnosticsLike {
+  link?: {
+    paired?: boolean;
+    connected?: boolean;
+    lastSeenAt?: number | null;
+    queuedOps?: number;
+    pluginVersion?: string | null;
+    pluginProtocol?: number | null;
+  } | null;
+  agentStatus?: string | null;
+  pairingExpiresAt?: number | null;
+  openPlace?: { placeName?: string; placeId?: number; isRunMode?: boolean } | null;
+  placeMismatch?: { message?: string } | null;
+  recentOps?: { kind?: string | null; ok?: number | null; summary?: string | null; created_at?: number }[];
+}
+
+const when = (ms: number | null | undefined): string => {
+  if (typeof ms !== 'number' || !Number.isFinite(ms)) return 'never';
+  return new Date(ms).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+};
+
+/**
+ * The connection details, as the text that would be attached — or null when there are none.
+ *
+ * LINES, NOT JSON. Support has to be able to read this and quote a line of it back; a pasted
+ * object is something only a developer can use, and the person filing the report has to be able to
+ * read it too, because they are the one consenting to send it.
+ *
+ * AND IT NEVER COLLAPSES TO EMPTY. "Studio will not connect" is the commonest report there is, and
+ * it is precisely the case where every field is null. An attachment that vanished when nothing was
+ * paired would go missing exactly when it was most useful, so "not paired" is itself a line.
+ */
+export function diagnosticsAttachment(diag: DiagnosticsLike | null | undefined): string | null {
+  if (typeof diag !== 'object' || diag === null) return null;
+  const link = diag.link ?? {};
+  const lines: string[] = [];
+
+  lines.push(link.paired ? 'Studio pairing: paired' : 'Studio pairing: not paired');
+  lines.push(`Plugin last polled: ${when(link.lastSeenAt)}`);
+  lines.push(`Plugin version: ${link.pluginVersion ?? 'never reported'} (protocol ${link.pluginProtocol ?? '?'})`);
+  if (link.paired) lines.push(`Pairing lapses: ${when(diag.pairingExpiresAt)}`);
+  lines.push(`Queued operations: ${typeof link.queuedOps === 'number' ? link.queuedOps : 0}`);
+  lines.push(`Agent: ${diag.agentStatus ?? 'unknown'}`);
+
+  const place = diag.openPlace;
+  lines.push(
+    place && place.placeName
+      ? `Open place: ${place.placeName} (${place.placeId ?? '?'})${place.isRunMode ? ', running' : ''}`
+      : 'Open place: Studio has never reported one',
+  );
+  if (diag.placeMismatch?.message) lines.push(`Place mismatch: ${diag.placeMismatch.message}`);
+
+  const ops = Array.isArray(diag.recentOps) ? diag.recentOps.slice(-OPS_SHOWN) : [];
+  if (ops.length === 0) {
+    lines.push('Recent operations: none recorded');
+  } else {
+    lines.push('Recent operations (newest last):');
+    for (const o of ops) {
+      // `ok` is 0/1 out of SQLite. A row of identical lines would hide the one that failed, which
+      // is the only row anybody is looking for.
+      const mark = o.ok === 1 ? 'ok    ' : o.ok === 0 ? 'FAILED' : '?     ';
+      const summary = (o.summary ?? '').slice(0, OP_SUMMARY_MAX);
+      lines.push(`  ${mark} ${o.kind ?? 'unknown'}${summary ? ` — ${summary}` : ''}`);
+    }
+  }
+
+  const text = lines.join('\n');
+  // Truncated at a line boundary, with the cut stated. A bundle that silently stopped mid-line
+  // would look to support like an operation that never finished.
+  if (text.length <= SUPPORT_ATTACHMENT_MAX) return text;
+  const kept = text.slice(0, SUPPORT_ATTACHMENT_MAX - 40);
+  return `${kept.slice(0, kept.lastIndexOf('\n'))}\n  … (trimmed to fit)`;
+}
+
+/**
+ * The person's words, then the attachment — or the words alone when nothing was attached.
+ *
+ * THEIR WORDS COME FIRST, always. What somebody chose to write is the report; the bundle is
+ * context for it, and a support desk that has to scroll past a machine dump to find the sentence
+ * reads the sentence less carefully.
+ *
+ * ONE STRING, not a second field: the worker redacts `content`, so an attachment that travelled
+ * beside it would be a second route into the support table with no scanner on it.
+ */
+export function withAttachment(text: string, attachment: string | null): string {
+  const body = text.trim();
+  if (!attachment) return body;
+  return `${body}\n\n${ATTACHMENT_HEADER}\n${attachment}`;
 }
 
 export interface SupportRequest {

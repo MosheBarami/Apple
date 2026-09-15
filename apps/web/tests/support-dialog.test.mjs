@@ -205,3 +205,130 @@ test('the submitter is told when their report was edited on the way in', () => {
   // a person reads back a report that does not match what they typed, with no explanation.
   assert.match(DIALOG_TSX, /redacted/, 'the dialog ignores the fact that the report was changed');
 });
+
+/* ------------------------------------------------ the diagnostic attachment --- */
+/**
+ * ATTACHING CONNECTION DETAILS IS A CHOICE, AND A CHOICE REQUIRES SEEING WHAT IS ATTACHED.
+ *
+ * The worker has served /studio/diagnostics for a long time — the bound place, when the pairing
+ * lapses, the last operations — and the one thing missing from every support report was any of it,
+ * so "Studio will not connect" arrived with nothing a person could act on.
+ *
+ * "We may include some diagnostic information to help us help you" is the industry sentence for
+ * this, and it is not consent: it names no field and is satisfied by sending anything at all. So
+ * the preview is required to be THE SAME STRING that gets attached — not a summary of it, not a
+ * list of categories — and the default is off, because a pre-ticked box is not a decision.
+ */
+
+const DIAG = {
+  link: { paired: true, connected: true, lastSeenAt: 1_756_000_000_000, queuedOps: 2, pluginVersion: '1.4.2', pluginProtocol: 3, place: null },
+  agentStatus: 'idle',
+  pairedAt: 1_755_000_000_000,
+  pairingExpiresAt: 1_757_600_000_000,
+  openPlace: { placeName: 'Tower Defence', placeId: 998877, gameId: 112233, isRunMode: false },
+  placeMismatch: null,
+  recentOps: [
+    { op_id: 'o1', kind: 'insert_script', ok: 1, summary: 'added ServerScriptService/Spawner', created_at: 1_755_900_000_000 },
+    { op_id: 'o2', kind: 'apply_model', ok: 0, summary: 'failed: model rejected', created_at: 1_755_900_500_000 },
+  ],
+};
+
+test('nothing is attached unless there is something to attach', () => {
+  assert.equal(typeof M.diagnosticsAttachment, 'function');
+  assert.equal(M.diagnosticsAttachment(null), null, 'a report with no diagnostics attached something anyway');
+  assert.equal(M.diagnosticsAttachment(undefined), null);
+});
+
+test('the attachment says the things support actually needs, in a form a person can read', () => {
+  const t = M.diagnosticsAttachment(DIAG);
+  assert.ok(t, 'no attachment was produced from a full diagnostics record');
+  for (const needle of ['1.4.2', 'Tower Defence', 'insert_script', 'apply_model']) {
+    assert.ok(t.includes(needle), `the attachment omits ${needle}`);
+  }
+  // A wall of JSON is not something a support reply can quote back at somebody.
+  assert.equal(t.trim().startsWith('{'), false, 'the attachment is a JSON dump');
+});
+
+test('a failed operation is marked as failed, not left as a row of identical lines', () => {
+  const t = M.diagnosticsAttachment(DIAG);
+  const failed = t.split('\n').find((l) => l.includes('apply_model'));
+  const worked = t.split('\n').find((l) => l.includes('insert_script'));
+  assert.ok(failed && worked, 'both operations must appear');
+  assert.notEqual(failed.replace('apply_model', ''), worked.replace('insert_script', ''), 'ok and failed render identically');
+});
+
+test('an unpaired project produces an attachment that says so rather than nothing', () => {
+  // "Studio will not connect" is the commonest report there is, and it is exactly the case where
+  // every field is null. An attachment that collapsed to empty here would go missing precisely
+  // when it was most needed.
+  const t = M.diagnosticsAttachment({
+    link: { paired: false, connected: false, lastSeenAt: null, queuedOps: 0, pluginVersion: null, pluginProtocol: null, place: null },
+    agentStatus: 'idle', pairedAt: null, pairingExpiresAt: null, openPlace: null, placeMismatch: null, recentOps: [],
+  });
+  assert.ok(t && t.length > 20, 'an unpaired project attached nothing at all');
+  assert.match(t, /not paired|never/i, 'the attachment does not say that nothing is paired');
+});
+
+test('the attachment is bounded, so it cannot make the report unsendable', () => {
+  const many = {
+    ...DIAG,
+    recentOps: Array.from({ length: 200 }, (_, i) => ({
+      op_id: `o${i}`, kind: 'insert_script', ok: 1, summary: 'x'.repeat(400), created_at: 1_755_900_000_000 + i,
+    })),
+  };
+  const t = M.diagnosticsAttachment(many);
+  assert.ok(t.length <= M.SUPPORT_ATTACHMENT_MAX, `attached ${t.length} characters`);
+  // And it must leave room for the report itself, not merely fit the column.
+  assert.ok(M.SUPPORT_ATTACHMENT_MAX < M.SUPPORT_CONTENT_MAX / 2, 'the attachment may crowd out the message');
+});
+
+test('the message and its attachment are joined so that both survive the limit check', () => {
+  assert.equal(typeof M.withAttachment, 'function');
+  const joined = M.withAttachment('it will not connect', M.diagnosticsAttachment(DIAG));
+  assert.match(joined, /^it will not connect/, "the person's own words must come first");
+  assert.ok(joined.includes('Tower Defence'));
+  // Not attached means not attached: no header, no empty section, nothing.
+  assert.equal(M.withAttachment('it will not connect', null), 'it will not connect');
+});
+
+test('a draft is judged on what will be SENT, attachment included', () => {
+  // The limit belongs to the stored string. Judging the typed half alone accepts a report the
+  // server then refuses, and the person has no idea which half was too long.
+  const filler = 'y'.repeat(M.SUPPORT_CONTENT_MAX - 50);
+  const attach = M.diagnosticsAttachment(DIAG);
+  assert.equal(M.checkDraft(filler).canSend, true, 'the control case is already over the limit');
+  assert.equal(M.checkDraft(filler, attach).canSend, false, 'the attachment was not counted');
+  assert.ok(M.checkDraft(filler, attach).error, 'over-long with an attachment gives no reason');
+});
+
+/* ---------------------------------------------------- the project it is about --- */
+
+test('the project a report is about is read from the route, not asked for', () => {
+  assert.equal(M.projectIdFromPath('/projects/9b1d-abc'), '9b1d-abc');
+  assert.equal(M.projectIdFromPath('/projects/9b1d-abc/roadmap'), '9b1d-abc');
+  for (const none of ['/settings', '/usage', '/', '/projects', '/projects/', '', null, undefined, 42]) {
+    assert.equal(M.projectIdFromPath(none), null, `${JSON.stringify(none)} produced a project id`);
+  }
+});
+
+/* ------------------------------------------------------- the consent wiring --- */
+
+test('the box is not pre-ticked, because a default is not a decision', () => {
+  assert.match(code(DIALOG_TSX), /attach/i, 'the dialog has no attachment control at all');
+  assert.match(code(DIALOG_TSX), /useState\(false\)/, 'no unchecked-by-default state in the dialog');
+});
+
+test('what would be attached is shown before it is attached, and it is the same string', () => {
+  const body = code(DIALOG_TSX);
+  // The preview renders the attachment VALUE. A component that described the attachment in prose
+  // would let the two drift, and the prose is what the person would actually be consenting to.
+  assert.match(body, /diagnosticsAttachment/, 'the dialog never computes the attachment');
+  assert.match(body, /<pre|<details/, 'there is no way to look at what would be sent');
+});
+
+test('the attachment rides inside the message, so the server redacts it like any other text', () => {
+  // Not a second field and not a second request: one string through one redactor. A separate
+  // channel would be a second place for a credential to reach the support table unscanned.
+  assert.match(code(DIALOG_TSX), /withAttachment/, 'the dialog sends the attachment some other way');
+  assert.equal(/attachment:/.test(code(DIALOG_TSX)), false, 'the attachment is sent as its own field');
+});

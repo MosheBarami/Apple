@@ -25,13 +25,15 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from './modal';
 import { SUPPORT_EMAIL } from '@golem/shared';
-import { fetchSupportRequests, submitSupportRequest, type SupportReceipt } from '../lib/api';
+import { fetchStudioDiagnostics, fetchSupportRequests, submitSupportRequest, type SupportReceipt } from '../lib/api';
 import {
   SUPPORT_CATEGORIES,
   SUPPORT_CATEGORY_DEFAULT,
   checkDraft,
   describeRequest,
+  diagnosticsAttachment,
   supportPageOf,
+  withAttachment,
 } from './support-model';
 
 export interface SupportDialogProps {
@@ -46,20 +48,48 @@ export interface SupportDialogProps {
    * the whole URL, because there is no line here that could.
    */
   location: { pathname: string };
+  /**
+   * The project whose connection details may be offered — null when the person is not on one.
+   *
+   * Read off the route by the caller (`projectIdFromPath`) rather than asked for: somebody filing
+   * a report is describing where they are, and making them pick a project from a list is asking
+   * them to restate a fact the app already knows.
+   */
+  projectId?: string | null;
 }
 
-export function SupportDialog({ onClose, location }: SupportDialogProps) {
+export function SupportDialog({ onClose, location, projectId }: SupportDialogProps) {
   const [kind, setKind] = useState<string>(SUPPORT_CATEGORY_DEFAULT);
   const [text, setText] = useState('');
+  /*
+   * OFF. Not "off unless the category is bug", not "on for Studio problems" — off, until somebody
+   * ticks it. The repo's own asset-source dialog says it best: a default is not a decision, and
+   * this one sends the state of a person's editor to another human being.
+   */
+  const [attach, setAttach] = useState(false);
   const [receipt, setReceipt] = useState<SupportReceipt | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const draft = checkDraft(text);
+  // Fetched only when there is a project to fetch it for. The preview has to show the REAL bundle
+  // — a preview of a placeholder is a preview of nothing — so the request happens before the tick,
+  // and the tick decides only whether it is sent.
+  const diagnostics = useQuery({
+    queryKey: ['support-diagnostics', projectId],
+    queryFn: () => fetchStudioDiagnostics(projectId as string),
+    enabled: Boolean(projectId),
+    // Owner-only route: a collaborator is answered 404, and that is a reason to offer nothing
+    // rather than to retry.
+    retry: false,
+  });
+
+  const bundle = diagnosticsAttachment(diagnostics.data ?? null);
+  const attachment = attach ? bundle : null;
   const page = supportPageOf(location);
+  const draft = checkDraft(text, attachment);
 
   const send = useMutation({
-    mutationFn: () => submitSupportRequest({ kind, content: text.trim(), page }),
+    mutationFn: () => submitSupportRequest({ kind, content: withAttachment(text, attachment), page }),
     onSuccess: (r) => {
       setReceipt(r);
       setFailed(null);
@@ -152,6 +182,32 @@ export function SupportDialog({ onClose, location }: SupportDialogProps) {
             autoFocus
           />
         </label>
+
+        {/*
+          CONSENT, WHICH MEANS SEEING THE ACTUAL STRING.
+          "We may include diagnostic information to help us help you" names no field and is
+          satisfied by sending anything at all. What is rendered in the <pre> below is the exact
+          value passed to `withAttachment` — the same variable, not a description of it — so there
+          is no version of this that shows one thing and sends another.
+        */}
+        {bundle && (
+          <div className="sup__attach">
+            <label className="sup__attachrow">
+              <input type="checkbox" checked={attach} onChange={(e) => setAttach(e.target.checked)} />
+              <span>
+                <span className="sup__attachlabel">Attach my connection details</span>
+                <span className="sup__attachhint">
+                  What Studio has reported about this project: pairing, plugin version, the open place
+                  and the last few operations. Nothing is sent unless you tick this.
+                </span>
+              </span>
+            </label>
+            <details className="sup__attachpeek">
+              <summary>Show exactly what would be attached</summary>
+              <pre className="sup__attachtext">{bundle}</pre>
+            </details>
+          </div>
+        )}
 
         <p className="field-hint sup__meta">
           {page ? (
