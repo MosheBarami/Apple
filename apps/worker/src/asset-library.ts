@@ -609,20 +609,30 @@ export async function upsertAssets(env: Pick<Env, 'CORPUS'>, records: AssetProve
     .join(', ');
 
   let written = 0;
+  //[[ ONE ROUND TRIP PER CHUNK, NOT 2N+1.
+  //
+  //   This loop used to `await` each statement on its own: one insert, then a delete and an insert
+  //   into the FTS mirror FOR EVERY ROW. At 50 rows that is 101 sequential round trips to a
+  //   single-threaded D1, and a 350,000-row harvest works out at roughly fifty hours — which is
+  //   not a slow ingest, it is an ingest nobody will ever finish running.
+  //
+  //   `batch()` sends the whole chunk as one request and D1 runs it as an implicit transaction, so
+  //   a chunk that fails leaves none of its rows half-written. The FTS mirror stays delete-then-
+  //   insert because a standalone fts5 table has no upsert — it is just no longer 2N round trips
+  //   to say so. ]]
   for (let i = 0; i < good.length; i += per) {
     const slice = good.slice(i, i + per);
     const placeholders = slice.map(() => `(${COLUMNS.map(() => '?').join(',')})`).join(',');
     const binds = slice.flatMap((r) => bindValues(r, status, now));
-    await env.CORPUS.prepare(`insert into asset_library(${cols}) values ${placeholders} on conflict(id) do update set ${updates}`)
-      .bind(...binds)
-      .run();
-    // FTS5 mirror: delete-then-insert, because a standalone fts5 table has no upsert.
-    for (const r of slice) {
-      await env.CORPUS.prepare(`delete from asset_library_fts where asset_id = ?`).bind(r.id).run();
-      await env.CORPUS.prepare(`insert into asset_library_fts(asset_id, name, tags, kind, author) values(?,?,?,?,?)`)
-        .bind(r.id, r.name, r.tags.join(' '), r.kind, r.author)
-        .run();
-    }
+    const statements = [
+      env.CORPUS.prepare(`insert into asset_library(${cols}) values ${placeholders} on conflict(id) do update set ${updates}`).bind(...binds),
+      ...slice.flatMap((r) => [
+        env.CORPUS.prepare(`delete from asset_library_fts where asset_id = ?`).bind(r.id),
+        env.CORPUS.prepare(`insert into asset_library_fts(asset_id, name, tags, kind, author) values(?,?,?,?,?)`)
+          .bind(r.id, r.name, r.tags.join(' '), r.kind, r.author),
+      ]),
+    ];
+    await env.CORPUS.batch(statements);
     written += slice.length;
   }
   return { written, rejected };
