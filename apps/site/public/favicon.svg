@@ -1,47 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Apple">
   <!--
-    THE PRODUCT MARK: a hexagonal outline containing an isometric cube.
+    THE PRODUCT MARK: one studded brick, drawn isometrically.
 
-    WHAT THIS REPLACED, and why it had to. The previous favicon drew a different mark entirely — an
-    angular "A", a tilted orbital ring and a four-point centre credit — flattened from a glossy 3D
-    render. Three things were wrong with it, and none was visible from inside this repository:
+    WHERE IT CAME FROM. The owner asked for the brand to be made in ChatGPT rather than in a
+    terminal, so it was: the render is apps/site/brand/apple-mark-source.png, generated in his own
+    ChatGPT account from a prompt naming this palette. That render is an azure brick carrying a
+    single stud, standing on a white studded plate. This is that drawing, authored as vector so
+    the whole icon set can be generated from one file and stay crisp at 16px.
 
-      1. That mark appears NOWHERE ELSE. The product mark is the hexagon-and-cube: it is what
-         AppleMark.astro draws, what DESIGN-SPEC.md §0 specifies, and what the landing suite
-         asserts by class (.gm__hex, .gm__cube). The tab showed one identity and the page another.
-      2. It was derived from apps/site/public/brand/apple-mark-3d.png, and the 3D direction is
-         cancelled. Its own comment said so: "the supplied artwork is a 1254px glossy 3D render".
-      3. Its ground was #07080F — the palette from before the current one.
+    WHAT IT REPLACED. A hexagon outline containing three lines that suggested a cube. It was
+    correct, and it was line art: at 16px a 3-unit stroke on a 48-unit tile is one device pixel of
+    outline around nothing, and the mark read as a grey ring. A solid form with three shaded faces
+    keeps a silhouette at any size, which is the only property a favicon actually needs.
 
-    Geometry is the 32-unit mark scaled to a 48-unit tile: a regular pointy-top hexagon of
-    circumradius 15 about (24,24), and three lines from the apex through the centre to the two
-    lower vertices, describing a cube's top, left and right faces without drawing one of them.
+    THE PLATE IS NOT DRAWN. In the render it sits under the brick and reads beautifully at 1254px;
+    at 16px it is four grey smudges under a blue blob. What survives the shrink is the brick and
+    its stud, so that is what this draws. The plate lives on in the section illustrations, where
+    there is room for it.
 
-    DRAWN FOR 16px, WHICH IS THE SIZE THAT MATTERS. The product mark strokes at 1.6/32 (5% of the
-    canvas); at 16px that is 0.8 of a device pixel and the hexagon disappears into grey. This
-    strokes at 3/48 (6.25%) and drops the cube's interior lines to a lighter weight, so at a
-    favicon's real size the silhouette survives even when the inner detail cannot.
+    GEOMETRY. A regular isometric cube about (24,26): apex (24,11), shoulders at x=11 and x=37 on
+    y=18.5, waist (24,26), and a 12-unit body. The three faces get three values of the same azure
+    so the form reads without an outline. The stud is an ellipse on the top face centroid with a
+    2-unit collar, which is what makes it a brick rather than a box.
 
-    The gradient is the design's accent ramp (#38b6ff, #2f7dff, #8b5cf6). It carries no text,
-    which is the only reason the bright ramp is allowed here; landing.css keeps a darker ramp for
-    anything type sits on, and says why beside it.
-
-    NOTE FOR WHOEVER EDITS THIS COMMENT: an XML comment may not contain a double hyphen. Naming a
-    CSS custom property in here the obvious way makes the whole file fail to parse, and a favicon
-    that fails to parse renders as nothing at all — no console error, no build failure, no icon.
+    NOTE FOR WHOEVER EDITS THIS COMMENT: an XML comment may not contain a double hyphen. Writing a
+    CSS custom property the obvious way in here makes the file fail to parse, and a favicon that
+    fails to parse renders as nothing at all, with no console error and no build failure.
   -->
-  <defs>
-    <linearGradient id="a" x1="10" y1="8" x2="38" y2="40" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#38B6FF"/>
-      <stop offset=".52" stop-color="#2F7DFF"/>
-      <stop offset="1" stop-color="#8B5CF6"/>
-    </linearGradient>
-  </defs>
-
   <rect width="48" height="48" rx="11" fill="#080A0F"/>
 
-  <g fill="none" stroke="url(#a)" stroke-linejoin="round" stroke-linecap="round">
-    <polygon points="24 9 36.99 16.5 36.99 31.5 24 39 11.01 31.5 11.01 16.5" stroke-width="3"/>
-    <path d="M24 10.5V24M24 24 11.88 31M24 24l12.12 7" stroke-width="2.4" opacity=".92"/>
+  <g stroke-linejoin="round">
+    <!-- top face, lightest -->
+    <polygon points="24 11 37 18.5 24 26 11 18.5" fill="#3D93E8"/>
+    <!-- left face -->
+    <polygon points="11 18.5 24 26 24 38 11 30.5" fill="#0F62C4"/>
+    <!-- right face, darkest, so the corner at x=24 reads as an edge -->
+    <polygon points="37 18.5 24 26 24 38 37 30.5" fill="#0A468F"/>
+
+    <!-- The stud: collar first, then the cap, so the cap sits ON it rather than beside it.
+
+         cy is 15.1 and not 14.4. At 14.4 the cap's top edge lands at y=11.3 and the cube's apex is
+         at y=11, so three tenths of a unit of blue poked out of the top of a white stud — at 512px
+         that is a stray pixel above the highlight, and it is the kind of thing that only ever gets
+         noticed after it ships on a 1200px share card. -->
+    <ellipse cx="24" cy="17.3" rx="5.4" ry="3.1" fill="#C9DBF0"/>
+    <rect x="18.6" y="15.1" width="10.8" height="2.2" fill="#C9DBF0"/>
+    <ellipse cx="24" cy="15.1" rx="5.4" ry="3.1" fill="#F6F7FB"/>
   </g>
 </svg>

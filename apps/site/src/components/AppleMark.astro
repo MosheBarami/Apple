@@ -1,15 +1,29 @@
 ---
 /**
- * The Apple mark — a hexagon containing an isometric cube.
+ * The Apple mark — an isometric brick, carrying one stud.
  *
  * Geometry only. No face, no monolith, no rune eyes, no accent fill and no
  * animation: a mark that blinks or reacts reads as a mascot, and the mascot
  * direction is cancelled. See docs/DESIGN-SPEC.md §0.
  *
- * The cube is the classic isometric read: a vertical line from the apex down
- * to the centre, then two lines from the centre out to the lower-left and
- * lower-right vertices. Those three lines describe the top, left and right
- * faces of a cube without drawing a single one of them.
+ * TWO THINGS CHANGED HERE AND BOTH WERE WRONG BEFORE.
+ *
+ * The cube was upside down. The Y ran from the APEX to the centre and out to
+ * the two LOWER vertices, which describes a cube seen from below: what the
+ * viewer reads as the top of the shape is two side faces meeting at an edge,
+ * and there is no top face for anything to sit on. Running it to the BOTTOM
+ * vertex and the two UPPER ones turns it over, and the rhombus at the top of
+ * the hexagon becomes a face you are looking down at.
+ *
+ * Which is what the stud needed. A cube is a box; a box with a stud on it is
+ * the thing this product builds with, and it is the one detail that says
+ * Roblox without saying Roblox. The ellipse sits on the centroid of that top
+ * face, at a lighter stroke so it reads as detail rather than as structure and
+ * drops out cleanly at nav size.
+ *
+ * The favicon draws the same brick, solid and in azure, and the two now agree.
+ * They did not before — the tab showed one identity and the page another, which
+ * is exactly the failure the favicon's own comment was written about.
  *
  * Everything strokes in `currentColor`, so the mark simply takes the colour of
  * whatever text it sits beside — landing nav, docs nav, footer, 404 — and
@@ -26,8 +40,13 @@ interface Props {
 }
 const { size = 32, class: className = '' } = Astro.props;
 
-/* Regular hexagon, circumradius 13 on a 32-unit canvas, apex up. The three
-   "lower" vertices of the Y are the ones at 210° and 330°. */
+/* Regular hexagon, circumradius 13 on a 32-unit canvas, apex up: apex (16,3),
+   upper-right (27.26,9.5), lower-right (27.26,22.5), bottom (16,29),
+   lower-left (4.74,22.5), upper-left (4.74,9.5).
+
+   The Y runs centre-to-BOTTOM and centre-to-each-UPPER vertex, so the rhombus
+   apex/upper-right/centre/upper-left is the face being looked down at. Its
+   centroid is (16, 8.625), which is where the stud goes. */
 const HEX = '16 3 27.26 9.5 27.26 22.5 16 29 4.74 22.5 4.74 9.5';
 ---
 
@@ -41,7 +60,8 @@ const HEX = '16 3 27.26 9.5 27.26 22.5 16 29 4.74 22.5 4.74 9.5';
   class={`gm ${className}`}
 >
   <polygon class="gm__hex" points={HEX}></polygon>
-  <path class="gm__cube" d="M16 3.4V16m0 0-11.05 6.38M16 16l11.05 6.38"></path>
+  <path class="gm__cube" d="M16 28.6V16m0 0L4.95 9.62M16 16l11.05-6.38"></path>
+  <ellipse class="gm__stud" cx="16" cy="8.63" rx="4.2" ry="2.4"></ellipse>
 </svg>
 
 <style>
@@ -50,12 +70,24 @@ const HEX = '16 3 27.26 9.5 27.26 22.5 16 29 4.74 22.5 4.74 9.5';
   }
 
   .gm__hex,
-  .gm__cube {
+  .gm__cube,
+  .gm__stud {
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.6;
     stroke-linejoin: round;
     stroke-linecap: round;
+  }
+
+  .gm__hex,
+  .gm__cube {
+    stroke-width: 1.6;
+  }
+
+  /* The stud is detail, not structure. At nav size (26px) a 1.6 stroke on a
+     4.2-unit ellipse closes into a filled dot; at 1.15 it stays an outline, and
+     below about 20px it fades rather than turning the top face into a blob. */
+  .gm__stud {
+    stroke-width: 1.15;
   }
 
   /* The cube sits a touch lighter than its container so the hexagon reads as
