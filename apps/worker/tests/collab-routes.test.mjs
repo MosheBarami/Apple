@@ -89,6 +89,53 @@ const kv = new Map();
  *  assertion about "nothing was read under a forged key" cannot fail — see the redeem test. */
 let kvReads = [];
 
+/**
+ * Every D1 write the request made, and every promise it handed to `waitUntil`.
+ *
+ * The CORPUS fake used to answer everything with nothing and record nothing, which is right for a
+ * test about STATUS CODES and useless for one about what the route WROTE. A mention and a review
+ * request are both notifications now, and the only proof that the route emits them is the row it
+ * inserts — asserting on the 201 alone would pass just as well with the notify() call deleted.
+ */
+let dbWrites = [];
+/** Work the handler deferred. Without an ExecutionContext the notify path is never even reached. */
+let waits = [];
+
+const corpus = () => ({
+  exec: async () => ({}),
+  batch: async () => [],
+  prepare: (sql) => ({
+    bind: (...args) => ({
+      all: async () => ({ results: [] }),
+      // Null for the dedupe lookup, so every delivery in a test is a fresh row rather than a
+      // coalesce into one that does not exist.
+      first: async () => null,
+      run: async () => {
+        dbWrites.push({ sql, args });
+        return { meta: { changes: 1 } };
+      },
+    }),
+  }),
+});
+
+/** The insert column order in apps/worker/src/notification-store.ts, so a row reads as a row. */
+const NOTIFICATION_COLS = [
+  'id', 'recipient_id', 'kind', 'severity', 'title', 'body', 'project_id', 'project_name',
+  'subject', 'href', 'dedupe_key', 'group_key', 'created_at', 'updated_at', 'deliver_at',
+  'read_at', 'occurrences',
+];
+
+function notificationRows() {
+  return dbWrites
+    .filter((w) => w.sql.startsWith('insert into notifications('))
+    .map((w) => Object.fromEntries(NOTIFICATION_COLS.map((c, i) => [c, w.args[i]])));
+}
+
+/** Let the deferred work finish. `notify` is on waitUntil so the response does not wait for D1. */
+async function settle() {
+  await Promise.all(waits.splice(0));
+}
+
 function parseQuery(url) {
   const u = new URL(url);
   const eq = {};
@@ -171,7 +218,7 @@ const env = () => ({
     list: async () => ({ keys: [] }),
   },
   AI: { run: async () => ({ choices: [{ message: { content: '{}' } }] }) },
-  CORPUS: { exec: async () => ({}), prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }), first: async () => null, run: async () => ({}) }) }), batch: async () => [] },
+  CORPUS: corpus(),
   VEC: { query: async () => ({ matches: [] }), upsert: async () => ({}) },
   SESSION_DO: sessionNamespace(),
   QUOTA_DO: sessionNamespace(),
@@ -187,6 +234,11 @@ async function call(path, { method = 'GET', jwt, body, headers = {} } = {}) {
   const res = await APP.fetch(
     new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(),
+    // A REAL ExecutionContext. The worker defers its notifications onto `waitUntil`, and a harness
+    // that supplies none makes every one of those branches unreachable — `c.executionCtx` THROWS
+    // rather than returning undefined, which is the hazard index.ts:2843 already carries a note
+    // about. Collected so a test can await the work instead of racing it.
+    { waitUntil: (p) => void waits.push(Promise.resolve(p).catch(() => undefined)), passThroughOnException: () => {} },
   );
   const text = await res.text();
   let parsed = null;
@@ -211,6 +263,8 @@ function reset({ members = [] } = {}) {
   doCalls = [];
   doCollabReply = { status: 200, body: { ok: true } };
   kv.clear();
+  dbWrites = [];
+  waits = [];
 }
 
 /** Every route on the shared surface, with the least privileged role that should reach it. */
@@ -309,6 +363,104 @@ test('an EDITOR may comment and build, and still may not restore or invite', asy
 
   assert.equal((await call(`/api/shared/${PROJECT_ID}/versions/restore`, { method: 'POST', jwt: MEMBER_JWT, body: { versionId: 'v' } })).status, 403);
   assert.equal((await call(`/api/shared/${PROJECT_ID}/members`, { method: 'POST', jwt: MEMBER_JWT, body: { userId: STRANGER_ID, role: 'viewer' } })).status, 403);
+});
+
+/* ------------------------------------------------------------------ being told about it --- */
+//
+// A mention and a review request were both already first-class RECORDS — collab-threads.ts calls
+// mentions "notification targets" and refuses one that names a non-member, and the store writes
+// them into `collab_mentions`. Both halves were right and nothing joined them: the target was
+// recorded, and then the named person had to happen to open that project and look.
+//
+// collab-threads.test.mjs:133 tests the RESOLVER. These test the ROUTE, which is a different claim:
+// that what the store actually wrote becomes a row in somebody's inbox. Asserting on the 201 alone
+// would pass just as well with the notify() call deleted.
+
+test('a comment that mentions a member puts a row in THAT member’s inbox, addressed to the project', async () => {
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  // The mention comes back from the STORE, not from the request body: the store applied the policy
+  // (a mention of a stranger resolves to nobody), and notifying from the body would be notifying
+  // from the claim rather than from what was written.
+  doCollabReply = { status: 201, body: { id: 'cmt-9', mentions: [{ userId: MEMBER_ID }] } };
+
+  const res = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { targetKind: 'build', targetId: 'b-1', body: 'have a look @member' },
+  });
+  assert.equal(res.status, 201);
+  await settle();
+
+  const rows = notificationRows();
+  assert.equal(rows.length, 1, `expected one notification, wrote ${rows.length}`);
+  assert.equal(rows[0].kind, 'mention');
+  assert.equal(rows[0].recipient_id, MEMBER_ID, 'the mention must go to the person who was named');
+  assert.equal(rows[0].project_id, PROJECT_ID);
+  assert.equal(rows[0].href, `/app/projects/${PROJECT_ID}`, 'the row has to open the project it is about');
+  assert.equal(rows[0].subject, 'cmt-9', 'the comment id is the dedupe subject');
+});
+
+test('mentioning yourself notifies nobody, because it carries no information', async () => {
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  doCollabReply = { status: 201, body: { id: 'cmt-10', mentions: [{ userId: OWNER_ID }] } };
+  const res = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { targetKind: 'build', targetId: 'b-1', body: 'note to self @me' },
+  });
+  assert.equal(res.status, 201);
+  await settle();
+  assert.deepEqual(notificationRows(), [], 'suppressSelf must be applied on the route, not only in the policy test');
+});
+
+test('a review request tells the reviewer, and the requester hears nothing about their own ask', async () => {
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  doCollabReply = { status: 201, body: { id: 'rev-3', reviewers: [MEMBER_ID, OWNER_ID] } };
+  const res = await call(`/api/shared/${PROJECT_ID}/reviews`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { targetKind: 'build', targetId: 'b-1', reviewers: [MEMBER_ID, OWNER_ID] },
+  });
+  assert.equal(res.status, 201);
+  await settle();
+
+  const rows = notificationRows();
+  assert.equal(rows.length, 1, 'the requester asked themselves for a review; only the other one is news');
+  assert.equal(rows[0].kind, 'approval_requested');
+  assert.equal(rows[0].recipient_id, MEMBER_ID);
+  assert.equal(rows[0].project_id, PROJECT_ID);
+  assert.equal(rows[0].subject, 'rev-3');
+});
+
+test('a comment the store REFUSED notifies nobody, because nothing was written to be told about', async () => {
+  // The branch is on the DO's 201. A route that notified on any response would announce a mention
+  // the store rejected — the person would be told about a comment that does not exist.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  doCollabReply = { status: 400, body: { error: 'bad target', mentions: [{ userId: MEMBER_ID }] } };
+  const res = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { targetKind: 'build', targetId: 'b-1', body: 'hi @member' },
+  });
+  assert.equal(res.status, 400);
+  await settle();
+  assert.deepEqual(notificationRows(), [], 'a refused write must not become a notification');
+});
+
+test('a mention naming somebody the store did not resolve is not notified from the request body', async () => {
+  // The stranger is in the body and NOT in the store's answer. Reading the body would notify a
+  // person who is not on this project — the inbox is the densest "who works with whom" the product
+  // has, and a route that took recipients from the claim would leak that on request.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  doCollabReply = { status: 201, body: { id: 'cmt-11', mentions: [] } };
+  const res = await call(`/api/shared/${PROJECT_ID}/comments`, {
+    method: 'POST',
+    jwt: OWNER_JWT,
+    body: { targetKind: 'build', targetId: 'b-1', body: 'hi', mentions: [{ userId: STRANGER_ID }] },
+  });
+  assert.equal(res.status, 201);
+  await settle();
+  assert.deepEqual(notificationRows(), [], 'recipients must come from the store’s response, never the request');
 });
 
 test('an ADMIN may restore and invite; the OWNER may do everything', async () => {
