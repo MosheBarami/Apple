@@ -137,7 +137,20 @@ export function checkGitRef(raw: string): { ok: true; ref: string } | { ok: fals
 /* --------------------------------------------------------- the file store ----- */
 
 export const WORKSPACE_EXTENSIONS: readonly string[] = ['.md', '.txt', '.json', '.csv', '.luau', '.lua', '.ts', '.js', '.yml', '.yaml'];
-export const WORKSPACE_MAX_BYTES = 128 * 1024;
+// 48 KiB, AND IT USED TO BE 128 KiB — a limit that could never fire.
+//
+// `content` arrives as a JSON string argument, and runWebTool checks MAX_ARGS_CHARS (64,000) at
+// webtools.ts:1001 BEFORE the tool body runs. So anything over 64,000 characters of arguments was
+// refused with "131104 characters of arguments is past the 64000-character limit" — true, useless,
+// and about the wrong thing. The user asked to write a file; they were told about argument
+// encoding. Both workspace size guards below were unreachable: the verification pass removed the
+// contract's `max`, removed the runtime `bytes >` branch, and removed both together, and all three
+// were ZERO RED.
+//
+// Set below the argument cap so the file-specific message is the one that fires, with room for
+// JSON escaping and the rest of the payload. A stated limit has to be the limit that applies, or
+// the number is decoration.
+export const WORKSPACE_MAX_BYTES = 48 * 1024;
 export const WORKSPACE_MAX_DEPTH = 8;
 
 const SEGMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -911,6 +924,16 @@ const workspaceWriteTool: WebTool = {
     if (!verdict.ok) return { error: verdict.detail };
     const content = args.content as string;
     const bytes = new TextEncoder().encode(content).length;
+    // DEFENCE IN DEPTH, AND NO TEST CAN REDDEN IT THROUGH runWebTool. The contract declares
+    // `max: WORKSPACE_MAX_BYTES` on `content`, and validateArgs runs before this body, so every
+    // request that reaches here has already been measured. Deleting this branch turns nothing red —
+    // meaning 6 in docs/FAILURES.md F-58: the break is real and the behaviour is unchanged, because
+    // a named second mechanism covers it.
+    //
+    // Kept because it is the only guard for a caller that reaches writeWorkspaceFile without going
+    // through the contract. If you are simplifying this, the thing to verify is that the contract's
+    // `max` on `content` is still there: that is what covers this one's absence, and it is the only
+    // thing that does.
     if (bytes > WORKSPACE_MAX_BYTES) {
       return { error: `${bytes} bytes is larger than the ${WORKSPACE_MAX_BYTES}-byte workspace file limit` };
     }

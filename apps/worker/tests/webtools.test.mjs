@@ -22,6 +22,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { MAX_ARGS_CHARS } from '../src/tool-contract.ts';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -535,10 +536,39 @@ test('a traversing path never reaches the store at all', async () => {
 });
 
 test('a file larger than the limit is refused rather than truncated into the store', async () => {
+  // `typeof r.error === 'string'` ACCEPTED ANY REFUSAL, which is what made this vacuous: remove the
+  // size guard and something else refuses for its own reasons, and the test cannot tell. Worse, the
+  // limit used to be 128 KiB while runWebTool caps arguments at 64,000 characters BEFORE the tool
+  // body runs, so the size branch was unreachable and the user got a message about argument
+  // encoding when they had asked to write a file. Both guards were removable with zero red.
+  //
+  // Assert the message NAMES the file limit, so only the intended guard can satisfy it.
   const { store, calls } = spyWorkspace();
-  const r = await run('workspace_write', { path: 'big.txt', content: 'x'.repeat(W.WORKSPACE_MAX_BYTES + 1) }, { workspace: store });
-  assert.equal(typeof r.error, 'string');
-  assert.deepEqual(calls, []);
+  const over = 'x'.repeat(W.WORKSPACE_MAX_BYTES + 1);
+  const r = await run('workspace_write', { path: 'big.txt', content: over }, { workspace: store });
+  // Either size guard may be the one that answers — the contract's `max` runs first in practice —
+  // but the message must carry THE LIMIT, so a refusal for some unrelated reason cannot satisfy it.
+  assert.match(
+    r.error,
+    new RegExp(String(W.WORKSPACE_MAX_BYTES)),
+    `refused, but not by a size guard: ${r.error}`,
+  );
+  assert.deepEqual(calls, [], 'nothing may reach the store');
+
+  // THE LIMIT MUST BE REACHABLE AT ALL. This is the assertion that would have caught the original
+  // defect: a file one byte over the workspace limit has to fit inside the argument cap, or the
+  // workspace limit is decoration and its message is never the one anyone sees.
+  assert.ok(
+    JSON.stringify({ path: 'big.txt', content: over }).length < MAX_ARGS_CHARS,
+    'the workspace limit is above the argument cap, so it can never fire',
+  );
+
+  // And a file just UNDER the limit is written, or the two assertions above would pass against a
+  // guard that refuses everything.
+  const { store: ok, calls: okCalls } = spyWorkspace();
+  const fine = await run('workspace_write', { path: 'fine.txt', content: 'x'.repeat(W.WORKSPACE_MAX_BYTES - 64) }, { workspace: ok });
+  assert.equal(fine.error, undefined, `a file under the limit was refused: ${fine.error}`);
+  assert.equal(okCalls.length > 0, true, 'a legal file never reached the store');
 });
 
 test('without a project there is no workspace, and the tool says so instead of inventing one', async () => {
