@@ -25,6 +25,7 @@ import {
   type ScannedScriptInput,
 } from './assets';
 import { searchAssetLibrary } from './asset-library';
+import { GENRE_KIT_IDS, getGenreKit, admitToKit } from './genre-kits';
 import {
   applyEdits,
   checkSyntax,
@@ -2572,7 +2573,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       description:
         'Where should this piece of the scene come from? Returns an ordered list of sources with rationale and the verification gate each requires. Call this BEFORE building anything you might be tempted to search for. Procedural wins almost everywhere; foliage and characters are the exceptions.',
       parameters: S(
-        { need: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'lighting'] } },
+        { need: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'sfx', 'lighting'] } },
         ['need'],
       ),
     },
@@ -2595,6 +2596,57 @@ export const TOOLS: Record<string, ToolImpl> = {
       };
     },
   },
+  get_genre_kit: {
+    def: {
+      name: 'get_genre_kit',
+      description:
+        'Ask for a genre by name and get the whole matched set at once: palette with the job each colour does, Lighting values, the library queries for UI/VFX/textures/props, five sound-effect ids already chosen for that genre, and what to build procedurally instead of fetching. Call this FIRST on any build that has a genre — one call replaces five searches that each return a good answer belonging to a different game.',
+      parameters: S({ genre: { type: 'string', enum: [...GENRE_KIT_IDS] } }, ['genre']),
+    },
+    studio: false,
+    run: async (ctx, a) => {
+      const kit = getGenreKit(String(a.genre ?? ''));
+      if (!kit) {
+        // Naming the ten is the whole answer: a model told only "unknown genre" guesses again, and
+        // the second guess is no better informed than the first.
+        return { error: `there is no "${String(a.genre)}" kit. The ten are: ${GENRE_KIT_IDS.join(', ')}.` };
+      }
+
+      // THE GATE RUNS ON THE WAY OUT, not only in the test. A pin that stopped being admissible —
+      // because the licence table changed, not because this file did — must not reach a customer's
+      // place just because it was correct when it was written.
+      const admitted: { assetId: number; name: string; role: string; use: string }[] = [];
+      const refused: { id: string; why: string }[] = [];
+      for (const p of kit.pinned) {
+        const verdict = admitToKit(p);
+        if (!verdict.admitted) { refused.push({ id: p.id, why: verdict.why }); continue; }
+        admitted.push({
+          assetId: p.robloxAssetId,
+          name: p.name,
+          role: p.role,
+          // Never insert_asset: an Audio id has no geometry, and insert_asset refuses typeId 3.
+          use: `AudioPlayer.AssetId = "rbxassetid://${p.robloxAssetId}"`,
+        });
+      }
+
+      // These ids are already public Creator Store assets, so they are not "discovered" in the
+      // sense insert_asset means — they are not added to libraryAssetIds, because that set waives
+      // three marketplace assertions and nothing here has earned that waiver.
+      return {
+        genre: kit.id,
+        pitch: kit.pitch,
+        palette: kit.palette,
+        lighting: kit.lighting,
+        buildTheseYourself: kit.procedural,
+        searchTheLibraryFor: kit.slots.map((s) => ({ need: s.need, query: s.query, styleTags: s.tags, take: s.count, why: s.why })),
+        sounds: admitted,
+        // Present even when empty is wrong — an empty key reads as "we checked and all were fine",
+        // which is true here only because the loop above actually ran. It is included ONLY when
+        // something was refused, so its presence is always a real event.
+        ...(refused.length ? { soundsRefusedOnLicence: refused } : {}),
+      };
+    },
+  },
   search_asset_library: {
     def: {
       name: 'search_asset_library',
@@ -2603,7 +2655,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S(
         {
           query: { type: 'string' },
-          kind: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle'] },
+          kind: { type: 'string', enum: ['ground', 'building', 'prop', 'foliage', 'character', 'vehicle', 'ui_icon', 'texture', 'particle', 'sfx'] },
           maxTriangles: { type: 'number' },
         },
         ['query'],

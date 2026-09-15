@@ -144,13 +144,20 @@ test('sketchfab: the query asks only for licences the gate would allow anyway', 
 // least. Both declarations are self-contained: a pure function over strings, and a literal. If
 // either stops matching, the extraction FAILS THE TEST rather than quietly checking nothing, which
 // is the only version of this that is worth having.
-const WORKER_SRC = readFileSync(new URL('../apps/worker/src/asset-library.ts', import.meta.url), 'utf8');
+//
+// They live in apps/worker/src/licences.ts, not asset-library.ts, which re-exports them: the genre
+// kits need the same decision and importing it from asset-library would drag D1, Vectorize and the
+// AI gateway into a module that only asks a question about a string. This file follows the
+// declarations rather than the re-export, because a regex over `export { LICENCES } from …` would
+// match and extract nothing — which is exactly the blind-reads-as-clean failure the asserts below
+// exist to prevent.
+const WORKER_SRC = readFileSync(new URL('../apps/worker/src/licences.ts', import.meta.url), 'utf8');
 
 function workerLicenceGate() {
   const fn = /export function normaliseLicence\(verbatim: string\): string \| null \{\n([\s\S]*?)\n\}\n/.exec(WORKER_SRC);
-  assert.ok(fn, 'could not find normaliseLicence in asset-library.ts — this check is blind, not clean');
+  assert.ok(fn, 'could not find normaliseLicence in licences.ts — this check is blind, not clean');
   const table = /export const LICENCES: Readonly<Record<string, LicenceRule>> = (\{\n[\s\S]*?\n\});\n/.exec(WORKER_SRC);
-  assert.ok(table, 'could not find the LICENCES table in asset-library.ts — this check is blind, not clean');
+  assert.ok(table, 'could not find the LICENCES table in licences.ts — this check is blind, not clean');
   return {
     normaliseLicence: new Function('verbatim', fn[1]),
     LICENCES: new Function(`return ${table[1]}`)(),

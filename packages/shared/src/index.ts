@@ -555,6 +555,10 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'find_symbol':
     case 'search_docs':
     case 'choose_asset_source':
+    // Asking for a genre kit reads a static table and touches the place not at all. It sits with
+    // the other two asset-decision tools because it is the same act: deciding what to use before
+    // anything is built. Announcing "Building world" for a lookup would be the wrong claim.
+    case 'get_genre_kit':
     case 'search_asset_library':
     case 'find_verified_asset':
     case 'inspect_model':
