@@ -17,7 +17,7 @@
 import type { Env } from './env';
 import type { AssetProvenance } from './asset-library';
 import { ingestAssets } from './asset-ingest';
-import { uploadTypeFor, uploadAsset, type UploadEnv } from './roblox-upload';
+import { uploadTypeFor, uploadAsset, pollOperation, type UploadEnv, type UploadResult } from './roblox-upload';
 
 export interface ImportEnv extends UploadEnv {
   CORPUS: Env['CORPUS'];
@@ -99,12 +99,21 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise
   });
 
   if (!up.ok) return { id: rec.id, ok: false, error: `upload failed (${up.status}): ${up.error}` };
-  if (!up.done) return { id: rec.id, ok: false, pendingOperation: up.operationId, error: 'upload accepted, Roblox is still processing it' };
+
+  // Roblox answers with an OPERATION, not an asset, and image processing usually finishes in a
+  // few seconds. Waiting here is what turns "accepted" into an id in one pass. It is bounded:
+  // beyond the budget the operation id is handed back so a later pass can resume it, because an
+  // upload that succeeded and was then forgotten is a real asset on Roblox with nothing pointing
+  // at it — a leak that costs the owner storage and gives the library nothing.
+  const settled = up.done ? up : await settle(env, up.operationId);
+  if (!settled.ok) return { id: rec.id, ok: false, error: `upload failed: ${settled.error}`, pendingOperation: settled.operationId ?? undefined };
+  if (!settled.done) return { id: rec.id, ok: false, pendingOperation: settled.operationId, error: 'upload accepted, Roblox is still processing it' };
+  const assetId = settled.assetId;
 
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   const updated: AssetProvenance = {
     ...rec,
-    robloxAssetId: up.assetId,
+    robloxAssetId: assetId,
     sha256: hex(digest),
     importedAt: new Date().toISOString(),
     textureResolution: type === 'Mesh' ? rec.textureResolution : 1024,
@@ -118,10 +127,23 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise
       ok: false,
       // The asset EXISTS on Roblox at this point. Saying "import failed" without that id would
       // strand a real uploaded asset with nothing pointing at it.
-      error: `uploaded as ${up.assetId} but the library refused the row: ${JSON.stringify(res.rejected)}`,
+      error: `uploaded as ${assetId} but the library refused the row: ${JSON.stringify(res.rejected)}`,
     };
   }
-  return { id: rec.id, ok: true, robloxAssetId: up.assetId };
+  return { id: rec.id, ok: true, robloxAssetId: assetId };
+}
+
+/** Wait for an operation, briefly. The delays are stated rather than tuned by feel: ~15 s total. */
+const POLL_DELAYS_MS = [1200, 1800, 2500, 3500, 6000];
+
+async function settle(env: ImportEnv, operationId: string): Promise<UploadResult> {
+  let last: UploadResult = { ok: true, done: false, operationId };
+  for (const wait of POLL_DELAYS_MS) {
+    await new Promise((r) => setTimeout(r, wait));
+    last = await pollOperation(env, operationId);
+    if (!last.ok || last.done) return last;
+  }
+  return last;
 }
 
 /**
@@ -132,9 +154,36 @@ export async function importAsset(env: ImportEnv, rec: AssetProvenance): Promise
  * that determines whether an import is needed. Selecting on the decision would skip a row someone
  * marked active by hand and leave it permanently un-importable.
  */
-export async function pendingAssets(env: Pick<ImportEnv, 'CORPUS'>, limit: number, source?: string): Promise<AssetProvenance[]> {
-  const where = source ? `and source = ?` : '';
-  const binds: unknown[] = source ? [source, limit] : [limit];
+export async function pendingAssets(
+  env: Pick<ImportEnv, 'CORPUS'>,
+  limit: number,
+  source?: string,
+  idPrefix?: string,
+  after?: string,
+): Promise<AssetProvenance[]> {
+  // The prefix exists because the id namespace IS the taxonomy: `poly_haven/textures/…` are the
+  // rows with an Open Use image path, and `poly_haven/hdris/…` are not. Filtering on `kind` would
+  // not separate them — an HDRI and a texture are both `texture` to the planner, correctly.
+  //
+  // `after` is a KEYSET CURSOR and it is not an optimisation. Without it this selector returns the
+  // same rows on every pass — it filters on `roblox_asset_id is null`, and a row that fails for a
+  // permanent reason stays null for ever. The first unimportable row would then sit at the head of
+  // the queue and block every row behind it, while the caller saw a loop that was busy and a count
+  // that never moved. Ordering by id and stepping past the last one seen is what makes the queue
+  // drain instead of stall.
+  const clauses = [
+    source ? 'and source = ?' : '',
+    idPrefix ? "and id like ? escape '\\'" : '',
+    after ? 'and id > ?' : '',
+  ].join(' ');
+  const binds: unknown[] = [];
+  if (source) binds.push(source);
+  // The wildcards in a LIKE pattern are escaped so a prefix containing _ or % cannot widen the
+  // match: `poly_haven/…` contains an underscore, which LIKE reads as "any character".
+  if (idPrefix) binds.push(`${idPrefix.replace(/[\\%_]/g, (m) => `\\${m}`)}%`);
+  if (after) binds.push(after);
+  binds.push(limit);
+  const where = clauses;
   const rows = await env.CORPUS.prepare(
     `select id, name, kind, source, source_url, licence, licence_url, commercial_use,
             attribution_required, author, retrieved_at, imported_at, modifications,
@@ -178,10 +227,10 @@ export async function pendingAssets(env: Pick<ImportEnv, 'CORPUS'>, limit: numbe
  * 429 that this code would then have to distinguish from a real rejection. One at a time is slower
  * and its failures mean what they say.
  */
-export async function importPending(env: ImportEnv, limit: number, source?: string): Promise<{
-  attempted: number; imported: number; failed: number; outcomes: ImportOutcome[];
+export async function importPending(env: ImportEnv, limit: number, source?: string, idPrefix?: string, after?: string): Promise<{
+  attempted: number; imported: number; failed: number; outcomes: ImportOutcome[]; lastId: string | null;
 }> {
-  const rows = await pendingAssets(env, Math.max(1, Math.min(limit, 25)), source);
+  const rows = await pendingAssets(env, Math.max(1, Math.min(limit, 25)), source, idPrefix, after);
   const outcomes: ImportOutcome[] = [];
   for (const rec of rows) {
     try {
@@ -195,5 +244,8 @@ export async function importPending(env: ImportEnv, limit: number, source?: stri
     imported: outcomes.filter((o) => o.ok).length,
     failed: outcomes.filter((o) => !o.ok).length,
     outcomes,
+    // The cursor the caller must send next. Returned even when everything failed — especially
+    // then, because that is the case the cursor exists for.
+    lastId: rows.length ? rows[rows.length - 1]!.id : null,
   };
 }

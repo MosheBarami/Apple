@@ -2346,9 +2346,9 @@ app.post('/api/admin/assets/ingest', async (c) => {
  * by scripts/import-assets.mjs so no single request runs long enough to be killed mid-upload.
  */
 app.post('/api/admin/assets/import', async (c) => {
-  const body = await c.req.json<{ limit?: number; source?: string }>().catch(() => null);
+  const body = await c.req.json<{ limit?: number; source?: string; idPrefix?: string; after?: string }>().catch(() => null);
   const limit = Number.isFinite(body?.limit) ? Number(body?.limit) : 5;
-  return c.json(await importPending(c.env as never, limit, body?.source));
+  return c.json(await importPending(c.env as never, limit, body?.source, body?.idPrefix, body?.after));
 });
 
 app.post('/api/admin/kill-switch', async (c) => {

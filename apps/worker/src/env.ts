@@ -16,6 +16,10 @@ export interface Env {
   /** AI Gateway id; when unset, calls bypass the gateway (still budget-gated) */
   AI_GATEWAY_ID?: string;
   ADMIN_KEY?: string;
+  /** The Roblox account library assets are created under. Public id, not a credential;
+   *  the credential is ROBLOX_API_KEY, declared further down beside the other asset fields. */
+  ROBLOX_CREATOR_USER_ID?: string;
+  ROBLOX_CREATOR_GROUP_ID?: string;
   /**
    * Stripe webhook signing secret. Absent in every environment until billing is switched on,
    * and the webhook route REFUSES rather than degrading to trusting an unsigned body — an
