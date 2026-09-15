@@ -167,6 +167,46 @@ test('THE PROMOTION-CODE FIELD IS SWITCHED ON, so a discount code can be entered
   assert.equal(params(build(LIVE)).get('allow_promotion_codes'), 'true');
 });
 
+/**
+ * THE WINDOW IS OURS, SO THE EXPIRY IS SOMETHING WE CAN TELL SOMEBODY ABOUT.
+ *
+ * Unset, a session lapses 24 hours later — long after the person has forgotten they started it, and
+ * with `checkout.session.expired` arriving into a product that had no case for it. An hour is long
+ * enough to finish a purchase and short enough that "the checkout you started has expired, nothing
+ * was charged" is still about something the reader remembers doing.
+ */
+test('THE CHECKOUT WINDOW IS OURS, AND IT IS INSIDE WHAT STRIPE ACCEPTS', () => {
+  const NOW = 1_800_000_000;
+  const p = params(build(LIVE, { nowSeconds: NOW }));
+  const expires = Number(p.get('expires_at'));
+  assert.ok(Number.isInteger(expires), `expires_at must be a unix second, saw ${p.get('expires_at')}`);
+  assert.ok(expires - NOW >= 30 * 60, 'Stripe refuses a window shorter than 30 minutes');
+  assert.ok(expires - NOW <= 24 * 3600, 'and one longer than 24 hours');
+});
+
+test('a request built with no clock passed in still carries a usable expiry', () => {
+  // A NaN here would be sent to Stripe as the string "NaN" and refuse the whole session, so the
+  // fallback is a real clock rather than an absent field.
+  const now = Math.floor(Date.now() / 1000);
+  const expires = Number(params(build(LIVE)).get('expires_at'));
+  assert.ok(expires - now >= 30 * 60 && expires - now <= 24 * 3600, `expires_at was ${expires} at ${now}`);
+});
+
+test('AN EXPIRED CHECKOUT IS HANDLED, NOT MERELY UNHANDLED', () => {
+  // It reaches the entitlement reader like everything else, and must touch nothing — but "unhandled
+  // event type" is what this reader says about an event it does not know, and this is one it knows
+  // and deliberately does nothing about. The two must not read the same in a log.
+  const out = B.interpretStripeEvent({
+    id: 'evt_exp',
+    type: 'checkout.session.expired',
+    data: { object: { id: 'cs_1', metadata: { userId: 'u_9' } } },
+  });
+  assert.equal(out.userId, 'u_9', 'the session carries the user, so the person can be told');
+  assert.equal(out.subscription, undefined, 'and nothing is applied to their entitlement');
+  assert.ok(!out.creditsDelta, 'nor to their credits');
+  assert.doesNotMatch(out.ignored ?? '', /unhandled/i);
+});
+
 test('the checkout never carries a plan the webhook would trust', () => {
   // Entitlement is recomputed from subscription status and period. Nothing in this request is an
   // instruction about what the user should end up with.

@@ -343,6 +343,16 @@ export function interpretStripeEvent(event: unknown, env?: Env): BillingOutcome 
       return { userId, eventId, creditsDelta: Math.floor(credits) };
     }
 
+    /*
+     * HANDLED, AND DELIBERATELY INERT. The default branch below says "unhandled event type", which
+     * is this reader's word for an event it does not know about — and an expiry is one it knows
+     * about exactly: the person abandoned a checkout, so nothing was bought, so no entitlement and
+     * no credit may move. The two are the same no-op and must not read the same in a log, because
+     * one of them is a gap and the other is a decision. `dunning.ts` is what tells the person.
+     */
+    case 'checkout.session.expired':
+      return { userId, eventId, ignored: 'checkout session expired — nothing was bought, so nothing changes' };
+
     default:
       return { userId, eventId, ignored: `unhandled event type ${type}` };
   }
@@ -446,9 +456,30 @@ export interface CheckoutRequest {
  * reads — so a session that somehow carried no metadata is ignored by the webhook rather than
  * applied to the wrong account.
  */
+/**
+ * How long a checkout page stays open.
+ *
+ * Stripe accepts anything from 30 minutes to 24 hours and defaults to 24. An hour is long enough to
+ * finish a purchase and short enough that "the checkout you started has expired, nothing was
+ * charged" is still about something the reader remembers doing — a notice a day later reads as news
+ * about a stranger.
+ */
+const CHECKOUT_WINDOW_SECONDS = 60 * 60;
+
 export function buildCheckoutRequest(
   env: Env,
-  opts: { userId: string; email?: string | null; plan: PlanId; returnTo: string },
+  opts: {
+    userId: string;
+    email?: string | null;
+    plan: PlanId;
+    returnTo: string;
+    /**
+     * Unix seconds, passed in so the expiry can be asserted at a chosen instant rather than against
+     * the wall clock. It falls back to the real clock instead of to nothing: an absent value would
+     * reach Stripe as the string "NaN" and refuse the whole session.
+     */
+    nowSeconds?: number;
+  },
 ): CheckoutRequest | CheckoutRefusal {
   if (!checkoutConfigured(env)) {
     return { ok: false, status: 503, error: 'checkout is not configured for this deployment' };
@@ -518,6 +549,13 @@ export function buildCheckoutRequest(
   // So a business can put its VAT/GST number on the invoice, and reverse-charge applies where it
   // should. Without it every EU business buyer is charged consumer VAT they cannot reclaim.
   p.set('tax_id_collection[enabled]', 'true');
+  // The window is ours rather than Stripe's 24-hour default, which is what makes the expiry worth
+  // telling somebody about — see CHECKOUT_WINDOW_SECONDS, and the 'checkout.session.expired' case
+  // in interpretStripeEvent that this makes reachable within the hour.
+  const now = typeof opts.nowSeconds === 'number' && Number.isFinite(opts.nowSeconds)
+    ? Math.floor(opts.nowSeconds)
+    : Math.floor(Date.now() / 1000);
+  p.set('expires_at', String(now + CHECKOUT_WINDOW_SECONDS));
   return { ok: true, body: p.toString() };
 }
 
