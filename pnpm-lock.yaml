@@ -122,6 +122,8 @@ importers:
         specifier: workspace:*
         version: link:../design
 
+  packages/sdk: {}
+
   packages/shared: {}
 
   packages/training: {}

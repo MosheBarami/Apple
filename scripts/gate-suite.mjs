@@ -106,20 +106,36 @@ const run = (cmd, args) => {
 // a dead end however good it is. Its own test builds a scratch clone and asserts the real tree is
 // clean, so the content was checked indirectly; running it directly is what makes a violation in
 // the live tree fail the suite rather than a copy of it.
+//[[ EVERY PART IS LABELLED, BECAUSE `SUITE RED` ALONE CANNOT BE ACTED ON.
+//
+//   This printed one line — SUITE RED — and nothing about WHICH of five parts failed. Two of us
+//   spent real time on a red run that turned out to be a checker rather than a test, and neither
+//   could tell from the output; I only found it by re-running the parts by hand. A verdict that
+//   cannot say what produced it sends whoever reads it back to the beginning.
+//
+//   The labels are printed on failure with a tail of the offending output, which is the smallest
+//   thing that turns "the suite is red" into somewhere to look. ]]
 const parts = [
-  run('node', ['scripts/check-workspace-coverage.mjs']),
-  run('node', ['scripts/check-escape-hatches.mjs']),
-  run('node', ['scripts/check-deadends.mjs', '--gate']),
-  run('pnpm', ['-r', 'test']),
+  { label: 'check-workspace-coverage', ...run('node', ['scripts/check-workspace-coverage.mjs']) },
+  { label: 'check-escape-hatches', ...run('node', ['scripts/check-escape-hatches.mjs']) },
+  { label: 'check-deadends', ...run('node', ['scripts/check-deadends.mjs', '--gate']) },
+  { label: 'pnpm -r test', ...run('pnpm', ['-r', 'test']) },
 ];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make
 // `node --test` exit non-zero and turn "no root tests" into "the suite is red".
-if (rootTests.length) parts.push(run('node', ['--test', ...rootTests]));
+if (rootTests.length) parts.push({ label: `root tests (${rootTests.length} files)`, ...run('node', ['--test', ...rootTests]) });
 
 let out = parts.map((p) => p.out).join('\n');
-if (parts.some((p) => !p.ok)) {
+const broken = parts.filter((p) => !p.ok);
+if (broken.length) {
   console.log(summarise(out));
-  console.log('SUITE RED');
+  for (const b of broken) {
+    const lines = b.out.split('\n').filter((l) => l.trim());
+    console.error(`  FAILED: ${b.label}`);
+    // The last few lines carry the verdict for a checker and the failure list for a test run.
+    for (const l of lines.slice(-6)) console.error(`    ${l.slice(0, 160)}`);
+  }
+  console.log(`SUITE RED — ${broken.map((b) => b.label).join(', ')}`);
   process.exit(1);
 }
 const s = summarise(out);
@@ -127,7 +143,12 @@ console.log(s);
 // Belt and braces: a zero exit AND no failure line anywhere.
 const failures = [...out.matchAll(/fail (\d+)/g)].map((m) => Number(m[1])).filter((n) => n > 0);
 if (failures.length || /SELFTEST FAIL/.test(out)) {
-  console.log('SUITE RED');
+  // A part exited 0 while reporting failures inside its own output — so the label above cannot
+  // name it, and the failing test names are the only thing that can.
+  for (const line of out.split('\n')) {
+    if (/^\s*✖|SELFTEST FAIL/.test(line)) console.error(`    ${line.trim().slice(0, 160)}`);
+  }
+  console.log(`SUITE RED — ${failures.reduce((a, b) => a + b, 0)} failing test(s) reported by a part that still exited 0`);
   process.exit(1);
 }
 // The staleness check is LAST, after every other way of being red, so a run that is both stale and

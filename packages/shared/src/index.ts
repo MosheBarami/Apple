@@ -55,7 +55,24 @@ export type StudioOp =
   | { op: 'move_instances'; moves: { path: string; newParent: string }[] }
   | { op: 'run_code'; code: string; timeoutMs?: number } // plugin-context Luau via ModuleScript require
   | { op: 'get_logs'; sinceClock?: number; maxEntries?: number }
-  | { op: 'run_mode'; action: 'start' | 'stop' } // RunService:Run()/Stop() server simulation
+  /**
+   * The Studio test controls, which are exactly `RunService:Run()`, `:Pause()` and `:Stop()`.
+   * That is the whole simulation surface a plugin has: there is no plugin API for Play Solo,
+   * for Run Client, or for starting extra clients, so this union does not pretend to offer them.
+   * `start` is a kept alias for `run` — the playtest tool has sent it since before the companion
+   * panel existed. An unknown action is REFUSED by the plugin, never silently treated as stop.
+   */
+  | { op: 'run_mode'; action: 'start' | 'run' | 'pause' | 'resume' | 'stop' | 'restart' }
+  // Companion direct manipulation: what a person clicks in the panel, with no model in the loop.
+  // `move` is a stud offset, `rotate` is degrees about the target's own centre, `scale` is a
+  // positive multiplier. Non-finite and out-of-range values are refused rather than clamped.
+  | { op: 'transform_instances'; paths: string[]; move?: [number, number, number]; rotate?: [number, number, number]; scale?: number }
+  | { op: 'clone_instances'; paths: string[]; parent?: string }
+  | { op: 'group_instances'; paths: string[]; name?: string }
+  | { op: 'ungroup_instances'; paths: string[] }
+  | { op: 'rename_instance'; path: string; name: string }
+  | { op: 'set_locked'; paths: string[]; locked: boolean }
+  | { op: 'set_visible'; paths: string[]; visible: boolean }
   | { op: 'get_selection' }
   | { op: 'select'; paths: string[] }
   | { op: 'camera_focus'; path: string }
@@ -234,7 +251,31 @@ export interface StudioEventState {
   selectionCount: number;
   pluginVersion: string;
 }
-export type StudioEvent = StudioEventLog | StudioEventState;
+/** One instance in the Studio selection, as the companion mirrors it. */
+export interface SelectionItem {
+  path: string;
+  class: string;
+}
+/**
+ * WHAT IS SELECTED IN STUDIO RIGHT NOW.
+ *
+ * Pushed by the plugin when `Selection.SelectionChanged` fires, not polled, so the web app sees
+ * the user's own click rather than a snapshot taken up to a poll interval later.
+ *
+ * `count` and `items` are two numbers ON PURPOSE. A Studio user can select ten thousand parts
+ * with one drag; `items` is capped at what a poll body can carry, `count` is how many were
+ * actually selected, and `truncated` says which of the two the reader is looking at. Rendering
+ * `items.length` as "N selected" when the cap bit would report a failure to observe as an
+ * observation.
+ */
+export interface StudioEventSelection {
+  kind: 'selection';
+  items: SelectionItem[];
+  count: number;
+  truncated: boolean;
+  clock: number;
+}
+export type StudioEvent = StudioEventLog | StudioEventState | StudioEventSelection;
 
 // Plugin <-> worker HTTP (plugin long-polls; no WebSocket in Studio)
 export interface PluginPollRequest {
@@ -280,6 +321,14 @@ export type ClientMsg =
   | { type: 'resume' }
   | { type: 'checkpoint_create'; label: string }
   | { type: 'checkpoint_restore'; checkpointId: string }
+  /**
+   * "I am still here, and this is what I am doing."
+   *
+   * Sent alongside the keepalive so the other people in a shared project see `typing` before the
+   * message arrives rather than after. The server never takes the client's word for WHO is
+   * sending this — identity comes from the socket — only for what they are up to.
+   */
+  | { type: 'presence'; activity: 'viewing' | 'typing' | 'building' }
   | { type: 'ping' };
 
 /**
@@ -334,7 +383,28 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'get_instance':
     case 'get_selection':
     case 'viewport_info':
+    // The web-facing tools. Every one of these READS something outside the place — a page, a
+    // search, a repository, an image, the project's own scratch files — and changes nothing in
+    // the user's game. `inspecting` is the honest phase for all of them; the `default` they would
+    // otherwise land on announces "Building world", which is a claim about the user's project
+    // that none of these tools has any right to make.
+    case 'web_fetch':
+    case 'browse_page':
+    case 'web_search':
+    case 'github_lookup':
+    case 'git_history':
+    case 'ocr_image':
+    case 'workspace_list':
+    case 'workspace_read':
+    // Capturing a page is looking at it. NOT `rendering`, which in this product means the plugin
+    // is rasterising the Roblox scene — a different machine doing a different thing.
+    case 'screenshot_page':
       return 'inspecting';
+    // Writing a file into Golem's own store, which is what `remembering` already covers: it is
+    // the phase for durable state that belongs to Golem rather than to the place. `building`
+    // would say the agent changed the game, and it did not touch it.
+    case 'workspace_write':
+      return 'remembering';
     case 'edit_script':
       return 'writing_luau';
     case 'create_instances':
@@ -343,6 +413,16 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'insert_asset':
     case 'generate_model':
     case 'generate_image':
+    // generate_sound and speak_line, beside generate_image and for the same reason and with the
+    // same imprecision, named here rather than left to be discovered: all three PRODUCE an asset
+    // and none of them puts it in the place, so "building" overstates what the user's project just
+    // received. It is nevertheless the phase this union offers for making something, and the three
+    // are treated alike rather than one of them being quietly special. A `generating` phase would
+    // be the honest fix; it is a change to AgentPhase and to two exhaustive `Record<AgentPhase, …>`
+    // tables in the web app, which is a different cluster's surface — so it is written down here
+    // instead of half-done.
+    case 'generate_sound':
+    case 'speak_line':
     case 'run_luau':
     // These DO change the place: lighting, ambient effects, and writing a vetted module into it.
     // They are building even though none of them creates geometry.
@@ -354,6 +434,12 @@ export function phaseForTool(tool: string): AgentPhase {
     // but it happens as part of building and there is no truer phase for it.
     case 'focus_camera':
     case 'select_instances':
+    // The two audio tools that change the place. Neither creates geometry — `design_sound` sets
+    // SoundService's reverb and the SoundGroup mixer, `assign_sounds` routes Sounds that already
+    // exist onto those groups — but both write to the user's place, which is what `building`
+    // claims and is therefore the only phase they may honestly announce.
+    case 'design_sound':
+    case 'assign_sounds':
       return 'building';
     case 'render_view':
       return 'rendering';
@@ -575,6 +661,11 @@ export type ServerMsg =
    */
   | { type: 'history_truncated'; fromMessageId: string; removed: number }
   | { type: 'studio_status'; connected: boolean; state?: StudioEventState }
+  /**
+   * The Studio selection changed. Broadcast only when it ACTUALLY changed — the plugin drops a
+   * repeat of the selection it last reported, so this is an event rather than a heartbeat.
+   */
+  | { type: 'studio_selection'; selection: StudioEventSelection }
   | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode }
   | { type: 'delta'; msgId: string; text: string }
   | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
@@ -648,6 +739,25 @@ export type ServerMsg =
   // Emitted once, at run start, after the request has been classified.
   | { type: 'run_intent'; msgId: string; intent: RunIntent }
   | { type: 'error'; code: string; message: string }
+  /**
+   * WHO ELSE IS IN THIS PROJECT RIGHT NOW.
+   *
+   * Sent on connect, on every heartbeat and when a socket closes. `role` rides along because the
+   * UI has to say WHAT someone is — a viewer watching a build and an editor about to change it
+   * are the same avatar otherwise — and the worker only ever sends a role from its own allowlist.
+   * `connections` is how many tabs one person has open, so two tabs read as one person.
+   */
+  | {
+      type: 'presence';
+      present: {
+        userId: string;
+        role: 'viewer' | 'commenter' | 'editor' | 'admin' | 'owner';
+        displayName: string | null;
+        activity: 'viewing' | 'typing' | 'building';
+        connections: number;
+        lastSeenMs: number;
+      }[];
+    }
   | { type: 'pong' };
 
 export interface QuotaState {

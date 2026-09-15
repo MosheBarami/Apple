@@ -22,10 +22,18 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
-for (const line of readFileSync(join(root, '.env'), 'utf8').split('\n')) {
-  const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
-}
+// .env IS A CONVENIENCE, NOT A REQUIREMENT. It is gitignored, so it does not exist in a fresh
+// clone or in CI, and reading it unconditionally made this script throw ENOENT before it had even
+// looked at its arguments — including when the environment already carried both values. The
+// missing-credential error below is still a hard failure; what changed is that it is now the error
+// you get, rather than a stack trace about a file that is supposed to be optional. Required so
+// that infra/rollback-static.mjs can drive this uploader against a throwaway origin in its tests.
+try {
+  for (const line of readFileSync(join(root, '.env'), 'utf8').split('\n')) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+} catch { /* no .env: the environment is expected to carry API_BASE and GOLEM_ADMIN_KEY */ }
 const BASE = process.env.API_BASE;
 const KEY = process.env.GOLEM_ADMIN_KEY;
 if (!BASE || !KEY) throw new Error('API_BASE / GOLEM_ADMIN_KEY missing');
