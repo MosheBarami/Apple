@@ -21,6 +21,7 @@
 // because that is its entire job. It is never reachable from a request - only from the scheduled
 // handler - and everything it returns is re-authorised against the owner before it fires.
 import type { Env } from './env';
+import { oncePerIsolate } from './schema-once';
 import {
   isAutomationEvent,
   isAutomationMode,
@@ -41,7 +42,23 @@ export const RETAIN_RUNS_MS = 90 * 86_400_000;
 /** A per-owner ceiling, so one account cannot fill the dispatcher's working set. */
 export const AUTOMATIONS_PER_OWNER_MAX = 25;
 
-export async function ensureAutomationTables(env: Corpus): Promise<void> {
+/**
+ * The schema, asserted once per isolate rather than once per request.
+ *
+ * Every call used to issue this whole DDL list before the request could do anything — a
+ * sequential round trip per statement to a single-threaded D1, for a schema unchanged since
+ * the deployment booted. Under load D1 answers "exceeded its CPU time limit and was reset"
+ * and the request 500s with an empty body, having written nothing. See schema-once.ts for
+ * the two outages that came from exactly this.
+ *
+ * The key ignores `env` deliberately: one isolate serves one worker with one binding set, so
+ * there is nothing for a second key to distinguish.
+ */
+export function ensureAutomationTables(env: Corpus): Promise<void> {
+  return oncePerIsolate('automation', () => createAutomationTables(env));
+}
+
+async function createAutomationTables(env: Corpus): Promise<void> {
   await env.CORPUS.exec(
     `create table if not exists automations(id text primary key, owner_id text not null, project_id text not null, name text not null, description text, prompt text not null, mode text not null, trigger_kind text not null, schedule_json text, timezone text not null, event text, enabled integer not null, overlap text not null, missed_runs text not null, max_retries integer not null, max_credits_per_run integer not null, max_runs_per_day integer not null, created_at integer not null, updated_at integer not null, next_fire_at integer, last_fire_at integer)`,
   );

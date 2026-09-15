@@ -31,6 +31,7 @@
 // That is the correct trade — a credential whose authority silently grows is the thing scoped
 // credentials exist to prevent.
 import type { Env } from './env';
+import { oncePerIsolate } from './schema-once';
 
 // ---------------------------------------------------------------------------
 // shape of a key
@@ -395,21 +396,18 @@ export function rateLimitFor(mode: KeyMode): number {
  * creation is forgotten rather than remembered as done — caching the failure would leave every
  * later request in this isolate querying a table that was never made.
  */
-let tablesReady: Promise<void> | null = null;
-
+// THIS FILE GOT IT RIGHT FIRST, AND ITS REASONING BECAME schema-once.ts. The promise memo, the
+// shared in-flight run and the forgotten failure were all worked out here; seven other stores
+// re-ran their DDL on every request until D1 reset under a bulk ingest and took down both the
+// asset ingest and a site deploy. The local copy is gone rather than duplicated — one
+// implementation, so the next store to need it cannot get a worse version.
 export function ensureApiKeyTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
-  if (!tablesReady) {
-    tablesReady = (async () => {
-      await env.CORPUS.exec(
-        `create table if not exists api_keys(id text primary key, user_id text not null, mode text not null, name text not null, key_hash text not null unique, scopes text not null, projects text not null, created_at integer not null, expires_at integer, last_used_at integer, revoked_at integer)`,
-      );
-      await env.CORPUS.exec(`create index if not exists idx_api_keys_user on api_keys(user_id)`);
-    })().catch((e: unknown) => {
-      tablesReady = null;
-      throw e;
-    });
-  }
-  return tablesReady;
+  return oncePerIsolate('api-keys', async () => {
+    await env.CORPUS.exec(
+      `create table if not exists api_keys(id text primary key, user_id text not null, mode text not null, name text not null, key_hash text not null unique, scopes text not null, projects text not null, created_at integer not null, expires_at integer, last_used_at integer, revoked_at integer)`,
+    );
+    await env.CORPUS.exec(`create index if not exists idx_api_keys_user on api_keys(user_id)`);
+  });
 }
 
 interface KeyRow {

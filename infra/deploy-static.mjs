@@ -81,12 +81,42 @@ async function upload(localPath, remotePath) {
   const immutable = IMMUTABLE.test(remotePath) && HASHED.test(remotePath);
   for (let i = 0; i * CHUNK < data.length || i === 0; i++) {
     const slice = data.subarray(i * CHUNK, (i + 1) * CHUNK);
-    const res = await fetch(`${BASE}/api/admin/static-upload`, {
-      method: 'POST',
-      headers: { 'X-Admin-Key': KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: remotePath, contentType, b64: slice.toString('base64'), immutable, append: i > 0 }),
-    });
-    if (!res.ok) throw new Error(`${remotePath} chunk ${i}: HTTP ${res.status} ${await res.text()}`);
+    //[[ A CHUNK IS RETRIED, BECAUSE THE FAILURE THAT STOPS THIS IS TRANSIENT AND NOT OURS.
+    //
+    //   The store is D1, and D1 is shared with everything else this worker does. During a bulk
+    //   asset ingest it answers "D1 DB exceeded its CPU time limit and was reset" — a plain 500
+    //   with an empty body — and one of those aborted the whole deploy on the first stylesheet.
+    //
+    //   That is the worst moment for this script to be brittle, because it is also the ROLLBACK
+    //   path: `--file` is what puts a captured copy of a page back over a bad one, run during a
+    //   bad deploy, under pressure. A restore that dies on a transient 500 is a restore that does
+    //   not happen.
+    //
+    //   Three attempts with growing backoff, and then it still throws — a chunk that will not go
+    //   must stop the deploy, because the alternative is a page uploaded with a hole in it. The
+    //   attempt count is printed so a deploy that only just survived does not look like a clean
+    //   one. ]]
+    let res = null;
+    let body = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        res = await fetch(`${BASE}/api/admin/static-upload`, {
+          method: 'POST',
+          headers: { 'X-Admin-Key': KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: remotePath, contentType, b64: slice.toString('base64'), immutable, append: i > 0 }),
+        });
+        if (res.ok) break;
+        body = await res.text();
+      } catch (e) {
+        res = null;
+        body = String(e?.message ?? e);
+      }
+      if (attempt < 2) {
+        console.warn(`  retrying ${remotePath} chunk ${i} after ${res ? 'HTTP ' + res.status : 'network error'}`);
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1) ** 2));
+      }
+    }
+    if (!res?.ok) throw new Error(`${remotePath} chunk ${i}: HTTP ${res?.status ?? 'network'} ${body} (3 attempts)`);
     if ((i + 1) * CHUNK >= data.length) break;
   }
   return data.length;

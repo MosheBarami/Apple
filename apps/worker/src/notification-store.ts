@@ -15,6 +15,7 @@
 // you when their key was rotated - and a listing that could be addressed by user id would be a
 // directory of everyone's activity behind one bad `if`.
 import type { Env } from './env';
+import { oncePerIsolate } from './schema-once';
 import {
   NOTIFICATION_KINDS,
   isNotificationKind,
@@ -39,7 +40,23 @@ export const RETAIN_READ_MS = 30 * 86_400_000;
 /** Unread rows live longer, because nobody has seen them yet. */
 export const RETAIN_UNREAD_MS = 90 * 86_400_000;
 
-export async function ensureNotificationTables(env: Corpus): Promise<void> {
+/**
+ * The schema, asserted once per isolate rather than once per request.
+ *
+ * Every call used to issue this whole DDL list before the request could do anything — a
+ * sequential round trip per statement to a single-threaded D1, for a schema unchanged since
+ * the deployment booted. Under load D1 answers "exceeded its CPU time limit and was reset"
+ * and the request 500s with an empty body, having written nothing. See schema-once.ts for
+ * the two outages that came from exactly this.
+ *
+ * The key ignores `env` deliberately: one isolate serves one worker with one binding set, so
+ * there is nothing for a second key to distinguish.
+ */
+export function ensureNotificationTables(env: Corpus): Promise<void> {
+  return oncePerIsolate('notification', () => createNotificationTables(env));
+}
+
+async function createNotificationTables(env: Corpus): Promise<void> {
   await env.CORPUS.exec(
     `create table if not exists notifications(id text primary key, recipient_id text not null, kind text not null, severity text not null, title text not null, body text, project_id text, project_name text, subject text, href text not null, dedupe_key text not null, group_key text not null, created_at integer not null, updated_at integer not null, deliver_at integer not null, read_at integer, occurrences integer not null)`,
   );

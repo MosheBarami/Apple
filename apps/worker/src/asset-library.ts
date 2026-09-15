@@ -27,6 +27,7 @@ import type { Env } from './env';
 import type { AssetKind } from './assets';
 import { ASSET_KINDS } from './assets';
 import { embed } from './gateway';
+import { oncePerIsolate, resetSchemaOnce } from './schema-once';
 
 // ---------------------------------------------------------------------------------------------
 // Provenance record
@@ -522,38 +523,35 @@ export function assetEmbeddingInput(rec: AssetProvenance): string {
  * The columns are the AssetProvenance record verbatim, plus operational state (status, health) and
  * timestamps that are not part of the provenance itself.
  */
-//[[ THE SCHEMA IS SETTLED ONCE PER ISOLATE, NOT ONCE PER BATCH.
-//
-//   This ran its ten DDL statements on EVERY ingest request. Ten sequential round trips to a
-//   single-threaded D1, before a single row of the batch is written, to assert a schema that has
-//   not changed since the deployment booted.
-//
-//   It is also where the 510,979-row ingest died. D1 reported, on the first statement of a fresh
-//   request:
-//
-//     D1_EXEC_ERROR: Error in line 1: create index if not exists idx_asset_kind
-//     on asset_library(kind, status): D1 DB exceeded its CPU time limit and was reset.
-//
-//   That index already exists — `sqlite_master` was queried on the live database to check, and all
-//   five are there. So the statement did no work; it was merely the first thing to touch a
-//   database the PREVIOUS batch had exhausted, and it reported the reset on the previous batch's
-//   behalf. Ten free statements per request is ten more chances to be that messenger, and the
-//   whole request 500s without writing anything.
-//
-//   WHAT THE CACHE IS AND IS NOT. It remembers that this isolate has already run the DDL — nothing
-//   more. It is not a claim the tables exist (that is `assetLibraryAvailable`, which reads
-//   sqlite_master and is the thing search consults), and a throw is NOT cached: a run that failed
-//   halfway leaves the flag unset so the next request tries again. Caching a failure would turn a
-//   half-built schema into a permanent one for the isolate's whole life. ]]
-let schemaEnsured = false;
-
-/** Test seam: the flag is per-isolate and otherwise unreachable. */
-export function resetAssetSchemaCache(): void {
-  schemaEnsured = false;
+/**
+ * The schema, asserted once per isolate rather than once per ingest batch.
+ *
+ * THIS IS WHERE THE 510,979-ROW INGEST DIED. Ten DDL statements ran on every request, ten
+ * sequential round trips to a single-threaded D1 before a single row was written, and D1 reported
+ * on the first of them:
+ *
+ *   D1_EXEC_ERROR: Error in line 1: create index if not exists idx_asset_kind
+ *   on asset_library(kind, status): D1 DB exceeded its CPU time limit and was reset.
+ *
+ * That index already exists — sqlite_master on the live database says so, and all five are there.
+ * The statement did no work; it was merely the first thing to touch a database the previous batch
+ * had exhausted. Ten free statements per request is ten more chances to be that messenger, and the
+ * whole request 500s having written nothing.
+ *
+ * `oncePerIsolate` is shared with the other six stores that had the same shape, and it is the one
+ * that remembers a RUN rather than a result: a throw is not cached, so a half-built schema cannot
+ * become permanent for the isolate's life.
+ */
+export function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
+  return oncePerIsolate('assets', () => createAssetTables(env));
 }
 
-export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
-  if (schemaEnsured) return;
+/** Test seam: the record is per-isolate and otherwise unreachable. */
+export function resetAssetSchemaCache(): void {
+  resetSchemaOnce('assets');
+}
+
+async function createAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   await env.CORPUS.exec(
     `create table if not exists asset_library(id text primary key, name text not null, kind text not null, source text not null, source_url text not null, licence text not null, licence_url text not null, commercial_use integer not null, attribution_required integer not null, author text not null, retrieved_at text not null, imported_at text, modifications text, roblox_asset_id integer, triangles integer, texture_resolution integer, bounds_studs text, tags text not null, sha256 text, status text not null default 'pending_ingest', health_ok integer not null default 1, last_health_check text, created_at text not null, updated_at text not null)`,
   );
@@ -580,8 +578,6 @@ export async function ensureAssetTables(env: Pick<Env, 'CORPUS'>): Promise<void>
     `create table if not exists asset_verification_log(id integer primary key autoincrement, roblox_asset_id integer not null, checked_at text not null, check_source text not null, provenance text not null, http_status integer, resolved_name text, resolved_type_id integer, resolved_creator_id integer, resolved_has_scripts integer, resolved_is_free integer, resolved_triangles integer, verdict text not null, reasons text, raw_response text, requested_by text)`,
   );
   await env.CORPUS.exec(`create index if not exists idx_verif_asset on asset_verification_log(roblox_asset_id, checked_at desc)`);
-  // Set LAST, and only on the path that reached here without throwing.
-  schemaEnsured = true;
 }
 
 // ---------------------------------------------------------------------------------------------

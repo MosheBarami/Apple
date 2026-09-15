@@ -38,6 +38,7 @@
 //    is the lesson the 299 uploads taught at the account level and which applies again here.
 import type { Env } from './env';
 import { isRobloxScope, ROBLOX_SCOPES, type RobloxScope } from '@golem/shared';
+import { oncePerIsolate } from './schema-once';
 
 export interface CredentialEnv {
   CORPUS: Env['CORPUS'];
@@ -135,7 +136,23 @@ export async function openSecret(env: CredentialEnv, sealed: string): Promise<st
 // storage
 // ---------------------------------------------------------------------------------------------
 
-export async function ensureCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promise<void> {
+/**
+ * The schema, asserted once per isolate rather than once per request.
+ *
+ * Every call used to issue this whole DDL list before the request could do anything — a
+ * sequential round trip per statement to a single-threaded D1, for a schema unchanged since
+ * the deployment booted. Under load D1 answers "exceeded its CPU time limit and was reset"
+ * and the request 500s with an empty body, having written nothing. See schema-once.ts for
+ * the two outages that came from exactly this.
+ *
+ * The key ignores `env` deliberately: one isolate serves one worker with one binding set, so
+ * there is nothing for a second key to distinguish.
+ */
+export function ensureCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promise<void> {
+  return oncePerIsolate('credentials', () => createCredentialTable(env));
+}
+
+async function createCredentialTable(env: Pick<CredentialEnv, 'CORPUS'>): Promise<void> {
   await env.CORPUS.prepare(
     `create table if not exists user_credentials (
        user_id text not null,

@@ -27,6 +27,7 @@ import type { Env } from './env';
 import type { AssetKind } from './assets';
 import type { AssetOriginality, AssetProvenance, AssetSourceSite } from './asset-library';
 import { LICENCES, normaliseLicence, originalityOf } from './asset-library';
+import { oncePerIsolate } from './schema-once';
 
 // ---------------------------------------------------------------------------------------------
 // Source-level credits
@@ -117,7 +118,23 @@ export interface ProjectAsset {
   provenance: AssetProvenance | null;
 }
 
-export async function ensureProvenanceTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
+/**
+ * The schema, asserted once per isolate rather than once per request.
+ *
+ * Every call used to issue this whole DDL list before the request could do anything — a
+ * sequential round trip per statement to a single-threaded D1, for a schema unchanged since
+ * the deployment booted. Under load D1 answers "exceeded its CPU time limit and was reset"
+ * and the request 500s with an empty body, having written nothing. See schema-once.ts for
+ * the two outages that came from exactly this.
+ *
+ * The key ignores `env` deliberately: one isolate serves one worker with one binding set, so
+ * there is nothing for a second key to distinguish.
+ */
+export function ensureProvenanceTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
+  return oncePerIsolate('provenance', () => createProvenanceTables(env));
+}
+
+async function createProvenanceTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   // Composite primary key rather than a surrogate id: usage is a set, and re-placing the same
   // asset is an update to the same fact, not a new one.
   await env.CORPUS.exec(

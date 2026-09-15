@@ -26,6 +26,7 @@
 // the agent being told to do someone else's work.
 import type { Env } from './env';
 import { scanText, type Disclosure, type DisclosureKind } from './redaction';
+import { oncePerIsolate } from './schema-once';
 
 // ---------------------------------------------------------------------------------------------
 // the vocabulary — validated at runtime, because a union is a compile-time promise
@@ -502,7 +503,23 @@ export function parseImport(raw: unknown, target: { scope: MemoryScope; scopeId:
 
 type Corpus = Pick<Env, 'CORPUS'>;
 
-export async function ensureMemoryTables(env: Corpus): Promise<void> {
+/**
+ * The schema, asserted once per isolate rather than once per request.
+ *
+ * Every call used to issue this whole DDL list before the request could do anything — a
+ * sequential round trip per statement to a single-threaded D1, for a schema unchanged since
+ * the deployment booted. Under load D1 answers "exceeded its CPU time limit and was reset"
+ * and the request 500s with an empty body, having written nothing. See schema-once.ts for
+ * the two outages that came from exactly this.
+ *
+ * The key ignores `env` deliberately: one isolate serves one worker with one binding set, so
+ * there is nothing for a second key to distinguish.
+ */
+export function ensureMemoryTables(env: Corpus): Promise<void> {
+  return oncePerIsolate('memory', () => createMemoryTables(env));
+}
+
+async function createMemoryTables(env: Corpus): Promise<void> {
   // (scope, scope_id, key) is the primary key, so a re-write of the same setting is an UPDATE to
   // one fact rather than a second row that the resolver would then have to break a tie between.
   await env.CORPUS.exec(
