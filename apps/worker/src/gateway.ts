@@ -16,6 +16,7 @@
 import type { Env } from './env';
 import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
 import { estimateNeurons, neuronsFor, MAX_NEURONS_PER_REQUEST } from './pricing';
+import { recordEvent } from './analytics';
 import {
   adapterForModelId,
   contentText,
@@ -231,6 +232,15 @@ export interface ChatOptions {
    * reused; never share it between tenants. Omit it and every step re-prefills from cold.
    */
   sessionId?: string;
+  /**
+   * Who this call is for, for the analytics event log ONLY. Both are optional and both default to
+   * an unattributed event rather than to a plausible-looking placeholder: a model trace filed
+   * against the wrong tenant is worse than one filed against nobody, and `featureUsage` and
+   * `retentionRollup` both report their unattributed count rather than quietly shrinking.
+   */
+  actorId?: string;
+  projectId?: string;
+  runId?: string;
 }
 
 export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}): Promise<GatewayResponse> {
@@ -296,6 +306,13 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const estimate = priced
     ? estimateNeuronsForModel(priced, inputChars, maxTokens)
     : estimateNeurons(cfg.id, inputChars, maxTokens);
+  // THIS CHECK CANNOT BE FALSIFIED BEHAVIOURALLY, and that is not a reason to remove it.
+  // BudgetDO applies the same cap and reserve() throws the identical BudgetError('request_too_large')
+  // one hop later, so deleting these lines turns no test red -- measured by rbxai-04, not assumed. It
+  // is kept because it fails the call HERE, before a network round trip and two storage writes, and
+  // because a cap enforced in exactly one place has a single point of failure. If you are simplifying
+  // this, the thing to verify is that budget.ts's own per-request check still refuses: that is what
+  // covers this one's absence, and it is the only thing that does.
   if (estimate > MAX_NEURONS_PER_REQUEST) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }
@@ -304,6 +321,19 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   const kind = opts.kind ?? req.model;
   const invokeCtx = { modelId: cfg.id, kind, cacheTtl: opts.cacheTtl ?? 0, ...(opts.sessionId ? { sessionId: opts.sessionId } : {}) };
   let raw: unknown;
+  let lastLatencyMs: number | null = null;
+  /** One model trace. Every field it cannot establish stays null rather than becoming zero. */
+  const trace = (fields: Record<string, unknown>) =>
+    recordEvent({
+      kind: 'model_call',
+      provider: adapter.id,
+      model: cfg.id,
+      feature: kind,
+      actorId: opts.actorId ?? null,
+      projectId: opts.projectId ?? null,
+      runId: opts.runId ?? null,
+      ...fields,
+    });
   {
     // Retry policy, stated precisely because it is a spending decision:
     //
@@ -323,7 +353,8 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
       try {
         raw = await adapter.invoke(env, encoded.payload, invokeCtx);
         lastErr = null;
-        recordProviderCall(adapter.id, { model: cfg.id, latencyMs: Date.now() - started, ok: true });
+        lastLatencyMs = Date.now() - started;
+        recordProviderCall(adapter.id, { model: cfg.id, latencyMs: lastLatencyMs, ok: true });
         break;
       } catch (e) {
         lastErr = e;
@@ -334,6 +365,14 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
           ok: false,
           errorKind: cls.kind,
           errorMessage: e instanceof Error ? e.message : String(e),
+        });
+        // A failed ATTEMPT is its own trace. The retry loop swallows rate-limit rejections and the
+        // call still succeeds, so a log that only recorded the final outcome would show a clean run
+        // through a window the product spent waiting — the error breakdown exists to see that.
+        trace({
+          outcome: 'failed',
+          latencyMs: Date.now() - started,
+          errorKind: cls.kind,
         });
         if (!cls.retryable || attempt === MAX_RATE_LIMIT_WAITS) break;
         // no tokens were spent; hold the reservation and wait for the window to roll
@@ -379,6 +418,14 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
     : neuronsFor(cfg.id, usage.inputTokens, usage.outputTokens, usage.cachedInputTokens);
   const actual = Math.ceil(Math.max(usage.reportedNeurons ?? 0, computed));
   await settle(env, reserved, actual, cfg.id, kind);
+  trace({
+    outcome: 'ok',
+    latencyMs: lastLatencyMs,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    cachedInputTokens: usage.cachedInputTokens ?? null,
+    neurons: actual,
+  });
 
   return {
     text,
@@ -478,6 +525,8 @@ export async function rawProbe(env: Env, req: RawProbeRequest, kind = 'admin:raw
   const estimate = priced
     ? estimateNeuronsForModel(priced, promptChars, maxTokens)
     : estimateNeurons(req.model, promptChars, maxTokens);
+  // Same cap, same redundancy, same reason to keep it as the check earlier in this file -- see the
+  // note there before simplifying either.
   if (estimate > MAX_NEURONS_PER_REQUEST) {
     throw new BudgetError('request_too_large', BUDGET_MESSAGES.request_too_large!);
   }

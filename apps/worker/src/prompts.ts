@@ -278,6 +278,16 @@ export function systemPrompt(opts: {
    * that omits it, so the burden of proof is on the library existing.
    */
   assetLibraryAvailable?: boolean;
+  /**
+   * The user's own settings, profile and project/team instructions, already layered and already
+   * fenced by `preferencesPrompt`. Optional and empty by default: a deployment with no scoped
+   * memory spends no tokens saying so.
+   *
+   * It sits AFTER project memory and BEFORE the date, which is deliberate. Project memory is what
+   * Apple worked out for itself; this is what the person asked for, and where the two conflict the
+   * instruction the user actually wrote is the one the model reads last.
+   */
+  personalisation?: string | null;
 }): string {
   const assetSources = opts.assetLibraryAvailable
     ? 'Ids come from search_asset_library (curated, licence-cleared, try this\n  first) or from find_verified_asset (the Creator Store, last resort), or from the user.'
@@ -318,6 +328,7 @@ export function systemPrompt(opts: {
     opts.uiBrief ? UI_BRIEF_START + '\n' + opts.uiBrief + UI_BRIEF_END : '',
     `Project: "${opts.projectName}". ${studio}`,
     memory,
+    opts.personalisation ?? '',
     `Today: ${new Date().toISOString().slice(0, 10)}.`,
   ]
     .filter(Boolean)

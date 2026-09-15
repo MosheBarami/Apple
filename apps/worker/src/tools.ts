@@ -4,7 +4,7 @@ import type { Env } from './env';
 import { rgbBase64ToDataUrl } from './png';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
-import { searchDocs } from './rag';
+import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import {
   chooseAssetSource,
@@ -36,7 +36,17 @@ import { AUDIT_LUAU, parseAudit, auditMetrics, lensCoverage, runnableLenses } fr
 import { formatPanelReport, runCriticPanel } from './critic';
 import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
+// The audio tools are DEFINED in audio-tools.ts and registered here with one spread. Their
+// descriptions carry the whole cluster's product surface — what the model may claim about
+// generated audio, and in particular that none of it reaches the user's Roblox place — so they
+// live beside the modules that enforce those limits rather than in the middle of this file.
+// audio-tools.ts imports only `AgentCtx` back from here, as a TYPE, so there is no module cycle.
+import { AUDIO_TOOLS } from './audio-tools';
+import { admitProgram, isRefusal, capPrints, type SandboxJob } from './sandbox';
 import { PREFABS, PREFAB_IDS, prefabCatalogue } from './prefabs';
+import { runWebTool, webToolDef, type WebToolCtx, type WorkspaceStore } from './webtools';
+import type { WebFetchLike } from './net-policy';
+import { chat } from './gateway';
 
 export interface AgentCtx {
   env: Env;
@@ -110,6 +120,21 @@ export interface AgentCtx {
    * never whether the gate runs.
    */
   libraryAssetIds?: Set<number>;
+  /**
+   * Outbound HTTP for the web-facing tools.
+   *
+   * Optional, and it defaults to the global `fetch` — exactly like `fetchImpl` in assets.ts, and
+   * for the same reason: a suite that exercises `web_fetch` must be able to do so WITHOUT the
+   * internet. A test that reaches the real network is not testing this worker, it is testing
+   * whoever happens to answer, and it fails on an aeroplane.
+   */
+  webFetch?: WebFetchLike;
+  /**
+   * The project's scratch file store. Defaults to KV keyed by the project id.
+   *
+   * Injectable for the same reason, and because the eval harness has no KV.
+   */
+  workspace?: WorkspaceStore;
 }
 
 /**
@@ -197,6 +222,44 @@ async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promis
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) return { error: res.error ?? 'operation failed' };
   return res.data ?? { ok: true };
+}
+
+/**
+ * How long the WORKER waits on a code-execution op, given the wall number in the job.
+ *
+ * Twice the wall plus five seconds, and the slack is the honest part: the plugin has never read
+ * `timeoutMs` and could not honour it if it did, so `job.limits.wallMs` is a request and this is
+ * the point at which the worker stops waiting for an answer. sandbox.ts records that asymmetry as
+ * `enforcement.wall: 'unenforced'` for the studio backend. Giving up earlier than the engine
+ * plausibly needs would turn slow-but-finished work into a phantom timeout.
+ */
+function studioWaitMs(job: SandboxJob): number {
+  return job.limits.wallMs * 2 + 5_000;
+}
+
+/**
+ * Apply the output ceiling to what Studio sent back.
+ *
+ * The plugin collects `__prints` with no bound at all (Ops.luau `run_code`), so this is the first
+ * point in the system that can cut it — which is exactly why sandbox.ts calls the studio backend's
+ * output enforcement `truncate-after-transfer` rather than `truncate`. The bytes are already here.
+ *
+ * The truncation is ANNOUNCED. `runTool`'s generic `MAX_RESULT_CHARS` slice would cut the JSON in
+ * the middle and append a char count, leaving a model to read a shortened log as a complete one —
+ * a failure to observe rendering as an observation, on the tool whose entire output is evidence.
+ */
+function capStudioPrints(raw: unknown, job: SandboxJob): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.prints)) return raw;
+  const capped = capPrints(o.prints, job.limits.outputBytes);
+  if (!capped.truncated) return { ...o, prints: capped.prints };
+  return {
+    ...o,
+    prints: capped.prints,
+    outputTruncated: true,
+    outputNote: `${capped.dropped} further print line(s) were dropped at the ${job.limits.outputBytes}-byte output ceiling; what you see above is the part that fit, not the whole log`,
+  };
 }
 
 /**
@@ -785,6 +848,101 @@ async function recordPlacedAsset(
   }
 }
 
+/* --------------------------------------------- the web tools' two capabilities ---
+ *
+ * webtools.ts holds the contracts, the allowlists and the failure shapes, and it deliberately
+ * imports nothing heavy — it can be loaded and exercised on its own. The two capabilities that
+ * genuinely need the rest of this worker are wired in here instead: reading text out of an image
+ * (the vision model, through the gateway that budgets and attributes it) and putting a captured
+ * image in front of the user (KV storage plus the panel `generate_image` already uses).
+ *
+ * Both are OPTIONAL on the web-tool context and both have a defined absence. That is the point of
+ * injecting them: the tools stay testable without a model call, and a missing capability is
+ * reported as one rather than showing up as an empty transcription or an invisible screenshot.
+ */
+const OCR_SCHEMA = {
+  name: 'image_text',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['text'],
+    properties: { text: { type: 'string', maxLength: 4000 } },
+  },
+};
+
+const OCR_PROMPT =
+  'You transcribe text from images. Return ONLY the characters that are actually visible, in reading order, '
+  + 'preserving line breaks. Never translate, never summarise, never describe the picture, and never guess at '
+  + 'text that is too small or too blurred to read. If the image contains no legible text, return an empty string.';
+
+/** Tolerant of a model that wraps its JSON in a fence, strict about what it must contain. */
+function parseOcr(raw: string): { text: string } | { error: string } {
+  const body = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return { error: 'the transcription came back as something other than JSON' };
+  }
+  const text = (parsed as { text?: unknown } | null)?.text;
+  // A missing field is NOT an empty transcription. Defaulting it to '' here is precisely the
+  // failure-as-observation shape: "the engine answered in a form we could not read" would reach
+  // the model as "this image has no text in it".
+  if (typeof text !== 'string') return { error: 'the transcription had no text field' };
+  return { text };
+}
+
+async function readImageText(env: Env, dataUrl: string, opts: { language: string }): Promise<{ text: string } | { error: string }> {
+  const hint = opts.language === 'auto' ? '' : ` The text is expected to be in ${opts.language === 'he' ? 'Hebrew' : 'English'}.`;
+  try {
+    const res = await chat(
+      env,
+      {
+        model: 'vision',
+        messages: [
+          { role: 'system', content: OCR_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: `Transcribe the text in this image.${hint}` },
+              { type: 'image_url', image_url: { url: dataUrl } },
+            ],
+          },
+        ],
+        jsonSchema: OCR_SCHEMA,
+        maxTokens: 1200,
+      },
+      { kind: 'visual:ocr', cacheTtl: 0 },
+    );
+    return parseOcr(res.text ?? '');
+  } catch (e) {
+    // Scrubbed for the same reason every other tool error is: the engine's identity must not cross
+    // this boundary, and the actionable half of the message still does.
+    return { error: scrubEngineIdentity(e instanceof Error ? e.message : String(e)) };
+  }
+}
+
+/** The AgentCtx a web tool sees. Capabilities are attached only where they can actually work. */
+function webCtx(ctx: AgentCtx): WebToolCtx {
+  return {
+    env: ctx.env,
+    projectId: ctx.projectId,
+    fetchImpl: ctx.webFetch,
+    workspace: ctx.workspace,
+    readTextFromImage: (dataUrl, opts) => readImageText(ctx.env, dataUrl, opts),
+    showImage: async (pngBase64, subject, meta) => {
+      // No project means no key to store the pixels under and no route that could serve them —
+      // the same refusal `generate_image` makes, and for the same reason. Returning false here is
+      // what makes `screenshot_page` say "captured but not displayed" instead of implying a
+      // picture the user can never see.
+      if (!ctx.projectId) return false;
+      const imageId = await storeImage(ctx.env, pngBase64, ctx.projectId);
+      ctx.uiDetail = imagePanel(ctx.projectId, imageId, subject, meta);
+      return true;
+    },
+  };
+}
+
 export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
@@ -1023,10 +1181,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     run: async (ctx, a) => {
-      const code = String(a.code ?? '');
-      // Refused BEFORE the op is queued. By the time an asset reaches the place its scripts have
+      // Admitted BEFORE the op is queued. By the time an asset reaches the place its scripts have
       // already had their chance to run, so there is no useful check on the far side of this.
-      return refuseLuauIngress(code) ?? (await op(ctx, { op: 'run_code', code, timeoutMs: 10_000 }, 25_000));
+      // The ingress gate is handed to admission rather than called beside it: sandbox.ts REFUSES
+      // Luau bound for Studio that arrives without one, so this cannot be forgotten later.
+      const job = admitProgram({
+        runtime: 'luau',
+        backend: 'studio',
+        source: String(a.code ?? ''),
+        ingress: refuseLuauIngress,
+      });
+      if (isRefusal(job)) return { error: job.error, ...(job.blocked ? { blocked: job.blocked } : {}) };
+      const raw = await op(ctx, { op: 'run_code', code: job.source, timeoutMs: job.limits.wallMs }, studioWaitMs(job));
+      return capStudioPrints(raw, job);
     },
   },
   run_and_check: {
@@ -1508,12 +1675,18 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (refusal) return { error: refusal };
       const cases = (a.cases as SpecCase[]).map((c) => ({ name: String(c.name), code: String(c.code) }));
 
-      const source = specLuau(cases);
-      // Model-authored code. Same gate run_luau applies, for the same reason.
-      const blocked = refuseLuauIngress(source);
-      if (blocked) return blocked;
+      // Model-authored code, admitted the same way run_luau's is: same ingress gate, and now the
+      // same source-size and output ceilings, under the `roblox-spec` runtime whose ceilings are
+      // the harness's rather than a single snippet's.
+      const job = admitProgram({
+        runtime: 'roblox-spec',
+        backend: 'studio',
+        source: specLuau(cases),
+        ingress: refuseLuauIngress,
+      });
+      if (isRefusal(job)) return { error: job.error, ...(job.blocked ? { blocked: job.blocked } : {}) };
 
-      const raw = await op(ctx, { op: 'run_code', code: source, timeoutMs: 20_000 }, 40_000);
+      const raw = await op(ctx, { op: 'run_code', code: job.source, timeoutMs: job.limits.wallMs }, studioWaitMs(job));
       if (raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>)) return raw;
 
       const run = parseSpecRun(raw);
@@ -2207,8 +2380,19 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => {
-      const hits = await searchDocs(ctx.env, String(a.query ?? ''), 5);
-      return hits.map((h) => ({ title: h.title, url: h.url, excerpt: h.text.slice(0, 900) }));
+      const { hits, outcome, citations } = await searchDocsDetailed(ctx.env, String(a.query ?? ''), 5);
+      //[[ TELL THE MODEL WHICH KIND OF NOTHING THIS IS.
+      //
+      //   An empty array is the same token sequence whether the documentation has no answer or
+      //   whether nobody ever filled the index, and the model's behaviour should differ: on a real
+      //   miss it should answer from what it knows and say so; on an empty index it must not claim
+      //   the documentation was consulted. It cannot make that distinction from `[]`.
+      //
+      //   Results, when there are any, keep the plain array shape the prompt describes — plus the
+      //   citation number the answer is expected to cite by. ]]
+      if (!hits.length) return { results: [], searched: outcome.kind !== 'empty-index' && outcome.kind !== 'unavailable', note: outcome.detail, conclusive: outcome.certain };
+      const n = new Map(citations.map((cit) => [cit.url, cit.n]));
+      return hits.map((h) => ({ citation: n.get(h.url) ?? null, title: h.title, url: h.url, excerpt: h.text.slice(0, 900) }));
     },
   },
   remember: {
@@ -2231,6 +2415,109 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     run: async (ctx, a) => ctx.createCheckpoint(String(a.label ?? 'checkpoint'), 'auto'),
+  },
+
+  /* ------------------------------------------------------- the web-facing tools ---
+   *
+   * Ten tools defined in webtools.ts, registered here ONE BY ONE rather than spread in from a
+   * loop. That is deliberate and it is not style: three separate guards in this repository find
+   * the tool table by PARSING THIS LITERAL — tool-vocabulary.test.mjs (every tool must have a
+   * written label), tools-for-mode.test.mjs (Plan must reach nothing that mutates) and
+   * prompt-tool-names.test.mjs. A `...spread` is invisible to all three, so ten tools would
+   * quietly acquire no label, no mode assertion and no prompt check. An entry that a guard cannot
+   * see is an entry with no guard.
+   *
+   * Each body is two lines because the real work — the typed contract, the argument validation,
+   * the host/repo/path allowlists, and the rule that a failed fetch is an error rather than an
+   * empty result — lives in webtools.ts where it can be tested without a Studio, a project or a
+   * network. `runWebTool` validates before dispatching, so no body here is ever reached with an
+   * argument nobody checked.
+   */
+  web_fetch: {
+    def: webToolDef('web_fetch'),
+    studio: false,
+    run: (ctx, a) => runWebTool('web_fetch', webCtx(ctx), a),
+  },
+  browse_page: {
+    def: webToolDef('browse_page'),
+    studio: false,
+    run: (ctx, a) => runWebTool('browse_page', webCtx(ctx), a),
+  },
+  web_search: {
+    def: webToolDef('web_search'),
+    studio: false,
+    run: (ctx, a) => runWebTool('web_search', webCtx(ctx), a),
+  },
+  screenshot_page: {
+    def: webToolDef('screenshot_page'),
+    studio: false,
+    run: (ctx, a) => runWebTool('screenshot_page', webCtx(ctx), a),
+  },
+  ocr_image: {
+    def: webToolDef('ocr_image'),
+    studio: false,
+    run: (ctx, a) => runWebTool('ocr_image', webCtx(ctx), a),
+  },
+  github_lookup: {
+    def: webToolDef('github_lookup'),
+    studio: false,
+    run: (ctx, a) => runWebTool('github_lookup', webCtx(ctx), a),
+  },
+  git_history: {
+    def: webToolDef('git_history'),
+    studio: false,
+    run: (ctx, a) => runWebTool('git_history', webCtx(ctx), a),
+  },
+  workspace_list: {
+    def: webToolDef('workspace_list'),
+    studio: false,
+    run: (ctx, a) => runWebTool('workspace_list', webCtx(ctx), a),
+  },
+  workspace_read: {
+    def: webToolDef('workspace_read'),
+    studio: false,
+    run: (ctx, a) => runWebTool('workspace_read', webCtx(ctx), a),
+  },
+  workspace_write: {
+    def: webToolDef('workspace_write'),
+    studio: false,
+    run: (ctx, a) => runWebTool('workspace_write', webCtx(ctx), a),
+  },
+  /*
+   * THE AUDIO TOOLS, REGISTERED ONE BY ONE ON PURPOSE.
+   *
+   * These four were first added as `...AUDIO_TOOLS`, which worked perfectly and was wrong:
+   * webtools-wiring.test.mjs refuses a spread here, and the reason is in its own comment — three
+   * separate guards read THIS LITERAL out of the source to decide what every tool owes the rest of
+   * the product. tool-vocabulary.test.mjs (apps/web) holds each name to a written label, so a
+   * spread-in tool renders in the Thinking card as `design_sound`; phase-coverage.test.mjs holds it
+   * to a phase, so one that is missing falls through to `default: 'building'` and announces that it
+   * is building the user's world while it renders a footstep; tools-for-mode.test.mjs holds it to a
+   * mode. A spread satisfies every test of the tools themselves and is invisible to all three.
+   *
+   * The bodies live in audio-tools.ts because their DESCRIPTIONS are the product surface for this
+   * cluster — in particular the standing promise that none of this audio reaches the user's Roblox
+   * place — and belong beside the modules that enforce it. What has to be here is the name.
+   */
+  design_sound: {
+    def: AUDIO_TOOLS.design_sound!.def,
+    studio: AUDIO_TOOLS.design_sound!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.design_sound!.run(ctx, a),
+  },
+  assign_sounds: {
+    def: AUDIO_TOOLS.assign_sounds!.def,
+    studio: AUDIO_TOOLS.assign_sounds!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.assign_sounds!.run(ctx, a),
+  },
+  generate_sound: {
+    def: AUDIO_TOOLS.generate_sound!.def,
+    studio: AUDIO_TOOLS.generate_sound!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.generate_sound!.run(ctx, a),
+  },
+  speak_line: {
+    def: AUDIO_TOOLS.speak_line!.def,
+    studio: AUDIO_TOOLS.speak_line!.studio,
+    run: (ctx, a) => AUDIO_TOOLS.speak_line!.run(ctx, a),
   },
 };
 
@@ -2324,11 +2611,38 @@ export async function runTool(
   if (impl.studio && !ctx.studioConnected()) {
     return { summary: `${name}: Studio not connected`, resultForLlm: JSON.stringify({ error: 'Studio is not connected. Ask the user to connect Studio, or continue without Studio tools.' }), ok: false };
   }
+  // UNPARSEABLE ARGUMENTS ARE NOT ABSENT ARGUMENTS. This used to swallow the parse error and
+  // continue with `{}`, so `'{not json'` reached web_fetch and came back as
+  // `web_fetch: url is required` — which tells the model to ADD A URL to a string that was never
+  // read. It would then send the same malformed payload with a url appended and get the same
+  // answer forever. A failure to read the arguments must not render as a reading of them.
   let args: Record<string, unknown> = {};
-  try {
-    args = argsJson ? (JSON.parse(argsJson) as Record<string, unknown>) : {};
-  } catch {
-    return { summary: `${name}: bad arguments`, resultForLlm: JSON.stringify({ error: 'arguments were not valid JSON' }), ok: false };
+  if (argsJson) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(argsJson);
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err);
+      return {
+        summary: `${name}: arguments are not valid JSON`,
+        resultForLlm: JSON.stringify({
+          error: `${name}: the arguments are not valid JSON and were not run — ${why}`,
+        }),
+        ok: false,
+      };
+    }
+    // `"3"`, `null` and `[1,2]` all parse. None of them is an argument object, and spreading them
+    // into a tool gives it a shape it never declared rather than telling it what arrived.
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {
+        summary: `${name}: arguments are not an object`,
+        resultForLlm: JSON.stringify({
+          error: `${name}: the arguments must be a JSON object, got ${Array.isArray(parsed) ? 'an array' : parsed === null ? 'null' : typeof parsed}`,
+        }),
+        ok: false,
+      };
+    }
+    args = parsed as Record<string, unknown>;
   }
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row

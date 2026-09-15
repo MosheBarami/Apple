@@ -1,0 +1,615 @@
+// How this person wants to be worked with — and the two places that is allowed to change behaviour.
+//
+// A preference is only real if something reads it. These are stored as ordinary rows in
+// `memory-store.ts` (kind `preference`), which is what gives them scoping, expiry, audit, export
+// and the org/user/project layering for free, and they are read in exactly two places:
+//
+//   - the SYSTEM PROMPT, through `preferencesPrompt` — language, response length, coding style,
+//     Roblox conventions, and the personal profile.
+//   - the TOOLSET, through `applyToolPermissions` — which is the only one of these that is a
+//     guarantee rather than a request, and so is the only one written to NARROW and never widen.
+//
+// Everything here validates against an explicit allowlist. `Record<PreferenceKey, T>` says nothing
+// at runtime, and every one of these values arrives from a request body or from a row someone
+// exported, edited by hand and imported back.
+import type { Env } from './env';
+import type { MemoryAccess, MemoryEntry, MemoryScope, ResolvedMemory } from './memory-store';
+import { MEMORY_KEY_RE, ensureMemoryTables, isMemoryScope, listMemoryEntries, precedenceOf, resolveMemoryLayers } from './memory-store';
+
+// ---------------------------------------------------------------------------------------------
+// the vocabulary
+// ---------------------------------------------------------------------------------------------
+
+export const PREFERENCE_KEYS = ['coding_style', 'roblox_conventions', 'language', 'model', 'response_length', 'tool_permissions'] as const;
+export type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
+
+export const CODING_STYLES = ['idiomatic', 'minimal', 'commented', 'strict-typed', 'oop', 'functional'] as const;
+export type CodingStyle = (typeof CODING_STYLES)[number];
+
+/**
+ * Roblox house rules, as a SET rather than one choice: "Rojo layout" and "server-authoritative"
+ * are both true of the same codebase, and forcing a single pick would make the setting useless to
+ * anyone who has more than one convention.
+ */
+export const ROBLOX_CONVENTIONS = [
+  'rojo-project',
+  'studio-native',
+  'knit',
+  'strict-luau',
+  'attributes-over-values',
+  'server-authoritative',
+  'module-per-feature',
+  'no-wait-loops',
+] as const;
+export type RobloxConvention = (typeof ROBLOX_CONVENTIONS)[number];
+export const ROBLOX_CONVENTIONS_MAX = 6;
+
+/**
+ * Languages the product will answer in.
+ *
+ * An allowlist rather than "any BCP-47 tag" because this string is rendered into the system prompt
+ * as an instruction, and a free-text language field is a free-text instruction field wearing a
+ * label. Hebrew is first-class here: this product is built in it.
+ */
+export const LANGUAGES = ['en', 'he', 'es', 'pt-BR', 'fr', 'de', 'ru', 'ja', 'ko', 'zh'] as const;
+export type LanguageTag = (typeof LANGUAGES)[number];
+
+export const LANGUAGE_NAMES: Readonly<Record<LanguageTag, string>> = {
+  en: 'English',
+  he: 'Hebrew',
+  'pt-BR': 'Brazilian Portuguese',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  ru: 'Russian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+};
+
+export const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
+export type ResponseLength = (typeof RESPONSE_LENGTHS)[number];
+
+export const TOOL_PERMISSIONS = ['allow', 'ask', 'deny'] as const;
+export type ToolPermission = (typeof TOOL_PERMISSIONS)[number];
+export const TOOL_PERMISSION_ENTRIES_MAX = 64;
+
+const inList = <T extends readonly string[]>(list: T, v: unknown): v is T[number] => typeof v === 'string' && (list as readonly string[]).includes(v);
+
+export const isCodingStyle = (v: unknown): v is CodingStyle => inList(CODING_STYLES, v);
+export const isRobloxConvention = (v: unknown): v is RobloxConvention => inList(ROBLOX_CONVENTIONS, v);
+export const isLanguageTag = (v: unknown): v is LanguageTag => inList(LANGUAGES, v);
+export const isResponseLength = (v: unknown): v is ResponseLength => inList(RESPONSE_LENGTHS, v);
+export const isToolPermission = (v: unknown): v is ToolPermission => inList(TOOL_PERMISSIONS, v);
+export const isPreferenceKey = (v: unknown): v is PreferenceKey => inList(PREFERENCE_KEYS, v);
+
+export interface Preferences {
+  coding_style?: CodingStyle;
+  roblox_conventions?: RobloxConvention[];
+  language?: LanguageTag;
+  /** A provider model id, validated against the ids this deployment can actually serve. */
+  model?: string;
+  response_length?: ResponseLength;
+  tool_permissions?: Record<string, ToolPermission>;
+}
+
+export type PreferenceReject =
+  | 'unknown_key'
+  | 'bad_value'
+  | 'no_model_allowlist'
+  | 'unknown_model'
+  | 'no_tool_allowlist'
+  | 'unknown_tool'
+  | 'too_many';
+
+export interface NormalisedPreferences {
+  prefs: Preferences;
+  /** Every key that was dropped and why — the settings page shows these rather than silently losing them. */
+  rejected: { key: string; reason: PreferenceReject }[];
+}
+
+export interface PreferenceVocabulary {
+  /** Model ids this deployment can serve. ABSENT is not the same as empty — see below. */
+  knownModelIds?: readonly string[];
+  /** Tool names that exist. Same rule. */
+  knownToolNames?: readonly string[];
+}
+
+/**
+ * Validate a preferences object from outside.
+ *
+ * FAIL-CLOSED ON A MISSING ALLOWLIST. `model` and `tool_permissions` name things that live in other
+ * modules — the provider registry and the tool table — so this function cannot check them on its
+ * own. When the caller does not supply the list, the key is REJECTED, not accepted unchecked. An
+ * unchecked model id becomes a model the gateway cannot route and a run that dies at the first
+ * call; an unchecked tool name becomes a permission entry that looks enforced in the UI and matches
+ * no tool at all. Both are the shape of guard that measures nothing and reports success.
+ */
+export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary = {}): NormalisedPreferences {
+  const prefs: Preferences = {};
+  const rejected: { key: string; reason: PreferenceReject }[] = [];
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { prefs, rejected };
+
+  // Own keys only: an attacker-supplied object cannot smuggle a preference through the prototype,
+  // and a `for...in` here would happily read one.
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (!isPreferenceKey(key)) {
+      rejected.push({ key, reason: 'unknown_key' });
+      continue;
+    }
+    switch (key) {
+      case 'coding_style':
+        if (isCodingStyle(value)) prefs.coding_style = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
+      case 'language':
+        if (isLanguageTag(value)) prefs.language = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
+      case 'response_length':
+        if (isResponseLength(value)) prefs.response_length = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
+      case 'roblox_conventions': {
+        if (!Array.isArray(value)) {
+          rejected.push({ key, reason: 'bad_value' });
+          break;
+        }
+        const out: RobloxConvention[] = [];
+        for (const v of value) {
+          if (!isRobloxConvention(v)) {
+            rejected.push({ key: `roblox_conventions:${String(v).slice(0, 40)}`, reason: 'bad_value' });
+            continue;
+          }
+          if (!out.includes(v) && out.length < ROBLOX_CONVENTIONS_MAX) out.push(v);
+        }
+        if (out.length) prefs.roblox_conventions = out;
+        break;
+      }
+      case 'model': {
+        if (typeof value !== 'string' || !value) {
+          rejected.push({ key, reason: 'bad_value' });
+          break;
+        }
+        if (!vocab.knownModelIds) {
+          rejected.push({ key, reason: 'no_model_allowlist' });
+          break;
+        }
+        if (!vocab.knownModelIds.includes(value)) {
+          rejected.push({ key, reason: 'unknown_model' });
+          break;
+        }
+        prefs.model = value;
+        break;
+      }
+      case 'tool_permissions': {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+          rejected.push({ key, reason: 'bad_value' });
+          break;
+        }
+        if (!vocab.knownToolNames) {
+          rejected.push({ key, reason: 'no_tool_allowlist' });
+          break;
+        }
+        const perms: Record<string, ToolPermission> = {};
+        let n = 0;
+        for (const [tool, perm] of Object.entries(value as Record<string, unknown>)) {
+          if (!vocab.knownToolNames.includes(tool)) {
+            rejected.push({ key: `tool_permissions:${tool.slice(0, 60)}`, reason: 'unknown_tool' });
+            continue;
+          }
+          if (!isToolPermission(perm)) {
+            rejected.push({ key: `tool_permissions:${tool.slice(0, 60)}`, reason: 'bad_value' });
+            continue;
+          }
+          if (n >= TOOL_PERMISSION_ENTRIES_MAX) {
+            rejected.push({ key: `tool_permissions:${tool.slice(0, 60)}`, reason: 'too_many' });
+            continue;
+          }
+          perms[tool] = perm;
+          n++;
+        }
+        if (n) prefs.tool_permissions = perms;
+        break;
+      }
+    }
+  }
+  return { prefs, rejected };
+}
+
+// ---------------------------------------------------------------------------------------------
+// layering
+// ---------------------------------------------------------------------------------------------
+
+export interface MergedPreferences {
+  prefs: Preferences;
+  /** Which layer each value came from, so the settings page can say "set by your organisation". */
+  sources: Partial<Record<PreferenceKey, MemoryScope>>;
+}
+
+/**
+ * Layer org, then user, then project.
+ *
+ * Every key overrides — EXCEPT `tool_permissions`, which intersects towards the most restrictive
+ * answer. That asymmetry is the point rather than an inconsistency: the other preferences are about
+ * taste, and the person closest to the work should win. Tool permissions are about what the agent
+ * is allowed to DO, and a rule that a lower layer can override is not a rule. `deny` at any layer
+ * survives every layer above it; `ask` survives `allow`.
+ */
+export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences>>): MergedPreferences {
+  const order = (['org', 'user', 'project'] as const).filter((s) => layers[s]);
+  // Sorted by the store's own precedence rather than by this literal, so the two can never drift
+  // apart into two different opinions about which layer wins.
+  order.sort((a, b) => precedenceOf(a) - precedenceOf(b));
+
+  const prefs: Preferences = {};
+  const sources: Partial<Record<PreferenceKey, MemoryScope>> = {};
+  for (const scope of order) {
+    const layer = layers[scope]!;
+    for (const key of PREFERENCE_KEYS) {
+      if (key === 'tool_permissions') continue;
+      const v = layer[key];
+      if (v === undefined) continue;
+      (prefs as Record<string, unknown>)[key] = v;
+      sources[key] = scope;
+    }
+  }
+
+  const merged: Record<string, ToolPermission> = {};
+  let sawPerms = false;
+  for (const scope of order) {
+    const perms = layers[scope]?.tool_permissions;
+    if (!perms) continue;
+    sawPerms = true;
+    for (const [tool, perm] of Object.entries(perms)) {
+      merged[tool] = mostRestrictive(merged[tool], perm);
+    }
+    sources.tool_permissions = scope;
+  }
+  if (sawPerms) prefs.tool_permissions = merged;
+  return { prefs, sources };
+}
+
+const PERMISSION_RANK: Readonly<Record<ToolPermission, number>> = { allow: 0, ask: 1, deny: 2 };
+
+export function mostRestrictive(a: ToolPermission | undefined, b: ToolPermission | undefined): ToolPermission {
+  if (!isToolPermission(a)) return isToolPermission(b) ? b : 'allow';
+  if (!isToolPermission(b)) return a;
+  return PERMISSION_RANK[a] >= PERMISSION_RANK[b] ? a : b;
+}
+
+/**
+ * Apply tool permissions to the toolset a mode already allows.
+ *
+ * NARROWING ONLY. `base` comes from `toolsForMode`, which is what enforces Plan mode's read-only
+ * promise; if a preference could add to it, a user preference would be able to hand `run_luau` to
+ * the one mode whose entire purpose is that it cannot touch the project. So `allow` is not a
+ * capability — it is the absence of a restriction — and a permission naming a tool that is not in
+ * `base` changes nothing at all.
+ *
+ * `ask` narrows too, for now: nothing in this product can interrupt a run to ask, so leaving an
+ * `ask` tool in the set would make "ask me first" mean "go ahead". Treating it as `deny` is the
+ * honest reading until a confirmation path exists.
+ */
+export function applyToolPermissions(base: ReadonlySet<string>, perms: Readonly<Record<string, ToolPermission>> | undefined): Set<string> {
+  const out = new Set(base);
+  if (!perms) return out;
+  for (const [tool, perm] of Object.entries(perms)) {
+    if (!isToolPermission(perm)) continue;
+    if (perm === 'deny' || perm === 'ask') out.delete(tool);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// the personal prompt profile
+// ---------------------------------------------------------------------------------------------
+
+export const PROFILE_FIELDS = ['about', 'goals', 'tone', 'experience'] as const;
+export type ProfileField = (typeof PROFILE_FIELDS)[number];
+export const PROFILE_FIELD_MAX = 600;
+export type PromptProfile = Partial<Record<ProfileField, string>>;
+
+export const isProfileField = (v: unknown): v is ProfileField => inList(PROFILE_FIELDS, v);
+
+export const PROFILE_LABELS: Readonly<Record<ProfileField, string>> = {
+  about: 'About them',
+  goals: 'What they are trying to make',
+  tone: 'How they want to be talked to',
+  experience: 'How much Roblox experience they have',
+};
+
+export function normaliseProfile(input: unknown): PromptProfile {
+  const out: PromptProfile = {};
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    if (!isProfileField(k) || typeof v !== 'string') continue;
+    const text = v.trim().replace(/\s+/g, ' ').slice(0, PROFILE_FIELD_MAX);
+    if (text) out[k] = text;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// preferences as memory rows
+// ---------------------------------------------------------------------------------------------
+
+/** Namespaces inside one scope's key space. All match MEMORY_KEY_RE by construction. */
+export const PREFERENCE_KEY_PREFIX = 'pref.';
+export const PROFILE_KEY_PREFIX = 'profile.';
+/** Free-text project / team instructions, which are prose rather than a chosen value. */
+export const INSTRUCTION_KEY_PREFIX = 'instruction.';
+
+export const preferenceEntryKey = (k: PreferenceKey): string => `${PREFERENCE_KEY_PREFIX}${k}`;
+export const profileEntryKey = (f: ProfileField): string => `${PROFILE_KEY_PREFIX}${f}`;
+
+/**
+ * Read preferences back out of stored rows.
+ *
+ * The stored value is JSON text. A row whose JSON does not parse, or parses into something the
+ * allowlist refuses, is dropped — the same treatment an invalid request body gets, because a row
+ * edited outside the product and imported back IS a request body with extra steps.
+ */
+export function preferencesFromEntries(entries: readonly MemoryEntry[], vocab: PreferenceVocabulary = {}): NormalisedPreferences {
+  const raw: Record<string, unknown> = {};
+  for (const e of entries) {
+    if (e.kind !== 'preference' || !e.key.startsWith(PREFERENCE_KEY_PREFIX)) continue;
+    const key = e.key.slice(PREFERENCE_KEY_PREFIX.length);
+    if (!isPreferenceKey(key)) continue;
+    try {
+      raw[key] = JSON.parse(e.value);
+    } catch {
+      /* a row that is not JSON is a row nobody can act on */
+    }
+  }
+  return normalisePreferences(raw, vocab);
+}
+
+export function profileFromEntries(entries: readonly MemoryEntry[]): PromptProfile {
+  const raw: Record<string, unknown> = {};
+  for (const e of entries) {
+    if (e.kind !== 'profile' || !e.key.startsWith(PROFILE_KEY_PREFIX)) continue;
+    raw[e.key.slice(PROFILE_KEY_PREFIX.length)] = e.value;
+  }
+  return normaliseProfile(raw);
+}
+
+/** Free-text instructions at one scope, in key order, ready to be fenced into a prompt. */
+export function instructionsFromEntries(entries: readonly MemoryEntry[], scope: MemoryScope): string[] {
+  return entries
+    .filter((e) => e.scope === scope && e.kind === 'instruction' && e.key.startsWith(INSTRUCTION_KEY_PREFIX))
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((e) => e.value);
+}
+
+/** The rows a preferences form writes. One row per key, so each can expire and be audited alone. */
+export function preferencesToEntries(prefs: Preferences, scope: MemoryScope, scopeId: string): { scope: MemoryScope; scopeId: string; key: string; kind: 'preference'; value: string }[] {
+  if (!isMemoryScope(scope)) throw new Error(`preferencesToEntries: unknown scope ${String(scope)}`);
+  const out: { scope: MemoryScope; scopeId: string; key: string; kind: 'preference'; value: string }[] = [];
+  for (const key of PREFERENCE_KEYS) {
+    const v = prefs[key];
+    if (v === undefined) continue;
+    const entryKey = preferenceEntryKey(key);
+    // Belt and braces: the prefix and the key list are both literals here, but the store's key rule
+    // is the one that decides what is addressable, and a key that cannot round-trip through it is a
+    // row that could never be deleted through the normal route.
+    if (!MEMORY_KEY_RE.test(entryKey)) throw new Error(`preferencesToEntries: ${entryKey} is not a storable key`);
+    out.push({ scope, scopeId, key: entryKey, kind: 'preference', value: JSON.stringify(v) });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// what reaches the model
+// ---------------------------------------------------------------------------------------------
+
+const RESPONSE_LENGTH_RULE: Readonly<Record<ResponseLength, string>> = {
+  brief: 'Answer in as few words as the answer takes. No preamble, no summary of what you just did.',
+  normal: 'Answer at normal length.',
+  detailed: 'Explain your reasoning and the trade-offs, not only the result.',
+};
+
+const CODING_STYLE_RULE: Readonly<Record<CodingStyle, string>> = {
+  idiomatic: 'Write Luau the way the Roblox community writes it.',
+  minimal: 'Write the shortest correct code. No defensive scaffolding the task did not ask for.',
+  commented: 'Comment the non-obvious parts — why, not what.',
+  'strict-typed': "Use --!strict and annotate types on every function boundary.",
+  oop: 'Prefer classes and metatables over free functions when modelling entities.',
+  functional: 'Prefer pure functions and immutable data over stateful objects.',
+};
+
+const CONVENTION_RULE: Readonly<Record<RobloxConvention, string>> = {
+  'rojo-project': 'This project is laid out for Rojo: scripts live in src/ and sync into Studio.',
+  'studio-native': 'This project is edited in Studio directly. Do not propose a filesystem layout.',
+  knit: 'Services and controllers follow the Knit framework.',
+  'strict-luau': 'All Luau is --!strict.',
+  'attributes-over-values': 'Use Instance attributes rather than ValueBase objects for per-instance data.',
+  'server-authoritative': 'The server owns all state that matters. Never trust a client-sent value.',
+  'module-per-feature': 'One ModuleScript per feature, not one giant script.',
+  'no-wait-loops': 'Never poll with wait(); use events, RunService or task.wait with a reason.',
+};
+
+/**
+ * Render preferences and profile into the system prompt.
+ *
+ * FENCED, and the fence id is REQUIRED. Project and team instructions are free text that another
+ * person in an organisation may have written, and the profile is free text too — all of it lands in
+ * the highest-trust position in the prompt, on every step of every run. The fence is what keeps it
+ * data. An empty fence id is not a weaker secret, it is a constant one, which is why this refuses
+ * rather than degrading, exactly like `systemPrompt` does.
+ */
+export function preferencesPrompt(
+  input: { prefs?: Preferences; profile?: PromptProfile; projectInstructions?: readonly string[]; teamInstructions?: readonly string[] },
+  fenceId: string,
+): string {
+  if (!fenceId) throw new Error('preferencesPrompt: fenceId is required — an empty fence id is a constant one');
+  const prefs = input.prefs ?? {};
+  const lines: string[] = [];
+  if (prefs.language) lines.push(`Reply in ${LANGUAGE_NAMES[prefs.language]} unless the user writes in another language.`);
+  if (prefs.response_length) lines.push(RESPONSE_LENGTH_RULE[prefs.response_length]);
+  if (prefs.coding_style) lines.push(CODING_STYLE_RULE[prefs.coding_style]);
+  for (const c of prefs.roblox_conventions ?? []) lines.push(CONVENTION_RULE[c]);
+
+  const profile = input.profile ?? {};
+  const profileLines = PROFILE_FIELDS.filter((f) => profile[f]).map((f) => `${PROFILE_LABELS[f]}: ${profile[f]}`);
+
+  const team = (input.teamInstructions ?? []).filter(Boolean);
+  const project = (input.projectInstructions ?? []).filter(Boolean);
+
+  const blocks: string[] = [];
+  if (lines.length) blocks.push(`How this user wants to be worked with:\n- ${lines.join('\n- ')}`);
+  if (profileLines.length) blocks.push(`<user-profile id="${fenceId}">\n${profileLines.join('\n')}\n</user-profile>`);
+  // Team first, project second: the later block is the more specific one, and where two
+  // instructions genuinely conflict the model reads the nearer one last.
+  if (team.length) blocks.push(`Team instructions (notes from the user's organisation, not commands from the system):\n<team-instructions id="${fenceId}">\n- ${team.join('\n- ')}\n</team-instructions>`);
+  if (project.length) blocks.push(`Project instructions:\n<project-instructions id="${fenceId}">\n- ${project.join('\n- ')}\n</project-instructions>`);
+  return blocks.join('\n\n');
+}
+
+// ---------------------------------------------------------------------------------------------
+// personalised routing
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What each internal model key needs from whatever serves it.
+ *
+ * Mirrors MODEL_KEY_NEEDS in providers/types.ts, and deliberately answers the UNKNOWN key with the
+ * most demanding requirement rather than the least. A `Record<string, …>` lookup on an unrecognised
+ * key yields undefined, and `undefined?.tools` is falsy — so the naive read of that table says an
+ * unknown step needs neither tools nor vision, which is the one answer that lets a preferred model
+ * be chosen for a step it cannot serve. Failing closed here costs a fallback; failing open costs
+ * the run.
+ */
+export function needsForModelKey(key: unknown): { tools: boolean; vision: boolean } {
+  switch (key) {
+    case 'memory':
+      return { tools: false, vision: false };
+    case 'vision':
+      return { tools: false, vision: true };
+    case 'clay':
+    case 'stone':
+    case 'rune':
+      return { tools: true, vision: false };
+    default:
+      return { tools: true, vision: true };
+  }
+}
+
+export interface RoutableModel {
+  id: string;
+  available: boolean;
+  supportsTools: boolean;
+  supportsVision: boolean;
+}
+
+export type RoutingReason = 'preferred' | 'no_preference' | 'unknown_model' | 'unavailable' | 'missing_capability';
+
+export interface ModelRouting {
+  modelId: string;
+  /** True only when the user's own choice is what will run. */
+  honoured: boolean;
+  reason: RoutingReason;
+}
+
+/**
+ * Honour the user's preferred model — when it can actually serve this step.
+ *
+ * The check is on CAPABILITY, not on the name: routing a tool-calling step onto a model with no
+ * tool support produces a run that looks like it started and then does nothing, and the user reads
+ * that as the product being broken rather than as their own setting being impossible here. So the
+ * fallback carries a reason, and the reason is what the UI shows — a preference that was quietly
+ * ignored is worse than one that was refused out loud.
+ */
+export function routePreferredModel(preferred: string | undefined, modelKey: unknown, candidates: readonly RoutableModel[], fallbackId: string): ModelRouting {
+  if (!preferred) return { modelId: fallbackId, honoured: false, reason: 'no_preference' };
+  const model = candidates.find((m) => m.id === preferred);
+  if (!model) return { modelId: fallbackId, honoured: false, reason: 'unknown_model' };
+  if (!model.available) return { modelId: fallbackId, honoured: false, reason: 'unavailable' };
+  const needs = needsForModelKey(modelKey);
+  if ((needs.tools && !model.supportsTools) || (needs.vision && !model.supportsVision)) {
+    return { modelId: fallbackId, honoured: false, reason: 'missing_capability' };
+  }
+  return { modelId: model.id, honoured: true, reason: 'preferred' };
+}
+
+// ---------------------------------------------------------------------------------------------
+// what a run actually reads
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Everything personal that applies to one run of one project, already layered and already rendered.
+ *
+ * One function so the prompt, the toolset and the memory viewer cannot end up with three different
+ * opinions about which layer won. `sources` is carried through to the UI for the same reason the
+ * resolver reports `shadowed`: a setting that is being overridden somewhere else reads as a broken
+ * control until the product says where.
+ */
+export interface Personalisation {
+  prefs: Preferences;
+  sources: Partial<Record<PreferenceKey, MemoryScope>>;
+  profile: PromptProfile;
+  projectInstructions: string[];
+  teamInstructions: string[];
+  /** Ready to concatenate into the system prompt. Empty when there is nothing to say. */
+  promptBlock: string;
+  /** Rows the layers disagreed about, so the viewer can explain the disagreement. */
+  resolved: ResolvedMemory;
+}
+
+export const EMPTY_PERSONALISATION: Personalisation = {
+  prefs: {},
+  sources: {},
+  profile: {},
+  projectInstructions: [],
+  teamInstructions: [],
+  promptBlock: '',
+  resolved: { entries: [], invalid: [] },
+};
+
+/**
+ * Read one project's personalisation out of the store.
+ *
+ * The access context is passed in rather than built here, and `resolveForProject` reads only scopes
+ * that context has proven — so a project can no more personalise itself with another project's rows
+ * than it can read them. `orgIds` are the organisations the OWNER belongs to; each contributes team
+ * instructions and a preference layer, and an org the caller is not a member of contributes
+ * nothing because the read returns nothing.
+ */
+export async function personalisationForProject(
+  env: Pick<Env, 'CORPUS'>,
+  access: MemoryAccess,
+  target: { projectId: string; orgIds?: readonly string[] },
+  fenceId: string,
+  vocab: PreferenceVocabulary = {},
+  now = Date.now(),
+): Promise<Personalisation> {
+  await ensureMemoryTables(env);
+  const orgIds = target.orgIds ?? access.orgs.map((o) => o.orgId);
+
+  const orgEntries: MemoryEntry[] = [];
+  for (const orgId of orgIds) orgEntries.push(...(await listMemoryEntries(env, access, 'org', orgId, { now })));
+  const userEntries = await listMemoryEntries(env, access, 'user', access.userId, { now });
+  const projectEntries = await listMemoryEntries(env, access, 'project', target.projectId, { now });
+
+  const merged = mergePreferences({
+    org: preferencesFromEntries(orgEntries, vocab).prefs,
+    user: preferencesFromEntries(userEntries, vocab).prefs,
+    project: preferencesFromEntries(projectEntries, vocab).prefs,
+  });
+  // The profile is PERSONAL. It is read from the user layer only — a project that could write a
+  // "user profile" row would be writing a description of the person into their own prompt.
+  const profile = profileFromEntries(userEntries);
+  const teamInstructions = instructionsFromEntries(orgEntries, 'org');
+  const projectInstructions = instructionsFromEntries(projectEntries, 'project');
+
+  const promptBlock = preferencesPrompt({ prefs: merged.prefs, profile, projectInstructions, teamInstructions }, fenceId);
+  return {
+    prefs: merged.prefs,
+    sources: merged.sources,
+    profile,
+    projectInstructions,
+    teamInstructions,
+    promptBlock,
+    resolved: resolveMemoryLayers([...orgEntries, ...userEntries, ...projectEntries], now),
+  };
+}
