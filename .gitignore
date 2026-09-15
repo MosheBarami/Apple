@@ -26,6 +26,12 @@ packages/corpus/raw/*
 # repositories, not their content, so tracking it redistributes nothing. It is what
 # `pnpm --filter @golem/corpus bootstrap` reads.
 !packages/corpus/raw/manifest.json
+# ...and the HUGGING FACE lock, for the same reason and on the same terms. It pins each
+# harvested dataset by url + commit SHA, and records the sources that were fetched, read and
+# REFUSED with the grounds for refusing. The chunks it produces stay ignored (they are a build
+# artefact, like chunks.jsonl); this is the metadata that makes the harvest reproducible and
+# the refusals reviewable, so a source cannot quietly change under the product.
+!packages/corpus/raw/manifest.hf.json
 # ...except the source LEDGER. sources.json is 0.4MB of derived provenance and
 # licence verdicts, and §H requires that metadata be preserved rather than
 # regenerated on demand — a classification nobody can diff is one nobody reviews.

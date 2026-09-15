@@ -1,0 +1,49 @@
+{
+  "features": [
+    {
+      "feature_idx": 0,
+      "name": "instruction",
+      "type": {
+        "dtype": "string",
+        "_type": "Value"
+      }
+    },
+    {
+      "feature_idx": 1,
+      "name": "input",
+      "type": {
+        "dtype": "string",
+        "_type": "Value"
+      }
+    },
+    {
+      "feature_idx": 2,
+      "name": "output",
+      "type": {
+        "dtype": "string",
+        "_type": "Value"
+      }
+    }
+  ],
+  "num_rows_total": 12306,
+  "rows": [
+    {
+      "row_idx": 0,
+      "row": {
+        "instruction": "Create a basic leaderstats system with Coins and Level in Roblox Luau",
+        "input": "",
+        "output": "-- Script in ServerScriptService\nlocal Players = game:GetService(\"Players\")\n\nPlayers.PlayerAdded:Connect(function(player)\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\n\n\tlocal level = Instance.new(\"IntValue\")\n\tlevel.Name = \"Level\"\n\tlevel.Value = 1\n\tlevel.Parent = leaderstats\nend)"
+      },
+      "truncated_cells": []
+    },
+    {
+      "row_idx": 1,
+      "row": {
+        "instruction": "Create leaderstats that save and load player data using DataStoreService with error handling in Roblox Luau",
+        "input": "",
+        "output": "-- Script in ServerScriptService\nlocal Players = game:GetService(\"Players\")\nlocal DataStoreService = game:GetService(\"DataStoreService\")\nlocal playerStore = DataStoreService:GetDataStore(\"PlayerStats_v1\")\n\nlocal function loadData(player)\n\tlocal key = \"Player_\" .. player.UserId\n\n\tlocal leaderstats = Instance.new(\"Folder\")\n\tleaderstats.Name = \"leaderstats\"\n\tleaderstats.Parent = player\n\n\tlocal coins = Instance.new(\"IntValue\")\n\tcoins.Name = \"Coins\"\n\tcoins.Value = 0\n\tcoins.Parent = leaderstats\n\n\tlocal level = Instance.new(\"IntValue\")\n\tlevel.Name = \"Level\"\n\tlevel.Value = 1\n\tlevel.Parent = leaderstats\n\n\tlocal wins = Instance.new(\"IntValue\")\n\twins.Name = \"Wins\"\n\twins.Value = 0\n\twins.Parent = leaderstats\n\n\tlocal success, data = pcall(function()\n\t\treturn playerStore:GetAsync(key)\n\tend)\n\n\tif success and data then\n\t\tcoins.Value = data.Coins or 0\n\t\tlevel.Value = data.Level or 1\n\t\twins.Value = data.Wins or 0\n\tend\n\n\tif not success then\n\t\twarn(\"Failed to load data for \" .. player.Name)\n\tend\nend\n\nlocal function saveData(player)\n\tlocal leaderstats = player:FindFirstChild(\"leaderstats\")\n\tif not leaderstats then return end\n\n\tlocal key = \"Player_\" .. player.UserId\n\tlocal data = {\n\t\tCoins = leaderstats.Coins.Value,\n\t\tLevel = leaderstats.Level.Value,\n\t\tWins = leaderstats.Wins.Value,\n\t}\n\n\tlocal success, err = pcall(function()\n\t\tplayerStore:SetAsync(key, data)\n\tend)\n\n\tif not success then\n\t\twarn(\"Failed to save data for \" .. player.Name .. \": \" .. tostring(err))\n\tend\nend\n\nPlayers.PlayerAdded:Connect(loadData)\nPlayers.PlayerRemoving:Connect(saveData)\n\ngame:BindToClose(function()\n\tfor _, player in Players:GetPlayers() do\n\t\ttask.spawn(saveData, player)\n\tend\n\ttask.wait(3)\nend)"
+      },
+      "truncated_cells": []
+    }
+  ]
+}
