@@ -5997,3 +5997,19 @@ html.has-cursor .cursor {
     display: none !important;
   }
 }
+
+/* The asset-source choices on the settings page. They borrow the dialog's own `asrc__` classes so
+   the two surfaces cannot drift into two looks for one setting; only the frame differs, because a
+   modal centres itself and a settings row does not. */
+.settings-pair--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.asrc__choice--settings {
+  /* No max-width: inside the dialog the choices sit in a 30rem column, and here they have the
+     settings card's width to use. */
+  max-width: none;
+}
