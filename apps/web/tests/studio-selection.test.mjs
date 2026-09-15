@@ -199,10 +199,19 @@ test('the chip exists only when there is a selection to refer to', () => {
  * which is the good case. A slice anchored the other way round would have matched nothing and
  * passed, which is the failure this repo keeps finding.
  */
+/**
+ * The mechanics moved, and the assertions followed them rather than being softened.
+ *
+ * `insertSelection` used to hold the caret arithmetic itself. It now calls `insertPhrase`, which
+ * the seed and the template picker also call — three copies of "insert at the caret, repair the
+ * spacing, put the caret after what was inserted" would disagree about at least one of the three.
+ * So the properties below are asserted where they now live, and the test underneath checks that
+ * the chip still reaches them.
+ */
 function insertSelectionSource() {
-  const from = COMPOSER.indexOf('const insertSelection');
-  const to = COMPOSER.indexOf('const activeMode', from);
-  assert.ok(from !== -1 && to > from, 'the insertSelection handler was not found — this test checks nothing');
+  const from = COMPOSER.indexOf('const insertPhrase');
+  const to = COMPOSER.indexOf('const insertRef', from);
+  assert.ok(from !== -1 && to > from, 'the insertion handler was not found — this test checks nothing');
   return COMPOSER.slice(from, to);
 }
 
@@ -216,4 +225,13 @@ test('clicking it inserts at the caret and keeps the message within the cap', ()
 test('an empty phrase is not inserted', () => {
   const fn = insertSelectionSource();
   assert.match(fn, /if \(!phrase\) return;/);
+});
+
+test('the chip still reaches that insertion, with the selection reference as its phrase', () => {
+  // The guard above protects the chip only if the chip goes through it. Nothing selected produces
+  // an empty reference, and an empty insertion would move the caret for no reason.
+  const from = COMPOSER.indexOf('const insertSelection');
+  const to = COMPOSER.indexOf('const showCount', from);
+  assert.ok(from !== -1 && to > from, 'the chip handler was not found');
+  assert.match(COMPOSER.slice(from, to), /insertPhrase\(selectionReference\(selection\)\)/);
 });

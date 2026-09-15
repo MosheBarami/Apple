@@ -42,6 +42,7 @@ import { matchesShortcut } from '../../lib/shortcuts';
 import { sendBinding, sendHint } from '../../lib/send-key';
 import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
 import { insertAtCursor, selectionChipLabel, selectionReference } from '../../lib/selection-reference';
+import { insertableTemplates } from '../../lib/project-templates';
 import {
   TYPING_IDLE_MS,
   initialPresence,
@@ -77,6 +78,15 @@ const TONE: Record<ProductMode, string> = {
 };
 
 const PLACEHOLDER = 'Ask anything about your project...';
+
+/**
+ * The starting points the picker offers.
+ *
+ * Read once at module scope rather than per render: the list is static data and rebuilding it on
+ * every keystroke in the most-used control in the product would be a filter per keystroke for a
+ * list that cannot change.
+ */
+const TEMPLATES = insertableTemplates();
 
 interface Props {
   /**
@@ -137,6 +147,7 @@ export function Composer({
   // people start retyping into it before the draft lands on top of what they just typed.
   const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [modeOpen, setModeOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
   const lastKey = useRef(draftKey);
   const { prefs } = usePrefs();
@@ -179,11 +190,39 @@ export function Composer({
     [],
   );
 
+  //[[ ONE WAY TO PUT A PHRASE IN THE BOX.
+  //
+  //   The Studio-selection chip already inserted at the caret, and the seed did `setText(seed)` —
+  //   so a person who had begun typing and then clicked a suggestion, or who arrived on a handoff
+  //   with a draft restored from a previous visit, watched their own sentence be replaced by
+  //   somebody else's. The draft store persisted the replacement four hundred milliseconds later.
+  //
+  //   Three callers now share this: the chip, the seed and the template picker. Three copies of
+  //   "insert at the caret, repair the spacing, put the caret after what was inserted" would
+  //   disagree about at least one of the three, and the disagreement is invisible until somebody
+  //   loses a sentence. ]]
+  const insertPhrase = (phrase: string) => {
+    if (!phrase) return;
+    const el = box.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? start;
+    const next = insertAtCursor(text, phrase, start, end);
+    setText(next.text.slice(0, MESSAGE_MAX_CHARS));
+    // Focus and caret are restored after React has painted the new value, or the browser puts the
+    // caret back at the end and the person loses their place mid-sentence.
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(next.caret, next.caret);
+    });
+  };
+
+  // A REF, NOT A DEPENDENCY. `insertPhrase` closes over `text`, so listing it here would re-run the
+  // effect on every keystroke and re-insert the seed into the sentence being typed.
+  const insertRef = useRef(insertPhrase);
+  insertRef.current = insertPhrase;
+
   useEffect(() => {
-    if (seed) {
-      setText(seed);
-      box.current?.focus();
-    }
+    if (seed) insertRef.current(seed);
   }, [seed]);
 
   // Switching projects swaps the draft. Without the guard this would also fire on every render
@@ -373,21 +412,9 @@ export function Composer({
   const selectionLabel = selectionChipLabel(selection);
 
   const insertSelection = () => {
-    const phrase = selectionReference(selection);
     // Nothing selected produces no phrase, and inserting an empty one would move the caret for no
     // reason. The chip is hidden in that case anyway; this is the second door on the same room.
-    if (!phrase) return;
-    const el = box.current;
-    const start = el?.selectionStart ?? text.length;
-    const end = el?.selectionEnd ?? start;
-    const next = insertAtCursor(text, phrase, start, end);
-    setText(next.text.slice(0, MESSAGE_MAX_CHARS));
-    // Focus and caret are restored after React has painted the new value, or the browser puts the
-    // caret back at the end and the person loses their place mid-sentence.
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(next.caret, next.caret);
-    });
+    insertPhrase(selectionReference(selection));
   };
 
   const showCount = text.length >= MESSAGE_WARN_CHARS;
@@ -544,6 +571,44 @@ export function Composer({
               {selectionLabel}
             </button>
           )}
+
+          {/* ---------------------------------------------- templates ----
+              The SAME five pre-written first requests the new-project dialog offers, minus the
+              blank start. They were reachable exactly once in a project's life — at creation —
+              and on the second message there was no way back to one. Inserted at the caret like
+              every other phrase, so reaching for one does not cost a half-written sentence. */}
+          <div className="gx-pop-wrap">
+            <button
+              type="button"
+              className="gx-chip gx-chip--template"
+              aria-haspopup="menu"
+              aria-expanded={templatesOpen}
+              title="Insert a starting point"
+              onClick={() => setTemplatesOpen((v) => !v)}
+            >
+              <Icon d={PATH.compose} size={11} />
+              Templates
+            </button>
+            <Popover open={templatesOpen} onClose={() => setTemplatesOpen(false)} label="Starting points">
+              {TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="menuitem"
+                  className="gx-pop__item gx-pop__item--stack"
+                  onClick={() => {
+                    insertPhrase(t.prompt ?? '');
+                    setTemplatesOpen(false);
+                  }}
+                >
+                  <span className="gx-pop__main">
+                    {t.label}
+                    <span className="gx-pop__sub">{t.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </Popover>
+          </div>
 
           <div className="gx-composer__tools">
             {/* THE PICKER ITSELF IS HIDDEN, NOT ABSENT. A styled <label> over a real file input is

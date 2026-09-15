@@ -91,3 +91,18 @@ export function templateSeed(id: string | null | undefined): string | null {
   if (!id) return null;
   return PROJECT_TEMPLATES.find((t) => t.id === id)?.prompt ?? null;
 }
+
+/**
+ * The templates a composer may insert: everything that has a prompt.
+ *
+ * DERIVED, never a second list. The blank start is the one entry whose prompt is null, and
+ * "Start empty" inserted into a message box would insert nothing and read as a control that does
+ * not work — but filtering it out by NAME here would be a second place that knows which entry is
+ * the empty one. The predicate is the same fact the type already carries.
+ *
+ * A function rather than a constant so the filter cannot be evaluated against a half-initialised
+ * module by an import cycle, and so a caller that wants the list twice cannot mutate a shared one.
+ */
+export function insertableTemplates(): ProjectTemplate[] {
+  return PROJECT_TEMPLATES.filter((t): t is ProjectTemplate & { prompt: string } => t.prompt !== null);
+}
