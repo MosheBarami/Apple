@@ -63,6 +63,28 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
     <li>Nothing is deleted, downgraded or lost. You are just out of energy until the reset.</li>
   </ul>
 
+  <h2>Project files</h2>
+  <p>
+    Apple keeps notes, plans and generated data in a workspace beside each project — Golem's own
+    storage, not your Roblox place — and you can open, add, rename and download those files from the
+    Files drawer in the workspace. It holds <strong>text files only</strong>: .md, .txt, .json,
+    .csv, .luau, .lua, .ts, .js, .yml and .yaml. There is no image or model storage here; assets
+    live in your place.
+  </p>
+  <ul>
+    <li><strong>48 KB per file.</strong> A file past that is refused rather than truncated, so a
+      half-saved document is never what you find later. Long material belongs in several files.</li>
+    <li><strong>20 earlier versions of each file are kept.</strong> Every write archives the one
+      before it, and any kept version can be read and put back — putting one back is itself a new
+      version, so nothing in between is lost.</li>
+    <li><strong>Deleted files are recoverable for 30 days.</strong> Delete moves a file to the
+      project's trash with a real deadline on it, and the drawer says how long each one has left.</li>
+  </ul>
+  <p>
+    None of this counts against your Credits. Credits pay for inference; files are storage, and the
+    limits above are the whole of it.
+  </p>
+
   <h2>Other limits worth knowing</h2>
   <ul>
     <li><strong>Rate limiting:</strong> requests are queued per account. Under heavy load, free-tier requests may briefly wait; Pro (when it ships) queues ahead.</li>

@@ -1319,7 +1319,10 @@ export const fetchFileHistory = (projectId: string, path: string) =>
   );
 
 export interface FileOpRequest {
-  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert';
+  // The folder operations take a PREFIX in `path` rather than a file, and are named separately for
+  // that reason: one op that guessed from the shape of the string would delete a whole folder for
+  // anyone who typed a path without an extension.
+  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert' | 'move_folder' | 'delete_folder';
   path: string;
   to?: string;
   version?: number;
@@ -1397,6 +1400,34 @@ export async function uploadProjectFile(
     };
   }
   return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Save the whole workspace as one ZIP.
+ *
+ * Same shape as downloadProjectFile — the route needs a Bearer token, an <a href> sends none, so
+ * the bytes are fetched and handed over as a blob, and the SERVER names the file. It is also the
+ * one download here that can legitimately be empty-handed: a project with no files is answered with
+ * a sentence rather than with a zip of nothing, and that arrives as an ApiError like any refusal.
+ */
+export async function downloadProjectArchive(projectId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/archive`, { headers });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    throw new ApiError(typeof body?.error === 'string' ? body.error : `Could not download those files (${res.status})`, res.status);
+  }
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? 'project-files.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
 }
 
 /**
