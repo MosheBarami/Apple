@@ -23,8 +23,8 @@
 // That is the mirror of the staleness problem below: a red describing something other than the
 // tree under test. Both have the same root — a result that does not say WHAT it measured — and a
 // walker added here for convenience would make the false red permanent.
-import { execFileSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { treeFingerprint } from './lib/tree-fingerprint.mjs';
@@ -35,6 +35,56 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const rootTests = readdirSync(join(ROOT, 'tests'))
   .filter((f) => f.endsWith('.test.mjs'))
   .map((f) => join('tests', f));
+
+//[[ --at-head: RUN THE SUITE AT A COMMIT, IN A TREE NOTHING CAN EDIT.
+//
+//   The staleness guard below is correct and, on a busy checkout, permanently unsatisfiable. With
+//   several sessions working at once the fingerprint moved three times in nine seconds — three
+//   reads, three values — so the suite could never finish over a still tree and G90 could never
+//   go green, however healthy the suite actually was. That is the guard being RIGHT: the run
+//   genuinely does not describe any one tree. It is not a reason to loosen it.
+//
+//   So the gate stops asking "does this mixture pass" and asks "does HEAD pass", which is the
+//   question evidence is supposed to answer anyway — §10.1 does not let a pass end on a dirty
+//   tree, and a recorded green should describe a commit somebody can check out.
+//
+//   A detached worktree at HEAD cannot change while the suite runs, so the inner run's own
+//   fingerprint check is satisfied by construction rather than by luck. `node_modules` is
+//   symlinked rather than installed: the dependencies are the ones the main checkout resolved,
+//   which is what the bare command tests against too.
+//
+//   Bare `gate-suite` still measures the WORKING TREE, deliberately. That is the useful thing
+//   while you are editing, and it is where the staleness guard earns its place. Proposed by
+//   rbxai-04, who measured 780/780 at HEAD while the same suite on disk was 1468 pass / 4 fail —
+//   two different questions with two different answers, and the gate wants the first one.
+if (process.argv.includes('--at-head')) {
+  const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const dir = join(ROOT, '.claude', 'worktrees', `gate-suite-${sha.slice(0, 7)}`);
+  const quiet = { cwd: ROOT, stdio: 'ignore' };
+  try { execFileSync('git', ['worktree', 'remove', dir, '--force'], quiet); } catch { /* not there */ }
+  execFileSync('git', ['worktree', 'add', '--detach', '-q', dir, sha], { cwd: ROOT, stdio: 'inherit' });
+  try {
+    // Every workspace member that actually has modules resolved, plus the root.
+    for (const rel of ['', 'apps/web', 'apps/site', 'apps/worker', 'packages/evals', 'packages/corpus']) {
+      const from = join(ROOT, rel, 'node_modules');
+      if (!existsSync(from)) continue;
+      const to = join(dir, rel, 'node_modules');
+      if (existsSync(to)) continue;
+      mkdirSync(dirname(to), { recursive: true });
+      symlinkSync(from, to, 'dir');
+    }
+    // The worktree's OWN copy of this script, without the flag, so the real work happens once and
+    // its result is a statement about a tree that cannot move underneath it.
+    const r = spawnSync(process.execPath, [join(dir, 'scripts', 'gate-suite.mjs')], {
+      cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024,
+    });
+    process.stdout.write(`  at HEAD ${sha.slice(0, 7)} in a detached worktree\n`);
+    process.stdout.write(`${r.stdout ?? ''}${r.stderr ?? ''}`);
+    process.exit(r.status ?? 1);
+  } finally {
+    try { execFileSync('git', ['worktree', 'remove', dir, '--force'], quiet); } catch { /* left for inspection */ }
+  }
+}
 
 const fingerprintBefore = treeFingerprint(ROOT);
 
