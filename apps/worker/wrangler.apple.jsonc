@@ -1,0 +1,86 @@
+// Second worker, same data plane.
+// Identical bindings to wrangler.jsonc — D1/KV bind by ID, Vectorize by index name — so
+// `apple` reads and writes the SAME corpus, KV and index as `golem`. Only the Durable Object
+// namespace is new, which is why golem stays deployed: BudgetDO keeps its ledger in DO storage
+// and does not travel. Delete neither worker until traffic has actually moved.
+{
+  "name": "apple",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSION_DO",
+        "class_name": "SessionDO"
+      },
+      {
+        "name": "QUOTA_DO",
+        "class_name": "QuotaDO"
+      },
+      {
+        "name": "PAIRING_DO",
+        "class_name": "PairingDO"
+      },
+      {
+        "name": "ADMIN_DO",
+        "class_name": "AdminDO"
+      },
+      {
+        "name": "BUDGET_DO",
+        "class_name": "BudgetDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SessionDO",
+        "QuotaDO",
+        "PairingDO",
+        "AdminDO"
+      ]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": [
+        "BudgetDO"
+      ]
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "d1_databases": [
+    {
+      "binding": "CORPUS",
+      "database_name": "golem-corpus",
+      "database_id": "32c9471e-a7d7-49ee-a8fe-0a7def2c68bd"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "cc341a7db4d748139f161fdc292e6e84"
+    }
+  ],
+  "vectorize": [
+    {
+      "binding": "VEC",
+      "index_name": "golem-docs"
+    }
+  ],
+  "vars": {
+    "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
+    "ENVIRONMENT": "production",
+    "AI_GATEWAY_ID": "golem",
+    "BUILD_SHA": "e66fac3"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

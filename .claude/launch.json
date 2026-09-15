@@ -23,6 +23,18 @@
       ],
       "cwd": "apps/web",
       "port": 5173
+    },
+    {
+      "name": "design-examples",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4317",
+        "--directory",
+        "/Users/moshe/Downloads/Design examples needed"
+      ],
+      "port": 4317
     }
   ]
 }
