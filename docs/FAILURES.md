@@ -100,6 +100,35 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-66 · A negative fixture that violates two conjuncts proves neither
+**Believed:** `secret-redaction.test.mjs` proved a payment card is flagged only when it satisfies
+BOTH halves of the rule its name states — "Luhn AND an issuer prefix". Its two negative fixtures
+were `'order 1234567812345678'` and `'t=1736899200000'`, chosen as the two false positives that
+would actually matter in egress.
+**True:** both fixtures fail BOTH conjuncts. `1234567812345678` is not Luhn-valid *and* `1234` is
+not an issuer prefix; the 13-digit epoch is neither. So the pair could not show which half did the
+excluding. **Measured: forcing `luhnValid` to return `true` was GREEN, and relaxing the issuer
+regex to any four digits was ALSO green.** The test named a conjunction and demonstrated neither
+conjunct.
+**Cost of the error:** the whole reason the prefix check exists is written in a comment three lines
+above the rule — roughly one in ten 13-digit epoch milliseconds passes Luhn, so Luhn alone would
+start refusing ordinary outbound traffic at random and somebody would switch the gate off. That
+reasoning was load-bearing, documented, and untested.
+**Caught by:** the adversarial verification pass, which reported `luhnValid->true` and
+`prefix-relaxed` as two separate zero-red breaks and noticed that only removing BOTH at once
+reddened — the signature of the defect rather than of a mis-aimed break.
+**The rule:** **to prove a conjunction, every negative fixture must violate exactly ONE conjunct.**
+A fixture that fails for several reasons at once demonstrates only that the rule as a whole rejects
+it, which is the weakest possible claim and usually not the one the test's name makes. Repaired by
+adding one fixture per conjunct: `9000000000000001` is Luhn-valid with no issuer prefix, and
+`4111111111111112` carries the Visa prefix and fails Luhn. Each break above now reddens on its own.
+**How to recognise the family without running anything:** the test name contains AND, OR, "only
+when", or "unless", and the negative fixtures are all obviously, grossly invalid. A fixture that
+looks *almost* right is the one doing work. This is the same shape in three other places the same
+pass found — a de-duplication clause with no fixture producing two of a kind, a "short prompts are
+exempt" clause where the fixture was already excluded by a different threshold, and three
+truncate-after-redact assertions whose input never reached the truncation limit.
+
 ### F-65 · `join()` renders undefined as "", so a guard scanning for "undefined" saw nothing
 **Believed:** `preferences.test.mjs` proved every allowlisted preference value renders a rule the
 model actually receives. Its guard was `assert.ok(block.length > 0 && !block.includes('undefined'))`,
