@@ -97,6 +97,12 @@ export const TOOL = {
   list_scripts: { kind: 'reading_scripts', label: 'Listed scripts' },
   read_script: { kind: 'reading_scripts', label: 'Read a script' },
   search_scripts: { kind: 'reading_scripts', label: 'Searched scripts' },
+  // Three static-analysis tools the worker gained without labels here, so the trace rendered
+  // `review_scripts` at a person. The kinds are chosen by what the user sees happen, not by where
+  // the code lives: a review CRITIQUES, resolving a name READS, and the formatter WRITES.
+  review_scripts: { kind: 'critiquing', label: 'Reviewed the scripts' },
+  find_symbol: { kind: 'reading_scripts', label: 'Looked up a name' },
+  format_script: { kind: 'writing_luau', label: 'Formatted a script' },
 
   // C04 — reading the docs is not inspecting the user's project.
   search_docs: { kind: 'searching_knowledge', label: 'Searched the Roblox docs' },

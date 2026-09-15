@@ -18,8 +18,20 @@
 // protocol, the stored sessions and budget accounting are untouched by this
 // vocabulary. Nothing in this file may name a provider or a model id.
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { PRODUCT_MODES, PRODUCT_MODE_INFO, type ProductMode } from '@golem/shared';
+import {
+  MESSAGE_MAX_CHARS,
+  MESSAGE_WARN_CHARS,
+  PRODUCT_MODES,
+  PRODUCT_MODE_INFO,
+  type ProductMode,
+  type StudioEventSelection,
+} from '@golem/shared';
 import { Icon, PATH, Popover } from './primitives';
+import { matchesShortcut } from '../../lib/shortcuts';
+import { sendBinding, sendHint } from '../../lib/send-key';
+import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
+import { insertAtCursor, selectionChipLabel, selectionReference } from '../../lib/selection-reference';
+import { usePrefs } from '../../lib/theme';
 
 /**
  * The swatch each mode carries. These are the existing charcoal-stone
@@ -47,7 +59,13 @@ const TONE: Record<ProductMode, string> = {
 const PLACEHOLDER = 'Ask anything about your project...';
 
 interface Props {
-  onSend: (text: string) => void | boolean;
+  /**
+   * TRUE WHEN THE MESSAGE ACTUALLY LEFT. This used to be `void`, and the type was the bug: with
+   * nothing to check, the guard that keeps a refused send from emptying the box could not be
+   * written even by someone who wanted to. A socket that closed mid-sentence took the sentence
+   * with it and the person watched their own words disappear.
+   */
+  onSend: (text: string) => boolean;
   onStop: () => void;
   running: boolean;
   disabled?: boolean;
@@ -55,8 +73,10 @@ interface Props {
   onModeChange: (m: ProductMode) => void;
   seed?: string;
   placeholder?: string;
+  /** The project this draft belongs to. Empty means "do not persist" — draft.ts no-ops on it. */
   draftKey?: string;
-  selection?: unknown;
+  /** What is selected in Studio right now, so the person can say "this one" instead of a path. */
+  selection?: StudioEventSelection | null;
 }
 
 export function Composer({
@@ -68,12 +88,20 @@ export function Composer({
   onModeChange,
   seed,
   placeholder,
-  draftKey,
+  draftKey = '',
   selection,
 }: Props) {
-  const [text, setText] = useState('');
+  // RESTORED ON THE FIRST RENDER, not in an effect. An effect paints an empty box first, and
+  // people start retyping into it before the draft lands on top of what they just typed.
+  const [text, setText] = useState(() => (draftKey ? readDraft(draftKey) : ''));
   const [modeOpen, setModeOpen] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
+  const lastKey = useRef(draftKey);
+  const { prefs } = usePrefs();
+
+  // ONE source for the chord. The handler and the hint below both read this, so the help can
+  // never describe a key the handler does not listen for — which is how the two diverged before.
+  const sendKeyBinding = sendBinding(prefs.sendKey);
 
   useEffect(() => {
     if (seed) {
@@ -81,6 +109,22 @@ export function Composer({
       box.current?.focus();
     }
   }, [seed]);
+
+  // Switching projects swaps the draft. Without the guard this would also fire on every render
+  // that did not change the project and overwrite what the person is typing with what is stored.
+  useEffect(() => {
+    if (draftKey === lastKey.current) return;
+    lastKey.current = draftKey;
+    setText(draftKey ? readDraft(draftKey) : '');
+  }, [draftKey]);
+
+  // Debounced, because a write per keystroke is a synchronous localStorage call per keystroke in
+  // the one control the whole product is typed into.
+  useEffect(() => {
+    if (!draftKey) return;
+    const timer = setTimeout(() => writeDraft(draftKey, text), 400);
+    return () => clearTimeout(timer);
+  }, [draftKey, text]);
 
   // Grow with the content, up to the CSS max-height.
   useEffect(() => {
@@ -94,18 +138,46 @@ export function Composer({
     e?.preventDefault();
     const value = text.trim();
     if (!value || running || disabled) return;
-    onSend(value);
+    // THE REFUSAL SHORT-CIRCUITS BEFORE ANYTHING IS THROWN AWAY. A send the socket refused must
+    // leave the box and the draft exactly as they were: the words are still the person's, and the
+    // only thing that failed is the delivery.
+    if (!onSend(value)) return;
     setText('');
+    clearDraft(draftKey);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter sends, Shift+Enter makes a new line.
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // THROUGH THE SHARED MATCHER, never a hand-rolled key check. A chord matched by hand in one
+    // component is exactly what lib/shortcuts.ts exists to prevent, and it survived here — in the
+    // most-used control in the product — long enough for the help text and the behaviour to
+    // disagree about which key sends.
+    if (matchesShortcut(e, sendKeyBinding)) {
       e.preventDefault();
       submit();
     }
   };
 
+  const selectionLabel = selectionChipLabel(selection);
+
+  const insertSelection = () => {
+    const phrase = selectionReference(selection);
+    // Nothing selected produces no phrase, and inserting an empty one would move the caret for no
+    // reason. The chip is hidden in that case anyway; this is the second door on the same room.
+    if (!phrase) return;
+    const el = box.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? start;
+    const next = insertAtCursor(text, phrase, start, end);
+    setText(next.text.slice(0, MESSAGE_MAX_CHARS));
+    // Focus and caret are restored after React has painted the new value, or the browser puts the
+    // caret back at the end and the person loses their place mid-sentence.
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(next.caret, next.caret);
+    });
+  };
+
+  const showCount = text.length >= MESSAGE_WARN_CHARS;
   const activeMode = PRODUCT_MODE_INFO[mode];
 
   return (
@@ -118,12 +190,24 @@ export function Composer({
           id="gx-composer-input"
           ref={box}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          // maxLength alone is not enough: browsers disagree about whether an over-long PASTE is
+          // truncated or dropped, and the box must always hold exactly what will be sent.
+          onChange={(e) => setText(e.target.value.slice(0, MESSAGE_MAX_CHARS))}
           onKeyDown={onKeyDown}
           rows={1}
+          maxLength={MESSAGE_MAX_CHARS}
           placeholder={placeholder ?? PLACEHOLDER}
           disabled={disabled}
+          data-tour="composer"
         />
+
+        {showCount && (
+          /* Polite, never assertive: a character count that interrupted a screen reader mid-word
+             would be a worse problem than the one it is warning about. */
+          <p className="gx-composer__count" aria-live="polite">
+            {MESSAGE_MAX_CHARS - text.length} characters left
+          </p>
+        )}
 
         <div className="gx-composer__bar">
           {/* -------------------------------------------------- mode ---- */}
@@ -170,6 +254,18 @@ export function Composer({
             </Popover>
           </div>
 
+          {selectionLabel && (
+            <button
+              type="button"
+              className="gx-chip gx-chip--selection"
+              onClick={insertSelection}
+              title="Refer to what is selected in Studio"
+            >
+              <Icon d={PATH.surface} size={11} />
+              {selectionLabel}
+            </button>
+          )}
+
           <div className="gx-composer__tools">
             {/* Attachments and dictation are in the reference's composer, and
                 this build has no backend for either. They are therefore shown
@@ -207,7 +303,9 @@ export function Composer({
         </div>
       </form>
 
-      <p className="gx-composer__note">Golem can make mistakes. Always review important information.</p>
+      <p className="gx-composer__note">
+        {sendHint(prefs.sendKey)} Golem can make mistakes. Always review important information.
+      </p>
     </div>
   );
 }

@@ -229,3 +229,90 @@ dispositioned DELETE, and none should be on this evidence — §6.6 requires a d
 for that, and deleting source to make a checker green is a violation rather than a fix. If an
 author intended something other than WIRE for one of these, the entry is wrong and should be
 corrected by them.
+
+---
+
+# Pass 13 — six modules, written by other sessions, dispositioned by the one that found them
+
+The same convention as the pass-12 note below the four before them: WIRE here is a statement of
+fact plus the intent each module's own header states. Nothing reaches it, and each describes a
+product capability rather than an experiment. None is dispositioned DELETE and none should be on
+this evidence — §6.6 requires a dated owner statement, and deleting source to make a checker green
+is a violation rather than a fix. If an author meant something other than WIRE for one of these,
+the entry is wrong and they should correct it.
+
+**Two of the six are reached only by their own tests, and that is a different shape from the other
+four.** A module with a passing test suite and no product caller is the most expensive kind of
+dead code, because the green suite reads as coverage of a shipped feature. It is not. It is
+coverage of a function nobody can reach.
+
+## apps/web/src/components/ws/context-model.ts — WIRE, pass 13
+
+**Found:** imported by nothing in the tree. 76 lines.
+
+**What it is:** the strings that tell a user how much of the context budget a run used and what the
+trim discarded. Its header names the symptom it exists to prevent: the agent silently drops the
+oldest turns, the user asks about something still on their screen, and the answer reads as a bad
+model rather than a dropped record.
+
+**Outstanding:** a caller in the run view, and `context` on the wire from the worker. Unreached,
+the product still has that symptom and nothing on screen distinguishes it from a poor answer.
+
+## apps/web/src/components/ws/files-panel.tsx — WIRE, pass 13
+
+**Found:** imported by nothing in the tree. 361 lines.
+
+**What it is:** the drawer that opens the project's workspace files. Apple writes notes, plans and
+generated data there, and without this panel the only way to read one is to ask Apple to read it
+back.
+
+**Outstanding:** a route or a drawer trigger in the workspace shell. Its own `files-model.ts` is
+reached, so the decisions are tested; the markup is not mounted anywhere.
+
+## apps/web/src/components/ws/members-panel.tsx — WIRE, pass 13
+
+**Found:** imported by nothing in the tree. 422 lines.
+
+**What it is:** the project roster with invite, role change, suspend, reactivate and revoke. Its
+header states the sharper fact: every one of those routes already exists on the server, gated and
+audited, and nothing in the web app calls any of them — so adding a collaborator is a curl.
+
+**Outstanding:** a mount point. This is the entry on this list with the largest gap between what
+the backend can do and what a person can reach.
+
+## apps/web/src/lib/selection-reference.ts — WIRE, pass 13
+
+**Found:** imported only by `apps/web/tests/studio-selection.test.mjs`. 93 lines.
+
+**What it is:** lets the person typing say "this one" about whatever is selected in Studio. The
+selection already travels end to end — plugin captures it, worker re-derives every field, the
+model can pull it with `get_selection` — and this is the missing half that lets a human point at
+it instead of typing a path.
+
+**Outstanding:** a caller in the composer. Reached only by its own test, so its suite is green and
+the capability is unavailable.
+
+## apps/worker/src/automation-store.ts — WIRE, pass 13
+
+**Found:** imported by nothing in the tree. 506 lines.
+
+**What it is:** storage for automations and their execution history, with the policy deliberately
+left in `automations.ts`. The header argues D1 over a Durable Object on two grounds, the second of
+which is load-bearing: a run history that vanished when somebody cleared a transcript would be a
+record of spending that the spender can erase.
+
+**Outstanding:** a dispatcher and a cron. Until then the product has automation policy, automation
+storage, and no automations.
+
+## apps/worker/src/run-access.ts — WIRE, pass 13
+
+**Found:** imported only by `apps/worker/tests/run-access.test.mjs`. 198 lines.
+
+**What it is:** re-asks who may drive a run after the request that started it is gone. Its header
+states the live bug precisely: revoke a member's grant mid-build and every remaining alarm-driven
+step still runs, spending the owner's Credits and mutating the owner's place on behalf of somebody
+removed an hour ago.
+
+**Outstanding:** the push from the route that ends a membership, and a check in the alarm path.
+This is the one of the six whose absence is a security hole rather than a missing feature, and its
+passing test suite is exactly the reason it could sit here unnoticed.

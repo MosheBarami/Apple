@@ -16,7 +16,7 @@ Every mode moved onto a single model, chosen by the eval suite rather than by ta
 
 - One engine now runs planning, building, memory and vision — 1M context, native tool calling, multimodal. Which engine that is stays an implementation detail chosen per step.
 - The gateway bills from the engine's own reported figure per call rather than from an estimate.
-- Sparks recalibrated: 1 Spark = 30 neurons, so a Spark stays a meaningful unit now that the same work costs less.
+- Credits recalibrated: 1 Credit = 30 neurons, so a Credit stays a meaningful unit now that the same work costs less.
 
 ### Removed
 
@@ -37,10 +37,10 @@ The full describe-to-build loop: a web workspace, a real Studio plugin, and an a
 ### Added
 
 - Chat-driven building with live streaming responses and a visible tool trace — every get_project_tree, edit_script and run_and_check as it happens.
-- Three modes: Plan (2 Sparks), Agent (4 Sparks) and Super Agent (10 Sparks), which plans, builds, tests and fixes autonomously.
+- Three modes: Plan (2 Credits), Agent (4 Credits) and Super Agent (10 Credits), which plans, builds, tests and fixes autonomously.
 - Unlimited projects per account, each with its own chat history and memory of what was built.
 - Image attachments, and a stop button that actually stops the agent mid-run.
 - The Studio plugin: pairing by short-lived code with a 10-minute expiry, script reading and editing through Studio's own editor APIs, typed instance operations, and a ChangeHistory waypoint around every batch so native undo works.
 - Run mode driven from the plugin — started, stopped, logged, and reported back for verification.
 - An automatic checkpoint before every agent run, manual checkpoints on demand, and one-click restore of scripts and instances across sessions.
-- The free tier: 60 Sparks per day as a hard quota that resets daily, with Pro on a waitlist.
+- The free tier: 60 Credits per day as a hard quota that resets daily, with Pro on a waitlist.
