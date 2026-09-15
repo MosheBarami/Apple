@@ -913,29 +913,17 @@ export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
 // BOUND TO THE CALLER BY THE TOKEN. There is no user id in either path and no variant that takes
 // one; the worker reads `c.get('user').userId` off the verified JWT and binds it into every clause.
 
-export interface NotificationsResponse {
-  items: unknown[];
-  unread: number;
-  kinds?: readonly string[];
-}
-
-export const fetchNotifications = (): Promise<NotificationsResponse> =>
-  MOCK_MODE ? Promise.resolve({ items: [], unread: 0 }) : request<NotificationsResponse>('/api/notifications');
-
-/**
- * Mark specific rows read.
- *
- * IDS, NEVER `all`. The route accepts both, and a panel that shows only security events must not
- * clear the run failures sitting unread beside them. The count comes back from the write, so a
- * caller can tell "marked 3" from "marked 0 because none of those were yours".
- */
-export const markNotificationsRead = (ids: readonly string[]): Promise<{ marked: number; unread: number }> =>
-  MOCK_MODE
-    ? Promise.resolve({ marked: 0, unread: 0 })
-    : request<{ marked: number; unread: number }>('/api/notifications/read', {
-        method: 'POST',
-        body: JSON.stringify({ ids }),
-      });
+//[[ THERE IS ONE PAIR OF THESE, AND IT USED TO BE TWO.
+//
+//   Two agents wrote notification helpers against the same two routes with different signatures —
+//   one taking `{ids?, all?}` for the inbox, one taking a bare `ids` array for the security panel.
+//   The second version's comment carried a real constraint and it is kept below rather than lost:
+//   IDS, NEVER `all`, for a panel that shows only security events, because "mark all read" there
+//   would clear the run failures sitting unread beside them.
+//
+//   That is a rule about the CALL SITE, not about the function. The function above takes both and
+//   the security panel passes only ids — which is checked, not merely intended: see
+//   apps/web/tests/security-log.test.mjs.
 
 /**
  * Record that this account's password was changed.
