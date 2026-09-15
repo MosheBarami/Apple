@@ -100,6 +100,36 @@ that announces a leaked budget reservation.
 the CONTENT of the event you mean, or assert an exact count with a fixture that can
 produce exactly one. A `>= 1` over a shared channel is a check that the channel exists.
 
+### F-67 · A verification worktree with symlinked node_modules ran 8% of the suite and called it RED
+**Believed:** running `gate-suite.mjs` in a detached worktree at HEAD answers "does the committed
+tree pass?" while the main checkout churns. The worktree was prepared by symlinking the main tree's
+`node_modules` into it — root and per-package — which is fast, costs no disk, and was sanity-checked
+before use: `packages/design` ran 42/42 there, and `apps/worker/node_modules/.bin/esbuild` resolved.
+**True:** `pnpm` in that worktree could not run at all — `Command failed with exit code 1: pnpm
+install` — and saw **zero** workspace packages against the main tree's twelve. `pnpm -r test`
+therefore recursed over nothing. The run reported **`tests passed: 225 failed: 11 — SUITE RED`**
+against a main-tree suite of **2,935**. Eight per cent of the suite ran, and the verdict was
+presented as a fact about HEAD.
+**Cost of the error:** nearly reported "HEAD is RED" to the owner and to a peer, in a session whose
+entire purpose was landing 16 agents' work. The peer had independently recommended the symlink
+recipe and was using it for their own audits, so the wrong number would have propagated.
+**Caught by:** the test COUNT, not the verdict. 225 against an expected 2,935 is not a failing
+suite, it is a different suite. **The sanity check that passed is what made it dangerous** — one
+package ran and one binary resolved, so the harness looked alive from every angle except the only
+one that mattered, which was how many packages `pnpm` could see.
+**The rule:** **a partial harness reports a verdict, not an error.** Before believing any suite
+result, compare its TEST COUNT to the count you expect; a suite that cannot run most of itself
+fails in exactly the shape of a suite that ran and found problems. For a workspace monorepo
+specifically, symlinked `node_modules` is not a working install — `pnpm` needs its own metadata in
+the tree it is invoked from. `pnpm install --frozen-lockfile` inside the worktree takes eleven
+seconds and yields eleven packages; the symlinks took none and yielded none.
+**Relation to F-58:** this is reading 3, dead harness, at suite scale rather than test scale — and
+it is the third instance in one night of the same root: *the instrument was broken and returned the
+answer we were emotionally prepared for.* F-64 was a parser matching nothing and reporting zero
+failures. rbxai-04's was a shell eating a needle and reporting a guard absent. This one is a package
+manager finding no packages and reporting a red suite. In all three the broken instrument produced a
+number rather than an error, and a number gets believed.
+
 ### F-66 · A negative fixture that violates two conjuncts proves neither
 **Believed:** `secret-redaction.test.mjs` proved a payment card is flagged only when it satisfies
 BOTH halves of the rule its name states — "Luhn AND an issuer prefix". Its two negative fixtures
