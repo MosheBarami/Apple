@@ -20,7 +20,7 @@ import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from 
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
-import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type Membership, type ShareResource } from './collab';
+import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type ShareResource } from './collab';
 import {
   isShareToken,
   kvGrantBarred,
@@ -3644,6 +3644,41 @@ async function recordMembershipEvents(
   return { ok: ok && rows.length === inputs.length, written: ok ? rows.length : 0, requested: inputs.length };
 }
 
+/**
+ * PUSH A MEMBERSHIP CHANGE INTO THE SOCKETS THAT ARE ALREADY OPEN.
+ *
+ * The HTTP half of this was already right and is tested: every shared route re-resolves membership
+ * through `sharedAccess` on every request, so a removed member is a stranger on their next call.
+ * A WEBSOCKET MAKES NO FURTHER CALLS. The role is decided once at the handshake, frozen onto the
+ * socket, and every later frame is gated against that frozen value — so a member who was removed,
+ * suspended or demoted kept every capability they had for as long as the tab stayed open, and a
+ * workspace tab stays open for days.
+ *
+ * Best effort by design: the membership change has ALREADY LANDED by the time this runs, and a
+ * Durable Object that cannot be reached must not undo it. What this must not do is let the route
+ * claim it happened — the counts come back on the response, so `{ matched: 0 }` is a fact the
+ * caller can read and `null` says the push could not be made at all.
+ */
+async function pushAccessChange(
+  stub: DurableObjectStub,
+  userId: string,
+  role: CollabRole | null,
+): Promise<{ matched: number; closed: number; demoted: number } | null> {
+  try {
+    const res = await stub.fetch('https://do/collab/access-changed', {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    });
+    if (!res.ok) return null;
+    const out = (await res.json()) as { matched?: unknown; closed?: unknown; demoted?: unknown };
+    return typeof out?.matched === 'number'
+      ? { matched: out.matched, closed: Number(out.closed) || 0, demoted: Number(out.demoted) || 0 }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** One door to the Durable Object's collaboration store, so identity crosses exactly once. */
 async function collabCall(
   stub: DurableObjectStub,
@@ -3938,6 +3973,8 @@ app.post('/api/shared/:id/members', async (c) => {
   if (!ok) return c.json({ error: 'invite_failed', status }, 502);
 
   const kind = inviteEventKind(before, { role });
+  // A DEMOTION MUST REACH THE TAB, not wait for a reload. See `pushAccessChange`.
+  const live = await pushAccessChange(ctx.stub, userId, role);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind, subjectId: userId, fromRole: before?.role ?? null, toRole: role },
   ]);
@@ -3951,7 +3988,7 @@ app.post('/api/shared/:id/members', async (c) => {
     `Someone was given access to ${ctx.project.name}`,
     `A member was ${before ? 'changed to' : 'added as'} ${role}.`,
   );
-  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok }, 201);
+  return c.json({ ok: true, userId, role, event: kind, audited: audit.ok, liveSockets: live }, 201);
 });
 
 /**
@@ -3979,6 +4016,8 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
 
   const before = new Map<string, MemberRow | null>();
   for (const row of plan.accepted) before.set(row.userId, await membershipRow(c, ctx, row.userId));
+  // Every accepted row is a role change for somebody, and a bulk demotion must reach their tabs by
+  // the same route a single one does — see `pushAccessChange`. Applied after the insert below.
 
   const { ok, status } = await supaRest(c.env, ctx.user.jwt, '/project_members', {
     method: 'POST',
@@ -3997,6 +4036,17 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
       })),
     ),
   });
+
+  // The demotions in this batch reach the open tabs, one push each, for the reason a single
+  // invite does. Only when the insert landed: pushing a role nobody was actually given would be
+  // the claim outliving the fact in the other direction.
+  let liveSockets = 0;
+  if (ok) {
+    for (const row of plan.accepted) {
+      const live = await pushAccessChange(ctx.stub, row.userId, row.role);
+      liveSockets += live?.matched ?? 0;
+    }
+  }
 
   const invited = plan.accepted.map((row) => ({
     userId: row.userId,
@@ -4025,6 +4075,7 @@ app.post('/api/shared/:id/members/bulk', async (c) => {
       invited,
       rejected: plan.rejected,
       audited: audit.ok,
+      liveSockets,
       counts: { invited: ok ? invited.length : 0, rejected: plan.rejected.length },
     },
     ok ? 201 : 502,
@@ -4068,6 +4119,8 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
   //   route below — not a second click on a URL the person still has in their inbox. ]]
   const linkGrantRevoked = await revokeKvGrant(c.env, ctx.project.id, userId, { at, by: ctx.user.userId, removed: true });
 
+  // The open tab is closed here, not left holding the capabilities it had at handshake.
+  const live = await pushAccessChange(ctx.stub, userId, null);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind: 'removed', subjectId: userId, fromRole: before?.role ?? null, reason: c.req.query('reason') ?? null },
   ]);
@@ -4078,7 +4131,7 @@ app.delete('/api/shared/:id/members/:userId', async (c) => {
     `Someone lost access to ${ctx.project.name}`,
     `A ${before?.role ?? 'member'} was removed from the project.`,
   );
-  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, audited: audit.ok });
+  return c.json({ ok: true, userId, revoked: true, linkGrantRevoked, audited: audit.ok, liveSockets: live });
 });
 
 /**
@@ -4136,10 +4189,13 @@ app.post('/api/shared/:id/members/:userId/suspend', async (c) => {
           suspended_by: ctx.user.userId,
         });
 
+  // A SUSPENDED GRANT IS DEAD WHILE IT LASTS, which is why this closes rather than demotes: there
+  // is no role a suspension leaves behind, and `classifyGrant` already refuses the row at the door.
+  const live = await pushAccessChange(ctx.stub, userId, null);
   const audit = await recordMembershipEvents(c, ctx, [
     { kind: 'suspended', subjectId: userId, fromRole: before?.role ?? null, reason: reason.length === 0 ? null : reason },
   ]);
-  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok });
+  return c.json({ ok: true, userId, suspended: true, at, reason: reason.length === 0 ? null : reason, linkGrantSuspended, audited: audit.ok, liveSockets: live });
 });
 
 /**

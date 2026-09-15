@@ -91,6 +91,8 @@ let memberRows = [];
 let doCalls = [];
 /** What the DO answers for a `/collab` delegation, so a route's plumbing can be observed. */
 let doCollabReply = { status: 200, body: { ok: true } };
+/** What the DO answers when a membership route pushes a change into the open sockets. */
+let doAccessChangeReply = { status: 200, body: { matched: 1, closed: 1, demoted: 0 } };
 const kv = new Map();
 /** Every KV key the worker ASKED FOR. A Map's `get` records nothing, so without this an
  *  assertion about "nothing was read under a forged key" cannot fail — see the redeem test. */
@@ -161,6 +163,9 @@ function sessionNamespace() {
         if (u.pathname === '/collab') {
           return new Response(JSON.stringify(doCollabReply.body), { status: doCollabReply.status });
         }
+        if (u.pathname === '/collab/access-changed') {
+          return new Response(JSON.stringify(doAccessChangeReply.body), { status: doAccessChangeReply.status });
+        }
         // The session DO's own reads. `{ok:true}` for everything made a 200 the only observable
         // fact about /messages and /checkpoints, which is why nothing could tell "the member
         // reached the transcript" from "the member reached a stub". These answer with CONTENT.
@@ -222,6 +227,7 @@ function reset({ members = [] } = {}) {
   }));
   doCalls = [];
   doCollabReply = { status: 200, body: { ok: true } };
+  doAccessChangeReply = { status: 200, body: { matched: 1, closed: 1, demoted: 0 } };
   kv.clear();
 }
 
@@ -690,4 +696,48 @@ test('a CHAT link opens the chat and nothing else, once it has been redeemed', a
   const wideWho = await call(`/api/shared/${PROJECT_ID}`, { jwt: STRANGER_JWT });
   assert.equal(wideWho.json.directoryWithheld, false);
   assert.ok(wideWho.json.members.some((m) => m.userId === OWNER_ID), 'a project guest sees the directory');
+});
+
+test('A MEMBERSHIP CHANGE IS PUSHED INTO THE ROOM, not left for the next request that never comes', async () => {
+  //[[ THE HALF THAT WAS MISSING.
+  //
+  //   "a REVOKED member is a stranger again, on the next request" is true and is asserted above.
+  //   A WebSocket makes no next request: the role is decided at the handshake and frozen onto the
+  //   socket, and `grep ws.close` across do/session.ts found exactly one call, for a deleted
+  //   project. So the membership routes wrote Postgres and KV and returned, and the removed
+  //   member kept their capabilities on an open tab for as long as the tab stayed open.
+  //
+  //   What the socket then DOES with the push is driven in collab-access-change.test.mjs against
+  //   the Durable Object itself. This asserts the routes make it. ]]
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  const gone = await call(`/api/shared/${PROJECT_ID}/members/${MEMBER_ID}`, { method: 'DELETE', jwt: OWNER_JWT });
+  assert.equal(gone.status, 200);
+  const removal = doCalls.find((d) => d.path === '/collab/access-changed');
+  assert.ok(removal, 'a removal must reach the session Durable Object');
+  assert.equal(removal.body.userId, MEMBER_ID);
+  assert.equal(removal.body.role, null, 'a removal has no lesser role to demote to');
+  assert.deepEqual(gone.json.liveSockets, { matched: 1, closed: 1, demoted: 0 }, 'and the route REPORTS what the push did');
+
+  // A DEMOTION carries the new role, so the socket is rewritten rather than closed.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'admin' }] });
+  await call(`/api/shared/${PROJECT_ID}/members`, { method: 'POST', jwt: OWNER_JWT, body: { userId: MEMBER_ID, role: 'viewer' } });
+  const demotion = doCalls.find((d) => d.path === '/collab/access-changed');
+  assert.ok(demotion, 'a role change must reach the session Durable Object');
+  assert.equal(demotion.body.role, 'viewer');
+
+  // A SUSPENSION closes, because a suspended grant is dead while it lasts.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  await call(`/api/shared/${PROJECT_ID}/members/${MEMBER_ID}/suspend`, { method: 'POST', jwt: OWNER_JWT, body: { reason: 'talking about it' } });
+  const suspension = doCalls.find((d) => d.path === '/collab/access-changed');
+  assert.ok(suspension, 'a suspension must reach the session Durable Object');
+  assert.equal(suspension.body.role, null);
+
+  // A DURABLE OBJECT THAT CANNOT BE REACHED DOES NOT UNDO THE CHANGE — it has already landed in
+  // both stores — and must not be reported as a push that happened.
+  reset({ members: [{ user_id: MEMBER_ID, role: 'editor' }] });
+  doAccessChangeReply = { status: 500, body: { error: 'unreachable' } };
+  const still = await call(`/api/shared/${PROJECT_ID}/members/${MEMBER_ID}`, { method: 'DELETE', jwt: OWNER_JWT });
+  assert.equal(still.status, 200, 'the membership revocation already succeeded');
+  assert.equal(still.json.revoked, true);
+  assert.equal(still.json.liveSockets, null, 'and the answer says the push did not happen rather than implying it did');
 });

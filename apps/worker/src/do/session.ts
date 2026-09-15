@@ -646,6 +646,86 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcastPresence();
   }
 
+  /**
+   * A MEMBERSHIP CHANGE, APPLIED TO THE SOCKETS THAT ARE ALREADY OPEN.
+   *
+   * Every HTTP route re-resolves membership on every request, so somebody who was removed is a
+   * stranger on their next call. A WebSocket makes no further calls: the role was decided once at
+   * the handshake (`socketRole`) and frozen into the attachment, and every later frame is gated
+   * against that frozen value. So a member who was removed, suspended or demoted kept every
+   * capability they had until they happened to reload — which, for a workspace tab left open, is
+   * never.
+   *
+   * `role === null` is a removal and the socket is CLOSED, because there is no lesser role to
+   * demote to and a socket that stays open on a project you are no longer on is the bug itself.
+   * A demotion re-serializes the attachment, which is the same value `beatOf` reads before every
+   * gated frame — so the next `chat` from a demoted tab is refused by the code that was always
+   * there, rather than by a second copy of the rule living here.
+   *
+   * Returns what it actually did. `matched: 0` is a real and common answer — the person was not
+   * connected — and the route reports it rather than an unconditional `ok: true`.
+   */
+  private applyAccessChange(userId: string, role: CollabRole | null): { matched: number; closed: number; demoted: number } {
+    let matched = 0;
+    let closed = 0;
+    let demoted = 0;
+    for (const ws of this.ctx.getWebSockets('client')) {
+      const beat = this.beatOf(ws);
+      if (beat === null || beat.userId !== userId) continue;
+      matched += 1;
+      if (role === null) {
+        try {
+          // 1008 is "policy violation", which is what this is: the connection is no longer
+          // permitted. The client reconnects and is refused at the door like anyone else.
+          ws.close(1008, 'access changed');
+          closed += 1;
+        } catch {
+          /* already closing */
+        }
+        continue;
+      }
+      if (beat.role === role) continue;
+      const next = makeBeat({ userId: beat.userId, role, connectionId: beat.connectionId, nowMs: Date.now(), activity: beat.activity });
+      if (next === null) continue;
+      try {
+        ws.serializeAttachment(next);
+        demoted += 1;
+        // The tab is TOLD. Without this the controls keep offering what the server will now
+        // refuse, and the person finds out by pressing one and reading a permission error they
+        // have no explanation for.
+        ws.send(JSON.stringify({ type: 'error', code: 'role_changed', message: `Your role on this project is now ${role}.` } satisfies ServerMsg));
+      } catch {
+        /* a closing socket cannot be updated, and does not need to be */
+      }
+    }
+    if (matched > 0) this.broadcastPresence();
+    return { matched, closed, demoted };
+  }
+
+  /**
+   * A REFUSAL GOES TO THE PERSON WHO CAUSED IT.
+   *
+   * `broadcast` reaches every socket on the project, and these are refusals of ONE person's
+   * request. "Apple is already working — stop the current run first." arriving on a colleague's
+   * screen reads as something THEY did, and there is nothing on screen to tell them otherwise.
+   * The role refusals two lines from the call sites have always been targeted; this brings the
+   * busy ones into line with them.
+   *
+   * A run with no originating socket — the automation path — still broadcasts, because there is
+   * no one person to answer and silence would be worse.
+   */
+  private refuseOne(origin: WebSocket | undefined, msg: ServerMsg) {
+    if (origin === undefined) {
+      this.broadcast(msg);
+      return;
+    }
+    try {
+      origin.send(JSON.stringify(msg));
+    } catch {
+      /* closed */
+    }
+  }
+
   /** Tell everyone who is here. Called on connect, on heartbeat and on close. */
   private broadcastPresence() {
     const snap = presenceSnapshot(this.presenceBeats(), Date.now());
@@ -941,6 +1021,21 @@ export class SessionDO extends DurableObject<Env> {
       );
       const out = this.collab.handle(payload.method, payload.path, body, ctx);
       return json(out.body, out.status);
+    }
+
+    if (path === '/collab/access-changed' && req.method === 'POST') {
+      // Called by the membership routes after their writes land. See `applyAccessChange`.
+      const payload = (await req.json().catch(() => null)) as { userId?: unknown; role?: unknown } | null;
+      const userId = typeof payload?.userId === 'string' && payload.userId.length > 0 ? payload.userId : null;
+      if (userId === null) return json({ error: 'bad_request' }, 400);
+      // THE OWNER'S ROLE IS THE `projects.owner_id` COLUMN and no membership write can move it, so
+      // a request to change it is a programming error rather than a demotion to apply.
+      if (userId === bind.ownerId) return json({ error: 'owner_is_not_a_member' }, 400);
+      // A ROLE THIS BUILD CANNOT READ IS A REMOVAL, not a role left as it was. `asCollabRole`
+      // returns null for anything outside the allowlist, and leaving the socket at the
+      // capabilities it already had would be the one direction that must never be the default.
+      const role = payload?.role === null || payload?.role === undefined ? null : asCollabRole(payload.role);
+      return json(this.applyAccessChange(userId, role));
     }
 
     if (path === '/collab/presence' && req.method === 'GET') {
@@ -1438,7 +1533,7 @@ export class SessionDO extends DurableObject<Env> {
           //   The history is this project's own user messages, read here rather than kept in
           //   memory so a reconnect, a new isolate or a second tab does not reset the count. ]]
           if (this.refuseAbusive(text)) return;
-          await this.startRun(bind, text, mode);
+          await this.startRun(bind, text, mode, undefined, ws);
         }
         return;
       case 'edit_resend': {
@@ -1468,7 +1563,7 @@ export class SessionDO extends DurableObject<Env> {
         }
         const agent = await this.ctx.storage.get<AgentState>('agent');
         if (agent && agent.status !== 'idle') {
-          this.broadcast({ type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
+          this.refuseOne(ws, { type: 'error', code: 'busy', message: 'Stop the current run before editing a message.' });
           return;
         }
 
@@ -1508,7 +1603,7 @@ export class SessionDO extends DurableObject<Env> {
             this.broadcast({ type: 'error', code: 'bad_mode', message: 'Unknown mode for this request.' });
             return;
           }
-          await this.startRun(bind, text, mode);
+          await this.startRun(bind, text, mode, undefined, ws);
         }
         return;
       }
@@ -1579,10 +1674,12 @@ export class SessionDO extends DurableObject<Env> {
     text: string,
     mode: GolemMode,
     forcedEffort?: Effort,
+    /** The socket that asked, so the refusal reaches that person and not the room. */
+    origin?: WebSocket,
   ) {
-    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort));
+    const attempt = await this.startGate(() => this.startRunInner(bind, text, mode, forcedEffort, origin));
     if (!attempt.ran) {
-      this.broadcast({ type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
+      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
     }
   }
 
@@ -1591,10 +1688,11 @@ export class SessionDO extends DurableObject<Env> {
     text: string,
     mode: GolemMode,
     forcedEffort?: Effort,
+    origin?: WebSocket,
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle' && Date.now() - existing.lastStepAt < STEP_STALE_MS) {
-      this.broadcast({ type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
+      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
     // Clear any stop left behind by a previous run. Belt and braces with finishRun's clear:
