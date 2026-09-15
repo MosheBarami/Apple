@@ -98,6 +98,10 @@ const parts = [
   { label: 'check-workspace-coverage', ...run('node', ['scripts/check-workspace-coverage.mjs']) },
   { label: 'check-escape-hatches', ...run('node', ['scripts/check-escape-hatches.mjs']) },
   { label: 'check-deadends', ...run('node', ['scripts/check-deadends.mjs', '--gate']) },
+  // The competitor teardown. It was a script nobody ran, which is how it came to report
+  // "clean" over two of the site's six stylesheets while an 86px h1 and a 144px numeral sat in
+  // the four it never opened. A guard outside the suite is a guard that has already gone stale.
+  { label: 'check-copy', ...run('node', ['scripts/check-copy.mjs']) },
   { label: 'pnpm -r test', ...run('pnpm', ['-r', 'test']) },
 ];
 // Skipped rather than passed vacuously if the directory holds none: an empty glob would make

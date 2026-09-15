@@ -126,38 +126,86 @@ for (const file of pages()) {
 
 /* --------------------------------------------------------------------- display type --- */
 
-// The CSS is checked separately because a clamp() is where an oversized heading actually lives —
-// no page file carries the number.
-const CSS_FILES = [
-  join(ROOT, 'apps', 'site', 'src', 'styles', 'landing.css'),
-  join(ROOT, 'apps', 'web', 'src', 'styles.css'),
-].filter((p) => { try { return statSync(p).isFile(); } catch { return false; } });
+//[[ EVERY STYLESHEET, FOUND — NOT TWO THAT SOMEBODY LISTED.
+//
+//   This was a hand-written list of two files, and it reported "no display type above 3.4rem"
+//   over a site that has six stylesheets plus fifteen Astro files carrying their own <style>
+//   blocks. Four of the six and all fifteen were never opened. The dashboard's own stylesheet
+//   (apps/web/src/styles/workspace.css) was one of the four.
+//
+//   That is this repository's oldest defect wearing a new hat: a failure to observe rendering as
+//   an observation. "CLEAN" meant "clean in the third of the CSS I happened to name".
+//
+//   So the stylesheets are DISCOVERED, the <style> blocks inside pages are read as stylesheets in
+//   their own right, and finding none at all is a hard failure rather than a clean run — because
+//   a walk that returns nothing and a codebase with no CSS are indistinguishable from the exit
+//   code otherwise. ]]
+function stylesheets() {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir)) {
+      if (e === 'node_modules' || e === 'dist' || e === '.astro') continue;
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) { walk(p); continue; }
+      if (/\.css$/.test(e)) out.push({ file: p, css: readFileSync(p, 'utf8') });
+    }
+  };
+  walk(join(ROOT, 'apps', 'site', 'src'));
+  walk(join(ROOT, 'apps', 'web', 'src'));
 
-for (const file of CSS_FILES) {
-  const rel = relative(ROOT, file);
-  const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  // A <style> block inside a page is a stylesheet that happens to live in a page file. Astro's
+  // scoped styles are where a component's own display type actually gets set, so a checker that
+  // reads only .css files reads none of them.
+  for (const file of pages()) {
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
+      out.push({ file, css: m[1] });
+    }
+  }
+  return out;
+}
+
+/**
+ * The cap in px, so one number governs whichever unit a rule happens to be written in.
+ *
+ * 1rem is 16px here — `apps/site/src/styles/global.css` sets no root font-size, so the browser
+ * default stands. A stylesheet that changes it would make this conversion wrong, which is why the
+ * rem rules below still name the rem figure in what they report.
+ */
+const MAX_DISPLAY_PX = MAX_DISPLAY_REM * 16;
+
+const SHEETS = stylesheets();
+if (SHEETS.length === 0) {
+  console.error('COPY CHECK IS BLIND — the stylesheet walk found no CSS at all. That is a broken\n'
+    + 'checker, not a clean codebase: it cannot tell you anything about display type. Fix the walk.');
+  process.exit(2);
+}
+
+for (const sheet of SHEETS) {
+  const rel = relative(ROOT, sheet.file);
+  const css = sheet.css.replace(/\/\*[\s\S]*?\*\//g, ' ');
   // The MAXIMUM of a clamp is the size a desktop reader actually gets, so that is the term read.
-  for (const m of css.matchAll(/font-size:\s*clamp\([^)]*?,\s*([\d.]+)rem\s*\)/g)) {
-    const rem = Number(m[1]);
-    if (rem > MAX_DISPLAY_REM) {
+  for (const m of css.matchAll(/font-size:\s*clamp\([^)]*?,\s*([\d.]+)(rem|px)\s*\)/g)) {
+    const px = m[2] === 'px' ? Number(m[1]) : Number(m[1]) * 16;
+    if (px > MAX_DISPLAY_PX) {
       findings.push({
         file: rel,
         rule: 'display-too-big',
         quote: m[0].replace(/\s+/g, ' '),
-        why: `${rem}rem is ${Math.round(rem * 16)}px at the top of the clamp. The most readable competitor caps its H1 at 40px; the worst runs 81.6px.`,
+        why: `${m[1]}${m[2]} is ${Math.round(px)}px at the top of the clamp. The most readable competitor caps its H1 at 40px; the worst runs 81.6px.`,
         found: 'revix.tech H1 81.6px · superbullet.ai 60px · promptblox.ai 40px (the readable one)',
       });
     }
   }
-  for (const m of css.matchAll(/font-size:\s*([\d.]+)rem/g)) {
-    const rem = Number(m[1]);
-    if (rem > MAX_DISPLAY_REM) {
+  for (const m of css.matchAll(/font-size:\s*([\d.]+)(rem|px)\s*[;}]/g)) {
+    const px = m[2] === 'px' ? Number(m[1]) : Number(m[1]) * 16;
+    if (px > MAX_DISPLAY_PX) {
       findings.push({
         file: rel,
         rule: 'display-too-big',
-        quote: m[0],
-        why: `${rem}rem is ${Math.round(rem * 16)}px, fixed — it cannot shrink on a phone.`,
-        found: 'measured cap: 3.4rem',
+        quote: m[0].replace(/[;}]$/, '').trim(),
+        why: `${m[1]}${m[2]} is ${Math.round(px)}px, fixed — it cannot shrink on a phone.`,
+        found: `measured cap: ${MAX_DISPLAY_REM}rem (${MAX_DISPLAY_PX}px)`,
       });
     }
   }
@@ -169,7 +217,7 @@ const byRule = {};
 for (const f of findings) (byRule[f.rule] ??= []).push(f);
 
 if (!findings.length) {
-  console.log(`COPY CLEAN — ${pages().length} pages and ${CSS_FILES.length} stylesheets carry none of the ${SHAPES.length} competitor shapes, and no display type above ${MAX_DISPLAY_REM}rem.`);
+  console.log(`COPY CLEAN — ${pages().length} pages and ${SHEETS.length} stylesheets (every .css under apps/site/src and apps/web/src, plus every <style> block in a page) carry none of the ${SHAPES.length} competitor shapes, and no display type above ${MAX_DISPLAY_REM}rem / ${MAX_DISPLAY_PX}px.`);
   process.exit(0);
 }
 
