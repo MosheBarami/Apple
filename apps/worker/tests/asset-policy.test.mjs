@@ -69,3 +69,47 @@ test('with nothing answered, the refusal says so rather than blaming a setting',
   assert.match(r, /has not chosen|not been asked|no asset sources/i);
   assert.equal(/turned off|disabled/i.test(r), false, 'nobody turned anything off');
 });
+
+test('SOURCE_CHOICE classifies every engine source, and POLICY_TO_SOURCE agrees with it both ways', () => {
+  // POLICY_TO_SOURCE is derived from SOURCE_CHOICE, so the two cannot disagree by construction —
+  // but that guarantee is only as good as the derivation staying correct, and a type annotation
+  // nobody exercises is exactly the kind of silent failure this policy exists to rule out. This
+  // test walks the REAL engine-source list from ./assets (re-exported here as P.ASSET_SOURCES,
+  // not a copy that could go stale), so a source added there without a SOURCE_CHOICE entry is
+  // caught here even before the typecheck would catch it.
+  assert.ok(P.ASSET_SOURCES.length > 0, 'the source list itself must not be empty');
+
+  for (const source of P.ASSET_SOURCES) {
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(P.SOURCE_CHOICE, source),
+      `${source} has no entry in SOURCE_CHOICE — it would be silently unauthorisable`,
+    );
+    const choice = P.SOURCE_CHOICE[source];
+    assert.equal(P.choiceFor(source), choice, `choiceFor(${source}) disagrees with SOURCE_CHOICE`);
+
+    if (choice === null) {
+      for (const c of Object.keys(P.POLICY_TO_SOURCE)) {
+        assert.equal(
+          P.POLICY_TO_SOURCE[c].includes(source), false,
+          `${source} is marked ungoverned in SOURCE_CHOICE but POLICY_TO_SOURCE.${c} still lists it`,
+        );
+      }
+    } else {
+      assert.ok(
+        P.POLICY_TO_SOURCE[choice].includes(source),
+        `SOURCE_CHOICE says ${source} belongs to ${choice}, but POLICY_TO_SOURCE.${choice} does not list it`,
+      );
+    }
+  }
+
+  // And the reverse direction: nothing in POLICY_TO_SOURCE claims a source that SOURCE_CHOICE
+  // does not also credit to it.
+  for (const [choice, sources] of Object.entries(P.POLICY_TO_SOURCE)) {
+    for (const source of sources) {
+      assert.equal(
+        P.SOURCE_CHOICE[source], choice,
+        `POLICY_TO_SOURCE.${choice} lists ${source}, but SOURCE_CHOICE credits it to a different choice`,
+      );
+    }
+  }
+});

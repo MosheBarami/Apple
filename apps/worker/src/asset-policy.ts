@@ -7,11 +7,52 @@
 // PURE ON PURPOSE. No env, no D1, no DO. The policy is resolved once where the user is known and
 // handed here as a value, which is what lets the decision be tested without standing up a Durable
 // Object — and what stops a per-call lookup appearing in the hot path of every tool.
-import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
-import type { AssetSource } from './assets';
+import type { AssetSourceChoice, AssetSourcePolicy } from '@golem/shared';
+import { ASSET_SOURCES, type AssetSource } from './assets';
+
+// Re-exported so a test in this module's own suite can walk the real engine-source list rather
+// than keeping a second, hand-typed copy of it that could drift from `./assets`.
+export { ASSET_SOURCES };
+
+/**
+ * Which dialog choice governs this engine source, or `null` when none does.
+ *
+ * Exhaustive by construction, the same discipline `ASSET_ORIGINALITY` (asset-library.ts) and
+ * `SOURCE_CREDITS` (provenance.ts) already use one file away: `Record<AssetSource, …>` means
+ * adding a member to `ASSET_SOURCES` fails the typecheck until someone decides, in writing, which
+ * choice authorises it — or writes `null` to say none does. Without this, a new engine source
+ * would fall through every case in a hand-rolled search function and read as "not governed by
+ * anything", which is indistinguishable from "forgotten".
+ *
+ * `null` is a real answer, not a placeholder for one: it says a source is reachable by every
+ * policy because no dialog choice claims it, and it must be written rather than defaulted into.
+ * Every current source is claimed by some choice, so no entry uses it today — but the type keeps
+ * the option available on purpose, the same way `SOURCE_CREDITS` keeps `null` for "no credit
+ * owed" rather than omitting sources that need none.
+ */
+export const SOURCE_CHOICE: Readonly<Record<AssetSource, AssetSourceChoice | null>> = {
+  library: 'apple_library',
+  creator_store: 'creator_store',
+  procedural: 'from_scratch',
+  generation_service: 'from_scratch',
+  terrain: 'from_scratch',
+  builtin: 'from_scratch',
+};
+
+/** The choice an engine source belongs to, or null when nothing governs it. */
+export function choiceFor(source: AssetSource): AssetSourceChoice | null {
+  return SOURCE_CHOICE[source];
+}
 
 /**
  * What each choice in the dialog authorises, in the engine's own vocabulary.
+ *
+ * MECHANICALLY DERIVED from `SOURCE_CHOICE`, not hand-written a second time: two tables that
+ * could disagree about the same fact are worse than the silent-fallthrough problem this file
+ * exists to fix. `SOURCE_CHOICE` is the one place a person writes down "this engine source
+ * belongs to that dialog choice"; this is just that same information grouped the other way round
+ * for the callers — `allowedSources` below — that need "given a choice, which sources does it
+ * unlock" rather than "given a source, which choice unlocks it".
  *
  * `from_scratch` covers four engine sources rather than one, and the reason is worth stating:
  * building out of parts, generating geometry in the customer's own Studio session, sculpting
@@ -20,9 +61,9 @@ import type { AssetSource } from './assets';
  * implementation detail.
  */
 export const POLICY_TO_SOURCE: Readonly<Record<AssetSourceChoice, readonly AssetSource[]>> = {
-  apple_library: ['library'],
-  creator_store: ['creator_store'],
-  from_scratch: ['procedural', 'generation_service', 'terrain', 'builtin'],
+  apple_library: ASSET_SOURCES.filter((source) => SOURCE_CHOICE[source] === 'apple_library'),
+  creator_store: ASSET_SOURCES.filter((source) => SOURCE_CHOICE[source] === 'creator_store'),
+  from_scratch: ASSET_SOURCES.filter((source) => SOURCE_CHOICE[source] === 'from_scratch'),
 };
 
 /** Human wording, matched to the dialog so a refusal and the control read as the same thing. */
@@ -31,14 +72,6 @@ const CHOICE_NAME: Readonly<Record<AssetSourceChoice, string>> = {
   creator_store: 'the Roblox Creator Store',
   from_scratch: 'building from scratch out of parts',
 };
-
-/** The choice an engine source belongs to, or null when nothing governs it. */
-export function choiceFor(source: AssetSource): AssetSourceChoice | null {
-  for (const choice of ASSET_SOURCE_CHOICES) {
-    if ((POLICY_TO_SOURCE[choice] as readonly string[]).includes(source)) return choice;
-  }
-  return null;
-}
 
 /**
  * The engine sources this policy permits.
