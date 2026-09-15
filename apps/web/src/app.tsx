@@ -9,7 +9,7 @@ import { Cursor, Grain } from './components/atmosphere';
 import { ThemeProvider } from './lib/theme';
 import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
-import { LoginPage, SignupPage } from './routes/auth-pages';
+import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
 import { WorkspacePage } from './routes/workspace';
 import { RoadmapPage } from './routes/roadmap';
@@ -77,6 +77,24 @@ export function App() {
                       </GuestGuard>
                     }
                   />
+                  <Route
+                    path="/forgot"
+                    element={
+                      <GuestGuard>
+                        <ForgotPasswordPage />
+                      </GuestGuard>
+                    }
+                  />
+                  {/* NEITHER GUARD. Both of these are where an emailed link lands, and
+                      `detectSessionInUrl` turns the token in the fragment into a real session
+                      before the component renders — so GuestGuard would bounce the holder of a
+                      valid recovery link straight to the dashboard, still using the password they
+                      came here to replace, with no screen to replace it on. AuthGuard would be
+                      just as wrong in the other direction: a confirmation link that did NOT
+                      establish a session would be redirected to /login, and the person who clicked
+                      it would never learn whether it worked. */}
+                  <Route path="/reset" element={<ResetPasswordPage />} />
+                  <Route path="/confirm" element={<ConfirmEmailPage />} />
                   <Route
                     element={
                       <AuthGuard>

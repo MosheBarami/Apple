@@ -30,7 +30,7 @@ Marketing site (18 pages), web app, and the Studio plugin all build.
 ```
 check-site-links           577 internal links across 18 pages
 check-site-semantics       heading hierarchy, landmarks, no internal specialist names
-check-spark-figures        COST-MODEL → worker arithmetic → site → calculator → app
+check-credit-figures        COST-MODEL → worker arithmetic → site → calculator → app
 check-landing-budget       root route within its payload budget, zero JavaScript
 check-workspace-coverage   every package reachable from `pnpm -r test`
 check-app-bundle           entry graph within budget, /ui-lab and /admin split out
@@ -59,6 +59,6 @@ Four of those did not exist at the start of the session.
 - **historical exposed live credentials invalidated** — HUMAN-ONLY (`BLOCKERS.md` §3).
   Now scoped: nothing in CI or the shipped product reads either credential.
 - **at least two fresh creation exercises** — one done; the second is quota-gated and
-  runs at the daily Spark reset.
+  runs at the daily Credit reset.
 - **CI green on the final head** — CI is the authority and runs on push; the last
   completed run was green, and later pushes were still in flight when this was written.

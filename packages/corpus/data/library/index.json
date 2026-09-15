@@ -1,0 +1,91 @@
+{
+ "generatedAt": "2026-09-15T12:14:31.024Z",
+ "total": 461722,
+ "usableWithoutUpload": 102780,
+ "perSource": {
+  "creator_store": {
+   "fetched": 102780,
+   "kept": 102780,
+   "droppedOnLicence": 0,
+   "byKind": {
+    "foliage": 8610,
+    "ground": 13029,
+    "building": 14552,
+    "character": 207,
+    "vehicle": 6618,
+    "texture": 18035,
+    "prop": 32894,
+    "ui_icon": 7353,
+    "particle": 1482
+   },
+   "byLicence": {
+    "ROBLOX-TOU": 102780
+   }
+  },
+  "iconify": {
+   "fetched": 348522,
+   "kept": 348522,
+   "droppedOnLicence": 0,
+   "byKind": {
+    "ui_icon": 348522
+   },
+   "byLicence": {
+    "Apache-2.0": 85078,
+    "MIT": 178561,
+    "CC-BY-4.0": 65169,
+    "ISC": 3212,
+    "BSD-3-Clause": 210,
+    "Unlicense": 430,
+    "CC0-1.0": 11728,
+    "CC-BY-3.0": 4134
+   }
+  },
+  "game_icons": {
+   "fetched": 4239,
+   "kept": 4239,
+   "droppedOnLicence": 0,
+   "byKind": {
+    "ui_icon": 4239
+   },
+   "byLicence": {
+    "CC-BY-3.0": 4118,
+    "CC0-1.0": 121
+   }
+  },
+  "opengameart": {
+   "fetched": 5400,
+   "kept": 5400,
+   "droppedOnLicence": 0,
+   "byKind": {
+    "ui_icon": 5400
+   },
+   "byLicence": {
+    "CC0-1.0": 5400
+   }
+  },
+  "cgbookcase": {
+   "fetched": 566,
+   "kept": 566,
+   "droppedOnLicence": 0,
+   "byKind": {
+    "texture": 566
+   },
+   "byLicence": {
+    "CC0-1.0": 566
+   }
+  },
+  "kenney": {
+   "fetched": 215,
+   "kept": 215,
+   "droppedOnLicence": 0,
+   "byKind": {
+    "prop": 190,
+    "texture": 7,
+    "ui_icon": 18
+   },
+   "byLicence": {
+    "CC0-1.0": 215
+   }
+  }
+ }
+}

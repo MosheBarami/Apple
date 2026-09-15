@@ -1,0 +1,80 @@
+---
+import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS } from '@golem/shared';
+
+// Read, never restated: this page explains the quota, so a stale copy of it here would be the
+// documentation contradicting the thing it documents.
+const free = PLAN_LIMITS.free;
+const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout
+  title="Credits & limits — Apple Docs"
+  description={`How Apple's Credits quota works: ${free.creditsPerDay} per day free, per-mode costs, live metering, daily reset, and exactly what happens when you run out.`}
+  heading="Credits &amp; limits"
+>
+  <p>
+    Credits are Apple's unit of daily energy. Every AI request burns some; your balance refills to
+    full once a day. The system exists for one reason: real inference costs real compute, and a
+    hard, transparent quota is what lets the free tier be genuinely free — no card, no trial
+    clock, no surprise bill.
+  </p>
+
+  <h2>The numbers</h2>
+  <ul>
+    <li><strong>Free plan:</strong> {free.creditsPerDay} Credits per day · {free.creditsPerMonth.toLocaleString()} a month.</li>
+    {paid.map((id) => (
+      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].creditsPerDay} Credits per day · {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month.</li>
+    ))}
+    <li><strong>Plan:</strong> 2 credits per request.</li>
+    <li><strong>Agent:</strong> 4 credits per request.</li>
+    <li><strong>Super Agent:</strong> 10 credits per request, <strong>+1 per extra step</strong> beyond the included ones.</li>
+  </ul>
+  <p>
+    In practice the free allowance is a solid daily session: a good number of Plan questions, a bunch of Agent
+    features, or a few serious Super Agent runs — usually a mix.
+  </p>
+
+  <h2>How metering works</h2>
+  <p>
+    Your balance is always visible in the workspace header, and it updates live. A request is
+    charged when it starts; Super Agent's per-step surcharge accrues visibly during the run. If Apple
+    estimates a Super Agent run will be unusually long, it says so before starting instead of silently
+    draining your day.
+  </p>
+  <p>
+    If a request fails on our side — an infrastructure error, not a build that turned out wrong —
+    the Credits come back automatically.
+  </p>
+
+  <h2>The daily reset</h2>
+  <p>
+    Quotas reset at midnight UTC — one fixed instant for every account, not a rolling window
+    that starts when you do. That is worth knowing if you build late in the UTC day: credits
+    spent at 23:00 UTC are refilled an hour later. The workspace shows your exact
+    reset time. Unused Credits do not roll over — every day starts at your full allowance.
+  </p>
+
+  <h2>Running out</h2>
+  <p>When your balance hits zero:</p>
+  <ul>
+    <li>New AI requests are declined with a clear message and your reset time — never a silent failure.</li>
+    <li>Everything that does not burn inference keeps working: reading chat history, browsing your project, creating and restoring checkpoints, pairing Studio.</li>
+    <li>Nothing is deleted, downgraded or lost. You are just out of energy until the reset.</li>
+  </ul>
+
+  <h2>Other limits worth knowing</h2>
+  <ul>
+    <li><strong>Rate limiting:</strong> requests are queued per account. Under heavy load, free-tier requests may briefly wait; Pro (when it ships) queues ahead.</li>
+    <li><strong>Checkpoints:</strong> stored per project with a rolling cap — the oldest automatic checkpoints are pruned first. Manual checkpoints outlive automatic ones.</li>
+    <li><strong>One account per person:</strong> multiplying free accounts to farm quota is against the <a href="/terms">terms</a> and gets caught.</li>
+  </ul>
+
+  <div class="callout">
+    <p>
+      <strong>Making Credits go further:</strong> design the build in Plan before running it in Super Agent; give
+      specific requests (“the door in Workspace.Lobby”) rather than vague ones; and let Agent do
+      the ordinary building — Super Agent shines when verification matters, not on every task.
+    </p>
+  </div>
+</DocsLayout>

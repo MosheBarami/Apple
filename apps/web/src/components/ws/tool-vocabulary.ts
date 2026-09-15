@@ -52,6 +52,14 @@ export const ACTIVITY = {
   critiquing: { canonical: null, label: 'Evaluating' },
   // Writing project memory. C18 is saving the PLACE, which is `create_checkpoint`.
   remembering: { canonical: null, label: 'Noting what changed' },
+  // Reading something OUTSIDE the project: a web page, a search, a repository, an image the agent
+  // did not render. Not C04, which is specifically the Roblox documentation and says so on screen
+  // — telling a user "Searching the Roblox docs" while the agent reads a GitHub issue is a wrong
+  // sentence, and the whole reason this table exists is that wrong sentences shipped.
+  browsing: { canonical: null, label: 'Reading the web' },
+  // The project's scratch files, which are Golem's storage and not the Roblox place. C08 is
+  // "Editing project", and using it here would claim the agent touched the user's game.
+  filing: { canonical: null, label: 'Working with project files' },
   // The honest fallback for a tool this build has never heard of.
   working: { canonical: null, label: 'Working' },
 } as const;
@@ -89,6 +97,12 @@ export const TOOL = {
   list_scripts: { kind: 'reading_scripts', label: 'Listed scripts' },
   read_script: { kind: 'reading_scripts', label: 'Read a script' },
   search_scripts: { kind: 'reading_scripts', label: 'Searched scripts' },
+  // Three static-analysis tools the worker gained without labels here, so the trace rendered
+  // `review_scripts` at a person. The kinds are chosen by what the user sees happen, not by where
+  // the code lives: a review CRITIQUES, resolving a name READS, and the formatter WRITES.
+  review_scripts: { kind: 'critiquing', label: 'Reviewed the scripts' },
+  find_symbol: { kind: 'reading_scripts', label: 'Looked up a name' },
+  format_script: { kind: 'writing_luau', label: 'Formatted a script' },
 
   // C04 — reading the docs is not inspecting the user's project.
   search_docs: { kind: 'searching_knowledge', label: 'Searched the Roblox docs' },
@@ -101,6 +115,11 @@ export const TOOL = {
   // C11
   generate_model: { kind: 'generating', label: 'Generated a model' },
   generate_image: { kind: 'generating', label: 'Generated an image' },
+  // The two audio tools that MAKE something. Both produce a file the user can hear and download,
+  // and neither puts anything in their Roblox place — so the label says what was made rather than
+  // where it went, which is the same care `generate_image` takes.
+  generate_sound: { kind: 'generating', label: 'Made a sound effect' },
+  speak_line: { kind: 'generating', label: 'Spoke a line' },
 
   // C09 — adding to the world.
   create_instances: { kind: 'building', label: 'Created instances' },
@@ -108,6 +127,13 @@ export const TOOL = {
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau' },
+
+  // The two audio tools that change the PLACE. `design_sound` writes SoundService's reverb and the
+  // SoundGroup mixer; `assign_sounds` routes Sounds that already exist onto those groups. Neither
+  // creates geometry, and neither adds audio — which is why the labels say "acoustics" and "routed"
+  // rather than anything that implies a sound was added.
+  design_sound: { kind: 'building', label: 'Set the place\u2019s acoustics' },
+  assign_sounds: { kind: 'editing', label: 'Routed sounds onto the mixer' },
 
   // C08 — changing what is already there, which is not the same act as building it.
   set_properties: { kind: 'editing', label: 'Set properties' },
@@ -144,6 +170,18 @@ export const TOOL = {
   // time a row is drawn the plan HAS been announced. The panel under the row is the plan itself,
   // so the label says what happened rather than restating what the panel already shows.
   propose_plan: { kind: 'planning', label: 'Planned the work' },
+  // The web-facing tools. Each label says what was READ and where, because "Working" over ten
+  // different substrates is the fallback these entries exist to avoid.
+  web_fetch: { kind: 'browsing', label: 'Fetched a page' },
+  browse_page: { kind: 'browsing', label: 'Read a web page' },
+  web_search: { kind: 'browsing', label: 'Searched the web' },
+  screenshot_page: { kind: 'browsing', label: 'Captured a page' },
+  ocr_image: { kind: 'browsing', label: 'Read the text in an image' },
+  github_lookup: { kind: 'browsing', label: 'Looked something up on GitHub' },
+  git_history: { kind: 'browsing', label: 'Read version history' },
+  workspace_list: { kind: 'filing', label: 'Listed the project files' },
+  workspace_read: { kind: 'filing', label: 'Read a project file' },
+  workspace_write: { kind: 'filing', label: 'Wrote a project file' },
 } as const satisfies Record<string, { kind: ActivityKind; label: string }>;
 
 export type ToolName = keyof typeof TOOL;

@@ -58,14 +58,38 @@ function workerSourceFiles(dir = '') {
   return out;
 }
 
-/** Every `app.<verb>('<path>', …)` in index.ts, with the source that belongs to it. */
+/**
+ * Every `app.<verb>('<path>', …)` in index.ts, with THE HANDLER'S OWN SOURCE.
+ *
+ * It used to slice to the next route registration, which charges every top-level helper defined
+ * between two routes to the earlier one. `securityNotice` sits after `GET /api/admin/static-list`
+ * and carries `actorId: c.get('user')?.userId`, so a four-line handler that reads a table of
+ * static asset paths was reported as an admin route acting on a named user.
+ *
+ * A guard that names the wrong route is not evidence about that route, and the damage is not the
+ * false alarm. It is what the false alarm teaches: the next reader's move is to widen the pinned
+ * inventory to make the suite green, and a real cross-tenant route gets waved through in the same
+ * edit.
+ *
+ * A handler's own lines are all indented; the first column-0 line after the first ends it, and
+ * belongs to it only when it is that handler's own closing `});`.
+ */
 function routeBodies(src) {
   const routes = [...src.matchAll(/app\.(get|post|put|patch|delete)\('([^']+)'/g)].map((m) => ({
     method: m[1].toUpperCase(),
     path: m[2],
     at: m.index,
   }));
-  return routes.map((r, i) => ({ ...r, body: src.slice(r.at, routes[i + 1] ? routes[i + 1].at : src.length) }));
+  return routes.map((r, i) => {
+    const span = src.slice(r.at, routes[i + 1] ? routes[i + 1].at : src.length).split('\n');
+    let end = span.length;
+    for (let j = 1; j < span.length; j += 1) {
+      if (!/^\S/.test(span[j])) continue; // indented or blank — still inside the handler
+      end = /^\}\)/.test(span[j]) ? j + 1 : j; // the handler's own `});` belongs to it
+      break;
+    }
+    return { ...r, body: span.slice(0, end).join('\n') };
+  });
 }
 
 const TMP = mkdtempSync(join(tmpdir(), 'golem-security-'));
@@ -110,6 +134,13 @@ const SECRETS = {
   SUPABASE_ANON_KEY: 'SENTINEL-anon-3a8d15c9f2',
   ROBLOX_API_KEY: 'SENTINEL-roblox-c07e4b1a83',
   AI_GATEWAY_ID: 'SENTINEL-gateway-id-7d51',
+  // The web tools' credentials. These ride in an Authorization header on an OUTBOUND request, so
+  // the question A2 asks about them is the same one it asks about every other key: can the value
+  // come back out through a tool result. Without sentinels here the three newest egress paths in
+  // the worker would be the only ones nothing watched.
+  SEARCH_API_KEY: 'SENTINEL-search-4b19e7c206',
+  SCREENSHOT_API_KEY: 'SENTINEL-shots-8a3f2d5e71',
+  GITHUB_TOKEN: 'SENTINEL-github-1c6b90af43',
 };
 
 /** Fails naming the variable, never quoting it. */
@@ -206,7 +237,7 @@ function doNamespace(name, handler) {
   };
 }
 
-const QUOTA_STATE = { sparksRemaining: 100, sparksLimit: 120, plan: 'free', day: '2026-08-31' };
+const QUOTA_STATE = { creditsRemaining: 100, creditsLimit: 120, plan: 'free', day: '2026-08-31' };
 
 /** What the fake model says when asked for a visual critique. Shaped to vision.ts's schema. */
 const CRITIQUE_JSON = JSON.stringify({
@@ -222,6 +253,13 @@ function makeEnv(opts = {}) {
     ...SECRETS,
     SUPABASE_URL,
     ENVIRONMENT: 'test',
+    // The web tools' configuration. Present so `web_search` and `screenshot_page` reach their real
+    // bodies instead of stopping at the availability check — an egress test that never leaves
+    // "this tool is not configured here" proves nothing about egress. Both hosts are fictional and
+    // are reached only through the injected `webFetch` in `studioCtx`, never through the network.
+    WEB_TOOL_ALLOWLIST: 'search.golem.test,shots.golem.test',
+    SEARCH_API_URL: 'https://search.golem.test/search',
+    SCREENSHOT_API_URL: 'https://shots.golem.test/png',
     AI: {
       run: async (model, payload) => {
         trace.order.push('AI.run');
@@ -595,6 +633,21 @@ const LAYOUT_PARTS = [
   [-8, 2, -6, 3, 3, 2, 0], [7, 2, 5, 4, 3, 2, 0], [0, 20, 0, 6, 16, 6, 0],
 ];
 
+/**
+ * A script the code-intelligence tools can actually chew on: it parses, it declares a symbol at a
+ * known position (line 2, column 16 is `greet`), and its indentation is wrong — so `format_script`
+ * reaches its WRITE and emits the `code_diff` panel rather than returning "already formatted".
+ */
+const REVIEWABLE_LUAU = [
+  'local Players = game:GetService("Players")',
+  'local function greet(who)',
+  '    print("hello "..who.Name)',
+  'end',
+  'Players.PlayerAdded:Connect(function(p)',
+  'greet(p)',
+  '  end)',
+].join('\n');
+
 /** A fake Studio that answers every op with something benign and well-formed. */
 function studioCtx(env, overrides = {}) {
   const calls = [];
@@ -621,12 +674,65 @@ function studioCtx(env, overrides = {}) {
       }
       if (op.op === 'get_logs') return { id: 'x', ok: true, data: { entries: [{ kind: 'log', message: 'server started' }] } };
       if (op.op === 'snapshot') return { id: 'x', ok: true, data: { scriptCount: 3, instanceCount: 60 } };
+      // read_script must answer with a real body. The catch-all below carries no `source`, and
+      // review_scripts / find_symbol / format_script all read one first: without this they return
+      // "nothing resolvable" / an empty review / "already formatted", and the egress sweep sees no
+      // detail from any of them — three tools enumerated, none scanned.
+      if (op.op === 'read_script') return { id: 'x', ok: true, data: { path: op.path, source: REVIEWABLE_LUAU, class: 'Script' } };
+      if (op.op === 'dump_scripts') {
+        return { id: 'x', ok: true, data: { scripts: [{ path: 'game.ServerScriptService.Main', source: REVIEWABLE_LUAU, class: 'Script' }], truncated: false } };
+      }
       return { id: 'x', ok: true, data: { ok: true, note: 'studio result' } };
     },
     createCheckpoint: async (label, kind) => ({ id: 'cp-1', label, kind, createdAt: 1, scriptCount: 3, instanceCount: 60, sizeBytes: 900 }),
     restoreCheckpoint: async () => ({ ok: true }),
     addMemoryFact: async () => {},
     discoveredAssetIds: new Set([424242]),
+    // BOTH asset-source choices allowed, ON PURPOSE. choose_asset_source, search_asset_library,
+    // find_verified_asset and insert_asset now refuse before reaching their bodies when the caller
+    // has no policy (asset-policy.ts) — which `studioCtx()` had, by omission, until this comment.
+    // An unset `assetSources` would make all four short-circuit to `{ error }` here, and A2's egress
+    // sweep below would keep reporting them clean while scanning nothing: `withDetail >= 10` and the
+    // TOOL_ARGS enumeration are both satisfied by a refusal just as readily as by a real result.
+    assetSources: { mode: 'remember', allow: ['apple_library', 'creator_store', 'from_scratch'] },
+    // OUTBOUND HTTP FOR THE WEB TOOLS, STUBBED HERE ON PURPOSE.
+    //
+    // `globalThis.fetch` above is the no-network router, and A1 asserts that no provider host was
+    // ever contacted — including create.roblox.com. If the web tools fell through to the global
+    // fetch, exercising them would put a Roblox host into `allFetched` and break that assertion
+    // with a call that never left the process. Injecting here keeps the two facts separate: this
+    // stub answers the web tools, and `allFetched` keeps meaning what A1 says it means.
+    webFetch: async (url) => {
+      const isPng = url.includes('shots.golem.test') || url.endsWith('.png');
+      const isJson = url.includes('search.golem.test') || url.includes('api.github.com');
+      const body = url.includes('search.golem.test')
+        ? JSON.stringify({ results: [{ title: 'A thread', url: 'https://devforum.roblox.com/t/example', snippet: 'a snippet' }] })
+        : url.includes('api.github.com')
+          ? JSON.stringify({ full_name: 'Roblox/creator-docs', description: 'the docs', default_branch: 'main', tree: [], files: [] })
+          : '<html><head><title>A page</title></head><body><p>Some readable text.</p><a href="/t/other">another thread</a></body></html>';
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      return {
+        status: 200,
+        headers: { get: (h) => (h.toLowerCase() === 'content-type' ? (isPng ? 'image/png' : isJson ? 'application/json' : 'text/html') : null) },
+        text: async () => body,
+        arrayBuffer: async () => (isPng ? png.buffer : new TextEncoder().encode(body).buffer),
+      };
+    },
+    // The project's scratch file store, in memory. Seeded so `workspace_read` reaches its success
+    // path rather than returning "no such file" and testing nothing.
+    workspace: (() => {
+      const files = new Map([['notes/plan.md', 'a seeded plan']]);
+      const size = (v) => new TextEncoder().encode(v).length;
+      return {
+        list: async (prefix) => [...files.entries()].filter(([p]) => p.startsWith(prefix)).map(([path, content]) => ({ path, bytes: size(content), updatedAt: 1 })),
+        read: async (path) => (files.has(path) ? { content: files.get(path), bytes: size(files.get(path)), updatedAt: 1 } : null),
+        write: async (path, content) => {
+          const created = !files.has(path);
+          files.set(path, content);
+          return { bytes: size(content), created };
+        },
+      };
+    })(),
     ...overrides.ctx,
   };
   return { ctx, calls };
@@ -639,6 +745,14 @@ const TOOL_ARGS = {
   read_script: { path: 'game.ServerScriptService.Main' },
   edit_script: { path: 'game.ServerScriptService.Main', source: 'print(1)' },
   search_scripts: { query: 'Humanoid' },
+
+  // The three code-intelligence tools. The arguments are chosen to reach each BODY, which is the
+  // whole difficulty: `find_symbol` with only a `name` and `review_scripts` with no `path` both go
+  // through dump_scripts, and `format_script` on an already-formatted file returns before it
+  // writes — three early returns that would satisfy this enumeration while scanning nothing.
+  review_scripts: { path: 'game.ServerScriptService.Main' },
+  find_symbol: { path: 'game.ServerScriptService.Main', line: 2, column: 16 },
+  format_script: { path: 'game.ServerScriptService.Main' },
   create_instances: { items: [{ className: 'Part', name: 'A', parent: 'game.Workspace' }] },
   set_properties: { path: 'game.Workspace.A', props: {} },
   delete_instances: { paths: ['game.Workspace.A'] },
@@ -673,6 +787,33 @@ const TOOL_ARGS = {
   audit_build: {},
   run_spec: { cases: [{ name: 'a placed part is anchored', code: 'assert(true)' }] },
   install_module: { module: 'profile_store' },
+
+  // The ten web-facing tools. Every URL here is on the default host allowlist and none of them is
+  // a PROVIDER_HOST, so A1's "no provider endpoint was contacted" keeps its meaning; the requests
+  // themselves are answered by the injected `webFetch` above and never reach a socket.
+  web_fetch: { url: 'https://devforum.roblox.com/t/example' },
+  browse_page: { url: 'https://devforum.roblox.com/t/example', extract: 'links' },
+  web_search: { query: 'humanoid state' },
+  screenshot_page: { url: 'https://devforum.roblox.com/t/example' },
+  ocr_image: { imageUrl: 'https://devforum.roblox.com/uploads/sign.png' },
+  github_lookup: { repo: 'Roblox/creator-docs', resource: 'repo' },
+  git_history: { repo: 'Roblox/creator-docs', action: 'log', limit: 3 },
+  workspace_list: {},
+  workspace_read: { path: 'notes/plan.md' },
+  workspace_write: { path: 'notes/plan.md', content: 'a plan the agent wrote' },
+
+  // The four audio tools. Arguments chosen to reach each body, per the note above: an unknown
+  // environment or preset returns at the allowlist guard and would satisfy A2's enumeration while
+  // exercising none of the egress this file exists to check.
+  //
+  // `speak_line` is the only one of the four that reaches a model. It goes through the same
+  // BudgetDO singleton as every other spend path, and its engine call is behind the
+  // `SpeechProvider` interface — so what this fixture exercises here is the egress, and the spend
+  // ORDER is asserted by execution in apps/worker/tests/speech.test.mjs against a stub provider.
+  design_sound: { environment: 'cave' },
+  assign_sounds: { assignments: [{ path: 'game.Workspace.A', bus: 'SFX' }] },
+  generate_sound: { preset: 'ui_click' },
+  speak_line: { text: 'The gate is open.', preset: 'guide' },
 };
 
 test('A2 every registered tool has an argument fixture — the enumeration cannot silently go stale', () => {
@@ -683,6 +824,7 @@ test('A2 no tool can put a credential, a JWT or a pairing token into tool_end.de
   reset();
   const env = makeEnv();
   let withDetail = 0;
+  const detailByTool = new Map();
   for (const [name, args] of Object.entries(TOOL_ARGS)) {
     const { ctx } = studioCtx(env);
     const out = await T.runTool(ctx, name, JSON.stringify(args));
@@ -691,11 +833,29 @@ test('A2 no tool can put a credential, a JWT or a pairing token into tool_end.de
     assert.equal(PAIRING_TOKEN_RE.test(blob), false, `runTool(${name}) produced a value shaped like a plugin pairing token`);
     assert.equal(JWT_RE.test(blob), false, `runTool(${name}) produced a value shaped like a JWT`);
     assert.equal(/Bearer\s+\S/.test(blob), false, `runTool(${name}) produced an Authorization-header-shaped value`);
-    if (out.detail !== undefined) withDetail++;
+    if (out.detail !== undefined) { withDetail++; detailByTool.set(name, out.detail); }
     t.diagnostic(`${name}: ok=${out.ok} detail=${out.detail === undefined ? 'none' : 'present'}`);
   }
   // Non-vacuity: if every tool errored, the loop above would prove nothing.
   assert.ok(withDetail >= 10, `only ${withDetail} tools produced a detail payload — the egress test is not exercising the channel`);
+  // PER-TOOL NON-VACUITY FOR THE CODE-INTELLIGENCE THREE. `withDetail >= 10` is satisfied by forty
+  // other tools, so it cannot notice these three falling back to an early return if the studio
+  // stub ever stops returning a source — and a fixture that returns early is a tool whose egress
+  // nothing above scanned, wearing a green tick.
+  for (const n of ['review_scripts', 'find_symbol', 'format_script']) {
+    assert.ok(
+      detailByTool.has(n),
+      `${n} produced no detail — its fixture returns early, so the sweep above proved nothing about the channel it opens`,
+    );
+  }
+  // format_script's detail must be the code_diff panel specifically: that is the branch that
+  // WRITES and puts a payload on ctx.uiDetail, which is the widest of the three new egress paths.
+  // "already formatted" would satisfy the check above while leaving that path unscanned.
+  assert.match(
+    JSON.stringify(detailByTool.get('format_script')),
+    /"type":"code_diff"/,
+    'format_script returned no diff panel — its fixture never reached the write, so the uiDetail path is unscanned',
+  );
 });
 
 test('A1 a thrown tool error names no model and no provider — §1 across the tool boundary', async () => {
@@ -786,7 +946,42 @@ test('A2 STATIC CHECK — the pairing token exists in exactly one place and only
   // The DO stores a hash and compares in constant time; it never reads a token back out.
   assert.match(session, /pluginTokenHash/, 'the session DO should store a token HASH');
   assert.equal(/pluginToken(?!Hash|IssuedAt)/.test(session), false, 'the session DO must not store a cleartext plugin token');
-  assert.match(session, /timingSafeEqual\(await sha256hex\(token\), expect\)/);
+  //[[ WHY THIS IS NO LONGER ONE REGEX. It pinned `timingSafeEqual(await sha256hex(token), expect)`
+  //   verbatim; 04d3800 hoisted the digest into a local so the superseded-pairing branch could
+  //   reuse it, and the pin went red on a refactor that weakened nothing.
+  //
+  //   The replacement asserts the property from both sides. The positive half says the digest is
+  //   taken and compared in constant time. The NEGATIVE half is the half that matters: it is easy
+  //   to keep a `timingSafeEqual` call and add a path around it, so the failed-compare block is
+  //   located and every exit from it is required to be a 401 json() refusal that never reaches the
+  //   poll handler. Both halves were measured against a deliberately broken version that adds a
+  //   grace period: the negative assertions go red, the positive one does not. ]]
+  const pollStart = session.indexOf("if (path === '/plugin/poll'");
+  const pollGate = session.slice(pollStart, session.indexOf("if (path === '/messages'", pollStart));
+  assert.ok(pollStart !== -1 && pollGate.length > 200, 'the poll gate was not found — this test would check nothing');
+  assert.match(pollGate, /const presented = await sha256hex\(token\)/, 'the presented token must be hashed before any comparison');
+  assert.equal(/timingSafeEqual\(\s*token\b/.test(pollGate), false, 'the RAW token must never be a comparison operand');
+
+  // lastIndexOf, not indexOf: a bypass that inlined `readPluginHeaders` inside the block would
+  // otherwise move the end anchor and hide itself inside the part no longer being read.
+  const failed = pollGate.slice(
+    pollGate.indexOf('if (!(await timingSafeEqual('),
+    pollGate.lastIndexOf('const reported = readPluginHeaders'),
+  );
+  assert.ok(failed.length > 100 && failed.length < 1500, 'the failed-compare block moved — re-locate it before trusting this check');
+  assert.deepEqual(
+    [...failed.matchAll(/return\s+(?!json\()/g)].map((m) => m[0]),
+    [],
+    'a failed token compare must return nothing but a json() refusal',
+  );
+  assert.equal(/handlePluginPoll/.test(failed), false, 'a failed token compare must never reach the poll handler');
+  for (const [, args] of failed.matchAll(/return json\(([\s\S]*?)\);/g)) {
+    assert.match(args.trim(), /401,?$/, 'every refusal on a failed compare is a 401');
+  }
+  assert.ok(
+    [...failed.matchAll(/timingSafeEqual\(presented,\s*(expect|superseded\.hash)\)/g)].length >= 1,
+    'the comparison operands are hashes the DO itself stored, never anything off the request',
+  );
   // Nothing broadcasts the hash or the live JWT to a client.
   for (const secretish of ['pluginTokenHash', 'liveJwt']) {
     const broadcasts = [...session.matchAll(new RegExp(`broadcast\\([^)]*${secretish}`, 'g'))];
@@ -841,19 +1036,19 @@ test('A2 agent_status carries a policy classification, never prompt or transcrip
   //   step/totalSteps   integers
   //   effort            an enum of three values
   //   effortReason      assembled from fixed policy strings, asserted below
-  //   sparksSpent       an integer the worker settled. Numeric by construction, so it cannot carry
+  //   creditsSpent       an integer the worker settled. Numeric by construction, so it cannot carry
   //                     text; it is the per-run cost, distinct from the account-wide `quota`
   //                     message, and it is what a user watching a build can actually act on.
-  const allowed = new Set(['type', 'phase', 'step', 'totalSteps', 'tool', 'effort', 'effortReason', 'sparksSpent']);
+  const allowed = new Set(['type', 'phase', 'step', 'totalSteps', 'tool', 'effort', 'effortReason', 'creditsSpent']);
   for (const b of broadcasts) {
     for (const [, field] of b.matchAll(/(?:^|[{,]\s*|\n\s{4,})(\w+):/g)) {
       assert.equal(allowed.has(field), true, `agent_status grew an un-reviewed field: ${field}`);
     }
     // And the numeric fields must stay numeric: a field that is allowed BECAUSE it is a number
     // stops being safe the moment something interpolates a string into it.
-    const numeric = /sparksSpent:\s*([^,\n}]+)/.exec(b);
+    const numeric = /creditsSpent:\s*([^,\n}]+)/.exec(b);
     if (numeric) {
-      assert.match(numeric[1].trim(), /^agent\.sparksSpent$/, 'sparksSpent must be the settled integer, nothing else');
+      assert.match(numeric[1].trim(), /^agent\.creditsSpent$/, 'creditsSpent must be the settled integer, nothing else');
     }
     for (const forbidden of ['agent.llm', 'agent.request', 'agent.finalText', 'res.text', 'out.resultForLlm', 'userId']) {
       assert.equal(b.includes(forbidden), false, `agent_status must not carry ${forbidden}`);
@@ -872,14 +1067,47 @@ test('A2 agent_status carries a policy classification, never prompt or transcrip
   assert.equal(/reasoning_content/.test(readCode('do/session.ts')), false, 'reasoning_content must never enter the transcript');
 });
 
-test('A2 STATIC CHECK — resume replays the same snapshot and is reachable only on an owner socket', () => {
+test('A2 STATIC CHECK — resume replays the same snapshot, and a socket is only accepted with a resolved identity', () => {
+  //[[ THIS INVARIANT CHANGED WHEN SHARED PROJECTS SHIPPED, AND IT GOT STRICTER.
+  //
+  //   It used to read: `if (userId !== bind.ownerId) return json(403)`, and asserted that exact
+  //   line. That line WAS the whole of "who may hold a socket" while a project had one person.
+  //   A shared project has several, so the question moved from "are you the owner" to "who are
+  //   you, and what may you do" — and a source assertion pinned to the old sentence would have
+  //   had to be deleted to ship the feature, which is the worst possible reason to delete a
+  //   security check.
+  //
+  //   So it is restated, over the mechanism that replaced it. What must hold now:
+  //     1. identity is RESOLVED, not read — through socketRole, which returns null for anyone it
+  //        cannot place, and null is refused with 403;
+  //     2. `owner` comes from the BINDING, never from a header, so no wire value can claim it;
+  //     3. every other role goes through the allowlist (`asCollabRole`), never a cast;
+  //     4. the identity check still precedes acceptWebSocket;
+  //     5. holding a socket is not permission to USE it — the write paths ask again.
+  //   Each of those is a narrower claim than the line it replaced, not a looser one. ]]
   const session = read('do/session.ts');
   assert.match(session, /case 'resume':[\s\S]{0,220}this\.runSnapshot\(\)/, "the `resume` handler must answer with runSnapshot()");
-  // Sockets are only accepted after the owner check, so `resume` inherits it.
-  assert.match(session, /if \(path === '\/ws'\)[\s\S]{0,220}if \(userId !== bind\.ownerId\) return json\(\{ error: 'forbidden' \}, 403\)/,
-    'the WebSocket must be refused before acceptWebSocket when the caller is not the project owner');
+
   const wsBlock = session.slice(session.indexOf("if (path === '/ws')"), session.indexOf("if (path === '/plugin/register'"));
-  assert.ok(wsBlock.indexOf('X-User-Id') < wsBlock.indexOf('acceptWebSocket'), 'the identity check must precede acceptWebSocket');
+  assert.match(wsBlock, /const who = this\.socketRole\(req, bind\);\s*\n\s*if \(who === null\) return json\(\{ error: 'forbidden' \}, 403\);/,
+    'the WebSocket must be refused before acceptWebSocket when the caller has no resolvable role');
+  assert.ok(wsBlock.indexOf('socketRole') < wsBlock.indexOf('acceptWebSocket'), 'the identity check must precede acceptWebSocket');
+  assert.ok(wsBlock.indexOf('X-User-Id') === -1, 'the /ws block must not read the identity header itself — socketRole owns that');
+
+  // (2) and (3): the resolver itself.
+  const resolver = session.slice(session.indexOf('private socketRole('), session.indexOf('private presenceBeats('));
+  assert.match(resolver, /if \(userId === bind\.ownerId\) return \{ userId, role: 'owner' \}/, 'owner comes from the binding');
+  assert.match(resolver, /const role = asCollabRole\(req\.headers\.get\('X-Golem-Role'\)\)/, 'any other role must pass the allowlist');
+  assert.match(resolver, /return role === null \? null : \{ userId, role \}/, 'an unrecognised role must refuse, never default');
+  assert.equal(/as CollabRole/.test(resolver), false, 'a cast is not a check');
+
+  // (5): a socket that may watch must not thereby be able to build, edit, stop or restore.
+  const messages = session.slice(session.indexOf('async webSocketMessage('), session.indexOf('async webSocketClose('));
+  for (const action of ['chat', 'build', 'restore_version']) {
+    assert.ok(messages.includes(`mayNot('${action}')`), `the socket write paths must ask for '${action}' before acting`);
+  }
+  assert.match(messages, /const me = this\.beatOf\(ws\);[\s\S]{0,400}me === null \|\| !can\(me\.role, action\)/,
+    'a socket with no resolvable identity must fail the capability question, not skip it');
 });
 
 // ===========================================================================
@@ -958,16 +1186,107 @@ test('A3 STATIC CHECK — every project-scoped route goes through withOwnedProje
   const routes = [...src.matchAll(/app\.(get|post|put|patch|delete)\('([^']+)'/g)].map((m) => ({ method: m[1], path: m[2], at: m.index }));
   const projectRoutes = routes.filter((r) => r.path.startsWith('/api/projects/'));
   assert.ok(projectRoutes.length >= 7, 'expected the project routes to still exist');
+
+  // The capability vocabulary, READ OUT OF collab.ts rather than retyped here. A new capability
+  // must not fail this sweep for being new — but only a spelled-out member of the real list counts
+  // as an action, which is what stops `withOwnedProject(c, id, c.req.query('action'))` passing.
+  const COLLAB_ACTIONS = [
+    ...(/export const COLLAB_ACTIONS = \[([\s\S]*?)\] as const;/.exec(readCode('collab.ts'))?.[1] ?? '').matchAll(/'([a-z_]+)'/g),
+  ].map((m) => m[1]);
+  assert.ok(
+    COLLAB_ACTIONS.includes('read') && COLLAB_ACTIONS.includes('build'),
+    'the capability vocabulary must be readable from collab.ts — this sweep is worthless without it',
+  );
+  const ACTION = `'(?:${COLLAB_ACTIONS.join('|')})'`;
+
   for (const r of projectRoutes) {
     const next = routes.find((o) => o.at > r.at);
     const body = src.slice(r.at, next ? next.at : src.length);
-    assert.match(body, /withOwnedProject\(c, c\.req\.param\('id'\)\)/, `${r.method.toUpperCase()} ${r.path} does not go through withOwnedProject`);
-    assert.match(body, /if \(!ctx\) return c\.json\(\{ error: 'not found' \}, 404\)/, `${r.method.toUpperCase()} ${r.path} does not refuse when ownership fails`);
+    // AN EXPLICIT ALLOWLIST OF OWNERSHIP PROOFS, not a widened regex.
+    //
+    // `/api/projects/:id/personalisation` proves ownership through `memoryScopeAccess(c, 'project', …)`,
+    // which calls `getOwnedProject(c.env, user.jwt, scopeId)` — the same proof withOwnedProject uses,
+    // behind a different name because it also resolves org and user scopes. Verified by reading it,
+    // not assumed: it UUID-checks the id, calls getOwnedProject, and returns null on any miss.
+    //
+    // The fix is deliberately NOT `/getOwnedProject|withOwnedProject/` or anything shaped like
+    // "mentions ownership somewhere". Each accepted proof is named here, so a route that invents a
+    // THIRD way to authorise still fails this sweep and someone has to come and add it on purpose.
+    // A guard that accepts a pattern accepts everything that resembles the pattern.
+    //
+    // THE GATE HAS TWO FORMS AND THIS LIST NOW NAMES BOTH. `withOwnedProject(c, id)` is owner-only.
+    // `withOwnedProject(c, id, '<action>')` is the SAME helper, the same `getOwnedProject` under the
+    // caller's own JWT, the same `return null` on a miss — the third argument only names what the
+    // caller is about to do, so a member's grant can be weighed against it. The old pattern pinned
+    // the closing paren after `param('id')`, so adding a capability argument to a route failed a
+    // guard about authorisation for a reason that was about arity.
+    //
+    // THE ACTION MUST BE A LITERAL FROM COLLAB_ACTIONS. That is the load-bearing part: a route that
+    // let the CALLER name the action — `withOwnedProject(c, id, c.req.query('action'))` — would
+    // pass a looser pattern while handing the decision to the request it is meant to judge.
+    //
+    // `sharedAccess(c, id, '<action>')` is the third form, and it is the same gate wrapped: it
+    // calls `withOwnedProject(c, projectId, action)` first and only reaches a 403 after a
+    // SUCCESSFUL separate `read` probe, so a caller who cannot see the project still gets 404.
+    // That is what stops it being an existence oracle, and it is asserted below rather than
+    // trusted — admitting a third proof here is only safe while that remains true.
+    const PROOFS = [
+      new RegExp(`withOwnedProject\\(c, c\\.req\\.param\\('id'\\)(?:, ${ACTION})?\\)`),
+      new RegExp(`sharedAccess\\(c, c\\.req\\.param\\('id'\\), ${ACTION}\\)`),
+      /memoryScopeAccess\(c, '(?:project|user|org)', /,
+    ];
+    assert.ok(
+      PROOFS.some((re) => re.test(body)),
+      `${r.method.toUpperCase()} ${r.path} does not prove ownership by any allowed means — add the proof, or add it to PROOFS on purpose`,
+    );
+    // Same treatment as PROOFS above: the refusal was pinned to the NAME of a local variable, so a
+    // route that binds the identical check to `proven` instead of `ctx` failed a guard about
+    // authorisation for a reason that is about spelling. What must hold is that an unproven request
+    // gets the SAME 404 as a missing one — an authorisation failure that answers differently from a
+    // miss is an existence oracle.
+    const REFUSALS = [
+      /if \(!ctx\) return c\.json\(\{ error: 'not found' \}, 404\)/,
+      /if \(!proven\) return c\.json\(\{ error: 'not found' \}, 404\)/,
+      // The sharedAccess form refuses through one helper that maps its own status to a body, so
+      // the 404-vs-403 decision lives in exactly one place instead of at every call site.
+      /if \(!access\.ctx\) return collabRefusal\(c, access\.status\)/,
+    ];
+    assert.ok(
+      REFUSALS.some((re) => re.test(body)),
+      `${r.method.toUpperCase()} ${r.path} does not refuse with a 404 when ownership fails`,
+    );
   }
+  // ADMITTING sharedAccess AS A PROOF IS CONDITIONAL, and this is the condition. It must still go
+  // through the one gate, and its 403 must still be reachable only after a read probe SUCCEEDS —
+  // otherwise the 403 itself tells an outsider the project exists, which is the oracle every other
+  // assertion in this test is built to prevent.
+  const shared = src.slice(src.indexOf('async function sharedAccess('), src.indexOf('const collabRefusal'));
+  assert.ok(shared.length > 100, 'sharedAccess was not found — the PROOFS entry above would be unguarded');
+  assert.match(shared, /const ctx = await withOwnedProject\(c, projectId, action\)/, 'sharedAccess must go through the same gate');
+  assert.match(shared, /getProjectAccess\(c\.env, c\.get\('user'\), projectId, 'read'\)/, 'the 403 must be gated on a read probe');
+  assert.match(shared, /probe\.project === null \? 404 : 403/, 'a caller who cannot read must get 404, never 403');
+
   // …and withOwnedProject itself still does the two things that make it work.
   const helper = src.slice(src.indexOf('async function withOwnedProject'), src.indexOf("app.get('/api/projects/:id/ws'"));
   assert.match(helper, /getOwnedProject\(c\.env, user\.jwt, projectId\)/, 'ownership must be resolved with the USER jwt');
-  assert.match(helper, /sessionStub\(c\.env, project\.id\)/, 'the DO must be addressed by the canonical row id');
+  // PINNED TO THE PROPERTY, NOT THE VARIABLE NAME. This read `sessionStub(c.env, project.id)`.
+  // withOwnedProject now resolves `const row = project ?? shared` so that a collaborator reaches the
+  // same DO as the owner, and addresses `row.id` — which is still a DATABASE row's id and still not
+  // the URL's. The old assertion failed on a rename while the property it names was intact.
+  //
+  // The second half is the one that catches the actual bug, and it did not exist before: addressing
+  // the DO by the id that came in on the REQUEST is how casing and encoding variants fan out into
+  // separate Durable Objects for one project.
+  assert.match(
+    helper,
+    /sessionStub\(c\.env, (?:project|row|shared)\.id\)/,
+    'the DO must be addressed by a canonical row id read back from the database',
+  );
+  assert.doesNotMatch(
+    helper,
+    /sessionStub\(c\.env, projectId\)/,
+    'the DO must never be addressed by the id that arrived on the request',
+  );
   assert.match(helper, /if \(!init\.ok\) return null/, 'an owner mismatch on a recycled id must refuse');
 });
 
@@ -1185,9 +1504,9 @@ test('A4 FIXED — raw-probe is refused by the kill switch and by an exhausted c
     'a failed probe must release its reservation, not hold the budget hostage');
 });
 
-test('A4 FIXED — raw-probe charges the global ledger only: no user Sparks, no QuotaDO', async () => {
-  // Sparks are the PER-USER quota, tracked in QuotaDO. raw-probe is an operator tool reached with a
-  // service-wide admin key and no user identity at all, so there is nobody to bill: charging Sparks
+test('A4 FIXED — raw-probe charges the global ledger only: no user Credits, no QuotaDO', async () => {
+  // Credits are the PER-USER quota, tracked in QuotaDO. raw-probe is an operator tool reached with a
+  // service-wide admin key and no user identity at all, so there is nobody to bill: charging Credits
   // would either invent a victim or silently spend a real user's allowance on an operator's
   // diagnostic. Only the global neuron ledger applies.
   reset();
@@ -1201,14 +1520,14 @@ test('A4 FIXED — raw-probe charges the global ledger only: no user Sparks, no 
     'raw-probe must not even address a per-user quota DO — there is no user on this path');
   assert.deepEqual([...new Set(trace.doCalls.map((d) => d.ns))].sort(), ['AI', 'BUDGET_DO'],
     'the only things a probe touches are the model and the global neuron ledger');
-  assert.equal(/spark/i.test(res.text), false, 'the probe response must not report a Spark charge');
+  assert.equal(/credit/i.test(res.text), false, 'the probe response must not report a Credit charge');
 
   // STATIC GUARD, because the behavioural check would also pass for a QuotaDO call that merely
   // failed to fire on this input: the gateway has no per-user quota concept at all, by design.
   assert.equal(/QUOTA_DO/.test(readCode('gateway.ts')), false,
-    'gateway.ts must never touch QuotaDO — the gateway meters the GLOBAL ledger, Sparks are charged by the session DO');
+    'gateway.ts must never touch QuotaDO — the gateway meters the GLOBAL ledger, Credits are charged by the session DO');
   const rawProbeRoute = routeBodies(readCode('index.ts')).find((r) => r.path === '/api/admin/raw-probe');
-  assert.equal(/QUOTA_DO|spark/i.test(rawProbeRoute.body), false, 'the raw-probe route must not charge Sparks');
+  assert.equal(/QUOTA_DO|credit/i.test(rawProbeRoute.body), false, 'the raw-probe route must not charge Credits');
 });
 
 test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass RLS', async () => {
@@ -1242,8 +1561,22 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
     ],
     'an admin route that addresses a project by id was added or removed — review it: these bypass RLS entirely',
   );
-  const byBodyUser = routeBodies(src)
-    .filter((r) => r.path.startsWith('/api/admin/') && /\buserId\b/.test(r.body))
+  // The inventory is only evidence if each body IS the handler and not the file that follows it.
+  // Asserted, not assumed: a body that swallowed a top-level declaration is exactly how this guard
+  // came to accuse `GET /api/admin/static-list`, whose four lines name no user at all.
+  const bodies = routeBodies(src);
+  for (const r of bodies) {
+    const stray = r.body.split('\n').slice(1).find((l) => /^(function|const|let|class|async function|export|app\.)/.test(l));
+    assert.equal(
+      stray,
+      undefined,
+      `${r.method} ${r.path}: the route body ran past its handler into "${stray}" — the inventory below would be attributing that code to this route`,
+    );
+  }
+  // `user_id` as well as `userId`: the property is "this route acts on a caller-named user", and a
+  // route that spells it the snake_case way is the same finding, not a new one.
+  const byBodyUser = bodies
+    .filter((r) => r.path.startsWith('/api/admin/') && /\b(userId|user_id)\b/.test(r.body))
     .map((r) => `${r.method} ${r.path}`);
   assert.deepEqual(byBodyUser.sort(), ['POST /api/admin/quota-reset', 'POST /api/admin/set-plan'],
     'an admin route that acts on a named user was added or removed — review it');
@@ -1275,40 +1608,56 @@ test('A4 no route outside the exempt list and outside /api/admin/ is reachable u
 
 test('A5 STATIC CHECK — every tool result entering the transcript is fenced as untrusted', () => {
   const session = read('do/session.ts');
-  // Find every push of a `tool` role message and check what it carries.
+  const injection = read('injection.ts');
+
+  // THIS SWEEP USED TO REQUIRE THE FENCE TO BE VISIBLE AT THE PUSH SITE — it looked for a
+  // `role: 'tool'` push containing `out.resultForLlm` and asserted the tag literals were in the
+  // same expression. The fencing has since moved into `fenceToolOutput`, so the push now reads
+  // `content: fenced.text` and the old sweep counted ZERO fenced sites. That failure is
+  // indistinguishable from the one that matters — a push that carries raw tool output with no
+  // fence at all also counts zero — which is why this is rewritten rather than retargeted.
+  //
+  // Follow the VALUE across the boundary instead: the transcript may only receive tool output that
+  // came out of fenceToolOutput, and fenceToolOutput must be the thing that builds the fence.
   const pushes = [...session.matchAll(/agent\.llm\.push\(\{[\s\S]{0,600}?\}\);/g)].map((m) => m[0]);
   const toolPushes = pushes.filter((p) => /role:\s*'tool'/.test(p));
   assert.ok(toolPushes.length >= 2, 'expected at least the duplicate-call refusal and the real result push');
-  let fenced = 0;
+
+  // 1. No push may inline raw tool output. `out.resultForLlm` reaching a push directly is the
+  //    original defect and must never come back.
   for (const p of toolPushes) {
-    if (p.includes('out.resultForLlm')) {
-      assert.match(p, /<untrusted-tool-output /, 'a tool result reaches the transcript without an opening fence');
-      assert.match(p, /<\/untrusted-tool-output>/, 'the untrusted fence is never closed');
-      //[[ THE FENCE MUST CARRY A SECRET, and this assertion is the reason the check was
-      //   tightened rather than merely updated. The tag used to be a CONSTANT
-      //   `tool="${call.name}"`, and tool results are JSON.stringify'd — which escapes
-      //   quotes and backslashes but NOT angle brackets. So a payload containing a literal
-      //   closing tag reached the transcript verbatim (asserted by the very next test, and
-      //   correct: mangling evidence is worse) and closed the fence early, putting the
-      //   attacker's text outside the markers by the system prompt's own definition.
-      //
-      //   A per-run random id fixes that without touching the payload. Asserting only
-      //   "there is a fence" would pass against a constant tag again. ]]
-      //   The id now goes through `fenceIdFor(agent)`, which MINTS one when a run persisted by an
-      //   older deploy arrives without it. The expression this used to pin was `agent.fenceId ?? ''`,
-      //   and that fallback was the same defect one layer down: every legacy run fenced its output
-      //   with the SAME id, so the secret was shared rather than per-run. Pin the property — a
-      //   per-run id and no constant fallback — rather than the spelling.
-      assert.match(p, /id="\$\{(?:agent\.fenceId|this\.fenceIdFor\(agent\))/, 'the fence tag must carry the per-run id, or a payload can forge a closing tag');
-      assert.doesNotMatch(p, /fenceId\s*\?\?\s*''/, 'the fence id must never fall back to a constant');
-      fenced++;
-    } else {
-      // The only other tool-role push is Golem's own static refusal text; it must interpolate
-      // nothing from the tool at all beyond the tool NAME.
-      assert.equal(/resultForLlm|out\.detail|res\.data/.test(p), false, 'an unfenced tool-role message carries tool output');
-    }
+    assert.equal(
+      /out\.resultForLlm|out\.detail|res\.data/.test(p),
+      false,
+      'a tool-role message carries raw tool output instead of a fenced value',
+    );
   }
-  assert.equal(fenced, 1, 'exactly one site should carry real tool output into the transcript');
+
+  // 2. Exactly one push carries the fenced value, and it is the fenced one.
+  const carrying = toolPushes.filter((p) => /content:\s*fenced\.text/.test(p));
+  assert.equal(carrying.length, 1, 'exactly one site should carry real tool output into the transcript');
+
+  // 3. That value is produced by fenceToolOutput, from the tool result, with a per-run id.
+  assert.match(
+    session,
+    /const fenced = fenceToolOutput\(\{[^}]*body: out\.resultForLlm[^}]*\}\)/,
+    'the fenced value must be built from the tool result by fenceToolOutput',
+  );
+  assert.match(
+    session,
+    /fenceId: this\.fenceIdFor\(agent\)/,
+    'the fence id must be minted per run, never a constant',
+  );
+
+  // 4. And fenceToolOutput must actually fence. Asserting only that it is CALLED would pass
+  //    against a helper that returns the body untouched.
+  assert.match(injection, /<untrusted-tool-output id="\$\{opts\.fenceId\}"/, 'the opening fence must carry the run id');
+  assert.match(injection, /<\/untrusted-tool-output>/, 'the fence must be closed');
+  assert.match(
+    injection,
+    /throw new Error\('fenceToolOutput: fenceId is required/,
+    'an empty fence id must throw, not fall back to a constant shared by every run',
+  );
 });
 
 test('A5 tool output is fenced, not sanitised — an injection payload survives verbatim', async () => {
@@ -1431,9 +1780,33 @@ test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metere
     // step, so it has neither a normalised chat shape nor a token count, and gateway.chat() cannot
     // carry it. Admitting a file to this list is only safe if the gate comes with it, so the same
     // reserve-before-run / settle-after-run / release-on-failure ordering is asserted for it below.
-    ['gateway.ts', 'gateway.ts', 'imagegen.ts', 'providers/workers-ai.ts'],
+    //
+    // speech.ts twice, and it is the fourth exception for a reason that is NOT imagegen's. Speech is
+    // billed per AUDIO MINUTE — neither a token count nor a tile-and-step count — so gateway.chat()
+    // cannot carry it either. What is different is WHERE the two calls sit: they are inside
+    // `workersAiSpeech`, the adapter behind the `SpeechProvider` interface, and the reservation is
+    // taken by `transcribe`/`synthesize`, which invoke the provider. That indirection is deliberate
+    // — it is what lets every branch be tested without a paid call — and it also means the
+    // textual "reserve appears before run" check used for imagegen below cannot apply: the adapter
+    // is declared earlier in the file than the functions that gate it. The ordering is asserted by
+    // EXECUTION instead, in apps/worker/tests/speech.test.mjs ("a refused reservation means the
+    // engine is never called", "an engine that throws RELEASES the reservation"), and what is
+    // pinned here is that the calls are inside the adapter and that the module charges the one
+    // global ledger.
+    ['gateway.ts', 'gateway.ts', 'imagegen.ts', 'providers/workers-ai.ts', 'speech.ts', 'speech.ts'],
     'a new direct env.AI.run call site bypasses the provider layer — route it through gateway.chat()',
   );
+  // speech.ts: both call sites inside the adapter, the gate present, the ledger shared.
+  const speech = readCode('speech.ts');
+  const adapter = speech.slice(speech.indexOf('export function workersAiSpeech'), speech.indexOf('// Spend'));
+  assert.equal([...adapter.matchAll(/\bAI\.run\(/g)].length, 2,
+    'the speech engine calls must all be inside workersAiSpeech — a call outside it would not be behind the provider interface and could not be stubbed');
+  for (const required of ['const reserved = await reserve(env, ASR_MODEL.id, reservedNeurons)', 'const reserved = await reserve(env, TTS_MODEL.id, reservedNeurons)', 'await release(env, reserved)']) {
+    assert.ok(speech.includes(required), `speech.ts is missing ${required}`);
+  }
+  assert.equal([...speech.matchAll(/await settle\(env, reserved,/g)].length >= 3, true,
+    'every billed speech path must settle — the transcription path, the unreadable-response path and the synthesis path');
+  assert.match(speech, /BUDGET_DO\.idFromName\('singleton'\)/, 'speech must charge the one global ledger, not a ledger of its own');
   // imagegen.ts: same gate, same singleton ledger, same order.
   const img = readCode('imagegen.ts');
   const imgReserveAt = img.indexOf('const reserved = await reserve(env, spec.id, neurons)');
@@ -1632,11 +2005,66 @@ test('A8 claim mints a <uuid>.<48-hex> token and registers only its hash', async
 
 test('A8 STATIC CHECK — the plugin token is hashed, TTL-bounded and compared in constant time', () => {
   const session = read('do/session.ts');
-  assert.match(session, /const PLUGIN_TOKEN_TTL_MS = 30 \* 24 \* 3600 \* 1000/, 'the plugin token TTL must remain bounded');
-  const poll = session.slice(session.indexOf("if (path === '/plugin/poll'"), session.indexOf("if (path === '/messages'"));
-  assert.match(poll, /if \(!expect \|\| Date\.now\(\) - issuedAt > PLUGIN_TOKEN_TTL_MS\) return json\(\{ error: 'token expired' \}, 401\)/,
-    'an expired or unregistered token must be refused');
-  assert.match(poll, /timingSafeEqual\(await sha256hex\(token\), expect\)/, 'the token comparison must be constant-time over the hash');
+  // ANCHORED ON THE TERMINATOR. Without the `;` this matched as a PREFIX: multiplying the literal
+  // to `30 * 24 * 3600 * 100000` — a hundred-fold longer pairing lifetime — left this assertion
+  // green, because the shorter pattern is contained in the longer text. Measured, not theorised.
+  assert.match(session, /const PLUGIN_TOKEN_TTL_MS = 30 \* 24 \* 3600 \* 1000;/, 'the plugin token TTL must remain bounded');
+  const start = session.indexOf("if (path === '/plugin/poll'");
+  const poll = session.slice(start, session.indexOf("if (path === '/messages'", start));
+  assert.ok(start !== -1 && poll.length > 200, 'the poll handler was not found — this test would check nothing');
+
+  //[[ PROPERTY, NOT SPELLING.
+  //
+  //   These three lines used to pin two exact expressions, one of which read
+  //   `timingSafeEqual(await sha256hex(token), expect)`. Commit 04d3800 hoisted that digest into a
+  //   `presented` local so the SUPERSEDED-pairing branch could compare against a second stored
+  //   hash, and reformatted the expiry guard onto several lines with an added `message`. Nothing
+  //   was weakened — every exit is still a 401 — but both pins went red, and a pin that reddens
+  //   on a reformat trains people to edit the assertion rather than read it.
+  //
+  //   So each guarantee is now asserted as its own fact, and the negative ones carry the weight:
+  //   it is easy to keep a `timingSafeEqual` call while quietly adding a path around it. ]]
+  assert.match(
+    poll,
+    /if \(!expect \|\| Date\.now\(\) - issuedAt > PLUGIN_TOKEN_TTL_MS\)[\s\S]{0,300}?error: 'token expired'[\s\S]{0,300}?\},?\s*401\s*\)/,
+    'an unregistered or TTL-expired token must be refused with a 401',
+  );
+  assert.match(poll, /await sha256hex\(token\)/, 'the presented cleartext must be SHA-256 hashed');
+  assert.match(
+    poll,
+    /timingSafeEqual\(\s*(?:await sha256hex\(token\)|presented)\s*,\s*expect\s*\)/,
+    'the token comparison must be constant-time over the hash',
+  );
+  assert.equal(
+    /\btoken\s*[!=]==?\s*expect|\bexpect\s*[!=]==?\s*token/.test(poll),
+    false,
+    'the cleartext token must never be compared directly',
+  );
+  assert.equal(
+    /expect\.(slice|substring|substr)|sha256hex\(token\)\.(slice|substring|substr)/.test(poll),
+    false,
+    'a truncated digest must never stand in for the hash',
+  );
+  // SCOPED TO THE GUARD, not to the whole handler. My first version counted `401` across the
+  // entire poll slice and failed on healthy code: the handler legitimately returns six json()
+  // responses and only three of them are refusals. Counting the wrong region is how an assertion
+  // ends up being relaxed to fit rather than corrected — so the region is the guard, and inside it
+  // EVERY json() response must be a 401.
+  const guardRegion = poll.slice(0, poll.lastIndexOf('const reported = readPluginHeaders'));
+  const guardReturns = [...guardRegion.matchAll(/return json\(([\s\S]*?)\);/g)].map((m) => m[1]);
+  assert.ok(guardReturns.length >= 3, `the guard must have three refusal branches, found ${guardReturns.length}`);
+  for (const args of guardReturns) {
+    assert.match(args.trim(), /401,?$/, 'every response the token guard can produce must be a 401');
+  }
+  // AND NO OTHER KIND OF RETURN AT ALL. Counting the refusals is not enough on its own: inserting
+  // `if (Date.now() - issuedAt < 60000) return handlePluginPoll();` ahead of the compare leaves
+  // all three refusals intact and every one of them a 401, while opening a minute-wide hole that
+  // accepts any token. Measured — that mutant passed every other assertion in this test.
+  assert.deepEqual(
+    [...guardRegion.matchAll(/return\s+(?!json\()/g)].map((m) => m[0].trim()),
+    [],
+    'the token guard must return nothing but a json() refusal — any other return is a path around the compare',
+  );
   assert.ok(poll.indexOf('return json({ error') < poll.indexOf('handlePluginPoll'), 'every refusal must precede any work');
 
   const index = read('index.ts');

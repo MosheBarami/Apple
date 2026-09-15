@@ -1,0 +1,7524 @@
+{
+ "capturedAt": "2026-09-15",
+ "source": "owner checklist v2",
+ "sectionCount": 60,
+ "itemCount": 1200,
+ "sections": [
+  {
+   "section": "01. PUBLIC WEBSITE AND PRODUCT DISCOVERY",
+   "items": [
+    {
+     "id": "v2-bc5bdef4",
+     "name": "Clear product positioning",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5876d224",
+     "name": "Audience-specific landing pages",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4eb0d4de",
+     "name": "Product capability overview",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab.ts"
+    },
+    {
+     "id": "v2-8c907007",
+     "name": "Interactive product walkthrough",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1d48d7c4",
+     "name": "Working sample projects",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-57830e0b",
+     "name": "Roblox Studio integration overview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ba84e396",
+     "name": "Supported workflow documentation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d7d99691",
+     "name": "Transparent capability limitations",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fbef4057",
+     "name": "Public pricing page",
+     "status": "partial",
+     "evidence": "apps/site/src/pages/index.astro"
+    },
+    {
+     "id": "v2-f5ccf808",
+     "name": "Plan comparison table",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/generative-ui/schema.ts"
+    },
+    {
+     "id": "v2-01e3d9c6",
+     "name": "Usage and credit explanation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-580cd114",
+     "name": "Frequently asked questions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d7ab88b1",
+     "name": "Searchable documentation entry point",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-67eac16a",
+     "name": "Public changelog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8293c0fa",
+     "name": "Public service status page",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4f50606a",
+     "name": "Security and privacy overview",
+     "status": "partial",
+     "evidence": "apps/web/src/routes/settings.tsx"
+    },
+    {
+     "id": "v2-7875e501",
+     "name": "Contact and support options",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ecc82488",
+     "name": "Accessible registration entry points",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8d108700",
+     "name": "Mobile-friendly public pages",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9a312c00",
+     "name": "Accurate product screenshots and demonstrations",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "02. REGISTRATION AND SIGN-IN",
+   "items": [
+    {
+     "id": "v2-b720904a",
+     "name": "Email and password registration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e1509102",
+     "name": "Email verification",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/auth-flows.ts"
+    },
+    {
+     "id": "v2-72e5e11d",
+     "name": "Passwordless email sign-in",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d71e1f3d",
+     "name": "Passkey registration and sign-in",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e00f8b38",
+     "name": "Supported social sign-in providers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5ac38a45",
+     "name": "Enterprise single sign-on",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-614b6aff",
+     "name": "Organization-specific sign-in policies",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-e6dce725",
+     "name": "Invitation-based registration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-aa24349b",
+     "name": "Expired invitation recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6efe5074",
+     "name": "Existing-account invitation acceptance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-33ee2bc5",
+     "name": "Duplicate-account detection",
+     "status": "partial",
+     "evidence": "packages/corpus/src/intake/dedupe.mjs"
+    },
+    {
+     "id": "v2-89ee9a73",
+     "name": "Secure identity linking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8212821e",
+     "name": "Identity unlinking with recovery safeguards",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-368171b3",
+     "name": "Password reset",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/auth-flows.ts"
+    },
+    {
+     "id": "v2-fe49f0fc",
+     "name": "Expired reset-link recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9acad405",
+     "name": "Safe post-login redirects",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/safe-redirect.ts"
+    },
+    {
+     "id": "v2-db54af02",
+     "name": "Session restoration after page refresh",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d80cd79f",
+     "name": "Return to interrupted onboarding after login",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1e16e3c9",
+     "name": "Clear authentication failure messages",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/auth-flows.ts"
+    },
+    {
+     "id": "v2-4af922a8",
+     "name": "Sign-out from the current session",
+     "status": "partial",
+     "evidence": "apps/plugin/src/init.server.luau"
+    }
+   ]
+  },
+  {
+   "section": "03. ACCOUNT SECURITY AND RECOVERY",
+   "items": [
+    {
+     "id": "v2-c6edaa9b",
+     "name": "Multifactor authentication enrollment",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-08f23831",
+     "name": "Multifactor authentication verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-645116e6",
+     "name": "Recovery code generation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7f27275f",
+     "name": "Recovery code regeneration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-74d86d20",
+     "name": "Lost-authenticator recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4102b041",
+     "name": "Passkey management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-15d69d0f",
+     "name": "Active session inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a31b4478",
+     "name": "Device and browser identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c34a6441",
+     "name": "Individual session revocation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-717e061c",
+     "name": "Sign-out from all devices",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-60c8467d",
+     "name": "Suspicious sign-in notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-44474245",
+     "name": "New-device notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-67e8be48",
+     "name": "Sensitive-action reauthentication",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dd5f3e2e",
+     "name": "Secure email address changes",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c0ca0948",
+     "name": "Password change notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-18a71a2f",
+     "name": "Compromised credential handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e49cc97d",
+     "name": "Account recovery request tracking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-44472df3",
+     "name": "Security event history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d1bee4b0",
+     "name": "Organization-enforced security requirements",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-fbf57c9c",
+     "name": "Protection against account enumeration",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "04. USER PROFILE AND PERSONAL SETTINGS",
+   "items": [
+    {
+     "id": "v2-7ff6e353",
+     "name": "Display name management",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/member-match.ts"
+    },
+    {
+     "id": "v2-aeb38008",
+     "name": "Profile image management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d2718901",
+     "name": "Verified email management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6e2702f5",
+     "name": "Preferred language selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-19fca900",
+     "name": "Timezone selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-83a190b8",
+     "name": "Date and time formatting preferences",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6b49b05a",
+     "name": "Number formatting preferences",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-45dccf1d",
+     "name": "Light and dark appearance preferences",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f7223490",
+     "name": "System appearance synchronization",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-45532fe7",
+     "name": "Accessibility preference storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-18a78f17",
+     "name": "Notification channel preferences",
+     "status": "partial",
+     "evidence": "apps/worker/src/notifications.ts"
+    },
+    {
+     "id": "v2-94bb892d",
+     "name": "Default organization selection",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-1c567fbb",
+     "name": "Default workspace selection",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-40e563f9",
+     "name": "Default project landing view",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cb39025f",
+     "name": "Keyboard shortcut preferences",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-849cd6d9",
+     "name": "AI interaction preferences",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-77bebc56",
+     "name": "Connected identity overview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-aa8aebd4",
+     "name": "Personal settings search",
+     "status": "partial",
+     "evidence": "apps/worker/src/memory-store.ts"
+    },
+    {
+     "id": "v2-0c0a4959",
+     "name": "Settings synchronization across devices",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b29b4564",
+     "name": "Settings reset with confirmation",
+     "status": "partial",
+     "evidence": "apps/web/src/components/reauth-dialog.tsx"
+    }
+   ]
+  },
+  {
+   "section": "05. ONBOARDING AND ACTIVATION",
+   "items": [
+    {
+     "id": "v2-5c36b1bf",
+     "name": "First-use welcome flow",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-65c40fc9",
+     "name": "Intended-use selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5c7d51ed",
+     "name": "Individual or team setup",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-66e56abb",
+     "name": "Organization creation during onboarding",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-9c1d3a0d",
+     "name": "Workspace creation during onboarding",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-90f59f63",
+     "name": "First project creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-92d1eda8",
+     "name": "Sample project selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1493ca64",
+     "name": "Roblox Studio prerequisite check",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-60ca7328",
+     "name": "Studio plugin installation guidance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-234ee4b8",
+     "name": "Studio pairing walkthrough",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-43cc8ab9",
+     "name": "Connection troubleshooting guidance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-38a78269",
+     "name": "First successful AI request",
+     "status": "done",
+     "evidence": "apps/web/tests/connectivity.test.mjs — \"a request that never left, with nothing successful since, means unreachable\""
+    },
+    {
+     "id": "v2-a9969b8d",
+     "name": "First proposed Studio change",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ee6af7bd",
+     "name": "First change approval",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-threads.test.mjs — \"one changes_requested blocks, and a later approval from someone else does not erase it\""
+    },
+    {
+     "id": "v2-ff340f93",
+     "name": "First verified Studio operation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b8f153c8",
+     "name": "First undo demonstration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c6e35403",
+     "name": "Initial usage allowance explanation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1f01804c",
+     "name": "Onboarding progress persistence",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c181977c",
+     "name": "Skip and resume onboarding",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-416ff8d6",
+     "name": "Contextual next-step guidance",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "06. ORGANIZATION MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-bdeee052",
+     "name": "Organization creation",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-8b76ab54",
+     "name": "Organization profile editing",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-fd81671a",
+     "name": "Organization logo management",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-8487442e",
+     "name": "Organization identifier management",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-8dc6f2c1",
+     "name": "Organization switcher",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-ad29d5ef",
+     "name": "Organization ownership display",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-5260a89d",
+     "name": "Organization ownership transfer",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-1aa9de58",
+     "name": "Sole-owner departure protection",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-4b9a80e5",
+     "name": "Organization billing contact",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-99b9c27c",
+     "name": "Organization security settings",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-85ab767e",
+     "name": "Organization default member role",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-1e465492",
+     "name": "Organization domain verification",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-16aa8ae6",
+     "name": "Domain-based membership policies",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-d2c8adf8",
+     "name": "Organization workspace inventory",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-ad7c0320",
+     "name": "Organization usage overview",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-9e2fd459",
+     "name": "Organization integration inventory",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-8c35ae40",
+     "name": "Organization lifecycle status",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-5c974baa",
+     "name": "Organization export initiation",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-eec61db3",
+     "name": "Organization deletion preview",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-3583cdc0",
+     "name": "Organization deletion recovery window",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    }
+   ]
+  },
+  {
+   "section": "07. MEMBERSHIP AND INVITATIONS",
+   "items": [
+    {
+     "id": "v2-9df8b667",
+     "name": "Member directory",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-threads.test.mjs — \"a directory row with an unreadable role is not a member, so it cannot be mentioned\""
+    },
+    {
+     "id": "v2-27fec808",
+     "name": "Member search and filtering",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-86db67aa",
+     "name": "Single-member invitations",
+     "status": "partial",
+     "evidence": "apps/worker/src/membership.ts"
+    },
+    {
+     "id": "v2-feb31559",
+     "name": "Bulk invitations",
+     "status": "partial",
+     "evidence": "apps/worker/src/membership.ts"
+    },
+    {
+     "id": "v2-ed493eac",
+     "name": "Invitation role selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2c7c8182",
+     "name": "Invitation workspace assignment",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-0c70f5c7",
+     "name": "Invitation expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-32e7848e",
+     "name": "Invitation resend",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-08be15ce",
+     "name": "Invitation revocation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c7a08da4",
+     "name": "Pending invitation inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9c9c2253",
+     "name": "Invitation acceptance audit",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c7eba68b",
+     "name": "Role change history",
+     "status": "done",
+     "evidence": "apps/worker/tests/membership-lifecycle.test.mjs — \"the history records what CHANGED, including the role that was overwritten\""
+    },
+    {
+     "id": "v2-68ec95b9",
+     "name": "Member suspension",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-34d9a09c",
+     "name": "Member reactivation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f01d2438",
+     "name": "Member removal impact preview",
+     "status": "done",
+     "evidence": "apps/worker/tests/membership-lifecycle.test.mjs — \"the impact preview counts what the departing member actually holds, and writes nothing\""
+    },
+    {
+     "id": "v2-950756c9",
+     "name": "Removed-member access revocation",
+     "status": "partial",
+     "evidence": "apps/worker/src/run-access.ts"
+    },
+    {
+     "id": "v2-c51bf011",
+     "name": "Departing-member resource reassignment",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4757e61b",
+     "name": "Guest membership",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-236fc78b",
+     "name": "Temporary membership expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6242daab",
+     "name": "Seat availability visibility",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    }
+   ]
+  },
+  {
+   "section": "08. AUTHORIZATION AND TENANT ISOLATION",
+   "items": [
+    {
+     "id": "v2-79b2da08",
+     "name": "Explicit resource ownership",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a96d71b8",
+     "name": "Deny-by-default authorization",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fce47987",
+     "name": "Server-side permission enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b0ba1fa7",
+     "name": "Database-level tenant isolation",
+     "status": "partial",
+     "evidence": "infra/supabase/tests/rls-isolation.mjs"
+    },
+    {
+     "id": "v2-e2de6f82",
+     "name": "Organization-scoped data access",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-87d2b6d0",
+     "name": "Workspace-scoped data access",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-d24d8089",
+     "name": "Project-scoped data access",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/supabase.ts"
+    },
+    {
+     "id": "v2-7c02e301",
+     "name": "Action-level permissions",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab.ts"
+    },
+    {
+     "id": "v2-665e67d3",
+     "name": "Built-in role definitions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5141571a",
+     "name": "Custom role definitions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-446c4eb7",
+     "name": "Least-privilege default roles",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-74e6d737",
+     "name": "Permission inheritance visibility",
+     "status": "partial",
+     "evidence": "apps/worker/tests/effective-permissions.test.mjs"
+    },
+    {
+     "id": "v2-95645035",
+     "name": "Permission override visibility",
+     "status": "done",
+     "evidence": "apps/worker/tests/effective-permissions.test.mjs — \"OVERRIDE VISIBILITY: two grants, and the answer says which one won\""
+    },
+    {
+     "id": "v2-7a90e138",
+     "name": "Effective permission inspection",
+     "status": "partial",
+     "evidence": "apps/worker/tests/effective-permissions.test.mjs"
+    },
+    {
+     "id": "v2-842264fe",
+     "name": "Cross-tenant access rejection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ee90db0f",
+     "name": "Unauthorized resource existence protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-60c20a81",
+     "name": "Search result permission filtering",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2be46281",
+     "name": "Export permission enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a2df4c27",
+     "name": "Background job permission enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-190dde93",
+     "name": "Automated multi-tenant isolation verification",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "09. WORKSPACE MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-1ddc770b",
+     "name": "Workspace creation",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-68a922ab",
+     "name": "Workspace naming and description",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-2f0d51fe",
+     "name": "Workspace icon and color",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-bbdad02b",
+     "name": "Workspace membership",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-7aad6970",
+     "name": "Workspace administrator assignment",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-c59cf924",
+     "name": "Workspace visibility controls",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-f8f16bab",
+     "name": "Workspace switcher",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-4156d32d",
+     "name": "Workspace project directory",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-d8da0daf",
+     "name": "Workspace-level defaults",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-d7ade1b1",
+     "name": "Workspace-specific integrations",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-089f9728",
+     "name": "Workspace-specific AI policies",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-4dba5bc7",
+     "name": "Workspace usage allocation",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-385a1ba0",
+     "name": "Workspace spending allocation",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-2c619803",
+     "name": "Workspace activity history",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-61b6c2d7",
+     "name": "Workspace resource transfer",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-25046d1e",
+     "name": "Workspace duplication",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-7b1fbdd1",
+     "name": "Workspace archival",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-c81c3322",
+     "name": "Workspace restoration",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-38c67d14",
+     "name": "Workspace export",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-f20dd65b",
+     "name": "Workspace deletion impact preview",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    }
+   ]
+  },
+  {
+   "section": "10. PROJECT MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-897404e1",
+     "name": "Project creation from an empty workspace",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b54607ed",
+     "name": "Project creation from a template",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c7eb5d98",
+     "name": "Project creation from an existing Studio place",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1472f0df",
+     "name": "Project naming and description",
+     "status": "partial",
+     "evidence": "apps/worker/src/automations.ts"
+    },
+    {
+     "id": "v2-2e3b2d2f",
+     "name": "Project icon and cover image",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7b1422f4",
+     "name": "Project status",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-437cfbcd",
+     "name": "Project ownership",
+     "status": "done",
+     "evidence": "apps/worker/tests/memory-personalisation.test.mjs — \"project scope is proven by an ownership query, not by the id in the URL\""
+    },
+    {
+     "id": "v2-2e32a023",
+     "name": "Project membership",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab.ts"
+    },
+    {
+     "id": "v2-c9e135e5",
+     "name": "Project permission settings",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-16c57790",
+     "name": "Project tags",
+     "status": "partial",
+     "evidence": "apps/worker/src/preferences.ts"
+    },
+    {
+     "id": "v2-9ad397e2",
+     "name": "Project folders",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/files-model.ts"
+    },
+    {
+     "id": "v2-de1ec798",
+     "name": "Project favorites",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-21ae094a",
+     "name": "Project duplication",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1258eaa7",
+     "name": "Project transfer between workspaces",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-a8317933",
+     "name": "Project archive and restore",
+     "status": "done",
+     "evidence": "apps/web/tests/archive.test.mjs — \"the menu offers Restore on an archived project, not Archive again\""
+    },
+    {
+     "id": "v2-5b6dedb3",
+     "name": "Project export",
+     "status": "done",
+     "evidence": "apps/worker/tests/export.test.mjs — \"the export route refuses a project the caller does not own\""
+    },
+    {
+     "id": "v2-054d7af5",
+     "name": "Project deletion recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1226266d",
+     "name": "Project connection inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7cade7d3",
+     "name": "Project resource inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2d1df987",
+     "name": "Project activity timeline",
+     "status": "done",
+     "evidence": "apps/web/tests/activity-motion.test.mjs — \"every animation on the activity timeline is gated behind .gx-act.is-moving\""
+    }
+   ]
+  },
+  {
+   "section": "11. APPLICATION SHELL AND NAVIGATION",
+   "items": [
+    {
+     "id": "v2-2ee69544",
+     "name": "Persistent application navigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ed20f9c7",
+     "name": "Organization and workspace context display",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-82b07b8f",
+     "name": "Project context display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-482a58c3",
+     "name": "Breadcrumb navigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f66a8125",
+     "name": "Stable deep links",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b65000fd",
+     "name": "Browser back and forward support",
+     "status": "partial",
+     "evidence": "apps/worker/tests/companion-route.test.mjs"
+    },
+    {
+     "id": "v2-fb019b84",
+     "name": "Restorable panel layouts",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5c3242a4",
+     "name": "Resizable panels",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-13e1c7bf",
+     "name": "Collapsible navigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-169b9bf0",
+     "name": "Tabbed project views",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4f961dd0",
+     "name": "Recently opened resources",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fe80bdbb",
+     "name": "Favorite resource shortcuts",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7b2f550f",
+     "name": "Global command palette",
+     "status": "partial",
+     "evidence": "apps/web/src/components/shortcuts-dialog.tsx"
+    },
+    {
+     "id": "v2-bcd1f2b2",
+     "name": "Contextual action menus",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f8769b97",
+     "name": "Unsaved-change navigation protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5f729529",
+     "name": "Permission-aware navigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fa340f5c",
+     "name": "Not-found pages",
+     "status": "partial",
+     "evidence": "apps/web/src/routes/not-found.tsx"
+    },
+    {
+     "id": "v2-fa023091",
+     "name": "Access-denied pages",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9b0eb19a",
+     "name": "Recoverable application error boundaries",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ea651602",
+     "name": "Consistent account and settings access",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "12. SEARCH AND RESOURCE DISCOVERY",
+   "items": [
+    {
+     "id": "v2-326422ae",
+     "name": "Global resource search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ad3b5650",
+     "name": "Organization-scoped search",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-43dfd7fb",
+     "name": "Workspace-scoped search",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-dc258112",
+     "name": "Project-scoped search",
+     "status": "done",
+     "evidence": "apps/web/tests/search-panel.test.mjs — \"the client route is the project-scoped search endpoint, with the filters attached\""
+    },
+    {
+     "id": "v2-ce7bdeef",
+     "name": "Conversation search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-683e79c8",
+     "name": "Message content search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ceff5164",
+     "name": "File and artifact search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-06567cef",
+     "name": "Asset search",
+     "status": "done",
+     "evidence": "apps/web/tests/evidence-model.test.mjs — \"an asset search shows what it matched, thumbnail or not\""
+    },
+    {
+     "id": "v2-e64638c6",
+     "name": "Member search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-925c6418",
+     "name": "Activity search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d3c9fe78",
+     "name": "Search result type filters",
+     "status": "done",
+     "evidence": "apps/worker/tests/search.test.mjs — \"with no filter given, every type and every author is searched\""
+    },
+    {
+     "id": "v2-02821e01",
+     "name": "Search date filters",
+     "status": "done",
+     "evidence": "apps/web/tests/search-panel.test.mjs — \"the kind and date filters are pressed-state controls, not colour alone\""
+    },
+    {
+     "id": "v2-da0ada45",
+     "name": "Search ownership filters",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-72036fb4",
+     "name": "Search tag filters",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c97d6560",
+     "name": "Search result relevance ranking",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/member-match.ts"
+    },
+    {
+     "id": "v2-a87594bd",
+     "name": "Search result previews",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ec488196",
+     "name": "Search query history",
+     "status": "done",
+     "evidence": "apps/web/tests/search-history.test.mjs — \"storage that throws on write costs the history, not the search\""
+    },
+    {
+     "id": "v2-00f35462",
+     "name": "Saved search views",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9403b7dd",
+     "name": "Keyboard-driven result navigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1dacd892",
+     "name": "Clear empty and unavailable search states",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "13. ROBLOX STUDIO INSTALLATION AND PAIRING",
+   "items": [
+    {
+     "id": "v2-6756f909",
+     "name": "Verified plugin installation entry point",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a00b9c86",
+     "name": "Supported Studio version guidance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2e421ca6",
+     "name": "Plugin version display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7d8297f3",
+     "name": "Plugin update availability",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5602649b",
+     "name": "Plugin compatibility validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-793e4382",
+     "name": "Secure pairing code generation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3b61526e",
+     "name": "Short-lived pairing codes",
+     "status": "partial",
+     "evidence": "apps/web/src/components/pairing-dialog.tsx"
+    },
+    {
+     "id": "v2-d132170a",
+     "name": "Single-use pairing codes",
+     "status": "done",
+     "evidence": "apps/web/tests/presence-model.test.mjs — \"initials are code points, not charAt — a surrogate pair is never cut in half\""
+    },
+    {
+     "id": "v2-fbeef36d",
+     "name": "Pairing confirmation in the web application",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-09906b50",
+     "name": "Pairing confirmation inside Studio",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-15a8929a",
+     "name": "Explicit organization selection during pairing",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-50fe013d",
+     "name": "Explicit project selection during pairing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1686ecd3",
+     "name": "Place identity confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-11ab47b5",
+     "name": "Duplicate pairing detection",
+     "status": "partial",
+     "evidence": "packages/corpus/src/intake/dedupe.mjs"
+    },
+    {
+     "id": "v2-b2d43a0d",
+     "name": "Pairing expiration recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8fb029a4",
+     "name": "Pairing cancellation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8ee6bb0a",
+     "name": "Paired installation inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a3a0bd5e",
+     "name": "Installation rename",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dc3d4b77",
+     "name": "Installation revocation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-839d7862",
+     "name": "Plugin removal and disconnect guidance",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "14. STUDIO CONNECTION AND SESSION MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-ed7366e5",
+     "name": "Live connection status",
+     "status": "partial",
+     "evidence": "packages/sdk/src/errors.mjs"
+    },
+    {
+     "id": "v2-e17e2f52",
+     "name": "Last successful heartbeat",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cba46d4f",
+     "name": "Connection latency display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1e91641a",
+     "name": "Active place identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cb235814",
+     "name": "Active Studio session identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-84936e38",
+     "name": "Multiple Studio session inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-01cf0dff",
+     "name": "Explicit active-session selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fbc03768",
+     "name": "Project-to-place binding",
+     "status": "done",
+     "evidence": "apps/worker/tests/studio-place-poll.test.mjs — \"an unbound project BINDS on the first identifiable place and is served\""
+    },
+    {
+     "id": "v2-66c144ba",
+     "name": "Connection authorization refresh",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7caf98fe",
+     "name": "Automatic reconnection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0b4a7f64",
+     "name": "Reconnection progress display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fc82f454",
+     "name": "Offline operation queue visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5007f3c8",
+     "name": "Queue cancellation before reconnect",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-95390a72",
+     "name": "Session expiration handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ef8b1144",
+     "name": "Stale session detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ff554099",
+     "name": "Duplicate command protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-93041520",
+     "name": "Plugin and server protocol negotiation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bb61134c",
+     "name": "Connection diagnostics",
+     "status": "done",
+     "evidence": "apps/worker/tests/studio-link-routes-live.test.mjs — \"the owner can read connection diagnostics WITHOUT the admin key\""
+    },
+    {
+     "id": "v2-477139e1",
+     "name": "Safe disconnect behavior",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0deca6c6",
+     "name": "Reconnection reconciliation of pending operations",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "15. STUDIO OPERATION EXECUTION",
+   "items": [
+    {
+     "id": "v2-22b363bf",
+     "name": "Studio capability discovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-91fadbca",
+     "name": "Supported operation registry",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-67cef3af",
+     "name": "Operation argument validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a21410f8",
+     "name": "Target instance validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e4ccba80",
+     "name": "Stable instance identity mapping",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-61618d76",
+     "name": "Target place validation",
+     "status": "partial",
+     "evidence": "apps/worker/tests/prefabs.test.mjs"
+    },
+    {
+     "id": "v2-63abf804",
+     "name": "Pre-operation state capture",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a09b956f",
+     "name": "Dry-run operation preview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-08d3c2d2",
+     "name": "Batched operation execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-536ebe42",
+     "name": "Per-operation execution results",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c83973a8",
+     "name": "Partial batch failure reporting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-99ddfcbf",
+     "name": "Operation timeout handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b0026011",
+     "name": "Operation cancellation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-58736cc5",
+     "name": "Retry eligibility classification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-41836030",
+     "name": "Safe retry execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ac4d83cf",
+     "name": "Conflict detection against current Studio state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-83caf67d",
+     "name": "Destructive operation confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-49ff146f",
+     "name": "Studio undo integration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0acfc96b",
+     "name": "Operation provenance tracking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ddb11d12",
+     "name": "Verification of resulting Studio state",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "16. CONVERSATION MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-c2704996",
+     "name": "New conversation creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4b3f6b2a",
+     "name": "Project-bound conversations",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f49005c1",
+     "name": "Conversation naming",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-16b570c2",
+     "name": "Automatic title suggestions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e02537b1",
+     "name": "Conversation rename",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-679111f0",
+     "name": "Conversation folders",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a2c31be2",
+     "name": "Conversation tags",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-170bd372",
+     "name": "Conversation pinning",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-83e84090",
+     "name": "Conversation favorites",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-61c86040",
+     "name": "Conversation archival",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7d1db3a6",
+     "name": "Conversation restoration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-99637286",
+     "name": "Conversation deletion confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bfd30936",
+     "name": "Conversation export",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-da0e9404",
+     "name": "Conversation duplication",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b7fbdfe8",
+     "name": "Conversation branching",
+     "status": "partial",
+     "evidence": "apps/web/tests/image-expiry.test.mjs"
+    },
+    {
+     "id": "v2-906fc40d",
+     "name": "Branch ancestry display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6b99c2f4",
+     "name": "Message editing",
+     "status": "done",
+     "evidence": "apps/worker/tests/edit-resend.test.mjs — \"the cut is by time, from the edited message inclusive\""
+    },
+    {
+     "id": "v2-50e11a6c",
+     "name": "Message version history",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-version-history.test.mjs — \"a version that is not in the history cannot be restored\""
+    },
+    {
+     "id": "v2-7e735d74",
+     "name": "Response regeneration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7f9f18d1",
+     "name": "Conversation state restoration across devices",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "17. MESSAGE COMPOSER AND ATTACHMENTS",
+   "items": [
+    {
+     "id": "v2-d5d94f87",
+     "name": "Multiline message input",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0054cf13",
+     "name": "Configurable send shortcut",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d487324d",
+     "name": "Draft persistence",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-94efe9ec",
+     "name": "Draft recovery after refresh",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-85a1c98a",
+     "name": "File attachment upload",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c6662e0b",
+     "name": "Image attachment upload",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2592f878",
+     "name": "Audio attachment upload",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d825aeab",
+     "name": "Pasted image handling",
+     "status": "partial",
+     "evidence": "apps/web/tests/image-expiry.test.mjs"
+    },
+    {
+     "id": "v2-cafcc451",
+     "name": "Drag-and-drop attachments",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c8cff75e",
+     "name": "Attachment upload progress",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c3a26f5f",
+     "name": "Attachment upload cancellation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e68f2683",
+     "name": "Attachment retry",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a30268e0",
+     "name": "Attachment size validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3c9fabc7",
+     "name": "Attachment type validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2cd7d2d7",
+     "name": "Attachment removal before sending",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a6e020f7",
+     "name": "Project resource mentions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c0c645e6",
+     "name": "Studio object references",
+     "status": "done",
+     "evidence": "packages/corpus/src/intake/forks.test.mjs — \"repository references parse from a slug, a URL or an object — and garbage throws\""
+    },
+    {
+     "id": "v2-a37d24f9",
+     "name": "Prompt template insertion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a851c340",
+     "name": "Message length feedback",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9f3d292e",
+     "name": "Clear submission failure recovery",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "18. AI RESPONSE PRESENTATION",
+   "items": [
+    {
+     "id": "v2-7e8ef6a3",
+     "name": "Incremental response streaming",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e4bcc26d",
+     "name": "Markdown rendering",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/markdown.tsx"
+    },
+    {
+     "id": "v2-bd9b9962",
+     "name": "Syntax-highlighted code blocks",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/code-block.tsx"
+    },
+    {
+     "id": "v2-a24f9757",
+     "name": "Copyable code blocks",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/code-block.tsx"
+    },
+    {
+     "id": "v2-3a967f03",
+     "name": "Structured tables",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-820174ce",
+     "name": "Expandable long responses",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1bb7f6ba",
+     "name": "Source citation links",
+     "status": "done",
+     "evidence": "apps/worker/tests/retrieval.test.mjs — \"a markdown link is not a citation, and there is no source zero\""
+    },
+    {
+     "id": "v2-c6d349e0",
+     "name": "Citation source previews",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-33d6061a",
+     "name": "Tool activity summaries",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c89ca543",
+     "name": "Run progress indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d21da566",
+     "name": "Proposed change summaries",
+     "status": "done",
+     "evidence": "apps/worker/tests/memory.test.mjs — \"the proposed summary is decided separately from the facts\""
+    },
+    {
+     "id": "v2-95f642f7",
+     "name": "File and artifact cards",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/evidence-model.ts"
+    },
+    {
+     "id": "v2-46046ac5",
+     "name": "Scene preview cards",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a602b6d6",
+     "name": "Verification result cards",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-affcb90a",
+     "name": "Explicit incomplete response states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7e28a6e1",
+     "name": "Explicit failed response states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f248b000",
+     "name": "Accessible streaming announcements",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9caeee72",
+     "name": "Scroll position preservation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2361cbca",
+     "name": "User-controlled follow-to-latest behavior",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e4773dab",
+     "name": "Separation of generated claims from verified results",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "19. MODEL SELECTION AND PROVIDER CONTROL",
+   "items": [
+    {
+     "id": "v2-21bb117d",
+     "name": "Available model catalog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1fe398dd",
+     "name": "Model capability descriptions",
+     "status": "partial",
+     "evidence": "apps/worker/src/audio-tools.ts"
+    },
+    {
+     "id": "v2-faf6e171",
+     "name": "Model context limits",
+     "status": "partial",
+     "evidence": "apps/worker/src/assets.ts"
+    },
+    {
+     "id": "v2-223083fa",
+     "name": "Supported input modality display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-70fcb6c8",
+     "name": "Supported output modality display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9ad755c1",
+     "name": "Estimated model cost display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-09286345",
+     "name": "Default model selection",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/selection-reference.ts"
+    },
+    {
+     "id": "v2-e883b3d7",
+     "name": "Per-conversation model selection",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/selection-reference.ts"
+    },
+    {
+     "id": "v2-72282cfa",
+     "name": "Per-run model override",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-160122a0",
+     "name": "Organization-approved model policies",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-edb75fd5",
+     "name": "Provider availability indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d766e3e8",
+     "name": "Model retirement notices",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f546826f",
+     "name": "Fallback model configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d62defe9",
+     "name": "Fallback transparency",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a477a7c3",
+     "name": "Provider timeout handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a81ddaf8",
+     "name": "Provider rate-limit handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-acb0310d",
+     "name": "Provider outage handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d5b8fbbc",
+     "name": "Provider-specific error normalization",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-77d8b49f",
+     "name": "Actual model attribution per response",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-be610e62",
+     "name": "Organization controls for externally processed data",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    }
+   ]
+  },
+  {
+   "section": "20. CONTEXT AND KNOWLEDGE RETRIEVAL",
+   "items": [
+    {
+     "id": "v2-36320f0b",
+     "name": "Current project context assembly",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5e37a578",
+     "name": "Selected Studio object context",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-179e98f0",
+     "name": "Script context selection",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/mock.ts"
+    },
+    {
+     "id": "v2-773ab000",
+     "name": "Project file context selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a4edebd2",
+     "name": "Conversation context selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b6b8cff8",
+     "name": "Documentation source ingestion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-41f7f0bc",
+     "name": "Repository source ingestion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bd620b23",
+     "name": "Manual knowledge uploads",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-48fceed0",
+     "name": "Source access validation",
+     "status": "partial",
+     "evidence": "apps/worker/src/asset-library.ts"
+    },
+    {
+     "id": "v2-97dafbee",
+     "name": "Source freshness indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-78d32741",
+     "name": "Source reindexing controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-42dd6794",
+     "name": "Context budget visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b0b4f842",
+     "name": "Context truncation disclosure",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cd11f22f",
+     "name": "Source inclusion controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8a41054a",
+     "name": "Source exclusion controls",
+     "status": "partial",
+     "evidence": "apps/worker/src/semantic.ts"
+    },
+    {
+     "id": "v2-7f779361",
+     "name": "Retrieval result attribution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-73565274",
+     "name": "Conflicting source identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bdc10549",
+     "name": "Permission-aware retrieval",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0a732f92",
+     "name": "Deleted-source removal from retrieval",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5af510f2",
+     "name": "Retrieval failure and fallback visibility",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "21. MEMORY AND PERSONALIZATION",
+   "items": [
+    {
+     "id": "v2-b936c8cf",
+     "name": "User memory scope",
+     "status": "done",
+     "evidence": "apps/worker/tests/memory-personalisation.test.mjs — \"every scoped-memory route proves the scope before it touches a row\""
+    },
+    {
+     "id": "v2-34d8bb03",
+     "name": "Project memory scope",
+     "status": "done",
+     "evidence": "apps/worker/tests/memory-personalisation.test.mjs — \"every scoped-memory route proves the scope before it touches a row\""
+    },
+    {
+     "id": "v2-470e02c3",
+     "name": "Organization memory scope",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e48a40ec",
+     "name": "Explicit memory creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9ef0799a",
+     "name": "Suggested memory approval",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-22d4fdee",
+     "name": "Memory source attribution",
+     "status": "done",
+     "evidence": "packages/corpus/src/intake/licence.test.mjs — \"attributionText renders the credit an ATTRIBUTION_REQUIRED source needs, pinned to a commi\""
+    },
+    {
+     "id": "v2-24562b2d",
+     "name": "Memory creation timestamp",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-30ba8320",
+     "name": "Memory modification history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-04dc0f54",
+     "name": "Memory viewer",
+     "status": "partial",
+     "evidence": "infra/supabase/migrations/0006_membership_lifecycle.sql"
+    },
+    {
+     "id": "v2-241bb88f",
+     "name": "Memory search",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c65948ae",
+     "name": "Memory editing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d300b9dc",
+     "name": "Memory deletion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d36ecc81",
+     "name": "Memory expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a3497a12",
+     "name": "Memory scope changes",
+     "status": "partial",
+     "evidence": "apps/worker/src/memory-store.ts"
+    },
+    {
+     "id": "v2-fae953f5",
+     "name": "Memory access controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9517d746",
+     "name": "Sensitive memory handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-780707fa",
+     "name": "Conflicting memory resolution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4a5891ed",
+     "name": "Memory export",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1bf64c3b",
+     "name": "Memory import validation",
+     "status": "partial",
+     "evidence": "packages/evals/src/tasks.mjs"
+    },
+    {
+     "id": "v2-637f5c58",
+     "name": "Disable-memory mode",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "22. AGENT PLANNING",
+   "items": [
+    {
+     "id": "v2-eff02443",
+     "name": "Goal capture",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e239ef63",
+     "name": "Goal editing before execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e0ff5882",
+     "name": "Clarifying question support",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3e665fd8",
+     "name": "Explicit assumption display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fe8f3419",
+     "name": "Proposed execution plan",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-afe8f011",
+     "name": "Plan step descriptions",
+     "status": "partial",
+     "evidence": "apps/worker/src/assets.ts"
+    },
+    {
+     "id": "v2-996a65af",
+     "name": "Plan dependencies",
+     "status": "done",
+     "evidence": "apps/web/tests/roadmap-model.test.mjs — \"a dependency cycle is reported and the plan still lays out\""
+    },
+    {
+     "id": "v2-5884836a",
+     "name": "Required tool identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c6ce2276",
+     "name": "Required capability checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f0d82829",
+     "name": "Required permission checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-42740cc9",
+     "name": "Estimated usage",
+     "status": "done",
+     "evidence": "apps/worker/tests/usage-extraction.test.mjs — \"CONTROL: a well-formed usage block is passed through EXACTLY, not estimated\""
+    },
+    {
+     "id": "v2-6458396b",
+     "name": "Estimated cost range",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-feb451fc",
+     "name": "Estimated execution duration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a2b55e76",
+     "name": "Expected output definition",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ef41e94a",
+     "name": "Verification step planning",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/thinking-model.ts"
+    },
+    {
+     "id": "v2-5de2c6e0",
+     "name": "Plan approval",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab-threads.ts"
+    },
+    {
+     "id": "v2-a09046a6",
+     "name": "Plan revision",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-be7066f2",
+     "name": "Plan version history",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-version-history.test.mjs — \"a version that is not in the history cannot be restored\""
+    },
+    {
+     "id": "v2-01729ccf",
+     "name": "Scope change visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b7890f89",
+     "name": "Plan-to-execution traceability",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "23. AGENT RUN LIFECYCLE",
+   "items": [
+    {
+     "id": "v2-050a0c74",
+     "name": "Queued run state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9afbf529",
+     "name": "Preparing run state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dc137808",
+     "name": "Running run state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5cb5d067",
+     "name": "Waiting-for-user run state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-146a9b1e",
+     "name": "Waiting-for-tool run state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b2b94fb1",
+     "name": "Paused run state",
+     "status": "partial",
+     "evidence": "infra/supabase/migrations/0006_membership_lifecycle.sql"
+    },
+    {
+     "id": "v2-c06ffb8d",
+     "name": "Completed run state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-eee7c4fb",
+     "name": "Failed run state",
+     "status": "done",
+     "evidence": "apps/web/tests/playtest-viewport.test.mjs — \"the state chip is bound to frame freshness, not to the run phase\""
+    },
+    {
+     "id": "v2-32478296",
+     "name": "Cancelled run state",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/billing-copy.ts"
+    },
+    {
+     "id": "v2-91e64ea5",
+     "name": "Run progress persistence",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0b1f3999",
+     "name": "Run recovery after browser refresh",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5c777736",
+     "name": "Run recovery after connection loss",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9e778134",
+     "name": "Run cancellation acknowledgement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-29211f6b",
+     "name": "Run timeout enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e645949b",
+     "name": "Step-level checkpoints",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/generative-ui/schema.ts"
+    },
+    {
+     "id": "v2-0185370d",
+     "name": "Safe continuation from checkpoints",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8ca88b75",
+     "name": "Partial result preservation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3db3889b",
+     "name": "Terminal state immutability",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b676aabb",
+     "name": "Concurrent run conflict handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fa0c424c",
+     "name": "Per-run execution history",
+     "status": "partial",
+     "evidence": "apps/worker/src/automation-store.ts"
+    }
+   ]
+  },
+  {
+   "section": "24. APPROVALS AND TOOL PERMISSIONS",
+   "items": [
+    {
+     "id": "v2-07f10074",
+     "name": "Read-only tool permissions",
+     "status": "partial",
+     "evidence": "apps/worker/src/preferences.ts"
+    },
+    {
+     "id": "v2-11bfc64f",
+     "name": "Write tool permissions",
+     "status": "done",
+     "evidence": "apps/worker/tests/memory-personalisation.test.mjs — \"tool permissions NARROW the mode toolset, they do not replace it\""
+    },
+    {
+     "id": "v2-134b2793",
+     "name": "Destructive action permissions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9dda7051",
+     "name": "External network permissions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-996f893b",
+     "name": "Project-specific tool policies",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-69c1621a",
+     "name": "Organization-specific tool policies",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-7ed91e6e",
+     "name": "Per-run permission grants",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab.ts"
+    },
+    {
+     "id": "v2-fb1a4bde",
+     "name": "Temporary permission expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5ff4f1ad",
+     "name": "Approval request summaries",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ae53535d",
+     "name": "Exact target resource display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3ecfce2f",
+     "name": "Proposed change previews",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7bdf254c",
+     "name": "Estimated charge disclosure",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3fefb54d",
+     "name": "Approval acceptance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-06693dd7",
+     "name": "Approval rejection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-45a977c8",
+     "name": "Approval expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a02d806f",
+     "name": "Approval revocation before execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-de7a00e3",
+     "name": "Approval audit history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-940ae8a4",
+     "name": "Changed-plan reapproval requirements",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5a0f6a7d",
+     "name": "Protection against approval reuse",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-21f37620",
+     "name": "Safe behavior when approval is unavailable",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "25. LUAU CODE WORKFLOW",
+   "items": [
+    {
+     "id": "v2-fcbc44af",
+     "name": "Script discovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5b8af34d",
+     "name": "Script content inspection",
+     "status": "partial",
+     "evidence": "apps/worker/src/assets.ts"
+    },
+    {
+     "id": "v2-6e9b8ec4",
+     "name": "Script creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e2d37c8c",
+     "name": "Script editing",
+     "status": "done",
+     "evidence": "apps/worker/tests/luau-review.test.mjs — \"edit_script REFUSES a body that does not parse, and no write reaches Studio\""
+    },
+    {
+     "id": "v2-d89f93b3",
+     "name": "Syntax validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0a953cd6",
+     "name": "Code formatting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3c602374",
+     "name": "Static analysis",
+     "status": "partial",
+     "evidence": "packages/corpus/src/intake/security.mjs"
+    },
+    {
+     "id": "v2-ee1c3644",
+     "name": "Type diagnostics",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c0482954",
+     "name": "Symbol navigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a5e5a40e",
+     "name": "Definition lookup",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d1b5628b",
+     "name": "Reference lookup",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-38880e1c",
+     "name": "Dependency inspection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bda0a25a",
+     "name": "Server and client context identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7a424f53",
+     "name": "Remote event misuse detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ef2999aa",
+     "name": "Infinite loop risk detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2806ccfc",
+     "name": "Code diff preview",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/files-model.ts"
+    },
+    {
+     "id": "v2-e575745b",
+     "name": "Selective change application",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-daf00235",
+     "name": "Concurrent edit conflict detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5df7551c",
+     "name": "Script test result display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2eff5c76",
+     "name": "Verified script rollback",
+     "status": "partial",
+     "evidence": "scripts/lib/rollback-rules.mjs"
+    }
+   ]
+  },
+  {
+   "section": "26. ROBLOX SCENE BUILDING",
+   "items": [
+    {
+     "id": "v2-1e3e0884",
+     "name": "Explorer hierarchy inspection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c738d407",
+     "name": "Instance property inspection",
+     "status": "partial",
+     "evidence": "packages/corpus/src/intake/contenthash.test.mjs"
+    },
+    {
+     "id": "v2-ca77b23d",
+     "name": "Selected object synchronization",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7c04c9e8",
+     "name": "Primitive creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-21a01364",
+     "name": "Model assembly",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6d507879",
+     "name": "Grouped object transforms",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4f44d13d",
+     "name": "Object duplication",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c277bd4c",
+     "name": "Object renaming",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/rename-project.ts"
+    },
+    {
+     "id": "v2-b3cd092c",
+     "name": "Object parenting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0f3f6db6",
+     "name": "Object grouping and ungrouping",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-021865c0",
+     "name": "Property editing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-64229cba",
+     "name": "Material and color editing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e3a9a47d",
+     "name": "Lighting configuration",
+     "status": "done",
+     "evidence": "packages/evals/src/asset-qc.test.mjs — \"ASSET_KINDS is the storable subset — lighting is configuration, not an asset\""
+    },
+    {
+     "id": "v2-ec95489f",
+     "name": "Collision configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-026f7a0d",
+     "name": "Constraint configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2cce81ae",
+     "name": "Spawn point placement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-90ad45ca",
+     "name": "Interaction object configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7f9dc4e1",
+     "name": "Supported UI instance generation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-52b2d62d",
+     "name": "Scene validation after modification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-acf306ed",
+     "name": "Scene changes linked to originating runs",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "27. ASSET SEARCH AND GENERATION",
+   "items": [
+    {
+     "id": "v2-c60fcc49",
+     "name": "Asset library browsing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cdde6f61",
+     "name": "Asset keyword search",
+     "status": "partial",
+     "evidence": "apps/worker/src/rag.ts"
+    },
+    {
+     "id": "v2-78c43a19",
+     "name": "Asset type filtering",
+     "status": "done",
+     "evidence": "apps/worker/tests/search.test.mjs — \"with no filter given, every type and every author is searched\""
+    },
+    {
+     "id": "v2-91fd4e64",
+     "name": "Asset source filtering",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cd6ac9e2",
+     "name": "Asset metadata inspection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f69be7cf",
+     "name": "Asset creator attribution",
+     "status": "done",
+     "evidence": "packages/evals/src/provenance.test.mjs — \"AN ATTRIBUTION-REQUIRED ASSET publishes commercially but carries a warning and a credit li\""
+    },
+    {
+     "id": "v2-652bf855",
+     "name": "Asset licensing metadata",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-aac3f37c",
+     "name": "Asset provenance history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ad87032b",
+     "name": "Asset suitability warnings",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-303395b5",
+     "name": "Asset generation requests",
+     "status": "partial",
+     "evidence": "apps/plugin/src/Generation.luau"
+    },
+    {
+     "id": "v2-7602d8c8",
+     "name": "Asset generation progress",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1ccf036c",
+     "name": "Asset generation cancellation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-face1a9b",
+     "name": "Durable generated asset storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-74d1c8f5",
+     "name": "Generated asset previews",
+     "status": "partial",
+     "evidence": "apps/site/src/layouts/Base.astro"
+    },
+    {
+     "id": "v2-911484d5",
+     "name": "Asset version history",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-version-history.test.mjs — \"a version that is not in the history cannot be restored\""
+    },
+    {
+     "id": "v2-7b91f045",
+     "name": "Asset insertion preview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7205a412",
+     "name": "Asset import capability checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d84ea280",
+     "name": "Scoped asset upload authorization",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-517ea350",
+     "name": "Supported Roblox asset export",
+     "status": "done",
+     "evidence": "apps/worker/tests/meshgen.test.mjs — \"the exported GLB passes the asset judge on everything except the texture it honestly lacks\""
+    },
+    {
+     "id": "v2-f49db355",
+     "name": "Clear unavailable asset operation states",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "28. SCENE PREVIEWS AND EVIDENCE",
+   "items": [
+    {
+     "id": "v2-d5096140",
+     "name": "Software-rendered scene previews",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e6796faf",
+     "name": "Preview source identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4452e1fc",
+     "name": "Preview generation timestamps",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-53805dff",
+     "name": "Preview freshness indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a7c137a4",
+     "name": "Preview-to-run association",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4fa87cca",
+     "name": "Preview-to-project association",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0f462d88",
+     "name": "Preview-to-scene-version association",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-26947c89",
+     "name": "Preview resolution metadata",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-222eaedc",
+     "name": "Camera framing controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-97121533",
+     "name": "Selected object focus",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-45d9d8ce",
+     "name": "Before-and-after preview comparison",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ee956917",
+     "name": "User-uploaded Studio screenshots",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/studio-view.tsx"
+    },
+    {
+     "id": "v2-3c9ec5e9",
+     "name": "Supported capture capability detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a2a2aebe",
+     "name": "Capture permission status",
+     "status": "partial",
+     "evidence": "apps/worker/src/build-audit.ts"
+    },
+    {
+     "id": "v2-09dc4323",
+     "name": "Missing visual evidence indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4b9c5fff",
+     "name": "Preview delivery failure recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-596eb749",
+     "name": "Preview payload validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-115908f8",
+     "name": "Evidence attachment to verification results",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2edd4e44",
+     "name": "Evidence retention controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-85ed84bc",
+     "name": "Explicit distinction between previews and captured Studio output",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "29. PLAYTESTING AND VERIFICATION",
+   "items": [
+    {
+     "id": "v2-88a5a41e",
+     "name": "Studio playtest capability detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1a49f65d",
+     "name": "Playtest start controls",
+     "status": "done",
+     "evidence": "apps/worker/tests/playtest-stream.test.mjs — \"a new playtest starts in preparing, with nothing claimed\""
+    },
+    {
+     "id": "v2-c3aa8a1e",
+     "name": "Playtest stop controls",
+     "status": "done",
+     "evidence": "apps/worker/tests/frame-bus.test.mjs — \"the budget is a hard stop, however long the playtest runs\""
+    },
+    {
+     "id": "v2-3231bd0f",
+     "name": "Playtest session identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7660a5e3",
+     "name": "Test scenario selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-741dc408",
+     "name": "Test preparation status",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-15b77865",
+     "name": "Runtime error collection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-818c11f6",
+     "name": "Runtime warning collection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6ba88e0c",
+     "name": "Test assertion results",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c8802660",
+     "name": "Build integrity checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-016cafba",
+     "name": "Required object existence checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-340fd9cc",
+     "name": "Expected property value checks",
+     "status": "partial",
+     "evidence": "scripts/gate-check.mjs"
+    },
+    {
+     "id": "v2-921ac987",
+     "name": "Script execution verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dec509da",
+     "name": "Interaction behavior verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c6e8c679",
+     "name": "Test duration limits",
+     "status": "partial",
+     "evidence": "apps/worker/src/audio.ts"
+    },
+    {
+     "id": "v2-46ba2d58",
+     "name": "Interrupted test handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-335c88bb",
+     "name": "Failed test investigation links",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1887640e",
+     "name": "Verification evidence attachments",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-909535cd",
+     "name": "Verification summary per run",
+     "status": "partial",
+     "evidence": "apps/plugin/tests/run.mjs"
+    },
+    {
+     "id": "v2-47a8df5a",
+     "name": "Explicit unverified result states",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "30. HISTORY, DIFFS, AND RECOVERY",
+   "items": [
+    {
+     "id": "v2-0ff1614c",
+     "name": "Project change timeline",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-836832c0",
+     "name": "Studio operation timeline",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-53bb25c5",
+     "name": "Script revision history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c5dd4166",
+     "name": "Scene snapshot history",
+     "status": "partial",
+     "evidence": "apps/worker/src/version-history.ts"
+    },
+    {
+     "id": "v2-5cf76760",
+     "name": "Asset revision history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ecbd868a",
+     "name": "Named checkpoints",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-91aefebd",
+     "name": "Automatic pre-change checkpoints",
+     "status": "partial",
+     "evidence": "apps/worker/tests/op-attribution.test.mjs"
+    },
+    {
+     "id": "v2-f85fa374",
+     "name": "Snapshot descriptions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e02be952",
+     "name": "Author attribution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-71355b3e",
+     "name": "Run attribution",
+     "status": "partial",
+     "evidence": "apps/worker/src/op-attribution.ts"
+    },
+    {
+     "id": "v2-de44ab40",
+     "name": "Script revision comparison",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c0458b17",
+     "name": "Scene structure comparison",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-da457c9e",
+     "name": "Property-level change comparison",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/generative-ui/schema.ts"
+    },
+    {
+     "id": "v2-43b5f105",
+     "name": "Selective change reversal",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-75b785ae",
+     "name": "Full checkpoint restoration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-96d9c019",
+     "name": "Restoration impact preview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c899f339",
+     "name": "Restore conflict detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-794d498d",
+     "name": "Restore progress display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4e51a3a7",
+     "name": "Restore result verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-aedc987f",
+     "name": "Recovery from interrupted restoration",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "31. COLLABORATION AND REVIEW",
+   "items": [
+    {
+     "id": "v2-2645a0a8",
+     "name": "Shared project access",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-routes.test.mjs — \"A STRANGER is refused on every shared route, and never learns the project exists\""
+    },
+    {
+     "id": "v2-ee901490",
+     "name": "Shared conversation access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-50775814",
+     "name": "Shared artifact access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bc6ff7f8",
+     "name": "Resource-specific share links",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab-links.ts"
+    },
+    {
+     "id": "v2-11438b29",
+     "name": "Share link expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e6fad940",
+     "name": "Share link revocation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6a6d9251",
+     "name": "Member presence indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-035cb757",
+     "name": "Active editor indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-29594b5d",
+     "name": "Inline comments",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b80a7c0e",
+     "name": "Threaded replies",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-threads.test.mjs — \"a reply to a comment that is gone is refused, not promoted to a new thread\""
+    },
+    {
+     "id": "v2-f2d20a0b",
+     "name": "Member mentions",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-threads.test.mjs — \"a mention of a NON-MEMBER notifies nobody\""
+    },
+    {
+     "id": "v2-6096cd9f",
+     "name": "Comment resolution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a988c2e4",
+     "name": "Comment reopening",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4866effb",
+     "name": "Review requests",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-threads.test.mjs — \"a commenter cannot open a review request; an editor can\""
+    },
+    {
+     "id": "v2-238fcd70",
+     "name": "Reviewer assignment",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-00487947",
+     "name": "Proposed change review",
+     "status": "done",
+     "evidence": "apps/worker/tests/memory.test.mjs — \"under review a distilled fact is proposed and active memory is untouched\""
+    },
+    {
+     "id": "v2-90870e79",
+     "name": "Approval and rejection records",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab-threads.ts"
+    },
+    {
+     "id": "v2-5aa29c14",
+     "name": "Concurrent collaboration conflict handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9fd7f25e",
+     "name": "Permission changes applied to active sessions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9f79bf9b",
+     "name": "Collaborative activity history",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "32. FILES, ARTIFACTS, AND EXPORTS",
+   "items": [
+    {
+     "id": "v2-ecd6984c",
+     "name": "Project file browser",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c0a09ec4",
+     "name": "Folder creation and management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-be4eecd2",
+     "name": "File upload",
+     "status": "done",
+     "evidence": "tests/deploy-content-type.test.mjs — \"THE DEFECT: an html file uploaded to an EXTENSIONLESS key still gets text/html\""
+    },
+    {
+     "id": "v2-23ab1a39",
+     "name": "Multipart upload recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-76b055e4",
+     "name": "File rename",
+     "status": "done",
+     "evidence": "apps/worker/tests/files-routes-live.test.mjs — \"a member who may build can rename, and the file moves\""
+    },
+    {
+     "id": "v2-7e23a2e4",
+     "name": "File move",
+     "status": "done",
+     "evidence": "apps/worker/tests/files-routes-live.test.mjs — \"a member who may build can rename, and the file moves\""
+    },
+    {
+     "id": "v2-b462805b",
+     "name": "File duplication",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-41fe87c8",
+     "name": "File version history",
+     "status": "done",
+     "evidence": "apps/worker/tests/collab-version-history.test.mjs — \"a version that is not in the history cannot be restored\""
+    },
+    {
+     "id": "v2-f12f3135",
+     "name": "File previews",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/files-model.ts"
+    },
+    {
+     "id": "v2-e2b3db52",
+     "name": "File download",
+     "status": "done",
+     "evidence": "apps/worker/tests/files-routes-live.test.mjs — \"a download is an attachment, and a .js file is still served as text\""
+    },
+    {
+     "id": "v2-4c2f92cf",
+     "name": "Bulk file download",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8bdab275",
+     "name": "Generated artifact persistence",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7f08f24d",
+     "name": "Artifact metadata",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-26355271",
+     "name": "Artifact provenance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2fd71cfc",
+     "name": "Artifact access permissions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9259b842",
+     "name": "Expiring download links",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2f378f29",
+     "name": "Storage usage visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6989a22c",
+     "name": "File deletion recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dfabed62",
+     "name": "Export progress tracking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ed5486a4",
+     "name": "Export integrity verification",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "33. AUTOMATIONS AND BACKGROUND TASKS",
+   "items": [
+    {
+     "id": "v2-b69f4325",
+     "name": "Automation creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-65e8d4ff",
+     "name": "Automation naming and descriptions",
+     "status": "partial",
+     "evidence": "apps/worker/src/automations.ts"
+    },
+    {
+     "id": "v2-fa629c4d",
+     "name": "Manual automation execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-90ab3297",
+     "name": "Scheduled automation execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a9031bf3",
+     "name": "Event-triggered automation execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-760fca99",
+     "name": "Timezone-aware scheduling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-51f094a8",
+     "name": "Daylight-saving behavior visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1704e7ba",
+     "name": "Automation permission scope",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-db6571f5",
+     "name": "Automation budget limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4113ac5f",
+     "name": "Automation execution history",
+     "status": "partial",
+     "evidence": "apps/worker/src/automation-store.ts"
+    },
+    {
+     "id": "v2-609f18e5",
+     "name": "Automation pause and resume",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a08b7249",
+     "name": "Automation cancellation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8658766d",
+     "name": "Missed-run handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e0529b7c",
+     "name": "Overlapping-run policy",
+     "status": "done",
+     "evidence": "apps/worker/tests/automations.test.mjs — \"an overlapping fire is queued or dropped according to the automation own policy\""
+    },
+    {
+     "id": "v2-26ae58cb",
+     "name": "Retry policy configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-465c8048",
+     "name": "Duplicate-trigger protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f73ca7f1",
+     "name": "Failed-run notifications",
+     "status": "done",
+     "evidence": "apps/worker/tests/notifications.test.mjs — \"two different runs failing are two notifications, not one line reading 2\""
+    },
+    {
+     "id": "v2-5c816755",
+     "name": "Approval-dependent automation steps",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-42e09b68",
+     "name": "Automation ownership transfer",
+     "status": "partial",
+     "evidence": "apps/worker/src/automation-store.ts"
+    },
+    {
+     "id": "v2-c1eb822a",
+     "name": "Automation disablement after access revocation",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "34. NOTIFICATIONS AND ACTIVITY INBOX",
+   "items": [
+    {
+     "id": "v2-5c203d2d",
+     "name": "In-app notification inbox",
+     "status": "done",
+     "evidence": "apps/worker/tests/notifications.test.mjs — \"a well-formed event becomes a notification carrying everything the inbox renders\""
+    },
+    {
+     "id": "v2-a6edfb16",
+     "name": "Email notifications",
+     "status": "partial",
+     "evidence": "apps/worker/tests/notifications.test.mjs"
+    },
+    {
+     "id": "v2-fe9a2c61",
+     "name": "Optional browser push notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2ee37065",
+     "name": "Notification delivery preferences",
+     "status": "done",
+     "evidence": "apps/worker/tests/notification-preferences.test.mjs — \"a delivery preference survives the trip out to rows and back\""
+    },
+    {
+     "id": "v2-574dc8d8",
+     "name": "Per-project notification preferences",
+     "status": "done",
+     "evidence": "apps/worker/tests/notification-preferences.test.mjs — \"the two notification keys are preferences, so they inherit scoping rather than reinventing\""
+    },
+    {
+     "id": "v2-0d105c49",
+     "name": "Per-event notification preferences",
+     "status": "done",
+     "evidence": "apps/worker/tests/notification-preferences.test.mjs — \"the two notification keys are preferences, so they inherit scoping rather than reinventing\""
+    },
+    {
+     "id": "v2-653b3773",
+     "name": "Run completion notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-66c35cc1",
+     "name": "Run failure notifications",
+     "status": "done",
+     "evidence": "apps/worker/tests/notifications.test.mjs — \"two different runs failing are two notifications, not one line reading 2\""
+    },
+    {
+     "id": "v2-4bb7e0a6",
+     "name": "Approval request notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-40c6835c",
+     "name": "Collaboration mention notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-025e68e3",
+     "name": "Billing issue notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2f6f1b4a",
+     "name": "Usage threshold notifications",
+     "status": "partial",
+     "evidence": "apps/worker/src/notifications.ts"
+    },
+    {
+     "id": "v2-7adaf570",
+     "name": "Security event notifications",
+     "status": "partial",
+     "evidence": "apps/worker/src/automation-store.ts"
+    },
+    {
+     "id": "v2-5112ed70",
+     "name": "Integration failure notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-164dcfaa",
+     "name": "Unread notification count",
+     "status": "partial",
+     "evidence": "apps/worker/src/notification-store.ts"
+    },
+    {
+     "id": "v2-3444017f",
+     "name": "Mark-as-read controls",
+     "status": "done",
+     "evidence": "apps/worker/tests/notification-store.test.mjs — \"marking another person row read changes nothing, and says so\""
+    },
+    {
+     "id": "v2-5e0f7586",
+     "name": "Notification grouping",
+     "status": "partial",
+     "evidence": "apps/worker/src/notification-store.ts"
+    },
+    {
+     "id": "v2-7ac307bc",
+     "name": "Duplicate notification suppression",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-eb7c8818",
+     "name": "Deep links to relevant resources",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bead5663",
+     "name": "Quiet hours and digest scheduling",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "35. PLANS AND ENTITLEMENTS",
+   "items": [
+    {
+     "id": "v2-92cacb0b",
+     "name": "Defined subscription plan catalog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3708622d",
+     "name": "Free plan entitlements",
+     "status": "partial",
+     "evidence": "apps/worker/src/billing.ts"
+    },
+    {
+     "id": "v2-1a03e536",
+     "name": "Paid plan entitlements",
+     "status": "partial",
+     "evidence": "apps/worker/src/billing.ts"
+    },
+    {
+     "id": "v2-48f19efc",
+     "name": "Team plan entitlements",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9d3aacfb",
+     "name": "Enterprise entitlement overrides",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2ca426ca",
+     "name": "Feature-to-plan mapping",
+     "status": "partial",
+     "evidence": "packages/shared/src/index.ts"
+    },
+    {
+     "id": "v2-eef73758",
+     "name": "Server-enforced feature access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b78ff3d7",
+     "name": "Client-visible entitlement state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5f40f321",
+     "name": "Seat limits",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-3ba04ca0",
+     "name": "Project limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-03e59806",
+     "name": "Storage limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2520b9c8",
+     "name": "Concurrent run limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-000823f0",
+     "name": "Model access limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b325e555",
+     "name": "Integration limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c21d2c2b",
+     "name": "Support level entitlements",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-592d5064",
+     "name": "Trial entitlements",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fe98640e",
+     "name": "Trial expiration handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a6f5b354",
+     "name": "Entitlement change propagation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f15d4db2",
+     "name": "Existing-resource behavior after downgrade",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c9e24179",
+     "name": "Clear upgrade prompts at actual limits",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "36. USAGE, QUOTAS, AND CREDITS",
+   "items": [
+    {
+     "id": "v2-05cf5ce6",
+     "name": "Per-request usage metering",
+     "status": "partial",
+     "evidence": "apps/web/src/components/usage-meter-model.ts"
+    },
+    {
+     "id": "v2-93d933d5",
+     "name": "Per-run usage metering",
+     "status": "done",
+     "evidence": "packages/evals/src/security.test.mjs — \"A6 STATIC CHECK — the direct env.AI.run call sites are the known, metered ones\""
+    },
+    {
+     "id": "v2-26b8cd70",
+     "name": "Per-user usage breakdown",
+     "status": "partial",
+     "evidence": "apps/worker/src/analytics.ts"
+    },
+    {
+     "id": "v2-8769ab2f",
+     "name": "Per-project usage breakdown",
+     "status": "partial",
+     "evidence": "apps/worker/src/analytics.ts"
+    },
+    {
+     "id": "v2-53fedf2c",
+     "name": "Per-organization usage breakdown",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-73e13ed2",
+     "name": "Input and output token accounting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d9f54f67",
+     "name": "Non-token tool usage accounting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-802e019d",
+     "name": "Estimated usage before execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1cf03f6d",
+     "name": "Actual usage after execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8b552c18",
+     "name": "Credit balance display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6e11c734",
+     "name": "Append-only credit transaction ledger",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7dfdb968",
+     "name": "Credit reservation before execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9678c4fd",
+     "name": "Reservation settlement after execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3a0ebce8",
+     "name": "Unused reservation release",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1770209e",
+     "name": "Concurrent request spending protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-35005e74",
+     "name": "Included allowance reset rules",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-04c0f2fd",
+     "name": "Purchased credit expiration disclosure",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d8faf744",
+     "name": "Failed-request charging rules",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ee708c18",
+     "name": "Metering reconciliation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1c7baa22",
+     "name": "Usage and credit transaction export",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "37. SUBSCRIPTION LIFECYCLE",
+   "items": [
+    {
+     "id": "v2-a8310523",
+     "name": "Subscription creation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ae6f22ad",
+     "name": "Subscription status display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a5680891",
+     "name": "Trial start",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-28816d0b",
+     "name": "Trial conversion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4273c676",
+     "name": "Trial expiration reminders",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fb1b3ee7",
+     "name": "Plan upgrade preview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d629db0e",
+     "name": "Immediate upgrade handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c009fda8",
+     "name": "Scheduled downgrade handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-74c3759c",
+     "name": "Proration preview",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-629452a0",
+     "name": "Seat count changes",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-f77a55b6",
+     "name": "Billing cycle changes",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-973f5526",
+     "name": "Cancellation at period end",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-11f00ae2",
+     "name": "Cancellation confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4ecc65a6",
+     "name": "Cancellation reversal before expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4e3d549c",
+     "name": "Subscription pause where supported",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3cc96827",
+     "name": "Subscription resumption where supported",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3c4b5f9e",
+     "name": "Renewal reminders",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d66eb915",
+     "name": "Past-due grace period handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-be853961",
+     "name": "Subscription reactivation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4d0b96f5",
+     "name": "Historical subscription change records",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "38. CHECKOUT AND PAYMENT METHODS",
+   "items": [
+    {
+     "id": "v2-bd07a92e",
+     "name": "Plan-specific checkout",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-21c515dc",
+     "name": "Server-validated checkout pricing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-113fda8b",
+     "name": "Currency display before payment",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1d473795",
+     "name": "Applicable tax display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a08ff439",
+     "name": "Discount code validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-28d0b7b7",
+     "name": "Order summary",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5567dacc",
+     "name": "Payment provider hosted payment entry",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fc69a701",
+     "name": "Strong customer authentication handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7e76f778",
+     "name": "Checkout expiration handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-204721b4",
+     "name": "Checkout cancellation recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2b074db6",
+     "name": "Successful payment confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ca1f23c1",
+     "name": "Pending payment status",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-29f14546",
+     "name": "Failed payment recovery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e3107a4b",
+     "name": "Duplicate checkout protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b3aeea95",
+     "name": "Payment webhook signature verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-97c64a83",
+     "name": "Payment webhook replay protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-aeda7ed7",
+     "name": "Stored payment method management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2967deda",
+     "name": "Default payment method selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-68fda0a1",
+     "name": "Expiring payment method notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8ac3c8b4",
+     "name": "Secure customer billing portal access",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "39. INVOICES AND BILLING RECORDS",
+   "items": [
+    {
+     "id": "v2-d6da851c",
+     "name": "Invoice list",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d5d00184",
+     "name": "Invoice detail view",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8a803d98",
+     "name": "Invoice PDF download",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1f9af6b2",
+     "name": "Invoice payment status",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-344c0dfe",
+     "name": "Billing recipient management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8aed72cd",
+     "name": "Billing address management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dbe491fb",
+     "name": "Business name management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7f67081d",
+     "name": "Tax identification fields",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-520a890f",
+     "name": "Purchase order reference support",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f609d583",
+     "name": "Invoice delivery preferences",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7cc3b025",
+     "name": "Receipt delivery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3ab9a9e6",
+     "name": "Credit note records",
+     "status": "partial",
+     "evidence": "apps/worker/src/asset-library.ts"
+    },
+    {
+     "id": "v2-8e7d411b",
+     "name": "Refund request tracking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a976a00f",
+     "name": "Refund status visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3ea84351",
+     "name": "Billing adjustment history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e31074f7",
+     "name": "Seat charge breakdown",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-ba0471de",
+     "name": "Usage charge breakdown",
+     "status": "partial",
+     "evidence": "apps/worker/src/analytics.ts"
+    },
+    {
+     "id": "v2-45c325c8",
+     "name": "Billing period comparison",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-50cb455a",
+     "name": "Billing record export",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f6e52956",
+     "name": "Payment provider reconciliation reports",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "40. LOCALIZATION AND RIGHT-TO-LEFT SUPPORT",
+   "items": [
+    {
+     "id": "v2-5c465e83",
+     "name": "Centralized translation catalog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b6666285",
+     "name": "Stable translation keys",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-949f02d3",
+     "name": "Complete English interface",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-268667a4",
+     "name": "Complete Hebrew interface",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/direction.ts"
+    },
+    {
+     "id": "v2-c1b519cd",
+     "name": "Supported locale selection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9d76a4c2",
+     "name": "Locale fallback rules",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2253b679",
+     "name": "Browser language detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c614dfe9",
+     "name": "User language override",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9ebc8278",
+     "name": "Organization default language",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-6482dcc7",
+     "name": "Full right-to-left layout support",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fa8c207a",
+     "name": "Bidirectional text handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-95d56dc8",
+     "name": "Left-to-right code presentation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1a3b9764",
+     "name": "Locale-aware date formatting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-557abfa2",
+     "name": "Locale-aware number formatting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2e10218b",
+     "name": "Locale-aware currency formatting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6a4d9072",
+     "name": "Timezone-aware timestamps",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d205ccc5",
+     "name": "Translated transactional emails",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0a4ac44c",
+     "name": "Translated validation messages",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ce0e2e7f",
+     "name": "Translation completeness checks",
+     "status": "partial",
+     "evidence": "apps/worker/src/public-api.ts"
+    },
+    {
+     "id": "v2-ab7c2dd1",
+     "name": "Long-text and mixed-language layout testing",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "41. ACCESSIBILITY",
+   "items": [
+    {
+     "id": "v2-d0123866",
+     "name": "Keyboard access to every primary workflow",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0b9164ba",
+     "name": "Visible keyboard focus",
+     "status": "done",
+     "evidence": "tests/e2e/landing.spec.ts — \"is keyboard reachable and keeps a visible focus ring\""
+    },
+    {
+     "id": "v2-cbf4d832",
+     "name": "Logical focus order",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2507190e",
+     "name": "Skip navigation links",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-19a60c6f",
+     "name": "Accessible page landmarks",
+     "status": "partial",
+     "evidence": "scripts/check-site-semantics.mjs"
+    },
+    {
+     "id": "v2-f2fafded",
+     "name": "Correct semantic headings",
+     "status": "partial",
+     "evidence": "scripts/check-site-semantics.mjs"
+    },
+    {
+     "id": "v2-0bbae390",
+     "name": "Form field labels",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b3bd31be",
+     "name": "Accessible validation feedback",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-89d20d12",
+     "name": "Screen-reader status announcements",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/announce.ts"
+    },
+    {
+     "id": "v2-793f8419",
+     "name": "Accessible dialogs",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-81838f35",
+     "name": "Accessible menus",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f4f6fd23",
+     "name": "Accessible tab controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-30aae592",
+     "name": "Accessible tables",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a579fb92",
+     "name": "Accessible code presentation",
+     "status": "partial",
+     "evidence": "apps/web/tests/code-presentation.test.mjs"
+    },
+    {
+     "id": "v2-a9dbe863",
+     "name": "Non-color status indicators",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-911a4e17",
+     "name": "Text contrast validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b3e62c79",
+     "name": "Reduced motion support",
+     "status": "done",
+     "evidence": "apps/web/tests/activity-model.test.mjs — \"reduced motion removes travel and keeps feedback\""
+    },
+    {
+     "id": "v2-6e6fff42",
+     "name": "Browser zoom compatibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3b0f1011",
+     "name": "Touch target sizing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ecc94361",
+     "name": "Manual assistive technology verification",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "42. RESPONSIVE INTERACTION AND UI STATES",
+   "items": [
+    {
+     "id": "v2-73b912c3",
+     "name": "Desktop workspace layout",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a8756055",
+     "name": "Laptop workspace layout",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0b3bbe34",
+     "name": "Tablet workspace layout",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-135673be",
+     "name": "Mobile project overview",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/shell.tsx"
+    },
+    {
+     "id": "v2-268cc8d6",
+     "name": "Mobile conversation access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e9a35d5a",
+     "name": "Mobile approval workflows",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b850e0d4",
+     "name": "Responsive settings pages",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3796a54c",
+     "name": "Responsive billing pages",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ebf0428c",
+     "name": "Touch-friendly controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-288f8831",
+     "name": "Loading states for asynchronous actions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5c205037",
+     "name": "Skeleton states for content loading",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6623f494",
+     "name": "Empty states with relevant next actions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3b3a5784",
+     "name": "Partial data states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e5c7c615",
+     "name": "Offline states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-40c92c77",
+     "name": "Reconnecting states",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/use-project-socket.ts"
+    },
+    {
+     "id": "v2-562aad29",
+     "name": "Expired session states",
+     "status": "partial",
+     "evidence": "apps/worker/src/audio-store.ts"
+    },
+    {
+     "id": "v2-1da43714",
+     "name": "Permission loss states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4ae2daed",
+     "name": "Retryable error states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-178f6d1d",
+     "name": "Non-retryable error states",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1dca2ebe",
+     "name": "Success confirmation for consequential actions",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "43. DESIGN SYSTEM AND INTERFACE CONSISTENCY",
+   "items": [
+    {
+     "id": "v2-1251f6b5",
+     "name": "Shared color tokens",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dd30d1fd",
+     "name": "Shared typography tokens",
+     "status": "partial",
+     "evidence": "packages/design/src/tokens.mjs"
+    },
+    {
+     "id": "v2-a9b757c7",
+     "name": "Shared spacing tokens",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e3867baf",
+     "name": "Shared elevation tokens",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-34721ecd",
+     "name": "Shared motion tokens",
+     "status": "partial",
+     "evidence": "apps/web/src/components/ws/activity-model.ts"
+    },
+    {
+     "id": "v2-ed0dd811",
+     "name": "Standard icon library",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-23c2ef88",
+     "name": "Standard button variants",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c500bb3b",
+     "name": "Standard input components",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bd9e955e",
+     "name": "Standard form layouts",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c163baad",
+     "name": "Standard table components",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-94fbfc0f",
+     "name": "Standard status badges",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9399ab3f",
+     "name": "Standard dialogs and drawers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-af2ed8c5",
+     "name": "Standard tooltips and popovers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-37f12c3a",
+     "name": "Standard notification components",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-29fd34cd",
+     "name": "Standard empty-state components",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0226e544",
+     "name": "Standard error presentation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4404b6ab",
+     "name": "Shared terminology glossary",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0b7cd72a",
+     "name": "Consistent action naming",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b75bcccb",
+     "name": "Theme consistency across all surfaces",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dd4ffa6b",
+     "name": "Visual regression coverage for shared components",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "44. PUBLIC API",
+   "items": [
+    {
+     "id": "v2-8e244142",
+     "name": "Documented API resource model",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-51d925e6",
+     "name": "Organization-scoped API credentials",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-687f0471",
+     "name": "Project-scoped API credentials",
+     "status": "partial",
+     "evidence": "apps/worker/src/api-keys.ts"
+    },
+    {
+     "id": "v2-071511a7",
+     "name": "Scoped API permissions",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/api.ts"
+    },
+    {
+     "id": "v2-b6b3633b",
+     "name": "API credential expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d03cfc8f",
+     "name": "API credential rotation",
+     "status": "partial",
+     "evidence": "apps/worker/src/api-keys.ts"
+    },
+    {
+     "id": "v2-78d59903",
+     "name": "API credential revocation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b8d1f799",
+     "name": "Versioned endpoints",
+     "status": "partial",
+     "evidence": "apps/worker/src/webtools.ts"
+    },
+    {
+     "id": "v2-6a63dcf0",
+     "name": "Consistent error responses",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7c53522a",
+     "name": "Pagination",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1cbd4448",
+     "name": "Filtering",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-39e283a9",
+     "name": "Stable sorting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a1546ed8",
+     "name": "Request validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-43cbbc86",
+     "name": "Idempotency support",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d439a679",
+     "name": "Rate-limit headers",
+     "status": "done",
+     "evidence": "apps/worker/tests/public-api.test.mjs — \"a live key returns an OpenAI-shaped completion with usage and rate-limit headers\""
+    },
+    {
+     "id": "v2-c513401a",
+     "name": "Usage response metadata",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d9fad194",
+     "name": "Request correlation identifiers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6d5ae3d6",
+     "name": "Streaming response support",
+     "status": "partial",
+     "evidence": "apps/worker/src/public-api.ts"
+    },
+    {
+     "id": "v2-824f94ca",
+     "name": "Backward compatibility policy",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ac42b40c",
+     "name": "API deprecation notices",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "45. WEBHOOKS AND EVENT DELIVERY",
+   "items": [
+    {
+     "id": "v2-6ca25d0d",
+     "name": "Webhook endpoint registration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f7e5d031",
+     "name": "Webhook endpoint verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cad69ae8",
+     "name": "Event type selection",
+     "status": "done",
+     "evidence": "apps/worker/tests/companion-selection.test.mjs — \"a log or state event is not a selection event\""
+    },
+    {
+     "id": "v2-946294ae",
+     "name": "Organization-scoped event subscriptions",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-7bd3263c",
+     "name": "Project-scoped event subscriptions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2512a28b",
+     "name": "Versioned event schemas",
+     "status": "done",
+     "evidence": "apps/web/tests/generative-ui.test.mjs — \"the schema version is enforced\""
+    },
+    {
+     "id": "v2-43ef9edf",
+     "name": "Signed webhook payloads",
+     "status": "partial",
+     "evidence": "apps/worker/tests/billing.test.mjs"
+    },
+    {
+     "id": "v2-3eb53389",
+     "name": "Signing secret rotation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2cc4901b",
+     "name": "Delivery attempt history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-928c804e",
+     "name": "Delivery response inspection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0d5973f1",
+     "name": "Configurable retry behavior",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f38cda6b",
+     "name": "Exponential retry backoff",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/use-project-socket.ts"
+    },
+    {
+     "id": "v2-e75c6f44",
+     "name": "Delivery timeout enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-70f5ffdf",
+     "name": "Duplicate event identifiers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-48a1bad1",
+     "name": "Out-of-order event documentation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3628e431",
+     "name": "Manual event redelivery",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-186c3019",
+     "name": "Test event delivery",
+     "status": "partial",
+     "evidence": "apps/worker/tests/notification-preferences.test.mjs"
+    },
+    {
+     "id": "v2-79315647",
+     "name": "Repeated failure alerts",
+     "status": "done",
+     "evidence": "apps/web/tests/surface-states.test.mjs — \"a failure box is announced once, not nested inside another alert\""
+    },
+    {
+     "id": "v2-895804a4",
+     "name": "Endpoint pause and resume",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9b985914",
+     "name": "Secret-redacted delivery logs",
+     "status": "partial",
+     "evidence": "apps/worker/src/redaction.ts"
+    }
+   ]
+  },
+  {
+   "section": "46. SDK, CLI, AND DEVELOPER EXPERIENCE",
+   "items": [
+    {
+     "id": "v2-caaa4b60",
+     "name": "Published OpenAPI specification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f08dbfac",
+     "name": "Interactive API reference",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e28b1ae1",
+     "name": "Authentication examples",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-802e3955",
+     "name": "JavaScript client library",
+     "status": "partial",
+     "evidence": "scripts/check-landing-budget.mjs"
+    },
+    {
+     "id": "v2-cc7455fe",
+     "name": "TypeScript type definitions",
+     "status": "partial",
+     "evidence": "apps/worker/src/types/golem-evals.d.ts"
+    },
+    {
+     "id": "v2-c62c7ad2",
+     "name": "Python client library",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-720ad2ca",
+     "name": "Supported Luau integration examples",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-735dc921",
+     "name": "Command-line authentication",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/auth-flows.ts"
+    },
+    {
+     "id": "v2-6867b66c",
+     "name": "Command-line project management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b5cc675e",
+     "name": "Command-line run execution",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-905c7fee",
+     "name": "Command-line run inspection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d316163b",
+     "name": "Command-line artifact export",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-52eb1101",
+     "name": "SDK timeout configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-25659071",
+     "name": "SDK retry configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8c66bf4a",
+     "name": "SDK pagination helpers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-200cfce6",
+     "name": "SDK streaming helpers",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4eba0d1a",
+     "name": "Structured SDK errors",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1c986721",
+     "name": "Versioned example applications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-819ec10d",
+     "name": "Developer changelog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c62227e5",
+     "name": "SDK-to-API compatibility verification",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "47. INTEGRATIONS AND CREDENTIAL MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-dbf35514",
+     "name": "Integration catalog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1055313a",
+     "name": "Integration capability descriptions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dc304375",
+     "name": "Organization integration installation",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-da6a7858",
+     "name": "Project integration binding",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ffa6eb43",
+     "name": "OAuth authorization flows",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ac59630a",
+     "name": "Explicit requested scope display",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-067560cf",
+     "name": "Integration account identification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d340b389",
+     "name": "Connection health checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6e100746",
+     "name": "Credential expiration visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-19185a4c",
+     "name": "Credential refresh handling",
+     "status": "done",
+     "evidence": "packages/corpus/src/intake/security.test.mjs — \".ROBLOSECURITY handling is credential theft\""
+    },
+    {
+     "id": "v2-69d299d3",
+     "name": "Encrypted credential storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0cddf4b7",
+     "name": "Credential rotation",
+     "status": "partial",
+     "evidence": "apps/worker/src/api-keys.ts"
+    },
+    {
+     "id": "v2-82b65e43",
+     "name": "Credential revocation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-df9d8892",
+     "name": "Integration disconnect",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4125ae4a",
+     "name": "Disconnect impact preview",
+     "status": "done",
+     "evidence": "apps/worker/tests/membership-lifecycle.test.mjs — \"the impact preview counts what the departing member actually holds, and writes nothing\""
+    },
+    {
+     "id": "v2-bedef67e",
+     "name": "Least-privilege credential usage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2cf7d996",
+     "name": "Per-integration activity history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fe9227ab",
+     "name": "Integration error diagnostics",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d7bf7295",
+     "name": "Revoked-access recovery guidance",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7666998d",
+     "name": "Prevention of credential exposure in AI context",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "48. PRIVACY AND DATA LIFECYCLE",
+   "items": [
+    {
+     "id": "v2-77321fc8",
+     "name": "Personal data inventory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2fcc572e",
+     "name": "Data purpose documentation",
+     "status": "partial",
+     "evidence": "apps/worker/src/rag.ts"
+    },
+    {
+     "id": "v2-532f1813",
+     "name": "User-visible privacy settings",
+     "status": "partial",
+     "evidence": "apps/web/src/routes/settings.tsx"
+    },
+    {
+     "id": "v2-04ecc7c2",
+     "name": "Required consent recording",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4e4bfd5d",
+     "name": "Optional analytics consent controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-850c9dbc",
+     "name": "Consent withdrawal",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d72f18cf",
+     "name": "User data export",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3246e6fc",
+     "name": "Organization data export",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-4ad9a43d",
+     "name": "Export identity verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-37b80594",
+     "name": "Export availability expiration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b0cfa5ba",
+     "name": "Account deletion request",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4ae2a2a0",
+     "name": "Account deletion status",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-76c687d8",
+     "name": "Organization deletion request",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-325749e2",
+     "name": "Retention policy configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b4c61ed0",
+     "name": "Conversation retention controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-907c394c",
+     "name": "Artifact retention controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9cfcee62",
+     "name": "Log retention controls",
+     "status": "partial",
+     "evidence": "apps/worker/src/analytics.ts"
+    },
+    {
+     "id": "v2-4cc02d41",
+     "name": "Deletion propagation to derived indexes",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-63da4770",
+     "name": "Backup deletion lifecycle documentation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ed2c9195",
+     "name": "Data processing and subprocessor disclosures",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "49. APPLICATION SECURITY",
+   "items": [
+    {
+     "id": "v2-858fae51",
+     "name": "Server-side input validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c474b2b4",
+     "name": "Output encoding",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-812e6893",
+     "name": "Content security policy",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3af58c09",
+     "name": "Cross-site request forgery protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3e7ca5eb",
+     "name": "Cross-origin access restrictions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c39b66ce",
+     "name": "Secure cookie configuration",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a09b375d",
+     "name": "Session fixation protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-34a4c202",
+     "name": "Server-side request forgery protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-99fdbd13",
+     "name": "File upload content inspection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4d072a7c",
+     "name": "Path traversal protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2d051450",
+     "name": "Command execution isolation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-78924411",
+     "name": "Dependency vulnerability scanning",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dad2714e",
+     "name": "Secret scanning",
+     "status": "partial",
+     "evidence": "apps/worker/tests/secret-redaction.test.mjs"
+    },
+    {
+     "id": "v2-f005a4a7",
+     "name": "Sensitive log redaction",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7c39de3e",
+     "name": "Encryption in transit",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c6b7ae85",
+     "name": "Encryption at rest",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5378ac9a",
+     "name": "Administrative access restrictions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-57e8afa4",
+     "name": "Security configuration review",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4420f0e3",
+     "name": "Vulnerability reporting channel",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3e51fb42",
+     "name": "Security incident response procedures",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "50. AI SAFETY, ABUSE, AND SPENDING PROTECTION",
+   "items": [
+    {
+     "id": "v2-72497648",
+     "name": "User request rate limits",
+     "status": "done",
+     "evidence": "apps/worker/tests/prefabs.test.mjs — \"remote_guard rate-limits on the server and never trusts a client debounce\""
+    },
+    {
+     "id": "v2-db881a36",
+     "name": "Organization request rate limits",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-b361a9ea",
+     "name": "IP-based abuse controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cac22396",
+     "name": "Automated account abuse detection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-284c6aa2",
+     "name": "Credential stuffing protection",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d509d63c",
+     "name": "Free-tier exploitation controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b70c796d",
+     "name": "Prompt injection boundary enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-abf85f9a",
+     "name": "Tool output trust separation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c2c696de",
+     "name": "Retrieved content trust separation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cb2ac777",
+     "name": "Tool argument validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-51d5c4a2",
+     "name": "Sandbox execution limits",
+     "status": "partial",
+     "evidence": "apps/worker/src/sandbox.ts"
+    },
+    {
+     "id": "v2-1755cd8e",
+     "name": "External destination controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d42d6b54",
+     "name": "Secret and personal data leakage checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4e2f01e7",
+     "name": "Run duration limits",
+     "status": "partial",
+     "evidence": "apps/worker/tests/run-duration.test.mjs"
+    },
+    {
+     "id": "v2-069bed79",
+     "name": "Per-run spending caps",
+     "status": "done",
+     "evidence": "packages/evals/src/economics.test.mjs — \"the shipped spend gates cap the bill at the hard maximum, always\""
+    },
+    {
+     "id": "v2-9984b4dc",
+     "name": "Daily spending caps",
+     "status": "done",
+     "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — \"the monthly cap can bite before the daily one, and says so\""
+    },
+    {
+     "id": "v2-bb526834",
+     "name": "Monthly spending caps",
+     "status": "done",
+     "evidence": "apps/worker/tests/quota-day-boundary.test.mjs — \"the monthly cap can bite before the daily one, and says so\""
+    },
+    {
+     "id": "v2-be1add78",
+     "name": "Organization emergency execution stop",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-70e032d4",
+     "name": "Suspicious usage review queue",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-af396481",
+     "name": "Abuse restriction appeal workflow",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "51. HELP, SUPPORT, AND CUSTOMER EDUCATION",
+   "items": [
+    {
+     "id": "v2-70cc1afb",
+     "name": "In-product help access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fd7fac23",
+     "name": "Contextual help links",
+     "status": "partial",
+     "evidence": "apps/site/src/components/Cursor.astro"
+    },
+    {
+     "id": "v2-2f53ee1e",
+     "name": "Searchable knowledge base",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0319723b",
+     "name": "Getting-started tutorials",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fbd1159e",
+     "name": "Studio connection troubleshooting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8045f458",
+     "name": "Billing troubleshooting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e578f309",
+     "name": "Model error troubleshooting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1deba36d",
+     "name": "Failed-run troubleshooting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8597ec48",
+     "name": "Known issue directory",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4e77c652",
+     "name": "Support request submission",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-da64761e",
+     "name": "Support request categorization",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-806a7eda",
+     "name": "Support request status",
+     "status": "done",
+     "evidence": "apps/worker/tests/analytics.test.mjs — \"a request with no readable status is unclassified, not a success\""
+    },
+    {
+     "id": "v2-0f05c1f5",
+     "name": "Support conversation history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7be7f6c3",
+     "name": "User-approved diagnostic attachment",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4a633fc4",
+     "name": "Diagnostic secret redaction",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-01bc9865",
+     "name": "Support identity verification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7cc8cdf2",
+     "name": "Support escalation routing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1e4a59da",
+     "name": "Plan-specific support expectations",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2c598610",
+     "name": "Feedback submission",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2f604d1a",
+     "name": "Feature request tracking",
+     "status": "partial",
+     "evidence": "packages/training/src/configs.test.mjs"
+    }
+   ]
+  },
+  {
+   "section": "52. OWNER AND ADMIN OPERATIONS",
+   "items": [
+    {
+     "id": "v2-32e3f3ae",
+     "name": "Administrative dashboard",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c02c2b3c",
+     "name": "Organization lookup",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-5c636383",
+     "name": "Account lookup",
+     "status": "partial",
+     "evidence": "apps/web/src/routes/auth-pages.tsx"
+    },
+    {
+     "id": "v2-801a69cc",
+     "name": "Subscription lookup",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3f7a35a0",
+     "name": "Usage investigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7cf26da2",
+     "name": "Credit transaction investigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-684699a3",
+     "name": "Failed-run investigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d8757f49",
+     "name": "Integration failure investigation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-046ceea7",
+     "name": "Abuse case review",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6129b5c7",
+     "name": "Account suspension controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4e938301",
+     "name": "Account restoration controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e34042b0",
+     "name": "Organization suspension controls",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-9a3f3e9b",
+     "name": "Manual credit adjustment with reason",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e9b8d527",
+     "name": "Billing exception tracking",
+     "status": "done",
+     "evidence": "tests/check-escape-hatches.test.mjs — \"the denominator matches the tracked source surface minus the exceptions\""
+    },
+    {
+     "id": "v2-63ab5437",
+     "name": "Administrative action confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-43681870",
+     "name": "Administrative action audit logs",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9a098cf5",
+     "name": "Role-restricted administrative tools",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bc1f57a0",
+     "name": "Time-limited support access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ef96943c",
+     "name": "Explicit user consent for support impersonation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-564e304e",
+     "name": "Complete support impersonation audit history",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "53. PRODUCT ANALYTICS",
+   "items": [
+    {
+     "id": "v2-662e611e",
+     "name": "Defined analytics event catalog",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ba22cb9e",
+     "name": "Event schema validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fb2057c4",
+     "name": "Registration funnel",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-749e3fe0",
+     "name": "Email verification funnel",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6a110bae",
+     "name": "Onboarding completion funnel",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-86e895bd",
+     "name": "Studio pairing conversion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c6d44ead",
+     "name": "First successful run activation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b76140f7",
+     "name": "First verified change activation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6435bc4e",
+     "name": "Trial conversion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-311c0956",
+     "name": "Paid conversion",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a80e67fa",
+     "name": "Subscription retention",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4817ecf7",
+     "name": "Subscription cancellation reasons",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-201f216f",
+     "name": "Cohort retention analysis",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a8f29120",
+     "name": "Feature adoption",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a0ebf6c4",
+     "name": "Collaboration adoption",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fa261cdd",
+     "name": "Run success trends",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-eb5f4358",
+     "name": "Verification success trends",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d3e85cff",
+     "name": "Cost per successful run",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b774fe08",
+     "name": "Permission-aware internal analytics access",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bdff9db3",
+     "name": "Analytics data quality monitoring",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "54. LOGGING AND OBSERVABILITY",
+   "items": [
+    {
+     "id": "v2-2f869259",
+     "name": "Structured application logs",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-29c0b4f1",
+     "name": "Request correlation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4ccd56d6",
+     "name": "Run correlation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-178b5293",
+     "name": "Tool invocation correlation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3c982676",
+     "name": "Studio operation correlation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6a15b950",
+     "name": "Provider request correlation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6b1f7815",
+     "name": "Distributed request tracing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3256227f",
+     "name": "Error aggregation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-eeb25cf4",
+     "name": "Error severity classification",
+     "status": "partial",
+     "evidence": "apps/worker/src/providers/types.ts"
+    },
+    {
+     "id": "v2-2f0e3e25",
+     "name": "Failed background job visibility",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ed424d7b",
+     "name": "Streaming interruption metrics",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9df130a1",
+     "name": "Provider latency metrics",
+     "status": "done",
+     "evidence": "packages/evals/src/metrics.test.mjs — \"a NaN latency is dropped from the latency metrics rather than making them NaN\""
+    },
+    {
+     "id": "v2-27f1cfc5",
+     "name": "Database latency metrics",
+     "status": "done",
+     "evidence": "packages/evals/src/metrics.test.mjs — \"a NaN latency is dropped from the latency metrics rather than making them NaN\""
+    },
+    {
+     "id": "v2-e4a3f654",
+     "name": "Queue delay metrics",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ce659178",
+     "name": "Webhook delivery metrics",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8d0897bd",
+     "name": "Usage metering anomaly alerts",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-394e3bfa",
+     "name": "Log access controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-86d6ec50",
+     "name": "Log retention enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e5e0c662",
+     "name": "Production debugging without secret exposure",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e101798d",
+     "name": "Links from user-visible failures to internal diagnostics",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "55. PERFORMANCE AND SCALING",
+   "items": [
+    {
+     "id": "v2-7c73302e",
+     "name": "Page load performance budgets",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-da75fe27",
+     "name": "Application interaction performance budgets",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-92989081",
+     "name": "Time-to-first-response monitoring",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ac1c89c0",
+     "name": "Streaming responsiveness targets",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bfd922b5",
+     "name": "Search latency targets",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6c37a120",
+     "name": "Large conversation rendering",
+     "status": "done",
+     "evidence": "apps/worker/tests/export.test.mjs — \"an empty conversation renders a valid file rather than throwing\""
+    },
+    {
+     "id": "v2-a8f63cde",
+     "name": "Large project directory rendering",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2f87e65b",
+     "name": "Large file upload handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-01f7530b",
+     "name": "Large artifact download handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-940ed9d7",
+     "name": "Bounded database queries",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-de66d742",
+     "name": "Database connection management",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-472b61c6",
+     "name": "Background queue concurrency limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1dbddcf8",
+     "name": "Per-tenant workload fairness",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f6211387",
+     "name": "Provider concurrency limits",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-417a61eb",
+     "name": "Cache invalidation rules",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3ea54460",
+     "name": "Permission-aware caching",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-403b7bad",
+     "name": "Autoscaling thresholds",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d40279c4",
+     "name": "Capacity planning",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-277acf61",
+     "name": "Peak workload testing",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-813ee78f",
+     "name": "Cost monitoring during scaling",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "56. DATA STORAGE, BACKUP, AND RESTORATION",
+   "items": [
+    {
+     "id": "v2-7150095b",
+     "name": "Defined authoritative data stores",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-e3fc241c",
+     "name": "Durable conversation storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-65a4957e",
+     "name": "Durable run state storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2100382d",
+     "name": "Durable artifact storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4a9c78fa",
+     "name": "Durable billing ledger storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d16e0149",
+     "name": "Transactional critical updates",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f70aa01d",
+     "name": "Database constraint enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2309c638",
+     "name": "Schema migration tracking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-bdc2ae53",
+     "name": "Automated database backups",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f2db0b3b",
+     "name": "Object storage backup strategy",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-792d5ea6",
+     "name": "Backup encryption",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6fb22bd7",
+     "name": "Backup access restrictions",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-38761765",
+     "name": "Backup retention enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-16c1cfba",
+     "name": "Point-in-time recovery capability",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8cecd6c0",
+     "name": "Documented recovery objectives",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1491ea58",
+     "name": "Restore procedure documentation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-06c50e44",
+     "name": "Scheduled restoration drills",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5e4c47e0",
+     "name": "Restored data integrity checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0648f2a8",
+     "name": "Cross-service restoration consistency checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2842db18",
+     "name": "Backup failure alerts",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "57. RELIABILITY AND INCIDENT MANAGEMENT",
+   "items": [
+    {
+     "id": "v2-133c47a2",
+     "name": "Service health checks",
+     "status": "done",
+     "evidence": "packages/evals/tasks-visual/grade-visual.test.mjs — \"a lit scene with untouched Lighting service properties still passes the lighting check\""
+    },
+    {
+     "id": "v2-29f5f31d",
+     "name": "Dependency health checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d39b0dd9",
+     "name": "Defined service reliability objectives",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-ccbb534c",
+     "name": "Availability monitoring",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5a266315",
+     "name": "Error rate alerting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-523e8a64",
+     "name": "Latency alerting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7acb3874",
+     "name": "Queue backlog alerting",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-fe6fbf09",
+     "name": "Graceful provider failure handling",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-88d6da90",
+     "name": "Graceful database degradation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-315956b4",
+     "name": "Bounded retry policies",
+     "status": "partial",
+     "evidence": "apps/worker/src/automations.ts"
+    },
+    {
+     "id": "v2-4b6d8433",
+     "name": "Circuit breaker behavior",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-785f3c0d",
+     "name": "Emergency feature disablement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b3fdc5de",
+     "name": "Incident severity classification",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-45edb09e",
+     "name": "Incident ownership",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-da032c14",
+     "name": "Incident response runbooks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-549f7208",
+     "name": "Customer incident notifications",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1090ef9e",
+     "name": "Public incident status updates",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cf3c12a5",
+     "name": "Incident resolution confirmation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-8d24da4b",
+     "name": "Post-incident review",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-027d771b",
+     "name": "Corrective action tracking",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "58. TESTING AND QUALITY ASSURANCE",
+   "items": [
+    {
+     "id": "v2-26c041ba",
+     "name": "Unit tests for critical business rules",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-44511b6b",
+     "name": "Integration tests for service boundaries",
+     "status": "partial",
+     "evidence": "apps/worker/tests/stubs/auth.mjs"
+    },
+    {
+     "id": "v2-0474baed",
+     "name": "End-to-end registration tests",
+     "status": "partial",
+     "evidence": "apps/web/tests/registration-entry.test.mjs"
+    },
+    {
+     "id": "v2-9e249687",
+     "name": "End-to-end Studio pairing tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-811ebd5d",
+     "name": "End-to-end AI run tests",
+     "status": "done",
+     "evidence": "apps/worker/tests/public-api.test.mjs — \"a test key cannot start a real run — the sandbox simulates it and says so\""
+    },
+    {
+     "id": "v2-8e1954dd",
+     "name": "End-to-end approval tests",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab-threads.ts"
+    },
+    {
+     "id": "v2-1d3509d2",
+     "name": "End-to-end rollback tests",
+     "status": "partial",
+     "evidence": "tests/rollback-static.test.mjs"
+    },
+    {
+     "id": "v2-6845bd6f",
+     "name": "End-to-end checkout tests",
+     "status": "partial",
+     "evidence": "apps/web/src/lib/api.ts"
+    },
+    {
+     "id": "v2-5341b394",
+     "name": "End-to-end subscription change tests",
+     "status": "partial",
+     "evidence": "apps/worker/tests/billing-route.test.mjs"
+    },
+    {
+     "id": "v2-3af37b02",
+     "name": "Cross-tenant isolation tests",
+     "status": "partial",
+     "evidence": "infra/supabase/tests/rls-isolation.mjs"
+    },
+    {
+     "id": "v2-80d4f07a",
+     "name": "Role and permission matrix tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f73b5026",
+     "name": "Concurrent spending tests",
+     "status": "partial",
+     "evidence": "apps/worker/tests/single-flight.test.mjs"
+    },
+    {
+     "id": "v2-f5786076",
+     "name": "Payment event replay tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6e58e400",
+     "name": "Interrupted streaming recovery tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-888973d4",
+     "name": "Browser refresh recovery tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-095c88ac",
+     "name": "Accessibility workflow tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f7ac5fca",
+     "name": "Hebrew and right-to-left workflow tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3f7574f6",
+     "name": "Supported browser tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5778289d",
+     "name": "Load and failure-injection tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-6640639f",
+     "name": "Measured coverage of critical user journeys",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "59. DEPLOYMENT AND RELEASE OPERATIONS",
+   "items": [
+    {
+     "id": "v2-a4ae833d",
+     "name": "Separate development environments",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-34e0900f",
+     "name": "Separate staging environments",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a2a2c8ee",
+     "name": "Separate production environments",
+     "status": "partial",
+     "evidence": "infra/e2e.mjs"
+    },
+    {
+     "id": "v2-a2c513e7",
+     "name": "Environment-specific secrets",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-eeb07850",
+     "name": "Reproducible builds",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-16a06356",
+     "name": "Dependency lockfile enforcement",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2d1dc94e",
+     "name": "Build artifact versioning",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-47551ded",
+     "name": "Automated type checking",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-9025deb3",
+     "name": "Automated quality checks",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-0f73cf2e",
+     "name": "Pre-deployment migration validation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2ff5e97b",
+     "name": "Deployment approval policies",
+     "status": "partial",
+     "evidence": "apps/worker/src/collab-threads.ts"
+    },
+    {
+     "id": "v2-4d561381",
+     "name": "Progressive release controls",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-d7076480",
+     "name": "Feature flag targeting",
+     "status": "partial",
+     "evidence": "packages/evals/src/grade.mjs"
+    },
+    {
+     "id": "v2-fd0a8cd2",
+     "name": "Post-deployment smoke tests",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-a8fa6c07",
+     "name": "Deployment health monitoring",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-7dd2d8b8",
+     "name": "Application rollback procedures",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-3a76a345",
+     "name": "Database compatibility during rollback",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-b8776936",
+     "name": "Plugin and server release compatibility",
+     "status": "partial",
+     "evidence": "packages/evals/src/plugin-version.test.mjs"
+    },
+    {
+     "id": "v2-342c3e36",
+     "name": "Release notes linked to shipped changes",
+     "status": "partial",
+     "evidence": "scripts/lib/release-rules.mjs"
+    },
+    {
+     "id": "v2-42f36cb3",
+     "name": "Retirement of temporary feature flags",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  },
+  {
+   "section": "60. END-TO-END RELEASE ACCEPTANCE",
+   "items": [
+    {
+     "id": "v2-d2cd1ef5",
+     "name": "New user completes registration and enters a usable workspace",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-47df775c",
+     "name": "Invited member joins the intended organization with correct access",
+     "status": "not-planned",
+     "evidence": "not planned — the owner chose a single-user product with per-project sharing on 2026-09-15; organizations and workspaces are not being built. See docs/design/TENANCY.md."
+    },
+    {
+     "id": "v2-d3c91533",
+     "name": "Returning user resumes the correct project and conversation",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2c813c2a",
+     "name": "User installs the Studio plugin and pairs the intended place",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-4924e76e",
+     "name": "User sees accurate connection and capability status",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-dcfef81b",
+     "name": "User submits a request with relevant project context",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-2a9a2e69",
+     "name": "Agent presents an actionable plan with visible cost expectations",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-93af1497",
+     "name": "User approves the exact operations that require consent",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-37ceaddc",
+     "name": "Approved operations execute against the intended Studio session",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-39b0baa0",
+     "name": "Studio changes produce persisted and inspectable results",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-00a20dac",
+     "name": "Verification reports distinguish passed, failed, and unverified outcomes",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-1abe2199",
+     "name": "User can inspect supporting evidence and operation history",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5c3fe6b1",
+     "name": "User can reverse changes and verify restored state",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-158e3b94",
+     "name": "Interrupted runs recover without duplicate writes or duplicate charges",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-70237115",
+     "name": "Collaborators receive only the access granted to them",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-f34c5120",
+     "name": "Plan limits are enforced consistently across UI, API, and background jobs",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-5460deea",
+     "name": "Purchases update entitlements and credit balances accurately",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-c1487226",
+     "name": "Cancellation, downgrade, and payment failure produce documented behavior",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-cec4d189",
+     "name": "Data export and deletion complete across primary and derived storage",
+     "status": "not-found",
+     "evidence": null
+    },
+    {
+     "id": "v2-74d8ef3a",
+     "name": "Production incidents are detected, communicated, and recoverable",
+     "status": "not-found",
+     "evidence": null
+    }
+   ]
+  }
+ ],
+ "markedAt": "2026-09-15T10:34:15.149Z",
+ "marking": {
+  "method": "a ✓ requires a NAMED TEST in this repository whose name contains the item's head noun, the item's rarest word, at least two of its words in total and 60% of them; ~ requires a source file matched the same way; ☐ means this script found neither, which is a statement about the script, not proof of absence.",
+  "rarityThreshold": {
+   "tests": 101,
+   "sources": 16
+  },
+  "testsScanned": 5040,
+  "filesScanned": 794,
+  "counts": {
+   "done": 77,
+   "partial": 144,
+   "notFound": 906,
+   "notPlanned": 73
+  }
+ }
+}

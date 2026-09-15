@@ -54,7 +54,22 @@ const { SessionDO } = await import(`file://${out}`);
 function session() {
   const store = new Map([['bind', { projectId: 'p1', projectName: 'Proj', ownerId: 'u1' }]]);
   const sent = [];
-  const ws = { send: (d) => sent.push(JSON.parse(d)), readyState: 1, deserializeAttachment: () => ({ role: 'client' }) };
+  //[[ THE SOCKET NOW CARRIES AN IDENTITY, AND SO MUST THIS FIXTURE.
+  //
+  //   `webSocketMessage` asks what the socket's holder MAY DO before it looks at what they sent
+  //   (collaboration: a viewer on a shared project can watch a build and must not start one). A
+  //   socket with no attachment is refused by design, so a fixture that passes `null` would make
+  //   every mode — valid and hostile alike — produce the same silence, and this file's control
+  //   test exists precisely to catch a harness that has stopped exercising anything.
+  //
+  //   The attachment below is what the owner's own socket carries in production. ]]
+  let attachment = { userId: 'u1', role: 'owner', connectionId: 'c1', activity: 'viewing', lastSeenMs: Date.now() };
+  const ws = {
+    send: (d) => sent.push(JSON.parse(d)),
+    readyState: 1,
+    deserializeAttachment: () => attachment,
+    serializeAttachment: (v) => { attachment = v; },
+  };
   const ctx = {
     storage: {
       async get(k) { return store.get(k); },
@@ -70,7 +85,7 @@ function session() {
   const doStub = (body) => ({ idFromName: () => 'id', get: () => ({ fetch: async () => Response.json(body) }) });
   const env = {
     AI: { run: async () => ({ response: 'ok' }) },
-    QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, sparks: 100, plan: 'free' }),
+    QUOTA_DO: doStub({ ok: true, allowed: true, remaining: 100, credits: 100, plan: 'free' }),
     BUDGET_DO: doStub({ ok: true, reserved: 10, state: { killed: false } }),
     ADMIN_DO: doStub({ ok: true }),
   };
@@ -78,7 +93,7 @@ function session() {
   return {
     store, sent,
     async chat(mode, text = 'build a house') {
-      try { await s.webSocketMessage(null, JSON.stringify({ type: 'chat', text, mode })); } catch { /* downstream stubs */ }
+      try { await s.webSocketMessage(ws, JSON.stringify({ type: 'chat', text, mode })); } catch { /* downstream stubs */ }
       return { agent: store.get('agent'), errors: sent.filter((m) => m.type === 'error').map((m) => m.code) };
     },
   };

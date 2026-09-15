@@ -351,7 +351,7 @@ test('this client calls exactly the roadmap routes the worker serves', () => {
 });
 
 test('the ranking pass is opt-in, with the query key the worker actually checks', () => {
-  // The deterministic roadmap is the product; polish costs a Spark and is asked
+  // The deterministic roadmap is the product; polish costs a Credit and is asked
   // for explicitly. The worker gates on `query('polish') !== '1'`, so the client
   // has to send that exact key and value or it silently never ranks.
   assert.ok(/query\('polish'\)\s*!==\s*'1'/.test(workerRoutes), 'the worker no longer gates polish on ?polish=1');

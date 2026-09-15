@@ -84,6 +84,61 @@ test('a flat grey plate is caught with no model call — this is the plaza failu
   assert.ok(fails.some((f) => /single tone fills 100%/.test(f)));
 });
 
+test('A UNIFORMLY SATURATED PLATE IS NOT GREYSCALE — this pins the term the other tests miss', () => {
+  // THE GAP THIS CLOSES. `colorfulness` is Hasler-Süsstrunk: colour VARIANCE plus 0.3 x colour
+  // MEAN. Every other fixture in this file separates on variance, so the mean term was unasserted
+  // — deleting it as a "simplification" turned nothing red.
+  //
+  // The two terms disagree in exactly one place: a frame with one strong colour and almost no
+  // variance. A full-frame water plane, a single-material wall, a crimson floor. On a uniform
+  // plate the variance is zero by construction, so colourfulness is ENTIRELY the mean term:
+  // 0.3 x sqrt(rg² + yb²), which for (20,40,200) is 0.3 x sqrt(20² + 170²) = 51.35.
+  //
+  // Drop the mean and that collapses to 0, which is below the greyscale threshold — so a flat blue
+  // lake gets reported as "the flat-grey-slab signature". That is a false BLOCKING verdict on a
+  // legitimate build, which is the expensive direction to be wrong in.
+  //
+  // Found by rbxai-04 falsifying this file rather than reading it.
+  const w = 64;
+  const h = 64;
+  const plate = (r, g, b) => {
+    const px = new Uint8Array(w * h * 3);
+    for (let i = 0; i < w * h; i += 1) { px[i * 3] = r; px[i * 3 + 1] = g; px[i * 3 + 2] = b; }
+    return pixelStats(px, w, h);
+  };
+
+  const grey = plate(128, 128, 128);
+  const blue = plate(20, 40, 200);
+  const crimson = plate(190, 25, 30);
+
+  // The control: without this, "saturated is not greyscale" could pass because NOTHING is.
+  assert.ok(grey.colorfulness < PIXEL_THRESHOLDS.colorfulness, `grey must be under the threshold (got ${grey.colorfulness})`);
+  assert.ok(
+    pixelHardFails([{ name: 'top', coverage: 1, stats: grey }]).some((f) => /greyscale/.test(f)),
+    'the grey plate must still be caught — this is the half that already worked',
+  );
+
+  // And the half that was missing. Both are uniform, so both have zero variance; only the mean
+  // term can carry them over the line.
+  for (const [name, s] of [['blue', blue], ['crimson', crimson]]) {
+    assert.ok(
+      s.colorfulness > PIXEL_THRESHOLDS.colorfulness,
+      `a uniformly saturated ${name} plate must read as colourful (got ${s.colorfulness}, threshold ${PIXEL_THRESHOLDS.colorfulness})`,
+    );
+    const fails = pixelHardFails([{ name: 'top', coverage: 1, stats: s }]);
+    assert.equal(
+      fails.some((f) => /greyscale/.test(f)), false,
+      `a flat ${name} surface is not the grey-slab signature: ${fails.join(' | ')}`,
+    );
+  }
+
+  // It is still a flat plate, so the OTHER two failures must remain — otherwise this test would be
+  // asserting that a featureless frame is fine, which is the opposite of what the file is for.
+  const blueFails = pixelHardFails([{ name: 'top', coverage: 1, stats: blue }]);
+  assert.ok(blueFails.some((f) => /surface detail/.test(f)), 'a uniform plate still has no detail');
+  assert.ok(blueFails.some((f) => /single tone/.test(f)), 'and one tone still fills it');
+});
+
 test('an empty frame is not judged — sky and ground are legitimately flat', () => {
   const w = 64;
   const h = 40;

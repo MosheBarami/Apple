@@ -101,8 +101,15 @@ test('archiving is not guarded by a confirmation dialog', () => {
   // which is exactly the habit that makes the DELETE confirmation stop working.
   const menu = DASH.slice(DASH.indexOf('onArchive();'), DASH.indexOf('onArchive();') + 400);
   assert.equal(/confirm|Modal/.test(menu), false);
-  // Delete, which is not reversible, still is.
-  assert.match(DASH, /Type <strong className="mono">\{project\.name\}<\/strong> to confirm/);
+  // Delete, which is not reversible, still is. The typed field itself moved into the shared
+  // components/confirm-dialog.tsx — one dialog implementation instead of one per destructive
+  // action — so the claim is checked in two halves: the delete path asks for the 'typed' ceremony,
+  // and the dialog that ceremony renders really does demand the name.
+  assert.match(DASH, /confirmationFor\(\{ reversible: false, destroysUserContent: true \}\)/);
+  assert.match(DASH, /subject=\{project\.name\}/);
+  const DIALOG = readFileSync(join(WEB, 'src', 'components', 'confirm-dialog.tsx'), 'utf8');
+  assert.match(DIALOG, /ceremony === 'typed' && \(/, 'the typed field must be gated on the verdict');
+  assert.match(DIALOG, /Type <strong className="mono">\{subject\}<\/strong> to confirm/);
 });
 
 // -------------------------------------------------------------------- the UI ---

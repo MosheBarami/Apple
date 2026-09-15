@@ -6,6 +6,10 @@
 // so the sequence can never race ahead of the truth.
 import { useEffect, useState } from 'react';
 import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
+// The OS query is no longer read here. It is still honoured — it is one of the two inputs to
+// `useReducedMotion` — but a user who has overridden it in settings must be able to override it
+// HERE too, and a second local copy of the query could only ever disagree with the first.
+import { useReducedMotion } from '../lib/theme';
 import { RunePulse } from './glyphs';
 import { StatusIcon } from './status-icon';
 
@@ -17,20 +21,6 @@ const HEADLINE: Record<OperationKind, string> = {
   connecting: 'Waiting for Studio',
   recalling: 'Opening the session',
 };
-
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
-}
 
 interface ForgeProps {
   kind: OperationKind;

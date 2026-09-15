@@ -813,11 +813,32 @@ export function checkNoAntipattern(code, opts = {}) {
   try {
     result = analyzeLuau(code, { context: opts.context, rules });
   } catch (e) {
-    return { passed: false, detail: e instanceof Error ? e.message : String(e) };
+    // The analyzer threw -- an unknown rule id, or a crash on this input. Either way it examined
+    // nothing, so this is `unavailable` for the same reason the zero-rules case above is: a
+    // harness fault reported as `passed: false` is a verdict on the model's code that nobody
+    // arrived at by reading the model's code.
+    return { passed: false, unavailable: true, reason: 'analyzer_error', detail: e instanceof Error ? e.message : String(e) };
   }
   if (!result.findings.length) {
     const ran = result.ruleIds.length;
     const skipped = result.skipped.length ? `, ${result.skipped.length} skipped as ${result.context}-inapplicable` : '';
+    // ZERO RULES RAN IS NOT A CLEAN BILL OF HEALTH.
+    //
+    // analyzeLuau skips a context-scoped rule on a file of the other kind deliberately, and says
+    // why on line 785: reporting it as clean would let a task claim coverage the analyzer never
+    // attempted. That intent was enforced per-rule and then thrown away here — when EVERY
+    // requested rule was skipped, `findings` is empty and this returned `passed: true` with the
+    // detail "0 rule(s) run". A check naming only client-scoped rules with `context: 'server'`
+    // therefore passed every answer ever written, including an answer with no code in it at all.
+    // That is the repository's signature defect: a failure to observe rendered as an observation.
+    if (ran === 0) {
+      return {
+        passed: false,
+        unavailable: true,
+        reason: 'no_applicable_rules',
+        detail: `no anti-pattern rule applied to this ${result.context} snippet (${result.skipped.length} skipped as ${result.context}-inapplicable) — nothing was examined`,
+      };
+    }
     return { passed: true, detail: `no anti-patterns (${ran} rule(s) run as ${result.context}${skipped})` };
   }
   const first = result.findings[0];

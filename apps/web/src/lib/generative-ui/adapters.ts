@@ -305,10 +305,10 @@ export function quotaToDocument(quota: QuotaState, series?: { day: string; value
     blocks: [
       {
         type: 'usage_summary',
-        title: "Today's Sparks",
-        remaining: quota.sparksRemaining,
-        dailyLimit: quota.sparksDaily,
-        usedToday: quota.sparksUsedToday,
+        title: "Today's Credits",
+        remaining: quota.creditsRemaining,
+        dailyLimit: quota.creditsDaily,
+        usedToday: quota.creditsUsedToday,
         plan: quota.plan,
         series: series?.slice(-30),
       },

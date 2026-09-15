@@ -3,7 +3,7 @@ mode=stone
 request=Add a coin pickup to the meadow: a spinning gold coin that gives the player 5 coins when touched, respawns after 10 seconds, and shows the player's coin balance in the corner of the screen.
 
 checkpoint before: {"error":"The run this change belonged to has ended"}
-0.5s hello studioConnected=true sparks=11
+0.5s hello studioConnected=true credits=11
 0.7s [planning]
 2.1s checkpoint before Golem changes scripts=36 instances=1172
 2.1s [planning 1/16]
@@ -33,9 +33,9 @@ checkpoint before: {"error":"The run this change belonged to has ended"}
 --- reply (104 chars) ---
 
 
-That used the last of your Sparks for today. Everything so far is saved — they refill at midnight UTC.
+That used the last of your Credits for today. Everything so far is saved — they refill at midnight UTC.
 
 --- summary ---
 elapsed=72.0s tools=5 toolErrors=0
 toolsUsed=get_project_tree, list_scripts, search_scripts, read_script
-sparksRemaining after=2 usedToday=58
+creditsRemaining after=2 usedToday=58

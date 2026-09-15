@@ -1,0 +1,14 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": false,
+    "types": [],
+    "lib": ["ES2022", "DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "@golem/shared": ["../../../shared/src/index.ts"]
+    }
+  },
+  "files": ["ok.ts", "bad.ts"]
+}

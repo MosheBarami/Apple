@@ -1,0 +1,80 @@
+{
+  "about": "Labelled retrieval queries for the Roblox documentation corpus. Positives name the page a correct answer must surface; negatives are questions the corpus genuinely cannot answer, and a retriever is right to return nothing for them ONLY if it can also confirm it searched something. Every expectUrl below is asserted to exist in packages/corpus/data/chunks.jsonl by apps/worker/tests/retrieval-gold.test.mjs — a gold set whose answers are not in the corpus measures nothing.",
+  "queries": [
+    {
+      "id": "g-walkspeed",
+      "query": "how do I change how fast a player character walks",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/Humanoid"]
+    },
+    {
+      "id": "g-tween",
+      "query": "smoothly animate a part from one position to another over time",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/TweenService"]
+    },
+    {
+      "id": "g-debris",
+      "query": "automatically remove an instance after a few seconds",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/Debris"]
+    },
+    {
+      "id": "g-tags",
+      "query": "tag instances and find every instance with a given tag",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/CollectionService"]
+    },
+    {
+      "id": "g-remote",
+      "query": "send a message from the server to a client without waiting for a reply",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/RemoteEvent"]
+    },
+    {
+      "id": "g-input",
+      "query": "detect when the player presses a key on the keyboard",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/UserInputService"]
+    },
+    {
+      "id": "g-prompt",
+      "query": "show a hold E to interact prompt on an object",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/ProximityPrompt"]
+    },
+    {
+      "id": "g-datastore",
+      "query": "save player data so it persists between sessions",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/DataStoreService"]
+    },
+    {
+      "id": "g-heartbeat",
+      "query": "run code every frame and tell whether the code is running on the server",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/RunService"]
+    },
+    {
+      "id": "g-weld",
+      "query": "attach two parts together so they move as one rigid object",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/WeldConstraint"]
+    },
+    {
+      "id": "g-lighting",
+      "query": "change the time of day and the ambient colour of the world",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/Lighting"]
+    },
+    {
+      "id": "g-button",
+      "query": "make a clickable button in the player interface with text on it",
+      "expectUrls": ["https://create.roblox.com/docs/reference/engine/classes/TextButton"]
+    },
+    {
+      "id": "n-postgres",
+      "query": "configure a PostgreSQL connection pool with pgbouncer",
+      "negative": true
+    },
+    {
+      "id": "n-swift",
+      "query": "SwiftUI NavigationStack deep linking on iPadOS",
+      "negative": true
+    },
+    {
+      "id": "n-kubernetes",
+      "query": "kubernetes horizontal pod autoscaler custom metrics adapter",
+      "negative": true
+    }
+  ]
+}

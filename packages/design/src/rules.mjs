@@ -338,7 +338,7 @@ export const RULES = Object.freeze([
     platforms: ['desktop', 'mobile'],
     rule: 'The product layer must not restate a cost that the accounting layer owns. Show the number from ONE source or show no number.',
     because: 'Two copies of a price drift, and the copy the user sees is not the copy the balance gate reads.',
-    prevents: 'A UI showing "1 / 4 / 10 sparks" while the gate charged 1 / 2 / 3 — users shown a cost 2-3x higher than the one taken.',
+    prevents: 'A UI showing "1 / 4 / 10 credits" while the gate charged 1 / 2 / 3 — users shown a cost 2-3x higher than the one taken.',
     provenance: { kind: 'golem-authored', source: 'apps/web product modes', validated: 'found and fixed in review' },
   },
   // ---------------------------------------------------------------- motion

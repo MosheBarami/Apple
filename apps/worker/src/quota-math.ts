@@ -41,9 +41,9 @@ export function nextResetIso(now: number): string {
 
 export interface QuotaInputs {
   plan: PlanId;
-  /** Sparks charged to the allowance today, from the day-keyed ledger. */
+  /** Credits charged to the allowance today, from the day-keyed ledger. */
   spentToday: number;
-  /** Sparks charged to the allowance this month. */
+  /** Credits charged to the allowance this month. */
   spentThisMonth: number;
   /** Purchased, non-expiring balance. NOT part of either sum above. */
   credits: number;
@@ -53,7 +53,7 @@ export interface QuotaInputs {
 /**
  * The state a client is shown, and the numbers a spend is checked against.
  *
- * The allowance is a RATE and credits are a BALANCE. `sparksRemaining` is what can be spent right
+ * The allowance is a RATE and credits are a BALANCE. `creditsRemaining` is what can be spent right
  * now and is therefore both, but the two are reported separately as well, because "you have 0 left
  * today" and "you have 0 left at all" are different sentences with different next actions.
  *
@@ -61,16 +61,16 @@ export interface QuotaInputs {
  */
 export function quotaState(i: QuotaInputs): QuotaState {
   const limits = PLAN_LIMITS[i.plan];
-  const dailyLeft = Math.max(0, limits.sparksPerDay - i.spentToday);
-  const monthlyLeft = Math.max(0, limits.sparksPerMonth - i.spentThisMonth);
+  const dailyLeft = Math.max(0, limits.creditsPerDay - i.spentToday);
+  const monthlyLeft = Math.max(0, limits.creditsPerMonth - i.spentThisMonth);
   const allowanceLeft = Math.min(dailyLeft, monthlyLeft);
   const credits = Math.max(0, i.credits);
   return {
-    sparksRemaining: allowanceLeft + credits,
-    sparksDaily: limits.sparksPerDay,
-    sparksMonthly: limits.sparksPerMonth,
-    sparksUsedToday: i.spentToday,
-    sparksUsedThisMonth: i.spentThisMonth,
+    creditsRemaining: allowanceLeft + credits,
+    creditsDaily: limits.creditsPerDay,
+    creditsMonthly: limits.creditsPerMonth,
+    creditsUsedToday: i.spentToday,
+    creditsUsedThisMonth: i.spentThisMonth,
     resetsAtIso: nextResetIso(i.now),
     plan: i.plan,
     allowanceRemaining: allowanceLeft,
@@ -86,7 +86,7 @@ export function quotaState(i: QuotaInputs): QuotaState {
  * order has to be the one they would have chosen.
  */
 export function splitSpend(
-  sparks: number,
+  amount: number,
   allowanceRemaining: number,
   credits: number,
 ): { fromAllowance: number; fromCredits: number; affordable: boolean } {
@@ -97,16 +97,16 @@ export function splitSpend(
   // caller's `if (fromAllowance > 0)` and `if (fromCredits > 0)` were both false and nothing was
   // written. The user was told ok and the ledger did not move: free work, silently, for as many
   // calls as anyone cared to make. The same shape as the BudgetDO defect, one ledger over, and
-  // this is the one the user sees — session.ts also does `sparksSpent += owed`, so a single NaN
+  // this is the one the user sees — session.ts also does `creditsSpent += owed`, so a single NaN
   // makes that field NaN for the rest of the run and msg_end carries it to the UI.
   //
-  // A NEGATIVE IS DELIBERATELY NOT REFUSED. `owed = sparksForNeurons(neuronsUsed) - sparksSpent` is
+  // A NEGATIVE IS DELIBERATELY NOT REFUSED. `owed = creditsForNeurons(neuronsUsed) - creditsSpent` is
   // legitimately negative when an earlier step overcharged, and refusing there would tell a user
-  // with Sparks left that they had run out. Clamping it to zero is correct.
-  if (!Number.isFinite(sparks)) {
+  // with Credits left that they had run out. Clamping it to zero is correct.
+  if (!Number.isFinite(amount) || !Number.isFinite(credits)) {
     return { fromAllowance: 0, fromCredits: 0, affordable: false };
   }
-  const want = Math.max(0, sparks);
+  const want = Math.max(0, amount);
   if (want > allowanceRemaining + credits) {
     return { fromAllowance: 0, fromCredits: 0, affordable: false };
   }

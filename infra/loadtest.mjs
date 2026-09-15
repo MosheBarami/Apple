@@ -146,7 +146,7 @@ for (const [k, v] of Object.entries(isolation)) console.log(`  ${k.padEnd(22)} $
 console.log('[6] quota state after load');
 if (live[0]) {
   const me = await (await fetch(`${BASE}/api/me`, { headers: { Authorization: `Bearer ${live[0].jwt}` } })).json();
-  console.log(`  user1 sparks: ${me.quota.sparksRemaining}/${me.quota.sparksDaily} (spent ${me.quota.sparksDaily - me.quota.sparksRemaining})`);
+  console.log(`  user1 credits: ${me.quota.creditsRemaining}/${me.quota.creditsDaily} (spent ${me.quota.creditsDaily - me.quota.creditsRemaining})`);
 }
 
 for (const u of live) { try { u.ws.close(); } catch {} }

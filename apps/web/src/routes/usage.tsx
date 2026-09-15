@@ -1,16 +1,19 @@
-// /usage — Sparks today, 30 days of history, and the plan.
+// /usage — Credits today, 30 days of history, and the plan.
 //
 // Every number on this page comes from the live quota or from @golem/shared.
-// Sparks are billed from the compute a run actually consumes, so the per-mode
+// Credits are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { meterView } from '../components/usage-meter-model';
+import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
-import { PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import { PLAN_COPY, PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
+import { billingChangeLine, billingNotice, type SubscriptionView } from '../lib/billing-copy';
 import {
   fetchBillingConfig,
+  fetchBillingHistory,
   fetchMe,
   fetchUsage,
   openBillingPortal,
@@ -24,14 +27,14 @@ const MODES: ProductMode[] = ['plan', 'agent', 'super'];
 /**
  * The ring shows the ALLOWANCE, and credits are reported beside it — never added into the arc.
  *
- * It used to be handed `sparksRemaining`, which is allowance plus purchased credits, and divide it
+ * It used to be handed `creditsRemaining`, which is allowance plus purchased credits, and divide it
  * by the daily allowance. A user with 1,440 credits on the free plan saw a full ring captioned
  * "1500 of 60", and an aria-label telling them that was what remained TODAY. Both numbers were
  * real and the sentence they formed was not: credits are not today's, they do not reset, and
  * spending them is a different decision from spending an allowance. This is the same rule
  * usage-meter-model.ts is built around, applied to the surface that states it in the largest type.
  */
-function SparksRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
+function CreditsRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const frac = daily > 0 ? Math.max(0, Math.min(1, remaining / daily)) : 0;
@@ -42,7 +45,7 @@ function SparksRing({ remaining, daily, period }: { remaining: number; daily: nu
       height="140"
       viewBox="0 0 140 140"
       role="img"
-      aria-label={`${remaining} of ${daily} Sparks of allowance remaining ${window}`}
+      aria-label={`${remaining} of ${daily} Credits of allowance remaining ${window}`}
     >
       <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="9" />
       <circle
@@ -67,15 +70,82 @@ function SparksRing({ remaining, daily, period }: { remaining: number; daily: nu
   );
 }
 
+/**
+ * THE SUBSCRIPTION, SAID OUT LOUD.
+ *
+ * Before this the page could render exactly one billing fact — the tier — because the tier was the
+ * only thing the webhook wrote down. A renewal date, a pending cancellation, a failed payment and a
+ * card awaiting authentication all arrived on the same Stripe event and were dropped, so the
+ * product's first word to a user whose card had expired was the cancellation.
+ *
+ * Every sentence here comes from `billingNotice`, which is tested on its own. Nothing in this
+ * component decides what a date means.
+ */
+function BillingNotice({ view, onManage }: { view: SubscriptionView; onManage: () => void }) {
+  const notice = billingNotice(view, {
+    planName: PLAN_COPY[isPlanId(view.plan) ? view.plan : 'free'].name,
+    // The viewer's own locale and timezone. A billing date shown in UTC to someone in Auckland can
+    // be the wrong day.
+    formatDate: (seconds) =>
+      new Date(seconds * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+  });
+  if (!notice) return null;
+  return (
+    <div className={`billing-notice billing-notice--${notice.tone}`} role={notice.tone === 'warn' ? 'alert' : 'status'}>
+      <p className="billing-notice__head">{notice.headline}</p>
+      {notice.detail && <p className="billing-notice__detail">{notice.detail}</p>}
+      {notice.action && view.hasBillingAccount && (
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onManage}>
+          {notice.action}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * WHAT HAS HAPPENED TO THIS ACCOUNT'S BILLING.
+ *
+ * `plan` was overwritten in place by the webhook, so "when did this go from Studio to Free, and on
+ * which Stripe event" had no answer on our side at all — not for the user, and not for whoever had
+ * to answer their email about it. Collapsed by default: a history is for the moment someone
+ * disagrees with a charge, not a thing to read every visit.
+ */
+function BillingHistory() {
+  const history = useQuery({ queryKey: ['billing-history'], queryFn: fetchBillingHistory, retry: false });
+  const lines = (history.data?.events ?? [])
+    .map((e) => ({
+      key: `${e.at}:${e.eventId ?? ''}`,
+      text: billingChangeLine(e, {
+        planName: (id) => (isPlanId(id) ? PLAN_COPY[id].name : id),
+        formatDate: (millis) => new Date(millis).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+      }),
+    }))
+    .filter((l): l is { key: string; text: string } => l.text !== null);
+  // Nothing recorded is not the same as a history that failed to load, and neither is worth an
+  // empty disclosure triangle on a page that is mostly about Credits.
+  if (history.isPending || history.isError || lines.length === 0) return null;
+  return (
+    <details className="billing-history">
+      <summary>Billing history</summary>
+      <ul className="billing-history__list">
+        {lines.map((l) => (
+          <li key={l.key}>{l.text}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 function UsageBars({ days }: { days: UsageDay[] }) {
   // The API returns sparse rows; build a dense 30-day series so gaps read as zero.
-  const byDay = new Map(days.map((d) => [d.day, d.sparks]));
-  const series: { day: string; sparks: number }[] = [];
+  const byDay = new Map(days.map((d) => [d.day, d.credits]));
+  const series: { day: string; credits: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-    series.push({ day: d, sparks: byDay.get(d) ?? 0 });
+    series.push({ day: d, credits: byDay.get(d) ?? 0 });
   }
-  const max = Math.max(10, ...series.map((s) => s.sparks));
+  const max = Math.max(10, ...series.map((s) => s.credits));
   const W = 600;
   const H = 150;
   const pad = 4;
@@ -87,11 +157,11 @@ function UsageBars({ days }: { days: UsageDay[] }) {
         viewBox={`0 0 ${W} ${H + 24}`}
         className="usage-bars"
         role="img"
-        aria-label="Sparks spent per day over the last 30 days"
+        aria-label="Credits spent per day over the last 30 days"
       >
         <line x1={pad} x2={W - pad} y1={H} y2={H} className="bar-base" />
         {series.map((s, i) => {
-          const h = Math.max(s.sparks > 0 ? 3 : 1.5, (s.sparks / max) * H);
+          const h = Math.max(s.credits > 0 ? 3 : 1.5, (s.credits / max) * H);
           const x = pad + i * bw;
           const label = new Date(`${s.day}T00:00:00Z`).toLocaleDateString(undefined, {
             month: 'short',
@@ -105,9 +175,9 @@ function UsageBars({ days }: { days: UsageDay[] }) {
                 width={bw - 4}
                 height={h}
                 rx={2}
-                className={s.sparks > 0 ? 'bar bar-active' : 'bar'}
+                className={s.credits > 0 ? 'bar bar-active' : 'bar'}
               >
-                <title>{`${label}: ${s.sparks} Sparks`}</title>
+                <title>{`${label}: ${s.credits} Credits`}</title>
               </rect>
               {/* Anchor the end labels inward so they are not clipped by the viewBox. */}
               {(i === 0 || i === 29 || i === 15) && (
@@ -197,6 +267,9 @@ export function UsagePage() {
   });
 
   const currentPlan: PlanId = isPlanId(me.data?.quota?.plan) ? me.data.quota.plan : 'free';
+  // Absent on an older worker, which is not the same as "no subscription" — so the notice is simply
+  // not rendered rather than rendered as a claim that there is nothing.
+  const billingView = me.data?.billing ?? null;
 
   return (
     <div className="page">
@@ -204,7 +277,7 @@ export function UsagePage() {
         <div>
           <h1 className="page-title">Usage</h1>
           <p className="page-sub">
-            Sparks are Apple&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
+            Credits are Apple&rsquo;s daily energy. A run is billed from the compute it actually uses, so these are
             measured typical costs, not fixed prices.
           </p>
         </div>
@@ -212,7 +285,7 @@ export function UsagePage() {
 
       {me.isPending && (
         <p className="muted" aria-busy="true">
-          Loading your Sparks…
+          Loading your Credits…
         </p>
       )}
 
@@ -224,9 +297,9 @@ export function UsagePage() {
 
       {me.isSuccess && (
         <div className="usage-grid">
-          <div className="card sparks-card">
-            <h2>{view.period === 'month' ? 'This month\u2019s Sparks' : 'Today\u2019s Sparks'}</h2>
-            <SparksRing
+          <div className="card credits-card">
+            <h2>{view.period === 'month' ? 'This month\u2019s Credits' : 'Today\u2019s Credits'}</h2>
+            <CreditsRing
               remaining={view.allowanceRemaining}
               daily={view.allowanceTotal}
               period={view.period}
@@ -236,8 +309,8 @@ export function UsagePage() {
                 is one — but when there is one it must be here, or the ring understates what the
                 user can actually spend. */}
             {view.credits > 0 && (
-              <p className="sparks-credits">
-                <strong>{view.credits.toLocaleString()}</strong> purchased credits, which do not expire
+              <p className="credits-credits">
+                <strong>{formatNumber(view.credits)}</strong> purchased credits, which do not expire
                 <span className="muted"> — spent only once the allowance is gone</span>
               </p>
             )}
@@ -248,7 +321,7 @@ export function UsagePage() {
                   <span className={`mode-dot mode-dot-${m}`} aria-hidden="true" />
                   <span className="mode-cost-name">{PRODUCT_MODE_INFO[m].name}</span>
                   <span className="mode-cost-blurb">{PRODUCT_MODE_INFO[m].blurb}</span>
-                  <span className="mode-cost-value">{PRODUCT_MODE_INFO[m].typicalSparks}</span>
+                  <span className="mode-cost-value">{PRODUCT_MODE_INFO[m].typicalCredits}</span>
                 </li>
               ))}
             </ul>
@@ -264,7 +337,7 @@ export function UsagePage() {
             {usage.isError && <Failure error={usage.error} onRetry={() => void usage.refetch()} compact />}
             {usage.isSuccess &&
               (usage.data.days.length === 0 ? (
-                <p className="muted">No Sparks spent yet — go build something.</p>
+                <p className="muted">No Credits spent yet — go build something.</p>
               ) : (
                 <UsageBars days={usage.data.days} />
               ))}
@@ -300,9 +373,14 @@ export function UsagePage() {
             </p>
           )}
 
+          {billingView && <BillingNotice view={billingView} onManage={() => portal.mutate()} />}
+
           <PlanLadder
             current={currentPlan}
             busyPlan={busyPlan}
+            // What this deployment actually charges in, from the server rather than assumed by the
+            // page. Undefined while the config is in flight, which falls back to the declared code.
+            currency={billing.data?.currency}
             // Absent when this deployment has no Stripe key, which makes the ladder render "Not
             // available yet" on each tier rather than a button that cannot work.
             availability={
@@ -326,7 +404,17 @@ export function UsagePage() {
             }
           />
 
-          {currentPlan !== 'free' && (
+          {/*
+            GATED ON HAVING A BILLING ACCOUNT, NOT ON BEING ON A PAID PLAN.
+            This was `currentPlan !== 'free'`, which hid the portal from exactly the people who
+            most need it: a customer whose subscription lapsed is back on Free with invoices, a
+            saved card and a cancellation to reverse, and no way to reach any of them. The server
+            already keeps the Stripe customer id across a plan change for this reason; the page was
+            the half that did not honour it.
+          */}
+          {billingView?.hasBillingAccount && <BillingHistory />}
+
+          {billingView?.hasBillingAccount && (
             <p className="plans-manage">
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => portal.mutate()}>
                 Manage billing, invoices and cancellation

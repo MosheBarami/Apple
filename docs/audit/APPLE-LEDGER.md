@@ -38,7 +38,7 @@ querying live Cloudflare documentation. Everything else is carried from the audi
 | Per-request ceiling 1,200 neurons, enforced twice (caller + DO) | `pricing.ts:93`; `gateway.ts:261-263,443-445`; `imagegen.ts:624-626`; `do/budget.ts:201-207` **[verified]** |
 | Kill switch checked inside the DO before cap arithmetic | `do/budget.ts:193-200, 263-267`; `index.ts:649` |
 | Settlement on ACTUAL usage; never releases after the model ran | `gateway.ts:339-343`; release only on pre-run failure `gateway.ts:306`, `imagegen.ts:640-642` |
-| Per-user Spark quota in a per-user DO addressed by verified JWT `sub` | `do/quota.ts:30-52,58-66`; `session.ts:1749-1755`; `index.ts:432` |
+| Per-user Credit quota in a per-user DO addressed by verified JWT `sub` | `do/quota.ts:30-52,58-66`; `session.ts:1749-1755`; `index.ts:432` |
 | No paid third-party provider is callable | `providers/openai.ts:234-238` throws before `postJson`; `env.ts:26-39` **[verified: all three keys declared optional and unset]**; `wrangler.jsonc` vars sets none |
 | CI cannot spend | `.github/workflows/ci.yml:5-14` cost policy, `:41` `permissions: contents: read`, no secrets, no eval-runner step |
 
@@ -115,7 +115,7 @@ querying live Cloudflare documentation. Everything else is carried from the audi
 | `data/chunks.jsonl` is real extracted text: 8,326 chunks / 10.8 MB **[verified: `wc -l` = 8326, 10,836,520 bytes]** | `packages/corpus/data/chunks.jsonl` |
 | Indexed in production D1 `golem-corpus`: 8,327 rows in both `chunks` and `chunks_fts`, 2,194 doc slugs (api 1,318 / guide 7,009) | live query; `wrangler.jsonc` CORPUS `32c9471e-a7d7-49ee-a8fe-0a7def2c68bd` **[verified]**; `index.ts:661-691` |
 | Vectorize half wired; 3,394 of 8,326 chunks embedded | `wrangler.jsonc` VEC → `golem-docs` **[verified]**; `index.ts:677-680`; `apps/worker/src/rag.ts:32-49` |
-| RAG reachable from product UI, not just admin scripts | `tools.ts:6, 1349-1359` (`search_docs`); `index.ts:455-470` (`/api/docs/search`, Spark-charged) |
+| RAG reachable from product UI, not just admin scripts | `tools.ts:6, 1349-1359` (`search_docs`); `index.ts:455-470` (`/api/docs/search`, Credit-charged) |
 | 38 real pinned git checkouts with SPDX read from each LICENSE **[verified: 38 dirs + `_registries` + manifest; 9,151 `.luau`, 2,334 `.lua`]** | `packages/corpus/raw/manifest.json:1-40` |
 | 316 MB of `raw/` is gitignored; only derived metadata tracked (`git ls-files packages/corpus` = 40 files) | `.gitignore:19-38` |
 | Corpus intake policy modules green | `node --test packages/corpus/src/intake/*.test.mjs` → 231 pass / 0 fail |
@@ -166,7 +166,7 @@ feeding every tool's real result shape through `documentFromToolDetail`.
 **D3. No cheap-chat vs heavy-build classification — a greeting costs a full build cycle and ends in an apology.**
 Missing link: `session.ts:1021-1043` — `owesWork = mode !== 'clay' && !agent.mutated && studioConnected` has
 no notion of a question. A greeting in Agent mode with Studio connected: `reasoning.ts:99` flags any text
-under 25 chars `ambiguousRequest` → `:139` escalates to `'high'` effort → `session.ts:637` spends a Spark →
+under 25 chars `ambiguousRequest` → `:139` escalates to `'high'` effort → `session.ts:637` spends a Credit →
 `:705-725` takes a full `snapshot root:'game' includeScripts:true` (60s op) → model replies with prose →
 `:1022` fires the nudge twice (`MAX_NUDGES=2` at `:137`, two more paid calls) → `:1043` finishes `'incomplete'`
 printing *"I did not change anything in your project… which is a fault on my side rather than a result."*
@@ -246,7 +246,7 @@ return (`:1337`). No HTTP route serves it, no web component renders it, the plug
 also no upload leg to build on: no Open Cloud assets API call exists anywhere, and `Paths.luau:188-205` would
 refuse a `Texture`/`Image` assignment for an id that never went through `insert_asset`. Every call is spend
 with zero retained value, and `imagegen.ts:612-614` states it settles against the global ledger only — user
-Sparks are untouched. *Fix:* either build the upload leg (Studio-side `CreateAssetAsync`, or Open Cloud under
+Credits are untouched. *Fix:* either build the upload leg (Studio-side `CreateAssetAsync`, or Open Cloud under
 a credential that does not exist yet) or delete the tool.
 
 **D11. No audio, sound, music, or voice capability of any kind.**
@@ -270,9 +270,9 @@ runs against an asset that by construction has none of its attributes.
 *Fix:* persist both sets on `AgentState` and rehydrate in `agentCtx()`.
 
 **D13. Per-user metering does not cover tool-invoked inference.**
-`session.ts:925-941` charges Sparks only from the step's own `llmChat`. Vision critique
+`session.ts:925-941` charges Credits only from the step's own `llmChat`. Vision critique
 (`vision.ts:313-330`, effort `high`, 2,000 max tokens, reached from `tools.ts:1063` AND the automatic gate at
-`session.ts:965-972`), image generation (`imagegen.ts:615-643`, explicitly *"NOT CHARGED TO USER SPARKS"* at
+`session.ts:965-972`), image generation (`imagegen.ts:615-643`, explicitly *"NOT CHARGED TO USER CREDITS"* at
 `:614`), and embeddings (`gateway.ts:357-373`) all settle against the global BudgetDO only. A user driving
 `inspect_visually`/`generate_image` consumes the whole service's daily allocation while their own meter barely
 moves. *Fix:* give `AgentCtx` a `chargeNeurons(n)` the DO wires to `quotaSpend`.
@@ -430,7 +430,7 @@ does not exist.
 `index.ts:69-71` exempts `/api/admin/*` from user auth entirely; the only gate is `ADMIN_KEY` compared at
 `:113-121`. That key grants: mutating any user's place without consent (`POST /api/admin/run-tool/:id` →
 `:814-816` → `session.ts:476-480` with the full toolset), spending as any project (`:798-805`), wiping any
-user's Spark ledger (`:701-709`), upgrading any user to pro (`:710-717`), and raising the service spend ceiling
+user's Credit ledger (`:701-709`), upgrading any user to pro (`:710-717`), and raising the service spend ceiling
 (`:622-628` → `budget.ts:132-146`). The brute-force throttle is per-isolate and self-wiping: `index.ts:50-61`,
 where `if (ipHits.size > 5000) ipHits.clear()` lets an attacker reset the counter at will.
 *Fix:* split into a read-only ops key and a rotatable mutating key (or Cloudflare Access); exclude
@@ -492,7 +492,7 @@ to this repository" — accurate for `raw/`, but silent on the other 36 checkout
   `find_verified_asset` strips it (`tools.ts:1160`).
 - **D47.** `/ui-lab` has no link from product UI (`app.tsx:98-105` registered; grep finds no NavLink) and is
   the only place 17 of 19 block types can be seen.
-- **D48.** Roadmap `?polish=1` spends 1 Spark (`index.ts:262-268`) and is never sent —
+- **D48.** Roadmap `?polish=1` spends 1 Credit (`index.ts:262-268`) and is never sent —
   `api.ts:104-109` accepts it, `roadmap.tsx:69` never passes it. A latent cost waiting to be wired.
 - **D49.** `/api/waitlist` is in `AUTH_EXEMPT` (`index.ts:71`) with no handler — a pre-opened hole.
 - **D50.** `MOCK_MODE` build-time flag is not DEV-gated: `mock.ts:40` `FLAG = VITE_GOLEM_MOCK === '1'`, so a
@@ -555,8 +555,8 @@ The repo does **not** enforce zero cost and never intended to — it enforces **
 | `BILLABLE_NEURONS_PER_DAY` (`pricing.ts:84`) | **15,000** | Deliberate spend beyond free ≈ $5.02/mo |
 | `BILLABLE_NEURONS_PER_MONTH` (`pricing.ts:87`) | **460,000** | Independent backstop ≈ $5.06 |
 | `MAX_NEURONS_PER_REQUEST` (`pricing.ts:93`) | 1,200 | One request cannot drain the day |
-| `NEURONS_PER_SPARK` (`pricing.ts:105`) | 30 | User-facing unit |
-| `PLAN_LIMITS.free` (`pricing.ts:108`) | 60 Sparks/day | = 1,800 neurons/user/day |
+| `NEURONS_PER_CREDIT` (`pricing.ts:105`) | 30 | User-facing unit |
+| `PLAN_LIMITS.free` (`pricing.ts:108`) | 60 Credits/day | = 1,800 neurons/user/day |
 | Workers Paid seat | $5.00/mo | Forced by the model choice |
 | **Documented hard maximum** | **$10.06/mo** | `docs/COST-MODEL.md:190`; asserted by `packages/evals/src/economics.test.mjs:129-134` |
 
@@ -597,13 +597,13 @@ yields a 10,000-neuron/day ceiling that never bills. Then lower the clamp floor 
    `economics.mjs:37,40,46`; **neither file imports `pricing.ts`**. A cap raised in `pricing.ts` ships green.
 5. **Leaked BudgetDO reservations consume the day's capacity** until UTC rollover with no operator signal
    (D14) — reads as an outage, not a budget event.
-6. **Per-user Sparks cannot protect the shared ledger** — vision, image gen and embeddings bypass QuotaDO (D13).
-   `PLAN_LIMITS.free` grants 60 Sparks/day per user with **no cap on user count and no payment integration
-   anywhere** (no stripe/paddle/lemonsqueezy in the repo). N signups grant N×60 Sparks against one
+6. **Per-user Credits cannot protect the shared ledger** — vision, image gen and embeddings bypass QuotaDO (D13).
+   `PLAN_LIMITS.free` grants 60 Credits/day per user with **no cap on user count and no payment integration
+   anywhere** (no stripe/paddle/lemonsqueezy in the repo). N signups grant N×60 Credits against one
    owner-funded pool; BudgetDO is the only thing between signups and the bill.
 7. **The cost model understates real spend ~3.5×.** `docs/COST-MODEL.md:27` records 511 neurons for a full
    Stone build; `docs/BLOCKERS.md:381` measures a real feature build at ~1,800, and `:338-340` records one
-   Agent request consuming the entire 60-Spark free daily allowance without finishing. The $10.06 **ceiling**
+   Agent request consuming the entire 60-Credit free daily allowance without finishing. The $10.06 **ceiling**
    holds (BudgetDO enforces it); every derived **capacity** figure downstream of 511 — including the public
    pricing page (`BLOCKERS.md:346-349`, "15× out") — is optimistic.
 8. **Documented-but-undeployed resources.** `docs/DECISIONS.md:25` claims R2 for checkpoints/uploads/assets —
@@ -634,7 +634,7 @@ These are product copy and brand identity. Nothing in the wire protocol, no depl
 | Brand mark components | `apps/site/src/components/GolemMark.astro`; `apps/web/src/components/glyphs.tsx:17-45` (`GolemGlyph`) — **rename the component AND unify the three marks (D35)** |
 | Favicons / OG images | `apps/web/index.html:12`; `apps/site/public/favicon.svg` (the stale "monolith"); `apps/site/public/og.svg` |
 | Docs prose | `apps/site/src/pages/docs/*.astro` — "Install Golem for Studio", "the Golem panel", "one Golem project", etc. (~11 files) |
-| Changelog / pricing / status copy | `apps/site/src/pages/changelog.astro`, `pricing.astro`, `status.astro`, `404.astro:13`, `SparkMeter.astro:645` |
+| Changelog / pricing / status copy | `apps/site/src/pages/changelog.astro`, `pricing.astro`, `status.astro`, `404.astro:13`, `CreditMeter.astro:645` |
 | In-app copy | `apps/web/src/components/ws/*`, `routes/*` — 12 + 9 files |
 | Mode vocabulary | `packages/shared/src/index.ts:721` `MODE_INFO` and `PRODUCT_MODE_INFO` — user-facing names only, **not** the `GolemMode` type (see 4.2) |
 | Plugin panel title | `apps/plugin/src/init.server.luau` toolbar/button labels |

@@ -1,7 +1,7 @@
 # Second creation exercise — a tycoon loop, and what it cost
 
 **Date:** 2026-09-02 00:00–00:05Z · **Mission §9.1** ("at least two fresh creation
-exercises demonstrate meaningful generality"). Run at the daily Spark reset, through the
+exercises demonstrate meaningful generality"). Run at the daily Credit reset, through the
 real product path: real account → deployed Worker → SessionDO → `@cf/zai-org/glm-5.3-flash`
 → Golem's own tools → paired Studio plugin → live place 116648235878426.
 
@@ -49,7 +49,7 @@ real.
 
 **Does not establish:** that the loop works. The first exercise was verified by driving
 the finished feature with throwaway Luau; that is not possible here. The Studio MCP
-bridge disconnected mid-session, the run consumed the entire Spark allowance so there is
+bridge disconnected mid-session, the run consumed the entire Credit allowance so there is
 no budget for a follow-up, and the admin `run-tool` route — which would have read the
 scripts back for free — refuses the `ADMIN_KEY` in the local `.env`, which is stale
 against the deployed secret.
@@ -62,24 +62,24 @@ this gate met would be the overstatement this project keeps correcting in itself
 
 | | |
 |---|---|
-| Sparks at `hello` | **60** (full free daily allowance, freshly reset) |
-| Sparks after | **0** |
+| Credits at `hello` | **60** (full free daily allowance, freshly reset) |
+| Credits after | **0** |
 | Used | **60**, for one request, which did not finish |
 
-Corroborated by the usage ledger: 2026-09-02 **60 sparks / 17 events**, 2026-09-01 60/23,
+Corroborated by the usage ledger: 2026-09-02 **60 credits / 17 events**, 2026-09-01 60/23,
 2026-08-30 62/38. The free day is consumed by roughly one substantial Agent run.
 
-**The published figure says otherwise.** The pricing page states **Agent · 4 sparks** and
+**The published figure says otherwise.** The pricing page states **Agent · 4 credits** and
 **≈15 requests a free day**. The measured cost of one Agent request doing what Agent is
 advertised for — *"Builds features across your project"* — is 60, and it did not
 complete. That is 15× the published number.
 
-The 4-spark figure is not invented: it is `ceil(111 / 30)` from `COST-MODEL.md`'s row
+The 4-credit figure is not invented: it is `ceil(111 / 30)` from `COST-MODEL.md`'s row
 *"Stone, targeted edit + read-back verify in Studio"*. A targeted edit is a real thing
 Agent does. It is not the thing the page describes beside the number.
 
-**And I made this worse earlier today.** I corrected the Plan figure from 1 spark to 2,
-wired `scripts/check-spark-figures.mjs` into CI to enforce the whole table against
+**And I made this worse earlier today.** I corrected the Plan figure from 1 credit to 2,
+wired `scripts/check-credit-figures.mjs` into CI to enforce the whole table against
 COST-MODEL, and thereby locked in the Agent figure with a guard that now reports agreement.
 The guard is faithful; the source it enforces under-represents a real feature build by
 more than an order of magnitude. A check that says "these agree" is not a check that says

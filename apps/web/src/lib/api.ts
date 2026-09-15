@@ -1,11 +1,17 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
+import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
 import type { CheckpointMeta, MessageDto, PairingCodeDto, QuotaState, PlanId } from '@golem/shared';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
+import type { FilesResponse, FileVersion } from '../components/ws/files-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
-import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockSpend, mockUsageDays } from './mock';
+import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
+import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
+import type { BillingChange, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
+import { noteReachability } from './connectivity';
+import type { SearchType } from './search-filters';
 
 export class ApiError extends Error {
   status: number;
@@ -26,8 +32,14 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   try {
     res = await fetch(path, { ...init, headers });
   } catch {
+    // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
+    // in one direction only and takes the other direction from here — see the banner's comment for
+    // why the browser's own opinion is not enough.
+    noteReachability(false);
     throw new ApiError('Network error — check your connection.', 0);
   }
+  // A 500 is the worker telling us it is there, so ANY answer clears a connection warning.
+  noteReachability(true);
   let body: unknown = null;
   try {
     body = await res.json();
@@ -44,6 +56,34 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   return body as T;
 }
 
+// ---------------------------------------------------------------- notifications
+//
+// The worker has served an inbox, an unread count, a collapsed view and a mark-read write for a
+// while, and nothing in this app ever called any of it — so a person who closed the tab never
+// learned their build had failed, which is the hole the whole subsystem was written to close.
+//
+// `items`, `unread` and `groups` arrive on ONE response deliberately. The worker's own comment on
+// the route explains why: two requests would be two reads at two instants, and the number under
+// the heading would disagree with the list under it. So there is no separate groups fetcher here,
+// and tests/notification-inbox.test.mjs fails if the component grows one.
+
+export const fetchNotifications = (unreadOnly = false): Promise<InboxResponse> =>
+  MOCK_MODE
+    ? Promise.resolve(mockNotifications())
+    : request<InboxResponse>(unreadOnly ? '/api/notifications?unread=true' : '/api/notifications');
+
+/**
+ * Mark rows read — specific ids, or everything that has been delivered.
+ *
+ * The response carries `unread` as well as `marked` precisely so the badge can be updated from the
+ * write instead of a refetch. Use the number it returns: `all: true` does NOT mark a row that
+ * quiet hours is still holding, so the answer to "mark everything" is often not zero.
+ */
+export const markNotificationsRead = (body: { ids?: string[]; all?: boolean }): Promise<MarkReadResult> =>
+  MOCK_MODE
+    ? Promise.resolve({ marked: body.all ? 2 : (body.ids?.length ?? 0), unread: 0 })
+    : request<MarkReadResult>('/api/notifications/read', { method: 'POST', body: JSON.stringify(body) });
+
 // ---------------------------------------------------------------- me / usage
 
 export interface MeResponse {
@@ -51,11 +91,20 @@ export interface MeResponse {
   email: string | null;
   profile: { id: string; plan: string; is_admin: boolean; display_name: string | null } | null;
   quota: QuotaState;
+  /**
+   * The SUBSCRIPTION, which is not the same thing as `quota.plan`.
+   *
+   * `quota.plan` says what may be spent today. It cannot say when the plan renews, that it cancels
+   * at the end of the period, that a renewal failed and is being retried, or that a payment is
+   * waiting on a card authentication. All four arrive on the same Stripe event, and all four used
+   * to be discarded by the webhook. Optional because an older worker will not send it.
+   */
+  billing?: SubscriptionView;
 }
 
 export interface UsageDay {
   day: string; // YYYY-MM-DD
-  sparks: number;
+  credits: number;
   events: number;
 }
 
@@ -76,11 +125,13 @@ export interface BillingConfig {
   checkout: boolean;
   /** The tiers this deployment has a configured price for. */
   purchasable: PlanId[];
+  /** ISO 4217 code this deployment actually charges in. Optional: an older worker does not send it. */
+  currency?: string;
 }
 
 export const fetchBillingConfig = (): Promise<BillingConfig> =>
   MOCK_MODE
-    ? Promise.resolve({ checkout: true, purchasable: ['builder', 'studio'] as PlanId[] })
+    ? Promise.resolve({ checkout: true, purchasable: ['builder', 'studio'] as PlanId[], currency: PRICE_CURRENCY })
     : request<BillingConfig>('/api/billing/config');
 
 export const startCheckout = (plan: PlanId): Promise<{ url: string }> =>
@@ -88,6 +139,16 @@ export const startCheckout = (plan: PlanId): Promise<{ url: string }> =>
 
 export const openBillingPortal = (): Promise<{ url: string }> =>
   request<{ url: string }>('/api/billing/portal', { method: 'POST' });
+
+/**
+ * What has happened to this account's billing, newest first.
+ *
+ * The plan used to be overwritten in place, so an account's history was whatever its current row
+ * happened to be. QuotaDO records each change now, and this is where the person it is about reads
+ * it. Scoped to the caller by the worker — there is no id in this path that could name anyone else.
+ */
+export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
+  MOCK_MODE ? Promise.resolve({ events: [] }) : request<{ events: BillingChange[] }>('/api/billing/history');
 
 // ---------------------------------------------------------------- project session
 
@@ -97,38 +158,76 @@ export const openBillingPortal = (): Promise<{ url: string }> =>
 // exposes that roster for ADMIN diagnostics; if it is ever needed on screen it
 // belongs behind /admin, never in the normal product surface.
 
+/**
+ * The transcript — asked as a MEMBER, not as the owner.
+ *
+ * This used to request /api/projects/:id/messages, which `withOwnedProject` gates owner-only. A
+ * collaborator opening a shared project therefore loaded an EMPTY conversation and saw only
+ * whatever arrived live over the socket afterwards: the whole history of the project they had just
+ * been invited into was a 404 the client rendered as "no messages". /api/shared/:id/messages
+ * proxies the same Durable Object read and gates on `read`, which the owner passes too — so there
+ * is no separate owner path to keep in step, and there is exactly one way the app reads a
+ * transcript.
+ */
 export const fetchMessages = (projectId: string, limit = 100) =>
-  request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
+  request<{ messages: MessageDto[] }>(`/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
 
 export interface SearchHit {
   id: string;
-  role: string;
-  mode: string | null;
+  type: SearchType;
+  /** 'you' | 'apple' | 'system' — the dimension the panel filters on. */
+  author: string;
+  /** A checkpoint's label, a tool's name. Null for records that have no name of their own. */
+  title: string | null;
   createdAt: string;
   snippet: string;
   /** Offset of the match INSIDE `snippet`, already adjusted for any leading ellipsis. */
   matchStart: number;
   matchLength: number;
   occurrences: number;
+  /** Which field the snippet was cut from, so the panel marks the line the match is actually in. */
+  matchedIn: 'title' | 'body';
+  /** Relevance. Ordering is by this, never by time — see apps/worker/src/search.ts. */
+  score: number;
+  /** Present on records anchored to a message, so the workspace can jump to it. */
+  messageId?: string;
 }
 
 export interface SearchResponse {
   query: string;
   results: SearchHit[];
+  /** How many matched per type, with every filter applied EXCEPT the type filter. */
+  counts: Record<SearchType, number>;
+  /** How many matched under the full filter, before the cap. */
   total: number;
-  /** True when the result set was capped — there are older matches than these. */
+  /** True when the cap cut the list — there are more matches than these. */
   more: boolean;
   tooShort?: boolean;
+  /**
+   * True when the filters as sent can match nothing — a date that could not be read, or a type
+   * spelled wrongly. The panel says which value, because the alternative is a blank result list
+   * the user reads as "there is nothing here".
+   */
+  impossible?: boolean;
+  /** Filter values the server could not use, as `name:value`. */
+  ignored: string[];
+  /** What the server actually applied, which is the only version worth rendering. */
+  applied: { types: SearchType[]; authors: string[]; from: number | null; to: number | null };
+  scanned: number;
+  /** True when a scan hit its row cap: there may be matches nobody looked at. */
+  scanTruncated: boolean;
 }
 
 /**
- * Search every message in a project's conversation.
+ * Search one project — its messages, artifacts, checkpoints, activity and memory.
  *
  * Server-side deliberately: `fetchMessages` only pages the most recent hundred into the client, so
- * a filter over that would answer "not found" for text that is in the conversation.
+ * a filter over that would answer "not found" for text that is in the conversation. The filters
+ * travel as a query string built by `lib/search-filters.ts`, whose spellings are held against the
+ * worker's parser in apps/web/tests/search-filters.test.mjs.
  */
-export const searchConversation = (projectId: string, q: string): Promise<SearchResponse> =>
-  request<SearchResponse>(`/api/projects/${encodeURIComponent(projectId)}/search?q=${encodeURIComponent(q)}`);
+export const searchProject = (projectId: string, params: URLSearchParams): Promise<SearchResponse> =>
+  request<SearchResponse>(`/api/projects/${encodeURIComponent(projectId)}/search?${params.toString()}`);
 
 // ------------------------------------------------------------------- memory
 
@@ -174,8 +273,180 @@ export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryRes
         body: JSON.stringify({ memory }),
       });
 
+// -------------------------------------------------------- scoped memory & preferences
+
+/** Mirrors apps/worker/src/memory-store.ts. `org` < `user` < `project` — later wins. */
+export type MemoryScope = 'org' | 'user' | 'project';
+export type MemoryKind = 'fact' | 'instruction' | 'preference' | 'profile';
+
+export interface MemoryEntry {
+  scope: MemoryScope;
+  scopeId: string;
+  key: string;
+  kind: MemoryKind;
+  value: string;
+  source: 'user' | 'model' | 'import';
+  createdAt: string;
+  updatedAt: string;
+  /** null means "until someone deletes it". */
+  expiresAt: string | null;
+  updatedBy: string;
+}
+
+export type CodingStyle = 'idiomatic' | 'minimal' | 'commented' | 'strict-typed' | 'oop' | 'functional';
+export type ResponseLength = 'brief' | 'normal' | 'detailed';
+export type ToolPermission = 'allow' | 'ask' | 'deny';
+
+export interface Preferences {
+  coding_style?: CodingStyle;
+  roblox_conventions?: string[];
+  language?: string;
+  model?: string;
+  response_length?: ResponseLength;
+  tool_permissions?: Record<string, ToolPermission>;
+  /** Where a build may take assets from. NARROWS across layers — the server decides, not this. */
+  asset_sources?: AssetSourcePolicy;
+}
+
+export interface PromptProfile {
+  about?: string;
+  goals?: string;
+  tone?: string;
+  experience?: string;
+}
+
+export interface ScopeMemoryResponse {
+  scope: MemoryScope;
+  scopeId: string;
+  canWrite: boolean;
+  entries: MemoryEntry[];
+  preferences: { prefs: Preferences; rejected: { key: string; reason: string }[] };
+  profile: PromptProfile;
+}
+
+/**
+ * What one project's NEXT run will act on, after org, user and project layers are resolved.
+ *
+ * `shadowedBy` is the part that matters in the UI: a setting overridden at another layer reads as a
+ * broken control unless the product says which layer is answering instead. The resolution is done
+ * on the server by the same function the agent uses — re-deriving the precedence rule in the
+ * browser would be a second implementation of it, and the two would diverge.
+ */
+export interface PersonalisationResponse {
+  preferences: Preferences;
+  sources: Partial<Record<keyof Preferences, MemoryScope>>;
+  profile: PromptProfile;
+  projectInstructions: string[];
+  teamInstructions: string[];
+  resolved: {
+    key: string;
+    value: string;
+    kind: MemoryKind;
+    scope: MemoryScope;
+    expiresAt: string | null;
+    shadowedBy: { scope: MemoryScope; value: string }[];
+  }[];
+}
+
+export interface MemoryAuditEntry {
+  id: string;
+  scope: MemoryScope;
+  scopeId: string;
+  key: string;
+  action: 'put' | 'delete' | 'import' | 'purge';
+  actor: string;
+  at: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface MemoryScopesResponse {
+  user: { scopeId: string; canWrite: boolean };
+  orgs: { scopeId: string; role: string; canWrite: boolean }[];
+}
+
+const scopePath = (scope: MemoryScope, scopeId: string) => `/api/memory/${scope}/${encodeURIComponent(scopeId)}`;
+
+export const fetchMemoryScopes = () => request<MemoryScopesResponse>('/api/memory/scopes');
+
+export const fetchScopeMemory = (scope: MemoryScope, scopeId: string) =>
+  request<ScopeMemoryResponse>(scopePath(scope, scopeId));
+
+export const fetchPersonalisation = (projectId: string) =>
+  request<PersonalisationResponse>(`/api/projects/${encodeURIComponent(projectId)}/personalisation`);
+
+/**
+ * Write one entry. `ttlDays` is sent only when it is a real number — the server refuses a
+ * non-finite TTL outright, and sending NaN because a text input was empty would turn "no expiry"
+ * into a rejected save.
+ */
+export const saveMemoryEntry = (
+  scope: MemoryScope,
+  scopeId: string,
+  key: string,
+  entry: { value: string; kind: MemoryKind; ttlDays?: number },
+) =>
+  request<{ entry: MemoryEntry }>(`${scopePath(scope, scopeId)}/entries/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      value: entry.value,
+      kind: entry.kind,
+      ...(typeof entry.ttlDays === 'number' && Number.isFinite(entry.ttlDays) && entry.ttlDays > 0 ? { ttlDays: entry.ttlDays } : {}),
+    }),
+  });
+
+export const deleteMemoryEntry = (scope: MemoryScope, scopeId: string, key: string) =>
+  request<{ deleted: boolean }>(`${scopePath(scope, scopeId)}/entries/${encodeURIComponent(key)}`, { method: 'DELETE' });
+
+export const savePreferences = (scope: MemoryScope, scopeId: string, preferences: Preferences) =>
+  request<{ preferences: Preferences; rejected: { key: string; reason: string }[] }>(`${scopePath(scope, scopeId)}/preferences`, {
+    method: 'PUT',
+    body: JSON.stringify({ preferences }),
+  });
+
+export const savePromptProfile = (userId: string, profile: PromptProfile) =>
+  request<{ profile: PromptProfile }>(`/api/memory/user/${encodeURIComponent(userId)}/profile`, {
+    method: 'PUT',
+    body: JSON.stringify({ profile }),
+  });
+
+export const fetchMemoryAudit = (scope: MemoryScope, scopeId: string, limit = 50) =>
+  request<{ audit: MemoryAuditEntry[] }>(`${scopePath(scope, scopeId)}/audit?limit=${limit}`);
+
+export const importMemory = (scope: MemoryScope, scopeId: string, bundle: unknown) =>
+  request<{ imported: number; rejected: { key: string; reason: string }[] }>(`${scopePath(scope, scopeId)}/import`, {
+    method: 'POST',
+    body: JSON.stringify(bundle),
+  });
+
+/**
+ * Download one scope's memory as a file.
+ *
+ * Not `request<T>`: the filename lives in Content-Disposition, and a plain <a href> cannot carry
+ * the Bearer token /api/* requires. Same shape as downloadExport, deliberately.
+ */
+export async function downloadMemoryExport(scope: MemoryScope, scopeId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`${scopePath(scope, scopeId)}/export`, { headers });
+  if (!res.ok) throw new ApiError(`Could not export memory (${res.status})`, res.status);
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const named = /filename="([^"]+)"/.exec(disposition)?.[1];
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? `apple-memory-${scope}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** The history of builds, read the same way the transcript is — see fetchMessages. */
 export const fetchCheckpoints = (projectId: string) =>
-  request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
+  request<{ checkpoints: CheckpointMeta[] }>(`/api/shared/${encodeURIComponent(projectId)}/checkpoints`);
 
 export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE
@@ -223,8 +494,13 @@ export async function fetchImageObjectUrl(projectId: string, imageId: string): P
       { headers },
     );
   } catch {
+    // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
+    // in one direction only and takes the other direction from here — see the banner's comment for
+    // why the browser's own opinion is not enough.
+    noteReachability(false);
     throw new ApiError('Network error — check your connection.', 0);
   }
+  noteReachability(true);
   if (!res.ok) {
     // The status is what separates "this expired" from "your session did" from "not yours", and
     // the taxonomy in error-taxonomy.ts is what turns it into something worth reading. Collapsing
@@ -250,8 +526,13 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
   try {
     res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/export?format=${format}`, { headers });
   } catch {
+    // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
+    // in one direction only and takes the other direction from here — see the banner's comment for
+    // why the browser's own opinion is not enough.
+    noteReachability(false);
     throw new ApiError('Network error — check your connection.', 0);
   }
+  noteReachability(true);
   if (!res.ok) {
     // The error body IS JSON even though the success body is not.
     const body = await res.json().catch(() => null);
@@ -279,6 +560,91 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
 
 export const purgeProject = (projectId: string) =>
   request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/purge`, { method: 'POST' });
+
+// ---------------------------------------------------------------- members and access
+//
+// The collaboration routes live under /api/shared/:id rather than /api/projects/:id, and the
+// difference is the whole point: /api/projects gates on `getOwnedProject`, which answers only for
+// the owner, while /api/shared resolves a ROLE and names the action each route performs. An owner
+// is a member of their own project through `projects.owner_id`, so every call here works for them
+// too — there is no separate owner path to keep in step.
+
+/** What `/api/shared/:id` answers: who you are here and what that lets you do. */
+export interface ProjectAccessResponse {
+  project: { id: string; name: string; ownerId: string };
+  role: string;
+  capabilities: string[];
+}
+
+export const fetchProjectAccess = (projectId: string): Promise<ProjectAccessResponse> =>
+  request<ProjectAccessResponse>(`/api/shared/${encodeURIComponent(projectId)}`);
+
+/** One row of the roster. Mirrors RosterEntry in apps/worker/src/membership.ts. */
+export interface MemberRow {
+  userId: string;
+  handle: string;
+  /** The role the row CARRIES, live or not — "was an editor" is a sentence an admin needs. */
+  role: string | null;
+  displayName: string | null;
+  status: 'active' | 'expired' | 'revoked' | 'suspended';
+  origin: 'owner' | 'invite' | 'link';
+  guest: boolean;
+  invitedBy: string | null;
+  invitedAt: string | null;
+  acceptedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  suspendedAt: string | null;
+  suspendedReason: string | null;
+  suspendedBy: string | null;
+}
+
+export interface MembersResponse {
+  members: MemberRow[];
+  /** Every row that exists, whatever the filter — so "0 of 12" is sayable. */
+  total: number;
+  /** Rows the filter admitted, before the page window. */
+  matched: number;
+  more: boolean;
+  limit: number;
+  offset: number;
+  filters: { q: string | null; role: string | null; status: string; origin: string | null };
+  /** True when the link-derived grants could not all be read: a short list, said out loud. */
+  partial?: boolean;
+  incomplete?: string[];
+}
+
+export const fetchMembers = (projectId: string, params: URLSearchParams): Promise<MembersResponse> =>
+  request<MembersResponse>(`/api/shared/${encodeURIComponent(projectId)}/members?${params.toString()}`);
+
+/**
+ * Invite someone, or change what an existing member may do.
+ *
+ * ONE ROUTE FOR BOTH, because it is one row: the insert merges on (project_id, user_id), so a
+ * second call with a different role is the role change. The server names the event it turns out to
+ * be — invited, role_changed, renewed, reactivated — and returns it.
+ */
+export const inviteMember = (
+  projectId: string,
+  body: { userId: string; role: string; expiresAt?: string | null },
+): Promise<{ ok: boolean; userId: string; role: string; event: string }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/members`, { method: 'POST', body: JSON.stringify(body) });
+
+/** Revoked, not deleted: "this access ended" is a fact worth keeping. */
+export const removeMember = (projectId: string, userId: string): Promise<{ ok: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+
+/** Paused, which is a different state from removed — and re-admission is one click rather than a re-invitation. */
+export const suspendMember = (projectId: string, userId: string, reason: string): Promise<{ ok: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/suspend`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+
+export const reactivateMember = (projectId: string, userId: string): Promise<{ ok: boolean }> =>
+  request(`/api/shared/${encodeURIComponent(projectId)}/members/${encodeURIComponent(userId)}/reactivate`, {
+    method: 'POST',
+  });
 
 // ---------------------------------------------------------------- roadmap
 
@@ -415,3 +781,172 @@ export interface RagHit {
 
 export const adminRagTest = (adminKey: string, query: string) =>
   request<{ hits: RagHit[] }>('/api/admin/rag-test', { method: 'POST', body: JSON.stringify({ query }) }, { 'X-Admin-Key': adminKey });
+
+// ---------------------------------------------------------------- project files
+//
+// The workspace Apple writes into, from the browser. `request<T>` for everything except the
+// download, which needs the response rather than its JSON — the same split, and the same reason, as
+// downloadExport above.
+
+export const fetchProjectFiles = (projectId: string, prefix = '') =>
+  request<FilesResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/files${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ''}`,
+  );
+
+export const fetchProjectFile = (projectId: string, path: string, version?: number) =>
+  request<{ path: string; version: number; bytes: number; savedAt: number; content: string }>(
+    `/api/projects/${encodeURIComponent(projectId)}/files/content?path=${encodeURIComponent(path)}` +
+      (version === undefined ? '' : `&version=${version}`),
+  );
+
+export const fetchFileHistory = (projectId: string, path: string) =>
+  request<{ path: string; versions: FileVersion[]; deleted: boolean }>(
+    `/api/projects/${encodeURIComponent(projectId)}/files/history?path=${encodeURIComponent(path)}`,
+  );
+
+export interface FileOpRequest {
+  op: 'rename' | 'move' | 'copy' | 'delete' | 'undelete' | 'revert';
+  path: string;
+  to?: string;
+  version?: number;
+}
+
+/**
+ * Perform one file operation.
+ *
+ * The REFUSAL is what this signature is shaped around. `request<T>` throws an ApiError carrying the
+ * worker's sentence, and the worker also sends a machine-readable `code` — which `request` drops.
+ * So this reads the response itself on the failure path, and hands the caller both, because
+ * `files-model.refusalCopy` translates by code and matching on prose would break the first time
+ * either side reworded a sentence.
+ */
+export async function fileOp(projectId: string, body: FileOpRequest): Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; code?: string; error: string }> {
+  const token = await getAccessToken();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files/op`, { method: 'POST', headers, body: JSON.stringify(body) });
+  } catch {
+    noteReachability(false);
+    return { ok: false, error: 'Network error — check your connection.' };
+  }
+  noteReachability(true);
+  const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok) {
+    return {
+      ok: false,
+      code: typeof parsed?.code === 'string' ? parsed.code : undefined,
+      error: typeof parsed?.error === 'string' ? parsed.error : `Request failed (${res.status})`,
+    };
+  }
+  return { ok: true, result: parsed ?? {} };
+}
+
+/**
+ * Save one workspace file to disk.
+ *
+ * Same shape as downloadExport: the server names the file in Content-Disposition, an <a href>
+ * cannot carry the Bearer token /api/* requires, so the bytes are fetched and handed over as a blob.
+ */
+export async function downloadProjectFile(projectId: string, path: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(projectId)}/files/content?path=${encodeURIComponent(path)}&download=1`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(`Could not download that file (${res.status})`, res.status);
+  const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1];
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? path.slice(path.lastIndexOf('/') + 1);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ------------------------------------------------------- the customer's own Roblox key
+
+export interface StoredRobloxKey {
+  robloxCreatorId: string;
+  creatorType: 'user' | 'group';
+  scopes: RobloxScope[];
+  fingerprint: string;
+  hint: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/**
+ * Connect, inspect and disconnect the customer's own Roblox Open Cloud key.
+ *
+ * NOTHING HERE RETURNS THE KEY. The PUT sends one and gets back a description; the GET never had
+ * it. That is a property of the server, and it is restated here so nobody adds a `fetchRobloxKey`
+ * that reads a secret into the browser because the type looked like it should.
+ */
+export const fetchRobloxKey = (): Promise<{ credential: StoredRobloxKey | null }> =>
+  request('/api/me/roblox-key');
+
+export const putRobloxKey = (body: {
+  apiKey: string;
+  robloxCreatorId: string;
+  creatorType: 'user' | 'group';
+  scopes: RobloxScope[];
+}): Promise<{ credential: StoredRobloxKey }> =>
+  request('/api/me/roblox-key', { method: 'PUT', body: JSON.stringify(body) });
+
+export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
+  request('/api/me/roblox-key', { method: 'DELETE' });
+
+// ---------------------------------------------------------------- the inbox / security history
+//
+// The worker has written a `security_event` row on every key mint, rotation, revocation and
+// membership change for a while, and until now nothing in this app fetched it — a security log the
+// account holder could not open. See lib/security-history.ts for what the settings page does with
+// the rows.
+//
+// BOUND TO THE CALLER BY THE TOKEN. There is no user id in either path and no variant that takes
+// one; the worker reads `c.get('user').userId` off the verified JWT and binds it into every clause.
+
+export interface NotificationsResponse {
+  items: unknown[];
+  unread: number;
+  kinds?: readonly string[];
+}
+
+export const fetchNotifications = (): Promise<NotificationsResponse> =>
+  MOCK_MODE ? Promise.resolve({ items: [], unread: 0 }) : request<NotificationsResponse>('/api/notifications');
+
+/**
+ * Mark specific rows read.
+ *
+ * IDS, NEVER `all`. The route accepts both, and a panel that shows only security events must not
+ * clear the run failures sitting unread beside them. The count comes back from the write, so a
+ * caller can tell "marked 3" from "marked 0 because none of those were yours".
+ */
+export const markNotificationsRead = (ids: readonly string[]): Promise<{ marked: number; unread: number }> =>
+  MOCK_MODE
+    ? Promise.resolve({ marked: 0, unread: 0 })
+    : request<{ marked: number; unread: number }>('/api/notifications/read', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
+
+/**
+ * Record that this account's password was changed.
+ *
+ * Supabase performs the change and this worker never sees it, which is why the record has to be
+ * ASKED FOR rather than observed. `recorded` comes back from the write and is false when the notice
+ * did not land — the page says different things for the two, because "we have noted it in your
+ * security history" printed over a notice that was dropped is the observation-failure this
+ * codebase keeps finding.
+ */
+export const reportPasswordChanged = (): Promise<{ recorded: boolean; reason?: string }> =>
+  MOCK_MODE
+    ? Promise.resolve({ recorded: true })
+    : request<{ recorded: boolean; reason?: string }>('/api/security/password-changed', { method: 'POST' });

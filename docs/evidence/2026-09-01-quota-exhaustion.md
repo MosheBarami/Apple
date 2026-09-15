@@ -1,4 +1,4 @@
-# Running out of Sparks mid-build, on purpose
+# Running out of Credits mid-build, on purpose
 
 **Date:** 2026-09-01. Master mission §23: *"exhausted quota produces a clear product
 response without losing project state."* This is that, tested by actually exhausting
@@ -6,7 +6,7 @@ it rather than by reading the handler.
 
 ## How it happened
 
-The §9.1 second creation exercise was started with **11 Sparks left** of the free
+The §9.1 second creation exercise was started with **11 Credits left** of the free
 plan's 60/day, the first exercise having spent 49. Stone's advertised range is 2–15,
 so it was a real attempt, not a staged one — the intent was a coin pickup, and the
 quota ran out first.
@@ -32,7 +32,7 @@ mutating tool.
 
 ## The product response
 
-> *"That used the last of your Sparks for today. Everything so far is saved — they
+> *"That used the last of your Credits for today. Everything so far is saved — they
 > refill at midnight UTC."*
 
 That is the whole message. It says what happened, what the user keeps, and when it

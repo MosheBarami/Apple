@@ -3,7 +3,7 @@
 // Golem plan-economics simulator  —  INTERNAL MODEL ONLY.
 //
 // THIS FILE DOES NOT SET, CHANGE, OR PUBLISH PRICING.
-// The public plan (Free = 60 Sparks/day, 900/month) and the shipped worker
+// The public plan (Free = 60 Credits/day, 900/month) and the shipped worker
 // constants in apps/worker/src/pricing.ts are the single source of truth. This
 // simulator READS those documented numbers and asks "what would it cost, and
 // what would it have to sell for" under hypothetical Pro/Max tiers that do not
@@ -38,7 +38,7 @@
  */
 export {
   USD_PER_NEURON,
-  NEURONS_PER_SPARK,
+  NEURONS_PER_CREDIT,
   BILLABLE_NEURONS_PER_DAY,
   BILLABLE_NEURONS_PER_MONTH,
   MAX_NEURONS_PER_REQUEST,
@@ -48,7 +48,7 @@ export {
 import {
   FREE_NEURONS_PER_DAY,
   USD_PER_NEURON as _USD_PER_NEURON,
-  NEURONS_PER_SPARK as _NEURONS_PER_SPARK,
+  NEURONS_PER_CREDIT as _NEURONS_PER_CREDIT,
   BILLABLE_NEURONS_PER_DAY as _BILLABLE_NEURONS_PER_DAY,
   BILLABLE_NEURONS_PER_MONTH as _BILLABLE_NEURONS_PER_MONTH,
   MAX_NEURONS_PER_REQUEST as _MAX_NEURONS_PER_REQUEST,
@@ -64,7 +64,7 @@ export const FREE_NEURONS_PER_DAY_ACCOUNT_WIDE = FREE_NEURONS_PER_DAY;
 
 // Local aliases so the rest of this module reads unchanged.
 const USD_PER_NEURON = _USD_PER_NEURON;
-const NEURONS_PER_SPARK = _NEURONS_PER_SPARK;
+const NEURONS_PER_CREDIT = _NEURONS_PER_CREDIT;
 const BILLABLE_NEURONS_PER_DAY = _BILLABLE_NEURONS_PER_DAY;
 const BILLABLE_NEURONS_PER_MONTH = _BILLABLE_NEURONS_PER_MONTH;
 const MAX_NEURONS_PER_REQUEST = _MAX_NEURONS_PER_REQUEST;
@@ -262,13 +262,13 @@ export function largestSingleRequestNeurons() {
 }
 
 /**
- * Task kinds a plan can NEVER serve, because one task costs more Sparks than
+ * Task kinds a plan can NEVER serve, because one task costs more Credits than
  * the plan grants in a whole day. These are structural, not statistical: no
  * amount of patience gets the user this task on this plan.
  */
 export function unservableKinds(plan) {
-  const limit = PLANS[plan].sparksPerDay;
-  return TASK_KINDS.filter((k) => sparksFor(taskNeurons(k)) > limit);
+  const limit = PLANS[plan].creditsPerDay;
+  return TASK_KINDS.filter((k) => creditsFor(taskNeurons(k)) > limit);
 }
 
 // -----------------------------------------------------------------------------
@@ -283,14 +283,14 @@ export function unservableKinds(plan) {
 // max   = ENTIRELY HYPOTHETICAL. Invented for this model. Does not exist.
 
 export const PLANS = {
-  free: { label: 'Free', sparksPerDay: 60, sparksPerMonth: 900, published: true },
-  pro: { label: 'Pro (hypothetical)', sparksPerDay: 400, sparksPerMonth: 6_000, published: false },
-  max: { label: 'Max (hypothetical)', sparksPerDay: 2_000, sparksPerMonth: 40_000, published: false }, // ASSUMED
+  free: { label: 'Free', creditsPerDay: 60, creditsPerMonth: 900, published: true },
+  pro: { label: 'Pro (hypothetical)', creditsPerDay: 400, creditsPerMonth: 6_000, published: false },
+  max: { label: 'Max (hypothetical)', creditsPerDay: 2_000, creditsPerMonth: 40_000, published: false }, // ASSUMED
 };
 
-/** MEASURED — mirrors pricing.ts sparksForNeurons(). */
-export function sparksFor(neurons) {
-  return Math.max(1, Math.ceil(neurons / NEURONS_PER_SPARK));
+/** MEASURED — mirrors pricing.ts creditsForNeurons(). */
+export function creditsFor(neurons) {
+  return Math.max(1, Math.ceil(neurons / NEURONS_PER_CREDIT));
 }
 
 export function usd(neurons) {
@@ -409,27 +409,27 @@ export function simulateUserMonth({ plan, tasksPerDay, rnd, days = SIM_DAYS_PER_
   let demandTasks = 0;
   let servedTasks = 0;
   let servedRequests = 0;
-  let sparksThisMonth = 0;
+  let creditsThisMonth = 0;
   let daysBlocked = 0;
 
   for (let d = 0; d < days; d += 1) {
     const n = poisson(rnd, tasksPerDay * multiplier);
-    let sparksToday = 0;
+    let creditsToday = 0;
     let blockedToday = false;
     for (let i = 0; i < n; i += 1) {
       const kind = pickKind(rnd);
       const neurons = taskNeurons(kind);
-      const sparks = sparksFor(neurons);
+      const credits = creditsFor(neurons);
       demandNeurons += neurons;
       demandTasks += 1;
-      const overDaily = sparksToday + sparks > p.sparksPerDay;
-      const overMonthly = sparksThisMonth + sparks > p.sparksPerMonth;
+      const overDaily = creditsToday + credits > p.creditsPerDay;
+      const overMonthly = creditsThisMonth + credits > p.creditsPerMonth;
       if (overDaily || overMonthly) {
         blockedToday = true;
         continue;
       }
-      sparksToday += sparks;
-      sparksThisMonth += sparks;
+      creditsToday += credits;
+      creditsThisMonth += credits;
       servedNeurons += neurons;
       servedTasks += 1;
       servedRequests += TASK_MIX[kind].requests;
@@ -443,7 +443,7 @@ export function simulateUserMonth({ plan, tasksPerDay, rnd, days = SIM_DAYS_PER_
     demandTasks,
     servedTasks,
     servedRequests,
-    sparksThisMonth,
+    creditsThisMonth,
     daysBlocked,
     hitAllowance: daysBlocked > 0,
   };
@@ -594,9 +594,9 @@ export function simulateScenario({ plan, activity, users, seed = SIM_SEED, sampl
 /** Worst case: a user who consumes their entire allowance every single day. */
 export function allowanceCeilingUsdPerUserPerMonth(plan) {
   const p = PLANS[plan];
-  const byDay = p.sparksPerDay * SIM_DAYS_PER_MONTH;
-  const sparks = Math.min(byDay, p.sparksPerMonth);
-  return sparks * NEURONS_PER_SPARK * USD_PER_NEURON;
+  const byDay = p.creditsPerDay * SIM_DAYS_PER_MONTH;
+  const credits = Math.min(byDay, p.creditsPerMonth);
+  return credits * NEURONS_PER_CREDIT * USD_PER_NEURON;
 }
 
 // -----------------------------------------------------------------------------
@@ -630,17 +630,17 @@ export function report() {
   out.push('GOLEM PLAN-ECONOMICS SIMULATOR — INTERNAL MODEL ONLY');
   out.push('Not public pricing. Does not change any plan, allowance, or spend gate.');
   out.push(
-    `Free = the published plan (${PLANS.free.sparksPerDay} Sparks/day, ${num(PLANS.free.sparksPerMonth)}/month). Pro and Max are hypothetical.`,
+    `Free = the published plan (${PLANS.free.creditsPerDay} Credits/day, ${num(PLANS.free.creditsPerMonth)}/month). Pro and Max are hypothetical.`,
   );
   out.push(
-    `Billing: $0.011/1,000 neurons · 1 Spark = ${NEURONS_PER_SPARK} neurons · hard ceiling ${money(HARD_MAX_USD_PER_MONTH)}/month (unchanged).`,
+    `Billing: $0.011/1,000 neurons · 1 Credit = ${NEURONS_PER_CREDIT} neurons · hard ceiling ${money(HARD_MAX_USD_PER_MONTH)}/month (unchanged).`,
   );
 
   // --- task mix ---
   out.push(heading('1. Task mix (ASSUMED distribution over MEASURED per-task costs)'));
   out.push(
     table(
-      ['task', 'share', 'neurons', 'sparks', 'USD', 'requests', 'provenance'],
+      ['task', 'share', 'neurons', 'credits', 'USD', 'requests', 'provenance'],
       TASK_KINDS.map((k) => {
         const t = TASK_MIX[k];
         const n = taskNeurons(k);
@@ -648,7 +648,7 @@ export function report() {
           t.label,
           pct(t.share, 0),
           num(n),
-          num(sparksFor(n)),
+          num(creditsFor(n)),
           money(usd(n), 4),
           num(t.requests),
           k === 'visual_build' ? `${GATED_BUILD_STEPS}x${NEURONS_PER_AGENT_STEP} + ${CRITIQUES_PER_GATED_BUILD}x${VISUAL_CRITIQUE_NEURONS}` : 'measured',
@@ -660,20 +660,20 @@ export function report() {
   const blended = blendedTaskNeurons();
   out.push('');
   out.push(
-    `  Blended: ${num(blended, 1)} neurons/task = ${num(blended / NEURONS_PER_SPARK, 1)} Sparks = ${money(usd(blended), 4)}, ${num(blendedRequestsPerTask(), 2)} inference requests/task.`,
+    `  Blended: ${num(blended, 1)} neurons/task = ${num(blended / NEURONS_PER_CREDIT, 1)} Credits = ${money(usd(blended), 4)}, ${num(blendedRequestsPerTask(), 2)} inference requests/task.`,
   );
   out.push(
-    `  Free's ${PLANS.free.sparksPerDay} Sparks/day = ${num(PLANS.free.sparksPerDay * NEURONS_PER_SPARK)} neurons/day = ${num((PLANS.free.sparksPerDay * NEURONS_PER_SPARK) / blended, 1)} blended tasks/day.`,
+    `  Free's ${PLANS.free.creditsPerDay} Credits/day = ${num(PLANS.free.creditsPerDay * NEURONS_PER_CREDIT)} neurons/day = ${num((PLANS.free.creditsPerDay * NEURONS_PER_CREDIT) / blended, 1)} blended tasks/day.`,
   );
   out.push(
-    `  One quality-gated build is ${num(taskNeurons('visual_build'))} neurons = ${num(sparksFor(taskNeurons('visual_build')))} Sparks, so it does NOT fit in a Free day (${PLANS.free.sparksPerDay} Sparks). Confirms the documented fact.`,
+    `  One quality-gated build is ${num(taskNeurons('visual_build'))} neurons = ${num(creditsFor(taskNeurons('visual_build')))} Credits, so it does NOT fit in a Free day (${PLANS.free.creditsPerDay} Credits). Confirms the documented fact.`,
   );
 
   // --- per-user demand ---
   out.push(heading('2. Per-active-user demand by activity level (before any allowance)'));
   out.push(
     table(
-      ['activity', 'tasks/day', 'neurons/day', 'Sparks/day', 'neurons/mo', 'raw AI cost/mo'],
+      ['activity', 'tasks/day', 'neurons/day', 'Credits/day', 'neurons/mo', 'raw AI cost/mo'],
       Object.keys(ACTIVITY_LEVELS).map((a) => {
         const tpd = ACTIVITY_LEVELS[a].tasksPerDay;
         const npd = tpd * blended;
@@ -681,7 +681,7 @@ export function report() {
           ACTIVITY_LEVELS[a].label,
           num(tpd),
           num(npd),
-          num(npd / NEURONS_PER_SPARK, 1),
+          num(npd / NEURONS_PER_CREDIT, 1),
           num(npd * SIM_DAYS_PER_MONTH),
           money(usd(npd * SIM_DAYS_PER_MONTH), 3),
         ];
@@ -695,15 +695,15 @@ export function report() {
   );
   out.push(
     table(
-      ['plan', 'Sparks/day', 'Sparks/mo', 'max neurons/mo', 'max AI cost/user/mo'],
+      ['plan', 'Credits/day', 'Credits/mo', 'max neurons/mo', 'max AI cost/user/mo'],
       Object.keys(PLANS).map((p) => {
         const pl = PLANS[p];
-        const sparks = Math.min(pl.sparksPerDay * SIM_DAYS_PER_MONTH, pl.sparksPerMonth);
+        const credits = Math.min(pl.creditsPerDay * SIM_DAYS_PER_MONTH, pl.creditsPerMonth);
         return [
           pl.label,
-          num(pl.sparksPerDay),
-          num(pl.sparksPerMonth),
-          num(sparks * NEURONS_PER_SPARK),
+          num(pl.creditsPerDay),
+          num(pl.creditsPerMonth),
+          num(credits * NEURONS_PER_CREDIT),
           money(allowanceCeilingUsdPerUserPerMonth(p), 3),
         ];
       }),
@@ -821,18 +821,18 @@ export function report() {
   );
 
   // --- structurally unservable tasks ---
-  out.push(heading('4b. Tasks a plan can never serve (one task > one day of Sparks)'));
+  out.push(heading('4b. Tasks a plan can never serve (one task > one day of Credits)'));
   out.push(
     table(
-      ['plan', 'Sparks/day', 'unservable task kinds', 'share of tasks', 'share of neurons'],
+      ['plan', 'Credits/day', 'unservable task kinds', 'share of tasks', 'share of neurons'],
       Object.keys(PLANS).map((p) => {
         const bad = unservableKinds(p);
         const taskShare = bad.reduce((s, k) => s + TASK_MIX[k].share, 0);
         const neuronShare = bad.reduce((s, k) => s + TASK_MIX[k].share * taskNeurons(k), 0) / blended;
         return [
           PLANS[p].label,
-          num(PLANS[p].sparksPerDay),
-          bad.length ? bad.map((k) => `${TASK_MIX[k].label} (${sparksFor(taskNeurons(k))} Sparks)`).join(', ') : 'none',
+          num(PLANS[p].creditsPerDay),
+          bad.length ? bad.map((k) => `${TASK_MIX[k].label} (${creditsFor(taskNeurons(k))} Credits)`).join(', ') : 'none',
           pct(taskShare, 0),
           pct(neuronShare, 0),
         ];
@@ -842,10 +842,10 @@ export function report() {
   );
   out.push('');
   out.push(
-    `  This is the single most consequential result in the model. A quality-gated build is ${num(sparksFor(taskNeurons('visual_build')))} Sparks;`,
+    `  This is the single most consequential result in the model. A quality-gated build is ${num(creditsFor(taskNeurons('visual_build')))} Credits;`,
   );
   out.push(
-    `  Free grants ${PLANS.free.sparksPerDay}/day. So on Free the visual build is not "expensive", it is UNREACHABLE — which is why Free's`,
+    `  Free grants ${PLANS.free.creditsPerDay}/day. So on Free the visual build is not "expensive", it is UNREACHABLE — which is why Free's`,
   );
   out.push(
     `  measured cost/user stays low (${pct(TASK_MIX.visual_build.share, 0)} of tasks carrying ${pct((TASK_MIX.visual_build.share * taskNeurons('visual_build')) / blended, 0)} of the neurons is simply never served)`,

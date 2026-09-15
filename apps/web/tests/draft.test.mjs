@@ -240,9 +240,12 @@ test('and the app actually calls it — on the EVENT, not the button', () => {
   // a token expiry, and a session replaced by a different account, clear the drafts too.
   const AUTH = readFileSync(join(WEB, 'src', 'lib', 'auth.tsx'), 'utf8');
   assert.match(AUTH, /clearAllDrafts/, 'auth.tsx must clear drafts');
-  assert.match(
-    AUTH,
-    /event === 'SIGNED_OUT'\s*\)\s*clearAllDrafts\(\)/,
-    'it must hang off the SIGNED_OUT event, not only the sign-out button',
-  );
+  // Read as the BRANCH rather than as one statement's spelling. The original pattern here was
+  // `/event === 'SIGNED_OUT'\s*\)\s*clearAllDrafts\(\)/`, which pinned the call to being the
+  // whole body of the `if`: adding a second thing to clear on sign-out turned it red while the
+  // property it names — the clear hangs off the EVENT, not the button — was still exactly true.
+  // Anchored to the end of the handler's first statement after the branch, so a call that moves
+  // out of the branch and into `signOut()` still fails it.
+  const branch = AUTH.slice(AUTH.indexOf("event === 'SIGNED_OUT'"), AUTH.indexOf('setSession(next)'));
+  assert.match(branch, /clearAllDrafts\(\)/, 'it must hang off the SIGNED_OUT event, not only the sign-out button');
 });

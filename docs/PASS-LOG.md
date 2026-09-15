@@ -14,7 +14,7 @@ row it might implement. Recorded BEFORE the rescue commit.
    M GATES.md
        -> gate id collision repair (a second G25 had been introduced); renumbered to G26.
    M apps/worker/src/pricing.ts
-       -> w12. PLAN_LIMITS/PLAN_IDS/isPlanId/SPARKS_PER_BUILD moved to @golem/shared and
+       -> w12. PLAN_LIMITS/PLAN_IDS/isPlanId/CREDITS_PER_BUILD moved to @golem/shared and
           re-exported, so the plan page and the QuotaDO ledger read one table.
    M packages/shared/src/index.ts
        -> w12. PLAN_LIMITS + PLAN_COPY + buildsPerMonth/buildsPerDay added.
@@ -120,11 +120,11 @@ OPEN AND HONESTLY RED:
     Not abandoned, not deferred: the checker exists, is red, and names what is wrong.
 
 WHAT PASS 2 FOUND, measured not inherited:
-  - THE FREE PLAN CANNOT FINISH ONE BUILD. PLAN_LIMITS.free.sparksPerDay is 60 and
-    SPARKS_PER_BUILD is 77, so buildsPerDay('free') is literally 0. A free tier that
+  - THE FREE PLAN CANNOT FINISH ONE BUILD. PLAN_LIMITS.free.creditsPerDay is 60 and
+    CREDITS_PER_BUILD is 77, so buildsPerDay('free') is literally 0. A free tier that
     completes nothing is not a trial; it demonstrates the product not working.
-  - TWO PLANS PROMISE MORE THAN THE SERVICE CAN SERVE. team grants 1,500 Sparks/day and
-    enterprise 6,000, against DAILY_NEURON_CEILING of 25,000 neurons = 833 Sparks for
+  - TWO PLANS PROMISE MORE THAN THE SERVICE CAN SERVE. team grants 1,500 Credits/day and
+    enterprise 6,000, against DAILY_NEURON_CEILING of 25,000 neurons = 833 Credits for
     EVERY USER COMBINED. One Team subscriber exhausts the day for everyone. That is not a
     pricing mistake; it is a promise that fails when someone uses what they bought.
   - THE PRICING PAGE CARRIED TWO CONTRACTUAL TERMS the owner never authorised: "No card
@@ -990,7 +990,7 @@ STATION: S1 Land — BLOCKED-BY-DEPLOY-APPROVAL. Not blocked by engineering: eve
   names is already absent from the built artifact.
   Probed against the deployed origin this pass. `/` and `/pricing` return 200. Between them:
   58 user-visible "Golem"; "No card required, ever" x3; "never be charged" x1; and a published
-  free quota of 60 Sparks/day against PLAN_LIMITS.free.sparksPerDay = 231.
+  free quota of 60 Credits/day against PLAN_LIMITS.free.creditsPerDay = 231.
   The built artifact publishes 231, carries none of the three forbidden phrases, and holds four
   Golem tokens, every one on the §12.5 closed list (golem-ui x2, golem.v1, golem.jwt.).
   NOT ADVANCED: no sub-probe moved red to green. The only action that moves this station is one
@@ -1034,7 +1034,7 @@ ORACLES: 4 repaired, gate count 41 (was 39).
   success, discovered at the only moment anyone runs it.
 
 PRODUCT DIFF (§11.3): a user could not see what a PARTICULAR run cost them.
-  agent_status.sparksSpent is broadcast at the top of each step; that step settles its real
+  agent_status.creditsSpent is broadcast at the top of each step; that step settles its real
   neuron cost afterwards; so every figure shown was one settlement behind, and the final step's
   settlement — usually the largest, being the one that finishes the build — was never broadcast.
   The client clears agentStatus on msg_end, so the display vanished at the moment the number
@@ -1077,7 +1077,7 @@ SELF-REFUTER: "A finished run tells the user what it cost, settled, after the la
   a string match. Retitled to the wiring, which is what was proven; the user-facing claim belongs
   to S4 and a deployed probe. Fixed in-pass, per §16.8.
   Second, smaller, and caught before it reached the record: "a user could not see what a run
-  cost" is overbroad — /usage shows per-day Spark totals. The true claim names the PARTICULAR
+  cost" is overbroad — /usage shows per-day Credit totals. The true claim names the PARTICULAR
   run, and the commit says that.
 
 NUMBERS CORRECTED:
@@ -1139,7 +1139,7 @@ PASS 12 ADDENDUM 2 — THE DEPLOY, and S1 PROVEN.
     / /pricing /terms /privacy /status /changelog /docs — golem=4 on each, all four the closed
       §12.5 hostname in canonical/og:url/twitter:image. Non-hostname occurrences: 0.
     forbidden phrases 0, from 4. "No card required, ever" x3 and "never be charged" x1 gone.
-    /pricing publishes 231 Sparks, from 60, matching PLAN_LIMITS.free.sparksPerDay.
+    /pricing publishes 231 Credits, from 60, matching PLAN_LIMITS.free.creditsPerDay.
     /app bundle Golem 79 -> 4 (golem-ui x2, golem.jwt., golem.v1), Apple 0 -> 88.
     check-rebrand --deployed: REBRAND COMPLETE. The last red item in the §10 block.
     smoke --no-model: 9/9 executed checks passed.
@@ -1149,7 +1149,7 @@ PASS 12 ADDENDUM 2 — THE DEPLOY, and S1 PROVEN.
       already been sitting in my shell "backup" as a saved error page.
 
   WHAT THE UPLOAD DID NOT FIX BY ITSELF. /pricing WITHOUT a trailing slash kept serving the old
-  35,617 bytes — 60 Sparks, all four forbidden phrases — while /pricing/ served the new 36,951. A
+  35,617 bytes — 60 Credits, all four forbidden phrases — while /pricing/ served the new 36,951. A
   legacy object sits under the extensionless key and the deploy wrote /pricing/index.html beside
   it rather than over it. That is the canonical URL, so the commercial correction had landed
   everywhere except where anyone links. Found by comparing both spellings of all eighteen routes

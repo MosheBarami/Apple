@@ -1014,12 +1014,12 @@ function UsageSummaryView({ block }: { block: UsageSummaryBlock }) {
   return (
     <section className="gu-panel gu-usage">
       <header className="gu-panel-head">
-        <h3 className="gu-panel-title">{block.title ?? 'Sparks'}</h3>
+        <h3 className="gu-panel-title">{block.title ?? 'Credits'}</h3>
         {block.plan && <span className="gu-chip gu-chip--accent">{block.plan} plan</span>}
       </header>
       <div className="gu-usage-body">
         <div className="gu-usage-ring">
-          <svg viewBox="0 0 84 84" width="84" height="84" role="img" aria-label={`${block.remaining} of ${block.dailyLimit} Sparks remaining`}>
+          <svg viewBox="0 0 84 84" width="84" height="84" role="img" aria-label={`${block.remaining} of ${block.dailyLimit} Credits remaining`}>
             <circle cx="42" cy="42" r={r} className="gu-dial-track" />
             <circle
               cx="42"
@@ -1050,11 +1050,11 @@ function UsageSummaryView({ block }: { block: UsageSummaryBlock }) {
         </dl>
       </div>
       {series.length > 0 && (
-        <div className="gu-spark-row" role="img" aria-label="Sparks spent per day">
+        <div className="gu-credit-row" role="img" aria-label="Credits spent per day">
           {series.map((point) => (
             <span
               key={point.day}
-              className={`gu-spark-bar${point.value > 0 ? ' is-active' : ''}`}
+              className={`gu-credit-bar${point.value > 0 ? ' is-active' : ''}`}
               style={{ height: `${Math.max(6, (point.value / peak) * 100)}%` }}
               title={`${point.day}: ${point.value}`}
             />

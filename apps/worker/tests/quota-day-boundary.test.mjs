@@ -50,9 +50,9 @@ function ledger() {
   const rows = [];
   return {
     rows,
-    spend(now, sparks) { rows.push({ day: Q.dayKey(now), sparks }); },
-    today(now) { return rows.filter((r) => r.day === Q.dayKey(now)).reduce((a, r) => a + r.sparks, 0); },
-    month(now) { const k = Q.monthKey(now); return rows.filter((r) => r.day.startsWith(k)).reduce((a, r) => a + r.sparks, 0); },
+    spend(now, credits) { rows.push({ day: Q.dayKey(now), credits }); },
+    today(now) { return rows.filter((r) => r.day === Q.dayKey(now)).reduce((a, r) => a + r.credits, 0); },
+    month(now) { const k = Q.monthKey(now); return rows.filter((r) => r.day.startsWith(k)).reduce((a, r) => a + r.credits, 0); },
   };
 }
 const stateAt = (l, now, plan = 'free', credits = 0) =>
@@ -82,15 +82,15 @@ test('the reset time is the NEXT midnight, including at midnight itself', () => 
 test('THE ALLOWANCE RETURNS AT MIDNIGHT, without anything clearing a counter', () => {
   const l = ledger();
   const before = at('2026-09-14T22:00:00.000Z');
-  l.spend(before, PLAN_LIMITS.free.sparksPerDay); // spend the whole day
+  l.spend(before, PLAN_LIMITS.free.creditsPerDay); // spend the whole day
   const spent = stateAt(l, before);
   assert.equal(spent.allowanceRemaining, 0, 'the day is spent');
-  assert.equal(spent.sparksRemaining, 0);
+  assert.equal(spent.creditsRemaining, 0);
 
   const after = at('2026-09-15T00:00:01.000Z');
   const fresh = stateAt(l, after);
-  assert.equal(fresh.allowanceRemaining, PLAN_LIMITS.free.sparksPerDay, 'the allowance is back');
-  assert.equal(fresh.sparksUsedToday, 0, 'and today shows no spend');
+  assert.equal(fresh.allowanceRemaining, PLAN_LIMITS.free.creditsPerDay, 'the allowance is back');
+  assert.equal(fresh.creditsUsedToday, 0, 'and today shows no spend');
   assert.equal(l.rows.length, 1, 'while the ledger row is still there — nothing was deleted');
 });
 
@@ -99,15 +99,15 @@ test('PURCHASED CREDITS DO NOT RESET — they are a balance, not a rate', () => 
   // balance that survives look identical; they differ completely on the next one.
   const l = ledger();
   const d1 = at('2026-09-14T22:00:00.000Z');
-  l.spend(d1, PLAN_LIMITS.free.sparksPerDay);
+  l.spend(d1, PLAN_LIMITS.free.creditsPerDay);
   assert.equal(stateAt(l, d1, 'free', 500).credits, 500);
-  assert.equal(stateAt(l, d1, 'free', 500).sparksRemaining, 500, 'credits carry the spend when the day is gone');
+  assert.equal(stateAt(l, d1, 'free', 500).creditsRemaining, 500, 'credits carry the spend when the day is gone');
 
   const d2 = at('2026-09-15T00:00:01.000Z');
   const next = stateAt(l, d2, 'free', 500);
   assert.equal(next.credits, 500, 'the purchased balance must survive the boundary untouched');
-  assert.equal(next.allowanceRemaining, PLAN_LIMITS.free.sparksPerDay, 'and the allowance returns beside it');
-  assert.equal(next.sparksRemaining, PLAN_LIMITS.free.sparksPerDay + 500, 'the two add, and neither replaced the other');
+  assert.equal(next.allowanceRemaining, PLAN_LIMITS.free.creditsPerDay, 'and the allowance returns beside it');
+  assert.equal(next.creditsRemaining, PLAN_LIMITS.free.creditsPerDay + 500, 'the two add, and neither replaced the other');
 });
 
 test('a day boundary does NOT reset the month', () => {
@@ -115,22 +115,22 @@ test('a day boundary does NOT reset the month', () => {
   for (let d = 1; d <= 5; d++) l.spend(at(`2026-09-0${d}T12:00:00.000Z`), 40);
   const now = at('2026-09-06T00:00:01.000Z');
   const s = stateAt(l, now);
-  assert.equal(s.sparksUsedToday, 0, 'the day reset');
-  assert.equal(s.sparksUsedThisMonth, 200, 'the month did not');
+  assert.equal(s.creditsUsedToday, 0, 'the day reset');
+  assert.equal(s.creditsUsedThisMonth, 200, 'the month did not');
 });
 
 test('a month boundary resets the month too', () => {
   const l = ledger();
   for (let d = 1; d <= 5; d++) l.spend(at(`2026-09-0${d}T12:00:00.000Z`), 40);
   const s = stateAt(l, at('2026-10-01T00:00:01.000Z'));
-  assert.equal(s.sparksUsedThisMonth, 0, 'a new month starts empty');
-  assert.equal(s.sparksUsedToday, 0);
+  assert.equal(s.creditsUsedThisMonth, 0, 'a new month starts empty');
+  assert.equal(s.creditsUsedToday, 0);
 });
 
 test('month ends and leap days roll like any other boundary', () => {
   const l = ledger();
   l.spend(at('2026-01-31T23:00:00.000Z'), 50);
-  assert.equal(stateAt(l, at('2026-02-01T00:00:01.000Z')).sparksUsedToday, 0, '31 Jan to 1 Feb');
+  assert.equal(stateAt(l, at('2026-02-01T00:00:01.000Z')).creditsUsedToday, 0, '31 Jan to 1 Feb');
   const leap = ledger();
   leap.spend(at('2024-02-28T23:00:00.000Z'), 50);
   assert.equal(leap.today(at('2024-02-29T00:00:01.000Z')), 0, '28 Feb to 29 Feb in a leap year');
@@ -141,17 +141,17 @@ test('the monthly cap can bite before the daily one, and says so', () => {
   // Derived from the table, not typed: this spent "60 a day for 15 days = 900" against figures the
   // repricing moved. The PROPERTY is that a month can run out before a day does, which holds at any
   // numbers where the monthly allowance is less than a full month of daily ones.
-  const perDay = PLAN_LIMITS.free.sparksPerDay;
-  const perMonth = PLAN_LIMITS.free.sparksPerMonth;
+  const perDay = PLAN_LIMITS.free.creditsPerDay;
+  const perMonth = PLAN_LIMITS.free.creditsPerMonth;
   const days = Math.floor(perMonth / perDay);
   assert.ok(days >= 2 && days < 28, `free is ${perDay}/day and ${perMonth}/month — this test needs a month shorter than a month of days`);
 
   const l = ledger();
   for (let d = 1; d <= days; d++) l.spend(at(`2026-09-${String(d).padStart(2, '0')}T12:00:00.000Z`), perDay);
   const s = stateAt(l, at(`2026-09-${String(days + 1).padStart(2, '0')}T00:00:01.000Z`));
-  assert.equal(s.sparksUsedThisMonth, days * perDay);
+  assert.equal(s.creditsUsedThisMonth, days * perDay);
   assert.equal(s.allowanceRemaining, 0, 'the month is spent even though the day is fresh');
-  assert.equal(s.sparksUsedToday, 0, 'and the day genuinely is fresh — the two are reported separately');
+  assert.equal(s.creditsUsedToday, 0, 'and the day genuinely is fresh — the two are reported separately');
 });
 
 // --- the spend split -------------------------------------------------------------------------
@@ -176,17 +176,17 @@ test('exactly affordable is affordable, and a zero spend is free', () => {
 test('every plan reports the table it is limited by, not a copy of it', () => {
   for (const plan of Object.keys(PLAN_LIMITS)) {
     const s = Q.quotaState({ plan, spentToday: 0, spentThisMonth: 0, credits: 0, now: at('2026-09-14T12:00:00.000Z') });
-    assert.equal(s.sparksDaily, PLAN_LIMITS[plan].sparksPerDay, `${plan} daily`);
-    assert.equal(s.sparksMonthly, PLAN_LIMITS[plan].sparksPerMonth, `${plan} monthly`);
-    assert.equal(s.allowanceRemaining, Math.min(PLAN_LIMITS[plan].sparksPerDay, PLAN_LIMITS[plan].sparksPerMonth));
+    assert.equal(s.creditsDaily, PLAN_LIMITS[plan].creditsPerDay, `${plan} daily`);
+    assert.equal(s.creditsMonthly, PLAN_LIMITS[plan].creditsPerMonth, `${plan} monthly`);
+    assert.equal(s.allowanceRemaining, Math.min(PLAN_LIMITS[plan].creditsPerDay, PLAN_LIMITS[plan].creditsPerMonth));
   }
 });
 
 test('an overspent ledger clamps at zero rather than reporting a negative allowance', () => {
   const l = ledger();
-  l.spend(at('2026-09-14T12:00:00.000Z'), PLAN_LIMITS.free.sparksPerDay * 3);
+  l.spend(at('2026-09-14T12:00:00.000Z'), PLAN_LIMITS.free.creditsPerDay * 3);
   const s = stateAt(l, at('2026-09-14T13:00:00.000Z'));
   assert.equal(s.allowanceRemaining, 0);
-  assert.equal(s.sparksRemaining, 0);
-  assert.ok(s.sparksUsedToday > s.sparksDaily, 'the overspend is still reported honestly, not clamped away');
+  assert.equal(s.creditsRemaining, 0);
+  assert.ok(s.creditsUsedToday > s.creditsDaily, 'the overspend is still reported honestly, not clamped away');
 });

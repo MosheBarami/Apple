@@ -4,7 +4,9 @@
 //   node src/report.mjs
 import { readdirSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+import { classifyRecord } from './metrics.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = join(HERE, '..', 'results');
@@ -32,12 +34,19 @@ function loadAll() {
   return runs;
 }
 
+// A null score means the cell was never graded. `(null * 100).toFixed(1)` is "0.0", which is the
+// one thing it must never render as.
 function pct(n) {
-  return (n * 100).toFixed(1);
+  return typeof n === 'number' && Number.isFinite(n) ? (n * 100).toFixed(1) : '—';
 }
 
-function main() {
-  const runs = loadAll();
+/** How many of a run's records for this (model, category) actually produced a gradable answer. */
+function gradedOf(run, model, category) {
+  return (run.perTask ?? []).filter((t) => t?.model === model && (category == null || t?.category === category) && classifyRecord(t).graded).length;
+}
+
+/** Render the report as lines. Exported so the table can be tested without writing the doc. */
+export function renderReport(runs) {
   const categories = [...new Set(runs.flatMap((r) => r.perCategory.map((c) => c.category)))].sort();
 
   const lines = [];
@@ -53,12 +62,23 @@ function main() {
     lines.push(`|---|---|${categories.map(() => '---:').join('|')}|---:|`);
     for (const run of runs) {
       for (const model of run.runMeta.models ?? [...new Set(run.overall.map((o) => o.model))]) {
+        // Recomputed from perTask rather than read off the stored cell.
+        //
+        // A run file records what the runner believed at the time, and the runner used to write
+        // `score: 0` for any job whose transport died. baseline-20260830-200846.json is the
+        // extreme case sitting in this repository: all 168 of its jobs died on the same
+        // ReferenceError, and its stored block says clay 0, stone 0, coder 0 -- which this table
+        // faithfully published as three models failing every task they were never asked.
+        // `gradedOf` counts what was actually graded, so a cell with nothing behind it prints a
+        // dash. The stored score is still used wherever there IS something behind it.
         const cells = categories.map((cat) => {
           const hit = run.perCategory.find((c) => c.model === model && c.category === cat);
-          return hit ? pct(hit.score) : '—';
+          if (!hit) return '—';
+          return gradedOf(run, model, cat) === 0 ? '—' : pct(hit.score);
         });
         const overall = run.overall.find((o) => o.model === model);
-        lines.push(`| ${run.runMeta.tag} | ${model} | ${cells.join(' | ')} | ${overall ? pct(overall.score) : '—'} |`);
+        const overallCell = !overall ? '—' : gradedOf(run, model, null) === 0 ? '—' : pct(overall.score);
+        lines.push(`| ${run.runMeta.tag} | ${model} | ${cells.join(' | ')} | ${overallCell} |`);
       }
     }
     lines.push('');
@@ -66,16 +86,29 @@ function main() {
     lines.push('');
     for (const run of runs) {
       const errs = (run.perTask ?? []).filter((t) => !t.ok).length;
+      const ungraded = (run.perTask ?? []).filter((t) => !classifyRecord(t).graded).length;
+      const total = (run.perTask ?? []).length;
       lines.push(
         `- **${run.runMeta.tag}** — \`${run.file}\` · ${run.runMeta.startedAt ?? '?'} · ${run.runMeta.jobCount ?? '?'} jobs · ` +
-          `checker: ${run.runMeta.luauChecker ?? 'none'}${errs ? ` · ${errs} transport error(s)` : ''}`,
+          `checker: ${run.runMeta.luauChecker ?? 'none'}${errs ? ` · ${errs} transport error(s)` : ''}` +
+          (ungraded ? ` · **${ungraded}/${total} jobs produced no gradable answer** (a dash above means nothing was measured, not a zero)` : ''),
       );
     }
   }
   lines.push('');
-  mkdirSync(dirname(OUT_FILE), { recursive: true });
-  writeFileSync(OUT_FILE, lines.join('\n'));
-  console.log(`wrote ${OUT_FILE} (${runs.length} run(s), ${categories.length} categories)`);
+  return lines;
 }
 
-main();
+export { loadAll };
+
+function main() {
+  const runs = loadAll();
+  const lines = renderReport(runs);
+  mkdirSync(dirname(OUT_FILE), { recursive: true });
+  writeFileSync(OUT_FILE, lines.join('\n'));
+  console.log(`wrote ${OUT_FILE} (${runs.length} run(s))`);
+}
+
+// Guarded, so importing this module to test the table does not rewrite the repository's doc.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+if (isMain) main();

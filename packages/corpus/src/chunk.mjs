@@ -67,10 +67,30 @@ async function* walk(dir) {
 
 // ---------------------------------------------------------------- API reference (YAML)
 
+/**
+ * A creator-docs YAML type, as it will appear in the API reference the model quotes back as Luau.
+ *
+ * `t.name ?? String(t)` sent a type object the schema does not describe through Object's default
+ * stringification, so an unrecognised shape landed in the reference as `Property Weird: [object
+ * Object]` — a confident-looking type name for something nobody could read. The function already
+ * had an `unknown` path for null and undefined; it simply did not use it here.
+ *
+ * Latent rather than live: data/chunks.jsonl contains zero occurrences of "[object Object]", so
+ * nothing shipped is affected and today's YAML uses strings and `{name}`. It is one schema change
+ * away, and a wrong signature in this corpus is not a wrong document — it is a wrong API handed to
+ * something with no way to check it.
+ *
+ * Only the garbage outcome changes. Arrays still stringify (a union renders as its members), a
+ * named type is still its name, and a primitive is still itself.
+ */
 function typeStr(t) {
   if (t == null) return 'unknown';
   if (typeof t === 'string') return t;
-  if (typeof t === 'object') return t.name ?? String(t);
+  if (typeof t === 'object') {
+    if (typeof t.name === 'string' && t.name) return t.name;
+    const s = String(t);
+    return s === '[object Object]' ? 'unknown' : s;
+  }
   return String(t);
 }
 

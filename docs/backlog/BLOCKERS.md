@@ -78,7 +78,7 @@ with the zero-recurring-cost decision of 2026-09-14.
 | SOC2 readiness | An external audit costing five figures and months of process — not an engineering task. |
 
 **To unblock:** say which of these you actually want. If billing returns, the site copy must change
-before anyone is charged, and `PLAN_LIMITS.free` (60 Sparks/day per signup, no cap on signups) needs
+before anyone is charged, and `PLAN_LIMITS.free` (60 Credits/day per signup, no cap on signups) needs
 a paywall behind it.
 
 ---

@@ -24,10 +24,18 @@
 //     SIGNED_OUT, which catches a token expiry and a session replaced by a different account as
 //     well as the button.
 
+import { MESSAGE_MAX_CHARS } from '@golem/shared';
+
 const PREFIX = 'apple.draft.';
 
-/** The composer's own cap. A draft longer than a message could ever be is not a draft. */
-export const DRAFT_MAX = 8000;
+/**
+ * The composer's own cap. A draft longer than a message could ever be is not a draft.
+ *
+ * Taken from the shared protocol constant rather than restated: the server slices every incoming
+ * message to exactly this many characters, and a draft store with its own copy of the figure is a
+ * second source of truth that can silently drift past what the server will accept.
+ */
+export const DRAFT_MAX = MESSAGE_MAX_CHARS;
 
 const keyFor = (projectId: string) => `${PREFIX}${projectId}`;
 
