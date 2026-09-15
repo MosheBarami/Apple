@@ -209,7 +209,7 @@ test('the chip exists only when there is a selection to refer to', () => {
  * the chip still reaches them.
  */
 function insertSelectionSource() {
-  const from = COMPOSER.indexOf('const insertPhrase');
+  const from = COMPOSER.indexOf('const applyInsertion');
   const to = COMPOSER.indexOf('const insertRef', from);
   assert.ok(from !== -1 && to > from, 'the insertion handler was not found — this test checks nothing');
   return COMPOSER.slice(from, to);

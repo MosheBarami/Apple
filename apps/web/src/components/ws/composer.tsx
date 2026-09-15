@@ -41,8 +41,10 @@ import {
 import { matchesShortcut } from '../../lib/shortcuts';
 import { sendBinding, sendHint } from '../../lib/send-key';
 import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
-import { insertAtCursor, selectionChipLabel, selectionReference } from '../../lib/selection-reference';
+import { insertAtCursor, selectionChipLabel, selectionReference, type Insertion } from '../../lib/selection-reference';
 import { insertableTemplates } from '../../lib/project-templates';
+import { applyMention, matchMentions, mentionQuery } from '../../lib/mentions';
+import { fetchProjectFiles } from '../../lib/api';
 import {
   TYPING_IDLE_MS,
   initialPresence,
@@ -201,19 +203,23 @@ export function Composer({
   //   "insert at the caret, repair the spacing, put the caret after what was inserted" would
   //   disagree about at least one of the three, and the disagreement is invisible until somebody
   //   loses a sentence. ]]
+  const applyInsertion = (next: Insertion) => {
+    setText(next.text.slice(0, MESSAGE_MAX_CHARS));
+    setCaret(next.caret);
+    // Focus and caret are restored after React has painted the new value, or the browser puts the
+    // caret back at the end and the person loses their place mid-sentence.
+    requestAnimationFrame(() => {
+      box.current?.focus();
+      box.current?.setSelectionRange(next.caret, next.caret);
+    });
+  };
+
   const insertPhrase = (phrase: string) => {
     if (!phrase) return;
     const el = box.current;
     const start = el?.selectionStart ?? text.length;
     const end = el?.selectionEnd ?? start;
-    const next = insertAtCursor(text, phrase, start, end);
-    setText(next.text.slice(0, MESSAGE_MAX_CHARS));
-    // Focus and caret are restored after React has painted the new value, or the browser puts the
-    // caret back at the end and the person loses their place mid-sentence.
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(next.caret, next.caret);
-    });
+    applyInsertion(insertAtCursor(text, phrase, start, end));
   };
 
   // A REF, NOT A DEPENDENCY. `insertPhrase` closes over `text`, so listing it here would re-run the
@@ -373,6 +379,63 @@ export function Composer({
     addFiles(Array.from(e.dataTransfer?.files ?? []));
   };
 
+  //[[ @ — NAMING ONE OF THE PROJECT'S OWN FILES.
+  //
+  //   The rules are in lib/mentions.ts so they can be driven without a browser; this is the state
+  //   the box needs to show them.
+  //
+  //   `mentionOff` exists because the token is DERIVED from the text and the caret, so there is no
+  //   "closed" to store: dismissing the picker with Escape would be undone by the next render,
+  //   which would find the same `@pla` still under the caret and open it again. The flag is
+  //   cleared the moment the token changes, so Escape dismisses THIS mention and does not turn the
+  //   feature off for the rest of the message.
+  //
+  //   The listing is fetched once per project and kept in a ref: a request per keystroke in the
+  //   most-used control in the product, for a list that changes when the agent writes a file, is
+  //   not a price worth paying for freshness measured in seconds. ]]
+  const [caret, setCaret] = useState(0);
+  const [mentionPick, setMentionPick] = useState(0);
+  const [mentionOff, setMentionOff] = useState(false);
+  const [paths, setPaths] = useState<string[] | null>(null);
+  const asked = useRef('');
+
+  const token = projectId && !mentionOff ? mentionQuery(text, caret) : null;
+  const mentionHits = token && paths ? matchMentions(paths, token.query) : [];
+
+  useEffect(() => {
+    // Only once a mention is actually being typed. Fetching the file list on mount would put a
+    // request behind every workspace open for a feature most messages never reach for.
+    if (!token || !projectId || asked.current === projectId) return;
+    asked.current = projectId;
+    void fetchProjectFiles(projectId)
+      .then((res) => setPaths(res.files.map((f) => f.path)))
+      // A listing that did not arrive leaves the picker closed and the '@' as an ordinary
+      // character. It must never become an empty picker, which reads as "this project has no
+      // files" — an answer nobody computed.
+      .catch(() => {
+        asked.current = '';
+        setPaths(null);
+      });
+  }, [token, projectId]);
+
+  // A new token is a new decision. Without this, Escape on one mention would suppress every
+  // mention for the rest of the message.
+  useEffect(() => {
+    setMentionOff(false);
+    setMentionPick(0);
+  }, [token?.at, token?.query]);
+
+  const pickMention = (path: string) => {
+    // THROUGH THE SAME TAIL as every other insertion. A second copy of "set the text, clamp it,
+    // put the caret back after a paint" is a second place to get the caret wrong, and the symptom
+    // — the cursor jumping to the end of the box — is the thing this arrangement exists to stop.
+    if (!path || !token) return;
+    applyInsertion(applyMention(text, token, path));
+  };
+
+  /** Where the caret is now, after any event that can move it. Read from the element, never guessed. */
+  const trackCaret = () => setCaret(box.current?.selectionStart ?? 0);
+
   const blocked = blockingReason(staged);
 
   const submit = (e?: FormEvent) => {
@@ -399,6 +462,33 @@ export function Composer({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    //[[ THE PICKER CLAIMS THE KEY FIRST.
+    //
+    //   Before the send binding, and the order is the whole of it: a send chord that fires while
+    //   the file picker is open sends a message with `@pla` in the middle of it and leaves the
+    //   picker standing over the empty box. Arrow keys and Escape are claimed on the same terms —
+    //   an ArrowDown that moved the caret instead of the highlight makes the list unusable
+    //   without a mouse. ]]
+    if (mentionHits.length) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const step = e.key === 'ArrowDown' ? 1 : -1;
+        // Wraps, like the search panel's listbox: a list that stops at the end makes the last item
+        // cost a full traversal to reach from the first.
+        setMentionPick((i) => (i + step + mentionHits.length) % mentionHits.length);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionOff(true);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        pickMention(mentionHits[mentionPick] ?? mentionHits[0] ?? '');
+        return;
+      }
+    }
     // THROUGH THE SHARED MATCHER, never a hand-rolled key check. A chord matched by hand in one
     // component is exactly what lib/shortcuts.ts exists to prevent, and it survived here — in the
     // most-used control in the product — long enough for the help text and the behaviour to
@@ -441,15 +531,57 @@ export function Composer({
           // truncated or dropped, and the box must always hold exactly what will be sent.
           onChange={(e) => {
             setText(e.target.value.slice(0, MESSAGE_MAX_CHARS));
+            // The caret comes off the ELEMENT, after the browser has moved it. Deriving it from
+            // the text length would put a mention picker over the end of the box whenever somebody
+            // edits the middle of a sentence.
+            setCaret(e.target.selectionStart ?? 0);
             typed();
           }}
+          // Every other way a caret can move: arrow keys, clicking into the text, a selection made
+          // with the mouse. Without these the picker opens from a position that is one gesture out
+          // of date.
+          onKeyUp={trackCaret}
+          onClick={trackCaret}
+          onSelect={trackCaret}
           onKeyDown={onKeyDown}
+          role={mentionHits.length ? 'combobox' : undefined}
+          aria-expanded={mentionHits.length ? true : undefined}
+          aria-controls={mentionHits.length ? 'gx-mention-list' : undefined}
+          aria-activedescendant={mentionHits.length ? `gx-mention-${mentionPick}` : undefined}
           rows={1}
           maxLength={MESSAGE_MAX_CHARS}
           placeholder={placeholder ?? PLACEHOLDER}
           disabled={disabled}
           data-tour="composer"
         />
+
+        {/* ---------------------------------------------- @ mentions ----
+            The project's own files, offered from the caret. A real listbox driven from the
+            textarea — the same arrangement search-panel.tsx uses — so the whole thing is reachable
+            from the keyboard: the input keeps focus and names the highlighted option through
+            aria-activedescendant, rather than moving focus into a menu the caret has left. */}
+        {mentionHits.length > 0 && (
+          <ul className="gx-mention" id="gx-mention-list" role="listbox" aria-label="Project files">
+            {mentionHits.map((path, i) => (
+              <li
+                key={path}
+                id={`gx-mention-${i}`}
+                role="option"
+                aria-selected={i === mentionPick}
+                className={`gx-mention__row${i === mentionPick ? ' is-on' : ''}`}
+                // onMouseDown, not onClick: a click blurs the textarea first, and the blur would
+                // close the picker out from under the pointer before the click ever landed.
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pickMention(path);
+                }}
+                onMouseEnter={() => setMentionPick(i)}
+              >
+                {path}
+              </li>
+            ))}
+          </ul>
+        )}
 
         {showCount && (
           /* Polite, never assertive: a character count that interrupted a screen reader mid-word

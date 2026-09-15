@@ -5747,3 +5747,40 @@
   font-size: 0.74rem;
   line-height: 1.4;
 }
+
+/* ------------------------------------------------------------------ @ mentions --
+   The project's own files, offered from the caret.
+
+   INSIDE THE COMPOSER, not floating over the conversation. A popover positioned against the
+   caret would have to measure a textarea's glyph metrics to know where the caret IS, and every
+   implementation of that is wrong at some zoom level. A list pinned under the text is always in
+   the right place and never covers the message being written. */
+.gx-mention {
+  display: flex;
+  flex-direction: column;
+  max-block-size: 11rem;
+  margin: 0;
+  padding: 0.2rem 0.5rem 0.3rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.gx-mention__row {
+  padding: 0.28rem 0.45rem;
+  border-radius: 7px;
+  color: var(--gx-ink-2);
+  font-size: 0.79rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* One highlight for both the keyboard and the pointer: hovering MOVES the selection rather than
+   painting a second one, so there is never a row that looks chosen and an Enter that picks a
+   different one. */
+.gx-mention__row.is-on {
+  background: var(--gx-line);
+  color: var(--gx-ink);
+}

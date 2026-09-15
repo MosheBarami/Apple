@@ -124,12 +124,20 @@ test('bare Enter is NOT in the global shortcut map', () => {
 test('the composer matches through the SHARED matcher, not a hand-rolled key check', () => {
   // This is the regression. A hand-matched chord in one component is exactly what lib/shortcuts.ts
   // exists to prevent, and it survived here, in the most-used control in the product.
+  //
+  // THE BAN IS ON HAND-MATCHING THE SEND, not on the word Enter. The @-mention picker claims
+  // Enter for itself while it is open — that is a different key doing a different job, and it is
+  // guarded by `mentionHits.length` so it can only fire when a list is on screen. So the branch
+  // is cut out and the ban is applied to everything else, which is where the defect lived.
   const code = stripComments(COMPOSER);
   assert.match(code, /matchesShortcut\(e, sendKeyBinding\)/);
+  const guard = code.indexOf('if (mentionHits.length) {');
+  assert.ok(guard !== -1, 'the mention branch must stay guarded, or it claims Enter with no list open');
+  const withoutPicker = code.slice(0, guard) + code.slice(code.indexOf('matchesShortcut(e, sendKeyBinding)'));
   assert.equal(
-    /e\.key === 'Enter'/.test(code),
+    /e\.key === 'Enter'/.test(withoutPicker),
     false,
-    'the composer must not hand-match Enter — that is how the help and the behaviour diverged',
+    'the composer must not hand-match Enter to send — that is how the help and the behaviour diverged',
   );
 });
 

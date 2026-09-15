@@ -98,6 +98,10 @@ test('all three insertions go through the one function', () => {
   // into the sentence being typed.
   assert.match(CODE, /insertRef\.current = insertPhrase/);
   assert.match(CODE, /if \(seed\) insertRef\.current\(seed\)/);
-  // And nothing else in the file rebuilds the insertion by hand.
-  assert.equal(/setText\(next\.text/.test(CODE.replace(/const insertPhrase[\s\S]*?\n  \};/, '')), false);
+  // And nothing else in the file rebuilds the insertion by hand. The @-mention picker inserts
+  // too, and it hands its result to the same tail rather than writing a second copy of "set the
+  // text, clamp it, put the caret back after a paint".
+  assert.equal([...CODE.matchAll(/setText\(next\.text/g)].length, 1, 'the insertion tail is written once');
+  assert.match(CODE, /applyInsertion\(insertAtCursor\(/);
+  assert.match(CODE, /applyInsertion\(applyMention\(/);
 });
