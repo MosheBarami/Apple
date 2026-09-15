@@ -5293,6 +5293,14 @@ textarea {
   font-size: 0.86rem;
 }
 
+/* This row is where somebody decides what a key may do, so the sentence is the decision and the
+   `chat:write` beside it is only the name the API will use for it. Half a step heavier than the
+   form text around it — the same 500 the invoice number carries — so a column of six scopes reads
+   as six choices rather than twelve fragments, and the muted token stays the footnote it is. */
+.ak__scope-title {
+  font-weight: 500;
+}
+
 .ak__problem {
   margin: 0;
   color: var(--bad);
@@ -5667,6 +5675,26 @@ samp {
   gap: 0.5rem;
   align-items: baseline;
   color: var(--muted);
+}
+
+/* The description is the answer to "what was I charged for", so it wraps rather than being cut
+   off: this ledger is opened on the day somebody disputes a line, and half a description is the
+   half that does not settle it. The track above is minmax(0, 1fr) so it may shrink to nothing,
+   but a grid item still refuses to go below its own longest word — and a Stripe description
+   carries unbroken ids, which without this push the amount out of its column and off the row. */
+.invoice-detail__desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A multiplier, printed only on the lines that really have one. Quieter than the description it
+   modifies, and quieter still than the amount, so a column of lines reads description → amount
+   and the ×n stays out of the way of both. Tabular so ×2 and ×12 share a right edge, and
+   unbreakable so the × never ends a line with its count on the next one. */
+.invoice-detail__qty {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .invoice-detail__amount {
