@@ -136,6 +136,20 @@ correct.
 **The rule:** **put verification worktrees OUTSIDE the repository.** `git worktree add /tmp/verify-x`
 or a sibling directory; never a path under the workspace root. A worktree inside the repo shares the
 workspace root, and pnpm's notion of "the workspace" is ancestral, not configured.
+
+**MEASURED, not reasoned.** The prescription was written from the mechanism and then tested against
+it, because a fix derived from a correct diagnosis can still be wrong:
+
+    git worktree add --detach /tmp/g90-verify HEAD
+    cd /tmp/g90-verify && pnpm install --frozen-lockfile     # 5.9s, 12 packages
+
+    main tree BEFORE   apps/worker/node_modules/@golem/shared -> ../../../../packages/shared
+    main tree AFTER    apps/worker/node_modules/@golem/shared -> ../../../../packages/shared
+    esbuild in main    0.25.12, resolves
+
+Zero effect on the checkout. `/tmp` has no `pnpm-workspace.yaml` above it, so the install resolves
+against the worktree's own root and never reaches the shared tree. The variable is the PATH, not the
+worktree — which means the technique does not have to be abandoned, only relocated.
 **The repair is not obvious and cost three attempts:** `pnpm install --frozen-lockfile` reports
 "Already up to date" and changes nothing, because pnpm's stored state records the bad links as
 correct. Deleting the symlinks and running `pnpm install --force` ALSO reports "Already up to date"
