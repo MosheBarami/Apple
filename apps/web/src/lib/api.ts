@@ -129,8 +129,19 @@ export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
 // exposes that roster for ADMIN diagnostics; if it is ever needed on screen it
 // belongs behind /admin, never in the normal product surface.
 
+/**
+ * The transcript — asked as a MEMBER, not as the owner.
+ *
+ * This used to request /api/projects/:id/messages, which `withOwnedProject` gates owner-only. A
+ * collaborator opening a shared project therefore loaded an EMPTY conversation and saw only
+ * whatever arrived live over the socket afterwards: the whole history of the project they had just
+ * been invited into was a 404 the client rendered as "no messages". /api/shared/:id/messages
+ * proxies the same Durable Object read and gates on `read`, which the owner passes too — so there
+ * is no separate owner path to keep in step, and there is exactly one way the app reads a
+ * transcript.
+ */
 export const fetchMessages = (projectId: string, limit = 100) =>
-  request<{ messages: MessageDto[] }>(`/api/projects/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
+  request<{ messages: MessageDto[] }>(`/api/shared/${encodeURIComponent(projectId)}/messages?limit=${limit}`);
 
 export interface SearchHit {
   id: string;
@@ -404,8 +415,9 @@ export async function downloadMemoryExport(scope: MemoryScope, scopeId: string):
   URL.revokeObjectURL(url);
 }
 
+/** The history of builds, read the same way the transcript is — see fetchMessages. */
 export const fetchCheckpoints = (projectId: string) =>
-  request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
+  request<{ checkpoints: CheckpointMeta[] }>(`/api/shared/${encodeURIComponent(projectId)}/checkpoints`);
 
 export const createPairingCode = (projectId: string): Promise<PairingCodeDto> =>
   MOCK_MODE
