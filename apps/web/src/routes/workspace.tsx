@@ -26,8 +26,10 @@ import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
+import { MembersPanel } from '../components/ws/members-panel';
 import { InstructionsPanel } from '../components/ws/instructions-panel';
-import { ApiError, downloadExport, fetchPersonalisation, savePreferences, type SearchHit } from '../lib/api';
+import { ApiError, downloadExport, fetchPersonalisation, fetchProjectAccess, savePreferences, type SearchHit } from '../lib/api';
+import { ACCESS_LOADING, normaliseAccess } from '../lib/capabilities';
 import type { AssetSourcePolicy } from '@golem/shared';
 import { owesAnswer } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
@@ -68,9 +70,9 @@ const SUGGESTIONS = [
  * this build no longer recognises" the same state — which is precisely the distinction the
  * validation exists to keep.
  */
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members'] as const;
 
 export function WorkspacePage() {
   const params = useParams<{ id: string }>();
@@ -117,6 +119,39 @@ export function WorkspacePage() {
     queryFn: () => fetchProject(projectId),
     enabled: projectId.length > 0,
   });
+
+  //[[ WHO YOU ARE IN THIS PROJECT, asked of the server rather than assumed.
+  //
+  //   The member panel turns every control off unless this says 'ready', and `whyNot` tells the
+  //   difference between "still checking", "we could not check" and "your role cannot" — so the
+  //   one thing this must never do is hand it a state we made up. `normaliseAccess` drops a role
+  //   or capability this build does not know rather than passing it through; ACCESS_LOADING is
+  //   the honest answer while the request is out.
+  //
+  //   A FAILED CHECK IS NOT A PENDING ONE. Leaving it on ACCESS_LOADING after the request came
+  //   back an error would make the panel say "checking what you can do here…" forever about a
+  //   question that already failed — a failure to observe rendered as an observation in progress.
+  //   'unavailable' is the state that exists for it, and whyNot spells it "we could not check
+  //   your access — reload to try again", which is the sentence that tells the user what to do.
+  //
+  //   Fetched only when the drawer is open: a viewer who never opens it should not cost a request
+  //   on every workspace load, and nothing else on this route reads the answer yet. ]]
+  const accessQuery = useQuery({
+    queryKey: ['project-access', projectId],
+    queryFn: () => fetchProjectAccess(projectId),
+    enabled: projectId.length > 0 && drawer === 'members',
+    staleTime: 60_000,
+  });
+  const access = useMemo(() => {
+    if (accessQuery.data !== undefined) return normaliseAccess(accessQuery.data);
+    if (accessQuery.isError) {
+      return {
+        status: 'unavailable' as const,
+        detail: accessQuery.error instanceof Error ? accessQuery.error.message : 'unreachable',
+      };
+    }
+    return ACCESS_LOADING;
+  }, [accessQuery.data, accessQuery.isError, accessQuery.error]);
 
   const onServerError = useCallback(
     (code: string, message: string) => toast(message || `Something went wrong (${code})`, 'error'),
@@ -320,6 +355,13 @@ export function WorkspacePage() {
       section: 'Project',
       keywords: ['memory', 'context', 'knows'],
       run: () => setDrawer('memory'),
+    },
+    {
+      id: 'ws-members',
+      title: 'Who is in this project',
+      section: 'Project',
+      keywords: ['members', 'invite', 'share', 'collaborators', 'access', 'permissions'],
+      run: () => setDrawer('members'),
     },
     {
       id: 'ws-credits',
@@ -596,6 +638,19 @@ export function WorkspacePage() {
               {studioStatus === 'disconnected' ? 'Studio disconnected' : 'Connect Studio'}
             </button>
           )}
+
+          {/* Sharing and membership. An icon button beside the other two drawer openers rather
+              than a named control: it is opened rarely, by one person on the project, and giving
+              it the weight of Roadmap would put administration in front of the work. */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('members')}
+            aria-label="Who is in this project"
+            title="Members and sharing"
+          >
+            <Icon d={PATH.people} />
+          </button>
 
           <button
             type="button"
@@ -897,6 +952,15 @@ export function WorkspacePage() {
             in the scoped store rather than in this project's Durable Object. Mounted on the same
             condition and for the same reason — closing the drawer abandons an unsaved edit. */}
         {drawer === 'memory' && <InstructionsPanel projectId={projectId} />}
+      </Drawer>
+
+      {/* Who is in this project. The worker has had the whole surface — roster, invite, role
+          change, pause, reactivate, remove, each gated and each audited — since before this
+          drawer existed, and nothing in the app called any of it: the only way to add a
+          collaborator was curl. Mounted only while open, like the others, because the roster
+          is a request most people never need to make. */}
+      <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who is in this project">
+        {drawer === 'members' && <MembersPanel projectId={projectId} access={access} />}
       </Drawer>
 
       {showPairing && (

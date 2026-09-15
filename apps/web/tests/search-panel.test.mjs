@@ -287,5 +287,20 @@ test('the drawer you left open is the drawer you come back to', () => {
 test('“closed” and “a name this build does not know” are different stored states', () => {
   // Storing the empty string for closed would collapse them, and the validation that makes
   // restoring safe would have nothing left to distinguish.
-  assert.match(WSCODE, /const DRAWERS = \['none', 'checkpoints', 'memory', 'credits', 'search'\] as const/);
+  //
+  // Asserted as a PROPERTY rather than as a copy of the literal. This pinned the exact five-name
+  // array, so adding a sixth drawer failed here — and the natural way to make a test like that
+  // pass again is to paste the new list in, which proves nothing about the two states this is
+  // actually guarding. What matters is that 'none' is the stored name for closed and that every
+  // drawer the route renders is a name the validator will accept back.
+  const list = WSCODE.match(/const DRAWERS = \[([^\]]*)\] as const/);
+  assert.ok(list, 'DRAWERS is no longer a literal array the restore path can validate against');
+  const names = [...list[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.equal(names[0], 'none', "closed is stored as 'none', not as the empty string");
+  assert.equal(names.includes(''), false, 'the empty string would collapse closed into unknown');
+
+  const rendered = new Set([...WSCODE.matchAll(/drawer === '([^']+)'/g)].map((m) => m[1]));
+  for (const name of rendered) {
+    assert.ok(names.includes(name), `the route renders a '${name}' drawer that DRAWERS will reject on restore`);
+  }
 });

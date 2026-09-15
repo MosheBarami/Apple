@@ -4371,3 +4371,160 @@
 .tour-skip:hover {
   color: var(--gx-ink);
 }
+
+/* ------------------------------------------------------------------- members --- */
+/*
+   The member panel had no styles at all. It was written, reviewed and never mounted, so
+   nothing ever drew it — mounting it against this stylesheet as it stood would have
+   shipped an unstyled column of text, which is the half-built version of the feature.
+
+   It borrows `cs__input`, `cs__select` and `cs__note` from the search panel above rather
+   than restating them: both live in the same drawer, at the same width, and two drawers
+   whose inputs differ by two pixels is how a design system comes apart. What is new here
+   is only what a ROSTER needs — a row with a person on the left and their controls on the
+   right, and a way to show a dead row as dead without hiding it.
+*/
+
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mb__role {
+  margin: 0;
+  color: var(--gx-ink-2);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* Why a control is off. Warm rather than red: it is a fact about your role, not an error. */
+.mb__why {
+  color: var(--gx-ink-3);
+}
+
+.mb__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.mb__controls .cs__input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.mb__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mb__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.mb__row:last-child {
+  border-bottom: 0;
+}
+
+/* Suspended, removed or expired. Dimmed, never hidden: an admin looking for the person
+   they paused must find them, and a row that vanishes reads as a row that was deleted. */
+.mb__row.is-inactive .mb__handle,
+.mb__row.is-inactive .mb__sub {
+  color: var(--gx-ink-3);
+}
+
+.mb__who {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mb__handle {
+  color: var(--gx-ink);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.mb__sub {
+  color: var(--gx-ink-3);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* The sentence that says what a non-active status MEANS — "cannot open the project until
+   reactivated" rather than the bare word "suspended". */
+.mb__status {
+  margin-top: 2px;
+  color: var(--gx-warn);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.mb__owner {
+  align-self: center;
+  padding: 3px 8px;
+  border: 1px solid var(--gx-line-2);
+  border-radius: 999px;
+  color: var(--gx-ink-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mb__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mb__role-label {
+  display: inline-flex;
+}
+
+/* Destructive, and coloured as such only on the hover that precedes the click. A row of
+   three permanently red buttons makes the list look like a warning. */
+.mb__remove:hover:not(:disabled) {
+  color: var(--gx-bad);
+}
+
+.mb__invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gx-line-2);
+}
+
+.mb__invite-head {
+  margin: 0;
+  color: var(--gx-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.mb__invite-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mb__invite-row .field {
+  flex: 1 1 8rem;
+  min-width: 0;
+}

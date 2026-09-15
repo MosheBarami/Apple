@@ -251,7 +251,10 @@ export function MembersPanel({ projectId, access }: { projectId: string; access:
                 ) : (
                   <div className="mb__actions">
                     <label className="mb__role-label">
-                      <span className="sr-only">Role for {m.handle}</span>
+                      {/* `visually-hidden` is this app's utility (styles.css). The panel was
+                          written against `sr-only`, which no stylesheet here defines, so the label
+                          rendered as visible body text beside every row. */}
+                      <span className="visually-hidden">Role for {m.handle}</span>
                       <select
                         className="cs__select"
                         value={GRANTABLE_ROLES.includes(m.role as GrantableRole) ? (m.role as GrantableRole) : ''}
