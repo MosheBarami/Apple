@@ -222,7 +222,7 @@ test('the account export is a downloadable file that carries its own digest', as
   assert.match(res.headers.get('Content-Type') ?? '', /application\/json/);
   const body = await res.text();
   const doc = JSON.parse(body);
-  assert.equal(doc.format, 'golem.account-export.v1');
+  assert.equal(doc.format, 'apple.account-export.v1');
   assert.equal(doc.user.id, ALICE);
   assert.ok(doc.exportedAt);
   // The digest is over the data, and it is in the file, because a header only exists during the

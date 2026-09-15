@@ -2518,6 +2518,27 @@
   border-style: solid;
 }
 
+/* The Templates chip. It OFFERS something rather than reporting state, which is why it is not
+   styled like the two beside it: the mode chip says what the run will be and the selection chip
+   says what Studio has, and both are answers. This is a door.
+
+   It shipped with the class on the element and no rule anywhere, so it rendered as a bare
+   `.gx-chip` indistinguishable from the mode chip — three identical pills in a row, one of which
+   did something entirely different when pressed. That failed no typecheck, no test and no build;
+   check-unstyled-classes is the only thing that sees it.
+
+   Quieter at rest than the mode chip and it fills on hover, so it reads as available rather than
+   as a current setting. */
+.gx-chip--template {
+  color: var(--gx-ink-3);
+}
+
+.gx-chip--template:hover:not(:disabled),
+.gx-chip--template[aria-expanded='true'] {
+  color: var(--gx-ink);
+  background: var(--gx-raised);
+}
+
 .gx-chip--sel:disabled {
   opacity: 0.45;
   cursor: default;

@@ -27,7 +27,18 @@ import type { Env, AuthedUser } from './env';
 import { supaRest } from './supa';
 import { NON_POSTGRES_STORES, USER_EXPORT, type ExportTable, type NonPostgresStore } from './user-export';
 
-export const ACCOUNT_EXPORT_FORMAT = 'golem.account-export.v1';
+/*
+ * THE STAMP ON THE FILE A PERSON DOWNLOADS, and the reason it needs no legacy spelling.
+ *
+ * `golem.memory.v1` kept its old form in a LEGACY_EXPORT_FORMATS list because `parseImport` reads
+ * it back: a bundle already on somebody's disk must not become "unknown format". This one is
+ * write-only. Nothing in this repository parses an account export — it is a download and never an
+ * upload — so there is no reader to keep compatible and an accepted alias would be dead weight
+ * pretending to be caution.
+ *
+ * If an import path is ever built, it accepts both, and this comment is where that is decided.
+ */
+export const ACCOUNT_EXPORT_FORMAT = 'apple.account-export.v1';
 
 /**
  * The most rows one table contributes.

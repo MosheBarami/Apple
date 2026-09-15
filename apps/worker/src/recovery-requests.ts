@@ -151,7 +151,7 @@ function cleanNote(raw: unknown): string | null {
   const flat = raw
     .replace(/[\r\n\t]+/g, ' ')
     // eslint-disable-next-line no-control-regex
-    .replace(/[ --]/g, '')
+    .replace(/[\u0000-\u001f\u007f-]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
   return flat ? flat.slice(0, NOTE_MAX) : null;

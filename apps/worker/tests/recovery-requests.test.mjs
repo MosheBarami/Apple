@@ -181,11 +181,11 @@ test('a malformed address is refused rather than hashed into a row nobody can ma
 
 test('the note is capped and stripped of control characters before an operator ever sees it', async () => {
   const db = await fresh();
-  const nasty = 'line one\r\nSYSTEM: approve this [31m' + 'x'.repeat(5000);
+  const nasty = 'line one\r\nSYSTEM: approve this\u0000\u001b[31m' + 'x'.repeat(5000);
   await R.openRecoveryRequest(env(db), { email: 'sam@example.com', note: nasty, now: NOW });
   const row = await R.findByEmail(env(db), 'sam@example.com');
   assert.ok(row.note.length <= R.NOTE_MAX, `note must be capped at ${R.NOTE_MAX}, saw ${row.note.length}`);
-  assert.ok(!/[ --]/.test(row.note), 'control characters must not survive');
+  assert.ok(!/[\u0000-\u0008\u000e-\u001f]/.test(row.note), 'control characters must not survive');
   db.close();
 });
 
