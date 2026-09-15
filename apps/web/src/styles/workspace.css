@@ -2904,9 +2904,34 @@
     display: grid;
   }
 
-  /* Specificity has to beat .gx-icon-btn, which is declared later. */
+  /* Specificity has to beat .gx-icon-btn, which is declared later.
+
+     FIXED, NOT A ROW OF ITS OWN. The button is a child of the shell's <main>, which is a grid
+     with a single 1fr track: left in flow it would either add a second bar above the workspace
+     topbar or displace whatever the route draws first. Taken out of flow it lands in the
+     workspace topbar's reserved leading space — so that bar looks exactly as it always did —
+     while the routes that scroll themselves clear it with padding below. */
   .gx-icon-btn.gx-rail-toggle {
     display: grid;
+    position: fixed;
+    top: 0.62rem;
+    inset-inline-start: 0.72rem;
+    /* Under the rail (52) and its scrim: once the rail is open this button is behind it, which
+       is right — the rail has its own close button and the scrim is the other way out. */
+    z-index: 40;
+    background: var(--gx-raise);
+  }
+
+  /* The space the fixed button occupies, given back to the layout. Without this the project
+     title starts underneath it. 60px min-height on .gx-top already clears it vertically. */
+  .gx-ws .gx-top {
+    padding-inline-start: 3.15rem;
+  }
+
+  /* The plain routes scroll their own content, so a heading at the top of the scroller would
+     pass under the fixed button on the way up. */
+  .gx-main > .page {
+    padding-block-start: 3.4rem;
   }
 
   .gx-thread,

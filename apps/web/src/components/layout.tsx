@@ -278,7 +278,7 @@ function Shell() {
   const { session, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, newProject } = useShell();
+  const { railOpen, openRail, closeRail, railCollapsed, toggleRailCollapsed, newProject } = useShell();
   const { theme, setTheme } = useTheme();
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Remounting the tour is how "Show me around" restarts it: the component reads its progress on
@@ -374,6 +374,22 @@ function Shell() {
       )}
 
       <main id="main-content" className="gx-main">
+        {/* THE ONLY WAY BACK TO THE RAIL ON A PHONE, SO IT CANNOT BELONG TO ONE ROUTE.
+            Below 861px the rail is off-canvas and only `.is-open` returns it. This button used
+            to live in the workspace topbar, which meant the dashboard, usage, settings, roadmap
+            and admin had no rail at phone width — and therefore no account menu and no way to
+            sign out. Nothing about those screens looked broken, which is why it lasted.
+            It is `position: fixed` rather than a row of its own: a shell-owned header bar would
+            stack a second bar above the workspace topbar, and this way the workspace looks
+            exactly as it did while every other route gains the control. */}
+        <button
+          type="button"
+          className="gx-icon-btn gx-rail-toggle"
+          onClick={openRail}
+          aria-label="Open navigation"
+        >
+          <Icon d={PATH.menu} />
+        </button>
         <Outlet />
       </main>
 

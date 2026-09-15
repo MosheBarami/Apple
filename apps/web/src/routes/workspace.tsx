@@ -12,7 +12,7 @@ import { PRODUCT_MODES, PRODUCT_MODE_TO_SPECIALIST, type ProductMode } from '@go
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
-import { useShell, useProvideCheckpoints } from '../lib/shell';
+import { useProvideCheckpoints } from '../lib/shell';
 import { CreditsPanel } from '../components/ws/credits-panel';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
@@ -84,7 +84,6 @@ export function WorkspacePage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id ?? '';
   const { toast } = useToast();
-  const { openRail } = useShell();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -628,14 +627,11 @@ export function WorkspacePage() {
     <div className="gx-ws">
       {/* ------------------------------------------------------- topbar -- */}
       <header className="gx-top">
-        <button
-          type="button"
-          className="gx-icon-btn gx-rail-toggle"
-          onClick={openRail}
-          aria-label="Open navigation"
-        >
-          <Icon d={PATH.menu} />
-        </button>
+        {/* The rail opener used to be here. It is now drawn by the shell (components/layout.tsx)
+            so that it exists on every route rather than only inside a conversation; at narrow
+            width it lands in this bar's reserved leading space, so the topbar is unchanged to
+            look at. Do not add a second one here — two buttons at the same coordinates is a
+            stacking-order question, not a cosmetic one. */}
 
         {/* Renamable in place: this is where you notice a bad name, so this is where fixing it
             belongs. Falls back to a plain heading until the project has loaded — an editable
