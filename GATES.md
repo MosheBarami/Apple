@@ -270,9 +270,11 @@ sha alone, because the break changes the probe while the thing probed lives else
 rbxai-04, who ran the probe independently and declined to write the evidence line on the grounds
 that the run which records a gate should be the one that proves it.
 
-- [ ] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
+- [x] G-SEC-1: Two tenants cannot read, write or plant rows in each other's data
     CHECK: node infra/supabase/tests/rls-isolation.mjs
     EXPECT: RLS ISOLATION HOLDS
+  FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-SEC-1; path=6765c31f4f12/53 entries; git-sha=f062caf; tree-clean=yes; deps-clean=yes; break-sha=f062caf; EXPECT=unmatched; output-sha256=a730b6e9f70f56bd4c4237cba644804455b531bdfb2622be2d24a21d1a7fd831; output-bytes=3227; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=1b24f3adc6d69e02e0b72e13; at=2026-09-15T05:22:52.967Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3c16f75; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=628fd251f578d90f96e9c0483e4144b7a304eaacc8cc79cc7048b324313058c0; output-bytes=3280; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=1b24f3adc6d69e02e0b72e13; at=2026-09-15T05:22:59.934Z
 
 NEEDS DOCKER, and says so rather than skipping. The test applies infra/supabase/migrations/*.sql
 in order to a real Postgres, so it proves the MIGRATIONS' policies — not the deployed database,
