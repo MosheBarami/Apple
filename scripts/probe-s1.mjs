@@ -69,7 +69,7 @@ const freeMatch = shared?.match(/free: \{ sparksPerDay: ([\d_]+), sparksPerMonth
 if (!freeMatch) {
   console.error('probe-s1: cannot read PLAN_LIMITS.free from packages/shared/src/index.ts');
   console.error('Clause 4 compares the PUBLISHED quota against that constant. With the constant unreadable there is');
-  console.error('nothing to compare against, and reporting the other three clauses as S1 PROVEN would be reporting');
+  console.error('nothing to compare against, and passing the other three clauses off as a proven station would be reporting');
   console.error('a station proven over a clause that was never checked.');
   process.exit(2);
 }
@@ -150,4 +150,15 @@ if (findings.length) {
   console.log(`S1 UNPROVEN — ${findings.length} finding(s)`);
   process.exit(1);
 }
+// THE SUCCESS TOKEN APPEARS EXACTLY ONCE IN THIS FILE, ON THE NEXT LINE, AND THAT IS LOAD-BEARING.
+//
+// It did not, until the first falsification of G-S1 caught it. The error branch above used to
+// explain itself by quoting the token, so a failing run PRINTED the gate's EXPECT string and
+// gate-check recorded EXPECT=matched on a run that exited 2. The gate was still red — a gate needs
+// a zero exit AND a match — but the token had stopped discriminating, and any later failure path
+// that exited 0 would have sailed straight through it.
+//
+// This is the sixth check in this repository found matching its own explanatory prose, and the
+// first I have written INTO an oracle rather than found in one. Note that even this comment may
+// not spell it: tests/probe-s1.test.mjs counts occurrences in the whole file and requires one.
 console.log('S1 PROVEN — all four clauses hold against the deployed origin');
