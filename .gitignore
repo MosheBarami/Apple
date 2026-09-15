@@ -186,3 +186,4 @@ handoff/
 # re-reading GitHub. It holds only what GitHub returned, never a verdict, and `--refresh` discards
 # it — a cached answer must never be the reason a repository stays in the library.
 .cache/
+.screens/

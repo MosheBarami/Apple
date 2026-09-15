@@ -88,7 +88,7 @@
     "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
     "ENVIRONMENT": "production",
     "AI_GATEWAY_ID": "golem",
-    "BUILD_SHA": "e66fac3"
+    "BUILD_SHA": "93eacbf"
   },
   "observability": {
     "enabled": true

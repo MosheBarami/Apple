@@ -1,0 +1,102 @@
+---
+import provenance from '../../public/assets/sections/PROVENANCE.json';
+
+/**
+ * The one original illustration a section is allowed.
+ *
+ * WHY A COMPONENT AND NOT FOUR <img> TAGS. Every one of these has to carry the same four things or
+ * it costs more than it gives: intrinsic width and height (or the section reflows when the file
+ * arrives, which is the jank a minimal page cannot afford), `loading` and `decoding` hints,
+ * `alt=""` with `aria-hidden` because the sentence beside it already says what it says, and a
+ * fixed aspect box so the reserved space is right before the bytes land. Four tags is four chances
+ * to forget one.
+ *
+ * THESE ARE OURS. Generated for this product, in the palette the stylesheet already defines, and
+ * recorded in public/assets/sections/PROVENANCE.json with the model, seed and prompt that made
+ * each one — so "where did this come from" has the same answer here as it does for every asset in
+ * the library the page is about.
+ *
+ * DECORATIVE BY CONSTRUCTION. Nothing here may carry information the text does not: a reader with
+ * images off, or a screen reader, must lose nothing. That is why `alt` is empty rather than a
+ * description — a description would be the page admitting the picture said something.
+ */
+interface Props {
+  /** Basename in public/assets/sections, without extension. */
+  src: string;
+  /** The intrinsic size of the file, read from its own header — not assumed. */
+  width?: number;
+  height?: number;
+}
+const { src, width = 1152, height = 864 } = Astro.props;
+
+/*
+ * THE RENDER'S OWN GROUND, PER FILE.
+ *
+ * On a dark page a cream rectangle reads as something pasted on. The fix is to put the figure on a
+ * plate of exactly its own studio ground and let the image multiply onto it, so the edge of the
+ * file is never visible as an edge — but the four grounds are NOT the same colour (#f6f4e7 down to
+ * #ece9e2, ten levels apart), so a single shared plate would seam under at least one of them.
+ *
+ * Read from the provenance record, which is where each one was written down after being measured
+ * off the file's own corner pixels. A number typed into a stylesheet beside four files that each
+ * have a different one is the drift this record exists to stop.
+ */
+const ground = provenance.files.find((f) => f.file === `${src}.webp`)?.ground;
+if (!ground) throw new Error(`no ground recorded for ${src}.webp — add it to assets/sections/PROVENANCE.json`);
+---
+
+<div class="ap-fig" aria-hidden="true" style={`--fig-ground: ${ground}`}>
+  <img
+    src={`/assets/sections/${src}.webp`}
+    alt=""
+    width={width}
+    height={height}
+    loading="lazy"
+    decoding="async"
+  />
+</div>
+
+<style>
+  .ap-fig {
+    /* The box exists before the image does. `aspect-ratio` with a width cap holds the exact space
+       the file will occupy, so nothing under it moves when it arrives. */
+    aspect-ratio: 4 / 3;
+    /* The track decides the width (see .ap-head); this fills it. `min(100%, …)` here was the other
+       half of the collapse — a percentage against a track that was itself sizing to this element. */
+    width: 100%;
+    justify-self: end;
+    align-self: start;
+    /* No border, no card, no shadow. The illustrations already sit on the page's own paper colour,
+       so a frame around them would draw a box that is not there in the artwork. */
+    margin: 0;
+  }
+
+  .ap-fig img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* The render's own ground is the page's paper. Blending it means the edge of the file is never
+       visible as a rectangle, at either theme's background. */
+    mix-blend-mode: multiply;
+  }
+
+  /* DARK: THE FIGURE GETS A PLATE OF ITS OWN GROUND.
+     multiply over a dark page would erase the artwork, and leaving the file's cream rectangle
+     sitting on navy reads as something pasted in from elsewhere. The plate is the same colour the
+     render already has, so multiply resolves to the artwork and nothing else, and what the reader
+     sees is one deliberate light panel rather than the edge of an image file. */
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .ap-fig {
+      background: var(--fig-ground);
+      border-radius: 0.9rem;
+      box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 8px 24px rgb(0 0 0 / 0.22);
+    }
+  }
+
+  :global(:root[data-theme='dark']) .ap-fig {
+    background: var(--fig-ground);
+    border-radius: 0.9rem;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 8px 24px rgb(0 0 0 / 0.22);
+  }
+</style>
