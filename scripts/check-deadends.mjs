@@ -202,7 +202,22 @@ function resolveSpecifier(fromRel, spec) {
 // Every file that imports each file. Built over ALL tracked sources including tests, because a
 // module imported only by a test is a different finding from one imported by nobody at all.
 const importers = new Map(tracked.map((f) => [f, new Set()]));
-const IMPORT_RE = /(?:^|\n)\s*(?:import|export)[\s\S]{0,400}?from\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+//[[ THE SPAN WAS `[\s\S]{0,400}` AND IT MADE A WIRED MODULE LOOK DEAD.
+//
+//   `index.ts` imports 53 names from './public-api', and that import block is 779 characters — so
+//   the 400-character cap stopped before `from`, the specifier was never captured, and the checker
+//   reported public-api.ts as "imported by nothing in the tree". It is imported on line 129. The
+//   checker was answering about ITS REGEX rather than about the codebase, which is the shape this
+//   repository keeps rediscovering: docs/FAILURES.md F-64, F-67, F-58 reading 3.
+//
+//   Two changes. The span is `[^;]` rather than `[\s\S]`, so it cannot run past a statement
+//   terminator into a LATER import and pair the wrong two halves — that is a strictly tighter
+//   bound than a character count, and it is about syntax rather than about length. And the count
+//   is 4000 rather than 400, which is far above any real import list while still refusing to scan
+//   a whole file.
+//
+//   Measured before: index.ts yielded 36 specifiers and './public-api' was not among them. ]]
+const IMPORT_RE = /(?:^|\n)\s*(?:import|export)[^;]{0,4000}?from\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 
 // Counted and REPORTED, because the graph's own completeness is not otherwise observable.
 //

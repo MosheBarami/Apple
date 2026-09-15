@@ -107,6 +107,14 @@ dead module with a 117-test suite reads as more thoroughly covered than most liv
 it would mean choosing between two implementations of the same routes on the strength of which one
 had tests, when the one with tests is the one nothing has ever executed.
 
+**Owner statement, 2026-09-15.** Removed by the session holding the integrator lane, under the
+owner's standing authority for this pass. Not removed to make a checker green — the disposition
+gate is satisfied by the disposition, and this entry would pass with the file still present. It is
+removed because a second, unexecuted implementation of the shared routes is a trap: the next person
+to change collaboration authorisation has two files to choose from, one of which has tests and no
+callers, and the tests will agree with whatever they write. Recoverable from git history; the
+commit that removes it names this entry.
+
 ## apps/worker/src/meshgen.ts — WIRE
 
 **Found:** imported by nothing in the tree. 2,138 lines, 75 exports, 51 passing tests.
