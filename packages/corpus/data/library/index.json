@@ -1,28 +1,24 @@
 {
- "generatedAt": "2026-09-15T15:17:12.559Z",
- "total": 474739,
- "freshlyHarvested": 23437,
+ "generatedAt": "2026-09-15T21:05:36.567Z",
+ "total": 474745,
+ "freshlyHarvested": 474745,
  "freshSources": [
+  "creator_store",
   "creator_store_audio",
+  "iconify",
   "game_icons",
   "opengameart",
   "cgbookcase",
   "kenney"
  ],
- "carriedForward": [
-  "creator_store",
-  "iconify"
- ],
+ "carriedForward": [],
  "neverHarvested": [
   "poly_haven",
   "sketchfab"
  ],
  "totalCoversMeasuredSourcesOnly": true,
- "usableWithoutUploadKnown": 13017,
- "usableWithoutUploadUnknownFor": [
-  "creator_store",
-  "iconify"
- ],
+ "usableWithoutUploadKnown": 115803,
+ "usableWithoutUploadUnknownFor": [],
  "perSource": {
   "creator_store": {
    "fetched": 102780,
@@ -41,9 +37,20 @@
    },
    "byLicence": {
     "ROBLOX-TOU": 102780
+   }
+  },
+  "creator_store_audio": {
+   "fetched": 13873,
+   "kept": 13023,
+   "droppedOnLicence": 0,
+   "duplicateIds": 850,
+   "usableWithoutUpload": 13023,
+   "byKind": {
+    "sfx": 13023
    },
-   "notRunThisRun": true,
-   "lastHarvestedAt": "2026-09-15T12:14:31.024Z"
+   "byLicence": {
+    "ROBLOX-TOU": 13023
+   }
   },
   "iconify": {
    "fetched": 348522,
@@ -61,20 +68,6 @@
     "Unlicense": 430,
     "CC0-1.0": 11728,
     "CC-BY-3.0": 4134
-   },
-   "notRunThisRun": true,
-   "lastHarvestedAt": "2026-09-15T12:14:31.024Z"
-  },
-  "creator_store_audio": {
-   "fetched": 13869,
-   "kept": 13017,
-   "droppedOnLicence": 0,
-   "duplicateIds": 852,
-   "byKind": {
-    "sfx": 13017
-   },
-   "byLicence": {
-    "ROBLOX-TOU": 13017
    }
   },
   "game_icons": {
