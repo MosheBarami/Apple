@@ -397,7 +397,28 @@ export function AdminPage() {
     );
   }
 
-  if (me.isError || me.data?.profile?.is_admin !== true) {
+  //[[ A CHECK THAT DID NOT COME BACK IS NOT A VERDICT ABOUT THE PERSON.
+  //
+  //   This branch used to be folded into the one below as `me.isError || …is_admin !== true`, so a
+  //   network blip, an expired session or a 500 from /api/me all told the reader "this area is for
+  //   Apple operators" — a claim about who they are, made by a page that never found out. Hiding
+  //   the panel is still right; offering one that will 403 is worse. Saying why, and offering to
+  //   ask again, is the part that was missing. ]]
+  if (me.isError) {
+    return (
+      <div className="page">
+        <div className="page-head">
+          <div>
+            <h1 className="page-title">Admin</h1>
+            <p className="page-sub">We could not check whether this account is an operator.</p>
+          </div>
+        </div>
+        <Failure error={me.error} onRetry={() => void me.refetch()} />
+      </div>
+    );
+  }
+
+  if (me.data?.profile?.is_admin !== true) {
     return (
       <div className="page">
         <div className="empty-state">

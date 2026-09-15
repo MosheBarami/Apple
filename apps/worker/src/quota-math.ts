@@ -27,6 +27,39 @@ export function monthKey(now: number): string {
 }
 
 /**
+ * The month before this one.
+ *
+ * Built by moving to the FIRST of the current month and then stepping back one day, rather than by
+ * `setUTCMonth(m - 1)`. On the 31st of March that call lands on 3 March — JavaScript rolls a date
+ * that does not exist forward — so a month-over-month comparison would have compared March against
+ * itself on exactly the days somebody is most likely to be looking at a bill.
+ */
+export function prevMonthKey(now: number): string {
+  const d = new Date(now);
+  d.setUTCDate(1);
+  d.setUTCDate(0); // the last day of the previous month
+  return d.toISOString().slice(0, 7);
+}
+
+/**
+ * Is a running month total trustworthy enough to show?
+ *
+ * ONLY IF WE WERE COUNTING BEFORE THAT MONTH BEGAN. The ledger is pruned at 35 days, so a month
+ * total assembled from its rows is truncated for most of the month and understates — silently, and
+ * with no way for the reader to know. The rollup that replaces it starts on the day it is first
+ * written, so a month already in progress at that moment is partial for good.
+ *
+ * `since` is a `YYYY-MM-DD` day key. No date, or an unreadable one, is NOT a licence to report: a
+ * failure to know when counting started must not render as a comparison.
+ */
+export function monthTotalComplete(since: string | null | undefined, month: string): boolean {
+  if (typeof since !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(since)) return false;
+  // String comparison is date comparison for this format, which is why the keys are shaped this way
+  // everywhere in this file.
+  return since <= `${month}-01`;
+}
+
+/**
  * The next UTC midnight after `now`.
  *
  * Exactly midnight returns the FOLLOWING midnight, not the current instant: at 00:00:00.000 the new

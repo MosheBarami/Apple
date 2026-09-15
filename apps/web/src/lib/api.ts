@@ -12,7 +12,7 @@ import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
 import { MOCK_MODE, mockAttribution, mockCounters, mockDiagnostics, mockMe, mockMemory, mockNotifications, mockSpend, mockUsageDays } from './mock';
 import type { InboxResponse, MarkReadResult } from './notification-inbox.ts';
 import type { DeliveryPreference, NotificationEventPrefs } from './notification-prefs.ts';
-import type { BillingChange, SubscriptionView } from './billing-copy';
+import type { BillingChange, Invoice, InvoiceDetail, SubscriptionView } from './billing-copy';
 import { getAccessToken } from './supabase';
 import { noteReachability } from './connectivity';
 import type { SearchType } from './search-filters';
@@ -123,13 +123,37 @@ export interface UsageDay {
   day: string; // YYYY-MM-DD
   credits: number;
   events: number;
+  /**
+   * WHAT that day's Credits went on.
+   *
+   * QuotaDO has recorded a `kind` on every spend since the ledger existed and the history query
+   * used to discard it, so the page could say when Credits went and never what they went on.
+   * Optional because an older worker does not send it — and absent must render as nothing, not as
+   * an "Other" bucket holding the whole day.
+   */
+  kinds?: { kind: string; credits: number }[];
 }
 
 export const fetchMe = (): Promise<MeResponse> =>
   MOCK_MODE ? Promise.resolve(mockMe) : request<MeResponse>('/api/me');
 
-export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
-  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<{ days: UsageDay[] }>('/api/me/usage');
+export interface UsageHistory {
+  days: UsageDay[];
+  /** This month's running total from the DO's own rollup. Absent on an older worker. */
+  thisMonth?: number;
+  /**
+   * The month before this one — and NULL whenever it cannot be stated honestly.
+   *
+   * The ledger is pruned at 35 days, so a "last month" figure summed from its rows would be
+   * truncated for most of the month. The server sends this only for a month its rollup was already
+   * counting when the month began; null means "not known", never "zero", and the page must render
+   * nothing rather than a comparison against a month nobody measured.
+   */
+  previousMonth?: { month: string; credits: number } | null;
+}
+
+export const fetchUsage = (): Promise<UsageHistory> =>
+  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<UsageHistory>('/api/me/usage');
 
 // ---------------------------------------------------------------- billing (w14)
 //
@@ -186,6 +210,29 @@ export const fetchBillingPreview = (plan: PlanId): Promise<BillingPreview> =>
  */
 export const fetchBillingHistory = (): Promise<{ events: BillingChange[] }> =>
   MOCK_MODE ? Promise.resolve({ events: [] }) : request<{ events: BillingChange[] }>('/api/billing/history');
+
+/**
+ * THE INVOICES THIS ACCOUNT WAS CHARGED ON, newest first.
+ *
+ * Read from Stripe by the worker and mapped to an allowlist there, so this never sees a raw Stripe
+ * object — no customer address, no tax id, no payment intent. Scoped to the caller's own Stripe
+ * customer by the worker; there is no id in this path that could name anyone else.
+ *
+ * An account that never bought anything gets an empty list rather than an error, because having no
+ * invoices is a perfectly ordinary thing to have.
+ */
+export const fetchInvoices = (): Promise<{ invoices: Invoice[] }> =>
+  MOCK_MODE ? Promise.resolve({ invoices: [] }) : request<{ invoices: Invoice[] }>('/api/billing/invoices');
+
+/**
+ * One invoice with its line items, subtotal and tax.
+ *
+ * Asked of the server rather than assembled from the row: line items are not on the list response,
+ * and a row that "expanded" into the summary again would look like a detail view containing no
+ * detail. The worker refuses any invoice that is not this caller's, whatever id is passed here.
+ */
+export const fetchInvoice = (id: string): Promise<{ invoice: InvoiceDetail | null }> =>
+  request<{ invoice: InvoiceDetail | null }>(`/api/billing/invoices/${encodeURIComponent(id)}`);
 
 // ---------------------------------------------------------------- project session
 
@@ -286,6 +333,15 @@ export const searchProject = (projectId: string, params: URLSearchParams): Promi
 export interface Memory {
   summary: string | null;
   facts: string[];
+  /**
+   * What Apple has ASKED to remember but has not been allowed to yet.
+   *
+   * Only ever populated under the `review` memory setting, which is what puts anything in the
+   * queue. Optional because this is also the shape sent BACK on a save, and the editor deliberately
+   * does not answer the review queue — the worker ignores a `suggested` it is handed, so a client
+   * that could write one would be able to approve a proposal without a decision being recorded.
+   */
+  suggested?: { summary: string | null; facts: string[] };
 }
 
 export interface MemoryResponse {
@@ -323,6 +379,21 @@ export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryRes
         method: 'PUT',
         body: JSON.stringify({ memory }),
       });
+
+/**
+ * Answer one thing Apple asked to remember.
+ *
+ * `body` names what it is about — the fact's own text, or `target: 'summary'` for the proposed
+ * summary, which is the one proposal with no text to match on. A 404 here is an ANSWER: the worker
+ * returns it on purpose when the proposal is no longer pending, so a panel left open in a second
+ * tab cannot report a decision the user never made. Callers route it through
+ * `isAlreadyAnswered` in lib/memory-approvals.ts and refetch instead of showing an error.
+ */
+export const decideSuggestion = (projectId: string, body: { decision: 'accept' | 'discard'; fact?: string; target?: 'summary' }) =>
+  request<MemoryResponse>(`/api/projects/${encodeURIComponent(projectId)}/memory/suggestions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 
 // -------------------------------------------------------- scoped memory & preferences
 
@@ -1620,6 +1691,28 @@ export const putRobloxKey = (body: {
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
 
+export interface RobloxWrite {
+  at: string;
+  action: string;
+  robloxCreatorId: string;
+  creatorType: string;
+  target: string | null;
+  ok: boolean;
+  httpStatus: number | null;
+  request: unknown;
+}
+
+/**
+ * Everything Apple has done to this person's Roblox account.
+ *
+ * Their own trail and nobody else's — the worker keys the query on the id off the verified token,
+ * and there is deliberately no route that reads another customer's. This exists because the 299
+ * assets that went into the owner's account were not unrecorded, they were unseen: nothing in the
+ * product ever showed a person what had been done in their name.
+ */
+export const fetchRobloxWrites = (limit = 25): Promise<{ writes: RobloxWrite[] }> =>
+  request(`/api/me/roblox/writes?limit=${encodeURIComponent(String(limit))}`);
+
 /**
  * What Roblox says about the stored key RIGHT NOW. Four answers, and `unknown` is not a soft `ok`.
  *
@@ -1676,28 +1769,6 @@ export const rotateApiKey = (
 
 export const revokeApiKey = (id: string): Promise<{ ok: boolean }> =>
   request(`/api/keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
-
-export interface RobloxWrite {
-  at: string;
-  action: string;
-  robloxCreatorId: string;
-  creatorType: string;
-  target: string | null;
-  ok: boolean;
-  httpStatus: number | null;
-  request: unknown;
-}
-
-/**
- * Everything Apple has done to this person's Roblox account.
- *
- * Their own trail and nobody else's — the worker keys the query on the id off the verified token,
- * and there is deliberately no route that reads another customer's. This exists because the 299
- * assets that went into the owner's account were not unrecorded, they were unseen: nothing in the
- * product ever showed a person what had been done in their name.
- */
-export const fetchRobloxWrites = (limit = 25): Promise<{ writes: RobloxWrite[] }> =>
-  request(`/api/me/roblox/writes?limit=${encodeURIComponent(String(limit))}`);
 
 // ---------------------------------------------------------------- the inbox / security history
 //

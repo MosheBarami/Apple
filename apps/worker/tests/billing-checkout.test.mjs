@@ -133,6 +133,16 @@ test('THE METADATA THE WEBHOOK READS IS THE METADATA THE CHECKOUT SETS', () => {
   assert.equal(outcome.subscription.customerId, 'cus_1', 'including the customer the portal needs');
 });
 
+test('THE CHECKOUT COLLECTS A BILLING ADDRESS, because an invoice without one is not a document', () => {
+  // Stripe's default collects only what the payment method itself demands, which for a card is
+  // often nothing but a postal code — and an invoice with no address on it is not something a
+  // company's finance department can accept or a tax authority can read. It is also what
+  // automatic_tax above computes against, so a missing address is a wrong tax as well as a
+  // useless invoice.
+  const p = params(build(LIVE));
+  assert.equal(p.get('billing_address_collection'), 'required');
+});
+
 /**
  * TAX IS CALCULATED BY STRIPE, AND THE PAGES SAY SO.
  *

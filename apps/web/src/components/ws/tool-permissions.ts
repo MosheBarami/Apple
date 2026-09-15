@@ -29,7 +29,7 @@
  * as well as checking every name here against the worker's real registry, because the server
  * rejects an unknown name and the checkbox would then save nothing.
  */
-import type { ToolPermission } from '../../lib/api';
+import { GOVERNED_TOOLS, type ToolPermission } from '@golem/shared';
 
 export interface GovernableTool {
   /** The exact registered tool name. Validated against the worker's TOOLS registry by the test. */
@@ -41,74 +41,22 @@ export interface GovernableTool {
   group: 'changes' | 'spends';
 }
 
-export const GOVERNABLE_TOOLS: readonly GovernableTool[] = [
-  // --- changes the project ---------------------------------------------------------------
-  // Every member of the run loop's own MUTATING_TOOLS set appears here. A safety control with a
-  // hole in it is worse than none, because it reads as complete.
-  {
-    tool: 'run_luau',
-    label: 'Run Luau in the place',
-    why: 'Arbitrary code against your game. It can do anything the other tools can, and more.',
-    group: 'changes',
-  },
-  {
-    tool: 'delete_instances',
-    label: 'Delete instances',
-    why: 'The only tool that removes things. A checkpoint can undo it, but only if one was taken.',
-    group: 'changes',
-  },
-  {
-    tool: 'edit_script',
-    label: 'Edit scripts',
-    why: 'Rewrites Luau you may have written by hand.',
-    group: 'changes',
-  },
-  {
-    tool: 'create_instances',
-    label: 'Create instances',
-    why: 'Adds parts, models and services to your place.',
-    group: 'changes',
-  },
-  {
-    tool: 'set_properties',
-    label: 'Change properties',
-    why: 'Alters existing instances in place — position, size, material, anything.',
-    group: 'changes',
-  },
-  {
-    tool: 'insert_asset',
-    label: 'Insert assets',
-    why: 'Brings third-party models into your place.',
-    group: 'changes',
-  },
-
-  // --- spends beyond the run's own thinking ----------------------------------------------
-  // These call something other than the language model, so they cost on top of the run itself.
-  {
-    tool: 'generate_image',
-    label: 'Generate images',
-    why: 'Calls an image model. Costs Credits on top of the run.',
-    group: 'spends',
-  },
-  {
-    tool: 'generate_model',
-    label: 'Generate 3D models',
-    why: 'Calls a 3D model service. The slowest and most expensive thing Apple can do.',
-    group: 'spends',
-  },
-  {
-    tool: 'generate_sound',
-    label: 'Generate sound effects',
-    why: 'Calls an audio model. Costs Credits on top of the run.',
-    group: 'spends',
-  },
-  {
-    tool: 'speak_line',
-    label: 'Generate speech',
-    why: 'Calls a text-to-speech model. Costs Credits on top of the run.',
-    group: 'spends',
-  },
-];
+/**
+ * The offered list, DERIVED rather than typed out again.
+ *
+ * It used to be a hand-written array here. The same twelve-ish tools were also written down in
+ * @golem/shared, where the worker's own test holds every name against the live registry and the
+ * run transcript reads the labels to say which tools a run was denied. Two lists that agree today
+ * is not one list: the failure only shows up when somebody edits one of them, and the shape it
+ * takes is a checkbox the server rejects, or a withheld tool the transcript cannot name. The
+ * vocabulary lives in one file; this module renames its fields for the checkbox that renders it.
+ */
+export const GOVERNABLE_TOOLS: readonly GovernableTool[] = GOVERNED_TOOLS.map((g) => ({
+  tool: g.name,
+  label: g.label,
+  why: g.why,
+  group: g.group,
+}));
 
 /**
  * Which tools are withheld, as the checkboxes should draw them.

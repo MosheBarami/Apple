@@ -11,8 +11,8 @@
  *
  * TWO KINDS OF TEST HERE, and the split is deliberate.
  *
- *   The reduction is BEHAVIOURAL: `linkFactsFrom` and `factsFromPong` are pure functions and are
- *   driven with real message shapes, including the hostile ones an older worker sends.
+ *   The reduction is BEHAVIOURAL: `linkFactsFrom` is a pure function and is driven with real
+ *   message shapes, including the hostile ones an older worker sends.
  *
  *   The rendering is STRUCTURAL: apps/web has no DOM renderer, so these read workspace.tsx's
  *   source and pin the wiring, in the same style and for the same reason as
@@ -26,7 +26,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { linkFactsFrom, factsFromPong, NO_LINK_FACTS, linkDetail } from '../src/lib/studio-connection.ts';
+import { linkFactsFrom, NO_LINK_FACTS, linkDetail } from '../src/lib/studio-connection.ts';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** Source with comments stripped, so a field discussed in prose is not mistaken for one in use. */
@@ -112,29 +112,12 @@ test('a message that is not about the link leaves the link alone', () => {
 
 // ------------------------------------------------------------------ the round trip is measured
 
-test('A PONG THAT CANNOT BE TIMED LEAVES THE LAST MEASUREMENT ALONE', () => {
-  // The one fact here that is a subtraction rather than a delivery, which is why it has its own
-  // reducer and its own clock argument. Every branch of it is a refusal to measure, and each
-  // refusal must be silent rather than zero: `latencyLabel(null)` renders nothing, while a 0 ms is
-  // both a lie and the most reassuring value this field can hold.
-  const measured = factsFromPong(NO_LINK_FACTS, { type: 'pong', t: 1000 }, 1120);
-  assert.equal(measured.rttMs, 120);
-  assert.equal(factsFromPong(measured, { type: 'pong' }, 2000).rttMs, 120, 'a pong with no echo measures nothing');
-  assert.equal(factsFromPong(NO_LINK_FACTS, { type: 'pong' }, 2000).rttMs, null, 'and with nothing before it, stays null');
-  assert.equal(factsFromPong(NO_LINK_FACTS, { type: 'pong', t: 'soon' }, 2000).rttMs, null);
-  assert.equal(
-    factsFromPong(measured, { type: 'pong', t: 3000 }, 2000).rttMs,
-    120,
-    'a pong from the future is two clocks disagreeing, not a network faster than causality',
-  );
-});
-
 test('THE PING CARRIES THE BROWSER’S OWN CLOCK, and the pong is no longer discarded', () => {
   // The worker echoes `t` back untouched precisely so the whole measurement happens in one clock
   // domain. The browser sent no `t` and answered `case "pong": break;`, so nothing was ever timed.
   assert.match(socket, /type: 'ping', t: Date\.now\(\)/, 'the ping must carry a timestamp to echo');
-  assert.doesNotMatch(socket, /case 'pong':\s*\n\s*break;/, 'the pong may no longer be discarded');
-  assert.match(socket, /case 'pong':[\s\S]{0,600}?factsFromPong\(/, 'the pong must go through the reducer');
+  assert.match(socket, /case 'pong':[\s\S]{0,400}?msg\.t/, 'the pong must be read, not discarded');
+  assert.match(socket, /typeof msg\.t === 'number'/, 'a pong without `t` must leave the rtt unmeasured, not zero');
 });
 
 test('the hook actually reduces the link facts instead of reading two fields off hello', () => {

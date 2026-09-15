@@ -159,12 +159,24 @@ export function RoadmapPage() {
     <div className="page rm-page">
       <div className="page-head rm-head">
         <div className="rm-head__text">
-          <Link to={`/projects/${projectId}`} className="rm-back">
-            <span className="rm-back__chev" aria-hidden="true">
-              <Icon d={PATH.chevronRight} size={13} />
+          {/* A TRAIL, NOT A BACK BUTTON.
+              This was one chevron link to the conversation. One hop does not say where you are
+              and cannot reach the project list, which is the level people actually want from two
+              levels down. The project's own name is used once it is known; until then the crumb
+              names the destination rather than inventing a title for it. */}
+          <nav aria-label="Breadcrumb" className="rm-crumbs">
+            <Link to="/">Projects</Link>
+            <span className="rm-crumbs__sep" aria-hidden="true">
+              <Icon d={PATH.chevronRight} size={12} />
             </span>
-            {project.data?.name ?? 'Back to the conversation'}
-          </Link>
+            <Link to={`/projects/${projectId}`}>{project.data?.name ?? 'Conversation'}</Link>
+            <span className="rm-crumbs__sep" aria-hidden="true">
+              <Icon d={PATH.chevronRight} size={12} />
+            </span>
+            {/* Plain text, not a link to the page you are on — a control that does nothing is the
+                same defect as a dead route in different clothes. */}
+            <span aria-current="page">Roadmap</span>
+          </nav>
           <h1 className="page-title">Roadmap</h1>
           <p className="page-sub">
             What Apple would build next in this place, in the order it can be built. Every milestone here

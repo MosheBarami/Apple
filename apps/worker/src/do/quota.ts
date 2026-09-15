@@ -5,7 +5,7 @@ import type { Env } from '../env';
 import type { QuotaState } from '@golem/shared';
 import { isPlanId, type PlanId } from '../pricing';
 import type { Subscription } from '../billing';
-import { dayKey, monthKey, quotaState, splitSpend } from '../quota-math';
+import { dayKey, monthKey, monthTotalComplete, prevMonthKey, quotaState, splitSpend } from '../quota-math';
 
 /** One line of this account's billing history, as the product reads it back. */
 interface BillingChange {
@@ -38,7 +38,8 @@ export class QuotaDO extends DurableObject<Env> {
         create table if not exists billing_events(
         id integer primary key autoincrement, at integer not null, kind text not null,
         from_plan text, to_plan text, status text, event_id text);
-        create table if not exists applied_events(event_id text primary key, at integer not null);`);
+        create table if not exists applied_events(event_id text primary key, at integer not null);
+        create table if not exists month_totals(month text primary key, credits integer not null);`);
       // billing_events gained a column after rows already existed in every deployed DO, and
       // `create table if not exists` does not add one to a table that is already there. SQLite has
       // no `add column if not exists`, so the alter is attempted on every start and throws
@@ -146,6 +147,27 @@ export class QuotaDO extends DurableObject<Env> {
       if (fromCredits > 0) await this.ctx.storage.put('credits', Math.max(0, st.credits - fromCredits));
       if (fromAllowance > 0) {
         this.sql.exec(`insert into ledger(day, kind, credits, created_at) values(?,?,?,?)`, this.today(), kind.slice(0, 40), fromAllowance, Date.now());
+        /*
+         * AND THE MONTH ROLLUP, WHICH IS NOT THE LEDGER.
+         *
+         * The ledger is pruned at 35 days a few lines below, so a "last month" figure summed from
+         * its rows is truncated for most of the month — on the 30th its rows reach back only to the
+         * 26th of the previous one. That total would understate, silently, and always in the
+         * direction that flatters us; there is no honest month-over-month comparison available from
+         * rows that are deleted. So the month total is accumulated as it happens and kept.
+         *
+         * `ledgerCountingSince` records the day this started, because a total for a month that was
+         * ALREADY IN PROGRESS when counting began is partial for good, and has to be refused rather
+         * than shown. That is `monthTotalComplete` in quota-math.
+         */
+        this.sql.exec(
+          `insert into month_totals(month, credits) values(?,?)
+             on conflict(month) do update set credits = credits + excluded.credits`,
+          this.thisMonth(), fromAllowance,
+        );
+        if ((await this.ctx.storage.get<string>('ledgerCountingSince')) === undefined) {
+          await this.ctx.storage.put('ledgerCountingSince', this.today());
+        }
       }
       this.sql.exec(`delete from ledger where day < ?`, dayKey(Date.now() - 35 * 864e5));
       const after = await this.state();
@@ -261,10 +283,55 @@ export class QuotaDO extends DurableObject<Env> {
       return Response.json({ ok: true, cleared: target, state: await this.state() });
     }
     if (url.pathname === '/history') {
+      /*
+       * WHAT THE CREDITS WENT ON, not only which day they went.
+       *
+       * Every spend has carried a `kind` since the ledger existed — it is the second column of the
+       * insert above. This query threw it away, so the usage page could draw a bar per day and had
+       * no answer at all to the one question a person asks about a bill: what was this spent ON.
+       *
+       * TWO QUERIES RATHER THAN ONE GROUPED BY (day, kind). The daily totals are what the 30-day
+       * chart is built from; replacing them with one row per (day, kind) would make every bar
+       * report the last kind of that day as if it were the day — a quiet understatement on every
+       * day that had more than one kind of activity, which is every real day. The breakdown RIDES
+       * ON the day row instead, so the parts always sum to the whole they are shown under.
+       *
+       * Both are over the same pruned 35-day ledger and both are tiny; this is not a page of data.
+       */
       const rows = this.sql
         .exec(`select day, sum(credits) as credits, count(*) as events from ledger group by day order by day desc limit 30`)
-        .toArray();
-      return Response.json({ days: rows });
+        .toArray() as { day: string; credits: number; events: number }[];
+      const byKind = this.sql
+        .exec(`select day, kind, sum(credits) as credits from ledger group by day, kind order by day desc, credits desc`)
+        .toArray() as { day: string; kind: string; credits: number }[];
+      const kindsFor = new Map<string, { kind: string; credits: number }[]>();
+      for (const r of byKind) {
+        const list = kindsFor.get(r.day) ?? [];
+        list.push({ kind: String(r.kind), credits: Number(r.credits) });
+        kindsFor.set(r.day, list);
+      }
+      /*
+       * AND THE MONTH BEFORE THIS ONE, when it can be stated honestly.
+       *
+       * "Am I spending more than last month" is the first question anybody asks of a usage page and
+       * the page had one period on it. The comparison is refused — `null`, and the sentence simply
+       * not rendered — whenever the rollup was not already running when that month began, because a
+       * partial month presented as a month is a fabricated comparison.
+       */
+      const prev = prevMonthKey(Date.now());
+      const since = await this.ctx.storage.get<string>('ledgerCountingSince');
+      const prevRow = monthTotalComplete(since, prev)
+        ? (this.sql.exec(`select credits from month_totals where month = ?`, prev).toArray() as { credits: number }[])[0]
+        : undefined;
+      const thisRow = (this.sql.exec(`select credits from month_totals where month = ?`, this.thisMonth())
+        .toArray() as { credits: number }[])[0];
+      return Response.json({
+        days: rows.map((r) => ({ ...r, kinds: kindsFor.get(r.day) ?? [] })),
+        // The current month's running total, from the same rollup, so the two halves of the
+        // comparison are measured the same way. A month with no spend is 0 rather than absent.
+        thisMonth: Number(thisRow?.credits ?? 0),
+        previousMonth: prevRow ? { month: prev, credits: Number(prevRow.credits) } : null,
+      });
     }
     return Response.json({ error: 'not found' }, { status: 404 });
   }

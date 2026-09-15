@@ -117,11 +117,6 @@ export const NO_LINK_FACTS: StudioLinkFacts = {
  * Anything that is not a number, not a place-shaped object, not a mismatch-shaped object, is
  * refused and leaves the field null. The formatters below then say nothing at all, which is the
  * correct thing to say about a measurement that did not arrive.
- *
- * `hello` IS HANDLED HERE TOO, under the names it uses, because it is the only message a tab
- * opened onto a long-disconnected project ever receives: with no `studio_status` to follow, a
- * reducer that read only status messages would leave that tab unable to say when Studio was last
- * here.
  */
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
@@ -161,26 +156,6 @@ export function linkFactsFrom(prev: StudioLinkFacts, msg: ServerMsg): StudioLink
     };
   }
   return prev;
-}
-
-/**
- * Time a round trip from the pong's echoed `t`, or change nothing.
- *
- * SEPARATE FROM `linkFactsFrom` BECAUSE IT NEEDS A CLOCK. Every other fact arrives finished on the
- * wire; this one is a subtraction, and `now` is an argument so the arithmetic can be tested rather
- * than raced against Date.now().
- *
- * NOTHING IS THE ANSWER MORE OFTEN THAN IT LOOKS. A pong with no echo cannot be timed, and a pong
- * whose `t` is in the future means the two clocks disagree, not that the network is faster than
- * causality. Both leave the previous measurement exactly where it was — the alternative is a 0 ms
- * on screen, which is simultaneously a lie and the most reassuring value this field can hold.
- */
-export function factsFromPong(prev: StudioLinkFacts, msg: { t?: unknown }, now: number): StudioLinkFacts {
-  const sentAt = typeof msg.t === 'number' && Number.isFinite(msg.t) ? msg.t : null;
-  if (sentAt === null) return prev;
-  const rtt = now - sentAt;
-  if (!Number.isFinite(rtt) || rtt < 0) return prev;
-  return { ...prev, rttMs: rtt };
 }
 
 /**

@@ -22,6 +22,12 @@ packages/corpus/raw/*
 # records what a source page said on a date, and the upstream API will not say it again.
 !packages/corpus/data/asset-seeds.json
 !packages/corpus/data/template-seeds.json
+# ...and the CURATION LEDGER over that harvest, for the same reason one step further along. It
+# holds a named verdict for all 3,017 rows — which rule excluded each, and which word fired it —
+# so "131 survived" is a claim anybody can argue with row by row instead of a number to trust.
+# It is not reproducible either: it was built by reading 653 repositories' file trees live, and
+# a repository that is renamed, deleted or rewritten next year will not read the same way.
+!packages/corpus/data/mechanic-library.json
 # The harvest artefacts, and the split between them is about REPRODUCIBILITY, not size.
 #
 # Tracked: the sources that are scraped or that publish no versioned index. cgbookcase reads a
@@ -174,3 +180,9 @@ handoff/
 # in docs/backlog and the commits that close its lines. Tracking it would put a stale copy of the
 # codebase's own state under version control, and the next audit rewrites all of it.
 .superpowers/fixq/
+
+# The template curator's tree cache. `scripts/curate-templates.mjs` reads 653 repository file
+# trees over the network; the cache exists so the CURATION RULES can be re-run in a second without
+# re-reading GitHub. It holds only what GitHub returned, never a verdict, and `--refresh` discards
+# it — a cached answer must never be the reason a repository stays in the library.
+.cache/

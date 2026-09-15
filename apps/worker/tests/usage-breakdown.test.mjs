@@ -1,0 +1,208 @@
+/**
+ * WHAT THE CREDITS WENT ON, not only which day they went.
+ *
+ * QuotaDO has recorded a `kind` on every single spend since the ledger existed — `insert into
+ * ledger(day, kind, credits, ...)`. The history query then threw it away with
+ * `select day, sum(credits) group by day`, so /api/me/usage returned a total per day and the usage
+ * page drew a bar per day, and the one question a person actually asks about a bill — WHAT was this
+ * spent on — had an answer sitting in the database that nothing read.
+ *
+ * The daily totals are UNCHANGED and are asserted here to still be unchanged, because the 30-day
+ * chart is built from them: a breakdown that silently replaced the totals with one row per (day,
+ * kind) would make every bar report the last kind of that day instead of the day.
+ *
+ * THE FAKE IS A MODEL, NOT A STUB. "What was spent on what" is the property under test, so a sql
+ * fake returning a constant would make every assertion below meaningless. Rows go in, and the
+ * aggregates are computed from the rows — the same shape quota-spend.test.mjs uses.
+ *
+ * Run with:  node --test tests/usage-breakdown.test.mjs      (from apps/worker)
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+
+const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
+const out = join(mkdtempSync(join(tmpdir(), 'quota-history-')), 'quota.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
+  [join(WORKER, 'src', 'do', 'quota.ts'), '--bundle', '--format=esm', '--target=es2022',
+   '--alias:cloudflare:workers=' + join(WORKER, 'tests', 'stubs', 'cloudflare-workers.mjs'),
+   '--outfile=' + out], { cwd: WORKER, stdio: 'pipe' });
+const { QuotaDO } = await import(`file://${out}`);
+
+/** A QuotaDO whose ledger really holds the rows given, and really aggregates them. */
+function quota(ledger = [], seed = {}) {
+  const rows = ledger.map((r) => ({ ...r }));
+  /** The month rollup, which is NOT the ledger: it survives the 35-day prune. */
+  const months = new Map(Object.entries(seed.months ?? {}));
+  const sum = (f) => rows.filter(f).reduce((n, r) => n + r.credits, 0);
+  const sql = {
+    exec(q, ...a) {
+      const none = { toArray: () => [], one: () => null };
+      if (/^\s*(create table|alter table)/i.test(q)) return none;
+      if (/insert into month_totals/i.test(q)) {
+        const [month, credits] = a;
+        months.set(month, (months.get(month) ?? 0) + credits);
+        return none;
+      }
+      if (/from month_totals/i.test(q)) {
+        const hit = months.has(a[0]) ? [{ credits: months.get(a[0]) }] : [];
+        return { toArray: () => hit, one: () => hit[0] ?? null };
+      }
+      if (/insert into ledger/i.test(q)) { rows.push({ day: a[0], kind: a[1], credits: a[2] }); return none; }
+      if (/delete from ledger/i.test(q)) return none;
+      if (/where day = \?/.test(q)) return { one: () => ({ s: sum((r) => r.day === a[0]) }), toArray: () => [] };
+      if (/where day like \?/.test(q)) {
+        const p = String(a[0]).replace('%', '');
+        return { one: () => ({ s: sum((r) => r.day.startsWith(p)) }), toArray: () => [] };
+      }
+      if (/group by day, kind/i.test(q)) {
+        const seen = new Map();
+        // '|' as the composite-key separator: a day key is digits and dashes and a ledger kind is
+        // written by our own call sites, so neither can contain one. A NUL would be tidier and
+        // would make this source file binary to every tool that reads it.
+        for (const r of rows) {
+          const k = `${r.day}|${r.kind}`;
+          seen.set(k, (seen.get(k) ?? 0) + r.credits);
+        }
+        const list = [...seen].map(([k, credits]) => {
+          const [day, kind] = k.split('|');
+          return { day, kind, credits };
+        });
+        list.sort((x, y) => (x.day === y.day ? y.credits - x.credits : y.day.localeCompare(x.day)));
+        return { toArray: () => list, one: () => list[0] ?? null };
+      }
+      if (/group by day/i.test(q)) {
+        const seen = new Map();
+        for (const r of rows) {
+          const cur = seen.get(r.day) ?? { day: r.day, credits: 0, events: 0 };
+          cur.credits += r.credits;
+          cur.events += 1;
+          seen.set(r.day, cur);
+        }
+        const list = [...seen.values()].sort((x, y) => y.day.localeCompare(x.day));
+        return { toArray: () => list, one: () => list[0] ?? null };
+      }
+      return { toArray: () => [], one: () => ({ s: 0 }) };
+    },
+  };
+  const store = new Map(Object.entries(seed.storage ?? {}));
+  const storage = {
+    async get(k) { return store.get(k); },
+    async put(a, b) { store.set(a, b); },
+    async delete(k) { store.delete(k); },
+    sql,
+  };
+  return new QuotaDO({ storage, blockConcurrencyWhile: (f) => f() }, {});
+}
+
+const history = async (ledger, seed) =>
+  (await (await quota(ledger, seed).fetch(new Request('https://do/history'))).json());
+
+/** Month keys relative to now, so these tests do not expire. */
+const THIS_MONTH = new Date().toISOString().slice(0, 7);
+const PREV_MONTH = (() => {
+  const d = new Date();
+  d.setUTCDate(1);
+  d.setUTCDate(0);
+  return d.toISOString().slice(0, 7);
+})();
+
+const LEDGER = [
+  { day: '2026-09-10', kind: 'chat_agent', credits: 1 },
+  { day: '2026-09-10', kind: 'usage_agent', credits: 8 },
+  { day: '2026-09-10', kind: 'docs_search', credits: 1 },
+  { day: '2026-09-09', kind: 'usage_super', credits: 20 },
+];
+
+test('THE DAILY TOTALS ARE UNCHANGED — the 30-day chart is built from them', () => {
+  // The regression this guards: grouping by (day, kind) INSTEAD of by day makes every bar report
+  // one kind's spend as if it were the day's. The chart would quietly understate every day that
+  // had more than one kind of activity, which is every real day.
+  return history(LEDGER).then((h) => {
+    assert.equal(h.days.length, 2, 'two days, not four rows');
+    assert.equal(h.days[0].day, '2026-09-10', 'newest first');
+    assert.equal(h.days[0].credits, 10, '1 + 8 + 1 — the whole day');
+    assert.equal(h.days[0].events, 3);
+    assert.equal(h.days[1].credits, 20);
+  });
+});
+
+test('EVERY DAY CARRIES WHAT ITS CREDITS WENT ON', async () => {
+  const h = await history(LEDGER);
+  const day = h.days[0];
+  assert.ok(Array.isArray(day.kinds), 'the breakdown rides on the day it belongs to');
+  const byKind = Object.fromEntries(day.kinds.map((k) => [k.kind, k.credits]));
+  assert.deepEqual(byKind, { chat_agent: 1, usage_agent: 8, docs_search: 1 });
+  assert.equal(
+    day.kinds.reduce((n, k) => n + k.credits, 0),
+    day.credits,
+    'THE PARTS MUST SUM TO THE WHOLE, or the page shows a breakdown that contradicts its own total',
+  );
+});
+
+test('a kind that spent nothing on a day does not appear on that day', async () => {
+  const h = await history(LEDGER);
+  assert.deepEqual(h.days[1].kinds.map((k) => k.kind), ['usage_super']);
+});
+
+test('an empty ledger is an empty history, with no fabricated zero rows', async () => {
+  const h = await history([]);
+  assert.deepEqual(h.days, []);
+});
+
+// ------------------------------------------------------------- against last month
+
+test('LAST MONTH IS REPORTED ONLY WHEN IT WAS COUNTED FROM ITS FIRST DAY', async () => {
+  // The whole reason this is a rollup and not a query over the ledger: the ledger is pruned at 35
+  // days, so on the 30th of a month its rows reach back only to the 26th of the last one. A total
+  // assembled from them would understate last month, silently, and the reader would have no way to
+  // tell. The rollup survives the prune — but only for months that began after it started running.
+  const complete = await history([], {
+    months: { [PREV_MONTH]: 420 },
+    storage: { ledgerCountingSince: `${PREV_MONTH}-01` },
+  });
+  assert.deepEqual(complete.previousMonth, { month: PREV_MONTH, credits: 420 });
+});
+
+test('A MONTH ALREADY IN PROGRESS WHEN COUNTING BEGAN IS NOT REPORTED', async () => {
+  // A partial figure presented as a month is a fabricated comparison, and it always errs downwards
+  // — so the product would flatter itself about how much cheaper last month was.
+  const partial = await history([], {
+    months: { [PREV_MONTH]: 420 },
+    storage: { ledgerCountingSince: `${PREV_MONTH}-17` },
+  });
+  assert.equal(partial.previousMonth, null);
+});
+
+test('the first month of an account has nothing to compare against, and says so', async () => {
+  const fresh = await history([], { storage: { ledgerCountingSince: `${THIS_MONTH}-01` } });
+  assert.equal(fresh.previousMonth, null, 'no prior row is not a prior month of zero');
+
+  const noMarker = await history([], { months: { [PREV_MONTH]: 420 } });
+  assert.equal(noMarker.previousMonth, null, 'and not knowing when counting started is not a licence');
+});
+
+test('A SPEND WRITES THE MONTH ROLLUP AS WELL AS THE LEDGER', async () => {
+  // The rollup is only right if every spend reaches it. This drives the real /spend path rather
+  // than asserting the SQL string, so a write that goes to the ledger and not here is caught.
+  const q = quota([], { storage: { plan: 'free' } });
+  await q.fetch(new Request('https://do/spend', { method: 'POST', body: JSON.stringify({ credits: 7, kind: 'chat_agent' }) }));
+  await q.fetch(new Request('https://do/spend', { method: 'POST', body: JSON.stringify({ credits: 3, kind: 'docs_search' }) }));
+  const seen = await (await q.fetch(new Request('https://do/history'))).json();
+  assert.equal(seen.thisMonth, 10, 'the running total is both spends');
+  assert.equal(seen.days[0].credits, 10, 'and the ledger still agrees with it');
+});
+
+test('the breakdown is only ever this account’s — /history takes no parameter', () => {
+  // QuotaDO is one per user and is addressed by the worker from the verified JWT subject. There is
+  // no user id in this request to get wrong, and this pins that no query string was added.
+  const quotaTs = readFileSync(join(WORKER, 'src', 'do', 'quota.ts'), 'utf8');
+  const at = quotaTs.indexOf("pathname === '/history'");
+  assert.ok(at > 0, 'the history route must exist');
+  const block = quotaTs.slice(at, quotaTs.indexOf('return Response.json({ days', at) + 400);
+  assert.doesNotMatch(block, /searchParams|userId/, 'the history route must take nothing from the caller');
+});

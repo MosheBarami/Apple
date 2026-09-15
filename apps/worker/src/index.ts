@@ -2,11 +2,11 @@
 import { ingestAssets, type IngestRequest } from './asset-ingest';
 import { importPending, unimportAssets } from './asset-import';
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
-import { checkRobloxCredential } from './roblox-check';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
+import { checkRobloxCredential } from './roblox-check';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -21,6 +21,10 @@ import {
   priceIdFor,
   readInvoicePreview,
   subscriptionView,
+  invoiceBelongsTo,
+  isInvoiceId,
+  mapInvoiceDetail,
+  mapInvoiceList,
   type Subscription,
 } from './billing';
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
@@ -2266,6 +2270,79 @@ app.get('/api/billing/history', async (c) => {
   const user = c.get('user');
   const record = await readBillingRecord(c.env, user.userId);
   return c.json({ events: record.events });
+});
+
+/**
+ * THIS ACCOUNT'S INVOICES — read from Stripe, scoped to the caller's own customer.
+ *
+ * The portal already lists these, and that is a good place for them to live and a bad place for
+ * them to be the ONLY place: checking a charge meant leaving for another company's domain, and a
+ * failed payment appeared in our inbox while the invoice it was about appeared nowhere here.
+ *
+ * THE CUSTOMER ID COMES FROM THE CALLER'S OWN DO, addressed from the verified JWT subject. There is
+ * no parameter in this path that could name another account, and the Stripe query is filtered by
+ * that id rather than by anything the caller sent.
+ *
+ * Reading is all this does. It moves no money, grants nothing, and creates nothing.
+ */
+app.get('/api/billing/invoices', async (c) => {
+  const user = c.get('user');
+  if (!checkoutConfigured(c.env)) return c.json({ error: 'billing is not configured for this deployment' }, 503);
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId));
+  const { customerId } = (await (await quota.fetch('https://do/billing-customer')).json()) as {
+    customerId: string | null;
+  };
+  // A person who never bought anything HAS no invoices. That is an empty list, not an error, and
+  // not a 404 the page would have to render as a failure.
+  if (!customerId) return c.json({ invoices: [] });
+
+  const q = new URLSearchParams({ customer: customerId, limit: '24' });
+  const res = await fetch(`https://api.stripe.com/v1/invoices?${q.toString()}`, {
+    headers: { authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}` },
+  });
+  if (!res.ok) {
+    // Stripe's message can name an account or a key; it is not for the user.
+    console.warn('stripe invoices failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ error: 'could not load your invoices' }, 502);
+  }
+  return c.json({ invoices: mapInvoiceList(await res.json()) });
+});
+
+/**
+ * ONE INVOICE, WITH ITS LINE ITEMS.
+ *
+ * THE ID IN THE PATH IS NOT THE AUTHORISATION, and this route is written around that sentence:
+ *   - the id is shape-checked BEFORE it reaches a Stripe URL, so `../charges/ch_1` cannot address a
+ *     different endpoint with our secret key attached;
+ *   - the fetched invoice is refused unless its `customer` is the caller's OWN customer id. Without
+ *     that, any signed-in user could page through every invoice this Stripe account ever issued.
+ *
+ * A refusal is 404 rather than 403: "that invoice exists but is not yours" is itself an answer
+ * about somebody else's account.
+ */
+app.get('/api/billing/invoices/:id', async (c) => {
+  const user = c.get('user');
+  if (!checkoutConfigured(c.env)) return c.json({ error: 'billing is not configured for this deployment' }, 503);
+  const id = c.req.param('id');
+  if (!isInvoiceId(id)) return c.json({ error: 'not an invoice id' }, 400);
+
+  const quota = c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId));
+  const { customerId } = (await (await quota.fetch('https://do/billing-customer')).json()) as {
+    customerId: string | null;
+  };
+  if (!customerId) return c.json({ error: 'no invoice' }, 404);
+
+  const res = await fetch(`https://api.stripe.com/v1/invoices/${id}`, {
+    headers: { authorization: `Bearer ${c.env.STRIPE_SECRET_KEY}` },
+  });
+  if (!res.ok) {
+    if (res.status === 404) return c.json({ error: 'no invoice' }, 404);
+    console.warn('stripe invoice failed:', res.status, await res.text().catch(() => ''));
+    return c.json({ error: 'could not load that invoice' }, 502);
+  }
+  const raw = await res.json();
+  if (!invoiceBelongsTo(raw, customerId)) return c.json({ error: 'no invoice' }, 404);
+  return c.json({ invoice: mapInvoiceDetail(raw) });
 });
 
 /** What the plan controls should offer, so the UI never shows a button that cannot work. */

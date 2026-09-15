@@ -96,6 +96,14 @@ export interface ToolStartEvent {
   toolId: string;
   tool: string;
   summary?: string;
+  /**
+   * WHICH THING this step is about, read from the call's arguments before it ran.
+   *
+   * `summary` here is only the tool's own name; the sentence that names the resource arrives with
+   * `tool_end`, after the work. So this is the only thing that can answer "which of my scripts" in
+   * the seconds the step is actually running, which is the only time the answer is worth anything.
+   */
+  target?: string;
 }
 
 export interface ToolEndEvent {
@@ -234,6 +242,7 @@ interface ToolRecord {
   toolId: string;
   tool?: string;
   summary?: string;
+  target?: string;
   ok?: boolean;
   done: boolean;
   startedAt?: number;
@@ -292,6 +301,7 @@ function foldTools(events: ActivityEvent[]): ToolRecord[] {
       toolId,
       tool: s?.tool ?? e?.tool,
       summary: clean(e?.summary) || clean(s?.summary) || undefined,
+      target: clean(s?.target) || undefined,
       ok: e?.ok,
       done: e !== undefined,
       startedAt,
@@ -403,7 +413,11 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
       key: `tool:${r.toolId}`,
       kind: kindForTool(r.tool),
       label: labelForTool(r.tool),
-      detail: r.summary && r.summary !== r.tool ? r.summary : undefined,
+      // The tool's own NAME is not a detail — it would read as "edit_script" under a label that
+      // already says "Editing project". The target is, and it is the only thing available while
+      // the step is still running; once the tool ends the worker's own sentence is the better
+      // line and takes over.
+      detail: (r.summary && r.summary !== r.tool ? r.summary : undefined) ?? r.target,
       state,
       toolId: r.toolId,
       tool: r.tool,
@@ -631,6 +645,8 @@ export interface ToolEventLike {
   toolId: string;
   tool: string;
   summary: string;
+  /** See `ToolStartEvent.target`. Survives a reload so a reconnect mid-build does not lose it. */
+  target?: string;
   ok?: boolean;
   startedAt: number;
   durationMs?: number;
@@ -676,6 +692,7 @@ export function eventsFromTurn(source: {
         toolId: tool.toolId,
         tool: tool.tool,
         summary: tool.summary,
+        target: tool.target,
       });
     }
     if (!tool.done) continue;

@@ -38,13 +38,15 @@ import {
   mockSelection,
   mockStudioState,
 } from './mock';
-import { NO_LINK_FACTS, factsFromPong, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
 import { getAccessToken, supabase } from './supabase';
+import { NO_LINK_FACTS, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
 
 export interface ToolEvent {
   toolId: string;
   tool: string;
   summary: string;
+  /** Which resource this step is about — see `ToolStartEvent.target` in ws/activity-model.ts. */
+  target?: string;
   ok?: boolean;
   startedAt: number;
   durationMs?: number;
@@ -95,6 +97,14 @@ export interface ChatItem {
    * reloaded conversation is correctly silent about it.
    */
   intent?: RunIntent;
+  /**
+   * Tools this run was NOT given, because a tool permission removed them — from `tools_denied`.
+   *
+   * Absent until the worker sends one, which is the whole contract: no message means nothing was
+   * withheld, and a conversation loaded from history is correctly silent rather than claiming a
+   * check it never made.
+   */
+  deniedTools?: string[];
   /**
    * What this run cost, settled, from `msg_end`.
    *
@@ -178,10 +188,8 @@ export interface ProjectSocket {
      * WHEN it last polled, HOW MUCH is waiting, WHICH place it has open, and HOW SLOW the round
      * trip is — the four questions a user actually has once `connected` is false, every one of
      * which the worker already measured and put on the wire, and every one of which this hook used
-     * to drop on the floor. `connected` alone cannot tell a Studio that closed ten seconds ago
-     * from one that closed in March, and cannot explain a green pill above a build that will never
-     * start. See lib/studio-connection.ts for the rules, and for why an unmeasured round trip is
-     * null here rather than 0.
+     * to drop on the floor. See lib/studio-connection.ts for the rules, and for why an unmeasured
+     * round trip is null here rather than 0.
      */
     link: StudioLinkFacts;
   };
@@ -456,8 +464,6 @@ export function useProjectSocket(
           ...s,
           connected: msg.studioConnected,
           everConnected: s.everConnected || msg.studioConnected,
-          // `hello` carries the same facts under their own names, and it is the only message a
-          // tab opened onto a long-disconnected project ever receives.
           link: linkFactsFrom(s.link, msg),
         }));
         break;
@@ -467,7 +473,6 @@ export function useProjectSocket(
           connected: msg.connected,
           state: msg.state ?? null,
           everConnected: s.everConnected || msg.connected,
-          // MERGED, NOT REPLACED. Every field here is optional on the wire; see linkFactsFrom.
           link: linkFactsFrom(s.link, msg),
           // A selection belongs to an attached Studio. Keeping the last one after the plugin
           // dropped would offer the user a reference to objects nothing can act on any more.
@@ -554,6 +559,9 @@ export function useProjectSocket(
                 toolId: msg.toolId,
                 tool: msg.tool,
                 summary: msg.summary,
+                // Which thing this step is about. `summary` here is only the tool's name; the
+                // sentence naming the resource arrives with tool_end, after the work is done.
+                target: msg.target,
                 startedAt: Date.now(),
                 // The one path where the start really is our own clock.
                 startObserved: true,
@@ -719,6 +727,9 @@ export function useProjectSocket(
             createdAt: run.startedAt,
             // Replayed only when the snapshot genuinely carries one.
             intent: run.intent,
+            // Same: `tools_denied` is broadcast once at the first step, so without this a refresh
+            // at step nine leaves the run looking as though nothing had been withheld from it.
+            deniedTools: run.deniedTools,
           };
           const idx = list.findIndex((m) => m.id === run.msgId);
           if (idx === -1) return [...list, restored];
@@ -728,6 +739,18 @@ export function useProjectSocket(
         });
         break;
       }
+      case 'tools_denied':
+        // Kept on the MESSAGE rather than on `agentStatus`, for the reason `creditsSpent` is:
+        // `msg_end` clears the status, and this is a fact about the run that is most worth reading
+        // AFTER it, by someone asking why the agent did not do the thing they expected.
+        setMessages((list) => {
+          const idx = list.findIndex((m) => m.id === msg.msgId);
+          if (idx === -1) return list;
+          const next = [...list];
+          next[idx] = { ...list[idx]!, deniedTools: msg.tools };
+          return next;
+        });
+        break;
       case 'context_budget':
         // Kept on the MESSAGE, not on `agentStatus`, for the same reason `creditsSpent` is: the
         // status is cleared by `msg_end`, so a figure stored there would be correct for one frame
@@ -815,11 +838,14 @@ export function useProjectSocket(
         //   means anything. Comparing a server timestamp with a local one would produce clock skew
         //   wearing the costume of latency.
         //
-        //   THE DECISION LIVES IN `factsFromPong`, not here, because every branch of it is a
-        //   refusal to measure: a pong with no `t` (an older worker build), a `t` that is not a
-        //   number, a `t` in the future (skew, not speed). Each one leaves the previous
-        //   measurement exactly where it was, and `latencyLabel` renders a null as nothing. ]]
-        setStudio((s) => ({ ...s, link: factsFromPong(s.link, msg, Date.now()) }));
+        //   NOTHING IS SET WHEN `t` IS ABSENT. A tab talking to a worker build that does not echo
+        //   it has not measured the link, and `Date.now() - undefined` is NaN while
+        //   `Date.now() - 0` is a plausible-looking 1.7 trillion. Staying null is the honest state,
+        //   and `latencyLabel` renders null as nothing at all. ]]
+        if (typeof msg.t === 'number') {
+          const rtt = Date.now() - msg.t;
+          setStudio((s) => ({ ...s, link: { ...s.link, rttMs: rtt >= 0 ? rtt : null } }));
+        }
         break;
     }
   }, []);

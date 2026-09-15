@@ -66,7 +66,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     title: 'Read your assets',
     does: 'Apple can look up things you already own — names, ids and whether an upload finished.',
     undoable: true,
-    // `getAsset` and `getUploadStatus` in the worker's creator-dashboard.ts both ask for this.
+    // Called: creator-dashboard.ts getAsset() and getUploadStatus(), on every upload.
     implemented: true,
   },
   {
@@ -114,7 +114,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     title: 'Read your experiences',
     does: 'Apple can look up an experience you name — its title, description and whether it is public.',
     undoable: true,
-    // `getExperience` in the worker's creator-dashboard.ts asks for this one by name.
+    // Called: creator-dashboard.ts getExperience().
     implemented: true,
   },
   {
@@ -122,6 +122,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     title: 'See what you own',
     does: 'Apple can list the assets already in your Roblox account, so it can reuse them instead of making new ones.',
     undoable: true,
+    // Called: creator-dashboard.ts listOwnedAssets().
     implemented: true,
   },
   {
@@ -129,6 +130,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     title: 'Read your game passes',
     does: 'Apple can list the game passes on your experience and what they cost.',
     undoable: true,
+    // Called: creator-dashboard.ts listGamePasses().
     implemented: true,
   },
   {
@@ -141,6 +143,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     caution:
       'Roblox has no way to delete a game pass — not you, not us. It can be taken off sale, and it '
       + 'stays on your experience for good.',
+    // Called: creator-dashboard.ts createGamePass().
     implemented: true,
   },
   {
@@ -152,6 +155,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
     caution:
       'Roblox\'s API can grant this permission and cannot take it back. Undoing it means asking '
       + 'Roblox support, so only tick this if you know who you are sharing with.',
+    // Called: creator-dashboard.ts grantAssetPermission().
     implemented: true,
   },
 ];
@@ -284,6 +288,112 @@ export function describeStored(c: StoredCredentialView | null, state: KeyState =
   }
   const used = c.lastUsedAt ? `last used ${c.lastUsedAt.slice(0, 10)}` : 'not used yet';
   return `Connected to Roblox ${who} ${c.robloxCreatorId}, key ending ${c.hint} — ${used}.`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// the write trail
+// ---------------------------------------------------------------------------------------------
+
+/** One row of `creator_write_log`, as `GET /api/me/roblox/writes` returns it. */
+export interface WriteTrailRow {
+  at: string;
+  action: string;
+  robloxCreatorId: string;
+  creatorType: string;
+  target: string | null;
+  ok: boolean;
+  httpStatus: number | null;
+  request: unknown;
+}
+
+/** The id out of a resource path, and nothing when there is no path. `universes/123` -> `123`. */
+function idIn(target: string | null, prefix: string): string {
+  const m = new RegExp(`(?:^|,)${prefix}/([^,]+)`).exec(String(target ?? ''));
+  return m?.[1] ?? '';
+}
+
+function field(request: unknown, key: string): string {
+  if (!request || typeof request !== 'object') return '';
+  const v = (request as Record<string, unknown>)[key];
+  return typeof v === 'string' || typeof v === 'number' ? String(v) : '';
+}
+
+/**
+ * One row of the trail, as one sentence.
+ *
+ * WHY THE DEFAULT BRANCH IS THE IMPORTANT ONE. The worker's list of write actions has already gone
+ * from two to three and will grow again. A renderer written as a lookup that returns '' for an
+ * unrecognised action would DROP that row — and a row missing from this list is a write to somebody's
+ * real Roblox account that the product is not telling them about. So an unknown action still
+ * renders, still names the account, and says plainly that this version of the app does not know the
+ * word rather than inventing a description of what it did.
+ *
+ * Every sentence names the account. There is one account per connected key today, and there will
+ * not always be: "created a game pass" is a different fact from "created a game pass in the group
+ * account", and the second one is the one somebody needs when they are looking for it.
+ */
+export function describeWrite(row: WriteTrailRow): string {
+  const account = `Roblox account ${row.robloxCreatorId}`;
+  // Built first and used by every branch: a failed attempt is still a fact about that account, so
+  // it is never dropped — only phrased as an attempt rather than an act.
+  const failed = !row.ok;
+  const why = row.httpStatus ? ` — Roblox refused it (${row.httpStatus})` : ' — it did not go through';
+
+  if (row.action === 'upload_asset') {
+    const name = field(row.request, 'displayName') || 'a file';
+    const id = idIn(row.target, 'assets');
+    const what = `“${name}”`;
+    return failed
+      ? `Tried to upload ${what} to ${account}${why}.`
+      : `Uploaded ${what} to ${account}${id ? `, as asset ${id}` : ''}.`;
+  }
+
+  if (row.action === 'create_gamepass') {
+    const name = field(row.request, 'name') || 'a game pass';
+    const price = field(row.request, 'price');
+    const universe = idIn(row.target, 'universes');
+    const where = universe ? ` on experience ${universe}` : '';
+    const costs = price ? ` at ${price} Robux` : '';
+    return failed
+      ? `Tried to create the game pass “${name}”${where} in ${account}${why}.`
+      : `Created the game pass “${name}”${costs}${where}, in ${account}.`;
+  }
+
+  if (row.action === 'grant_asset_permission') {
+    const subject = field(row.request, 'subjectType') || 'somebody';
+    const subjectId = field(row.request, 'subjectId');
+    const verb = field(row.request, 'action') || 'use';
+    const ids = row.request && typeof row.request === 'object' && Array.isArray((row.request as Record<string, unknown>).assetIds)
+      ? ((row.request as Record<string, unknown>).assetIds as unknown[]).length
+      : 0;
+    const count = ids === 1 ? '1 asset' : `${ids} assets`;
+    const who = subjectId ? `${subject} ${subjectId}` : subject;
+    return failed
+      ? `Tried to let ${who} ${verb.toLowerCase()} ${count} from ${account}${why}.`
+      : `Let ${who} ${verb.toLowerCase()} ${count} belonging to ${account}.`;
+  }
+
+  // FALSIFIED 2026-09-15 by replacing this branch with `return ''` — the shape a lookup table with
+  // no default has. The row vanished from the trail and only the unknown-action test went red,
+  // naming it: "an unknown action must not render as an empty string".
+  return failed
+    ? `Tried something this version of Apple does not recognise (${row.action}) on ${account}${why}.`
+    : `Did something this version of Apple does not recognise (${row.action}) on ${account}. `
+      + 'Update the app to see what it was.';
+}
+
+/**
+ * Whether this row left something behind that nobody can take back.
+ *
+ * Today the answer is yes for every write that succeeded, and that is not a shortcut — it is what
+ * Roblox publishes. There is no delete for a game pass, no revoke for an asset permission, and an
+ * Image cannot be archived. A failed attempt created nothing, so it is not permanent.
+ *
+ * It is a function rather than a constant so that the day Roblox publishes a reverse for one of
+ * them, the exception has somewhere to go that is not an edit to a sentence in a component.
+ */
+export function isPermanentWrite(row: WriteTrailRow): boolean {
+  return row.ok === true;
 }
 
 /**
@@ -437,110 +547,4 @@ export function explainKeyFailure(err: unknown, opts: { integration?: boolean } 
   // addition: this panel has no Try-again button of its own, so `next` is never left null here.
   const fallback = explainFailure(err);
   return { ...fallback, next: fallback.next ?? 'Try connecting again; if it keeps happening, the detail below is worth reporting.' };
-}
-
-// ---------------------------------------------------------------------------------------------
-// the write trail
-// ---------------------------------------------------------------------------------------------
-
-/** One row of `creator_write_log`, as `GET /api/me/roblox/writes` returns it. */
-export interface WriteTrailRow {
-  at: string;
-  action: string;
-  robloxCreatorId: string;
-  creatorType: string;
-  target: string | null;
-  ok: boolean;
-  httpStatus: number | null;
-  request: unknown;
-}
-
-/** The id out of a resource path, and nothing when there is no path. `universes/123` -> `123`. */
-function idIn(target: string | null, prefix: string): string {
-  const m = new RegExp(`(?:^|,)${prefix}/([^,]+)`).exec(String(target ?? ''));
-  return m?.[1] ?? '';
-}
-
-function field(request: unknown, key: string): string {
-  if (!request || typeof request !== 'object') return '';
-  const v = (request as Record<string, unknown>)[key];
-  return typeof v === 'string' || typeof v === 'number' ? String(v) : '';
-}
-
-/**
- * One row of the trail, as one sentence.
- *
- * WHY THE DEFAULT BRANCH IS THE IMPORTANT ONE. The worker's list of write actions has already gone
- * from two to three and will grow again. A renderer written as a lookup that returns '' for an
- * unrecognised action would DROP that row — and a row missing from this list is a write to somebody's
- * real Roblox account that the product is not telling them about. So an unknown action still
- * renders, still names the account, and says plainly that this version of the app does not know the
- * word rather than inventing a description of what it did.
- *
- * Every sentence names the account. There is one account per connected key today, and there will
- * not always be: "created a game pass" is a different fact from "created a game pass in the group
- * account", and the second one is the one somebody needs when they are looking for it.
- */
-export function describeWrite(row: WriteTrailRow): string {
-  const account = `Roblox account ${row.robloxCreatorId}`;
-  // Built first and used by every branch: a failed attempt is still a fact about that account, so
-  // it is never dropped — only phrased as an attempt rather than an act.
-  const failed = !row.ok;
-  const why = row.httpStatus ? ` — Roblox refused it (${row.httpStatus})` : ' — it did not go through';
-
-  if (row.action === 'upload_asset') {
-    const name = field(row.request, 'displayName') || 'a file';
-    const id = idIn(row.target, 'assets');
-    const what = `“${name}”`;
-    return failed
-      ? `Tried to upload ${what} to ${account}${why}.`
-      : `Uploaded ${what} to ${account}${id ? `, as asset ${id}` : ''}.`;
-  }
-
-  if (row.action === 'create_gamepass') {
-    const name = field(row.request, 'name') || 'a game pass';
-    const price = field(row.request, 'price');
-    const universe = idIn(row.target, 'universes');
-    const where = universe ? ` on experience ${universe}` : '';
-    const costs = price ? ` at ${price} Robux` : '';
-    return failed
-      ? `Tried to create the game pass “${name}”${where} in ${account}${why}.`
-      : `Created the game pass “${name}”${costs}${where}, in ${account}.`;
-  }
-
-  if (row.action === 'grant_asset_permission') {
-    const subject = field(row.request, 'subjectType') || 'somebody';
-    const subjectId = field(row.request, 'subjectId');
-    const verb = field(row.request, 'action') || 'use';
-    const ids = row.request && typeof row.request === 'object' && Array.isArray((row.request as Record<string, unknown>).assetIds)
-      ? ((row.request as Record<string, unknown>).assetIds as unknown[]).length
-      : 0;
-    const count = ids === 1 ? '1 asset' : `${ids} assets`;
-    const who = subjectId ? `${subject} ${subjectId}` : subject;
-    return failed
-      ? `Tried to let ${who} ${verb.toLowerCase()} ${count} from ${account}${why}.`
-      : `Let ${who} ${verb.toLowerCase()} ${count} belonging to ${account}.`;
-  }
-
-  // FALSIFIED 2026-09-15 by replacing this branch with `return ''` — the shape a lookup table with
-  // no default has. The row vanished from the trail and only the unknown-action test went red,
-  // naming it: "an unknown action must not render as an empty string".
-  return failed
-    ? `Tried something this version of Apple does not recognise (${row.action}) on ${account}${why}.`
-    : `Did something this version of Apple does not recognise (${row.action}) on ${account}. `
-      + 'Update the app to see what it was.';
-}
-
-/**
- * Whether this row left something behind that nobody can take back.
- *
- * Today the answer is yes for every write that succeeded, and that is not a shortcut — it is what
- * Roblox publishes. There is no delete for a game pass, no revoke for an asset permission, and an
- * Image cannot be archived. A failed attempt created nothing, so it is not permanent.
- *
- * It is a function rather than a constant so that the day Roblox publishes a reverse for one of
- * them, the exception has somewhere to go that is not an edit to a sentence in a component.
- */
-export function isPermanentWrite(row: WriteTrailRow): boolean {
-  return row.ok === true;
 }

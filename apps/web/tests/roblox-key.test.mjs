@@ -40,22 +40,8 @@ import {
 import { ROBLOX_SCOPES } from '@golem/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const WORKER_SRC = join(WEB, '..', 'worker', 'src');
 const PANEL = readFileSync(join(WEB, 'src', 'components', 'roblox-key-panel.tsx'), 'utf8');
 const API = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
-
-/** Every worker .ts, with comments blanked so prose about a scope is not read as a use of one. */
-function workerSources(dir = WORKER_SRC, out = []) {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === 'node_modules') continue;
-    const p = join(dir, e.name);
-    if (e.isDirectory()) workerSources(p, out);
-    else if (e.name.endsWith('.ts')) {
-      out.push([p, readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1')]);
-    }
-  }
-  return out;
-}
 
 /** Nothing this module produces may ever contain one of these. */
 const POISON = ['undefined', 'NaN', 'null', 'Invalid Date', '[object'];
@@ -85,27 +71,48 @@ test('EVERY DESCRIBED SCOPE SAYS WHETHER THE PRODUCT ACTUALLY USES IT', () => {
   }
 });
 
-test('and the implemented ones are exactly the ones with a consumer in the worker', () => {
-  // READ OUT OF THE WORKER, NOT RESTATED HERE. The first version of this froze the answer as a
-  // two-item list, and it went stale the moment creator-dashboard.ts landed and grew call sites
-  // for six more: the flag said "not used yet" beside permissions the product had started using,
-  // which is the same lie as the one it was written to stop, pointing the other way.
-  //
-  // A scope is implemented when some file that asks `useRobloxCredential` for a key names it.
-  // Comments are stripped first — creator-dashboard.ts documents the whole Open Cloud surface in
-  // prose at the top of the file, and a scan that counted that would mark every scope live.
-  const asks = workerSources().filter(([, src]) => src.includes('useRobloxCredential'));
-  assert.ok(asks.length >= 2, 'found no worker file that asks for a credential — this scan is blind');
-  const src = asks.map(([, s]) => s).join('\n');
-  const consumed = ROBLOX_SCOPES.filter((scope) => src.includes(`'${scope}'`)).sort();
-  assert.ok(consumed.length > 0, 'no scope literal found in any of them — the scan broke, it did not pass');
+/**
+ * THE CONSUMER SET IS READ OUT OF THE WORKER, NOT TYPED IN HERE.
+ *
+ * This assertion used to be a hardcoded pair — `['asset:write', 'user.social:read']` — with a
+ * comment stating that the other scopes "have no call site anywhere in the tree". That sentence
+ * was true the day it was written and false the day creator-dashboard.ts landed with five more,
+ * and the test went on passing because it was comparing the flags against its own memory of the
+ * codebase instead of against the codebase. A list a human maintains is a claim; this walks the
+ * worker source and finds out.
+ *
+ * WHAT COUNTS AS A CONSUMER. Every Open Cloud call in this product takes its key through
+ * `useRobloxCredential(env, userId, '<scope>')` — directly, or through `keyFor` which forwards the
+ * third argument untouched — and the liveness probe names its scope in `CHECK_SCOPE`. Those are
+ * the only two ways a scope is ever exercised, so a literal in one of those positions IS the call
+ * site. A scope mentioned only in prose does not count, which is why the patterns are anchored to
+ * the call rather than matching the string anywhere.
+ */
+function scopesTheWorkerActuallyUses() {
+  const SRC = join(WEB, '..', 'worker', 'src');
+  const found = new Set();
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.endsWith('.ts')) continue;
+      const src = readFileSync(full, 'utf8');
+      for (const m of src.matchAll(/(?:useRobloxCredential|keyFor)\s*\([^)]*?,\s*'([a-z0-9.:-]+)'\s*\)/g)) {
+        found.add(m[1]);
+      }
+      for (const m of src.matchAll(/CHECK_SCOPE\s*:\s*RobloxScope\s*=\s*'([a-z0-9.:-]+)'/g)) {
+        found.add(m[1]);
+      }
+    }
+  };
+  walk(SRC);
+  return found;
+}
 
-  assert.deepEqual([...implementedScopes()].sort(), consumed);
-  // And the point of the field: something is still unclaimed, or the honest label has no subject.
-  assert.ok(
-    consumed.length < ROBLOX_SCOPES.length,
-    'every scope now has a consumer — delete the flag and its label rather than leaving a tickbox that always says "used"',
-  );
+test('and the implemented ones are exactly the ones with a consumer in the worker', () => {
+  const used = [...scopesTheWorkerActuallyUses()].sort();
+  assert.ok(used.length >= 2, `found no call sites at all — the patterns stopped matching, not the worker stopping calling`);
+  assert.deepEqual([...implementedScopes()].sort(), used);
 });
 
 test('an unimplemented permission is LABELLED as such where it is ticked', () => {

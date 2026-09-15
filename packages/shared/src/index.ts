@@ -554,6 +554,11 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'review_scripts':
     case 'find_symbol':
     case 'search_docs':
+    // Looking a game system up in a static pattern table. It reads no project, calls no model and
+    // writes nothing — so it belongs beside search_docs rather than in the `default` below, which
+    // would have the workspace announce "Building world" while the agent is still deciding how the
+    // mechanic ought to work.
+    case 'find_mechanic':
     case 'choose_asset_source':
     // Asking for a genre kit reads a static table and touches the place not at all. It sits with
     // the other two asset-decision tools because it is the same act: deciding what to use before
@@ -733,6 +738,14 @@ export interface RunSnapshot {
   effortReason?: string;
   /** What the agent understood, replayed so a refresh does not lose it. */
   intent?: RunIntent;
+  /**
+   * Tools this run was NOT given, because a tool permission removed them.
+   *
+   * Replayed for the same reason `intent` is: the narrowing is announced once, at the first step,
+   * and a refresh at step nine would otherwise leave the run looking as though nothing had been
+   * withheld. Absent when nothing was — which is a different fact from an empty list arriving.
+   */
+  deniedTools?: string[];
 }
 
 /**
@@ -929,7 +942,13 @@ export type ServerMsg =
   //   describing a worker that may not be live yet. See web/src/lib/message-identity.ts. ]]
   | { type: 'msg_start'; msgId: string; role: 'assistant'; mode: GolemMode; userMsgId?: string }
   | { type: 'delta'; msgId: string; text: string }
-  | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string }
+  //[[ `target` is WHICH THING this step is about — the script path, the instance paths, the URL —
+  //   read from the call's arguments BEFORE it runs. `summary` at this point is only the tool's
+  //   name; the sentence that names the resource used to arrive with `tool_end`, after the write.
+  //   Optional because a tool with no resource worth naming gets none: a guessed target is worse
+  //   than a missing one, since this is what a person reads to tell whether the step about to run
+  //   is the one they meant. ]]
+  | { type: 'tool_start'; msgId: string; toolId: string; tool: string; summary: string; target?: string }
   // `detail` carries the tool's STRUCTURED result, which the web app offers to
   // the typed generative-UI validator. Anything that validates becomes a real
   // component; anything that does not is simply not rendered. It is capped in
@@ -1050,6 +1069,18 @@ export type ServerMsg =
   | { type: 'playtest_state'; run: PlaytestRun | null }
   // Emitted once, at run start, after the request has been classified.
   | { type: 'run_intent'; msgId: string; intent: RunIntent }
+  /**
+   * WHAT THIS RUN WAS NOT ALLOWED TO DO, emitted once, at the first step.
+   *
+   * A tool permission REMOVES a tool from the set the model is offered, and until now nothing said
+   * so: the agent simply never used it, and "why did Apple not run that script" had no answer in
+   * the product. Tools that the mode never had are not listed — denying delete_instances in Plan
+   * mode withholds nothing, and reporting it would invent a restriction.
+   *
+   * Only sent when something WAS removed. No message means nothing was withheld, which is a
+   * different claim from an empty list and is the reason this is not folded into agent_status.
+   */
+  | { type: 'tools_denied'; msgId: string; tools: string[] }
   | { type: 'error'; code: string; message: string }
   /**
    * SOMETHING WORTH KNOWING THAT IS NOT A FAILURE. The run proceeds; the client shows the line.
@@ -1911,6 +1942,151 @@ export interface AssetSourcePolicy {
 }
 
 export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'ask', allow: [] };
+
+// ---------------------------------------------------------------------------------------------
+// What Apple is ALLOWED TO DO
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * SHARED for the same reason the asset-source choices are, and with more at stake.
+ *
+ * The worker validates every tool permission against the real registry (preferences.ts), so a
+ * settings panel offering a name the registry does not have would render a switch that is silently
+ * refused on save — and the person who flicked it would go away believing they had denied
+ * something. The vocabulary and the governed list therefore live here, where both halves read one
+ * literal, and tool-permissions.test.mjs in apps/worker holds every name below to a real tool.
+ */
+export const TOOL_PERMISSIONS = ['allow', 'ask', 'deny'] as const;
+export type ToolPermission = (typeof TOOL_PERMISSIONS)[number];
+
+export const isToolPermission = (v: unknown): v is ToolPermission =>
+  typeof v === 'string' && (TOOL_PERMISSIONS as readonly string[]).includes(v);
+
+/**
+ * How strict each answer is. THE ORDER OF THE LITERAL IS THE ORDER OF STRICTNESS — deriving the
+ * rank from the array rather than writing a second table is what stops the browser and the worker
+ * holding two different opinions about whether `ask` outranks `allow`.
+ */
+export const toolPermissionRank = (p: ToolPermission): number => TOOL_PERMISSIONS.indexOf(p);
+
+export interface GovernedTool {
+  name: string;
+  /** What a person calls it. Never the tool name — "run_luau" is not a sentence. */
+  label: string;
+  /**
+   * Why someone would withhold it — the consequence, not the category. A permission control
+   * whose effect is invisible is one people either ignore or misuse, so this sentence is rendered
+   * beside the control rather than hidden behind a tooltip.
+   */
+  why: string;
+  /** Whether withholding it protects the project or the wallet. The panel groups by this. */
+  group: 'changes' | 'spends';
+}
+
+/**
+ * The write tools a person may govern, in the order the panel lists them.
+ *
+ * NOT every tool in the registry. The read-only ones — read_script, get_project_tree, search_docs —
+ * have nothing to deny, and a switch beside each of them would be forty controls of which fourteen
+ * matter, with the fourteen being the ones nobody finds. Blocking a read-only tool buys no safety
+ * and breaks the agent, and apps/web/tests/tool-permissions.test.mjs holds that line against Plan
+ * mode's toolset.
+ *
+ * Every member of the run loop's own MUTATING_TOOLS set appears here. A safety control with a hole
+ * in it is worse than none, because it reads as complete.
+ */
+export const GOVERNED_TOOLS: readonly GovernedTool[] = [
+  // --- changes the project ---------------------------------------------------------------
+  {
+    name: 'run_luau',
+    label: 'Run code in your place',
+    why: 'Arbitrary code against your game. It can do anything the other tools can, and more.',
+    group: 'changes',
+  },
+  {
+    name: 'delete_instances',
+    label: 'Delete parts and objects',
+    why: 'The only tool that removes things. A checkpoint can undo it, but only if one was taken.',
+    group: 'changes',
+  },
+  {
+    name: 'edit_script',
+    label: 'Change existing scripts',
+    why: 'Rewrites Luau you may have written by hand.',
+    group: 'changes',
+  },
+  {
+    name: 'format_script',
+    label: 'Reformat scripts',
+    why: 'Reindents and restyles a script you wrote, without changing what it does.',
+    group: 'changes',
+  },
+  {
+    name: 'create_instances',
+    label: 'Add parts and objects',
+    why: 'Adds parts, models and services to your place.',
+    group: 'changes',
+  },
+  {
+    name: 'set_properties',
+    label: 'Change parts that already exist',
+    why: 'Alters existing instances in place — position, size, material, anything.',
+    group: 'changes',
+  },
+  {
+    name: 'insert_asset',
+    label: 'Insert assets from the Creator Store',
+    why: 'Brings third-party models into your place.',
+    group: 'changes',
+  },
+  {
+    name: 'install_module',
+    label: 'Install Luau modules',
+    why: 'Adds third-party code to your project, which then runs as if you had written it.',
+    group: 'changes',
+  },
+  {
+    name: 'run_and_check',
+    label: 'Playtest the game',
+    why: 'Starts a playtest. Withhold it and Apple can no longer check its own work by running it.',
+    group: 'changes',
+  },
+  {
+    name: 'workspace_write',
+    label: 'Write files in the workspace',
+    why: 'Writes to the file workspace beside your project. It cannot reach the place itself.',
+    group: 'changes',
+  },
+
+  // --- spends beyond the run's own thinking ----------------------------------------------
+  // These call something other than the language model, so they cost on top of the run itself.
+  {
+    name: 'generate_image',
+    label: 'Generate images',
+    why: 'Calls an image model. Costs Credits on top of the run.',
+    group: 'spends',
+  },
+  {
+    name: 'generate_model',
+    label: 'Generate 3D models',
+    why: 'Calls a 3D model service. The slowest and most expensive thing Apple can do.',
+    group: 'spends',
+  },
+  {
+    name: 'generate_sound',
+    label: 'Generate sound effects',
+    why: 'Calls an audio model. Costs Credits on top of the run.',
+    group: 'spends',
+  },
+  {
+    name: 'speak_line',
+    label: 'Generate speech',
+    why: 'Calls a text-to-speech model. Costs Credits on top of the run.',
+    group: 'spends',
+  },
+];
+
+export const GOVERNED_TOOL_NAMES: readonly string[] = GOVERNED_TOOLS.map((t) => t.name);
 
 /* --------------------------------------------------------------- message revisions --- */
 

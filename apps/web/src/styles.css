@@ -1723,42 +1723,6 @@ textarea {
   color: var(--warn);
 }
 
-/* the three lanes */
-.ws-body {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.ws-body.has-surface {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-}
-
-.ws-body.has-rail {
-  grid-template-columns: minmax(0, 1fr) var(--rail-w);
-}
-
-.ws-body.has-surface.has-rail {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) var(--rail-w);
-}
-
-.ws-lane {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-inline-end: 1px solid var(--hairline);
-}
-
-.ws-lane:last-child {
-  border-inline-end: 0;
-}
-
-.ws-mobile-tabs {
-  display: none;
-}
-
 /* --------------------------------------------------------------------------
    10. Chat + tool timeline
    -------------------------------------------------------------------------- */
@@ -5436,6 +5400,290 @@ samp {
   color: var(--muted);
 }
 
+/* ---- WHAT THE CREDITS WENT ON -------------------------------------------
+   Under the thirty-day chart, because it is the follow-up question: the eye goes to a
+   tall bar first and asks what it was second. A share bar per row rather than a pie —
+   the comparison people make here is "which is the big one", and a horizontal rail
+   reads in one pass where a pie needs a legend. */
+.spend-kinds {
+  margin: 1rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.spend-kinds__head {
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.spend-kinds__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.spend-kind {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 8rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.spend-kind__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spend-kind__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.spend-kind__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.75;
+}
+
+.spend-kind__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* The way the ledger leaves. Right-aligned under the list so it reads as an action on
+   the thing above it rather than as another history line. */
+.billing-history__export {
+  margin: 0.6rem 0 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- INVOICES ------------------------------------------------------------
+   What the account was actually charged, on our own page rather than only inside
+   Stripe's portal. A quiet ledger, not a feature: it is read on the one day somebody
+   disagrees with a charge, so it is built for scanning a column of amounts and dates
+   rather than for being noticed. Tabular numerals so the amounts line up; the status
+   is a word with a soft ground rather than a saturated badge, because "Paid" on a
+   settled invoice is reassurance, not an alert. */
+.invoice-list {
+  margin: 1.25rem 0 0;
+}
+
+.invoice-list h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.invoice-list__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.invoice-row + .invoice-row {
+  border-top: 1px solid var(--hairline);
+}
+
+.invoice-row__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+/* The whole left half is the disclosure control, so the target is a row rather than a
+   triangle. Unstyled as a button: a border here would make an ordinary ledger row read
+   as an action. */
+.invoice-row__toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.invoice-row__number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.invoice-row__date {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.invoice-row__amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.invoice-row__pdf {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 6px);
+  padding: 0.12rem 0.45rem;
+}
+
+.invoice-row__pdf:hover {
+  color: var(--ink);
+  border-color: var(--line-strong, var(--line));
+}
+
+/* A draft invoice has no PDF. The slot is held open so the amounts above and below it
+   stay in one column, rather than the row reflowing around an absent link. */
+.invoice-row__pdf--none {
+  border-color: transparent;
+  visibility: hidden;
+}
+
+.invoice-pill {
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+.invoice-pill--paid {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.invoice-pill--due {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.invoice-pill--failed {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.invoice-pill--neutral {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+.invoice-detail {
+  padding: 0 0.85rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.invoice-detail__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.invoice-detail__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.5rem;
+  align-items: baseline;
+  color: var(--muted);
+}
+
+/* The first grid cell. `minmax(0, 1fr)` stops the COLUMN growing; this stops a long unbroken
+   description — a Stripe line item is whatever the price nickname says — overflowing the cell it
+   was given. */
+.invoice-detail__desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Drawn only when the quantity is neither null nor 1, so its presence is already the information;
+   it reads as an annotation on the description rather than as a second figure competing with the
+   amount. */
+.invoice-detail__qty {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86em;
+}
+
+.invoice-detail__amount {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.invoice-detail__totals {
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0 0;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.invoice-detail__totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.invoice-detail__totals dt {
+  color: var(--muted);
+}
+
+.invoice-detail__totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-detail__total {
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  /* The date drops under the number and the amount keeps its own row, rather than four
+     columns fighting over 320px and the amount wrapping mid-number. */
+  .invoice-row__head {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 0.35rem;
+  }
+
+  .invoice-row__amount {
+    grid-column: 1 / -1;
+    text-align: end;
+  }
+}
+
 /* The charge currency, stated in the product rather than only on Stripe's page. */
 .plans-currency {
   grid-column: 1 / -1;
@@ -5527,6 +5775,16 @@ samp {
   font-size: 0.8rem;
   color: var(--muted);
   line-height: 1.45;
+}
+
+/* This month against last month. One quiet sentence under the ring rather than a delta
+   badge — the comparison is context for the number above it, not a metric of its own,
+   and it is absent entirely whenever there is no honest month to compare against. */
+.credits-compare {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Purchased credits, beside the allowance ring and never inside it. */
@@ -5966,6 +6224,31 @@ samp {
   flex-wrap: wrap;
 }
 
+/* The route-scoped boundary fails INSIDE the shell, so it must not claim the viewport: the rail
+   beside it is the thing that actually recovers the reader, and 100dvh here would push it off
+   screen on a phone. It is a card in the main area, not a takeover. */
+.crash-screen.is-route {
+  min-height: 0;
+  height: 100%;
+  background: transparent;
+  align-content: center;
+  overflow-y: auto;
+}
+
+.crash-card--route {
+  box-shadow: var(--lift-1);
+}
+
+.crash-card--route h1 {
+  font-size: 1.15rem;
+}
+
+.crash-hint {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 /* --------------------------------------------------------------------------
    17. Cursor & atmosphere
    -------------------------------------------------------------------------- */
@@ -6075,62 +6358,10 @@ html.has-cursor .cursor {
   }
 }
 
-/* tablet: one lane at a time in the workspace, tabs to switch */
+/* The three-lane switcher that used to live here is gone with the layout it switched — see
+   routes/workspace.tsx, "One lane, not three". These two rules are all that was about anything
+   still on screen. apps/web/tests/no-dead-lanes.test.mjs keeps the rest deleted. */
 @media (max-width: 1023px) {
-  .ws-body,
-  .ws-body.has-surface,
-  .ws-body.has-rail,
-  .ws-body.has-surface.has-rail {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ws-lane {
-    border-inline-end: 0;
-  }
-
-  .ws-lane[hidden] {
-    display: none;
-  }
-
-  .ws-mobile-tabs {
-    display: flex;
-    gap: 2px;
-    padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid var(--hairline);
-    background: var(--paper-2);
-    flex: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .ws-mobile-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .ws-mobile-tab {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    color: var(--muted);
-    font-size: 0.82rem;
-    font-weight: 540;
-    padding: 0.34rem 0.8rem;
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    white-space: nowrap;
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-  }
-
-  .ws-mobile-tab[aria-selected='true'] {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: var(--lift-1);
-  }
-
   .rail-grow {
     flex: none;
   }
@@ -6659,7 +6890,23 @@ html.has-cursor .cursor {
   white-space: nowrap;
 }
 
-.btn--primary { background: var(--accent); color: var(--accent-on, #fff); border-color: var(--accent); }
+/*
+   ANY PRIMARY BUTTON WENT INVISIBLE UNDER THE POINTER. `.btn:hover` sets `color: var(--accent)`,
+   which is right for the ghost style — the label lights up. A primary button has the accent as its
+   BACKGROUND, so the same rule painted its label the colour of the thing behind it: measured on
+   the live page at rgb(255,154,77) on rgb(255,154,77), a contrast ratio of 1. The button looked
+   stuck mid-save; it was just wordless.
+   `--accent-ink` is the token that exists for exactly this — the ink meant to sit ON the accent —
+   and it was not being used. `--accent-on` was my invention and does not exist in this stylesheet,
+   so `var(--accent-on, #fff)` was a fallback that never got the chance to apply.
+*/
+.btn--primary,
+.btn--primary:hover,
+.btn--primary:focus-visible {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
 .btn--danger { color: var(--danger, #c0392b); border-color: var(--danger, #c0392b); }
 
 .gx-usage__builds { font-size: 0.74rem; color: var(--muted); }

@@ -7,20 +7,27 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { OrderSummaryDialog } from '../components/order-summary';
-import { meterView } from '../components/usage-meter-model';
+import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
 import { PRODUCT_MODES_OFFERED, PLAN_COPY, PRODUCT_MODE_INFO, formatMoney, isPlanId, type PlanId } from '@golem/shared';
 import {
   billingChangeLine,
+  billingHistoryCsv,
   billingNotice,
+  formatMoney as formatInvoiceMoney,
+  invoiceAmountMinor,
+  invoiceStatusPill,
   planChangePreviewLine,
+  type Invoice,
   type SubscriptionView,
 } from '../lib/billing-copy';
 import {
   fetchBillingConfig,
   fetchBillingHistory,
   fetchBillingPreview,
+  fetchInvoice,
+  fetchInvoices,
   fetchMe,
   fetchUsage,
   openBillingPortal,
@@ -139,6 +146,28 @@ function BillingHistory() {
   // Nothing recorded is not the same as a history that failed to load, and neither is worth an
   // empty disclosure triangle on a page that is mostly about Credits.
   if (history.isPending || history.isError || lines.length === 0) return null;
+
+  /**
+   * THE RECORD, AS A FILE THE PERSON KEEPS.
+   *
+   * Built from the rows already on screen, so there is no second route to disagree with what is
+   * rendered, and nothing here can ask the server for somebody else's history. An object URL
+   * rather than a data: URI because the file carries the account's own billing record and a data:
+   * URI would put the whole of it in the address bar and in browser history.
+   */
+  const download = () => {
+    const url = URL.createObjectURL(
+      new Blob([billingHistoryCsv(history.data?.events ?? [])], { type: 'text/csv;charset=utf-8' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `billing-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    // Freed on the next tick rather than immediately: revoking synchronously races the download in
+    // Safari and the file arrives empty.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
   return (
     <details className="billing-history">
       <summary>Billing history</summary>
@@ -147,7 +176,147 @@ function BillingHistory() {
           <li key={l.key}>{l.text}</li>
         ))}
       </ul>
+      <p className="billing-history__export">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={download}>
+          Download billing history (CSV)
+        </button>
+      </p>
     </details>
+  );
+}
+
+/**
+ * WHAT THIS ACCOUNT WAS ACTUALLY CHARGED, on our own page.
+ *
+ * Before this, an invoice existed for this product's customers in exactly one place: Stripe's
+ * hosted portal, behind a button that leaves the app. That is a defensible home for an invoice and
+ * a bad place for it to be the only one — a customer told IN OUR OWN INBOX that a payment failed
+ * could not see the invoice it was about anywhere in the thing they were paying for.
+ *
+ * THE PDF IS AN ORDINARY LINK. Stripe's `invoice_pdf` is already scoped and expiring; proxying
+ * those bytes through the worker would turn it into a general-purpose document fetcher wearing our
+ * authentication, and would give the person downloading it nothing.
+ *
+ * Every sentence here — the status word, the money, which of the two amounts a row is about —
+ * comes from billing-copy, where it is tested. Nothing in this component decides what a field
+ * means.
+ */
+function InvoiceRow({ invoice }: { invoice: Invoice }) {
+  const [open, setOpen] = useState(false);
+  // Fetched only once the row is opened: the list is what most visits need, and 24 detail requests
+  // on page load would be 24 Stripe calls nobody asked for.
+  const detail = useQuery({
+    queryKey: ['invoice', invoice.id],
+    queryFn: () => fetchInvoice(invoice.id),
+    enabled: open,
+    retry: false,
+  });
+  const pill = invoiceStatusPill(invoice.status);
+  const amount = formatInvoiceMoney(invoiceAmountMinor(invoice), invoice.currency);
+  const when =
+    invoice.created === null
+      ? null
+      : new Date(invoice.created * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const lines = detail.data?.invoice?.lines ?? [];
+
+  return (
+    <li className="invoice-row">
+      <div className="invoice-row__head">
+        <button
+          type="button"
+          className="invoice-row__toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {/* A draft invoice genuinely has no number yet, and "Invoice null" is the sentence that
+              teaches a customer this page is guessing. */}
+          <span className="invoice-row__number">{invoice.number ?? 'Invoice'}</span>
+          <span className="invoice-row__date">{when ?? 'Date unavailable'}</span>
+        </button>
+        <span className={`invoice-pill invoice-pill--${pill.tone}`}>{pill.label}</span>
+        <span className="invoice-row__amount">{amount ?? '—'}</span>
+        {invoice.pdfUrl ? (
+          <a className="invoice-row__pdf" href={invoice.pdfUrl} target="_blank" rel="noreferrer noopener">
+            PDF
+          </a>
+        ) : (
+          // No link rather than a dead one: a draft invoice has no PDF, and an anchor that goes
+          // nowhere is worse than an absent one.
+          <span className="invoice-row__pdf invoice-row__pdf--none" aria-hidden="true" />
+        )}
+      </div>
+
+      {open && (
+        <div className="invoice-detail">
+          {detail.isPending && (
+            <p className="muted" aria-busy="true">
+              Loading this invoice…
+            </p>
+          )}
+          {detail.isError && <Failure error={detail.error} onRetry={() => void detail.refetch()} compact />}
+          {detail.isSuccess && detail.data.invoice === null && (
+            <p className="muted">This invoice is no longer available.</p>
+          )}
+          {detail.isSuccess && detail.data.invoice && (
+            <>
+              <ul className="invoice-detail__lines">
+                {lines.map((line, i) => (
+                  <li key={`${invoice.id}:${i}`} className="invoice-detail__line">
+                    <span className="invoice-detail__desc">{line.description ?? 'Line item'}</span>
+                    {line.quantity !== null && line.quantity !== 1 && (
+                      <span className="invoice-detail__qty">×{line.quantity}</span>
+                    )}
+                    <span className="invoice-detail__amount">
+                      {formatInvoiceMoney(line.amount, invoice.currency) ?? '—'}
+                    </span>
+                  </li>
+                ))}
+                {lines.length === 0 && <li className="muted">No line items on this invoice.</li>}
+              </ul>
+              <dl className="invoice-detail__totals">
+                {/* Each total is rendered only when it is really there. A tax row reading "—" on an
+                    invoice with no tax implies tax was charged and could not be read. */}
+                {formatInvoiceMoney(detail.data.invoice.subtotal, invoice.currency) && (
+                  <div>
+                    <dt>Subtotal</dt>
+                    <dd>{formatInvoiceMoney(detail.data.invoice.subtotal, invoice.currency)}</dd>
+                  </div>
+                )}
+                {formatInvoiceMoney(detail.data.invoice.tax, invoice.currency) && (
+                  <div>
+                    <dt>Tax</dt>
+                    <dd>{formatInvoiceMoney(detail.data.invoice.tax, invoice.currency)}</dd>
+                  </div>
+                )}
+                {formatInvoiceMoney(detail.data.invoice.total, invoice.currency) && (
+                  <div className="invoice-detail__total">
+                    <dt>Total</dt>
+                    <dd>{formatInvoiceMoney(detail.data.invoice.total, invoice.currency)}</dd>
+                  </div>
+                )}
+              </dl>
+            </>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
+function InvoiceList() {
+  const invoices = useQuery({ queryKey: ['invoices'], queryFn: fetchInvoices, retry: false });
+  // Nothing to show is not the same as a list that failed to load, and neither earns a heading on a
+  // page that is mostly about Credits. A customer with no invoices yet has nothing to check.
+  if (invoices.isPending || invoices.isError || invoices.data.invoices.length === 0) return null;
+  return (
+    <section className="invoice-list" aria-labelledby="invoices-heading">
+      <h3 id="invoices-heading">Invoices</h3>
+      <ul className="invoice-list__rows">
+        {invoices.data.invoices.map((inv) => (
+          <InvoiceRow key={inv.id} invoice={inv} />
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -212,6 +381,46 @@ function UsageBars({ days }: { days: UsageDay[] }) {
   );
 }
 
+/**
+ * WHAT THOSE THIRTY BARS WENT ON.
+ *
+ * The chart above says WHEN Credits were spent, which is the half this page already had. The other
+ * half — what they were spent on — was in the ledger the whole time, on a `kind` column the history
+ * query discarded. Underneath rather than beside the chart, because it is the follow-up question:
+ * a person looks at a tall bar first and asks about it second.
+ *
+ * The figures are THIS ACCOUNT'S ACTUAL SPEND, unlike the typical per-mode costs beside the ring,
+ * which are published estimates. That distinction is the reason this is worth building at all.
+ */
+function SpendBreakdown({ days }: { days: UsageDay[] }) {
+  const slices = spendByKind(days);
+  // An older worker sends no breakdown. Nothing is the honest rendering of nothing — a bucket
+  // called "Other" holding the whole total would attribute spend to something nobody spent it on.
+  if (slices.length === 0) return null;
+  const total = slices.reduce((n, s) => n + s.credits, 0);
+  return (
+    <div className="spend-kinds">
+      <h3 className="spend-kinds__head">What those Credits went on</h3>
+      <ul className="spend-kinds__list">
+        {slices.map((s) => (
+          <li key={s.key} className="spend-kind">
+            <span className="spend-kind__name">{s.label}</span>
+            {/* The bar is the share of the thirty days, so the eye can compare rows without
+                reading every number. aria-hidden: the figure beside it is the accessible one. */}
+            <span className="spend-kind__bar" aria-hidden="true">
+              <span
+                className="spend-kind__fill"
+                style={{ width: `${total > 0 ? Math.max(2, (s.credits / total) * 100) : 0}%` }}
+              />
+            </span>
+            <span className="spend-kind__value">{formatNumber(s.credits)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /*
  * THE PRO WAITLIST LIVED HERE.
  *
@@ -234,6 +443,11 @@ export function UsagePage() {
   // page already had against the server it is reporting on. meterView decides which limit is
   // binding, keeps allowance and credits apart, and is tested on its own.
   const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending });
+
+  // Both halves come from the SAME rollup on the server, so the comparison is measured one way.
+  // Reading this month off the quota and last month off the ledger would be two different bases
+  // subtracted from each other, which is the shape of a figure nobody can reconcile.
+  const comparison = periodComparisonLine(usage.data?.thisMonth, usage.data?.previousMonth);
 
   // w14 — the upgrade and downgrade path.
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
@@ -380,6 +594,11 @@ export function UsagePage() {
                 <span className="muted"> — spent only once the allowance is gone</span>
               </p>
             )}
+            {/* AGAINST LAST MONTH — and silent when there is nothing honest to compare against.
+                periodComparisonLine returns null for a first month, or a month the server's rollup
+                was not already counting when it began, and null renders as nothing rather than as
+                a comparison with zero. */}
+            {comparison && <p className="credits-compare">{comparison}</p>}
             <p className="muted">{view.resetsIn ?? 'Resets in a moment'}</p>
             <ul className="mode-cost-list">
               {MODES.map((m) => (
@@ -405,7 +624,10 @@ export function UsagePage() {
               (usage.data.days.length === 0 ? (
                 <p className="muted">No Credits spent yet — go build something.</p>
               ) : (
-                <UsageBars days={usage.data.days} />
+                <>
+                  <UsageBars days={usage.data.days} />
+                  <SpendBreakdown days={usage.data.days} />
+                </>
               ))}
           </div>
 
@@ -576,6 +798,13 @@ export function UsagePage() {
             already keeps the Stripe customer id across a plan change for this reason; the page was
             the half that did not honour it.
           */}
+          {/*
+            GATED ON THE SAME THING THE PORTAL BUTTON IS. A Stripe customer exists, so there is
+            something to list — including for somebody whose subscription lapsed and who is back on
+            Free with invoices they still need to reach.
+          */}
+          {billingView?.hasBillingAccount && <InvoiceList />}
+
           {billingView?.hasBillingAccount && <BillingHistory />}
 
           {billingView?.hasBillingAccount && (

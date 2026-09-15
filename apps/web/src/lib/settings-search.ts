@@ -66,20 +66,20 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['roblox', 'open cloud', 'api key', 'connect', 'upload', 'creator', 'credential', 'account'],
   },
   {
-    id: 'api-keys',
-    title: 'API keys',
-    section: 'Connections',
-    // The words somebody types in the ten minutes after a key leaks, which are not the words in
-    // the title: "revoke", "leaked", "token". Whoever is searching this is usually in a hurry.
-    keywords: ['api', 'key', 'token', 'sdk', 'revoke', 'rotate', 'leaked', 'secret', 'developer', 'integration', 'curl'],
-  },
-  {
     id: 'asset-sources',
     title: 'Where Apple gets assets',
     section: 'Building',
     // Nobody types "asset source policy". They type the thing they are worried about — that it is
     // using other people's work, or that it is spending credits making its own.
     keywords: ['assets', 'library', 'creator store', 'from scratch', 'licence', 'credits', 'where', 'models', 'textures', 'sources', 'pop up', 'ask me'],
+  },
+  {
+    id: 'api-keys',
+    title: 'API keys',
+    section: 'Connections',
+    // The words somebody types in the ten minutes after a key leaks, which are not the words in
+    // the title: "revoke", "leaked", "token". Whoever is searching this is usually in a hurry.
+    keywords: ['api', 'key', 'token', 'sdk', 'revoke', 'rotate', 'leaked', 'secret', 'developer', 'integration', 'curl'],
   },
   {
     id: 'discord',

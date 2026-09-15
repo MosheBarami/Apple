@@ -78,7 +78,10 @@ test('THE RING SHOWS THE ALLOWANCE, never allowance-plus-credits', () => {
 test('the page and the rail share ONE model of the same two balances', () => {
   // Two independent readings of one payload is how a page comes to disagree with itself, which is
   // the failure this page already had against the server.
-  assert.match(usageCode, /import \{ meterView \}/, 'the page derives from the shared model');
+  // The import list grew when the spend breakdown landed; what is pinned is that meterView comes
+  // from the shared model file, not the exact spelling of the import statement.
+  assert.match(usageCode, /import \{[^}]*\bmeterView\b[^}]*\} from '\.\.\/components\/usage-meter-model'/,
+    'the page derives from the shared model');
   assert.match(usageCode, /meterView\(me\.data\?\.quota/, 'over the same payload');
   assert.match(usageCode, /pending: me\.isPending/, 'and passes loading through, not as a failure');
 });
@@ -256,6 +259,41 @@ test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
         'it would advertise itself as affording no builds',
     );
   }
+});
+
+test('THE MONTH COMPARISON IS RENDERED, and both halves come from one source', () => {
+  // Reading this month off the quota and last month off the usage history would be two different
+  // bases subtracted from each other — a figure nobody could reconcile against either.
+  assert.match(usageCode, /periodComparisonLine\(usage\.data\?\.thisMonth, usage\.data\?\.previousMonth\)/,
+    'both halves must come from the same rollup');
+  assert.match(usageCode, /\{comparison && /, 'and a null comparison renders NOTHING, not a zero');
+  assert.match(css, /\.credits-compare\b/, 'the sentence must be styled');
+});
+
+test('THE SPEND BREAKDOWN IS RENDERED, and comes from the shared model', () => {
+  // The ledger has carried a `kind` on every spend since it existed and the history query threw it
+  // away. spendByKind is tested in usage-meter.test.mjs; this is the half that says a person can
+  // see it. A page that re-derived the buckets here would be a second opinion about one payload.
+  assert.match(usageCode, /spendByKind/, 'the page must use the model');
+  assert.match(usageCode, /<SpendBreakdown\b/, 'and render it under the chart');
+  assert.doesNotMatch(usageCode, /chat_|usage_agent|docs_search/,
+    'the component must not know ledger kind spellings — that decision lives in the model');
+  for (const cls of ['spend-kinds', 'spend-kind__bar', 'spend-kind__value']) {
+    assert.ok(usageCode.includes(cls), `the component must use .${cls}`);
+    assert.match(css, new RegExp(`\\.${cls}\\b`), `.${cls} must be styled`);
+  }
+});
+
+test('THE BILLING HISTORY CAN BE TAKEN AWAY, and the formatter that does it has a caller', () => {
+  // billingHistoryCsv is tested on its own in billing-status.test.mjs. A tested pure function
+  // nobody calls is the dead branch this codebase keeps finding: it reads like a shipped feature in
+  // every review it survives. This is the half that says a person can actually reach it.
+  assert.match(usageCode, /billingHistoryCsv/, 'the page must use the formatter');
+  assert.match(usageCode, /Download billing history/, 'and there must be a control that says so');
+  assert.match(usageCode, /createObjectURL/, 'built in the browser from rows it already has');
+  assert.match(usageCode, /revokeObjectURL/, 'and the object URL is released rather than leaked');
+  assert.doesNotMatch(usageCode, /api\/billing\/history\/export|billing\/export/,
+    'there is deliberately no new worker route for this — the rows are already on the page');
 });
 
 // --- coming back from the PORTAL, not only from the checkout -------------------------------

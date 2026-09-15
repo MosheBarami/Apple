@@ -29,7 +29,9 @@ import {
   type Preferences,
   type PromptProfile,
 } from '../../lib/api';
+import { floorFrom, floorNote, permissionOf } from '../../lib/tool-permissions';
 import { useToast } from '../toast';
+import { useUnsavedGuard } from '../../lib/unsaved';
 import { GOVERNABLE_TOOLS, blockedTools, withToolBlocked } from './tool-permissions';
 import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../../lib/notification-inbox.ts';
 import { MANDATORY_REASON, eventEnabled, toggledEvents } from '../../lib/notification-prefs.ts';
@@ -102,6 +104,10 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
   const [prefs, setPrefs] = useState<Preferences>({});
   const [profile, setProfile] = useState<PromptProfile>({});
   const [dirty, setDirty] = useState(false);
+
+  // The panel's edit lives here and nowhere else, so closing the tab on it is the one loss with
+  // no recovery — see lib/unsaved.ts for what this does and does not cover.
+  useUnsavedGuard(dirty);
   const [adding, setAdding] = useState('');
   const [addTtl, setAddTtl] = useState('');
   const [showAudit, setShowAudit] = useState(false);
@@ -308,6 +314,14 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         storing one would read like permission and confer nothing; `ask` is collapsed to a refusal
         by the worker because nothing here can interrupt a run to ask, so offering it would promise
         a confirmation that never comes. See tool-permissions.ts.
+
+        AND A BLOCK SET ABOVE THIS LAYER IS DRAWN AS WHAT IT IS. The layers intersect towards the
+        strictest answer, so a tool blocked for the account cannot be unblocked here — a checkbox
+        that still cleared would be a control wired to nothing, and the person who cleared it would
+        leave believing the tool was back. Those rows are ticked, disabled, and say which layer
+        decided. `floorFrom` compares this layer's own value against the merged one rather than
+        reading the merged value alone, because the merged value already contains this layer — see
+        lib/tool-permissions.ts.
       */}
       <fieldset className="prefs__set" disabled={!canWrite}>
         <legend className="field-label">What Apple may do here</legend>
@@ -323,11 +337,19 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
             </span>
             {GOVERNABLE_TOOLS.filter((t) => t.group === group).map((t) => {
               const blocked = blockedTools(prefs.tool_permissions).has(t.tool);
+              // The merged answer for this project, straight from the server. `floorFrom` returns
+              // a value only when some OTHER layer is stricter than this one, which is the only
+              // honest evidence that the block was not made here.
+              const floor = floorFrom(
+                permissionOf(prefs.tool_permissions, t.tool),
+                permissionOf(resolved.data?.preferences.tool_permissions, t.tool),
+              );
               return (
                 <label key={t.tool} className="prefs__check prefs__check--reasoned">
                   <input
                     type="checkbox"
-                    checked={blocked}
+                    checked={blocked || floor !== undefined}
+                    disabled={!canWrite || floor !== undefined}
                     onChange={() => setPref('tool_permissions', withToolBlocked(prefs.tool_permissions, t.tool, !blocked))}
                   />
                   <span>
@@ -335,6 +357,11 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
                     {/* The reason is shown, not hidden behind a tooltip. A permission control
                         whose consequences are invisible is one people either ignore or misuse. */}
                     <span className="prefs__check-why">{t.why}</span>
+                    {floor && (
+                      <span className="prefs__check-why" role="status">
+                        {floorNote(floor, resolved.data?.sources.tool_permissions)}
+                      </span>
+                    )}
                   </span>
                 </label>
               );
