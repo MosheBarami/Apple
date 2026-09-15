@@ -293,7 +293,7 @@ like it covers it.
     CHECK: node scripts/assert-tests.mjs --floor 12 --label G-ORACLE-7 -- node --test tests/check-pixels.test.mjs
     EXPECT: G-ORACLE-7 OK
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-ORACLE-7; path=6765c31f4f12/53 entries; git-sha=5f442e6; tree-clean=yes; deps-clean=yes; break-sha=5f442e6; EXPECT=unmatched; output-sha256=c3d757b007c971317e5b6b0140dd0e1a279623f2a0de80e8f44d0d1e012e18fb; output-bytes=9553; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=cb8399b8db51ac3c8b15ae72; at=2026-09-15T01:34:12.926Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=a72bf17; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=7a26e1723861dd916466b527b560012e48d1ce9823bf082d0c61c3f31cbc356e; output-bytes=1168; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=b1f9e9c1cd1404f3341228aa; at=2026-09-15T01:45:31.788Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e66fac3; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=7a26e1723861dd916466b527b560012e48d1ce9823bf082d0c61c3f31cbc356e; output-bytes=1166; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=59b947b34fe94897cdd6eb46; at=2026-09-15T05:53:29.014Z
 
 - [x] G-COST-1: The settled run cost is wired from the last charge through to the rendered turn
     CHECK: cd apps/web && node ../../scripts/assert-tests.mjs --floor 12 --label G-COST-1 -- node --test tests/run-meters.test.mjs
@@ -329,7 +329,7 @@ like it covers it.
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=504fedfc20acae1fb1c6308e8ed338b0a64c31d4fbdea1ec4afaabee0294f407; output-bytes=45; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=241; deps-sha=c02c744c5a4e5b405e711bca; at=2026-09-15T00:25:13.101Z
+  EVIDENCE: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e66fac3; tree-clean=no; deps-clean=yes; EXPECT=unmatched; output-sha256=640284070f001d672e2d844d855b7c0df446eb091098b8c4050ef5b7909a02e2; output-bytes=44; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=247; deps-sha=44b2aa9b1472c48db13c14fa; at=2026-09-15T05:56:28.985Z
 
 - [x] G91: Every package typechecks
     CHECK: node scripts/gate-typecheck.mjs
