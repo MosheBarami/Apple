@@ -258,8 +258,8 @@ test it gated.
 - [x] G-S1: A stranger's browser gets a page with no Golem, no forbidden promise, and the real free quota
     STATION: S1
     CHECK: node scripts/probe-s1.mjs
-  FALSIFIED: exit=2; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-S1; path=6765c31f4f12/53 entries; git-sha=35a5742; tree-clean=yes; deps-clean=yes; break-sha=35a5742; EXPECT=unmatched; output-sha256=f43139ff11a70c96a70db03bd1a94b72865747e834ef1ee1fd7a6aeec9abadd0; output-bytes=334; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=8aa66bc2a7cdd92d84a3cc19; at=2026-09-15T05:21:52.938Z
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=5935300; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=fb6d125569436ed5638b16b8be561412a4029e987d85cb91a12c781a6b8d791e; output-bytes=317; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=da19a1a1c38c79d65b8336a8; at=2026-09-15T05:21:55.689Z
+  FALSIFIED: exit=2; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-S1; path=6765c31f4f12/53 entries; git-sha=ce3802e; tree-clean=yes; deps-clean=yes; break-sha=ce3802e; EXPECT=unmatched; output-sha256=f43139ff11a70c96a70db03bd1a94b72865747e834ef1ee1fd7a6aeec9abadd0; output-bytes=334; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=46e07c400de7c6d6b69f0116; at=2026-09-15T05:40:30.742Z
+  EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=d44316e; tree-clean=no; deps-clean=yes; EXPECT=matched; output-sha256=9ca79bc3064cb32035f1871da24d36382bb3c033165c407ee59af4ef412dd788; output-bytes=360; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2f40afcd76e7403b27c0a486; at=2026-09-15T05:40:34.562Z
     EXPECT: S1 PROVEN
 
 ORIGIN-SCOPED, UNLIKE EVERY OTHER GATE HERE. G-S1's CHECK reads the DEPLOYED origin, so its
@@ -325,7 +325,7 @@ like it covers it.
 
 ## Whole-product gates
 
-- [x] G90: The full suite passes
+- [ ] G90: The full suite passes
     CHECK: node scripts/gate-suite.mjs
     EXPECT: SUITE GREEN
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=1cbbd2d; tree-clean=yes; break-sha=1cbbd2d; EXPECT=unmatched; output-sha256=d3ca83a0f1c28c107d19848521978c0fed503026b5dd9621c7b7078b3a626ac6; output-bytes=43; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=224; deps-sha=26ef956a96cd451b185f2c1f; at=2026-09-14T20:29:15.030Z
