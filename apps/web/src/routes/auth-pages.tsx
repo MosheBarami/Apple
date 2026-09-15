@@ -25,7 +25,17 @@ import {
   signupOutcome,
 } from '../lib/auth-flows';
 
-const MODES: ProductMode[] = ['plan', 'agent', 'super'];
+/**
+ * What the signed-out hero lists, which is NOT every mode the product has.
+ *
+ * 'super' is deliberately absent: the owner does not want Super Agent on the
+ * front of the product, and this panel is the first thing a person who has not
+ * signed up yet reads. It is presentation only — `PRODUCT_MODE_INFO` still
+ * defines all three, the composer inside the app still offers all three, and
+ * nothing in apps/worker changed. A visitor is not being told there are two
+ * modes; they are being shown the two that answer what they arrived asking.
+ */
+const MODES: ProductMode[] = ['plan', 'agent'];
 
 function ThemeCorner() {
   const { theme, setTheme } = useTheme();

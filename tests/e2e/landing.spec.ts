@@ -131,34 +131,43 @@ test('holds the approved composition', async ({ page }) => {
   await expect(page.locator('.ap-hero__note')).toContainText('Free to start');
   await expect(page.locator('.ap-hero__note')).toContainText('No card required');
 
-  // Three modes and three plans. Two of either is the design's count, not the
-  // product's, and the difference is the whole of ADR-020's departure note.
-  await expect(page.locator('#modes .ap-card')).toHaveCount(3);
+  // TWO mode cards, and three plans. The landing no longer leads with Super
+  // Agent — the owner does not want it on the front of the product — while
+  // /pricing and /docs/modes still carry it, because the worker still offers it
+  // and still bills 10 Credits for it. The landing's own lede is careful not to
+  // COUNT the modes for exactly that reason.
+  await expect(page.locator('#modes .ap-card')).toHaveCount(2);
   await expect(page.locator('#pricing .ap-card')).toHaveCount(3);
 
-  // THE DISPLAY FACE, AND ITS WIDTH AXIS. Archivo at font-stretch 118% is the
-  // design; Archivo at the default 100% is an ordinary grotesque and the
-  // direction is simply gone, with nothing visibly broken to notice. A stack
-  // that silently falls back would read as sans-serif and pass every other
-  // assertion here, so the axis is asserted directly.
+  // THE DISPLAY FACE. This asserted Archivo at font-stretch 118% in uppercase,
+  // and all three are superseded: the identity is Rubik, sentence case, and no
+  // width axis at all. The `font-stretch` assertion is DELETED rather than
+  // relaxed — Rubik has no `wdth` axis, so a stretch expectation here would
+  // either be trivially true or would demand a declaration the stylesheet
+  // deliberately removed as a dead one.
+  //
+  // What the assertion is really for survives intact: a stack that silently
+  // falls back still reads as sans-serif and would pass every other check on
+  // this page, so the family is named directly.
   const display = await page.locator('h1').evaluate((el) => {
     const s = getComputedStyle(el);
     return {
       family: s.fontFamily.toLowerCase(),
       weight: s.fontWeight,
-      stretch: s.fontStretch,
       transform: s.textTransform,
     };
   });
-  expect(display.family).toContain('archivo');
+  expect(display.family).toContain('rubik');
+  expect(display.family).not.toContain('archivo');
   expect(display.family).not.toContain('fraunces');
   expect(display.family).not.toContain('georgia');
   // The generic at the end of the stack decides what a reader without the
   // webfont sees. It has to be sans-serif, not serif.
   expect(display.family.split(',').pop()!.trim()).toBe('sans-serif');
-  expect(display.weight).toBe('800');
-  expect(display.stretch, 'the width axis is the design').toBe('118%');
-  expect(display.transform).toBe('uppercase');
+  expect(display.weight).toBe('700');
+  // SENTENCE CASE. A blanket uppercase on every display line was the single
+  // loudest thing this page had in common with revix.tech.
+  expect(display.transform).toBe('none');
 
   // The mark is a hexagon containing a cube, not the old monolith.
   await expect(page.locator('.ap-header .gm__hex')).toHaveCount(1);
@@ -481,21 +490,27 @@ test('every text element clears WCAG AA against what is actually behind it', asy
   // page. No CSS selector can reach "elements whose computed background-clip is
   // text", so the background-image is removed element by element, which is also
   // what makes the true backdrop underneath visible for sampling.
-  const unclipped = await page.evaluate(() => {
-    let n = 0;
+  //
+  // THE ASSERTION THAT USED TO FOLLOW — `expect(unclipped).toBeGreaterThan(0)`,
+  // "is the hero headline still clipped?" — IS DELETED, and deliberately in the
+  // same change as the design that made it wrong. The hero's second line is now
+  // a solid --accent-ink rather than a gradient clipped to its glyphs, because
+  // a clipped headline has no fallback colour and the colour is the argument.
+  // Left standing, that assertion would fail a page that is correct, which is
+  // the worst kind of red: it teaches the next person to distrust the harness.
+  //
+  // The SWEEP stays, because it is not about the headline. Any element that
+  // paints text through its background must still have that background removed
+  // before the backdrop is shot, or the audit measures type against its own
+  // glyphs — and it costs nothing to keep looking for one.
+  await page.evaluate(() => {
     for (const el of document.querySelectorAll<HTMLElement>('body *')) {
       const s = getComputedStyle(el);
       if (s.webkitBackgroundClip === 'text' || s.backgroundClip === 'text') {
         el.style.setProperty('background-image', 'none', 'important');
-        n += 1;
       }
     }
-    return n;
   });
-  // If this ever reaches zero, the clipped headline has been restyled and the
-  // `clip` branch below is dead code measuring a gradient nothing paints.
-  expect(unclipped, 'no background-clip:text element found — is the hero headline still clipped?')
-    .toBeGreaterThan(0);
   // addStyleTag resolves when the sheet is applied, not when the next frame is
   // painted. Shooting immediately captures the glyphs still on screen, which
   // reads back as a catastrophic contrast failure on every label.
@@ -554,9 +569,24 @@ test('every text element clears WCAG AA against what is actually behind it', asy
           y1: (hl.y + hl.h) * dpr + PAD,
         }));
 
-        // Worst case: the brightest backdrop pixel under the element, since all
-        // type on this page is light on dark.
-        let worst = 0;
+        // BOTH EXTREMES, NOT THE BRIGHT ONE.
+        //
+        // This tracked only the brightest backdrop pixel, and the comment that
+        // justified it — "since all type on this page is light on dark" — was
+        // load-bearing rather than descriptive. The landing is light-first now:
+        // dark ink on a pale baseplate. Against dark ink the brightest pixel is
+        // the FLATTERING one, so the old sampler would have reached for the
+        // single most generous pixel under every element and reported clean
+        // over a real failure. That is this repository's own named defect — a
+        // failure to observe rendering as an observation — sitting inside the
+        // instrument that exists to catch it.
+        //
+        // So both ends are kept and the verdict is taken on the WORSE of the
+        // two ratios. That is strictly stronger than either premise alone, and
+        // it is direction-agnostic: it stays correct whichever way the page
+        // flips next, and it would have caught the old page too.
+        let hi = 0;
+        let lo = 1;
         let sampled = 0;
         for (let row = 0; row < bh; row++) {
           for (let col = 0; col < bw; col++) {
@@ -569,7 +599,8 @@ test('every text element clears WCAG AA against what is actually behind it', asy
             }
             const i = (row * bw + col) * 4;
             const l = lum(px[i], px[i + 1], px[i + 2]);
-            if (l > worst) worst = l;
+            if (l > hi) hi = l;
+            if (l < lo) lo = l;
             sampled++;
           }
         }
@@ -599,7 +630,10 @@ test('every text element clears WCAG AA against what is actually behind it', asy
           fg = lum(m[0], m[1], m[2]);
         }
 
-        const ratio = (Math.max(fg, worst) + 0.05) / (Math.min(fg, worst) + 0.05);
+        // The worse of the two, so neither a light nor a dark backdrop pixel
+        // can be the one that lets the element through.
+        const against = (bg: number) => (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+        const ratio = Math.min(against(hi), against(lo));
         // "Large" per WCAG: >=24px, or >=18.66px when bold.
         const large = box.size >= 24 || (box.bold && box.size >= 18.66);
         const need = large ? 3 : 4.5;
