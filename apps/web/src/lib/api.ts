@@ -120,8 +120,23 @@ export interface UsageDay {
 export const fetchMe = (): Promise<MeResponse> =>
   MOCK_MODE ? Promise.resolve(mockMe) : request<MeResponse>('/api/me');
 
-export const fetchUsage = (): Promise<{ days: UsageDay[] }> =>
-  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<{ days: UsageDay[] }>('/api/me/usage');
+export interface UsageHistory {
+  days: UsageDay[];
+  /** This month's running total from the DO's own rollup. Absent on an older worker. */
+  thisMonth?: number;
+  /**
+   * The month before this one — and NULL whenever it cannot be stated honestly.
+   *
+   * The ledger is pruned at 35 days, so a "last month" figure summed from its rows would be
+   * truncated for most of the month. The server sends this only for a month its rollup was already
+   * counting when the month began; null means "not known", never "zero", and the page must render
+   * nothing rather than a comparison against a month nobody measured.
+   */
+  previousMonth?: { month: string; credits: number } | null;
+}
+
+export const fetchUsage = (): Promise<UsageHistory> =>
+  MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<UsageHistory>('/api/me/usage');
 
 // ---------------------------------------------------------------- billing (w14)
 //

@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
-import { meterView, spendByKind } from '../components/usage-meter-model';
+import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { formatNumber } from '../lib/format';
 import { Failure } from '../components/failure';
 import { PLAN_COPY, PRODUCT_MODE_INFO, isPlanId, type PlanId, type ProductMode } from '@golem/shared';
@@ -434,6 +434,11 @@ export function UsagePage() {
   // binding, keeps allowance and credits apart, and is tested on its own.
   const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending });
 
+  // Both halves come from the SAME rollup on the server, so the comparison is measured one way.
+  // Reading this month off the quota and last month off the ledger would be two different bases
+  // subtracted from each other, which is the shape of a figure nobody can reconcile.
+  const comparison = periodComparisonLine(usage.data?.thisMonth, usage.data?.previousMonth);
+
   // w14 — the upgrade and downgrade path.
   const billing = useQuery({ queryKey: ['billing-config'], queryFn: fetchBillingConfig, retry: false });
   const { toast } = useToast();
@@ -527,6 +532,11 @@ export function UsagePage() {
                 <span className="muted"> — spent only once the allowance is gone</span>
               </p>
             )}
+            {/* AGAINST LAST MONTH — and silent when there is nothing honest to compare against.
+                periodComparisonLine returns null for a first month, or a month the server's rollup
+                was not already counting when it began, and null renders as nothing rather than as
+                a comparison with zero. */}
+            {comparison && <p className="credits-compare">{comparison}</p>}
             <p className="muted">{view.resetsIn ?? 'Resets in a moment'}</p>
             <ul className="mode-cost-list">
               {MODES.map((m) => (

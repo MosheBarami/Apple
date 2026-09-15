@@ -203,6 +203,15 @@ test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
   }
 });
 
+test('THE MONTH COMPARISON IS RENDERED, and both halves come from one source', () => {
+  // Reading this month off the quota and last month off the usage history would be two different
+  // bases subtracted from each other — a figure nobody could reconcile against either.
+  assert.match(usageCode, /periodComparisonLine\(usage\.data\?\.thisMonth, usage\.data\?\.previousMonth\)/,
+    'both halves must come from the same rollup');
+  assert.match(usageCode, /\{comparison && /, 'and a null comparison renders NOTHING, not a zero');
+  assert.match(css, /\.credits-compare\b/, 'the sentence must be styled');
+});
+
 test('THE SPEND BREAKDOWN IS RENDERED, and comes from the shared model', () => {
   // The ledger has carried a `kind` on every spend since it existed and the history query threw it
   // away. spendByKind is tested in usage-meter.test.mjs; this is the half that says a person can

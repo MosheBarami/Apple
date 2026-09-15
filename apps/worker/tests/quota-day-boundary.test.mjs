@@ -182,6 +182,33 @@ test('every plan reports the table it is limited by, not a copy of it', () => {
   }
 });
 
+// ------------------------------------------------------- the month BEFORE this one
+
+test('prevMonthKey crosses a year boundary without inventing month zero', () => {
+  assert.equal(Q.prevMonthKey(at('2026-09-15T12:00:00.000Z')), '2026-08');
+  assert.equal(Q.prevMonthKey(at('2026-01-01T00:00:00.000Z')), '2025-12');
+  assert.equal(Q.prevMonthKey(at('2026-03-01T00:00:00.000Z')), '2026-02');
+  // The 31st of a month whose predecessor has 30 days: a naive setMonth(-1) lands in the month
+  // AFTER the one intended, which would compare this month against itself.
+  assert.equal(Q.prevMonthKey(at('2026-03-31T23:59:59.999Z')), '2026-02');
+  assert.equal(Q.prevMonthKey(at('2026-05-31T12:00:00.000Z')), '2026-04');
+});
+
+test('A MONTH IS ONLY COMPARABLE IF WE WERE COUNTING BEFORE IT STARTED', () => {
+  // The whole point. The ledger is pruned at 35 days, so a month total assembled from rows would be
+  // truncated for most of the month and would silently understate — a comparison the reader has no
+  // way to know is wrong. The running total is only trustworthy for a month that began after the
+  // counting did, and this is the predicate that says so.
+  assert.equal(Q.monthTotalComplete('2026-08-01', '2026-08'), true, 'counting from the first day');
+  assert.equal(Q.monthTotalComplete('2026-07-14', '2026-08'), true, 'counting since before it began');
+  assert.equal(Q.monthTotalComplete('2026-08-02', '2026-08'), false, 'one day late is an incomplete month');
+  assert.equal(Q.monthTotalComplete('2026-08-20', '2026-08'), false);
+  assert.equal(Q.monthTotalComplete(null, '2026-08'), false, 'no start date is not a licence to report');
+  assert.equal(Q.monthTotalComplete(undefined, '2026-08'), false);
+  assert.equal(Q.monthTotalComplete('', '2026-08'), false);
+  assert.equal(Q.monthTotalComplete('nonsense', '2026-08'), false);
+});
+
 test('an overspent ledger clamps at zero rather than reporting a negative allowance', () => {
   const l = ledger();
   l.spend(at('2026-09-14T12:00:00.000Z'), PLAN_LIMITS.free.creditsPerDay * 3);

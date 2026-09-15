@@ -237,6 +237,31 @@ export function meterView(
 // else in this file is: a page that decides what a field means decides it again in every place it
 // prints it.
 
+/**
+ * "AM I SPENDING MORE THAN LAST MONTH", which the page could not answer at all.
+ *
+ * It showed one period at a time and nothing anywhere held a previous figure. The trap in adding
+ * one is the FIRST month: a comparison against a month that was never counted reads as "1,200 this
+ * month, against 0 last month" — a story about explosive growth told to somebody who had simply not
+ * signed up yet. So the server sends `null` rather than `0` for a month it cannot vouch for, and
+ * this returns null rather than a sentence. The caller renders nothing.
+ */
+export function periodComparisonLine(
+  thisMonth: unknown,
+  previous: { month?: string; credits?: unknown } | null | undefined,
+): string | null {
+  if (typeof thisMonth !== 'number' || !Number.isFinite(thisMonth)) return null;
+  if (!previous || typeof previous.credits !== 'number' || !Number.isFinite(previous.credits)) return null;
+  const prev = previous.credits;
+  const now = formatNumber(thisMonth);
+  const then = formatNumber(prev);
+  // Three directions rather than two. "the same as last month" is a real and quite common answer,
+  // and forcing it into "more" or "less" would be false about a figure somebody can check.
+  if (thisMonth === prev) return `${now} Credits this month — the same as last month.`;
+  const direction = thisMonth > prev ? 'up from' : 'down from';
+  return `${now} Credits this month, ${direction} ${then} last month.`;
+}
+
 /** One day of spend as the worker now reports it. `kinds` is absent on an older worker. */
 export interface UsageDayRow {
   day: string;

@@ -5059,6 +5059,16 @@ samp {
   color: var(--muted);
 }
 
+/* This month against last month. One quiet sentence under the ring rather than a delta
+   badge — the comparison is context for the number above it, not a metric of its own,
+   and it is absent entirely whenever there is no honest month to compare against. */
+.credits-compare {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Purchased credits, beside the allowance ring and never inside it. */
 .credits-credits {
   margin: 0;

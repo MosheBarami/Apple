@@ -37,7 +37,7 @@ const out = join(mkdtempSync(join(tmpdir(), 'usage-')), 'usage.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'components', 'usage-meter-model.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { meterView, resetsIn, nextMonthResetIso, spendByKind, usageKindLabel } = await import(out);
+const { meterView, resetsIn, nextMonthResetIso, spendByKind, usageKindLabel, periodComparisonLine } = await import(out);
 
 const sharedOut = join(mkdtempSync(join(tmpdir(), 'shared-')), 'shared.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
@@ -328,6 +328,40 @@ test('an older worker that sends no breakdown produces no breakdown, not a wrong
   assert.deepEqual(spendByKind([{ day: '2026-09-10', credits: 10, events: 3 }]), []);
   assert.deepEqual(spendByKind([]), []);
   assert.deepEqual(spendByKind(undefined), []);
+});
+
+// -------------------------------------------------------------- against last month
+
+test('THE COMPARISON IS OMITTED ENTIRELY WHEN THERE IS NOTHING TO COMPARE', () => {
+  // The page showed one period at a time and nothing anywhere held a previous figure. The trap in
+  // adding one is the FIRST month: a comparison against a month that was never counted would read
+  // as "1,200 this month, against 0 last month" — a story about explosive growth, told to somebody
+  // who simply had not signed up yet.
+  assert.equal(periodComparisonLine(1200, null), null);
+  assert.equal(periodComparisonLine(1200, undefined), null);
+  assert.equal(periodComparisonLine(1200, { month: '2026-08' }), null, 'a month with no figure is no figure');
+  assert.equal(periodComparisonLine(1200, { month: '2026-08', credits: 'lots' }), null);
+  assert.equal(periodComparisonLine(null, { month: '2026-08', credits: 900 }), null,
+    'and an unreadable current figure cannot be half of a comparison either');
+});
+
+test('a real comparison names both figures and which way it went', () => {
+  const up = periodComparisonLine(1200, { month: '2026-08', credits: 900 });
+  assert.ok(up.includes('1,200') || up.includes('1200'), up);
+  assert.ok(up.includes('900'), up);
+  assert.match(up, /last month/i);
+  assert.doesNotMatch(up, /undefined|NaN|null/, up);
+
+  const down = periodComparisonLine(300, { month: '2026-08', credits: 900 });
+  assert.ok(down.includes('300') && down.includes('900'), down);
+  assert.notEqual(up, down, 'the two directions must not read identically');
+});
+
+test('A GENUINE ZERO LAST MONTH IS A COMPARISON; an unknown one is not', () => {
+  // These two look the same in a payload that uses 0 for "no data", which is exactly why the server
+  // sends null instead. Both branches are asserted so that distinction cannot be flattened later.
+  assert.ok(periodComparisonLine(50, { month: '2026-08', credits: 0 }), 'a month someone really spent nothing in');
+  assert.equal(periodComparisonLine(50, null), null);
 });
 
 test('the labels are the product’s own words for the modes', () => {
