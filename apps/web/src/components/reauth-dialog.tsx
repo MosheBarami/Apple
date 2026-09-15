@@ -21,6 +21,9 @@ const WHY: Readonly<Record<SensitiveAction, string>> = {
     'Removing the second step leaves your password as the only thing protecting this account, so this one asks first.',
   'sign-out-everywhere': 'This ends every session on every device, including ones you are not holding.',
   'reset-settings': 'This puts every personal setting back to its default and cannot be undone.',
+  'export-data':
+    'The file this produces holds everything we keep about you — your projects, your messages, your usage. Anyone who has it, has that.',
+  'delete-account': 'This deletes your data from every store we can reach, and none of it can be brought back.',
 };
 
 export function ReauthDialog({

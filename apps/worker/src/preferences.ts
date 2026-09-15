@@ -54,6 +54,12 @@ export const PREFERENCE_KEYS = [
   // local state because "settled once" has to mean settled for this project, or this person, or
   // this organisation — which is the layering this file already does.
   'asset_sources',
+  // Whether a request event may carry this person's account id. The request log recorded one on
+  // EVERY /api/* call and kept it for thirty days, and there was no way to say no — not here, not
+  // in the settings page, not in the middleware. It is a preference for the same reason memory_mode
+  // is: an organisation has to be able to decide it for its people, and it NARROWS across layers so
+  // a project cannot switch somebody's account back on. Read by analytics-consent.ts.
+  'analytics_opt_out',
 ] as const;
 export type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
 
@@ -176,6 +182,8 @@ export interface Preferences {
   memory_mode?: MemoryMode;
   /** Where builds may take assets from. NARROWS across layers — see `narrowAssetSources`. */
   asset_sources?: AssetSourcePolicy;
+  /** True to keep this person's account id off analytics events. NARROWS: any layer's `true` wins. */
+  analytics_opt_out?: boolean;
 }
 
 export type PreferenceReject =
@@ -246,6 +254,13 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
         break;
       case 'memory_mode':
         if (isMemoryMode(value)) prefs.memory_mode = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
+      case 'analytics_opt_out':
+        // A boolean, and only a boolean. `'false'` and `0` are the two values a form sends by
+        // accident, and both would be truthy or falsy in a way somebody has to guess at; a consent
+        // flag is the last field in this list that should be decided by coercion.
+        if (typeof value === 'boolean') prefs.analytics_opt_out = value;
         else rejected.push({ key, reason: 'bad_value' });
         break;
       case 'roblox_conventions': {
@@ -368,7 +383,7 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
       // leaves all 13 assertions in asset-source-policy.test.mjs green, because the narrowing loop
       // below overwrites this one. Recorded rather than removed, for the reason above - and so the
       // next person to read a green suite does not count this line as covered.
-      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode' || key === 'asset_sources') continue;
+      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode' || key === 'asset_sources' || key === 'analytics_opt_out') continue;
       const v = layer[key];
       if (v === undefined) continue;
       (prefs as Record<string, unknown>)[key] = v;
@@ -424,6 +439,25 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
     assets = next;
   }
   if (assets !== undefined) prefs.asset_sources = assets;
+
+  //[[ `analytics_opt_out` NARROWS, and the narrowing is a one-way door: any layer's `true` wins.
+  //
+  //   Same reasoning as memory_mode. An organisation that switches analytics off has decided what
+  //   may be recorded about its people, and a project that could switch it back on would be
+  //   deciding that for them. `sources` names the layer that actually decided, so a settings panel
+  //   can say "your organisation turned this off" rather than showing a switch that does nothing.
+  //
+  //   `false` at every layer is a real answer and is kept, so the panel can tell "nobody has ever
+  //   set this" (undefined) from "this was considered and left on". ]]
+  let optOut: boolean | undefined;
+  for (const scope of order) {
+    const v = layers[scope]?.analytics_opt_out;
+    if (v === undefined) continue;
+    const next = optOut === true || v === true;
+    if (next !== optOut) sources.analytics_opt_out = scope;
+    optOut = next;
+  }
+  if (optOut !== undefined) prefs.analytics_opt_out = optOut;
 
   // `notify_events` merges PER ENTRY, in precedence order, for a reason unrelated to the one that
   // makes tool permissions narrow: nothing about it is a safety rule, and a project that overrode

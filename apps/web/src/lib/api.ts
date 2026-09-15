@@ -440,6 +440,15 @@ export interface Preferences {
    * project can mute one kind without un-muting everything the person silenced account-wide.
    */
   notify_events?: NotificationEventPrefs;
+  /**
+   * True to keep this account's id off the request log.
+   *
+   * NARROWS across layers, like asset_sources: an organisation that switched it off has decided
+   * what may be recorded about its people, and a project cannot switch it back on. The worker
+   * caches the answer per isolate for about a minute, so a change here is not instant everywhere —
+   * the settings copy says so.
+   */
+  analytics_opt_out?: boolean;
 }
 
 export interface PromptProfile {
@@ -572,6 +581,92 @@ export async function downloadMemoryExport(scope: MemoryScope, scopeId: string):
   const a = document.createElement('a');
   a.href = url;
   a.download = named ?? `apple-memory-${scope}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* --------------------------------------------------------- your data, and your account ---
+ *
+ * Both halves of "what happens when I want out". The worker owns the hard parts — what leaves, what
+ * is withheld, what a deletion can and cannot reach — and these are deliberately thin: a client that
+ * re-derived any of it would be a second opinion free to disagree with the receipt.
+ */
+
+/** What a deletion left behind, and why. The worker's own words; this app does not paraphrase them. */
+export interface ErasureResidue {
+  store: string;
+  target: string;
+  why: string;
+}
+
+export interface ErasureStep {
+  store: string;
+  target: string;
+  status: 'erased' | 'failed';
+  rows: number | null;
+  detail?: string;
+}
+
+export interface ErasureReceipt {
+  subject: string;
+  at: string;
+  steps: ErasureStep[];
+  residue: ErasureResidue[];
+  complete: boolean;
+  /** FALSE. The sign-in identity outlives this route; the screen must not say otherwise. */
+  accountRemoved: boolean;
+  summary: string;
+}
+
+export interface DeletionStatus {
+  requested: boolean;
+  requestedAt: string | null;
+  completedAt: string | null;
+  stepsDone: number;
+  stepsFailed: number;
+  accountRemoved: boolean;
+  residue: ErasureResidue[];
+}
+
+/**
+ * THE PHRASE, TYPED EXACTLY.
+ *
+ * It is a literal on both sides of a network boundary, so apps/web/tests/account-data.test.mjs
+ * reads the worker's `ERASURE_CONFIRMATION` and requires this file to send it. Drift here is a
+ * button that 400s forever while the person concludes the product will not delete them.
+ */
+export const DELETE_ACCOUNT_PHRASE = 'DELETE MY ACCOUNT';
+
+export const fetchDeletionStatus = (): Promise<DeletionStatus> => request<DeletionStatus>('/api/me/delete');
+
+export const deleteAccount = (): Promise<ErasureReceipt> =>
+  request<ErasureReceipt>('/api/me/delete', {
+    method: 'POST',
+    body: JSON.stringify({ confirm: DELETE_ACCOUNT_PHRASE }),
+  });
+
+/**
+ * Download everything this product holds about you, as one file.
+ *
+ * Not `request<T>`: the filename lives in Content-Disposition and a plain <a href> cannot carry the
+ * Bearer token /api/* requires. Same shape as downloadMemoryExport, deliberately — and the server
+ * names the file, because a second slug rule here would disagree with it.
+ */
+export async function downloadAccountExport(): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch('/api/me/export', { headers });
+  if (!res.ok) throw new ApiError(`Could not export your data (${res.status})`, res.status);
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const named = /filename="([^"]+)"/.exec(disposition)?.[1];
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? 'apple-data.json';
   document.body.appendChild(a);
   a.click();
   a.remove();

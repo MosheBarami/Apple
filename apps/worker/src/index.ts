@@ -30,6 +30,7 @@ import {
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import { accountExportFilename, collectAccountExport } from './account-export';
 import { describeSweep, runRetentionSweeps } from './retention-sweep';
+import { analyticsActorId, consentIsStale, forgetAnalyticsConsent, refreshAnalyticsConsent } from './analytics-consent';
 import {
   ERASURE_CONFIRMATION,
   eraseAccountData,
@@ -447,6 +448,18 @@ app.use('/api/*', async (c, next) => {
     throw e;
   } finally {
     const status = threw ? 500 : (c.res?.status ?? null);
+    const userId = c.get('user')?.userId ?? null;
+    //[[ WHOSE NAME MAY BE ON THIS ROW.
+    //
+    //   This used to be `c.get('user')?.userId ?? null` — the raw account id of whoever made the
+    //   call, on every /api/* request, kept for thirty days, with no way for that person to say no.
+    //
+    //   `analyticsActorId` answers from an isolate-local cache and withholds the id when the answer
+    //   is not known yet, which costs one unattributed event per person per isolate and never
+    //   attributes anybody on the way to finding out whether they agreed. The refresh is queued
+    //   after the response, so the read stays off the latency path of the request that triggered
+    //   it. See analytics-consent.ts. ]]
+    const actorId = analyticsActorId(userId);
     recordEvent({
       kind: 'request',
       route,
@@ -455,7 +468,7 @@ app.use('/api/*', async (c, next) => {
       // could not be read is not a success; `successRollup` counts it as unclassified.
       status,
       durationMs: Date.now() - started,
-      actorId: c.get('user')?.userId ?? null,
+      actorId,
     });
     if (threw || (typeof status === 'number' && status >= 500)) {
       recordEvent({
@@ -464,11 +477,13 @@ app.use('/api/*', async (c, next) => {
         errorKind: threw ? 'unhandled' : 'server_error',
         message: threw instanceof Error ? threw.message : String(threw ?? `status ${status}`),
         fatal: true,
-        actorId: c.get('user')?.userId ?? null,
+        actorId,
       });
     }
     try {
-      maybeFlush(c.env, c.executionCtx.waitUntil.bind(c.executionCtx));
+      const after = c.executionCtx.waitUntil.bind(c.executionCtx);
+      if (userId && consentIsStale(userId)) after(refreshAnalyticsConsent(c.env, userId));
+      maybeFlush(c.env, after);
     } catch {
       // no execution context (a synthetic request in a test harness): flush on the next one
     }
@@ -1156,6 +1171,12 @@ app.put('/api/memory/:scope/:scopeId/preferences', async (c) => {
     if (e.kind === 'preference' && !keep.has(e.key)) await deleteMemoryEntry(c.env, proven.access, proven.scope, scopeId, e.key);
   }
   for (const w of wanted) await putMemoryEntry(c.env, proven.access, { ...w, source: 'user' });
+
+  // THE ANALYTICS OPT-OUT IS CACHED PER ISOLATE, so the isolate that took the write drops its own
+  // answer rather than serving a minute of the old one back to the person who just changed it.
+  // Every other isolate picks it up within CONSENT_CACHE_TTL_MS — which is what the settings copy
+  // means by "within a minute", and is stated there rather than left for somebody to discover.
+  if (proven.scope === 'user') forgetAnalyticsConsent(scopeId);
 
   const after = await listMemoryEntries(c.env, proven.access, proven.scope, scopeId);
   return c.json({ preferences: preferencesFromEntries(after, MEMORY_VOCAB()).prefs, rejected });
@@ -2677,6 +2698,10 @@ app.post('/api/me/delete', async (c) => {
   // The record is written AFTER the sweep and carries the receipt, so the status route reports what
   // happened rather than what was asked for.
   await recordDeletion(c.env, receipt).catch(() => {});
+  // The analytics consent cache holds this account's answer for up to a minute, and the rows it
+  // was read from have just been deleted. Drop it here rather than letting it expire: the next
+  // request in this isolate would otherwise be attributed to an account that no longer exists.
+  forgetAnalyticsConsent(user.userId);
   recordEvent({ kind: 'audit', action: 'account_delete', actorKind: 'user', allowed: true, subject: user.userId });
   return c.json(receipt, receipt.complete ? 200 : 207);
 });
