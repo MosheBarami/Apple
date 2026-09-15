@@ -115,8 +115,14 @@ export const VOICE_COMMAND_IDS = VOICE_COMMANDS.map((c) => c.id);
  * leading "no" is an interjection rather than a negation and must not block the command someone is
  * urgently reaching for. The negation guard is unaffected: it works on the NEGATORS tokens below,
  * so "no, don't stop" still comes back negated — the "no" is stripped and the "dont" is not.
+ *
+ * THE WAKE WORD IS THE PRODUCT'S NAME, and only the current one. "golem" was removed with the
+ * rebrand rather than kept as a second spelling: it is an input token, not a persisted value or a
+ * wire contract, so it has no claim on the exempt list, and a name the product no longer answers to
+ * is not a name anyone should be taught to keep saying. The cost is real and small — someone who
+ * says "hey Golem, stop" gets an unrecognised utterance rather than a stop.
  */
-const LEADING_FILLER = ['um', 'uh', 'er', 'erm', 'ok', 'okay', 'so', 'now', 'hey', 'hi', 'golem', 'apple', 'please', 'just', 'no', 'can you', 'could you', 'would you', 'i want you to', 'i need you to', 'you can'];
+const LEADING_FILLER = ['um', 'uh', 'er', 'erm', 'ok', 'okay', 'so', 'now', 'hey', 'hi', 'apple', 'please', 'just', 'no', 'can you', 'could you', 'would you', 'i want you to', 'i need you to', 'you can'];
 
 const TRAILING_FILLER = ['please', 'now', 'thanks', 'thank you', 'ok', 'okay'];
 

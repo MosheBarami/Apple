@@ -54,13 +54,13 @@ export const MCP_NAME_HEADER = 'Mcp-Name';
 export const MCP_META_VERSION = 'io.modelcontextprotocol/protocolVersion';
 export const MCP_META_SERVER_INFO = 'io.modelcontextprotocol/serverInfo';
 
-export const MCP_SERVER_INFO = { name: 'golem', version: '1.0.0' } as const;
+export const MCP_SERVER_INFO = { name: 'apple', version: '1.0.0' } as const;
 
 export const MCP_INSTRUCTIONS =
-  'Read-only access to a Roblox place that Golem builds inside the user\'s own Studio session. ' +
+  'Read-only access to a Roblox place that Apple builds inside the user\'s own Studio session. ' +
   'Every tool takes `project_id`, which must be a project this API key was granted. ' +
   'These tools only read: to change a place, start an agent run with POST /v1/projects/{id}/runs, ' +
-  'which puts the change through Golem\'s own checkpoints, asset policy and review.';
+  'which puts the change through Apple\'s own checkpoints, asset policy and review.';
 
 // ---------------------------------------------------------------------------
 // JSON-RPC codes
@@ -288,7 +288,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   find_mechanic: 'Reads a static pattern table and cites public repositories, so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as choose_asset_source and get_genre_kit: it names no project, so a key\'s grant has nothing to scope the call by.',
   get_genre_kit: 'Reads a static kit — palette, Lighting values, library queries and pinned sound ids — so it writes nothing, spends nothing and reaches nowhere. It is excluded on the other rule this surface has: it names no project, so a key\'s grant has nothing to scope it by, exactly as with choose_asset_source. It is also the opening move of a build this surface cannot make.',
   inspect_model: 'Asset QC for a model this surface can neither generate nor insert. It belongs to the build pipeline, and the build pipeline is reached through an agent run.',
-  workspace_list: 'Reads Golem\'s own per-project scratch storage rather than the Roblox place. No scope in API_SCOPES describes it, and reusing projects:read would silently widen every key already minted.',
+  workspace_list: 'Reads Apple\'s own per-project scratch storage rather than the Roblox place. No scope in API_SCOPES describes it, and reusing projects:read would silently widen every key already minted.',
   workspace_read: 'Same as workspace_list: a different resource from the place, needing a scope the credential model does not yet have.',
   workspace_write: 'Writes into that scratch storage, so it fails the read-only rule as well.',
 };
@@ -300,7 +300,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
 /** Every call names its project; the caller's key decides whether that name is allowed. */
 export const PROJECT_ID_SCHEMA = {
   type: 'string',
-  description: 'The Golem project to read. Must be one this API key was granted; GET /v1/projects lists them.',
+  description: 'The Apple project to read. Must be one this API key was granted; GET /v1/projects lists them.',
 } as const;
 
 export interface McpToolDescriptor {

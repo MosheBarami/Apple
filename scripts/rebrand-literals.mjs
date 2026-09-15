@@ -39,7 +39,8 @@ const EXEMPT = [
   /golem-theme/gi,
   /golem\.rail\.collapsed/gi,
   /\bgolem\b(?=\{|,|\.[a-z-]+\{)/gi,
-  /golem-plugin/gi,
+  // `golem-plugin` was removed from both lists: the built artifact's filename is the most
+  // user-visible string in the product, and nothing resolves it by name. See check-rebrand.mjs.
   /MosheBarami\/golem/gi,
   // PROOF FOR THIS ADDITION: `GolemPalette` is the NAME of a ServerStorage folder inside places
   // that have already been built. Build.luau resolves it by name at runtime
@@ -47,6 +48,13 @@ const EXEMPT = [
   // place and the meshes silently stop being found. That is a persisted value, which is exactly
   // the bar §12.5 sets for an exemption.
   /GolemPalette/g,
+  // PROOF: an attribute sound-design.ts writes onto Sounds in the user's place and reads back to
+  // recover the pre-trim volume; renaming it compounds the trim on a second pass. Full reasoning in
+  // check-rebrand.mjs, which is the authority if these two ever drift.
+  /GolemBaseVolume/g,
+  // PROOF: the format stamp inside memory exports users already hold on disk. New exports stamp
+  // `apple.memory.v1`; this survives only in the legacy list `parseImport` still accepts.
+  /golem\.memory\.v1/gi,
 ];
 
 const LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`|\[\[[\s\S]*?\]\]/g;

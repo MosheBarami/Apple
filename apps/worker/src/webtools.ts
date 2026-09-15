@@ -984,7 +984,7 @@ const ocrTool: WebTool = {
 function githubHeaders(env: Env): Record<string, string> {
   const headers: Record<string, string> = {
     accept: 'application/vnd.github+json',
-    'user-agent': 'golem-agent',
+    'user-agent': 'apple-agent',
     'x-github-api-version': '2022-11-28',
   };
   if (env.GITHUB_TOKEN) headers.authorization = `Bearer ${env.GITHUB_TOKEN}`;
@@ -1210,7 +1210,7 @@ function workspaceFor(ctx: WebToolCtx): WorkspaceStore | { error: string } {
 const workspaceListTool: WebTool = {
   contract: {
     name: 'workspace_list',
-    description: 'List the files in this project\'s scratch workspace. The workspace is Golem\'s own storage for notes, plans and generated data — it is not the Roblox place.',
+    description: 'List the files in this project\'s scratch workspace. The workspace is Apple\'s own storage for notes, plans and generated data — it is not the Roblox place.',
     args: { prefix: { type: 'string', description: 'Only list paths starting with this.', max: 200, default: '' } },
   },
   available: () => ({ ok: true }),

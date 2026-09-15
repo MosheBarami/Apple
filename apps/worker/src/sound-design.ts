@@ -417,7 +417,7 @@ export function soundDesignLuau(environment: string, opts: SoundDesignOptions = 
   }
 
   const lines: string[] = [
-    `-- Golem sound design: ${environment}. Configuration only; no asset is referenced.`,
+    `-- Apple sound design: ${environment}. Configuration only; no asset is referenced.`,
     'local SoundService = game:GetService("SoundService")',
     '',
     '-- Look up before creating, so a second run retunes rather than duplicating. A name held by a',
@@ -508,7 +508,7 @@ export function assignSoundsLuau(assignments: SoundAssignment[]): string | Sound
   }
 
   const lines: string[] = [
-    '-- Golem: route existing Sounds onto buses and give them a real falloff. No asset is written:',
+    '-- Apple: route existing Sounds onto buses and give them a real falloff. No asset is written:',
     '-- this configures Sounds that already carry audio and never supplies any.',
     'local SoundService = game:GetService("SoundService")',
     'local assigned, missing = 0, {}',
@@ -567,6 +567,13 @@ export function assignSoundsLuau(assignments: SoundAssignment[]): string | Sound
     if (a.looped !== undefined) lines.push(`\t\tnode.Looped = ${a.looped ? 'true' : 'false'}`);
     // The original volume is recorded once and every later trim is computed from it, so running
     // this twice is not -12 dB.
+    //
+    // THE ATTRIBUTE KEEPS THE OLD NAME while the comments above it were rebranded, and the
+    // difference is the whole rule: a comment is branding this chunk prints into someone's place,
+    // an attribute is a VALUE already sitting on Sounds in places that have been built. Rename it
+    // and the `== nil` below is true again on a place that was already trimmed, so the next pass
+    // re-baselines off the trimmed volume and -12 dB becomes -24 dB. Same reasoning as
+    // GolemPalette; both are on the rebrand checker's exempt list with that proof.
     lines.push('\t\tif node:GetAttribute("GolemBaseVolume") == nil then node:SetAttribute("GolemBaseVolume", node.Volume) end');
     lines.push(`\t\tnode.Volume = node:GetAttribute("GolemBaseVolume") * ${num(dbToScale(volumeDb))}`);
     lines.push('\t\tassigned += 1');

@@ -30,7 +30,7 @@ const {
   readMemoryAudit, orgMembership, setOrgMember, memoryAccessFor, resolveForProject,
   canReadScope, canWriteScope, normaliseEntry, expiresAtFor, isExpired, resolveMemoryLayers,
   precedenceOf, buildExport, parseImport, isMemoryScope, isMemoryKind, isOrgRole,
-  MEMORY_SCOPES, MEMORY_EXPORT_FORMAT, VALUE_MAX, MAX_TTL_DAYS, MEMORY_KEY_RE,
+  MEMORY_SCOPES, MEMORY_EXPORT_FORMAT, LEGACY_EXPORT_FORMATS, VALUE_MAX, MAX_TTL_DAYS, MEMORY_KEY_RE,
   refusedDisclosure, personalDisclosures, escapeLike, searchTerm, moveMemoryEntry,
   createOrg, listOrgsFor, orgMembersOf, updateOrgMember, removeOrgMember, canAdministerOrg,
   normaliseOrgName, ORG_NAME_MAX,
@@ -339,6 +339,29 @@ test('an export round-trips into the SAME scope', async () => {
   assert.equal(parsed.entries.length, 1);
   assert.equal(parsed.entries[0].value, 'doors use TweenService');
   assert.equal(parsed.entries[0].source, 'import', 'an imported row says so, so it can be told from one the user typed');
+});
+
+test('a bundle exported before the rebrand still imports, and a new one is stamped with the new name', () => {
+  // THE REBRAND'S ONE IRREVERSIBLE EDGE. `format` is written INTO the file the user downloaded, and
+  // parseImport compares it exactly. Renaming the stamp without accepting the old spelling would
+  // turn every bundle taken before the rename into "unknown format" — a file the owner can still
+  // see on their disk and can no longer put back. So the assertion is in two halves, and both
+  // matter: nothing NEW carries the old name, and nothing OLD stops working.
+  assert.equal(MEMORY_EXPORT_FORMAT, 'apple.memory.v1', 'new exports carry the current name');
+  assert.ok(LEGACY_EXPORT_FORMATS.includes('golem.memory.v1'), 'and the pre-rebrand stamp is still readable');
+
+  const old = {
+    format: 'golem.memory.v1', scope: 'project', scopeId: A, exportedAt: new Date(NOW).toISOString(),
+    entries: [entry('project', A, 'instruction.doors', 'doors use TweenService')],
+  };
+  const parsed = parseImport(old, { scope: 'project', scopeId: A }, { now: NOW, actorId: USER });
+  assert.equal(parsed.error, null, 'a pre-rebrand bundle is not "unknown format"');
+  assert.deepEqual(parsed.rejected, []);
+  assert.equal(parsed.entries.length, 1);
+  assert.equal(parsed.entries[0].value, 'doors use TweenService');
+
+  // And the tolerance is NARROW: accepting the old name must not become accepting anything.
+  assert.ok(parseImport({ ...old, format: 'apple.memory.v2' }, { scope: 'project', scopeId: A }, { now: NOW, actorId: USER }).error);
 });
 
 test("another project's bundle cannot be imported into this one", async () => {

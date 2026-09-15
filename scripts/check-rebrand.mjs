@@ -58,7 +58,12 @@ const EXEMPT = [
   { pattern: /golem-theme/gi, why: 'a persisted localStorage key for the theme choice' },
   { pattern: /golem\.rail\.collapsed/gi, why: 'a persisted localStorage key for the sidebar state' },
   { pattern: /\bgolem\b(?=\{|,|\.[a-z-]+\{)/gi, why: 'a generated CSS class name; it is not read by a human' },
-  { pattern: /golem-plugin/gi, why: 'the built artifact filename the owner uploads' },
+  // `golem-plugin` WAS HERE, with the reason "the built artifact filename the owner uploads". That
+  // is an argument for renaming it, not for exempting it: the filename a person drags into their
+  // Plugins folder is the most user-visible string the product has, and it is neither a persisted
+  // value nor a wire contract — rojo's `--output` names the file, and the Instance inside it is
+  // named by `default.project.json`'s `name`, which is a separate string. Nothing resolves the
+  // artifact by its old filename, so the rename costs a build flag and a line of documentation.
   { pattern: /MosheBarami\/golem/gi, why: 'the git remote' },
   // PROOF, per §6.10's requirement for any addition: `GolemPalette` is the NAME of a ServerStorage
   // folder inside places that have ALREADY been built, and Build.luau resolves it by name at
@@ -66,6 +71,21 @@ const EXEMPT = [
   // existing place and the meshes silently stop being found — a persisted value, which is the bar
   // §12.5 sets.
   { pattern: /GolemPalette/g, why: 'an instance name inside places already built; resolved by name at runtime' },
+  // PROOF: `GolemBaseVolume` is an ATTRIBUTE that sound-design.ts's generated Luau writes onto Sound
+  // instances in the user's own place, and reads back on the next pass to recover the volume the
+  // sound had before any trim (`if node:GetAttribute("GolemBaseVolume") == nil then ...`). Rename it
+  // and a place that already carries the old attribute re-baselines off its ALREADY-TRIMMED volume,
+  // so a second pass is -24 dB instead of -12 dB. That is a persisted value silently changing
+  // meaning, which is the bar §12.5 sets. The `-- Golem …` comments in the same generated chunk are
+  // pure branding and are NOT covered by this: they were renamed.
+  { pattern: /GolemBaseVolume/g, why: 'an attribute written onto Sounds in places already built; read back to recover the pre-trim volume' },
+  // PROOF: `golem.memory.v1` is the format stamp written INTO memory export files that users
+  // already hold on disk, and `parseImport` refuses an envelope whose `format` is anything else.
+  // The stamp NEW exports carry is now `apple.memory.v1`; this literal survives only in
+  // LEGACY_EXPORT_FORMATS, the list that keeps an already-downloaded bundle importable. Drop it and
+  // every export taken before the rename becomes unreadable — a persisted value, exactly as with
+  // `golem.v1` two entries up.
+  { pattern: /golem\.memory\.v1/gi, why: 'the format stamp inside memory exports users already hold; accepted on import for compatibility' },
 ];
 
 /**

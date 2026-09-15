@@ -84,7 +84,7 @@ test('the plain phrasings are recognised at full confidence', () => {
 });
 
 test('filler around a command is stripped, and the confidence says it was', () => {
-  for (const utterance of ['okay stop', 'um, stop please', 'hey Golem, stop', 'please stop now', 'can you stop', 'so, uh, stop']) {
+  for (const utterance of ['okay stop', 'um, stop please', 'hey Apple, stop', 'please stop now', 'can you stop', 'so, uh, stop']) {
     const r = say(utterance);
     assert.equal(r.disposition, 'command', `"${utterance}" → ${r.disposition}: ${r.note ?? ''}`);
     assert.equal(r.command.id, 'stop');

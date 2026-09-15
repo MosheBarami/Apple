@@ -780,7 +780,7 @@ app.get('/api/projects/:id/audio/:audioId', async (c) => {
   return new Response(bytes, {
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="golem-${audioId}.${extension}"`,
+      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="apple-${audioId}.${extension}"`,
       // PRIVATE, and bounded by the object's REMAINING life rather than the full TTL — the same
       // reasoning, and the same helper, as the image route.
       'Cache-Control': `private, max-age=${remainingLife(metadata)}`,
@@ -4040,7 +4040,7 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     id: `chatcmpl_${requestId.replace(/^req_/, '')}`,
     model: req.publicModel,
     createdAtMs: Date.now(),
-    fingerprint: sandbox ? SANDBOX_FINGERPRINT : `golem-${c.env.BUILD_SHA ?? 'dev'}`,
+    fingerprint: sandbox ? SANDBOX_FINGERPRINT : `apple-${c.env.BUILD_SHA ?? 'dev'}`,
   };
   const extra: Record<string, string> = {
     ...usageHeaders({

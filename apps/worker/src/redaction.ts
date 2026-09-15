@@ -41,7 +41,7 @@ export type Confidence = 'high' | 'heuristic';
 /** Everything the scanner can name. An explicit vocabulary: attribute values are built from it. */
 export const DISCLOSURE_KINDS = [
   'jwt',
-  'golem_api_key',
+  'apple_api_key',
   'pairing_token',
   'anthropic_key',
   'openai_key',
@@ -140,13 +140,13 @@ export const DISCLOSURE_RULES: readonly DisclosureRule[] = [
     why: 'a compact JWS — every Supabase access token has this shape',
   },
   {
-    kind: 'golem_api_key',
+    kind: 'apple_api_key',
     cls: 'secret',
     confidence: 'high',
     // The literal prefixes are the wire format minted in api-keys.ts. They are matched, never
     // renamed: a scanner that does not know the product's own credential is the one that matters.
     pattern: /\bgk_(?:live|test)_[0-9a-f]{24}_[0-9a-f]{48}\b/g,
-    why: 'a Golem API key',
+    why: 'an Apple API key',
   },
   {
     kind: 'pairing_token',

@@ -6345,7 +6345,7 @@
      "id": "f-6ebc4d3e",
      "name": "Sandbox API",
      "status": "done",
-     "evidence": "sandboxCompletion in public-api.ts plus the test-mode branches in handleCompletion and POST /v1/projects/:id/runs in index.ts: a test key exercises the whole request path (auth, scopes, validation, headers, streaming, idempotency) against a deterministic answer, labelled by system_fingerprint 'golem-sandbox', an X-Golem-Sandbox header and its own text; writes are SIMULATED (status 'simulated', sandbox: true) and the SessionDO is never called. Tests: 'the sandbox completion is deterministic and labels itself', 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "sandboxCompletion in public-api.ts plus the test-mode branches in handleCompletion and POST /v1/projects/:id/runs in index.ts: a test key exercises the whole request path (auth, scopes, validation, headers, streaming, idempotency) against a deterministic answer, labelled by system_fingerprint 'apple-sandbox', an X-Golem-Sandbox header and its own text; writes are SIMULATED (status 'simulated', sandbox: true) and the SessionDO is never called. Tests: 'the sandbox completion is deterministic and labels itself', 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-26b18f55",
@@ -6363,7 +6363,7 @@
      "id": "f-df65a1fb",
      "name": "Versioned API",
      "status": "done",
-     "evidence": "Dated versions (API_VERSIONS / resolveApiVersion in public-api.ts) negotiated via the Golem-Version header in the /v1 middleware; an unknown version is refused with 400 unsupported_api_version rather than quietly served as the current one, and the resolved version is echoed on every response. Tests: 'an unknown Golem-Version is refused before anything else happens', 'an unknown API version is refused, never quietly upgraded' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "Dated versions (API_VERSIONS / resolveApiVersion in public-api.ts) negotiated via the Apple-Version header in the /v1 middleware; an unknown version is refused with 400 unsupported_api_version rather than quietly served as the current one, and the resolved version is echoed on every response. Tests: 'an unknown Apple-Version is refused before anything else happens', 'an unknown API version is refused, never quietly upgraded' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-486139bc",

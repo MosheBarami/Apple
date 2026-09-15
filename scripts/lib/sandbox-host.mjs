@@ -158,7 +158,7 @@ export async function runSandbox(job) {
     throw new Error(`this host only runs the local-process backend; the job names ${job.backend}`);
   }
 
-  const dir = mkdtempSync(join(tmpdir(), 'golem-sandbox-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-sandbox-'));
   const file = join(dir, RUNTIME_FILE[job.runtime]);
   writeFileSync(file, job.source);
 

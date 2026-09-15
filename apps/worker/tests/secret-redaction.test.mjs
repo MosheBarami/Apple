@@ -37,7 +37,7 @@ import * as N from '../src/net-policy.ts';
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk';
-const GOLEM_KEY = `gk_live_${'a'.repeat(24)}_${'b'.repeat(48)}`;
+const APPLE_KEY = `gk_live_${'a'.repeat(24)}_${'b'.repeat(48)}`;
 const PAIRING = `550e8400-e29b-41d4-a716-446655440000.${'f'.repeat(48)}`;
 const AWS = 'AKIAIOSFODNN7EXAMPLE';
 const GITHUB = 'ghp_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8';
@@ -66,7 +66,7 @@ test('the module under test loaded, and a clean string comes back untouched', ()
 
 for (const [kind, secret] of [
   ['jwt', JWT],
-  ['golem_api_key', GOLEM_KEY],
+  ['apple_api_key', APPLE_KEY],
   ['pairing_token', PAIRING],
   ['openai_key', 'sk-proj-abcdefghijklmnopqrstuvwxyz0123456789'],
   ['anthropic_key', 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123'],
@@ -299,7 +299,7 @@ test('a POST body is checked on the hop that carries it', () => {
       policy: POLICY,
       fetchImpl: impl,
       method: 'POST',
-      body: JSON.stringify({ report: `session ${GOLEM_KEY}` }),
+      body: JSON.stringify({ report: `session ${APPLE_KEY}` }),
     });
     assert.equal(outcome.ok, false);
     assert.equal(outcome.failure.reason, 'carries_credential');
@@ -384,7 +384,7 @@ test("the log's placeholder is the stored one, and it never names which credenti
 
   // And the kinds the log's own four-pattern list never had. Each of these would be stored
   // verbatim by a redactor that only knew about JWTs, `sk-` keys and long hex.
-  for (const [what, secret] of [['an AWS key id', AWS], ['a GitHub token', GITHUB], ["this product's own API key", GOLEM_KEY]]) {
+  for (const [what, secret] of [['an AWS key id', AWS], ['a GitHub token', GITHUB], ["this product's own API key", APPLE_KEY]]) {
     assert.equal(
       R.redactSecrets(`upstream rejected ${secret}`, { placeholder: 'plain' }).text.includes(secret),
       false,
@@ -409,7 +409,7 @@ test('the error log redacts through this scanner, including kinds its own list n
   assert.equal(jwtMsg.includes(JWT), false);
   assert.match(jwtMsg, /auth failed for \[redacted\]/, 'the stored format must not change under the log');
 
-  for (const [what, secret] of [['an AWS key id', AWS], ['a GitHub token', GITHUB], ["this product's own API key", GOLEM_KEY]]) {
+  for (const [what, secret] of [['an AWS key id', AWS], ['a GitHub token', GITHUB], ["this product's own API key", APPLE_KEY]]) {
     assert.equal(A.redactMessage(`upstream rejected ${secret}`).includes(secret), false, `${what} reached the error log`);
   }
 

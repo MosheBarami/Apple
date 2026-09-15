@@ -189,7 +189,7 @@ test('a credential pasted into the chat is reported to the user, not used to ref
   assert.ok(signal, 'a pasted credential must be noticed');
   assert.equal(signal.weight, 0);
   assert.equal(v.action, 'allow', 'blocking the message would leave the key pasted and the user unhelped');
-  assert.ok(v.disclosures.some((d) => d.kind === 'golem_api_key'));
+  assert.ok(v.disclosures.some((d) => d.kind === 'apple_api_key'));
   assert.match(signal.detail, /rotate/, 'and the advice is the one that matters');
 });
 

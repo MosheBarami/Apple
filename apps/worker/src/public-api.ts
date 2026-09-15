@@ -20,7 +20,7 @@ import type { ApiScope } from './api-keys';
 // ---------------------------------------------------------------------------
 
 /**
- * Dated API versions, newest last. A client pins one with `Golem-Version: 2026-09-15`.
+ * Dated API versions, newest last. A client pins one with `Apple-Version: 2026-09-15`.
  *
  * Dates rather than `v2`, for the same reason Stripe uses them: the URL prefix `/v1` is the
  * COMPATIBILITY promise ("your code keeps working"), and the date is the CHANGE ledger ("this is
@@ -30,7 +30,7 @@ import type { ApiScope } from './api-keys';
 export const API_VERSIONS = ['2026-09-15'] as const;
 export type ApiVersion = (typeof API_VERSIONS)[number];
 export const CURRENT_API_VERSION: ApiVersion = API_VERSIONS[API_VERSIONS.length - 1]!;
-export const API_VERSION_HEADER = 'Golem-Version';
+export const API_VERSION_HEADER = 'Apple-Version';
 
 export type VersionVerdict = { ok: true; version: ApiVersion } | { ok: false; requested: string };
 
@@ -179,13 +179,22 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
  * The model ids this API accepts, and the internal gateway key each maps onto.
  *
  * PROVIDER IDENTITY IS NOT PUBLISHED HERE, deliberately and per the product manifest: a caller
- * names a Golem capability, not a foundation model. Accepting `gpt-4o` as an alias would be a
+ * names an Apple capability, not a foundation model. Accepting `gpt-4o` as an alias would be a
  * lie about what ran, and accepting it as a NO-OP alias for our own model is the worse version of
  * the same lie. Unknown ids — including every real provider id — are refused by name.
+ *
+ * RENAMED FROM `golem-chat` / `golem-plan` WITH NO COMPATIBILITY ALIAS, which for a public API is
+ * normally the wrong call. It is the right one here because nothing can be depending on the old
+ * ids: this surface is reachable only with a `gk_live_`/`gk_test_` key, keys live in the
+ * `api_keys` table, and that table is created lazily on the first mint — it does not exist in the
+ * production D1, so no key has ever been minted and no request has ever been authorised. The ids
+ * are also published nowhere: there is no api docs page, and the SDK names no model. An alias for
+ * a caller who cannot exist would keep the old name alive in the product forever in exchange for
+ * nothing. If a key is ever minted before this ships, add the aliases.
  */
 export const PUBLIC_MODELS: Record<string, { internal: string; description: string }> = {
-  'golem-chat': { internal: 'stone', description: 'The builder. Answers, explains and writes Roblox code.' },
-  'golem-plan': { internal: 'clay', description: 'The planner. Reasons about a place without proposing edits to it.' },
+  'apple-chat': { internal: 'stone', description: 'The builder. Answers, explains and writes Roblox code.' },
+  'apple-plan': { internal: 'clay', description: 'The planner. Reasons about a place without proposing edits to it.' },
 };
 
 export function publicModelList(createdAt: number): Record<string, unknown> {
@@ -195,7 +204,7 @@ export function publicModelList(createdAt: number): Record<string, unknown> {
       id,
       object: 'model',
       created: Math.floor(createdAt / 1000),
-      owned_by: 'golem',
+      owned_by: 'apple',
       description: m.description,
     })),
   };
@@ -285,7 +294,7 @@ export function parseChatCompletionRequest(body: unknown): Parsed<ChatCompletion
     return fault(
       400,
       'tools_not_supported',
-      'This API does not expose the agent tool surface. Start a run with POST /v1/projects/{id}/runs to have Golem act on a place.',
+      'This API does not expose the agent tool surface. Start a run with POST /v1/projects/{id}/runs to have Apple act on a place.',
       'tools',
     );
   }
@@ -757,18 +766,18 @@ export function idempotencyVerdict(stored: IdempotencyRecord | null, fingerprint
  * same messages always yield the same text, which is what makes it assertable in somebody else's
  * test suite.
  *
- * It is labelled everywhere it can be: `system_fingerprint: "golem-sandbox"`, an
+ * It is labelled everywhere it can be: `system_fingerprint: "apple-sandbox"`, an
  * `X-Golem-Sandbox: true` response header, and text that says so. A sandbox answer that could be
  * mistaken for a model answer is a trap, not a feature.
  */
-export const SANDBOX_FINGERPRINT = 'golem-sandbox';
+export const SANDBOX_FINGERPRINT = 'apple-sandbox';
 
 export function sandboxCompletion(req: ChatCompletionRequest): GatewayResponse {
   const last = [...req.messages].reverse().find((m) => m.role === 'user');
   const asked = typeof last?.content === 'string' ? last.content : '';
   const trimmed = asked.length > 200 ? `${asked.slice(0, 200)}…` : asked;
   const text =
-    `[golem sandbox] This is a deterministic test-mode response from ${req.publicModel}; no model ran and no Credits were spent. ` +
+    `[apple sandbox] This is a deterministic test-mode response from ${req.publicModel}; no model ran and no Credits were spent. ` +
     `You said: ${JSON.stringify(trimmed)}`;
   // Token counts are the character estimate the rest of the worker uses (~4 chars/token), so a
   // caller's cost arithmetic exercises the same shape it will see in live mode.
@@ -797,7 +806,7 @@ export function discoveryDocument(): Record<string, unknown> {
     openapi: '/v1/openapi.json',
     authentication: {
       scheme: 'bearer',
-      description: 'Authorization: Bearer gk_live_… (or gk_test_… for the sandbox). Mint keys in the Golem dashboard.',
+      description: 'Authorization: Bearer gk_live_… (or gk_test_… for the sandbox). Mint keys in the Apple dashboard.',
       modes: { live: 'Runs the model and spends Credits.', test: 'Deterministic sandbox; nothing runs and nothing is spent.' },
     },
     routes: PUBLIC_ROUTES.map((r) => ({
@@ -853,9 +862,9 @@ export function openApiDocument(origin: string): Record<string, unknown> {
   return {
     openapi: '3.1.0',
     info: {
-      title: 'Golem API',
+      title: 'Apple API',
       version: CURRENT_API_VERSION,
-      description: 'The public HTTP surface of Golem. OpenAI-compatible chat completions, plus project and run resources.',
+      description: 'The public HTTP surface of Apple. OpenAI-compatible chat completions, plus project and run resources.',
     },
     servers: [{ url: origin }],
     components: {

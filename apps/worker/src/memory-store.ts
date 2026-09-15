@@ -416,7 +416,24 @@ export function resolveMemoryLayers(entries: readonly MemoryEntry[], nowMs: numb
 // ---------------------------------------------------------------------------------------------
 
 /** The envelope's own identity. Bumped only when the shape changes incompatibly. */
-export const MEMORY_EXPORT_FORMAT = 'golem.memory.v1';
+export const MEMORY_EXPORT_FORMAT = 'apple.memory.v1';
+
+/**
+ * Stamps a bundle may carry INSTEAD of the current one, and still be read.
+ *
+ * `golem.memory.v1` is the same envelope under the product's previous name. It is not a version —
+ * the shape did not change — so a bundle carrying it is imported unchanged rather than migrated.
+ * It survives here and nowhere else: `buildExport` stamps only the current format, so nothing new
+ * is written with the old name, and this list is the only reason a file downloaded before the
+ * rename is still a file the owner can put back. Deleting it makes those bundles unreadable, which
+ * is why the rebrand checker exempts the literal instead of rewriting it.
+ */
+export const LEGACY_EXPORT_FORMATS: readonly string[] = ['golem.memory.v1'];
+
+/** Whether an envelope's `format` is one this build can read at all. */
+export function isReadableExportFormat(format: unknown): boolean {
+  return format === MEMORY_EXPORT_FORMAT || (typeof format === 'string' && LEGACY_EXPORT_FORMATS.includes(format));
+}
 
 export interface MemoryExport {
   format: typeof MEMORY_EXPORT_FORMAT;
@@ -461,7 +478,7 @@ export function parseImport(raw: unknown, target: { scope: MemoryScope; scopeId:
   const none = (error: string): ParsedImport => ({ entries: [], rejected: [], error });
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return none('expected a memory export object');
   const env = raw as Partial<MemoryExport>;
-  if (env.format !== MEMORY_EXPORT_FORMAT) return none(`unknown format (expected ${MEMORY_EXPORT_FORMAT})`);
+  if (!isReadableExportFormat(env.format)) return none(`unknown format (expected ${MEMORY_EXPORT_FORMAT})`);
   if (!Array.isArray(env.entries)) return none('the bundle has no entries');
 
   const entries: MemoryEntry[] = [];
