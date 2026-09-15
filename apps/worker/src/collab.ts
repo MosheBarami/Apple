@@ -256,6 +256,90 @@ export function resolveMembership(input: AccessInput): Membership | null {
   return best === null ? null : { userId, role: best.role, via: 'grant' };
 }
 
+/**
+ * What this person may do here, and WHY — CHECKLIST-V2 §08.12-14.
+ *
+ * Three questions that are really one. Someone who cannot see why they CAN do a thing cannot tell a
+ * bug from a policy; someone who cannot see why they CANNOT cannot tell "ask an admin" from "this
+ * is broken". So the answer carries the role, where the role came from, which grant conferred it,
+ * and when it runs out.
+ *
+ * DERIVED FROM `can()`, NEVER FROM A SECOND TABLE. A permissions view maintained beside the
+ * enforcement drifts from it, and a view that has drifted tells people confidently what the server
+ * will refuse. Every entry in `actions` is a call to the same function the routes gate on.
+ *
+ * EVERY ACTION APPEARS, including the false ones. An action omitted from the map reads as "not
+ * permitted" to any caller, so absence would be a verdict nobody wrote — the omission and the
+ * refusal are indistinguishable to a UI.
+ *
+ * A non-member gets `member: false` and an all-false map rather than an empty one, for the same
+ * reason: "no permissions" and "not here at all" are different sentences.
+ */
+export interface EffectivePermissions {
+  member: boolean;
+  role: CollabRole | null;
+  /** `owner` means the projects row; `grant` means a membership row. Null when not a member. */
+  via: 'owner' | 'grant' | null;
+  /** Every action in the vocabulary, true or false — never a subset. */
+  actions: Record<CollabAction, boolean>;
+  /** Who conferred the grant in force, when it came from one. */
+  invitedBy: string | null;
+  /** When the grant in force runs out, or null for ownership and for grants that do not expire. */
+  expiresAtIso: string | null;
+  /** Other live grants this person holds that the effective one outranks. */
+  supersededCount: number;
+}
+
+export function effectivePermissions(
+  membership: Membership | null,
+  opts: { now: number; grants?: readonly unknown[] },
+): EffectivePermissions {
+  const none = (): EffectivePermissions => ({
+    member: false,
+    role: null,
+    via: null,
+    actions: Object.fromEntries(COLLAB_ACTIONS.map((a) => [a, false])) as Record<CollabAction, boolean>,
+    invitedBy: null,
+    expiresAtIso: null,
+    supersededCount: 0,
+  });
+
+  // A clock that cannot be read cannot decide an expiry, and an answer computed from it would be a
+  // confident guess. Same rule resolveMembership applies.
+  if (!Number.isFinite(opts?.now)) return none();
+  if (!membership) return none();
+
+  const actions = Object.fromEntries(
+    COLLAB_ACTIONS.map((a) => [a, can(membership.role, a)]),
+  ) as Record<CollabAction, boolean>;
+
+  if (membership.via === 'owner') {
+    return { member: true, role: membership.role, via: 'owner', actions, invitedBy: null, expiresAtIso: null, supersededCount: 0 };
+  }
+
+  // Which grant is actually in force: the strongest ACTIVE one, which is resolveMembership's rule.
+  // Reported rather than recomputed differently, so the view cannot disagree with the decision.
+  const active: { role: CollabRole; invitedBy: string | null; expiresAtMs: number | null }[] = [];
+  for (const raw of opts.grants ?? []) {
+    const { status, grant } = classifyGrant(raw, opts.now);
+    if (status !== 'active' || grant === null) continue;
+    if (grant.userId !== membership.userId) continue;
+    active.push({ role: grant.role, invitedBy: grant.invitedBy, expiresAtMs: grant.expiresAtMs });
+  }
+  let inForce: (typeof active)[number] | null = null;
+  for (const g of active) if (inForce === null || roleRank(g.role) > roleRank(inForce.role)) inForce = g;
+
+  return {
+    member: true,
+    role: membership.role,
+    via: 'grant',
+    actions,
+    invitedBy: inForce?.invitedBy ?? null,
+    expiresAtIso: inForce?.expiresAtMs != null ? new Date(inForce.expiresAtMs).toISOString() : null,
+    supersededCount: Math.max(0, active.length - 1),
+  };
+}
+
 export interface AccessDecision {
   allowed: boolean;
   /** The HTTP status a route should answer with when `allowed` is false. */

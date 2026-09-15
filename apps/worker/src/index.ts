@@ -14,7 +14,7 @@ import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from 
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type ProjectRow } from './supa';
-import { can, capabilitiesFor, asCollabRole, asShareScope, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type Membership } from './collab';
+import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type Membership } from './collab';
 import { isShareToken, newShareToken, putKvGrant, putShareLink, readShareLink, revokeShareLink } from './collab-links';
 import { companionOpAccess, companionRefusal, sanitizeCompanionOp } from './companion';
 import { chat as llmChat, embed, getModels, budgetReport, budgetState, setKillSwitch, rawProbe, BudgetError } from './gateway';
@@ -2988,6 +2988,24 @@ app.post('/api/shared/:id/reviews/approve', collabRoute('/collab/reviews/approve
 app.get('/api/shared/:id/versions', collabRoute('/collab/versions', 'GET'));
 app.post('/api/shared/:id/versions', collabRoute('/collab/versions', 'POST'));
 app.post('/api/shared/:id/versions/restore', collabRoute('/collab/versions/restore', 'POST'));
+
+/**
+ * "What may I do here, and why?" — CHECKLIST-V2 §08.12-14.
+ *
+ * A NON-MEMBER STILL GETS 404, not an honest `member: false`. The pure function can say "you are
+ * not a member" because it is called from inside, where the project is already known to exist;
+ * answering that over HTTP would confirm the id to a stranger, which is the one thing §08.16 and
+ * the rest of this file are careful never to do.
+ */
+app.get('/api/shared/:id/permissions', async (c) => {
+  const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
+  if (gate.ctx === null) return collabRefusal(c, gate.status);
+  const ctx = gate.ctx;
+  // Only the caller's own rows are consulted. The effective role is already decided — this is the
+  // provenance for it, not a second decision.
+  const mine = (await listProjectMembers(c.env, ctx.user, ctx.project)).filter((r) => r.user_id === ctx.user.userId);
+  return c.json(effectivePermissions(ctx.membership, { now: Date.now(), grants: mine }));
+});
 
 app.get('/api/shared/:id/presence', async (c) => {
   const gate = await sharedAccess(c, c.req.param('id') ?? '', 'read');
