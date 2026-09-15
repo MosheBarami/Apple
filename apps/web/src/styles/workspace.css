@@ -4198,6 +4198,30 @@
   gap: 8px;
 }
 
+/* A question already asked, set apart from the corrections below it. The left rule is the whole
+   device: it says "these rows are different from the ones underneath" without a second heading
+   weight or a coloured box, which at this size reads as an alert rather than as a queue. */
+.mem__pending {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-block: 10px 12px;
+  padding-inline-start: 12px;
+  /* Logical, not `border-left`: this product is built in Hebrew and the rule has to move to the
+     other side with the text. rtl-workspace.test.mjs is what keeps that true. */
+  border-inline-start: 2px solid var(--gx-accent, #6aa7ff);
+}
+
+.mem__item--pending {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.mem__item--pending .prefs__from {
+  flex: none;
+  align-self: center;
+}
+
 /* The fact is the content; the control beside it is not. The input takes the room and the button
    takes only what its word needs, so a column of facts reads as a list rather than as a form. */
 .mem__fact {

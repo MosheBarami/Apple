@@ -268,6 +268,15 @@ export const searchProject = (projectId: string, params: URLSearchParams): Promi
 export interface Memory {
   summary: string | null;
   facts: string[];
+  /**
+   * What Apple has ASKED to remember but has not been allowed to yet.
+   *
+   * Only ever populated under the `review` memory setting, which is what puts anything in the
+   * queue. Optional because this is also the shape sent BACK on a save, and the editor deliberately
+   * does not answer the review queue — the worker ignores a `suggested` it is handed, so a client
+   * that could write one would be able to approve a proposal without a decision being recorded.
+   */
+  suggested?: { summary: string | null; facts: string[] };
 }
 
 export interface MemoryResponse {
@@ -305,6 +314,21 @@ export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryRes
         method: 'PUT',
         body: JSON.stringify({ memory }),
       });
+
+/**
+ * Answer one thing Apple asked to remember.
+ *
+ * `body` names what it is about — the fact's own text, or `target: 'summary'` for the proposed
+ * summary, which is the one proposal with no text to match on. A 404 here is an ANSWER: the worker
+ * returns it on purpose when the proposal is no longer pending, so a panel left open in a second
+ * tab cannot report a decision the user never made. Callers route it through
+ * `isAlreadyAnswered` in lib/memory-approvals.ts and refetch instead of showing an error.
+ */
+export const decideSuggestion = (projectId: string, body: { decision: 'accept' | 'discard'; fact?: string; target?: 'summary' }) =>
+  request<MemoryResponse>(`/api/projects/${encodeURIComponent(projectId)}/memory/suggestions`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 
 // -------------------------------------------------------- scoped memory & preferences
 
