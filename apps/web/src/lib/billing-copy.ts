@@ -154,6 +154,69 @@ export function billingNotice(view: SubscriptionView, opts: NoticeOptions): Bill
 }
 
 // ---------------------------------------------------------------------------
+// what a change will cost, before it is made
+// ---------------------------------------------------------------------------
+
+/** Stripe's answer to "what would this change cost", as `/api/billing/preview` returns it. */
+export interface PlanChangePreview {
+  /** MAJOR units, already converted by the worker. Negative when the change leaves a credit. */
+  amountDue: number;
+  /** ISO 4217. The charge currency is the server's to state, never the page's to assume. */
+  currency: string;
+  /** Unix SECONDS — Stripe's clock, unlike BillingChange.at which is milliseconds. */
+  prorationDate: number | null;
+  lines: { description: string; amount: number }[];
+}
+
+export interface ChangePreviewOptions {
+  /** The tier being moved TO, in the words a person reads. Plan ids are not those words. */
+  planName: string;
+  formatMoney: (amount: number, currency: string) => string;
+  /** Renders unix seconds. Seconds, because this date came from Stripe rather than from our DO. */
+  formatDate: (seconds: number) => string;
+}
+
+/**
+ * One sentence saying what this change costs, INCLUDING when nobody could find out.
+ *
+ * NULL IS NOT ZERO, and this is the whole reason the function exists rather than a template in the
+ * dialog. The preview can fail — Stripe unreachable, or a subscription stored before its item id
+ * was kept — and the only honest thing to say then is that the amount is unknown and Stripe's own
+ * page will show it. Rendering "charges $0.00 today" out of a failed fetch is a claim about money
+ * assembled from a failure to observe, which is the defect this codebase keeps finding.
+ *
+ * The three shapes a real answer takes are also three different sentences: a charge today, nothing
+ * today, and a CREDIT. Calling a negative amount a charge would state the opposite of what happens.
+ */
+export function planChangePreviewLine(
+  preview: PlanChangePreview | null | undefined,
+  opts: ChangePreviewOptions,
+): string {
+  const amount = preview?.amountDue;
+  const currency = preview?.currency;
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || typeof currency !== 'string' || !currency) {
+    return 'We could not get the amount for this change. Stripe’s own page shows exactly what it costs before you confirm anything there.';
+  }
+
+  const applies =
+    typeof preview?.prorationDate === 'number' && Number.isFinite(preview.prorationDate)
+      ? ` It applies from ${opts.formatDate(preview.prorationDate)}.`
+      : '';
+
+  if (amount > 0) {
+    // "Today" is load-bearing: this is not the monthly price on the ladder, it is the part of the
+    // period being bought now, net of what the old tier had already been paid for.
+    return `Moving to ${opts.planName} costs ${opts.formatMoney(amount, currency)} today — the rest of this billing period at the new price, less the time you already paid for on the old one.${applies}`;
+  }
+  if (amount < 0) {
+    // The sign is spoken as the word "credit". Printing it as well gives "a credit of -$7.66".
+    return `Moving to ${opts.planName} leaves a credit of ${opts.formatMoney(Math.abs(amount), currency)} against your next invoice.${applies}`;
+  }
+  // Deliberately no figure. A formatted zero beside a button reads as a price.
+  return `Moving to ${opts.planName} costs nothing today.${applies}`;
+}
+
+// ---------------------------------------------------------------------------
 // the history
 // ---------------------------------------------------------------------------
 
@@ -166,6 +229,13 @@ export interface BillingChange {
   toPlan: string | null;
   status: string | null;
   eventId: string | null;
+  /**
+   * Which way the cancellation flag moved, on the row where it moved — null on every other row.
+   *
+   * Absent on rows written before the column existed, which reads the same as null and is correct:
+   * they are not rows about a cancellation and must not be described as if they were.
+   */
+  cancelAtPeriodEnd?: boolean | null;
 }
 
 export interface ChangeLineOptions {
@@ -194,6 +264,17 @@ export function billingChangeLine(change: BillingChange, opts: ChangeLineOptions
   // The tier did not move, so this row is about the subscription's state. Naming the plan here
   // would report a change that did not happen.
   if (change.fromPlan !== null && change.fromPlan === change.toPlan) {
+    /*
+     * THE CANCELLATION IS READ BEFORE THE STATUS, because a cancellation leaves the status alone.
+     * Stripe reports it as an update with status still 'active', so the branch below would have
+     * printed "Subscription became active" over the row where the customer cancelled — the exact
+     * opposite of what happened, on the change they are most likely to dispute.
+     *
+     * Non-null means the row IS the flag moving. A past_due row that merely carried the same flag
+     * along is null here and falls through to the status sentence, where it belongs.
+     */
+    if (change.cancelAtPeriodEnd === true) return `Set to end at the period end${on}.`;
+    if (change.cancelAtPeriodEnd === false) return `Cancellation undone${on}.`;
     return change.status ? `Subscription became ${change.status}${on}.` : null;
   }
   if (change.fromPlan === null) return `Moved to ${to}${on}.`;

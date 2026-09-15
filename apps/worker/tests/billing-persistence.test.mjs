@@ -64,9 +64,14 @@ function quota(seed = {}) {
         // `id` is modelled because the real query breaks ties on it. Two changes inside one
         // millisecond share an `at`, and a fake that sorted on `at` alone would return them in an
         // order the database never would — the assertion would then be about the fake.
-        events.push({ id: events.length + 1, at: a[0], kind: a[1], from_plan: a[2], to_plan: a[3], status: a[4], event_id: a[5] });
+        // `cancel_at_period_end` is stored as SQLite sees it — 0, 1 or null — rather than as a
+        // boolean, so the DO's own null-check on the way back out is the thing under test.
+        events.push({ id: events.length + 1, at: a[0], kind: a[1], from_plan: a[2], to_plan: a[3], status: a[4], event_id: a[5], cancel_at_period_end: a[6] ?? null });
         return empty;
       }
+      // The migration, which the real table needs because `create table if not exists` cannot add a
+      // column to a table that already exists. Modelled as a no-op: these rows are objects.
+      if (/^\s*alter table/i.test(q)) return empty;
       if (/insert into applied_events/i.test(q)) { applied.push({ event_id: a[0], at: a[1] }); return empty; }
       if (/from applied_events where event_id/i.test(q)) {
         const hit = applied.filter((r) => r.event_id === a[0]);
@@ -257,4 +262,64 @@ test('a refused credit grant records nothing', async () => {
   await q.call('/grant-credits', { credits: -50, eventId: 'evt_bad' });
   assert.deepEqual((await q.billing()).events, []);
   assert.equal((await q.state()).credits, 0);
+});
+
+// ------------------------------------------------ the two changes a customer is most likely to dispute
+
+/**
+ * A CANCELLATION CHANGES NEITHER THE PLAN NOR THE STATUS.
+ *
+ * Stripe reports "cancel at the end of the period" as customer.subscription.updated with status
+ * still 'active' and only cancel_at_period_end flipped. The write condition here was
+ * `plan changed || status changed`, so the single most disputed change a customer can make left no
+ * row at all — and neither did undoing it. The history was complete about everything except the two
+ * things somebody rings up about.
+ */
+test('A CANCELLATION IS RECORDED, though neither the plan nor the status moved', async () => {
+  const q = quota();
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: SUB, eventId: 'evt_1' });
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: { ...SUB, cancelAtPeriodEnd: true }, eventId: 'evt_2' });
+  const b = await q.billing();
+  assert.equal(b.events.length, 2, 'the cancellation is a change, and must be written down');
+  assert.equal(b.events[0].cancelAtPeriodEnd, true, 'and the row must say WHICH WAY it went');
+  assert.equal(b.events[0].fromPlan, 'builder', 'the tier did not move, and the row must not claim it did');
+  assert.equal(b.events[0].toPlan, 'builder');
+  assert.equal(b.events[0].eventId, 'evt_2');
+});
+
+test('AND SO IS UNDOING IT — a reversal is a change in the other direction', async () => {
+  const q = quota();
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: SUB, eventId: 'e1' });
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: { ...SUB, cancelAtPeriodEnd: true }, eventId: 'e2' });
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: { ...SUB, cancelAtPeriodEnd: false }, eventId: 'e3' });
+  const b = await q.billing();
+  assert.equal(b.events.length, 3, 'three changes, three records');
+  assert.equal(b.events[0].cancelAtPeriodEnd, false, 'the newest row is the reversal');
+  assert.equal(b.events[1].cancelAtPeriodEnd, true, 'and the one before it is the cancellation');
+});
+
+test('A CANCELLATION REVERSED BEFORE IT EXPIRES READS AS ACTIVE AGAIN, WITH A RENEWAL DATE', async () => {
+  // The affordance existed — the notice's button opens the portal — and nothing anywhere proved the
+  // round trip. A user who changes their mind must come back to "renews on", not stay on "ends on".
+  const q = quota();
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: { ...SUB, cancelAtPeriodEnd: true }, eventId: 'e1' });
+  const cancelling = B.subscriptionView((await q.billing()).subscription, SUB.currentPeriodEnd - 86_400);
+  assert.equal(cancelling.state, 'cancelling', 'the premise: it really was cancelling first');
+
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: { ...SUB, cancelAtPeriodEnd: false }, eventId: 'e2' });
+  const resumed = B.subscriptionView((await q.billing()).subscription, SUB.currentPeriodEnd - 86_400);
+  assert.equal(resumed.state, 'active');
+  assert.equal(resumed.renewsAt, SUB.currentPeriodEnd, 'it renews again, and the date is the one to say');
+  assert.equal(resumed.endsAt, null, 'and nothing is ending any more');
+});
+
+test('a row that is not about the cancellation flag carries no opinion about it', async () => {
+  // The column means "this change WAS the flag moving". A past_due row that merely carried the same
+  // flag along must be null there, or the history reads "cancellation undone" over a failed payment.
+  const q = quota();
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: SUB, eventId: 'e1' });
+  await q.setPlan({ plan: 'builder', customerId: 'cus_1', subscription: { ...SUB, status: 'past_due' }, eventId: 'e2' });
+  const b = await q.billing();
+  assert.equal(b.events[0].status, 'past_due');
+  assert.equal(b.events[0].cancelAtPeriodEnd, null);
 });

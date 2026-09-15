@@ -31,6 +31,15 @@ import { matchesShortcut } from '../../lib/shortcuts';
 import { sendBinding, sendHint } from '../../lib/send-key';
 import { readDraft, writeDraft, clearDraft } from '../../lib/draft';
 import { insertAtCursor, selectionChipLabel, selectionReference } from '../../lib/selection-reference';
+import {
+  TYPING_IDLE_MS,
+  initialPresence,
+  onComposerIdle,
+  onComposerInput,
+  onComposerLeave,
+  onComposerSubmit,
+  type SentActivity,
+} from '../../lib/presence-signal';
 import { usePrefs } from '../../lib/theme';
 
 /**
@@ -77,6 +86,14 @@ interface Props {
   draftKey?: string;
   /** What is selected in Studio right now, so the person can say "this one" instead of a path. */
   selection?: StudioEventSelection | null;
+  /**
+   * Tell the room what this person is doing.
+   *
+   * Optional, and absent means the composer sends nothing — a workspace with no socket (mock mode,
+   * the specimen book) must not be made to invent presence. The throttling is in
+   * lib/presence-signal.ts so it can be driven with a clock rather than a keyboard.
+   */
+  onPresence?: (activity: SentActivity) => void;
 }
 
 export function Composer({
@@ -90,6 +107,7 @@ export function Composer({
   placeholder,
   draftKey = '',
   selection,
+  onPresence,
 }: Props) {
   // RESTORED ON THE FIRST RENDER, not in an effect. An effect paints an empty box first, and
   // people start retyping into it before the draft lands on top of what they just typed.
@@ -102,6 +120,40 @@ export function Composer({
   // ONE source for the chord. The handler and the hint below both read this, so the help can
   // never describe a key the handler does not listen for — which is how the two diverged before.
   const sendKeyBinding = sendBinding(prefs.sendKey);
+
+  //[[ "SOMEONE ELSE IS TYPING", FROM THE ONE PLACE THAT KNOWS.
+  //
+  //   Kept in refs rather than state: a presence beat must not repaint the most-used control in
+  //   the product, and none of this is ever rendered here — it is rendered on everybody ELSE's
+  //   screen. The decision of what to send lives in lib/presence-signal.ts; this supplies the
+  //   clock and the timer. ]]
+  const presence = useRef(initialPresence());
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onPresenceRef = useRef(onPresence);
+  onPresenceRef.current = onPresence;
+
+  const beat = (step: { state: ReturnType<typeof initialPresence>; send: SentActivity | null }) => {
+    presence.current = step.state;
+    if (step.send) onPresenceRef.current?.(step.send);
+  };
+
+  const typed = () => {
+    if (!onPresenceRef.current) return;
+    beat(onComposerInput(presence.current, Date.now()));
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => beat(onComposerIdle(presence.current, Date.now())), TYPING_IDLE_MS);
+  };
+
+  // A CLAIM IS WITHDRAWN WHEN THE PERSON LEAVES, not left standing on everyone else's screen
+  // until the server's TTL happens to age it out.
+  useEffect(
+    () => () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      const step = onComposerLeave(presence.current);
+      if (step.send) onPresenceRef.current?.(step.send);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (seed) {
@@ -142,6 +194,10 @@ export function Composer({
     // leave the box and the draft exactly as they were: the words are still the person's, and the
     // only thing that failed is the delivery.
     if (!onSend(value)) return;
+    // The typing is over whether or not we ever announced it — and the server is about to set
+    // `building` on this socket, so this is the frame that stops the two claims overlapping.
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    beat(onComposerSubmit(presence.current, Date.now()));
     setText('');
     clearDraft(draftKey);
   };
@@ -192,7 +248,10 @@ export function Composer({
           value={text}
           // maxLength alone is not enough: browsers disagree about whether an over-long PASTE is
           // truncated or dropped, and the box must always hold exactly what will be sent.
-          onChange={(e) => setText(e.target.value.slice(0, MESSAGE_MAX_CHARS))}
+          onChange={(e) => {
+            setText(e.target.value.slice(0, MESSAGE_MAX_CHARS));
+            typed();
+          }}
           onKeyDown={onKeyDown}
           rows={1}
           maxLength={MESSAGE_MAX_CHARS}

@@ -258,7 +258,7 @@ model rather than a dropped record.
 **Outstanding:** a caller in the run view, and `context` on the wire from the worker. Unreached,
 the product still has that symptom and nothing on screen distinguishes it from a poor answer.
 
-## apps/web/src/components/ws/files-panel.tsx — WIRE, pass 13
+## apps/web/src/components/ws/files-panel.tsx — WIRED, pass 13, closed 2026-09-15
 
 **Found:** imported by nothing in the tree. 361 lines.
 
@@ -266,8 +266,21 @@ the product still has that symptom and nothing on screen distinguishes it from a
 generated data there, and without this panel the only way to read one is to ask Apple to read it
 back.
 
-**Outstanding:** a route or a drawer trigger in the workspace shell. Its own `files-model.ts` is
-reached, so the decisions are tested; the markup is not mounted anywhere.
+**Wired:** `apps/web/src/routes/workspace.tsx` mounts it as the `files` drawer, with a topbar
+opener, a `ws-files` command, and `'files'` added to `DRAWERS` so the drawer survives a reload.
+`canEdit` comes from `/api/shared/:id` through `lib/capabilities`, not from a literal. Three
+stylesheet classes the panel used — `.gx-files`, `.gx-files__table`, `.gx-files__text` — were
+defined nowhere and are now in `styles/workspace.css`. Pinned by
+`apps/web/tests/files-drawer-wiring.test.mjs`.
+
+**Correcting this entry's own claim.** It previously read "its own `files-model.ts` is reached, so
+the decisions are tested". Both halves were false. `files-model.ts` was reached only by an
+`import type` in `lib/api.ts`, which compiles away; and the tests did not exist — the module's
+header said `tests/files-model.test.mjs` ran it under `node --test`, and no such file was anywhere
+in the tree. That is the observation-failure shape in a dead-end register, which is the worst place
+for it: a claim of coverage standing in for the coverage, inside the document whose job is to find
+exactly that. `apps/web/tests/files-model.test.mjs` now exists and asserts the four rules the
+module's header names.
 
 ## apps/web/src/components/ws/members-panel.tsx — WIRE, pass 13
 

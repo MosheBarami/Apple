@@ -192,6 +192,15 @@ export interface ProjectSocket {
   checkpoints: CheckpointMeta[];
   checkpointsState: 'loading' | 'ready' | 'error';
   sendChat: (text: string, mode: GolemMode) => boolean;
+  /**
+   * "I am still here, and this is what I am doing."
+   *
+   * The frame has been in the protocol and handled by the session DO since presence was written,
+   * and nothing in this app ever sent one — so `typing` could not occur and a third of the
+   * vocabulary the other people's faces are rendered from was unreachable. Returns whether it
+   * went, like every other send here: a closed socket is not a presence update.
+   */
+  signalPresence: (activity: 'viewing' | 'typing' | 'building') => boolean;
   /** Replace an earlier prompt and re-run from it. Everything after it is discarded. */
   editAndResend: (messageId: string, text: string, mode: GolemMode) => boolean;
   stop: () => void;
@@ -898,6 +907,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     [sendRaw],
   );
 
+  const signalPresence = useCallback(
+    (activity: 'viewing' | 'typing' | 'building') => sendRaw({ type: 'presence', activity }),
+    [sendRaw],
+  );
+
   const stop = useCallback(() => {
     sendRaw({ type: 'stop' });
   }, [sendRaw]);
@@ -932,6 +946,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     checkpoints,
     checkpointsState,
     sendChat,
+    signalPresence,
     editAndResend,
     stop,
     createCheckpoint,

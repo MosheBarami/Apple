@@ -38,10 +38,21 @@ export interface ToastInput {
   message: string;
   /** The one thing a toast may offer besides being read. */
   action?: ToastAction | null;
+  /**
+   * The identity of an ONGOING event whose wording changes — a download reporting its progress.
+   *
+   * Coalescing cannot serve this: "Preparing… 41%" and "Preparing… 42%" are different strings, so
+   * without a key one export builds a column of forty rows and the cap evicts everything else on
+   * screen. A row admitted under a key it has already seen is REPLACED in place — new words, new
+   * kind, new deadline, same id and same position — and its count stays 1, because it is one event
+   * being updated rather than four events shouted.
+   */
+  key?: string | null;
 }
 
 export interface ToastItem extends ToastInput {
   action: ToastAction | null;
+  key: string | null;
   /** How many identical events this row stands for. 1 unless it coalesced. */
   count: number;
   /** Epoch ms after which the row stops being shown. Always finite — see `sweepToasts`. */
@@ -93,6 +104,10 @@ function sameEvent(row: ToastItem, incoming: ToastInput): boolean {
   // sentence and two different reversals; merging them strands one with no way back and no sign
   // that anything was lost.
   if (row.action || incoming.action) return false;
+  // A KEY IS AN IDENTITY, NOT A WILDCARD. Keyed and unkeyed rows never match each other even when
+  // they read alike, or an unrelated "Saved" would be silently overwritten by a progress row.
+  const key = incoming.key ?? null;
+  if (key !== null || row.key !== null) return row.key === key;
   return row.kind === incoming.kind && row.message === incoming.message;
 }
 
@@ -116,9 +131,15 @@ export function admitToast(
     next = [...list];
     // The row keeps its id and its POSITION: re-inserting it at the end would re-animate a row the
     // user is already reading, and the movement is the only thing they would notice.
-    next[at] = { ...row, count: row.count + 1, expiresAt };
+    next[at] =
+      incoming.key != null
+        ? // An UPDATE, not a repeat: the words and the severity are the new ones — the progress row
+          // becomes the success row — and the count stays where it is, because "×3" on a download
+          // reporting itself three times would be a lie about how many downloads there were.
+          { ...row, kind: incoming.kind, message: incoming.message, expiresAt }
+        : { ...row, count: row.count + 1, expiresAt };
   } else {
-    next = [...list, { ...incoming, action: incoming.action ?? null, count: 1, expiresAt }];
+    next = [...list, { ...incoming, action: incoming.action ?? null, key: incoming.key ?? null, count: 1, expiresAt }];
   }
 
   // Oldest-first eviction, with two rows exempt: anything offering an action, and the row that
