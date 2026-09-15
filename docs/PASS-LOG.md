@@ -1094,3 +1094,32 @@ HANDOFFS OPEN: the deploy — approve-by: the owner says go.
 NEXT: node scripts/check-pixels.mjs --deployed, which is the one §10 command not run this pass
   because it writes captures into docs/evidence/pixels/ and would have dirtied the frozen tree
   mid-verification — the precise mistake the new staleness guard exists to make loud.
+
+PASS 12 ADDENDUM — check-pixels --deployed, the command the record above scheduled as NEXT.
+
+  Run against the deployed origin: 72 frames captured, 72 findings, every one worded "an
+  undeclared regression". All of them were the wrong finding.
+
+  The baseline was captured from a LOCAL build of the current design (61dcdec: "against a fresh
+  build of the site with Tommy's brand work in place"), and the deployed site is far behind it.
+  So the comparison was between two BUILDS, which a pixel diff cannot distinguish from someone
+  quietly changing the design. The tell was in the distribution: 72 of 72 frames at 76%-99.9%,
+  while the three INTRINSIC rules — >92% one colour, bare system font, no design token — fired on
+  NONE of them. A rule that fires on 100% of frames is not measuring what its message claims.
+
+  What this actually establishes, stated separately because they are different facts:
+    - the deployed pages render, carry a real font and use the token vocabulary: 0 findings from
+      the three rules that judge a page on its own terms;
+    - the deployed pages do not look like the repository, on all 72 frames. That is the same
+      drift already measured in prose and in the offer figures, expressed in pixels.
+
+  FIXED, not reclassified away: the baseline now records its origin and sha, a cross-origin
+  comparison is reported as one finding naming both sides and what to do, and it still exits 1.
+  Unknown provenance counts as cross-build, because treating "no record" as "same origin" would
+  be assuming the answer. G-ORACLE-7 added — the pixel checker, which §16.10 makes a terminal
+  condition, had no gate in the ledger at all.
+
+  §16.10 remains false regardless: it also requires an owner-written PIXELS-APPROVED line, which
+  I may not write.
+
+  Gates 42, all met, 0 quarantined. Tree clean.
