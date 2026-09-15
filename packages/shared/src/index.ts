@@ -955,6 +955,15 @@ export type ServerMsg =
   | { type: 'run_intent'; msgId: string; intent: RunIntent }
   | { type: 'error'; code: string; message: string }
   /**
+   * SOMETHING WORTH KNOWING THAT IS NOT A FAILURE. The run proceeds; the client shows the line.
+   *
+   * It exists for one case and is deliberately not a general channel: a credential detected in the
+   * user's own prompt. That is always allowed — blocking the message would leave the key pasted
+   * and the person unhelped — so there is no error to raise, and before this the detection was
+   * simply discarded. An `error` carrying it would be a lie about a run that is still going.
+   */
+  | { type: 'notice'; code: string; message: string }
+  /**
    * WHO ELSE IS IN THIS PROJECT RIGHT NOW.
    *
    * Sent on connect, on every heartbeat and when a socket closes. `role` rides along because the

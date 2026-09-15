@@ -169,6 +169,27 @@ export function WorkspacePage() {
     [toast],
   );
 
+  /**
+   * Something the server noticed that did not stop anything.
+   *
+   * Today there is exactly one: a credential spotted in the message that was just sent. It is an
+   * `info` rather than an `error` because the run is still going and nothing failed — but it
+   * carries the action, because "rotate that key" is only useful next to the place keys live. The
+   * detection existed for months and was discarded at the call site; a toast nobody wired would
+   * have discarded it again one layer higher.
+   */
+  const onNotice = useCallback(
+    (code: string, message: string) => {
+      toast(message || `Heads up (${code})`, 'info', {
+        key: `notice:${code}`,
+        ...(code === 'secret_in_prompt'
+          ? { action: { label: 'Open Settings', run: () => navigate('/app/settings') } }
+          : {}),
+      });
+    },
+    [toast, navigate],
+  );
+
   const {
     conn,
     messages,
@@ -188,7 +209,7 @@ export function WorkspacePage() {
     createCheckpoint,
     restoreCheckpoint,
     reloadHistory,
-  } = useProjectSocket(projectId, onServerError);
+  } = useProjectSocket(projectId, onServerError, onNotice);
 
   /**
    * The one place Studio's state is named. Four values, each backed by a real

@@ -283,7 +283,16 @@ function mockHistory(): ChatItem[] {
   return base;
 }
 
-export function useProjectSocket(projectId: string, onServerError: (code: string, message: string) => void): ProjectSocket {
+export function useProjectSocket(
+  projectId: string,
+  onServerError: (code: string, message: string) => void,
+  /**
+   * Something worth knowing that did not stop anything — today, a credential spotted in the user's
+   * own prompt. Optional so the hook keeps working for a caller that has nowhere to put it; the
+   * workspace does, and a notice with no renderer would be the detection thrown away a second time.
+   */
+  onNotice?: (code: string, message: string) => void,
+): ProjectSocket {
   const [conn, setConn] = useState<ConnState>('connecting');
   const [messages, setMessages] = useState<ChatItem[]>([]);
   const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -318,6 +327,8 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
   const pingTimer = useRef<number | null>(null);
   const errorCbRef = useRef(onServerError);
   errorCbRef.current = onServerError;
+  const noticeCbRef = useRef(onNotice);
+  noticeCbRef.current = onNotice;
 
   // ---------------------------------------------------------------- history
   const loadHistory = useCallback(() => {
@@ -736,6 +747,11 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
         break;
       case 'error':
         errorCbRef.current(msg.code, msg.message);
+        break;
+      case 'notice':
+        // NOT routed to the error callback. The run is still going, and a failure-shaped warning
+        // about a run that did not fail teaches people to distrust both.
+        noticeCbRef.current?.(msg.code, msg.message);
         break;
       case 'presence':
         //[[ WHO ELSE IS IN THIS PROJECT.

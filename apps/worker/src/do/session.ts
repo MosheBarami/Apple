@@ -92,7 +92,7 @@ import { allModels } from '../providers/registry';
 import { recordEvent } from '../analytics';
 import { flushEvents } from '../analytics-sink';
 import { fenceToolOutput, describeThreats } from '../injection.ts';
-import { scoreSubmission, type Submission } from '../abuse.ts';
+import { disclosureNotice, scoreSubmission, type Submission } from '../abuse.ts';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -2232,6 +2232,22 @@ export class SessionDO extends DurableObject<Env> {
       // output, and a prompt cannot contain an id that was minted for this scan alone.
       fenceId: crypto.randomUUID().slice(0, 8),
     });
+    //[[ THE DETECTION THAT WAS BEING THROWN AWAY.
+    //
+    //   `secret_in_prompt` carries weight 0 on purpose — a user who pastes their own API key needs
+    //   to be TOLD, not blocked — so its verdict is always `allow`, and the early return below sat
+    //   above every line that did anything with it. The product noticed a live credential going
+    //   into a conversation, said nothing to the person, wrote nothing to the trace, and handed
+    //   the key to the model. An observation made and discarded is worth exactly as much as never
+    //   having looked.
+    //
+    //   Handled here, ABOVE the return, and it changes nothing about whether the run proceeds. ]]
+    const notice = disclosureNotice(verdict);
+    if (notice) {
+      recordEvent({ kind: 'error', scope: 'chat:ingress', errorKind: 'secret_in_prompt', message: notice.message });
+      this.broadcast({ type: 'notice', code: notice.code, message: notice.message });
+    }
+
     if (verdict.action === 'allow') return false;
     recordEvent({
       kind: 'error',

@@ -316,6 +316,36 @@ export function scoreSubmission(input: {
 }
 
 /**
+ * The one thing a user must be TOLD about their own prompt, or null when there is nothing.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A BRANCH AT THE CALL SITE. `secret_in_prompt` carries weight 0,
+ * so every verdict containing it is `allow` — and the call site returned on `allow` before it
+ * recorded anything. The product noticed somebody paste a live API key into a conversation, said
+ * nothing, wrote nothing, and passed the key to the model. An observation made and discarded is
+ * indistinguishable from never having looked, which is the failure this repository keeps naming,
+ * inverted.
+ *
+ * IT NEVER QUOTES THE SECRET. `summariseDisclosures` already renders a kind and a masked preview,
+ * and a warning that repeats the credential back would put it into a second place — a broadcast, a
+ * log line, a screenshot of a toast.
+ *
+ * A verdict with no `disclosures` at all reads as "nothing observed": the caller is a Durable
+ * Object and may hold an object from an older shape, and an absent field must never be read as a
+ * clean scan.
+ */
+export function disclosureNotice(
+  verdict: { signals?: readonly AbuseSignal[]; disclosures?: readonly unknown[] },
+): { code: 'secret_in_prompt'; message: string } | null {
+  if (!Array.isArray(verdict?.disclosures) || verdict.disclosures.length === 0) return null;
+  const signal = verdict.signals?.find((s) => s.code === 'secret_in_prompt');
+  if (!signal) return null;
+  return {
+    code: 'secret_in_prompt',
+    message: `That message ${signal.detail.replace(/^the prompt /, '')}. It was still sent — nothing was blocked.`,
+  };
+}
+
+/**
  * What the user is told.
  *
  * Names the reason. "Too many requests" for a repeated prompt teaches the user to wait and try the
