@@ -5227,6 +5227,14 @@ textarea {
   font-size: 0.78rem;
 }
 
+/* The words on the tickbox, which are the half a person reads; `ak__scope-id` beside it is the
+   Open Cloud identifier, kept quiet. `min-width: 0` so a long label wraps inside the row rather
+   than shouldering the identifier off the end of it. */
+.ak__scope-title {
+  min-width: 0;
+  color: var(--ink);
+}
+
 .ak__key-what,
 .ak__key-detail {
   color: var(--muted);
@@ -5682,6 +5690,7 @@ samp {
 .invoice-detail__qty {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  font-size: 0.86em;
 }
 
 .invoice-detail__amount {

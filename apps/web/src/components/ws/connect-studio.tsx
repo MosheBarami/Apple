@@ -25,39 +25,13 @@
  * STUDIO_PLUGIN_STORE_LIVE flips.
  */
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
-import { linkDetail, type StudioConnection, type StudioLinkFacts } from '../../lib/studio-connection';
+import type { StudioConnection } from '../../lib/studio-connection';
 import { Icon, PATH } from './primitives';
 
 interface ConnectStudioProps {
   status: StudioConnection;
   /** Opens the pairing-code dialog. */
   onPair: () => void;
-}
-
-/**
- * The one measured sentence about the link — and null whenever there is nothing measured to say.
- *
- * SEPARATE FROM `ConnectStudio` ON PURPOSE. That card guarantees it cannot render while Studio is
- * attached, and the worst state this sentence describes happens only while Studio IS attached: the
- * plugin polling happily with the wrong place open, a green pill above a build that will never
- * start. Putting the sentence inside the card would have made it invisible in exactly the case it
- * was written for.
- *
- * It renders nothing of its own. `linkDetail` decides — including deciding to say nothing, which
- * it does for a connection with a healthy round trip, an empty queue and no answer yet. A line
- * that always has something in it is a line people stop reading.
- */
-export function StudioLink({ status, facts }: { status: StudioConnection; facts: StudioLinkFacts }) {
-  const detail = linkDetail(status, facts, Date.now());
-  if (!detail) return null;
-  return (
-    <p
-      className={`gx-link-detail${facts.placeMismatch ? ' is-blocking' : ''}`}
-      role={facts.placeMismatch ? 'alert' : 'status'}
-    >
-      {detail}
-    </p>
-  );
 }
 
 export function ConnectStudio({ status, onPair }: ConnectStudioProps) {
