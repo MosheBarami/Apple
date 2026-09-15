@@ -1,5 +1,5 @@
 --!nocheck
---!modules Version,Paths,Serializer,Render,Generation,Ops
+--!modules Version,Paths,Serializer,Render,Generation,Companion,Ops
 --[[
 	Ops.execute — the single entry point for every action the agent performs in a
 	user's place, and the owner of the asset-policy window.

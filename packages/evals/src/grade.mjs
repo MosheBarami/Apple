@@ -115,11 +115,33 @@ function evalCheck(check, text, code, luauCheck) {
 }
 
 /**
+ * A check's declared weight, defended against every non-number a JSON file can carry.
+ *
+ * `check.weight ?? 1` defends `undefined` and `null` and NOTHING ELSE. `"3"`, `NaN` and
+ * `Infinity` all survive it, and each one poisons the score differently: a string makes
+ * `totalW` the concatenation `"013"`, a NaN makes the whole task score NaN, and an Infinity
+ * makes every other check in the task weigh nothing. A task whose score is NaN then compares
+ * false against every threshold, so it is silently neither a pass nor a fail.
+ */
+function checkWeight(w) {
+  return Number.isFinite(w) && w > 0 ? w : 1;
+}
+
+/**
  * Grade one model response against a task.
+ *
+ * A CHECK THAT COULD NOT RUN IS NOT A CHECK THAT FAILED. `unavailable` results are excluded from
+ * both sides of the fraction and reported separately, so an absent Luau checker or a rule set that
+ * does not apply to the snippet cannot be read off the scoreboard as a model writing bad code.
+ * When NOTHING could be graded the score is `null` — never 0, because 0 is a claim about the
+ * answer and there is no such claim to make.
+ *
  * @param {object} task  task definition ({id, checks, ...})
  * @param {string} responseText  raw model text
  * @param {{luauCheck?: (code: string) => {passed: boolean, detail: string}}} [opts]  injectable for tests
- * @returns {{score: number, code: string, checks: Array<{type, target, passed, weight, detail}>}}
+ * @returns {{score: number|null, scored: boolean, gradedWeight: number, ungradedWeight: number,
+ *           ungradedReason: string|null, ungraded: Array<{type, reason, detail}>,
+ *           code: string, checks: Array<{type, target, passed, weight, detail, unavailable?, reason?}>}}
  */
 export function gradeTask(task, responseText, opts = {}) {
   const text = String(responseText ?? '');
@@ -127,17 +149,39 @@ export function gradeTask(task, responseText, opts = {}) {
   const results = [];
   let totalW = 0;
   let passedW = 0;
+  let ungradedW = 0;
+  const ungraded = [];
   for (const check of task.checks) {
-    const w = check.weight ?? 1;
+    const w = checkWeight(check.weight ?? 1);
     let r;
     try {
       r = evalCheck(check, text, code, opts.luauCheck);
     } catch (e) {
-      r = { passed: false, detail: `check error: ${e instanceof Error ? e.message : String(e)}` };
+      // A check that THREW observed nothing about the answer. Scoring it 0 would be the same
+      // mistake as scoring an absent checker 0: it converts a harness fault into a verdict on
+      // the model. It is loud in `ungraded` instead.
+      r = { passed: false, unavailable: true, reason: 'check_error', detail: `check error: ${e instanceof Error ? e.message : String(e)}` };
+    }
+    if (r.unavailable) {
+      ungradedW += w;
+      const reason = r.reason ?? 'unavailable';
+      ungraded.push({ type: check.type, reason, detail: r.detail });
+      results.push({ type: check.type, target: check.target, passed: false, unavailable: true, reason, weight: w, detail: r.detail });
+      continue;
     }
     totalW += w;
     if (r.passed) passedW += w;
     results.push({ type: check.type, target: check.target, passed: r.passed, weight: w, detail: r.detail });
   }
-  return { score: totalW > 0 ? passedW / totalW : 0, code, checks: results };
+  const scored = totalW > 0;
+  return {
+    score: scored ? passedW / totalW : null,
+    scored,
+    gradedWeight: totalW,
+    ungradedWeight: ungradedW,
+    ungradedReason: scored ? null : (ungraded[0]?.reason ?? 'no_checks'),
+    ungraded,
+    code,
+    checks: results,
+  };
 }

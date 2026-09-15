@@ -137,7 +137,7 @@ export function Composer({
   const activeMode = PRODUCT_MODE_INFO[mode];
 
   return (
-    <div className="gx-composer">
+    <div className="gx-composer" data-tour="composer">
       <form className="gx-composer__inner" onSubmit={submit}>
         <label className="gx-sr" htmlFor="gx-composer-input">
           Describe what you want Apple to build

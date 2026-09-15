@@ -6,7 +6,9 @@ local LogService = game:GetService("LogService")
 local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
 
+local Companion = require(script.Companion)
 local Ops = require(script.Ops)
+local Paths = require(script.Paths)
 local Version = require(script.Version)
 
 local VERSION = Version.VERSION
@@ -48,6 +50,45 @@ LogService.MessageOut:Connect(function(message: string, messageType: Enum.Messag
 	if string.find(message, "Apple", 1, true) == 1 then return end
 	table.insert(logBuffer, { kind = "log", message = string.sub(message, 1, 300), level = level, clock = os.clock() })
 end)
+
+--[[ SELECTION SYNC — the companion's half of "we are both looking at the same thing".
+
+	 PUSHED, NOT POLLED. `Selection.SelectionChanged` fires the moment the user clicks, and
+	 the event rides out on the next poll body. The alternative — the web app asking
+	 `get_selection` on a timer — costs a round trip per tick forever and still shows a
+	 selection up to one tick stale, which is exactly long enough for "select the door and
+	 press the button" to act on the wrong thing.
+
+	 TWO RULES, both about not lying:
+
+	   * An unchanged selection is NOT re-sent. Studio raises SelectionChanged for a
+	     re-click of the same instance, and a poll body that repeats itself every two
+	     seconds for as long as a project stays connected is pure cost.
+	   * A selection event is not forgotten until the poll carrying it SUCCEEDS. Clearing
+	     it on a failed request would leave the web app showing a selection the user has
+	     already left, with nothing to correct it until they happen to select something
+	     else. ]]
+local pendingSelection: any = nil
+local lastSelection: any = nil
+
+local function captureSelection()
+	local entries = {}
+	for _, inst in Selection:Get() do
+		-- A path is how everything else addresses this instance, so it is worth a pcall:
+		-- an instance destroyed between the event and this loop must not take the whole
+		-- selection report down with it.
+		local ok, path = pcall(Paths.fullPath, inst)
+		table.insert(entries, { path = if ok then path else inst.Name, class = inst.ClassName })
+	end
+	local event = Companion.selectionEvent(entries, os.clock())
+	if Companion.sameSelection(event, lastSelection) then
+		return
+	end
+	lastSelection = event
+	pendingSelection = event
+end
+
+Selection.SelectionChanged:Connect(captureSelection)
 
 local function stateEvent(): any
 	return {
@@ -270,10 +311,15 @@ local function pollLoop(generation: number)
 		local events = {}
 		for _, e in logBuffer do table.insert(events, e) end
 		table.clear(logBuffer)
+		local sendingSelection = pendingSelection
+		if sendingSelection then table.insert(events, sendingSelection) end
 		local body: any = { results = results, events = events }
 		if pollCount % 12 == 0 then body.state = stateEvent() end
 		results = {}
 		local ok, data, status = post(s.apiBase .. "/api/studio/poll", body, s.token)
+		-- Forgotten only once it has landed, and only if nothing newer arrived while the
+		-- request was in flight.
+		if ok and pendingSelection == sendingSelection then pendingSelection = nil end
 		pollCount += 1
 		if status == 401 then
 			disconnectSession("Session ended — reconnect with a new code")
@@ -331,6 +377,11 @@ local function startPolling()
 	projectLabel.Visible = true
 	connectBtn.Text = "Disconnect"
 	setStatus("Connected · " .. s.projectName, COLORS.green)
+	-- Report what is selected RIGHT NOW rather than waiting for the user to click
+	-- something. An empty selection is information too: it is the difference between
+	-- "nothing is selected" and "we have not heard from Studio yet".
+	lastSelection = nil
+	captureSelection()
 	-- The handle is deliberately not kept. Holding a thread reference implies something can be
 	-- done with it, and the only thing that could be is the cancel this fix exists to remove.
 	local generation = pollGeneration

@@ -110,6 +110,13 @@ const SECRETS = {
   SUPABASE_ANON_KEY: 'SENTINEL-anon-3a8d15c9f2',
   ROBLOX_API_KEY: 'SENTINEL-roblox-c07e4b1a83',
   AI_GATEWAY_ID: 'SENTINEL-gateway-id-7d51',
+  // The web tools' credentials. These ride in an Authorization header on an OUTBOUND request, so
+  // the question A2 asks about them is the same one it asks about every other key: can the value
+  // come back out through a tool result. Without sentinels here the three newest egress paths in
+  // the worker would be the only ones nothing watched.
+  SEARCH_API_KEY: 'SENTINEL-search-4b19e7c206',
+  SCREENSHOT_API_KEY: 'SENTINEL-shots-8a3f2d5e71',
+  GITHUB_TOKEN: 'SENTINEL-github-1c6b90af43',
 };
 
 /** Fails naming the variable, never quoting it. */
@@ -222,6 +229,13 @@ function makeEnv(opts = {}) {
     ...SECRETS,
     SUPABASE_URL,
     ENVIRONMENT: 'test',
+    // The web tools' configuration. Present so `web_search` and `screenshot_page` reach their real
+    // bodies instead of stopping at the availability check — an egress test that never leaves
+    // "this tool is not configured here" proves nothing about egress. Both hosts are fictional and
+    // are reached only through the injected `webFetch` in `studioCtx`, never through the network.
+    WEB_TOOL_ALLOWLIST: 'search.golem.test,shots.golem.test',
+    SEARCH_API_URL: 'https://search.golem.test/search',
+    SCREENSHOT_API_URL: 'https://shots.golem.test/png',
     AI: {
       run: async (model, payload) => {
         trace.order.push('AI.run');
@@ -627,6 +641,44 @@ function studioCtx(env, overrides = {}) {
     restoreCheckpoint: async () => ({ ok: true }),
     addMemoryFact: async () => {},
     discoveredAssetIds: new Set([424242]),
+    // OUTBOUND HTTP FOR THE WEB TOOLS, STUBBED HERE ON PURPOSE.
+    //
+    // `globalThis.fetch` above is the no-network router, and A1 asserts that no provider host was
+    // ever contacted — including create.roblox.com. If the web tools fell through to the global
+    // fetch, exercising them would put a Roblox host into `allFetched` and break that assertion
+    // with a call that never left the process. Injecting here keeps the two facts separate: this
+    // stub answers the web tools, and `allFetched` keeps meaning what A1 says it means.
+    webFetch: async (url) => {
+      const isPng = url.includes('shots.golem.test') || url.endsWith('.png');
+      const isJson = url.includes('search.golem.test') || url.includes('api.github.com');
+      const body = url.includes('search.golem.test')
+        ? JSON.stringify({ results: [{ title: 'A thread', url: 'https://devforum.roblox.com/t/example', snippet: 'a snippet' }] })
+        : url.includes('api.github.com')
+          ? JSON.stringify({ full_name: 'Roblox/creator-docs', description: 'the docs', default_branch: 'main', tree: [], files: [] })
+          : '<html><head><title>A page</title></head><body><p>Some readable text.</p><a href="/t/other">another thread</a></body></html>';
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      return {
+        status: 200,
+        headers: { get: (h) => (h.toLowerCase() === 'content-type' ? (isPng ? 'image/png' : isJson ? 'application/json' : 'text/html') : null) },
+        text: async () => body,
+        arrayBuffer: async () => (isPng ? png.buffer : new TextEncoder().encode(body).buffer),
+      };
+    },
+    // The project's scratch file store, in memory. Seeded so `workspace_read` reaches its success
+    // path rather than returning "no such file" and testing nothing.
+    workspace: (() => {
+      const files = new Map([['notes/plan.md', 'a seeded plan']]);
+      const size = (v) => new TextEncoder().encode(v).length;
+      return {
+        list: async (prefix) => [...files.entries()].filter(([p]) => p.startsWith(prefix)).map(([path, content]) => ({ path, bytes: size(content), updatedAt: 1 })),
+        read: async (path) => (files.has(path) ? { content: files.get(path), bytes: size(files.get(path)), updatedAt: 1 } : null),
+        write: async (path, content) => {
+          const created = !files.has(path);
+          files.set(path, content);
+          return { bytes: size(content), created };
+        },
+      };
+    })(),
     ...overrides.ctx,
   };
   return { ctx, calls };
@@ -673,6 +725,33 @@ const TOOL_ARGS = {
   audit_build: {},
   run_spec: { cases: [{ name: 'a placed part is anchored', code: 'assert(true)' }] },
   install_module: { module: 'profile_store' },
+
+  // The ten web-facing tools. Every URL here is on the default host allowlist and none of them is
+  // a PROVIDER_HOST, so A1's "no provider endpoint was contacted" keeps its meaning; the requests
+  // themselves are answered by the injected `webFetch` above and never reach a socket.
+  web_fetch: { url: 'https://devforum.roblox.com/t/example' },
+  browse_page: { url: 'https://devforum.roblox.com/t/example', extract: 'links' },
+  web_search: { query: 'humanoid state' },
+  screenshot_page: { url: 'https://devforum.roblox.com/t/example' },
+  ocr_image: { imageUrl: 'https://devforum.roblox.com/uploads/sign.png' },
+  github_lookup: { repo: 'Roblox/creator-docs', resource: 'repo' },
+  git_history: { repo: 'Roblox/creator-docs', action: 'log', limit: 3 },
+  workspace_list: {},
+  workspace_read: { path: 'notes/plan.md' },
+  workspace_write: { path: 'notes/plan.md', content: 'a plan the agent wrote' },
+
+  // The four audio tools. Arguments chosen to reach each body, per the note above: an unknown
+  // environment or preset returns at the allowlist guard and would satisfy A2's enumeration while
+  // exercising none of the egress this file exists to check.
+  //
+  // `speak_line` is the only one of the four that reaches a model. It goes through the same
+  // BudgetDO singleton as every other spend path, and its engine call is behind the
+  // `SpeechProvider` interface — so what this fixture exercises here is the egress, and the spend
+  // ORDER is asserted by execution in apps/worker/tests/speech.test.mjs against a stub provider.
+  design_sound: { environment: 'cave' },
+  assign_sounds: { assignments: [{ path: 'game.Workspace.A', bus: 'SFX' }] },
+  generate_sound: { preset: 'ui_click' },
+  speak_line: { text: 'The gate is open.', preset: 'guide' },
 };
 
 test('A2 every registered tool has an argument fixture — the enumeration cannot silently go stale', () => {
@@ -872,14 +951,47 @@ test('A2 agent_status carries a policy classification, never prompt or transcrip
   assert.equal(/reasoning_content/.test(readCode('do/session.ts')), false, 'reasoning_content must never enter the transcript');
 });
 
-test('A2 STATIC CHECK — resume replays the same snapshot and is reachable only on an owner socket', () => {
+test('A2 STATIC CHECK — resume replays the same snapshot, and a socket is only accepted with a resolved identity', () => {
+  //[[ THIS INVARIANT CHANGED WHEN SHARED PROJECTS SHIPPED, AND IT GOT STRICTER.
+  //
+  //   It used to read: `if (userId !== bind.ownerId) return json(403)`, and asserted that exact
+  //   line. That line WAS the whole of "who may hold a socket" while a project had one person.
+  //   A shared project has several, so the question moved from "are you the owner" to "who are
+  //   you, and what may you do" — and a source assertion pinned to the old sentence would have
+  //   had to be deleted to ship the feature, which is the worst possible reason to delete a
+  //   security check.
+  //
+  //   So it is restated, over the mechanism that replaced it. What must hold now:
+  //     1. identity is RESOLVED, not read — through socketRole, which returns null for anyone it
+  //        cannot place, and null is refused with 403;
+  //     2. `owner` comes from the BINDING, never from a header, so no wire value can claim it;
+  //     3. every other role goes through the allowlist (`asCollabRole`), never a cast;
+  //     4. the identity check still precedes acceptWebSocket;
+  //     5. holding a socket is not permission to USE it — the write paths ask again.
+  //   Each of those is a narrower claim than the line it replaced, not a looser one. ]]
   const session = read('do/session.ts');
   assert.match(session, /case 'resume':[\s\S]{0,220}this\.runSnapshot\(\)/, "the `resume` handler must answer with runSnapshot()");
-  // Sockets are only accepted after the owner check, so `resume` inherits it.
-  assert.match(session, /if \(path === '\/ws'\)[\s\S]{0,220}if \(userId !== bind\.ownerId\) return json\(\{ error: 'forbidden' \}, 403\)/,
-    'the WebSocket must be refused before acceptWebSocket when the caller is not the project owner');
+
   const wsBlock = session.slice(session.indexOf("if (path === '/ws')"), session.indexOf("if (path === '/plugin/register'"));
-  assert.ok(wsBlock.indexOf('X-User-Id') < wsBlock.indexOf('acceptWebSocket'), 'the identity check must precede acceptWebSocket');
+  assert.match(wsBlock, /const who = this\.socketRole\(req, bind\);\s*\n\s*if \(who === null\) return json\(\{ error: 'forbidden' \}, 403\);/,
+    'the WebSocket must be refused before acceptWebSocket when the caller has no resolvable role');
+  assert.ok(wsBlock.indexOf('socketRole') < wsBlock.indexOf('acceptWebSocket'), 'the identity check must precede acceptWebSocket');
+  assert.ok(wsBlock.indexOf('X-User-Id') === -1, 'the /ws block must not read the identity header itself — socketRole owns that');
+
+  // (2) and (3): the resolver itself.
+  const resolver = session.slice(session.indexOf('private socketRole('), session.indexOf('private presenceBeats('));
+  assert.match(resolver, /if \(userId === bind\.ownerId\) return \{ userId, role: 'owner' \}/, 'owner comes from the binding');
+  assert.match(resolver, /const role = asCollabRole\(req\.headers\.get\('X-Golem-Role'\)\)/, 'any other role must pass the allowlist');
+  assert.match(resolver, /return role === null \? null : \{ userId, role \}/, 'an unrecognised role must refuse, never default');
+  assert.equal(/as CollabRole/.test(resolver), false, 'a cast is not a check');
+
+  // (5): a socket that may watch must not thereby be able to build, edit, stop or restore.
+  const messages = session.slice(session.indexOf('async webSocketMessage('), session.indexOf('async webSocketClose('));
+  for (const action of ['chat', 'build', 'restore_version']) {
+    assert.ok(messages.includes(`mayNot('${action}')`), `the socket write paths must ask for '${action}' before acting`);
+  }
+  assert.match(messages, /const me = this\.beatOf\(ws\);[\s\S]{0,400}me === null \|\| !can\(me\.role, action\)/,
+    'a socket with no resolvable identity must fail the capability question, not skip it');
 });
 
 // ===========================================================================
@@ -1431,9 +1543,33 @@ test('A6 STATIC CHECK — the direct env.AI.run call sites are the known, metere
     // step, so it has neither a normalised chat shape nor a token count, and gateway.chat() cannot
     // carry it. Admitting a file to this list is only safe if the gate comes with it, so the same
     // reserve-before-run / settle-after-run / release-on-failure ordering is asserted for it below.
-    ['gateway.ts', 'gateway.ts', 'imagegen.ts', 'providers/workers-ai.ts'],
+    //
+    // speech.ts twice, and it is the fourth exception for a reason that is NOT imagegen's. Speech is
+    // billed per AUDIO MINUTE — neither a token count nor a tile-and-step count — so gateway.chat()
+    // cannot carry it either. What is different is WHERE the two calls sit: they are inside
+    // `workersAiSpeech`, the adapter behind the `SpeechProvider` interface, and the reservation is
+    // taken by `transcribe`/`synthesize`, which invoke the provider. That indirection is deliberate
+    // — it is what lets every branch be tested without a paid call — and it also means the
+    // textual "reserve appears before run" check used for imagegen below cannot apply: the adapter
+    // is declared earlier in the file than the functions that gate it. The ordering is asserted by
+    // EXECUTION instead, in apps/worker/tests/speech.test.mjs ("a refused reservation means the
+    // engine is never called", "an engine that throws RELEASES the reservation"), and what is
+    // pinned here is that the calls are inside the adapter and that the module charges the one
+    // global ledger.
+    ['gateway.ts', 'gateway.ts', 'imagegen.ts', 'providers/workers-ai.ts', 'speech.ts', 'speech.ts'],
     'a new direct env.AI.run call site bypasses the provider layer — route it through gateway.chat()',
   );
+  // speech.ts: both call sites inside the adapter, the gate present, the ledger shared.
+  const speech = readCode('speech.ts');
+  const adapter = speech.slice(speech.indexOf('export function workersAiSpeech'), speech.indexOf('// Spend'));
+  assert.equal([...adapter.matchAll(/\bAI\.run\(/g)].length, 2,
+    'the speech engine calls must all be inside workersAiSpeech — a call outside it would not be behind the provider interface and could not be stubbed');
+  for (const required of ['const reserved = await reserve(env, ASR_MODEL.id, reservedNeurons)', 'const reserved = await reserve(env, TTS_MODEL.id, reservedNeurons)', 'await release(env, reserved)']) {
+    assert.ok(speech.includes(required), `speech.ts is missing ${required}`);
+  }
+  assert.equal([...speech.matchAll(/await settle\(env, reserved,/g)].length >= 3, true,
+    'every billed speech path must settle — the transcription path, the unreadable-response path and the synthesis path');
+  assert.match(speech, /BUDGET_DO\.idFromName\('singleton'\)/, 'speech must charge the one global ledger, not a ledger of its own');
   // imagegen.ts: same gate, same singleton ledger, same order.
   const img = readCode('imagegen.ts');
   const imgReserveAt = img.indexOf('const reserved = await reserve(env, spec.id, neurons)');

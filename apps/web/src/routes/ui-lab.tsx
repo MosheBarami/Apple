@@ -4,7 +4,7 @@
 // rejection cases, so the component set is reviewable without waiting for an
 // agent to emit one. This is also the fastest way to see that a hostile document
 // produces the safe fallback rather than markup.
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { GenerativeUIPanel } from '../lib/generative-ui/render';
 import { BLOCK_TYPES } from '../lib/generative-ui/schema';
 import { validateDocument } from '../lib/generative-ui/validate';
@@ -13,6 +13,8 @@ import { EmptyState } from '../components/empty-state';
 import { EMPTY_STATES, M06_NOT_MODELLED, type EmptyStateName } from '../components/empty-state-model';
 import { StatusIcon } from '../components/status-icon';
 import { STATUS, type StatusName } from '../components/status-icon-model';
+import { useToast } from '../components/toast';
+import { createUndoable, UNDO_WINDOW_MS } from '../lib/undo';
 
 interface Specimen {
   id: string;
@@ -354,6 +356,69 @@ function useSpecimens(): Specimen[] {
   }, []);
 }
 
+/**
+ * The notices, driven by hand.
+ *
+ * Toasts are the one part of this product that cannot be reviewed from a screenshot: what matters
+ * is what happens over the next ten seconds — whether a repeat stacks or counts, whether the Undo
+ * is still there when you reach for it, whether taking it actually puts the thing back. So the
+ * specimen is a set of buttons and a row that really changes, and the undo really reverses it.
+ */
+function NoticeSpecimen() {
+  const { toast } = useToast();
+  const [archived, setArchived] = useState(false);
+
+  return (
+    <section className="lab-specimen" aria-label="Notices">
+      <header className="lab-specimen-head">
+        <span className="lab-specimen-name">NOTICES · toast, count, undo</span>
+        <span className="lab-specimen-note">
+          A repeat counts rather than stacks. An Undo stays for {Math.round(UNDO_WINDOW_MS / 1000)}s and runs once.
+        </span>
+      </header>
+      <div className="lab-specimen-body lab-marks">
+        <button type="button" className="btn btn-sm" onClick={() => toast('Display name saved', 'success')}>
+          Success
+        </button>
+        <button type="button" className="btn btn-sm" onClick={() => toast('Preparing export…', 'info')}>
+          Info
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => toast('Could not reach Apple. Check your connection first.', 'error')}
+        >
+          Error
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => {
+            for (let i = 0; i < 3; i += 1) toast('Studio disconnected', 'error');
+          }}
+        >
+          The same thing, three times
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={archived}
+          onClick={() => {
+            setArchived(true);
+            const undo = createUndoable({ label: 'Undo', reverse: () => setArchived(false) });
+            toast('"Sample project" archived', 'success', {
+              action: { label: 'Undo', run: () => void undo.undo() },
+            });
+          }}
+        >
+          Archive, with an undo
+        </button>
+        <code className="lab-state-id">sample project: {archived ? 'archived' : 'active'}</code>
+      </div>
+    </section>
+  );
+}
+
 export function UiLabPage() {
   const specimens = useSpecimens();
   const coverage = useMemo(() => {
@@ -405,6 +470,8 @@ export function UiLabPage() {
          same thing differently — and those mistakes are only visible side by side.
          The tenth, M06, is listed as reserved rather than drawn, because the browser
          cannot observe whether a Studio plugin is installed. */}
+      <NoticeSpecimen />
+
       <section className="lab-specimen" aria-label="Canonical states">
         <header className="lab-specimen-head">
           <span className="lab-specimen-name">CANONICAL STATES · M01–M10</span>

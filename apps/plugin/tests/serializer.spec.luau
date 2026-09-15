@@ -1,5 +1,5 @@
 --!nocheck
---!modules Version,Paths,Serializer,Render,Generation,Ops
+--!modules Version,Paths,Serializer,Render,Generation,Companion,Ops
 --[[
 	Serializer.restore — the module's own header calls it "the highest-stakes
 	operation in the product", and it had no test of any kind.

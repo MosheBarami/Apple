@@ -112,6 +112,9 @@ export interface AgentStatus {
 
 export type ConnState = 'connecting' | 'open' | 'reconnecting' | 'offline';
 
+/** One person on the project, exactly as ServerMsg.presence carries them. */
+export type PresenceState = Extract<ServerMsg, { type: 'presence' }>['present'][number];
+
 export interface ProjectSocket {
   conn: ConnState;
   messages: ChatItem[];
@@ -125,6 +128,14 @@ export interface ProjectSocket {
    */
   studio: { connected: boolean; state: StudioEventState | null; everConnected: boolean };
   quota: QuotaState | null;
+  /**
+   * Everyone the worker can currently see on this project, from the `presence` message.
+   *
+   * Empty until the first one arrives, which is a different fact from "you are alone" — the
+   * component that renders it says nothing at all rather than announcing an emptiness it has not
+   * been told about yet.
+   */
+  presence: PresenceState[];
   agentStatus: AgentStatus | null;
   /**
    * Every distinct `agent_status.phase` this client has seen on the CURRENT
@@ -245,6 +256,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     everConnected: false,
   });
   const [quota, setQuota] = useState<QuotaState | null>(null);
+  const [presence, setPresence] = useState<PresenceState[]>([]);
   const [agentStatus, setAgentStatus] = useState<AgentStatus | null>(null);
   const [phaseMarks, setPhaseMarks] = useState<PhaseMark[]>([]);
   const [running, setRunning] = useState(false);
@@ -627,6 +639,15 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       case 'error':
         errorCbRef.current(msg.code, msg.message);
         break;
+      case 'presence':
+        //[[ WHO ELSE IS IN THIS PROJECT.
+        //
+        //   Replaced wholesale rather than merged: the server derives this from the sockets that
+        //   are actually attached, so the message IS the whole truth about the room. Merging would
+        //   keep a person on screen after their last tab closed, and a presence indicator that
+        //   outlives the connection fails in the one way nobody notices. ]]
+        setPresence(msg.present);
+        return;
       case 'pong':
         break;
     }
@@ -647,7 +668,18 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
       return;
     }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${proto}://${location.host}/api/projects/${encodeURIComponent(projectId)}/ws`;
+    //[[ THE SHARED SOCKET, FOR THE OWNER TOO.
+    //
+    //   `/api/projects/:id/ws` is owner-only and stays that way. This client asks for the shared
+    //   one because the owner is simply the strongest member there: the worker resolves their role
+    //   from the project row, not from anything on the wire, so an owner's socket is identical
+    //   either way and costs the same one database round trip.
+    //
+    //   What changes is that a collaborator gets a socket at all — they can watch a build, see who
+    //   else is here, and be refused by name when they try to start one. Pointing this at the
+    //   owner-only route would have left every collaboration feature reachable by curl and by
+    //   nothing a person can click. ]]
+    const url = `${proto}://${location.host}/api/shared/${encodeURIComponent(projectId)}/ws`;
     let ws: WebSocket;
     try {
       ws = new WebSocket(url, ['golem.v1', `golem.jwt.${token}`]);
@@ -814,6 +846,7 @@ export function useProjectSocket(projectId: string, onServerError: (code: string
     historyState,
     studio,
     quota,
+    presence,
     agentStatus,
     phaseMarks,
     running,

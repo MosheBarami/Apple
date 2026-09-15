@@ -4053,6 +4053,34 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+/* The count on a row that stands for several identical events. Without it a
+   socket dropping four times looks exactly like it dropping once. */
+.toast-count {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one thing a toast may offer besides being read — an Undo, almost always.
+   Sized and weighted to be reachable at a glance, because the offer expires:
+   see ACTION_LIFETIME_MS in components/toast-model.ts. */
+.toast-action {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 6px);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  cursor: pointer;
+  flex: none;
+}
+
+.toast-action:hover {
+  background: var(--surface-2, rgba(127, 127, 127, 0.12));
+}
+
 .toast-close {
   appearance: none;
   border: 0;

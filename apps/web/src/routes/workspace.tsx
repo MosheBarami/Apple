@@ -18,12 +18,15 @@ import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
 import { useToast } from '../components/toast';
 import { EditableProjectTitle } from '../components/editable-title';
+import { PresenceBar } from '../components/presence-bar';
+import { useAuth } from '../lib/auth';
 import { useCommands } from '../lib/commands';
 import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { useGlobalShortcut } from '../components/shortcuts-dialog';
 import { SearchPanel } from '../components/ws/search-panel';
 import { EditMessageDialog } from '../components/ws/edit-message-dialog';
 import { MemoryPanel } from '../components/ws/memory-panel';
+import { InstructionsPanel } from '../components/ws/instructions-panel';
 import { ApiError, downloadExport } from '../lib/api';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
@@ -96,6 +99,7 @@ export function WorkspacePage() {
     checkpointsState,
     frames,
     playtest,
+    presence,
     sendChat,
     editAndResend,
     stop,
@@ -112,6 +116,11 @@ export function WorkspacePage() {
    * below cannot linger after Studio attaches or reappear while it is attached.
    */
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected);
+
+  // Your own id, so the presence row shows the OTHER people. Null until the session loads, and
+  // presenceView is explicit about showing everyone rather than guessing which face is yours.
+  const { session } = useAuth();
+  const selfUserId = session?.user?.id ?? null;
 
   const projectNameRef = useRef('this project');
   projectNameRef.current = project.data?.name ?? 'this project';
@@ -412,6 +421,9 @@ export function WorkspacePage() {
         )}
 
         <div className="gx-top__actions">
+          {/* Who else is in this project. Draws nothing at all when you are alone — see
+              components/presence-model.ts. */}
+          <PresenceBar present={presence} selfUserId={selfUserId} />
           {studioStatus === 'connected' ? (
             <span className="gx-pill is-live" title={studio.state?.placeName ?? 'Connected to Studio'}>
               <span className="gx-dot" aria-hidden="true" />
@@ -688,6 +700,10 @@ export function WorkspacePage() {
             gesture people use to abandon them. Keeping it mounted would silently preserve a
             half-finished edit and re-present it later as if it had been saved. */}
         {drawer === 'memory' && <MemoryPanel projectId={projectId} />}
+        {/* The other half of memory: settings, profile, and project/team instructions, which live
+            in the scoped store rather than in this project's Durable Object. Mounted on the same
+            condition and for the same reason — closing the drawer abandons an unsaved edit. */}
+        {drawer === 'memory' && <InstructionsPanel projectId={projectId} />}
       </Drawer>
 
       {showPairing && (

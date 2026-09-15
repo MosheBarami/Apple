@@ -6,6 +6,7 @@ import type { AttributionResponse } from '../components/ws/credits-model';
 import { mockBrief, mockNext, mockRoadmap } from '../components/roadmap/mock';
 import { MOCK_MODE, mockAttribution, mockCounters, mockMe, mockMemory, mockSpend, mockUsageDays } from './mock';
 import { getAccessToken } from './supabase';
+import { noteReachability } from './connectivity';
 
 export class ApiError extends Error {
   status: number;
@@ -26,8 +27,14 @@ async function request<T>(path: string, init: RequestInit = {}, extraHeaders: Re
   try {
     res = await fetch(path, { ...init, headers });
   } catch {
+    // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
+    // in one direction only and takes the other direction from here — see the banner's comment for
+    // why the browser's own opinion is not enough.
+    noteReachability(false);
     throw new ApiError('Network error — check your connection.', 0);
   }
+  // A 500 is the worker telling us it is there, so ANY answer clears a connection warning.
+  noteReachability(true);
   let body: unknown = null;
   try {
     body = await res.json();
@@ -174,6 +181,175 @@ export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryRes
         body: JSON.stringify({ memory }),
       });
 
+// -------------------------------------------------------- scoped memory & preferences
+
+/** Mirrors apps/worker/src/memory-store.ts. `org` < `user` < `project` — later wins. */
+export type MemoryScope = 'org' | 'user' | 'project';
+export type MemoryKind = 'fact' | 'instruction' | 'preference' | 'profile';
+
+export interface MemoryEntry {
+  scope: MemoryScope;
+  scopeId: string;
+  key: string;
+  kind: MemoryKind;
+  value: string;
+  source: 'user' | 'model' | 'import';
+  createdAt: string;
+  updatedAt: string;
+  /** null means "until someone deletes it". */
+  expiresAt: string | null;
+  updatedBy: string;
+}
+
+export type CodingStyle = 'idiomatic' | 'minimal' | 'commented' | 'strict-typed' | 'oop' | 'functional';
+export type ResponseLength = 'brief' | 'normal' | 'detailed';
+export type ToolPermission = 'allow' | 'ask' | 'deny';
+
+export interface Preferences {
+  coding_style?: CodingStyle;
+  roblox_conventions?: string[];
+  language?: string;
+  model?: string;
+  response_length?: ResponseLength;
+  tool_permissions?: Record<string, ToolPermission>;
+}
+
+export interface PromptProfile {
+  about?: string;
+  goals?: string;
+  tone?: string;
+  experience?: string;
+}
+
+export interface ScopeMemoryResponse {
+  scope: MemoryScope;
+  scopeId: string;
+  canWrite: boolean;
+  entries: MemoryEntry[];
+  preferences: { prefs: Preferences; rejected: { key: string; reason: string }[] };
+  profile: PromptProfile;
+}
+
+/**
+ * What one project's NEXT run will act on, after org, user and project layers are resolved.
+ *
+ * `shadowedBy` is the part that matters in the UI: a setting overridden at another layer reads as a
+ * broken control unless the product says which layer is answering instead. The resolution is done
+ * on the server by the same function the agent uses — re-deriving the precedence rule in the
+ * browser would be a second implementation of it, and the two would diverge.
+ */
+export interface PersonalisationResponse {
+  preferences: Preferences;
+  sources: Partial<Record<keyof Preferences, MemoryScope>>;
+  profile: PromptProfile;
+  projectInstructions: string[];
+  teamInstructions: string[];
+  resolved: {
+    key: string;
+    value: string;
+    kind: MemoryKind;
+    scope: MemoryScope;
+    expiresAt: string | null;
+    shadowedBy: { scope: MemoryScope; value: string }[];
+  }[];
+}
+
+export interface MemoryAuditEntry {
+  id: string;
+  scope: MemoryScope;
+  scopeId: string;
+  key: string;
+  action: 'put' | 'delete' | 'import' | 'purge';
+  actor: string;
+  at: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface MemoryScopesResponse {
+  user: { scopeId: string; canWrite: boolean };
+  orgs: { scopeId: string; role: string; canWrite: boolean }[];
+}
+
+const scopePath = (scope: MemoryScope, scopeId: string) => `/api/memory/${scope}/${encodeURIComponent(scopeId)}`;
+
+export const fetchMemoryScopes = () => request<MemoryScopesResponse>('/api/memory/scopes');
+
+export const fetchScopeMemory = (scope: MemoryScope, scopeId: string) =>
+  request<ScopeMemoryResponse>(scopePath(scope, scopeId));
+
+export const fetchPersonalisation = (projectId: string) =>
+  request<PersonalisationResponse>(`/api/projects/${encodeURIComponent(projectId)}/personalisation`);
+
+/**
+ * Write one entry. `ttlDays` is sent only when it is a real number — the server refuses a
+ * non-finite TTL outright, and sending NaN because a text input was empty would turn "no expiry"
+ * into a rejected save.
+ */
+export const saveMemoryEntry = (
+  scope: MemoryScope,
+  scopeId: string,
+  key: string,
+  entry: { value: string; kind: MemoryKind; ttlDays?: number },
+) =>
+  request<{ entry: MemoryEntry }>(`${scopePath(scope, scopeId)}/entries/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      value: entry.value,
+      kind: entry.kind,
+      ...(typeof entry.ttlDays === 'number' && Number.isFinite(entry.ttlDays) && entry.ttlDays > 0 ? { ttlDays: entry.ttlDays } : {}),
+    }),
+  });
+
+export const deleteMemoryEntry = (scope: MemoryScope, scopeId: string, key: string) =>
+  request<{ deleted: boolean }>(`${scopePath(scope, scopeId)}/entries/${encodeURIComponent(key)}`, { method: 'DELETE' });
+
+export const savePreferences = (scope: MemoryScope, scopeId: string, preferences: Preferences) =>
+  request<{ preferences: Preferences; rejected: { key: string; reason: string }[] }>(`${scopePath(scope, scopeId)}/preferences`, {
+    method: 'PUT',
+    body: JSON.stringify({ preferences }),
+  });
+
+export const savePromptProfile = (userId: string, profile: PromptProfile) =>
+  request<{ profile: PromptProfile }>(`/api/memory/user/${encodeURIComponent(userId)}/profile`, {
+    method: 'PUT',
+    body: JSON.stringify({ profile }),
+  });
+
+export const fetchMemoryAudit = (scope: MemoryScope, scopeId: string, limit = 50) =>
+  request<{ audit: MemoryAuditEntry[] }>(`${scopePath(scope, scopeId)}/audit?limit=${limit}`);
+
+export const importMemory = (scope: MemoryScope, scopeId: string, bundle: unknown) =>
+  request<{ imported: number; rejected: { key: string; reason: string }[] }>(`${scopePath(scope, scopeId)}/import`, {
+    method: 'POST',
+    body: JSON.stringify(bundle),
+  });
+
+/**
+ * Download one scope's memory as a file.
+ *
+ * Not `request<T>`: the filename lives in Content-Disposition, and a plain <a href> cannot carry
+ * the Bearer token /api/* requires. Same shape as downloadExport, deliberately.
+ */
+export async function downloadMemoryExport(scope: MemoryScope, scopeId: string): Promise<void> {
+  const token = await getAccessToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`${scopePath(scope, scopeId)}/export`, { headers });
+  if (!res.ok) throw new ApiError(`Could not export memory (${res.status})`, res.status);
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const named = /filename="([^"]+)"/.exec(disposition)?.[1];
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = named ?? `apple-memory-${scope}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const fetchCheckpoints = (projectId: string) =>
   request<{ checkpoints: CheckpointMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/checkpoints`);
 
@@ -223,8 +399,13 @@ export async function fetchImageObjectUrl(projectId: string, imageId: string): P
       { headers },
     );
   } catch {
+    // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
+    // in one direction only and takes the other direction from here — see the banner's comment for
+    // why the browser's own opinion is not enough.
+    noteReachability(false);
     throw new ApiError('Network error — check your connection.', 0);
   }
+  noteReachability(true);
   if (!res.ok) {
     // The status is what separates "this expired" from "your session did" from "not yours", and
     // the taxonomy in error-taxonomy.ts is what turns it into something worth reading. Collapsing
@@ -250,8 +431,13 @@ export async function downloadExport(projectId: string, format: 'md' | 'json'): 
   try {
     res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/export?format=${format}`, { headers });
   } catch {
+    // THE ONLY PLACE THAT KNOWS THE REQUEST NEVER LEFT. lib/connectivity.ts reads `navigator.onLine`
+    // in one direction only and takes the other direction from here — see the banner's comment for
+    // why the browser's own opinion is not enough.
+    noteReachability(false);
     throw new ApiError('Network error — check your connection.', 0);
   }
+  noteReachability(true);
   if (!res.ok) {
     // The error body IS JSON even though the success body is not.
     const body = await res.json().catch(() => null);

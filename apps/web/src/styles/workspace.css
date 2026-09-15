@@ -816,6 +816,59 @@
 }
 
 /* --------------------------------------------------------------------------
+   6b. Presence — who else is in this project
+   -------------------------------------------------------------------------- */
+
+/* Overlapping discs, in the topbar, to the left of the Studio pill. `flex: none` for the same
+   reason the pill has it: this row is small and fixed, and the project title beside it is the
+   element designed to absorb width pressure. */
+.gx-presence {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding-inline-end: 0.2rem;
+}
+
+.gx-presence__face,
+.gx-presence__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--gx-bg);
+  background: var(--gx-raise);
+  color: var(--gx-ink-2);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* The overlap is what makes four faces read as a group rather than a list. The first one keeps
+     its full margin so the row does not start flush against the title. */
+  margin-inline-start: -6px;
+}
+
+.gx-presence__face:first-child {
+  margin-inline-start: 0;
+}
+
+/* Activity is carried by the ring, not by colour alone: `typing` and `building` are states the
+   user can also read from the tooltip, which every face carries. */
+.gx-presence__face.is-typing {
+  box-shadow: 0 0 0 2px rgba(125, 173, 110, 0.28);
+}
+
+.gx-presence__face.is-building {
+  box-shadow: 0 0 0 2px var(--gx-good);
+  color: var(--gx-ink);
+}
+
+.gx-presence__more {
+  background: transparent;
+  border-style: dashed;
+}
+
+/* --------------------------------------------------------------------------
    7. Buttons
    -------------------------------------------------------------------------- */
 
@@ -3551,4 +3604,332 @@
 .mem__note--quiet {
   font-size: 0.75rem;
   opacity: 0.8;
+}
+
+/* ------------------------------------------------- preferences & instructions --- */
+
+/* Layered on the memory panel's own vocabulary rather than beside it: the two panels share a
+   drawer, and a second visual language inside one drawer reads as two products. */
+
+.prefs__scopes {
+  display: flex;
+  gap: 6px;
+}
+
+.prefs__scope {
+  padding: 6px 12px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 999px;
+  background: none;
+  color: var(--gx-ink-3);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.prefs__scope--on {
+  color: var(--gx-ink);
+  border-color: var(--gx-accent, #6aa7ff);
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+}
+
+.prefs__set {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.prefs__set[disabled] {
+  opacity: 0.55;
+}
+
+.prefs__check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--gx-ink-2, var(--gx-ink));
+}
+
+.prefs__profile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label--sub {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+/* An instruction is read far more often than it is edited, so it renders as text rather than as a
+   permanently-focusable input. Correcting one is delete-and-retype, which is honest about what the
+   store does: the key is a timestamp and there is no identity to patch against. */
+.prefs__instruction {
+  display: block;
+  padding: 7px 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prefs__until {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--gx-ink-3);
+  white-space: nowrap;
+}
+
+.prefs__ttl {
+  flex: none;
+  width: 4.5rem;
+  padding: 7px 8px;
+  border: 1px solid var(--gx-line, rgb(255 255 255 / 12%));
+  border-radius: 7px;
+  background: var(--gx-surface-1, rgb(0 0 0 / 20%));
+  color: var(--gx-ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.prefs__resolved,
+.prefs__audit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prefs__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.prefs__key {
+  font-family: var(--gx-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.76rem;
+  color: var(--gx-ink-3);
+}
+
+.prefs__value {
+  color: var(--gx-ink);
+  overflow-wrap: anywhere;
+}
+
+.prefs__from {
+  font-size: 0.73rem;
+  color: var(--gx-ink-3);
+  white-space: nowrap;
+}
+
+/* The line that keeps a working control from reading as a broken one. */
+.prefs__over {
+  font-size: 0.73rem;
+  color: var(--gx-warn, #e0b062);
+  white-space: nowrap;
+}
+
+.prefs__import {
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Reachability banner  (components/offline-banner.tsx)
+
+   Fixed to the top of the viewport rather than pushed into the document flow:
+   the condition it reports is about the whole app, and a banner that shifts
+   the page down re-lays out whatever the user was reading at the moment they
+   were already having a bad time.
+
+   It renders at all only when something was actually observed — see
+   lib/connectivity.ts. There is no "you are back online" state here on
+   purpose: the banner leaving IS that message.
+   ========================================================================== */
+
+.net-banner {
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  z-index: 400;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--gx-line-2);
+  background: var(--gx-raise-2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  font-size: 0.82rem;
+  color: var(--gx-ink-2);
+  animation: net-banner-in var(--gx-t-enter) var(--gx-ease);
+}
+
+/* The shell makes room for it rather than being covered by it.
+   A floating notice that sits on top of the page heading is how a warning ends up
+   reading as breakage, and this condition is not transient — it stays until the
+   connection comes back, which may be a while. `:has()` keeps the reservation in
+   CSS: no second copy of "is there a banner" in React state to fall out of step
+   with the banner itself. */
+.gx-shell:has(.net-banner) {
+  padding-top: 41px;
+}
+
+@keyframes net-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .net-banner {
+    animation: none;
+  }
+}
+
+.net-banner__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  align-self: center;
+  background: var(--gx-warn);
+}
+
+/* Offline is a fact about the device; unreachable is a fact about us. The
+   colour follows §16.2 rather than decoration: red is failure, amber is a
+   condition that may clear on its own. */
+.net-banner.is-unreachable .net-banner__dot {
+  background: var(--gx-bad);
+}
+
+.net-banner__text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.net-banner__title {
+  color: var(--gx-ink);
+  font-weight: 600;
+}
+
+.net-banner__next {
+  color: var(--gx-ink-3);
+  white-space: nowrap;
+}
+
+/* On a phone the three parts do not fit on one line, and the reservation above
+   has to match what the bar actually becomes. */
+@media (max-width: 720px) {
+  .net-banner {
+    justify-content: flex-start;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .gx-shell:has(.net-banner) {
+    padding-top: 74px;
+  }
+}
+
+/* ==========================================================================
+   Onboarding tour  (components/onboarding-tour.tsx)
+
+   A ring around the real element and a card beside it. Deliberately NOT a
+   scrim over the rest of the app: this tour explains things you can use while
+   it is open, and a modal tour is one people dismiss to get their product
+   back. Both layers are positioned from a measured rect, and neither renders
+   when the element is missing or has no size.
+   ========================================================================== */
+
+.tour-ring {
+  position: fixed;
+  z-index: 380;
+  border-radius: var(--gx-r);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--gx-amber), 0 0 0 10px rgba(201, 138, 60, 0.14);
+  transition: top var(--gx-t-move) var(--gx-ease), left var(--gx-t-move) var(--gx-ease);
+}
+
+.tour-card {
+  position: fixed;
+  z-index: 390;
+  width: 300px;
+  max-width: calc(100vw - 2rem);
+  padding: 0.95rem 1rem 0.85rem;
+  border: 1px solid var(--gx-line-2);
+  border-radius: var(--gx-r-lg);
+  background: var(--gx-raise-2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+  animation: tour-in var(--gx-t-enter) var(--gx-ease);
+}
+
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-card {
+    animation: none;
+  }
+
+  .tour-ring {
+    transition: none;
+  }
+}
+
+.tour-step {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gx-ink-3);
+}
+
+.tour-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  color: var(--gx-ink);
+}
+
+.tour-body {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--gx-ink-2);
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.tour-skip {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--gx-ink-3);
+  cursor: pointer;
+}
+
+.tour-skip:hover {
+  color: var(--gx-ink);
 }

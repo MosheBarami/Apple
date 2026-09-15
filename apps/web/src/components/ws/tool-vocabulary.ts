@@ -52,6 +52,14 @@ export const ACTIVITY = {
   critiquing: { canonical: null, label: 'Evaluating' },
   // Writing project memory. C18 is saving the PLACE, which is `create_checkpoint`.
   remembering: { canonical: null, label: 'Noting what changed' },
+  // Reading something OUTSIDE the project: a web page, a search, a repository, an image the agent
+  // did not render. Not C04, which is specifically the Roblox documentation and says so on screen
+  // — telling a user "Searching the Roblox docs" while the agent reads a GitHub issue is a wrong
+  // sentence, and the whole reason this table exists is that wrong sentences shipped.
+  browsing: { canonical: null, label: 'Reading the web' },
+  // The project's scratch files, which are Golem's storage and not the Roblox place. C08 is
+  // "Editing project", and using it here would claim the agent touched the user's game.
+  filing: { canonical: null, label: 'Working with project files' },
   // The honest fallback for a tool this build has never heard of.
   working: { canonical: null, label: 'Working' },
 } as const;
@@ -101,6 +109,11 @@ export const TOOL = {
   // C11
   generate_model: { kind: 'generating', label: 'Generated a model' },
   generate_image: { kind: 'generating', label: 'Generated an image' },
+  // The two audio tools that MAKE something. Both produce a file the user can hear and download,
+  // and neither puts anything in their Roblox place — so the label says what was made rather than
+  // where it went, which is the same care `generate_image` takes.
+  generate_sound: { kind: 'generating', label: 'Made a sound effect' },
+  speak_line: { kind: 'generating', label: 'Spoke a line' },
 
   // C09 — adding to the world.
   create_instances: { kind: 'building', label: 'Created instances' },
@@ -108,6 +121,13 @@ export const TOOL = {
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau' },
+
+  // The two audio tools that change the PLACE. `design_sound` writes SoundService's reverb and the
+  // SoundGroup mixer; `assign_sounds` routes Sounds that already exist onto those groups. Neither
+  // creates geometry, and neither adds audio — which is why the labels say "acoustics" and "routed"
+  // rather than anything that implies a sound was added.
+  design_sound: { kind: 'building', label: 'Set the place\u2019s acoustics' },
+  assign_sounds: { kind: 'editing', label: 'Routed sounds onto the mixer' },
 
   // C08 — changing what is already there, which is not the same act as building it.
   set_properties: { kind: 'editing', label: 'Set properties' },
@@ -139,6 +159,19 @@ export const TOOL = {
   get_output_logs: { kind: 'debugging', label: 'Read the output log' },
   create_checkpoint: { kind: 'saving', label: 'Saved a checkpoint' },
   remember: { kind: 'remembering', label: 'Noted a fact about the project' },
+
+  // The web-facing tools. Each label says what was READ and where, because "Working" over ten
+  // different substrates is the fallback these entries exist to avoid.
+  web_fetch: { kind: 'browsing', label: 'Fetched a page' },
+  browse_page: { kind: 'browsing', label: 'Read a web page' },
+  web_search: { kind: 'browsing', label: 'Searched the web' },
+  screenshot_page: { kind: 'browsing', label: 'Captured a page' },
+  ocr_image: { kind: 'browsing', label: 'Read the text in an image' },
+  github_lookup: { kind: 'browsing', label: 'Looked something up on GitHub' },
+  git_history: { kind: 'browsing', label: 'Read version history' },
+  workspace_list: { kind: 'filing', label: 'Listed the project files' },
+  workspace_read: { kind: 'filing', label: 'Read a project file' },
+  workspace_write: { kind: 'filing', label: 'Wrote a project file' },
 } as const satisfies Record<string, { kind: ActivityKind; label: string }>;
 
 export type ToolName = keyof typeof TOOL;

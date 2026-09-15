@@ -128,8 +128,17 @@ test('the jump closes the drawer it was launched from', () => {
 
 test('the found flash respects reduced motion', () => {
   const CSS = readFileSync(join(WEB, 'src', 'styles', 'workspace.css'), 'utf8');
-  const reduced = CSS.slice(CSS.lastIndexOf('prefers-reduced-motion'));
-  assert.match(reduced, /\.is-found/);
+  // Anchored to the block that carries the claim, not to the LAST reduced-motion block in the
+  // file. It used to be the latter — `CSS.slice(CSS.lastIndexOf('prefers-reduced-motion'))` —
+  // which made this test a hostage to whatever was appended to the stylesheet next: adding an
+  // unrelated reduced-motion rule at the end of the file turned it red while `.is-found` was
+  // still perfectly correct, and (the worse direction) a `.is-found` rule deleted from its own
+  // block would still have passed for as long as some later block happened to say
+  // `animation: none`.
+  const blocks = [...CSS.matchAll(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/g)]
+    .map((m) => m[1]);
+  const reduced = blocks.find((b) => /\.is-found\b/.test(b));
+  assert.ok(reduced, 'no prefers-reduced-motion block mentions .is-found at all');
   assert.match(reduced, /animation: none/);
   // And it still marks the message — removing the animation must not remove the answer to
   // "which one".

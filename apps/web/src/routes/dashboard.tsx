@@ -14,6 +14,9 @@ import { relativeTime, truncate } from '../lib/format';
 import { Modal } from '../components/modal';
 import { SummonIllustration } from '../components/glyphs';
 import { useToast } from '../components/toast';
+import { createUndoable } from '../lib/undo';
+import { confirmationFor } from '../lib/confirm-model';
+import { ConfirmDialog } from '../components/confirm-dialog';
 import { EmptyState } from '../components/empty-state';
 import { useCommands } from '../lib/commands';
 import { useProvideNewProject } from '../lib/shell';
@@ -294,7 +297,6 @@ function RenameProjectModal({ project, onClose }: { project: ProjectRow; onClose
 function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose: () => void }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [typed, setTyped] = useState('');
 
   const del = useMutation({
     mutationFn: async () => {
@@ -313,29 +315,27 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
     onError: (e: Error) => toast(`Delete failed: ${e.message}`, 'error'),
   });
 
-  const match = typed === project.name;
+  // Stated rather than assumed: the ladder in lib/confirm-model.ts is what decides the ceremony,
+  // and this is what a 'typed' verdict looks like. The old version compared `typed === project.name`
+  // inline, which had a fail-open in it — a project whose name is empty or whitespace, and several
+  // are, made the Delete button live before the dialog had finished rendering.
+  const ceremony = confirmationFor({ reversible: false, destroysUserContent: true });
+  if (ceremony !== 'typed' && ceremony !== 'dialog') return null;
 
   return (
-    <Modal title="Delete project" onClose={onClose} locked={del.isPending}>
-      <p className="danger-copy">
-        This permanently deletes <strong>{project.name}</strong> — chat history, checkpoints and the Studio pairing.
-        Your Roblox place itself is not touched. This cannot be undone.
-      </p>
-      <label className="field">
-        <span className="field-label">
-          Type <strong className="mono">{project.name}</strong> to confirm
-        </span>
-        <input value={typed} onChange={(e) => setTyped(e.target.value)} name="confirmProjectName" id="confirm-project-name" placeholder={project.name} autoFocus />
-      </label>
-      <div className="modal-actions">
-        <button type="button" className="btn" onClick={onClose} disabled={del.isPending}>
-          Cancel
-        </button>
-        <button type="button" className="btn btn-danger" disabled={!match || del.isPending} onClick={() => del.mutate()}>
-          {del.isPending ? 'Deleting…' : 'Delete forever'}
-        </button>
-      </div>
-    </Modal>
+    <ConfirmDialog
+      title="Delete project"
+      ceremony={ceremony}
+      subject={project.name}
+      confirmLabel="Delete forever"
+      busyLabel="Deleting…"
+      busy={del.isPending}
+      onConfirm={() => del.mutate()}
+      onClose={onClose}
+    >
+      This permanently deletes <strong>{project.name}</strong> — chat history, checkpoints and the Studio
+      pairing. Your Roblox place itself is not touched. This cannot be undone.
+    </ConfirmDialog>
   );
 }
 
@@ -370,11 +370,23 @@ export function DashboardPage() {
       // The row moves between two lists AND leaves the sidebar, so three caches are stale at once.
       for (const key of PROJECT_LIST_KEYS) void qc.invalidateQueries({ queryKey: key });
       // Undo in the toast rather than a confirmation before the fact: archiving is reversible, and
-      // a dialog guarding a reversible action just trains people to dismiss dialogs.
-      toast(
-        archive ? `"${project.name}" archived` : `"${project.name}" restored`,
-        'success',
-      );
+      // a dialog guarding a reversible action just trains people to dismiss dialogs — which is
+      // exactly the habit you do not want them arriving with at the permanent one. That reasoning
+      // is now a function: confirmationFor({ reversible: true, destroysUserContent: true }) is
+      // 'undo', and this is the branch that honours it.
+      //
+      // The reversal goes back through the SAME mutation, so it invalidates the same three caches
+      // and cannot drift from the forward action. lib/undo.ts is what makes the offer honest: it
+      // runs at most once however many times the button is clicked, refuses after its window has
+      // closed, and reports a rejected request as failed rather than as a restore that never
+      // happened.
+      const undo = createUndoable({
+        label: 'Undo',
+        reverse: () => setArchived.mutateAsync({ project, archive: !archive }),
+      });
+      toast(archive ? `"${project.name}" archived` : `"${project.name}" restored`, 'success', {
+        action: { label: 'Undo', run: () => void undo.undo() },
+      });
     },
     onError: (e: Error) => toast(`Could not archive: ${e.message}`, 'error'),
   });
