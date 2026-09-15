@@ -298,6 +298,23 @@ export function refusalCopy(code: string | undefined, serverSaid: string): strin
 export const deleteConfirm = (path: string, retentionDays: number): string =>
   `Delete ${path}? It goes to the trash and can be brought back for ${retentionDays} days.`;
 
+/**
+ * The sentence on a FOLDER delete confirmation.
+ *
+ * It carries the COUNT because a folder operation is the largest thing this panel can do and the
+ * user can see only one level of it: "Delete notes?" invites a yes from somebody thinking of the
+ * two files in front of them and not of the eleven a level down. The window is in the same sentence
+ * for the reason the single-file version states — a deletion described without its deadline invites
+ * both wrong beliefs at once.
+ */
+export const deleteFolderConfirm = (prefix: string, fileCount: number, retentionDays: number): string =>
+  `Delete the folder ${prefix} and the ${fileCount} file${fileCount === 1 ? '' : 's'} in it? ` +
+  `They go to the trash and can be brought back for ${retentionDays} days.`;
+
+/** The prompt on a folder rename. It says "path", because a folder rename is a folder move. */
+export const renameFolderPrompt = (prefix: string): string =>
+  `New path for the folder ${prefix} — include a folder to move it inside another one`;
+
 /** The sentence on the revert confirmation. */
 export const revertConfirm = (path: string, version: number): string =>
   `Put version ${version} of ${path} back? The current text is kept as its own version, so this can be undone.`;

@@ -167,26 +167,38 @@ test('the landing ink ramp clears 4.5:1 on every surface it can sit on', () => {
   assert.ok(INK.length >= 2, `found ${INK.length} ink token(s) in the landing stylesheet — this check has gone blind`);
   assert.ok(SURFACES.length >= 2, `found ${SURFACES.length} surface token(s) in the landing stylesheet — this check has gone blind`);
 
+  // AND EVERY THEME, not just the one that happens to be declared first. The previous version read
+  // index 0 of each token, and index 0 is the light declaration — the dark palette was never
+  // measured at all. Source order in landing.css is `:root` (light), then the
+  // prefers-color-scheme block, then `:root[data-theme='dark']`; the last two are the same dark
+  // palette written twice, and the equality assertion below is what stops them drifting apart so
+  // that the page reads differently for someone who never touched the toggle.
+  const THEMES = [[0, 'light'], [1, 'dark (system)'], [2, 'dark']];
+
   for (const name of INK) {
-    const [fg] = occurrences(LANDING, name);
-    assert.ok(fg, `the landing declares no --${name}`);
-    for (const surface of SURFACES) {
-      const [bg] = occurrences(LANDING, surface);
-      assert.ok(bg, `the landing declares no --${surface}`);
-      const r = contrast(fg, bg);
-      assert.ok(r >= 4.5, `--${name} on --${surface} is ${r.toFixed(2)}:1, needs 4.5:1`);
+    const fg = occurrences(LANDING, name);
+    assert.equal(fg.length, 3, `--${name} must be declared for light, dark and the dark media query`);
+    assert.equal(fg[1], fg[2], `--${name} disagrees between the dark theme and the dark media query`);
+    for (const [i, theme] of THEMES) {
+      for (const surface of SURFACES) {
+        const bg = occurrences(LANDING, surface)[i];
+        assert.ok(bg, `the landing declares no --${surface} for ${theme}`);
+        const r = contrast(fg[i], bg);
+        assert.ok(r >= 4.5, `${theme}: --${name} on --${surface} is ${r.toFixed(2)}:1, needs 4.5:1`);
+      }
     }
   }
 
-  // And the ramp must descend, or the tiers are four names for one colour.
-  const [ground] = occurrences(LANDING, 'ground');
-  const ratios = INK.map((n) => contrast(occurrences(LANDING, n)[0], ground));
-  const dimmest = Math.min(...ratios);
-  assert.equal(
-    dimmest,
-    ratios[ratios.length - 1],
-    `--muted must be the dimmest tier; ramp on --ground is ${ratios.map((r) => r.toFixed(1)).join(' / ')}`,
-  );
+  // And the ramp must descend, or the tiers are three names for one colour.
+  for (const [i, theme] of THEMES) {
+    const ground = occurrences(LANDING, 'ground')[i];
+    const ratios = INK.map((n) => contrast(occurrences(LANDING, n)[i], ground));
+    assert.equal(
+      Math.min(...ratios),
+      ratios[ratios.length - 1],
+      `${theme}: --${INK[INK.length - 1]} must be the dimmest tier; ramp on --ground is ${ratios.map((r) => r.toFixed(1)).join(' / ')}`,
+    );
+  }
 });
 
 test('the landing declares no colour token it does not use', () => {

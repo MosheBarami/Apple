@@ -168,26 +168,62 @@ test('a caller with no database still gets the isolate-wide memo', async () => {
   assert.equal(runs, 1);
 });
 
-test('every store that asserts a schema goes through it', async () => {
+test('every store that asserts a schema goes through it — AND names its database', async () => {
   //[[ THE CHECK THAT STOPS THIS GOING STALE.
   //
   //   Seven files had this defect. An eighth store added next month would have it again, and no
   //   test that only exercises the helper would notice. So the ensure-functions themselves are
-  //   read: each must DELEGATE rather than run DDL directly. ]]
+  //   read: each must DELEGATE rather than run DDL directly.
+  //
+  //   DELEGATING IS HALF THE PROPERTY. `oncePerIsolate` keys on the database object, and a call
+  //   that omits the third argument falls back to the isolate-wide table — which is the whole of
+  //   the original bug, since one flag then covers every database the process ever builds. That
+  //   is not a theoretical gap: with the fixed helper in place but the callers still passing no
+  //   database, memory-store and notification-store fail 40 and 12 tests respectively, exactly as
+  //   they did before the helper was fixed. A store that delegates without naming its database is
+  //   therefore an offender, and this check reads the ARGUMENT COUNT, not just the call. ]]
   const { readFileSync, readdirSync } = await import('node:fs');
   const dir = join(WORKER, 'src');
-  const offenders = [];
+  const notDelegating = [];
+  const noDatabase = [];
   let checked = 0;
+
+  /** Top-level argument count of the call whose `(` is at `open`. Quotes and nesting aware. */
+  const argCount = (src, open) => {
+    let depth = 0, args = 1, quote = null;
+    for (let i = open; i < src.length; i++) {
+      const c = src[i], prev = src[i - 1];
+      if (quote) {
+        if (c === quote && prev !== '\\') quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+      if (c === '(' || c === '[' || c === '{') depth++;
+      else if (c === ')' || c === ']' || c === '}') {
+        depth--;
+        if (depth === 0) return args;
+      } else if (c === ',' && depth === 1) args++;
+    }
+    return -1; // unbalanced — the slice cut the call in half
+  };
+
   for (const f of readdirSync(dir)) {
     if (!f.endsWith('.ts')) continue;
     const src = readFileSync(join(dir, f), 'utf8');
     for (const m of src.matchAll(/export (?:async )?function (ensure\w*Tables?|ensure\w*Table)\s*\(/g)) {
       checked++;
-      const from = m.index;
-      const body = src.slice(from, from + 900);
-      if (!/oncePerIsolate\(/.test(body)) offenders.push(`${f}: ${m[1]}`);
+      const call = src.indexOf('oncePerIsolate(', m.index);
+      // Bound the search to this function rather than to a fixed slice, so a long store body
+      // cannot make the check silently miss a call and report the file as clean.
+      const nextFn = src.indexOf('\nexport ', m.index + 1);
+      const end = nextFn === -1 ? src.length : nextFn;
+      if (call === -1 || call > end) { notDelegating.push(`${f}: ${m[1]}`); continue; }
+      const n = argCount(src, call + 'oncePerIsolate'.length);
+      if (n < 3) noDatabase.push(`${f}: ${m[1]} (${n === -1 ? 'unparsed' : n + ' args'})`);
     }
   }
   assert.ok(checked >= 7, `expected to find the seven schema functions, found ${checked} — this check has gone blind`);
-  assert.deepEqual(offenders, [], 'these assert a schema without going through oncePerIsolate');
+  assert.deepEqual(notDelegating, [], 'these assert a schema without going through oncePerIsolate');
+  assert.deepEqual(noDatabase, [],
+    'these call oncePerIsolate without passing their database, so they share one isolate-wide flag across every database');
 });
