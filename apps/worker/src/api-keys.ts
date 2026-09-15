@@ -277,6 +277,105 @@ export function authorizeKey(
  */
 export const KEY_RATE_LIMIT: Record<KeyMode, number> = { live: 120, test: 60 };
 
+export interface RotationPlan {
+  ok: true;
+  /** Exactly the old grant. Rotation is not a mint. */
+  replacement: {
+    userId: string;
+    mode: KeyMode;
+    name: string;
+    scopes: ApiScope[];
+    projects: GrantedProject[];
+    expiresAt: number | null;
+  };
+  /** When the OLD key stops working. Never later than its own expiry. */
+  retireAt: number;
+}
+export interface RotationRefusal {
+  ok: false;
+  status: 400 | 403 | 404 | 409;
+  code: 'revoked_api_key' | 'expired_api_key' | 'bad_rotation_window' | 'unreadable_key';
+  message: string;
+}
+
+/**
+ * Plan a rotation: what the replacement carries, and when the old key dies.
+ *
+ * Pure, because all three of rotation's security properties are decided here and a reader should be
+ * able to check them in one place:
+ *
+ *   INHERIT EXACTLY. scopes, projects, mode and owner are copied from the old record and nothing is
+ *     read from a request. A caller who could rotate into a wider grant would never ask for one.
+ *     The arrays are COPIED, not aliased — a plan whose scopes array is the record's array lets a
+ *     caller push onto a grant that is still live.
+ *   NEVER RESURRECT. A revoked or already-expired key refuses. Rotating one would return access
+ *     that revocation or time had taken away, through a route whose name sounds like maintenance.
+ *   NEVER EXTEND. `retireAt` is `min(now + grace, expiresAt)`. A key with an hour left does not
+ *     gain a day because somebody rotated it, and the replacement inherits the same deadline rather
+ *     than a fresh one.
+ *
+ * A non-finite `now` or `graceMs` refuses instead of computing `NaN`: authorizeKey reads a NaN
+ * expiry as corrupt, so the alternative is minting a key that silently never works.
+ */
+export function planRotation(
+  record: unknown,
+  opts: { now: number; graceMs: number },
+): RotationPlan | RotationRefusal {
+  const bad = (code: RotationRefusal['code'], status: RotationRefusal['status'], message: string): RotationRefusal =>
+    ({ ok: false, status, code, message });
+
+  if (!Number.isFinite(opts?.now) || !Number.isFinite(opts?.graceMs) || (opts?.graceMs as number) < 0) {
+    return bad('bad_rotation_window', 400, 'The rotation window must be a finite, non-negative number of milliseconds.');
+  }
+  const r = record as ApiKeyRecord | null;
+  if (!r || typeof r !== 'object' || typeof r.userId !== 'string' || !Array.isArray(r.scopes) || !Array.isArray(r.projects)) {
+    return bad('unreadable_key', 404, 'That API key could not be read.');
+  }
+  if (r.revokedAt !== null && r.revokedAt !== undefined) {
+    return bad('revoked_api_key', 409, 'A revoked key cannot be rotated — mint a new one instead.');
+  }
+  if (r.expiresAt !== null && r.expiresAt !== undefined) {
+    if (!Number.isFinite(r.expiresAt) || r.expiresAt <= opts.now) {
+      return bad('expired_api_key', 409, 'An expired key cannot be rotated — mint a new one instead.');
+    }
+  }
+
+  const graced = opts.now + opts.graceMs;
+  const retireAt = r.expiresAt !== null && r.expiresAt !== undefined ? Math.min(graced, r.expiresAt) : graced;
+
+  return {
+    ok: true,
+    retireAt,
+    replacement: {
+      userId: r.userId,
+      mode: r.mode,
+      name: r.name,
+      scopes: [...r.scopes],
+      projects: r.projects.map((p) => ({ ...p })),
+      expiresAt: r.expiresAt ?? null,
+    },
+  };
+}
+
+/** Bring a key's expiry forward. Never pushes it back — see planRotation's NEVER EXTEND. */
+export async function retireApiKey(
+  env: Pick<Env, 'CORPUS'>,
+  userId: string,
+  keyId: string,
+  retireAt: number,
+): Promise<boolean> {
+  if (!Number.isFinite(retireAt)) return false;
+  const res = await env.CORPUS.prepare(
+    `update api_keys set expires_at = case
+       when expires_at is null then ?1
+       else min(expires_at, ?1) end
+     where id = ?2 and user_id = ?3 and revoked_at is null`,
+  )
+    .bind(retireAt, keyId, userId)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
 export function rateLimitFor(mode: KeyMode): number {
   // The Record above is a compile-time promise; `mode` reaching here from a parsed key is already
   // one of two literals, but the fallback is stated rather than assumed.

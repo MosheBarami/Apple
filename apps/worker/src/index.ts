@@ -68,6 +68,8 @@ import { toolNames } from './tools';
 import { sparksForNeurons } from './pricing';
 import {
   API_SCOPES,
+  planRotation,
+  retireApiKey,
   KEY_MODES,
   apiKeyFromRequest,
   authorizeKey,
@@ -2139,6 +2141,71 @@ app.get('/api/keys', async (c) => {
   const user = c.get('user');
   const keys = await listApiKeys(c.env, user.userId);
   return c.json({ keys: keys.map(publicKeyShape) });
+});
+
+/**
+ * Rotate a key: mint a replacement carrying the SAME grant, and bring the old key's expiry forward
+ * so both work during the changeover.
+ *
+ * The grant is read from the stored record, never from the request body. A rotate that accepted
+ * scopes or projectIds would be a mint wearing a maintenance verb — and the caller who wanted a
+ * wider grant would use it rather than asking for one. planRotation decides everything; this route
+ * is the wiring.
+ */
+app.post('/api/keys/:id/rotate', async (c) => {
+  const user = c.get('user');
+  const body = await c.req.json<{ graceHours?: unknown }>().catch(() => ({}) as { graceHours?: unknown });
+
+  // `??` would let "24", NaN and Infinity through, and `now + NaN` is a corrupt expiry that
+  // authorizeKey reads as a key that never works. Refuse at the door, as minting does.
+  let graceHours = 24;
+  if (body?.graceHours !== undefined && body.graceHours !== null) {
+    const h = body.graceHours;
+    if (typeof h !== 'number' || !Number.isFinite(h) || h < 0 || h > 720) {
+      return c.json({ error: 'graceHours must be a number between 0 and 720' }, 400);
+    }
+    graceHours = h;
+  }
+
+  // Only this user's keys are listed, so a key belonging to somebody else is indistinguishable
+  // from one that does not exist — the same answer minting gives for a project that is not yours.
+  const existing = (await listApiKeys(c.env, user.userId)).find((k) => k.id === c.req.param('id'));
+  if (!existing) return c.json({ error: 'not found' }, 404);
+
+  const plan = planRotation(existing, { now: Date.now(), graceMs: graceHours * 36e5 });
+  if (!plan.ok) return c.json({ error: plan.message, code: plan.code }, plan.status);
+
+  const minted = await mintKey(plan.replacement.mode);
+  const rec: ApiKeyRecord = {
+    id: minted.id,
+    userId: plan.replacement.userId,
+    mode: minted.mode,
+    name: plan.replacement.name,
+    scopes: plan.replacement.scopes,
+    projects: plan.replacement.projects,
+    createdAt: Date.now(),
+    expiresAt: plan.replacement.expiresAt,
+    lastUsedAt: null,
+    revokedAt: null,
+  };
+  await insertApiKey(c.env, { ...rec, hash: minted.hash });
+  // The replacement is stored BEFORE the old key is retired. If the retire fails, the worst case is
+  // two live keys — the other order risks a window with none, locking the caller out of their own
+  // rotation.
+  const retired = await retireApiKey(c.env, user.userId, existing.id, plan.retireAt);
+  void count(c.env, 'api_key_rotated');
+  return c.json(
+    {
+      ...publicKeyShape(rec),
+      key: minted.key,
+      replaces: existing.id,
+      retiresAtIso: new Date(plan.retireAt).toISOString(),
+      // A failed retire is REPORTED, not swallowed: the caller has two live keys and needs to know
+      // which one to revoke by hand.
+      ...(retired ? {} : { warning: 'the replacement was created but the old key could not be retired — revoke it manually' }),
+    },
+    201,
+  );
 });
 
 app.delete('/api/keys/:id', async (c) => {
