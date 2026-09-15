@@ -1283,6 +1283,48 @@ export class SessionDO extends DurableObject<Env> {
     //   new id — would otherwise have to re-pair to get out of a permanent refusal. Clearing the
     //   binding is enough: the next identifiable state event binds, which is the same path a
     //   first-time pairing takes. ]]
+    //[[ THROW AWAY THE WORK THAT IS WAITING.
+    //
+    //   Automatic cancellation was already built and proven: finishRun drops every op the ending
+    //   run queued and resolves each dropped waiter with a `transport` failure rather than deleting
+    //   it quietly. There was no EXPLICIT cancellation anywhere — the only queue mutations in this
+    //   object were push, splice-on-poll, and that run-ended purge. So a user watching twelve
+    //   changes stack up behind a Studio that had closed could not say "forget them": Stop reached
+    //   only the ops belonging to a live run, and everything else sat waiting to be applied at
+    //   whatever moment Studio came back, possibly to a place the user had since edited by hand.
+    //
+    //   THE WAITERS ARE RESOLVED, NOT DROPPED, and with `transport` rather than `timeout`. A
+    //   dropped waiter becomes a 30-second timeout, and `timeout` is the one failure kind that is
+    //   not safe to retry, because it means "this may already have been applied". A discarded op
+    //   provably never reached Studio, so saying so is both true and the more useful answer. ]]
+    if (path === '/studio/queue' && req.method === 'DELETE') {
+      const discarded = this.opQueue;
+      this.opQueue = [];
+      await this.ctx.storage.put('opQueue', this.opQueue);
+      for (const op of discarded) {
+        const waiter = this.opWaiters.get(op.id);
+        if (waiter) {
+          this.opWaiters.delete(op.id);
+          waiter({
+            id: op.id,
+            ok: false,
+            error: 'This change was discarded before Studio collected it',
+            failure: WORKER_FAILURES.runEnded,
+          });
+        }
+      }
+      // Every open tab is told the new depth, or the panel keeps offering to discard work that is
+      // already gone.
+      this.broadcast({
+        type: 'studio_status',
+        connected: await this.pluginConnected(),
+        lastSeenAt: await this.pluginLastSeenAt(),
+        queuedOps: 0,
+        place: this.boundPlace,
+      });
+      return json({ ok: true, discarded: discarded.length });
+    }
+
     if (path === '/studio/place/rebind' && req.method === 'POST') {
       await this.ctx.storage.delete('pluginPlace');
       this.boundPlace = null;

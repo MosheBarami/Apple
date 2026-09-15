@@ -5088,3 +5088,7 @@
 .sl-op.is-failed .sl-op__outcome { color: var(--bad); }
 
 .sl-disconnect { align-self: flex-start; }
+
+/* The discard sits INSIDE its own <dd>, under the sentence it acts on, so the pairing of
+   "3 changes waiting" with "Discard 3 waiting changes" cannot be broken by a reflow. */
+.sl-discard { display: block; margin-top: 0.45rem; min-height: 28px; padding: 0 0.6rem; font-size: 0.75rem; }

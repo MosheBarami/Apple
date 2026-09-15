@@ -205,3 +205,16 @@ test('and it is behind a confirmation, because it revokes a credential', () => {
 test('the panel says WHEN a pairing lapses — nothing read `pairingExpiresAt` before', () => {
   assert.match(panel, /pairingNote\(d\.pairingExpiresAt/, 'the 30-day clock must be read');
 });
+
+test('THE WAITING WORK CAN BE DISCARDED, and only while there is any', () => {
+  // Automatic cancellation existed — a run that ends takes its queued ops with it — and explicit
+  // cancellation did not: no route and no DO path cleared the queue on request. A user whose
+  // Studio closed mid-build watched the depth climb with no control over it.
+  assert.match(api, /studio\/queue/, 'api.ts must have the call');
+  assert.match(api, /method: 'DELETE'/, 'and it is a DELETE, which is what the session listens for');
+  assert.match(panel, /discardStudioQueue\(projectId\)/, 'the panel must make it');
+  assert.match(panel, /d\.link\.queuedOps > 0 &&/, 'offered only when there is something to discard');
+  // The confirmation reports the SERVER's count. The browser's number is one op collection out of
+  // date the moment it is rendered, and "Discarded 3" over a queue that had 2 is a small lie.
+  assert.match(panel, /Discarded \$\{r\.discarded\}/, 'say what was actually discarded');
+});

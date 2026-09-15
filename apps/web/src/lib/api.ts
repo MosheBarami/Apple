@@ -524,6 +524,15 @@ export const disconnectStudio = (projectId: string): Promise<{ ok: boolean; revo
   request(`/api/projects/${encodeURIComponent(projectId)}/studio/disconnect`, { method: 'POST' });
 
 /**
+ * Throw away the changes waiting for Studio to collect them.
+ *
+ * `discarded` is the count the server actually removed, not the count the browser last saw — so the
+ * confirmation says what happened rather than what was expected to.
+ */
+export const discardStudioQueue = (projectId: string): Promise<{ ok: boolean; discarded: number }> =>
+  request(`/api/projects/${encodeURIComponent(projectId)}/studio/queue`, { method: 'DELETE' });
+
+/**
  * Download the whole conversation as a file.
  *
  * Not `request<T>` because that parses JSON and throws away the response — and the FILENAME lives

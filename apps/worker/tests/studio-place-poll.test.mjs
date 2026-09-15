@@ -356,3 +356,65 @@ test('a young pairing is not rewritten on every poll', async () => {
   await s.call('/plugin/poll', { token: TOKEN, body: { state: state() } });
   assert.equal(s.map.get('pluginTokenIssuedAt'), issuedAt, 'a 2-day-old pairing needs no extension');
 });
+
+// ------------------------------------------------------------------- discarding the waiting work
+//
+// Automatic cancellation was built and proven: `finishRun` drops every op the ending run queued and
+// resolves each dropped op's waiter with a `transport` failure rather than deleting it quietly.
+// What did not exist was any EXPLICIT cancellation — no route and no DO path cleared the queue on
+// request, so the only queue mutations were push, splice-on-poll and the run-ended purge. A user
+// watching twelve changes stack up behind a Studio that closed had no way to say "forget them";
+// pressing Stop only reached the ops that belonged to a live run.
+
+test('DISCARDING THE QUEUE EMPTIES IT, AND THE WORK IS NOT HANDED OVER LATER', async () => {
+  const s = await paired();
+  assert.equal((await s.call('/studio/link', { method: 'GET' })).json.queuedOps, 2, 'CONTROL: there is work to discard');
+  const r = await s.call('/studio/queue', { method: 'DELETE' });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.discarded, 2, 'it reports what it actually threw away');
+  assert.equal((await s.call('/studio/link', { method: 'GET' })).json.queuedOps, 0);
+  // The real proof: the next poll from a healthy, correctly-placed Studio gets nothing.
+  const poll = await s.call('/plugin/poll', { token: TOKEN, body: { state: state() } });
+  assert.deepEqual(poll.json.ops, [], 'discarded work must not still be collectable');
+});
+
+test('the discard SURVIVES an eviction — it is a storage write, not an in-memory one', async () => {
+  // `opQueue` is restored from storage on boot, so a discard that only cleared the field would
+  // bring every change back the next time the object woke up.
+  const s = await paired();
+  await s.call('/studio/queue', { method: 'DELETE' });
+  assert.deepEqual(s.map.get('opQueue'), [], 'the durable copy still held the work');
+});
+
+test('EVERY WAITING CALLER IS TOLD, rather than left to time out at 30 seconds', async () => {
+  // A discarded op whose waiter is dropped on the floor becomes a `timeout` — the one failure kind
+  // that is NOT safe to retry, because a timeout means "it may have been applied". Discarding
+  // provably applies nothing, so it has to resolve as `transport`, which IS retryable.
+  // `execStudioOp` refuses before queueing when the plugin is not polling, so the heartbeat has to
+  // be live for this to be the case it claims to be.
+  const s = await paired({ opQueue: [], pluginLastSeen: Date.now() });
+  const inflight = s.o.execStudioOp({ op: 'get_tree' }, 30_000);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(s.map.get('opQueue').length, 1, 'CONTROL: the op reached the queue');
+  await s.call('/studio/queue', { method: 'DELETE' });
+  const res = await inflight;
+  assert.equal(res.ok, false);
+  assert.equal(res.failure, 'transport', 'a discarded op provably never ran');
+  assert.ok(res.error.length > 0, 'and it says so in words');
+});
+
+test('discarding tells every open tab the new depth', async () => {
+  // The queue count in the browser comes from `studio_status`. Without the broadcast the panel
+  // would keep offering to discard changes that are already gone.
+  const s = await paired();
+  await s.call('/studio/queue', { method: 'DELETE' });
+  const status = s.broadcasts.filter((b) => b.type === 'studio_status').pop();
+  assert.equal(status.queuedOps, 0);
+});
+
+test('discarding an EMPTY queue is not an error, and does not pretend it did something', async () => {
+  const s = await paired({ opQueue: [] });
+  const r = await s.call('/studio/queue', { method: 'DELETE' });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.discarded, 0);
+});

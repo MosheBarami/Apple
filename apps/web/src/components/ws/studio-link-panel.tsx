@@ -19,7 +19,7 @@
  */
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { disconnectStudio, rebindStudioPlace, studioDiagnostics } from '../../lib/api';
+import { disconnectStudio, discardStudioQueue, rebindStudioPlace, studioDiagnostics } from '../../lib/api';
 import { lastSeenLabel } from '../../lib/studio-connection';
 import { ConfirmDialog } from '../confirm-dialog';
 import { EmptyState } from '../empty-state';
@@ -71,10 +71,18 @@ export function StudioLinkPanel({ projectId }: { projectId: string }) {
   const seen = lastSeenLabel(d.link.lastSeenAt, now);
   const expiry = pairingNote(d.pairingExpiresAt, now);
 
-  const run = (what: Promise<unknown>, said: string) => {
+  /**
+   * Every action on this panel, run the same way.
+   *
+   * The promise resolves to WHAT HAPPENED, not to a canned success: the discard reports the count
+   * the server actually removed rather than the count this browser last saw, and those differ every
+   * time an op was collected between the render and the click. The panel then refetches, because
+   * the server is the only thing that knows the new state of the link.
+   */
+  const run = (what: Promise<string>) => {
     setBusy(true);
     what
-      .then(() => {
+      .then((said) => {
         setNotice(said);
         void qc.invalidateQueries({ queryKey: ['studio-diagnostics', projectId] });
       })
@@ -126,8 +134,31 @@ export function StudioLinkPanel({ projectId }: { projectId: string }) {
 
         <dt>Waiting</dt>
         {/* The depth the worker actually holds. Zero is a real answer here — unlike the pill's
-            detail line, a diagnostics row that goes blank reads as "we did not look". */}
-        <dd>{d.link.queuedOps === 0 ? 'Nothing queued.' : `${d.link.queuedOps} change${d.link.queuedOps === 1 ? '' : 's'} waiting for Studio to collect.`}</dd>
+            detail line, a diagnostics row that goes blank reads as "we did not look".
+
+            The discard is offered only when there IS something to discard: a button that can only
+            report "nothing happened" teaches people that buttons here do nothing. */}
+        <dd>
+          {d.link.queuedOps === 0
+            ? 'Nothing queued.'
+            : `${d.link.queuedOps} change${d.link.queuedOps === 1 ? '' : 's'} waiting for Studio to collect.`}
+          {d.link.queuedOps > 0 && (
+            <button
+              type="button"
+              className="gx-btn gx-btn--outline sl-discard"
+              disabled={busy}
+              onClick={() =>
+                run(
+                  discardStudioQueue(projectId).then(
+                    (r) => `Discarded ${r.discarded} waiting change${r.discarded === 1 ? '' : 's'}.`,
+                  ),
+                )
+              }
+            >
+              Discard {d.link.queuedOps} waiting change{d.link.queuedOps === 1 ? '' : 's'}
+            </button>
+          )}
+        </dd>
 
         <dt>Apple</dt>
         <dd>{d.agentStatus === 'idle' ? 'Idle.' : `Busy — ${d.agentStatus}.`}</dd>
@@ -141,7 +172,7 @@ export function StudioLinkPanel({ projectId }: { projectId: string }) {
             type="button"
             className="gx-btn gx-btn--outline"
             disabled={busy}
-            onClick={() => run(rebindStudioPlace(projectId), 'Bound to the place Studio has open.')}
+            onClick={() => run(rebindStudioPlace(projectId).then(() => 'Bound to the place Studio has open.'))}
           >
             Use this place instead
           </button>
@@ -189,7 +220,7 @@ export function StudioLinkPanel({ projectId }: { projectId: string }) {
           busyLabel="Disconnecting…"
           busy={busy}
           onClose={() => setConfirming(false)}
-          onConfirm={() => run(disconnectStudio(projectId), 'Studio was disconnected.')}
+          onConfirm={() => run(disconnectStudio(projectId).then(() => 'Studio was disconnected.'))}
         >
           This project&rsquo;s pairing is revoked. The Studio that has it will stop building here on
           its next check, and reconnecting means pairing again with a fresh code. Nothing in your

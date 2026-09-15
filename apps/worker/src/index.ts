@@ -1554,6 +1554,24 @@ app.post('/api/projects/:id/studio/place/rebind', async (c) => {
 });
 
 /**
+ * Throw away the changes waiting for Studio to collect them.
+ *
+ * Automatic cancellation already existed — a run that ends takes its own queued ops with it — but
+ * there was no way to say so deliberately. A user whose Studio closed mid-build could watch the
+ * depth climb and had no control over it: Stop reaches only the ops belonging to a live run, and
+ * everything else sat waiting to be applied whenever Studio came back, possibly to a place the
+ * person had since put right by hand.
+ *
+ * DELETE, not POST, because it destroys and is idempotent: a second call on an empty queue is a
+ * 200 saying nothing was discarded, not an error and not a repeat.
+ */
+app.delete('/api/projects/:id/studio/queue', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  return ctx.stub.fetch('https://do/studio/queue', { method: 'DELETE' });
+});
+
+/**
  * THE STUDIO COMPANION'S CHANNEL: one direct-manipulation op, driven by a person.
  *
  * This is what the companion panel's own controls talk to — the transform handles, the Explorer
