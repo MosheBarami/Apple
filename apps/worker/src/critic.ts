@@ -836,6 +836,26 @@ export function runDeterministicLens(lens: LensId, input: CriticInput): LensRun 
   }
 }
 
+/**
+ * Whether a judge's reply was a VERDICT at all, as opposed to prose.
+ *
+ * `parseLensResponse` returns [] both for `{"criticisms": []}` — "I looked and found nothing" — and
+ * for "the build looks great to me". Those are different facts and the panel was recording them
+ * identically, which is how a lens that answered unreadably came to read as a lens that found
+ * nothing. This exists so the two can be told apart at the call site.
+ */
+export function isLensVerdict(text: string): boolean {
+  const raw = String(text ?? '');
+  const fenced = raw.match(/```(?:json)?\s*\r?\n([\s\S]*?)```/);
+  const body = fenced ? fenced[1]! : raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+  try {
+    const parsed = JSON.parse(body) as { criticisms?: unknown };
+    return Array.isArray(parsed?.criticisms);
+  } catch {
+    return false;
+  }
+}
+
 /** Pull the criticisms out of a model reply that may be fenced or prefixed with prose. */
 export function parseLensResponse(lens: LensId, text: string): Criticism[] {
   const raw = String(text ?? '');
@@ -894,6 +914,15 @@ export interface PanelResult {
    * the whole reason this field exists rather than the rules being skipped quietly.
    */
   unchecked: UncheckedRule[];
+  /**
+   * Lenses that were ASKED FOR and produced nothing — the judge threw, replied unreadably, or the
+   * lens executed neither branch. `lensesRun` is the requested list and keeps that meaning; this is
+   * the difference between what was requested and what actually answered.
+   *
+   * Without it, a panel whose six model lenses all threw produced a report byte-identical to a
+   * clean audit: the deterministic rules still fire, so it read as thorough rather than as empty.
+   */
+  lensesIncomplete: { lens: LensId; reason: string }[];
 }
 
 /**
@@ -909,22 +938,41 @@ export async function runCriticPanel(input: CriticInput, opts: CriticPanelOption
   const unchecked: UncheckedRule[] = [];
   let modelCalls = 0;
 
+  const lensesIncomplete: { lens: LensId; reason: string }[] = [];
+
   for (const lens of lenses) {
     const deterministic = DETERMINISTIC_LENSES.includes(lens);
+    let answered = false;
     if (deterministic && (alwaysDet || !opts.judge)) {
       const run = runDeterministicLens(lens, input);
       criticisms.push(...run.criticisms);
       unchecked.push(...run.unchecked);
+      answered = true;
     }
     if (opts.judge && (!deterministic || alwaysDet)) {
       const { system, user } = buildLensPrompt(lens, input);
       modelCalls++;
       try {
-        criticisms.push(...parseLensResponse(lens, await opts.judge({ lens, system, user })));
-      } catch {
-        // A lens that errors contributes nothing. It must not take the panel down: the other
-        // critics' findings are still valid, and a missing lens only weakens a quorum.
+        const reply = await opts.judge({ lens, system, user });
+        if (isLensVerdict(reply)) {
+          criticisms.push(...parseLensResponse(lens, reply));
+          answered = true;
+        } else {
+          // Prose is not a verdict. Recording it as "found nothing" is the defect this whole field
+          // exists for — an empty answer and an unreadable one are different facts.
+          lensesIncomplete.push({ lens, reason: 'unreadable reply: the judge answered with prose, not a verdict' });
+        }
+      } catch (err) {
+        // A lens that errors contributes nothing and must not take the panel down — the other
+        // critics' findings are still valid. But it is RECORDED now: "contributes nothing" was
+        // true and was exactly the problem, because nothing said so.
+        lensesIncomplete.push({ lens, reason: `the judge errored: ${(err as Error)?.message ?? String(err)}` });
       }
+    }
+    if (!answered && !lensesIncomplete.some((f) => f.lens === lens)) {
+      // Neither branch executed. request_fidelity is not deterministic, so with no judge configured
+      // it runs nothing at all — and was still counted in the requested list.
+      lensesIncomplete.push({ lens, reason: 'not run: needs a judge, and none was configured' });
     }
   }
 
@@ -936,6 +984,7 @@ export async function runCriticPanel(input: CriticInput, opts: CriticPanelOption
     lensesRun: lenses,
     modelCalls,
     unchecked,
+    lensesIncomplete,
   };
 }
 
@@ -946,6 +995,15 @@ export function formatPanelReport(r: PanelResult): string {
   // Printed BEFORE the tally, not after it. The tally IS the verdict — "0 CONFIRMED" is the
   // sentence a reader forms an opinion from — so a caveat placed under it arrives too late to
   // qualify anything. A clean count over unchecked rules is not a clean build.
+  // Before the tally, for the same reason the unchecked-rules line is: the tally IS the verdict.
+  if (r.lensesIncomplete?.length) {
+    const named = r.lensesIncomplete.map((f) => `${f.lens} (${f.reason})`);
+    lines.push(
+      `INCOMPLETE: ${r.lensesIncomplete.length} lens(es) produced nothing — ${named.join('; ')}. ` +
+      `The tally below is what the remaining lenses found, not a complete audit.`,
+    );
+  }
+
   if (r.unchecked.length) {
     const metrics = [...new Set(r.unchecked.map((u) => u.metric))];
     const subjects = [...new Set(r.unchecked.map((u) => u.subject))];

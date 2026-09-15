@@ -1383,8 +1383,19 @@ export const TOOLS: Record<string, ToolImpl> = {
         blocks: [
           {
             type: 'callout',
-            tone: confirmed.some((d) => d.severity === 'blocking') ? 'bad' : confirmed.length ? 'warn' : 'good',
-            title: confirmed.length ? `${confirmed.length} confirmed defect(s)` : 'No confirmed defects',
+            // "No confirmed defects" in a good tone is a CLEAN BILL. It must not be issued when
+            // part of the panel never answered: a lens whose judge threw contributes nothing, and
+            // nothing-contributed and nothing-found were previously the same sentence here.
+            tone: confirmed.some((d) => d.severity === 'blocking')
+              ? 'bad'
+              : confirmed.length || panel.lensesIncomplete.length
+                ? 'warn'
+                : 'good',
+            title: confirmed.length
+              ? `${confirmed.length} confirmed defect(s)`
+              : panel.lensesIncomplete.length
+                ? `No confirmed defects, but ${panel.lensesIncomplete.length} lens(es) did not answer`
+                : 'No confirmed defects',
             text:
               (capture.truncated
                 // "run over 1500 parts" reads as complete. It is a sample, and the parts past the
@@ -1392,6 +1403,9 @@ export const TOOLS: Record<string, ToolImpl> = {
                 ? `${panel.lensesRun.length} of ${coverage.length} lenses run over the FIRST ${capture.parts.length} of ${capture.total} part(s) — this is a sample, not the whole place. ${panel.modelCalls} model call(s). `
                 : `${panel.lensesRun.length} of ${coverage.length} lenses run over ${capture.parts.length} part(s), ${panel.modelCalls} model call(s). `) +
               (notRun.length ? `Not run: ${notRun.map((c) => c.lens).join(', ')} — every rule needs a render. ` : '') +
+              (panel.lensesIncomplete.length
+                ? `INCOMPLETE: ${panel.lensesIncomplete.length} lens(es) produced nothing — ${panel.lensesIncomplete.map((f) => `${f.lens} (${f.reason})`).join('; ')}. What follows is what the rest found, not a complete audit. `
+                : '') +
               (panel.unchecked.length
                 ? `${panel.unchecked.length} rule(s) inside the lenses that did run were skipped for want of a measurement: ${[...new Set(panel.unchecked.map((u) => u.metric))].join(', ')}.`
                 : notRun.length ? '' : capture.truncated ? '' : 'Every rule in every lens was evaluated.'),
