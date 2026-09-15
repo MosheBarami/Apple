@@ -1319,10 +1319,17 @@ export interface GatewayResponse {
  * worker bills with, and `scripts/check-credit-figures.mjs` checks it against those
  * measurements.
  */
+/*
+ * THE NAMES A CUSTOMER READS. `clay`, `stone` and `rune` are the ids on the wire and in D1 rows
+ * already written, so they stay; what changes is what is printed beside them. Clay and Stone were
+ * quarried-stone names from the Golem identity, and a customer picking a model was being asked to
+ * learn a vocabulary that means nothing about what they get. Apple and Apple Max say which is
+ * bigger, which is the only thing the picker has to communicate.
+ */
 export const MODE_INFO: Record<GolemMode, { name: string; blurb: string; typicalCredits: string }> = {
-  clay: { name: 'Clay', blurb: 'Fast answers and small edits', typicalCredits: '2' },
-  stone: { name: 'Stone', blurb: 'Builds features across your project', typicalCredits: '4-18' },
-  rune: { name: 'Rune', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
+  clay: { name: 'Apple', blurb: 'Fast answers and small edits', typicalCredits: '2' },
+  stone: { name: 'Apple Max', blurb: 'Builds features across your project', typicalCredits: '4-18' },
+  rune: { name: 'Apple Max Auto', blurb: 'Plans, builds, tests and fixes autonomously', typicalCredits: '10-30' },
 };
 
 /**

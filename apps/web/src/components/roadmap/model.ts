@@ -496,7 +496,23 @@ export function progressLabel(p: RoadmapProgress): string {
  */
 export function effortLabel(effort: string | null | undefined): string {
   if (!effort) return '';
+  /*
+   * TWO VOCABULARIES, AND BOTH ARE LOAD-BEARING.
+   *
+   * The worker composes these strings from the model it actually ran. The models were renamed —
+   * Clay and Stone became Apple and Apple Max — but rows written before that still carry the old
+   * spellings, and a milestone recorded yesterday must not start printing a name the product no
+   * longer uses. So both map to the same mode.
+   *
+   * The names are literals here rather than read from MODE_INFO because this module deliberately
+   * has no runtime imports (see the header). tests/roadmap-model.test.mjs closes that gap from the
+   * other side: it imports MODE_INFO and fails if a name exists there that this does not strip, so
+   * a third rename cannot pass silently.
+   */
   return effort
+    .replace(/\bApple Max Auto\b/g, 'Super Agent')
+    .replace(/\bApple Max\b/g, 'Agent')
+    .replace(/\bApple\b/g, 'Plan')
     .replace(/\bClay\b/g, 'Plan')
     .replace(/\bStone\b/g, 'Agent')
     .replace(/\bRune\b/g, 'Super Agent');
