@@ -328,10 +328,22 @@ export function LoginPage() {
             {busy ? 'Checking…' : 'Sign in'}
           </button>
           <p className="auth-switch">
-            {/* Honest about the one thing this product cannot yet do for them. Offering a "lost my
-                phone" link to a flow that does not exist would be worse than saying nothing. */}
-            Without that app you cannot get in — there are no backup codes yet. Signing out below
-            returns you to the password screen.
+            {/*[[ THIS USED TO BE A DEAD END, AND SAYING SO WAS THE HONEST THING AT THE TIME.
+                  The sentence here read "Without that app you cannot get in — there are no backup
+                  codes yet", which was true and left the person nowhere. /forgot is not the answer
+                  either: a new password lands back on this same prompt, because the password was
+                  never what was missing.
+
+                  It now points at /recovery, which takes the message and puts it in a queue an
+                  operator works. What it deliberately does NOT do is offer a code to type — there
+                  are still no backup codes in this product, and a field for one would be a control
+                  wired to nothing — or promise what the operator will decide. ]]*/}
+            Lost the phone with that app on it? Your password will not help here — a new one returns
+            you to this same screen.{' '}
+            <Link to={`/recovery${email.trim() ? `?email=${encodeURIComponent(email.trim())}` : ''}`}>
+              Tell us what happened
+            </Link>{' '}
+            and a person will look at it.
           </p>
           <p className="auth-switch">
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => void signOut()}>
