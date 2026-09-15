@@ -6404,7 +6404,23 @@ html.has-cursor .cursor {
   white-space: nowrap;
 }
 
-.btn--primary { background: var(--accent); color: var(--accent-on, #fff); border-color: var(--accent); }
+/*
+   ANY PRIMARY BUTTON WENT INVISIBLE UNDER THE POINTER. `.btn:hover` sets `color: var(--accent)`,
+   which is right for the ghost style — the label lights up. A primary button has the accent as its
+   BACKGROUND, so the same rule painted its label the colour of the thing behind it: measured on
+   the live page at rgb(255,154,77) on rgb(255,154,77), a contrast ratio of 1. The button looked
+   stuck mid-save; it was just wordless.
+   `--accent-ink` is the token that exists for exactly this — the ink meant to sit ON the accent —
+   and it was not being used. `--accent-on` was my invention and does not exist in this stylesheet,
+   so `var(--accent-on, #fff)` was a fallback that never got the chance to apply.
+*/
+.btn--primary,
+.btn--primary:hover,
+.btn--primary:focus-visible {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
 .btn--danger { color: var(--danger, #c0392b); border-color: var(--danger, #c0392b); }
 
 .gx-usage__builds { font-size: 0.74rem; color: var(--muted); }
