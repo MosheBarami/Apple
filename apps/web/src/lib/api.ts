@@ -155,6 +155,47 @@ export interface UsageHistory {
 export const fetchUsage = (): Promise<UsageHistory> =>
   MOCK_MODE ? Promise.resolve({ days: mockUsageDays() }) : request<UsageHistory>('/api/me/usage');
 
+// ------------------------------------------------------------------- support
+//
+// `public.feedback` has existed since the first migration and nothing in this app ever wrote to it,
+// so the product's whole support surface was an address on the marketing site — unreachable from
+// the screen where the failure happened, which is the only screen the person is looking at.
+//
+// NOTE WHAT IS NOT SENT: an owner. The worker takes that from the verified JWT and there is no
+// field for it here, because a support request that can name its own author is a support request
+// where "this is my account" is a claim anyone can type.
+
+export interface SupportSubmitBody {
+  kind: string;
+  content: string;
+  /** The PATH the report was filed from. Never `location.href` — see components/support-model.ts. */
+  page: string | null;
+}
+
+export interface SupportReceipt {
+  id: string;
+  kind: string;
+  status: string;
+  createdAt: string;
+  /** True when the worker removed a credential from the text. The dialog says so rather than hiding it. */
+  redacted: boolean;
+}
+
+export const submitSupportRequest = (body: SupportSubmitBody): Promise<SupportReceipt> =>
+  request<SupportReceipt>('/api/feedback', { method: 'POST', body: JSON.stringify(body) });
+
+export const fetchSupportRequests = (): Promise<{ requests: SupportRequestRow[] }> =>
+  request<{ requests: SupportRequestRow[] }>('/api/feedback');
+
+export interface SupportRequestRow {
+  id: string;
+  kind: string;
+  content: string;
+  page: string | null;
+  status: string;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------- billing (w14)
 //
 // Both of these return a URL to Stripe's own hosted page and nothing else. Neither changes a plan:

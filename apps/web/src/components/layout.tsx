@@ -34,6 +34,7 @@ import { useTheme } from '../lib/theme';
 import { AppleGlyph } from './glyphs';
 import { Icon, PATH, Popover } from './ws/primitives';
 import { NotificationInbox } from './notification-inbox';
+import { SupportDialog } from './support-dialog';
 import { OfflineBanner } from './offline-banner';
 import { OnboardingTour } from './onboarding-tour';
 import { restartTour, writeProgress } from '../lib/onboarding';
@@ -66,9 +67,19 @@ async function fetchRecentProjects(): Promise<ProjectRow[]> {
 
 function AccountMenu({ name, email, isAdmin }: { name: string | null; email: string; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
+  /*
+   * GET HELP LIVES BESIDE DOCS, NOT INSTEAD OF IT.
+   *
+   * Docs answers "how does this work" and goes to the static site. This answers "something is
+   * wrong and I need a person", and it stays inside the app — because the surface a stuck person
+   * can reach is the one on the screen they are stuck on, and every support surface this product
+   * had before was on a marketing site they would have had to leave in order to find.
+   */
+  const [supportOpen, setSupportOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const here = useLocation();
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
   // Only ever the user's own data: a display name if the profile has one,
@@ -116,6 +127,18 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
             </span>
             <span className="gx-sr">(opens in a new tab)</span>
           </a>
+          <button
+            type="button"
+            className="gx-pop__item"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setSupportOpen(true);
+            }}
+          >
+            <Icon d={PATH.lifebuoy} size={15} />
+            Get help
+          </button>
 
           <div className="gx-pop__sep" />
 
@@ -158,6 +181,11 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
       <Link to="/settings" className="gx-icon-btn gx-user-card__gear" aria-label="Settings" title="Settings">
         <Icon d={PATH.settings} size={16} />
       </Link>
+
+      {/* The route is passed in rather than read off `window` inside the dialog: this app can be
+          sitting on /app#access_token=… after a magic link, and a support widget that reads the
+          whole URL files a live session into a table somebody else reads. */}
+      {supportOpen && <SupportDialog onClose={() => setSupportOpen(false)} location={{ pathname: here.pathname }} />}
     </div>
   );
 }
